@@ -1,0 +1,287 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace OpenVisionLab.ThreeDStudio.ViewModels;
+
+public sealed class MainWindowViewModel : INotifyPropertyChanged
+{
+    private bool cubeVisible = true;
+    private bool pointCloudVisible = true;
+    private bool measurementVisible = true;
+    private string selectedEntity = "Generated Unit Cube";
+    private string pickCoordinate = "(none)";
+    private string lastScreenshotPath = "(none)";
+    private string viewerStatus = "Ready: generated cube and point cloud loaded";
+    private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
+    private string selectedColorMode = "Height";
+    private string pointCloudPointCount = "(pending)";
+    private string selectedSelectionMode = "Point";
+    private string selectionSummary = "Point selection: generated point cloud peak";
+    private bool selectionOverlayVisible = true;
+    private double cameraTargetX = 2.05;
+    private double cameraTargetY = -0.25;
+    private double cameraTargetZ;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string[] ColorModes { get; } = ["Solid", "Height", "Deviation"];
+
+    public string[] SelectionModes { get; } = ["Point", "Box ROI", "Section Plane"];
+
+    public bool CubeVisible
+    {
+        get => cubeVisible;
+        set
+        {
+            if (SetField(ref cubeVisible, value))
+            {
+                ViewerStatus = value ? "Cube layer visible" : "Cube layer hidden";
+            }
+        }
+    }
+
+    public bool PointCloudVisible
+    {
+        get => pointCloudVisible;
+        set
+        {
+            if (SetField(ref pointCloudVisible, value))
+            {
+                ViewerStatus = value ? "Point cloud layer visible" : "Point cloud layer hidden";
+            }
+        }
+    }
+
+    public bool MeasurementVisible
+    {
+        get => measurementVisible;
+        set
+        {
+            if (SetField(ref measurementVisible, value))
+            {
+                ViewerStatus = value ? "Measurement overlay visible" : "Measurement overlay hidden";
+            }
+        }
+    }
+
+    public string SelectedColorMode
+    {
+        get => selectedColorMode;
+        set
+        {
+            if (SetField(ref selectedColorMode, value))
+            {
+                ViewerStatus = $"Point cloud color mode: {value}";
+            }
+        }
+    }
+
+    public string PointCloudPointCount
+    {
+        get => pointCloudPointCount;
+        set => SetField(ref pointCloudPointCount, value);
+    }
+
+    public string SelectedSelectionMode
+    {
+        get => selectedSelectionMode;
+        set
+        {
+            if (SetField(ref selectedSelectionMode, value))
+            {
+                SelectionSummary = value switch
+                {
+                    "Box ROI" => "Box ROI: viewer state only",
+                    "Section Plane" => "Section plane: viewer state only",
+                    _ => "Point selection: generated point cloud peak"
+                };
+                ViewerStatus = $"Selection mode: {value}";
+            }
+        }
+    }
+
+    public string SelectionSummary
+    {
+        get => selectionSummary;
+        set => SetField(ref selectionSummary, value);
+    }
+
+    public bool SelectionOverlayVisible
+    {
+        get => selectionOverlayVisible;
+        set
+        {
+            if (SetField(ref selectionOverlayVisible, value))
+            {
+                ViewerStatus = value ? "Selection overlay visible" : "Selection overlay hidden";
+            }
+        }
+    }
+
+    public string SelectedEntity
+    {
+        get => selectedEntity;
+        set => SetField(ref selectedEntity, value);
+    }
+
+    public string PickCoordinate
+    {
+        get => pickCoordinate;
+        set => SetField(ref pickCoordinate, value);
+    }
+
+    public string LastScreenshotPath
+    {
+        get => lastScreenshotPath;
+        set => SetField(ref lastScreenshotPath, value);
+    }
+
+    public string ViewerStatus
+    {
+        get => viewerStatus;
+        set => SetField(ref viewerStatus, value);
+    }
+
+    public string BottomStatus
+    {
+        get => bottomStatus;
+        set => SetField(ref bottomStatus, value);
+    }
+
+    public double YawDegrees { get; set; } = 38.0;
+
+    public double PitchDegrees { get; set; } = 24.0;
+
+    public double CameraDistance { get; set; } = 9.2;
+
+    public double CameraTargetX
+    {
+        get => cameraTargetX;
+        set => SetField(ref cameraTargetX, value);
+    }
+
+    public double CameraTargetY
+    {
+        get => cameraTargetY;
+        set => SetField(ref cameraTargetY, value);
+    }
+
+    public double CameraTargetZ
+    {
+        get => cameraTargetZ;
+        set => SetField(ref cameraTargetZ, value);
+    }
+
+    public void FitAll()
+    {
+        if (PointCloudVisible && CubeVisible)
+        {
+            SetCameraTarget(2.05, -0.25, 0.0);
+            CameraDistance = 9.2;
+        }
+        else if (PointCloudVisible)
+        {
+            SetCameraTarget(3.2, -0.70, 0.0);
+            CameraDistance = 7.2;
+        }
+        else
+        {
+            SetCameraTarget(0.0, 0.0, 0.0);
+            CameraDistance = 5.2;
+        }
+
+        ViewerStatus = "Fit all visible entities";
+        UpdateCameraStatus();
+    }
+
+    public void FitSelection()
+    {
+        if (SelectedEntity == "Generated Point Cloud" && PointCloudVisible)
+        {
+            SetCameraTarget(3.2, -0.70, 0.0);
+            CameraDistance = 7.2;
+            ViewerStatus = "Fit selected point cloud";
+        }
+        else
+        {
+            SetCameraTarget(0.0, 0.0, 0.0);
+            CameraDistance = 5.2;
+            ViewerStatus = "Fit selected cube";
+        }
+
+        UpdateCameraStatus();
+    }
+
+    public void Reset()
+    {
+        YawDegrees = 38.0;
+        PitchDegrees = 24.0;
+        CameraDistance = 9.2;
+        SetCameraTarget(2.05, -0.25, 0.0);
+        SelectedEntity = "Generated Unit Cube";
+        PickCoordinate = "(none)";
+        ViewerStatus = "Camera reset";
+        UpdateCameraStatus();
+    }
+
+    public void UsePointCloudSmokeScene()
+    {
+        CubeVisible = false;
+        MeasurementVisible = false;
+        PointCloudVisible = true;
+        SelectedColorMode = "Height";
+        SelectedEntity = "Generated Point Cloud";
+        PickCoordinate = "(none)";
+        CameraDistance = 7.2;
+        SetCameraTarget(3.2, -0.70, 0.0);
+        ViewerStatus = "Smoke scene: generated point cloud";
+        UpdateCameraStatus();
+    }
+
+    public void UseSelectionSmokeScene(string mode)
+    {
+        UsePointCloudSmokeScene();
+        SelectionOverlayVisible = true;
+        SelectedSelectionMode = mode;
+        SelectedEntity = mode switch
+        {
+            "Box ROI" => "Box ROI",
+            "Section Plane" => "Section Plane",
+            _ => "Generated Point Cloud"
+        };
+        ViewerStatus = $"Smoke scene: {mode}";
+    }
+
+    public void Pan(double deltaX, double deltaY, double deltaZ)
+    {
+        CameraTargetX += deltaX;
+        CameraTargetY += deltaY;
+        CameraTargetZ += deltaZ;
+        ViewerStatus = "Camera panned";
+        UpdateCameraStatus();
+    }
+
+    public void UpdateCameraStatus()
+    {
+        BottomStatus = $"Model units: unitless | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
+    }
+
+    private void SetCameraTarget(double x, double y, double z)
+    {
+        CameraTargetX = x;
+        CameraTargetY = y;
+        CameraTargetZ = z;
+    }
+
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+}
