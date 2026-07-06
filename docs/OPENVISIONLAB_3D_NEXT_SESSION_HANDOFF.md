@@ -5,7 +5,7 @@ Updated: 2026-07-06
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders a generated cube and generated point cloud.
+- Status: SharpGL WPF viewer MVP now renders a generated cube, generated point cloud, and local C3D height-grid sample.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -20,13 +20,20 @@ Completed in the first implementation slice:
 - SharpGL WPF dependency.
 - Generated unit cube render.
 - Generated point-cloud render.
+- Local `3D/Thickness` C3D sample render as a downsampled height-grid point cloud.
 - Point-cloud color modes: `Solid`, `Height`, and `Deviation`.
 - Orbit/pan/zoom/reset/fit-all/fit-selection camera controls.
 - Cube picking and coordinate status.
+- C3D height-grid point picking and raw height status.
 - Viewer-only selection states and overlays: point, box ROI, section plane.
 - Measurement overlay.
+- Viewer-only result overlay primitives: pass band, profile line, and fail markers.
+- Screenshot smoke command for cube picking.
 - Screenshot smoke commands for point, box ROI, and section-plane selection scenes.
+- Screenshot smoke command for the result overlay scene.
 - MVVM target recorded in `AGENTS.md`; durable shell state is in `MainWindowViewModel`.
+- Camera/picking math and measurement/selection/result overlay drawing are split into small `Rendering` support classes.
+- Minimal inferred-layout C3D reader is in `src/OpenVisionLab.ThreeDStudio/Data/`.
 
 Local sample data now exists:
 
@@ -37,11 +44,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay viewer-only and complete the viewer gate:
+Next implementation should stay viewer-only and define the source/result contract:
 
-1. Render reusable measurement/result overlay primitives that future tools can reuse.
-2. Move reusable camera/picking math out of `MainWindow.xaml.cs` when the next viewer feature needs it.
-3. Add a minimal C3D height-grid viewer path only after generated point-cloud interaction is stable.
+1. Define `SourceEntity`, `ResultEntity`, `Layer`, `Metric`, and `Overlay` contracts before adding real rule algorithms.
+2. Keep C3D loading viewer-only until those contracts exist.
+3. Add the first rule only after a source/result layer can display metrics and overlays without mutating source geometry.
 
 ## Remaining Project Priority
 
@@ -77,13 +84,21 @@ Local sample data notes are recorded in `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`.
 Build and smoke evidence:
 
 - `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_pick_after_cube.png --smoke-pick cube`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_after.png --smoke-c3d thickness`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_pick_after.png --smoke-c3d thickness --smoke-pick c3d`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result`
 - Before screenshot: `artifacts\viewer_selection_before.png`
+- Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
+- C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
+- C3D picking after screenshot: `artifacts\viewer_c3d_pick_after.png`
 - Point selection after screenshot: `artifacts\viewer_selection_after_point.png`
 - Box ROI after screenshot: `artifacts\viewer_selection_after_box.png`
 - Section plane after screenshot: `artifacts\viewer_selection_after_section.png`
+- Result overlay after screenshot: `artifacts\viewer_result_overlay_after.png`
 
 ## Guardrails
 

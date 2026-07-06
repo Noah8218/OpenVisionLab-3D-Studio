@@ -13,23 +13,28 @@ The current viewer MVP can:
 - Use SharpGL as the first viewer library.
 - Render a generated unit cube.
 - Render a generated point cloud with per-point colors.
+- Render the local `3D/Thickness` C3D sample as a downsampled height-grid point cloud.
 - Switch point-cloud color modes between `Solid`, `Height`, and `Deviation`.
 - Orbit, pan, zoom, reset camera, fit all, and fit the selected entity.
 - Show object/entity tree and visibility toggles.
-- Pick the cube and display model coordinates.
+- Pick the cube or C3D height-grid points and display model coordinates.
 - Show viewer-only selection states for point, box ROI, and section plane.
-- Draw a measurement overlay.
+- Draw viewer-only measurement and result overlays.
 - Capture screenshot smoke artifacts from the running app.
 
-Still not included: external mesh import, CAD import, persisted recipes, and headless rule execution.
+Still not included: general file-open import, external mesh import, CAD import, persisted recipes, and headless rule execution.
 
 ## Build And Smoke
 
 ```powershell
 dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_pick_after_cube.png --smoke-pick cube
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_after.png --smoke-c3d thickness
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_pick_after.png --smoke-c3d thickness --smoke-pick c3d
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result
 ```
 
 ## Document Map

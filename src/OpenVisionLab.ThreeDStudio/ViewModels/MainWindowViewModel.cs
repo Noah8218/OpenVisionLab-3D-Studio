@@ -7,17 +7,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
     private bool cubeVisible = true;
     private bool pointCloudVisible = true;
+    private bool c3DSampleVisible;
     private bool measurementVisible = true;
     private string selectedEntity = "Generated Unit Cube";
     private string pickCoordinate = "(none)";
     private string lastScreenshotPath = "(none)";
     private string viewerStatus = "Ready: generated cube and point cloud loaded";
     private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
+    private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
     private string selectedColorMode = "Height";
     private string pointCloudPointCount = "(pending)";
+    private string c3DSamplePointCount = "(not loaded)";
+    private string c3DSampleSummary = "C3D sample hidden";
     private string selectedSelectionMode = "Point";
     private string selectionSummary = "Point selection: generated point cloud peak";
     private bool selectionOverlayVisible = true;
+    private bool resultOverlayVisible;
+    private string resultSummary = "Result overlay hidden";
     private double cameraTargetX = 2.05;
     private double cameraTargetY = -0.25;
     private double cameraTargetZ;
@@ -52,6 +58,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool C3DSampleVisible
+    {
+        get => c3DSampleVisible;
+        set
+        {
+            if (SetField(ref c3DSampleVisible, value))
+            {
+                ViewerStatus = value ? "C3D sample visible" : "C3D sample hidden";
+            }
+        }
+    }
+
     public bool MeasurementVisible
     {
         get => measurementVisible;
@@ -59,9 +77,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref measurementVisible, value))
             {
+                MeasurementSummary = value
+                    ? "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)"
+                    : "Measurement overlay hidden";
                 ViewerStatus = value ? "Measurement overlay visible" : "Measurement overlay hidden";
             }
         }
+    }
+
+    public string MeasurementSummary
+    {
+        get => measurementSummary;
+        set => SetField(ref measurementSummary, value);
     }
 
     public string SelectedColorMode
@@ -80,6 +107,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => pointCloudPointCount;
         set => SetField(ref pointCloudPointCount, value);
+    }
+
+    public string C3DSamplePointCount
+    {
+        get => c3DSamplePointCount;
+        set => SetField(ref c3DSamplePointCount, value);
+    }
+
+    public string C3DSampleSummary
+    {
+        get => c3DSampleSummary;
+        set => SetField(ref c3DSampleSummary, value);
     }
 
     public string SelectedSelectionMode
@@ -116,6 +155,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ViewerStatus = value ? "Selection overlay visible" : "Selection overlay hidden";
             }
         }
+    }
+
+    public bool ResultOverlayVisible
+    {
+        get => resultOverlayVisible;
+        set
+        {
+            if (SetField(ref resultOverlayVisible, value))
+            {
+                ResultSummary = value
+                    ? "PASS band + FAIL markers: viewer-only sample result layer"
+                    : "Result overlay hidden";
+                ViewerStatus = value ? "Result overlay visible" : "Result overlay hidden";
+            }
+        }
+    }
+
+    public string ResultSummary
+    {
+        get => resultSummary;
+        set => SetField(ref resultSummary, value);
     }
 
     public string SelectedEntity
@@ -174,7 +234,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void FitAll()
     {
-        if (PointCloudVisible && CubeVisible)
+        if (C3DSampleVisible)
+        {
+            SetCameraTarget(0.0, 0.0, 0.0);
+            CameraDistance = 13.2;
+        }
+        else if (PointCloudVisible && CubeVisible)
         {
             SetCameraTarget(2.05, -0.25, 0.0);
             CameraDistance = 9.2;
@@ -196,7 +261,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void FitSelection()
     {
-        if (SelectedEntity == "Generated Point Cloud" && PointCloudVisible)
+        if (SelectedEntity == "C3D Height Grid" && C3DSampleVisible)
+        {
+            SetCameraTarget(0.0, 0.0, 0.0);
+            CameraDistance = 13.2;
+            ViewerStatus = "Fit selected C3D height grid";
+        }
+        else if (SelectedEntity == "Generated Point Cloud" && PointCloudVisible)
         {
             SetCameraTarget(3.2, -0.70, 0.0);
             CameraDistance = 7.2;
@@ -228,6 +299,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         CubeVisible = false;
         MeasurementVisible = false;
+        ResultOverlayVisible = false;
+        C3DSampleVisible = false;
         PointCloudVisible = true;
         SelectedColorMode = "Height";
         SelectedEntity = "Generated Point Cloud";
@@ -250,6 +323,39 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _ => "Generated Point Cloud"
         };
         ViewerStatus = $"Smoke scene: {mode}";
+    }
+
+    public void UseC3DSmokeScene()
+    {
+        CubeVisible = false;
+        PointCloudVisible = false;
+        C3DSampleVisible = true;
+        MeasurementVisible = false;
+        SelectionOverlayVisible = false;
+        ResultOverlayVisible = false;
+        SelectedEntity = "C3D Height Grid";
+        PickCoordinate = "(none)";
+        MeasurementSummary = "C3D sample loaded; no measurement tool published";
+        SelectionSummary = "Selection overlay hidden";
+        SelectedColorMode = "Height";
+        YawDegrees = 34.0;
+        PitchDegrees = 52.0;
+        CameraDistance = 13.2;
+        SetCameraTarget(0.0, 0.0, 0.0);
+        ViewerStatus = "Smoke scene: C3D height grid";
+        UpdateCameraStatus();
+    }
+
+    public void UseResultSmokeScene()
+    {
+        UsePointCloudSmokeScene();
+        MeasurementVisible = true;
+        SelectionOverlayVisible = true;
+        ResultOverlayVisible = true;
+        SelectedSelectionMode = "Box ROI";
+        SelectedEntity = "Result Overlay";
+        PickCoordinate = "(viewer-only sample)";
+        ViewerStatus = "Smoke scene: result overlay";
     }
 
     public void Pan(double deltaX, double deltaY, double deltaZ)

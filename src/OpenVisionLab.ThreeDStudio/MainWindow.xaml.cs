@@ -5,6 +5,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using OpenVisionLab.ThreeDStudio.Data;
+using OpenVisionLab.ThreeDStudio.Rendering;
 using OpenVisionLab.ThreeDStudio.ViewModels;
 using SharpGL;
 using SharpGL.WPF;
@@ -13,29 +15,35 @@ namespace OpenVisionLab.ThreeDStudio;
 
 public partial class MainWindow : Window
 {
-    private const float CubeHalfSize = 1.0f;
     private const float FieldOfViewDegrees = 45.0f;
+    private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
 
-    private readonly GeneratedPoint[] pointCloud = CreateGeneratedPointCloud();
+    private readonly ViewerPoint[] generatedPointCloud = CreateGeneratedPointCloud();
+    private readonly C3DHeightGrid? c3dSample;
     private readonly string? smokeScreenshotPath;
     private readonly MainWindowViewModel viewModel = new();
     private bool isOrbiting;
     private bool isPanning;
+    private string? smokePickTarget;
     private Point lastMousePosition;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = viewModel;
-        viewModel.PointCloudPointCount = pointCloud.Length.ToString("N0", CultureInfo.InvariantCulture);
+        c3dSample = LoadDefaultC3DSample();
+        viewModel.PointCloudPointCount = generatedPointCloud.Length.ToString("N0", CultureInfo.InvariantCulture);
+        SetC3DSampleStatus();
         viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(MainWindowViewModel.CubeVisible)
                 or nameof(MainWindowViewModel.PointCloudVisible)
+                or nameof(MainWindowViewModel.C3DSampleVisible)
                 or nameof(MainWindowViewModel.MeasurementVisible)
                 or nameof(MainWindowViewModel.SelectedColorMode)
                 or nameof(MainWindowViewModel.SelectedSelectionMode)
-                or nameof(MainWindowViewModel.SelectionOverlayVisible))
+                or nameof(MainWindowViewModel.SelectionOverlayVisible)
+                or nameof(MainWindowViewModel.ResultOverlayVisible))
             {
                 RenderNow();
             }
@@ -52,6 +60,12 @@ public partial class MainWindow : Window
                 viewModel.UsePointCloudSmokeScene();
             }
 
+            var c3dIndex = Array.IndexOf(args, "--smoke-c3d");
+            if (c3dIndex >= 0)
+            {
+                ApplySmokeC3D();
+            }
+
             var actionIndex = Array.IndexOf(args, "--smoke-action");
             if (actionIndex >= 0 && actionIndex + 1 < args.Length)
             {
@@ -62,6 +76,18 @@ public partial class MainWindow : Window
             if (selectionIndex >= 0 && selectionIndex + 1 < args.Length)
             {
                 ApplySmokeSelection(args[selectionIndex + 1]);
+            }
+
+            var overlayIndex = Array.IndexOf(args, "--smoke-overlay");
+            if (overlayIndex >= 0 && overlayIndex + 1 < args.Length)
+            {
+                ApplySmokeOverlay(args[overlayIndex + 1]);
+            }
+
+            var pickIndex = Array.IndexOf(args, "--smoke-pick");
+            if (pickIndex >= 0 && pickIndex + 1 < args.Length)
+            {
+                smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
             }
 
             Loaded += SmokeCaptureOnLoaded;
@@ -99,17 +125,27 @@ public partial class MainWindow : Window
 
         if (viewModel.PointCloudVisible)
         {
-            DrawPointCloud(gl);
+            DrawPointCloud(gl, generatedPointCloud);
+        }
+
+        if (viewModel.C3DSampleVisible && c3dSample is not null)
+        {
+            DrawC3DHeightGrid(gl);
         }
 
         if (viewModel.MeasurementVisible)
         {
-            DrawMeasurement(gl);
+            InspectionOverlayRenderer.DrawMeasurement(gl, viewModel.CubeVisible, viewModel.PointCloudVisible);
         }
 
         if (viewModel.SelectionOverlayVisible)
         {
-            DrawSelectionOverlay(gl);
+            InspectionOverlayRenderer.DrawSelectionOverlay(gl, viewModel.SelectedSelectionMode);
+        }
+
+        if (viewModel.ResultOverlayVisible)
+        {
+            InspectionOverlayRenderer.DrawResultOverlay(gl);
         }
 
         gl.Flush();
@@ -126,8 +162,14 @@ public partial class MainWindow : Window
             if (TryPickCube(lastMousePosition, out var hit))
             {
                 viewModel.SelectedEntity = "Generated Unit Cube";
-                viewModel.PickCoordinate = FormatPoint(hit);
+                viewModel.PickCoordinate = CameraMath.FormatPoint(hit);
                 viewModel.ViewerStatus = "Picked generated cube face";
+            }
+            else if (TryPickC3DPoint(lastMousePosition, out var c3dPoint))
+            {
+                viewModel.SelectedEntity = "C3D Height Grid";
+                viewModel.PickCoordinate = FormatC3DPoint(c3dPoint);
+                viewModel.ViewerStatus = "Picked C3D height-grid point";
             }
             else
             {
@@ -232,6 +274,17 @@ public partial class MainWindow : Window
     private async void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
         await Dispatcher.InvokeAsync(RenderNow);
+        if (smokePickTarget == "cube")
+        {
+            ApplySmokePickCube();
+            await Dispatcher.InvokeAsync(RenderNow);
+        }
+        else if (smokePickTarget == "c3d")
+        {
+            ApplySmokePickC3D();
+            await Dispatcher.InvokeAsync(RenderNow);
+        }
+
         await Task.Delay(900);
         CaptureWindow(smokeScreenshotPath!);
         await Task.Delay(100);
@@ -282,6 +335,75 @@ public partial class MainWindow : Window
         viewModel.UseSelectionSmokeScene(selectionMode);
     }
 
+    private void ApplySmokeOverlay(string overlay)
+    {
+        if (overlay.Equals("result", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.UseResultSmokeScene();
+        }
+    }
+
+    private void ApplySmokeC3D()
+    {
+        if (c3dSample is null)
+        {
+            viewModel.ViewerStatus = "C3D sample missing";
+            return;
+        }
+
+        viewModel.UseC3DSmokeScene();
+    }
+
+    private void ApplySmokePickCube()
+    {
+        viewModel.Reset();
+        viewModel.CubeVisible = true;
+        viewModel.PointCloudVisible = false;
+        viewModel.SelectionOverlayVisible = false;
+        viewModel.ResultOverlayVisible = false;
+        viewModel.MeasurementVisible = true;
+        viewModel.SelectedEntity = "Generated Unit Cube";
+        viewModel.FitSelection();
+
+        var center = new Point(Math.Max(1.0, Viewport.ActualWidth) / 2.0, Math.Max(1.0, Viewport.ActualHeight) / 2.0);
+        if (TryPickCube(center, out var hit))
+        {
+            viewModel.SelectedEntity = "Generated Unit Cube";
+            viewModel.PickCoordinate = CameraMath.FormatPoint(hit);
+            viewModel.ViewerStatus = "Smoke pick: generated cube";
+        }
+        else
+        {
+            viewModel.SelectedEntity = "(none)";
+            viewModel.PickCoordinate = "(none)";
+            viewModel.ViewerStatus = "Smoke pick failed";
+        }
+    }
+
+    private void ApplySmokePickC3D()
+    {
+        if (c3dSample is null)
+        {
+            viewModel.ViewerStatus = "Smoke pick failed: C3D sample missing";
+            return;
+        }
+
+        viewModel.UseC3DSmokeScene();
+        var center = new Point(Math.Max(1.0, Viewport.ActualWidth) / 2.0, Math.Max(1.0, Viewport.ActualHeight) / 2.0);
+        if (TryPickC3DPoint(center, out var point))
+        {
+            viewModel.SelectedEntity = "C3D Height Grid";
+            viewModel.PickCoordinate = FormatC3DPoint(point);
+            viewModel.ViewerStatus = "Smoke pick: C3D height grid";
+        }
+        else
+        {
+            viewModel.SelectedEntity = "(none)";
+            viewModel.PickCoordinate = "(none)";
+            viewModel.ViewerStatus = "Smoke pick failed: C3D height grid";
+        }
+    }
+
     private void ConfigureProjection(OpenGL gl)
     {
         var width = Math.Max(1, (int)Viewport.ActualWidth);
@@ -303,18 +425,16 @@ public partial class MainWindow : Window
 
     private Vector3 GetCameraPosition()
     {
-        var target = GetCameraTarget();
-        var yaw = DegreesToRadians(viewModel.YawDegrees);
-        var pitch = DegreesToRadians(viewModel.PitchDegrees);
-        var x = viewModel.CameraDistance * Math.Cos(pitch) * Math.Sin(yaw);
-        var y = viewModel.CameraDistance * Math.Sin(pitch);
-        var z = viewModel.CameraDistance * Math.Cos(pitch) * Math.Cos(yaw);
-        return target + new Vector3((float)x, (float)y, (float)z);
+        return CameraMath.OrbitCameraPosition(
+            GetCameraTarget(),
+            viewModel.YawDegrees,
+            viewModel.PitchDegrees,
+            viewModel.CameraDistance);
     }
 
     private Vector3 GetCameraTarget()
     {
-        return new Vector3((float)viewModel.CameraTargetX, (float)viewModel.CameraTargetY, (float)viewModel.CameraTargetZ);
+        return CameraMath.CameraTarget(viewModel.CameraTargetX, viewModel.CameraTargetY, viewModel.CameraTargetZ);
     }
 
     private void DrawGrid(OpenGL gl)
@@ -403,28 +523,12 @@ public partial class MainWindow : Window
         gl.End();
     }
 
-    private void DrawMeasurement(OpenGL gl)
-    {
-        gl.LineWidth(3.0f);
-        gl.Color(1.0, 0.95, 0.22);
-        gl.Begin(OpenGL.GL_LINES);
-
-        gl.Vertex(-1.0, 1.35, 1.15);
-        gl.Vertex(1.0, 1.35, 1.15);
-        gl.Vertex(-1.0, 1.23, 1.15);
-        gl.Vertex(-1.0, 1.47, 1.15);
-        gl.Vertex(1.0, 1.23, 1.15);
-        gl.Vertex(1.0, 1.47, 1.15);
-
-        gl.End();
-    }
-
-    private void DrawPointCloud(OpenGL gl)
+    private void DrawPointCloud(OpenGL gl, IReadOnlyList<ViewerPoint> points)
     {
         gl.PointSize(3.0f);
         gl.Begin(OpenGL.GL_POINTS);
 
-        foreach (var point in pointCloud)
+        foreach (var point in points)
         {
             ApplyPointColor(gl, point);
             gl.Vertex(point.Position.X, point.Position.Y, point.Position.Z);
@@ -433,6 +537,22 @@ public partial class MainWindow : Window
         gl.End();
         gl.PointSize(1.0f);
         DrawPointCloudFrame(gl);
+    }
+
+    private void DrawC3DHeightGrid(OpenGL gl)
+    {
+        gl.PointSize(2.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+
+        foreach (var point in c3dSample!.Points)
+        {
+            ApplyPointColor(gl, point);
+            gl.Vertex(point.Position.X, point.Position.Y, point.Position.Z);
+        }
+
+        gl.End();
+        gl.PointSize(1.0f);
+        DrawC3DFrame(gl);
     }
 
     private void DrawPointCloudFrame(OpenGL gl)
@@ -447,7 +567,22 @@ public partial class MainWindow : Window
         gl.End();
     }
 
-    private void ApplyPointColor(OpenGL gl, GeneratedPoint point)
+    private void DrawC3DFrame(OpenGL gl)
+    {
+        var x = c3dSample!.XHalfExtent;
+        var z = c3dSample.ZHalfExtent;
+
+        gl.LineWidth(1.5f);
+        gl.Color(0.78, 0.86, 0.98);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(-x, 0.0, -z);
+        gl.Vertex(x, 0.0, -z);
+        gl.Vertex(x, 0.0, z);
+        gl.Vertex(-x, 0.0, z);
+        gl.End();
+    }
+
+    private void ApplyPointColor(OpenGL gl, ViewerPoint point)
     {
         var (r, g, b) = viewModel.SelectedColorMode switch
         {
@@ -457,89 +592,6 @@ public partial class MainWindow : Window
         };
 
         gl.Color(r, g, b);
-    }
-
-    private void DrawSelectionOverlay(OpenGL gl)
-    {
-        switch (viewModel.SelectedSelectionMode)
-        {
-            case "Box ROI":
-                DrawBoxRoi(gl);
-                break;
-            case "Section Plane":
-                DrawSectionPlane(gl);
-                break;
-            default:
-                DrawSelectionPoint(gl);
-                break;
-        }
-    }
-
-    private void DrawSelectionPoint(OpenGL gl)
-    {
-        var point = new Vector3(3.78f, -0.28f, -0.32f);
-        gl.PointSize(11.0f);
-        gl.Begin(OpenGL.GL_POINTS);
-        gl.Color(1.0, 0.25, 0.25);
-        gl.Vertex(point.X, point.Y, point.Z);
-        gl.End();
-        gl.PointSize(1.0f);
-
-        gl.LineWidth(2.0f);
-        gl.Begin(OpenGL.GL_LINES);
-        gl.Color(1.0, 1.0, 0.25);
-        gl.Vertex(point.X - 0.18, point.Y, point.Z);
-        gl.Vertex(point.X + 0.18, point.Y, point.Z);
-        gl.Vertex(point.X, point.Y - 0.18, point.Z);
-        gl.Vertex(point.X, point.Y + 0.18, point.Z);
-        gl.Vertex(point.X, point.Y, point.Z - 0.18);
-        gl.Vertex(point.X, point.Y, point.Z + 0.18);
-        gl.End();
-    }
-
-    private void DrawBoxRoi(OpenGL gl)
-    {
-        var min = new Vector3(2.35f, -1.10f, -1.05f);
-        var max = new Vector3(4.45f, -0.10f, 0.95f);
-        gl.LineWidth(2.5f);
-        gl.Color(1.0, 0.74, 0.18);
-        gl.Begin(OpenGL.GL_LINES);
-        BoxEdge(gl, min.X, min.Y, min.Z, max.X, min.Y, min.Z);
-        BoxEdge(gl, max.X, min.Y, min.Z, max.X, min.Y, max.Z);
-        BoxEdge(gl, max.X, min.Y, max.Z, min.X, min.Y, max.Z);
-        BoxEdge(gl, min.X, min.Y, max.Z, min.X, min.Y, min.Z);
-        BoxEdge(gl, min.X, max.Y, min.Z, max.X, max.Y, min.Z);
-        BoxEdge(gl, max.X, max.Y, min.Z, max.X, max.Y, max.Z);
-        BoxEdge(gl, max.X, max.Y, max.Z, min.X, max.Y, max.Z);
-        BoxEdge(gl, min.X, max.Y, max.Z, min.X, max.Y, min.Z);
-        BoxEdge(gl, min.X, min.Y, min.Z, min.X, max.Y, min.Z);
-        BoxEdge(gl, max.X, min.Y, min.Z, max.X, max.Y, min.Z);
-        BoxEdge(gl, max.X, min.Y, max.Z, max.X, max.Y, max.Z);
-        BoxEdge(gl, min.X, min.Y, max.Z, min.X, max.Y, max.Z);
-        gl.End();
-    }
-
-    private void DrawSectionPlane(OpenGL gl)
-    {
-        const double x = 3.25;
-        const double y0 = -1.20;
-        const double y1 = 0.20;
-        const double z0 = -2.15;
-        const double z1 = 2.15;
-
-        gl.LineWidth(2.0f);
-        gl.Color(0.96, 0.30, 0.86);
-        gl.Begin(OpenGL.GL_LINES);
-        for (var i = 0; i <= 8; i++)
-        {
-            var z = z0 + (z1 - z0) * i / 8.0;
-            gl.Vertex(x, y0, z);
-            gl.Vertex(x, y1, z);
-            var y = y0 + (y1 - y0) * i / 8.0;
-            gl.Vertex(x, y, z0);
-            gl.Vertex(x, y, z1);
-        }
-        gl.End();
     }
 
     private bool TryPickCube(Point screenPoint, out Vector3 hit)
@@ -552,7 +604,7 @@ public partial class MainWindow : Window
         }
 
         var ray = CreatePickRay(screenPoint);
-        if (!IntersectUnitCube(ray.origin, ray.direction, out var distance))
+        if (!CameraMath.IntersectUnitCube(ray.origin, ray.direction, 1.0f, out var distance))
         {
             return false;
         }
@@ -561,91 +613,125 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private bool TryPickC3DPoint(Point screenPoint, out ViewerPoint hit)
+    {
+        hit = default;
+
+        if (!viewModel.C3DSampleVisible || c3dSample is null || Viewport.ActualWidth <= 0 || Viewport.ActualHeight <= 0)
+        {
+            return false;
+        }
+
+        var ray = CreatePickRay(screenPoint);
+        var bestDistance = float.PositiveInfinity;
+        var maxDistance = Math.Max(0.12f, (float)viewModel.CameraDistance * 0.025f);
+
+        foreach (var point in c3dSample.Points)
+        {
+            var toPoint = point.Position - ray.origin;
+            var alongRay = Vector3.Dot(toPoint, ray.direction);
+            if (alongRay < 0)
+            {
+                continue;
+            }
+
+            var closest = ray.origin + ray.direction * alongRay;
+            var distance = Vector3.Distance(point.Position, closest);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                hit = point;
+            }
+        }
+
+        return bestDistance <= maxDistance;
+    }
+
     private (Vector3 origin, Vector3 direction) CreatePickRay(Point screenPoint)
     {
-        var width = (float)Math.Max(1.0, Viewport.ActualWidth);
-        var height = (float)Math.Max(1.0, Viewport.ActualHeight);
-        var x = (float)(2.0 * screenPoint.X / width - 1.0);
-        var y = (float)(1.0 - 2.0 * screenPoint.Y / height);
-
-        var eye = GetCameraPosition();
-        var view = Matrix4x4.CreateLookAt(eye, GetCameraTarget(), Vector3.UnitY);
-        var projection = Matrix4x4.CreatePerspectiveFieldOfView(
-            (float)DegreesToRadians(FieldOfViewDegrees),
-            width / height,
-            0.1f,
-            100.0f);
-
-        Matrix4x4.Invert(view * projection, out var inverseViewProjection);
-
-        var near = Vector3.Transform(new Vector3(x, y, 0.0f), inverseViewProjection);
-        var far = Vector3.Transform(new Vector3(x, y, 1.0f), inverseViewProjection);
-        return (near, Vector3.Normalize(far - near));
+        return CameraMath.CreatePickRay(
+            screenPoint,
+            Viewport.ActualWidth,
+            Viewport.ActualHeight,
+            FieldOfViewDegrees,
+            GetCameraPosition(),
+            GetCameraTarget());
     }
 
     private void PanCamera(System.Windows.Vector delta)
     {
         var target = GetCameraTarget();
         var eye = GetCameraPosition();
-        var forward = Vector3.Normalize(target - eye);
-        var right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
-        var up = Vector3.Normalize(Vector3.Cross(right, forward));
-        var worldPerPixel = 2.0 * viewModel.CameraDistance * Math.Tan(DegreesToRadians(FieldOfViewDegrees) / 2.0) / Math.Max(1.0, Viewport.ActualHeight);
-        var movement = right * (float)(-delta.X * worldPerPixel) + up * (float)(delta.Y * worldPerPixel);
+        var movement = CameraMath.PanDelta(
+            delta,
+            Viewport.ActualHeight,
+            FieldOfViewDegrees,
+            viewModel.CameraDistance,
+            target,
+            eye);
 
         viewModel.Pan(movement.X, movement.Y, movement.Z);
     }
 
-    private static bool IntersectUnitCube(Vector3 origin, Vector3 direction, out float distance)
+    private C3DHeightGrid? LoadDefaultC3DSample()
     {
-        distance = 0;
-        var min = new Vector3(-CubeHalfSize, -CubeHalfSize, -CubeHalfSize);
-        var max = new Vector3(CubeHalfSize, CubeHalfSize, CubeHalfSize);
-        var tMin = 0.0f;
-        var tMax = float.PositiveInfinity;
-
-        for (var axis = 0; axis < 3; axis++)
+        var path = FindDefaultC3DSamplePath();
+        if (path is null)
         {
-            var axisOrigin = GetAxis(origin, axis);
-            var axisDirection = GetAxis(direction, axis);
-            var axisMin = GetAxis(min, axis);
-            var axisMax = GetAxis(max, axis);
+            return null;
+        }
 
-            if (Math.Abs(axisDirection) < 0.00001f)
+        try
+        {
+            return C3DHeightGrid.Load(path);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    private static string? FindDefaultC3DSamplePath()
+    {
+        foreach (var root in new[] { Environment.CurrentDirectory, AppContext.BaseDirectory })
+        {
+            var directory = new DirectoryInfo(root);
+            while (directory is not null)
             {
-                if (axisOrigin < axisMin || axisOrigin > axisMax)
+                var candidate = Path.Combine(directory.FullName, DefaultC3DSamplePath);
+                if (File.Exists(candidate))
                 {
-                    return false;
+                    return candidate;
                 }
 
-                continue;
-            }
-
-            var t1 = (axisMin - axisOrigin) / axisDirection;
-            var t2 = (axisMax - axisOrigin) / axisDirection;
-            if (t1 > t2)
-            {
-                (t1, t2) = (t2, t1);
-            }
-
-            tMin = Math.Max(tMin, t1);
-            tMax = Math.Min(tMax, t2);
-            if (tMin > tMax)
-            {
-                return false;
+                directory = directory.Parent;
             }
         }
 
-        distance = tMin;
-        return true;
+        return null;
     }
 
-    private static float GetAxis(Vector3 vector, int axis) => axis switch
+    private void SetC3DSampleStatus()
     {
-        0 => vector.X,
-        1 => vector.Y,
-        _ => vector.Z
-    };
+        if (c3dSample is null)
+        {
+            viewModel.C3DSamplePointCount = "(missing)";
+            viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
+            return;
+        }
+
+        viewModel.C3DSamplePointCount = c3dSample.Points.Length.ToString("N0", CultureInfo.InvariantCulture);
+        viewModel.C3DSampleSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{c3dSample.Width} x {c3dSample.Height} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+    }
+
+    private static string FormatC3DPoint(ViewerPoint point) =>
+        string.Create(CultureInfo.InvariantCulture, $"{CameraMath.FormatPoint(point.Position)} | raw {point.RawValue:F3}");
 
     private static void Quad(OpenGL gl, (double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) c, (double X, double Y, double Z) d)
     {
@@ -661,22 +747,11 @@ public partial class MainWindow : Window
         gl.Vertex(b.X, b.Y, b.Z);
     }
 
-    private static void BoxEdge(OpenGL gl, double x1, double y1, double z1, double x2, double y2, double z2)
-    {
-        gl.Vertex(x1, y1, z1);
-        gl.Vertex(x2, y2, z2);
-    }
-
-    private static string FormatPoint(Vector3 point) =>
-        string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
-
-    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
-
-    private static GeneratedPoint[] CreateGeneratedPointCloud()
+    private static ViewerPoint[] CreateGeneratedPointCloud()
     {
         const int columns = 55;
         const int rows = 41;
-        var points = new GeneratedPoint[columns * rows];
+        var points = new ViewerPoint[columns * rows];
         var index = 0;
 
         for (var row = 0; row < rows; row++)
@@ -692,7 +767,7 @@ public partial class MainWindow : Window
                 var position = new Vector3(localX + 3.2f, y, z);
                 var heightScalar = Clamp01((y + 1.05) / 0.86);
                 var deviationScalar = Clamp01(Math.Abs(bump + dent) / 0.42);
-                points[index++] = new GeneratedPoint(position, heightScalar, deviationScalar);
+                points[index++] = new ViewerPoint(position, heightScalar, deviationScalar, y);
             }
         }
 
@@ -729,5 +804,3 @@ public partial class MainWindow : Window
     }
 
 }
-
-internal readonly record struct GeneratedPoint(Vector3 Position, double HeightScalar, double DeviationScalar);

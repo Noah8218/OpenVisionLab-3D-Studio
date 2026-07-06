@@ -49,13 +49,19 @@ This is an inferred format until an official C3D writer/spec is found.
 
 ## 3. Viewer Usage Plan
 
+Current viewer implementation:
+
+- `3D/Thickness/Ori_20240116_094414.C3D` is loaded by the SharpGL app as an inferred-layout C3D height grid.
+- Non-zero finite samples are downsampled into viewer points.
+- The viewer displays height/deviation color modes, camera controls, C3D point picking, raw height status, and screenshot smoke.
+- This is still viewer-only. It is not a production C3D import contract and does not run Thickness/Warpage algorithms.
+
 Use the samples in this order:
 
 1. Use the PNG files as visual references for expected shape, crop, invalid regions, and color-map style.
-2. Add a minimal C3D grid reader only after the generated mesh and generated point-cloud viewer paths are stable.
-3. Convert valid C3D float samples into a generated point cloud or height-field mesh for viewer testing.
-4. Keep the first C3D use viewer-only: render, color mode, camera, picking, and screenshot smoke.
-5. Start Thickness/Warpage algorithm work only after the viewer completion gate passes.
+2. Keep the first C3D use viewer-only: render, color mode, camera, picking, and screenshot smoke.
+3. Define source/result entity contracts before any C3D rule result mutates or publishes geometry.
+4. Start Thickness/Warpage algorithm work only after the viewer completion gate passes.
 
 ## 4. Guardrails
 

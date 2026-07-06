@@ -46,12 +46,18 @@
                 <CheckBox Margin="0,8,0,0"
                           Content="Generated Point Cloud"
                           IsChecked="{Binding PointCloudVisible, Mode=TwoWay}" />
+                <CheckBox Margin="0,8,0,0"
+                          Content="C3D Thickness Sample"
+                          IsChecked="{Binding C3DSampleVisible, Mode=TwoWay}" />
                 <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Color" />
                 <ComboBox ItemsSource="{Binding ColorModes}"
                           SelectedItem="{Binding SelectedColorMode, Mode=TwoWay}" />
                 <CheckBox Margin="0,12,0,0"
                           Content="Measurement Overlay"
                           IsChecked="{Binding MeasurementVisible, Mode=TwoWay}" />
+                <CheckBox Margin="0,8,0,0"
+                          Content="Result Overlay"
+                          IsChecked="{Binding ResultOverlayVisible, Mode=TwoWay}" />
                 <Separator Margin="0,16,0,12" />
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Selection" />
                 <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Mode" />
@@ -76,11 +82,18 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Pick Coordinate" />
                 <TextBlock Text="{Binding PickCoordinate}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Measurement" />
-                <TextBlock Text="Cube width: 2.000 model units" />
-                <TextBlock Text="Expected center: (0.000, 0.000, 0.000)" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding MeasurementSummary}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Result Overlay" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding ResultSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Point Cloud" />
                 <TextBlock Text="{Binding PointCloudPointCount, StringFormat=Points: {0}}" />
                 <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color mode: {0}}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="C3D Sample" />
+                <TextBlock Text="{Binding C3DSamplePointCount, StringFormat=Rendered points: {0}}" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding C3DSampleSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selection" />
                 <TextBlock Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
                 <TextBlock TextWrapping="Wrap"

@@ -13,7 +13,9 @@ This repository contains the initial operating documents and the first SharpGL W
 | `docs/` | Exists | Direction, research, viewer MVP, sample data, and handoff documents. |
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
-| `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement overlay, and screenshot smoke paths. |
+| `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement/result overlays, and screenshot smoke paths. |
+| `src/OpenVisionLab.ThreeDStudio/Data/` | Exists | Minimal local C3D height-grid reader for the inferred sample layout and downsampled viewer points. |
+| `src/OpenVisionLab.ThreeDStudio/Rendering/` | Exists | Small SharpGL viewer support classes for camera/picking math and inspection overlay drawing. No renderer abstraction layer yet. |
 | `src/OpenVisionLab.ThreeDStudio/ViewModels/` | Exists | MVVM state for the current shell: visibility, color mode, selection mode, camera target/distance, status text, and screenshot path. View code-behind remains a thin SharpGL and mouse-event bridge. |
 
 There is no separate core library, tool library, or test project yet.

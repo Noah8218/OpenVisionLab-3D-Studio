@@ -57,12 +57,14 @@ The MVP is accepted only when these checks have evidence:
 | Check | Evidence |
 | --- | --- |
 | App launches | Build/run command output. |
-| Sample model loads | Visible model and loaded entity count. |
+| Sample model loads | Visible generated geometry and local C3D height-grid sample with loaded point count. |
 | Generated point cloud renders | Point-cloud layer visible with point count and color mode. |
+| C3D sample renders | Local C3D height-grid layer visible with rendered point count and raw height pick status. |
 | Camera controls work | Screenshot after orbit/pan/zoom/fit-all/fit-selection or UI smoke interaction. |
 | Picking works | Picked entity/coordinate displayed in status panel. |
 | Selection state works | Point, box ROI, and section-plane overlays are visible in smoke screenshots. |
 | Measurement overlay works | Distance or axis-aligned size overlay visible. |
+| Result overlay works | Viewer-only pass band, profile line, and fail markers visible in smoke screenshot. |
 | Visibility works | Toggle hides/shows selected entity. |
 | Color modes work | `Solid`, `Height`, and `Deviation` point-cloud modes can be selected. |
 | Screenshot capture works | PNG artifact path produced by command or UI action. |
@@ -75,6 +77,7 @@ Required before algorithm work:
 
 - Orbit, pan, zoom, reset, fit-all, and fit-selection.
 - Mesh and generated point-cloud rendering.
+- Local C3D height-grid rendering from the inferred sample layout.
 - Entity/layer visibility toggles.
 - Point picking and coordinate status.
 - Point, box ROI, and section-plane selection state.
