@@ -39,6 +39,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_docking_after.png
 ```
 
 ## Document Map
@@ -58,7 +59,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 
 ## Shell Direction
 
-The SharpGL viewer is expected to stay as a separate 3D viewer project/library. The future main workspace should follow the `C:\Git\OpenVisionLab_Dev` docking pattern: a dedicated docking controls library owns AvalonDock integration, while the app hosts documents and tools through that wrapper. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
+The SharpGL viewer is expected to stay as a separate 3D viewer project/library. The main workspace follows the `C:\Git\OpenVisionLab_Dev` docking pattern: `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock integration, while `src/OpenVisionLab.ThreeD.Shell` hosts documents and tools through that wrapper. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
 
 ## First Principle
 

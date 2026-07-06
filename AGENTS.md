@@ -60,6 +60,12 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result
 ```
 
+For shell/docking work, also run:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_docking_after.png
+```
+
 UI/UX work requires current screenshots from the running build. Store before/after captures in an artifact folder and report the paths.
 
 ## Priority Direction

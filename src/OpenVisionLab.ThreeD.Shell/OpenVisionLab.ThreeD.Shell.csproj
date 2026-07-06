@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>OpenVisionLab.ThreeD.Shell</RootNamespace>
+    <AssemblyName>OpenVisionLab.ThreeD.Shell</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj" />
+  </ItemGroup>
+
+</Project>

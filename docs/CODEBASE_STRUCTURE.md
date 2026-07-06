@@ -14,12 +14,14 @@ This repository contains the initial operating documents and the first SharpGL W
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
 | `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here before rule algorithms begin. |
+| `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference so the Shell app does not use raw docking APIs directly. |
+| `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and reserves a document slot for the separate 3D viewer module. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement/result overlays, and screenshot smoke paths. |
 | `src/OpenVisionLab.ThreeDStudio/Data/` | Exists | Minimal local C3D height-grid reader for the inferred sample layout and downsampled viewer points. |
 | `src/OpenVisionLab.ThreeDStudio/Rendering/` | Exists | Small SharpGL viewer support classes for camera/picking math and inspection overlay drawing. No renderer abstraction layer yet. |
 | `src/OpenVisionLab.ThreeDStudio/ViewModels/` | Exists | MVVM state for the current shell: visibility, color mode, selection mode, camera target/distance, status text, screenshot path, core source/layer contract projection, synthetic ToolResult preview state, and published result entity state. View code-behind remains a thin SharpGL and mouse-event bridge. |
 
-There is a minimal core contract library. There is no separate tool library or test project yet.
+There is a minimal core contract library, docking wrapper, and shell app. There is no separate tool library or test project yet.
 
 ## 2. Reference Repository
 
@@ -41,8 +43,6 @@ Create these folders only when implementation begins.
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
 | `src/OpenVisionLab.ThreeD.Viewer/` | Viewer dependency is chosen | Rendering adapter, camera controller, picking, overlay drawing, screenshot capture. |
-| `src/OpenVisionLab.ThreeD.Shell/` | Main workspace begins | WPF application shell that hosts the 3D viewer as a document/tool view through a docking wrapper. |
-| `src/OpenVisionLab.ThreeD.Docking.Controls/` | Main shell needs docking | Dedicated docking controls library patterned after Dev's `OpenVisionLab.Docking.Controls`; owns AvalonDock integration instead of the app project. |
 | `src/OpenVisionLab.ThreeD.Tools/` | First validation tool starts | Rule-based 3D tools such as distance, bounds, alignment, plane fit, and mesh deviation. |
 | `tools/` | First command check is needed | Build, smoke, sample validation, screenshot, and contract checks. |
 | `samples/` | First redistributable public sample is added | Small public sample models and expected results. Current local samples live in `3D/`. |

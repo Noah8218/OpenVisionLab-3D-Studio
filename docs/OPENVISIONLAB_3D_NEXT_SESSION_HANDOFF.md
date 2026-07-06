@@ -40,6 +40,7 @@ Completed in the first implementation slice:
 - Viewer sample state is wired to core `SourceEntity` and `EntityLayer` contracts without changing rendering behavior.
 - Result overlay scene now exposes a viewer-only synthetic `ToolResult` preview with metrics and overlays.
 - Synthetic preview can now be explicitly published into a separate `ResultEntity` and `LayerKind.Result` layer.
+- Minimal shell/docking boundary is in place: `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock and `src/OpenVisionLab.ThreeD.Shell` consumes only that wrapper.
 
 Local sample data now exists:
 
@@ -52,8 +53,8 @@ The C3D files currently appear to be `int32 width`, `int32 height`, then `float3
 
 Next implementation should stay contract-first and prepare the main workspace boundary before large feature work:
 
-1. Define the main shell/docking import plan from Dev without copying AvalonDock directly into the app project.
-2. Keep the SharpGL viewer as a separately testable 3D viewer project/library hosted by that shell.
+1. Extract or wrap the SharpGL viewer as a separately testable viewer module that the Shell can host.
+2. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`.
 3. Then add one sample-backed height/deviation rule that produces a `ToolResult` and publishes only through the explicit `ResultEntity` path.
 
 ## Remaining Project Priority
@@ -100,6 +101,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_docking_after.png`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -111,6 +113,7 @@ Build and smoke evidence:
 - Box ROI after screenshot: `artifacts\viewer_selection_after_box.png`
 - Section plane after screenshot: `artifacts\viewer_selection_after_section.png`
 - Result overlay after screenshot: `artifacts\viewer_result_overlay_after.png`
+- Shell docking after screenshot: `artifacts\shell_docking_after.png`
 
 ## Guardrails
 
