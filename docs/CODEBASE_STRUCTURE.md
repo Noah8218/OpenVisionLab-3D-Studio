@@ -13,6 +13,7 @@ This repository contains the initial operating documents and the first SharpGL W
 | `docs/` | Exists | Direction, research, viewer MVP, sample data, and handoff documents. |
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
+| `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here before rule algorithms begin. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement/result overlays, and screenshot smoke paths. |
 | `src/OpenVisionLab.ThreeDStudio/Data/` | Exists | Minimal local C3D height-grid reader for the inferred sample layout and downsampled viewer points. |
 | `src/OpenVisionLab.ThreeDStudio/Rendering/` | Exists | Small SharpGL viewer support classes for camera/picking math and inspection overlay drawing. No renderer abstraction layer yet. |
@@ -38,7 +39,6 @@ Create these folders only when implementation begins.
 
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
-| `src/OpenVisionLab.ThreeD.Core/` | First shared model appears | 3D entity, scene, layer, transform, unit, result, metric, overlay contracts. |
 | `src/OpenVisionLab.ThreeD.Viewer/` | Viewer dependency is chosen | Rendering adapter, camera controller, picking, overlay drawing, screenshot capture. |
 | `src/OpenVisionLab.ThreeD.Tools/` | First validation tool starts | Rule-based 3D tools such as distance, bounds, alignment, plane fit, and mesh deviation. |
 | `tools/` | First command check is needed | Build, smoke, sample validation, screenshot, and contract checks. |

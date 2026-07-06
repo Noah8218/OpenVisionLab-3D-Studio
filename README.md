@@ -48,6 +48,10 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 - `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`: local 3D sample inventory and inferred C3D layout notes.
 - `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: immediate next work.
 
+## Core Contracts
+
+`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. These are intentionally small and are not wired to rule algorithms yet.
+
 ## First Principle
 
 Do not start with a large 3D platform. Complete the viewer first, verify it with screenshots and smoke checks, then attach rule-based 3D algorithms to visible geometry.

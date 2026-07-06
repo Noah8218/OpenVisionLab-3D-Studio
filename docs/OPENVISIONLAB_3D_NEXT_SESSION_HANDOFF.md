@@ -34,6 +34,7 @@ Completed in the first implementation slice:
 - MVVM target recorded in `AGENTS.md`; durable shell state is in `MainWindowViewModel`.
 - Camera/picking math and measurement/selection/result overlay drawing are split into small `Rendering` support classes.
 - Minimal inferred-layout C3D reader is in `src/OpenVisionLab.ThreeDStudio/Data/`.
+- Minimal source/result/layer/metric/overlay/tool-result contracts are in `src/OpenVisionLab.ThreeD.Core/`.
 
 Local sample data now exists:
 
@@ -44,11 +45,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay viewer-only and define the source/result contract:
+Next implementation should stay contract-first and prepare the first tool preview:
 
-1. Define `SourceEntity`, `ResultEntity`, `Layer`, `Metric`, and `Overlay` contracts before adding real rule algorithms.
-2. Keep C3D loading viewer-only until those contracts exist.
-3. Add the first rule only after a source/result layer can display metrics and overlays without mutating source geometry.
+1. Wire the viewer sample state to the core `SourceEntity` and `EntityLayer` contracts without changing rendering behavior.
+2. Add a viewer-only synthetic `ToolResult` preview for one simple height/deviation result.
+3. Add the first real rule only after the preview can display metrics and overlays without mutating source geometry.
 
 ## Remaining Project Priority
 

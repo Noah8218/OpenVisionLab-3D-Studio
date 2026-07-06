@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj" />
     <Project Path="src/OpenVisionLab.ThreeDStudio/OpenVisionLab.ThreeDStudio.csproj" />
   </Folder>
 </Solution>

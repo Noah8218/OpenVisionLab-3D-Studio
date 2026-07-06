@@ -113,6 +113,7 @@ No 3D algorithm feature work should start before this gate is stable.
 ### Phase 3: 3D Core Contracts
 
 - Define `Scene`, `EntityLayer`, `Transform`, `Unit`, `ToolResult`, `Metric`, and `Overlay`.
+- Current first slice defines source/result entities, layers, metrics, overlays, tool results, and model transforms in `src/OpenVisionLab.ThreeD.Core`.
 - Preserve source/result separation.
 - Add sample data with expected values.
 - Add point-cloud and scalar-field concepts before CAD topology.
