@@ -20,6 +20,7 @@ The current viewer MVP can:
 - Pick the cube or C3D height-grid points and display model coordinates.
 - Show viewer-only selection states for point, box ROI, and section plane.
 - Draw viewer-only measurement and result overlays.
+- Publish the synthetic preview into an explicit result entity/layer without mutating source geometry.
 - Capture screenshot smoke artifacts from the running app.
 
 Still not included: general file-open import, external mesh import, CAD import, persisted recipes, and headless rule execution.
@@ -31,6 +32,9 @@ dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_pick_after_cube.png --smoke-pick cube
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_after.png --smoke-c3d thickness
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_c3d_pick_after.png --smoke-c3d thickness --smoke-pick c3d
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_contracts_after.png --smoke-c3d thickness --smoke-contracts artifacts\viewer_contracts_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_tool_result_after.png --smoke-overlay result --smoke-contracts artifacts\viewer_tool_result_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_publish_after.png --smoke-overlay result --smoke-publish-result --smoke-contracts artifacts\viewer_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section
@@ -50,7 +54,11 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 
 ## Core Contracts
 
-`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. These are intentionally small and are not wired to rule algorithms yet.
+`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; the result overlay scene exposes a synthetic `ToolResult` preview that can be explicitly published into a `ResultEntity` and result layer. Rule algorithms are not wired yet.
+
+## Shell Direction
+
+The SharpGL viewer is expected to stay as a separate 3D viewer project/library. The future main workspace should follow the `C:\Git\OpenVisionLab_Dev` docking pattern: a dedicated docking controls library owns AvalonDock integration, while the app hosts documents and tools through that wrapper. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
 
 ## First Principle
 

@@ -21,6 +21,8 @@ public partial class MainWindow : Window
     private readonly ViewerPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private readonly C3DHeightGrid? c3dSample;
     private readonly string? smokeScreenshotPath;
+    private readonly string? smokeContractsPath;
+    private readonly bool smokePublishResult;
     private readonly MainWindowViewModel viewModel = new();
     private bool isOrbiting;
     private bool isPanning;
@@ -43,7 +45,8 @@ public partial class MainWindow : Window
                 or nameof(MainWindowViewModel.SelectedColorMode)
                 or nameof(MainWindowViewModel.SelectedSelectionMode)
                 or nameof(MainWindowViewModel.SelectionOverlayVisible)
-                or nameof(MainWindowViewModel.ResultOverlayVisible))
+                or nameof(MainWindowViewModel.ResultOverlayVisible)
+                or nameof(MainWindowViewModel.ResultEntities))
             {
                 RenderNow();
             }
@@ -89,6 +92,14 @@ public partial class MainWindow : Window
             {
                 smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
             }
+
+            var contractsIndex = Array.IndexOf(args, "--smoke-contracts");
+            if (contractsIndex >= 0 && contractsIndex + 1 < args.Length)
+            {
+                smokeContractsPath = args[contractsIndex + 1];
+            }
+
+            smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
 
             Loaded += SmokeCaptureOnLoaded;
         }
@@ -143,7 +154,7 @@ public partial class MainWindow : Window
             InspectionOverlayRenderer.DrawSelectionOverlay(gl, viewModel.SelectedSelectionMode);
         }
 
-        if (viewModel.ResultOverlayVisible)
+        if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
         {
             InspectionOverlayRenderer.DrawResultOverlay(gl);
         }
@@ -271,6 +282,12 @@ public partial class MainWindow : Window
         CaptureWindow(path);
     }
 
+    private void PublishResult_Click(object sender, RoutedEventArgs e)
+    {
+        viewModel.PublishPreviewResult();
+        RenderNow();
+    }
+
     private async void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
         await Dispatcher.InvokeAsync(RenderNow);
@@ -283,6 +300,17 @@ public partial class MainWindow : Window
         {
             ApplySmokePickC3D();
             await Dispatcher.InvokeAsync(RenderNow);
+        }
+
+        if (smokePublishResult)
+        {
+            viewModel.PublishPreviewResult();
+            await Dispatcher.InvokeAsync(RenderNow);
+        }
+
+        if (smokeContractsPath is not null)
+        {
+            WriteSceneContracts(smokeContractsPath);
         }
 
         await Task.Delay(900);
@@ -728,6 +756,42 @@ public partial class MainWindow : Window
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"{c3dSample.Width} x {c3dSample.Height} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+    }
+
+    private void WriteSceneContracts(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        var lines = new List<string>
+        {
+            viewModel.SceneContractSummary,
+            "SourceEntities"
+        };
+
+        lines.AddRange(viewModel.SourceEntities.Select(entity =>
+            $"{entity.Id}|{entity.Kind}|unit={entity.Unit}|source={entity.SourcePath ?? "(generated)"}"));
+        lines.Add("EntityLayers");
+        lines.AddRange(viewModel.EntityLayers.Select(layer =>
+            $"{layer.Id}|{layer.Kind}|visible={layer.IsVisible}|entities={string.Join(",", layer.EntityIds)}"));
+        lines.Add("PreviewToolResult");
+        var result = viewModel.PreviewToolResult;
+        lines.Add($"{result.ToolName}|{result.Status}|metrics={result.Metrics.Count}|overlays={result.Overlays.Count}|message={result.Message}");
+        lines.Add("PreviewMetrics");
+        lines.AddRange(result.Metrics.Select(metric =>
+            $"{metric.Name}|{metric.Kind}|value={metric.Value.ToString("F3", CultureInfo.InvariantCulture)}|unit={metric.Unit}|status={metric.Status?.ToString() ?? "(none)"}"));
+        lines.Add("PreviewOverlays");
+        lines.AddRange(result.Overlays.Select(overlay =>
+            $"{overlay.Id}|{overlay.Kind}|label={overlay.Label}|status={overlay.Status?.ToString() ?? "(none)"}|source={overlay.SourceEntityId ?? "(none)"}"));
+        lines.Add("PublishedResultEntities");
+        lines.AddRange(viewModel.ResultEntities.Select(entity =>
+            $"{entity.Id}|source={entity.SourceEntityId}|status={entity.Status}|metrics={entity.Metrics.Count}|overlays={entity.Overlays.Count}|message={entity.Message}"));
+        lines.Add("PublishedMetrics");
+        lines.AddRange(viewModel.ResultEntities.SelectMany(entity => entity.Metrics.Select(metric =>
+            $"{entity.Id}|{metric.Name}|{metric.Kind}|value={metric.Value.ToString("F3", CultureInfo.InvariantCulture)}|unit={metric.Unit}|status={metric.Status?.ToString() ?? "(none)"}")));
+        lines.Add("PublishedOverlays");
+        lines.AddRange(viewModel.ResultEntities.SelectMany(entity => entity.Overlays.Select(overlay =>
+            $"{entity.Id}|{overlay.Id}|{overlay.Kind}|label={overlay.Label}|status={overlay.Status?.ToString() ?? "(none)"}|source={overlay.SourceEntityId ?? "(none)"}")));
+
+        File.WriteAllLines(path, lines);
     }
 
     private static string FormatC3DPoint(ViewerPoint point) =>

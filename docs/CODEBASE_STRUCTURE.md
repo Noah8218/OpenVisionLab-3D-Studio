@@ -17,9 +17,9 @@ This repository contains the initial operating documents and the first SharpGL W
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement/result overlays, and screenshot smoke paths. |
 | `src/OpenVisionLab.ThreeDStudio/Data/` | Exists | Minimal local C3D height-grid reader for the inferred sample layout and downsampled viewer points. |
 | `src/OpenVisionLab.ThreeDStudio/Rendering/` | Exists | Small SharpGL viewer support classes for camera/picking math and inspection overlay drawing. No renderer abstraction layer yet. |
-| `src/OpenVisionLab.ThreeDStudio/ViewModels/` | Exists | MVVM state for the current shell: visibility, color mode, selection mode, camera target/distance, status text, and screenshot path. View code-behind remains a thin SharpGL and mouse-event bridge. |
+| `src/OpenVisionLab.ThreeDStudio/ViewModels/` | Exists | MVVM state for the current shell: visibility, color mode, selection mode, camera target/distance, status text, screenshot path, core source/layer contract projection, synthetic ToolResult preview state, and published result entity state. View code-behind remains a thin SharpGL and mouse-event bridge. |
 
-There is no separate core library, tool library, or test project yet.
+There is a minimal core contract library. There is no separate tool library or test project yet.
 
 ## 2. Reference Repository
 
@@ -28,6 +28,7 @@ There is no separate core library, tool library, or test project yet.
 - Layer-based workspace behavior.
 - Preview versus publish separation.
 - Tool result contracts: status, metrics, overlays, and messages.
+- Dedicated docking controls ownership. In the Dev repository, AvalonDock is owned by `Library\OpenVisionLab.Docking.Controls`, not directly by the app project.
 - Recipe and runner thinking.
 - WPF/MVVM direction, thin view code-behind, and screenshot smoke discipline.
 
@@ -40,6 +41,8 @@ Create these folders only when implementation begins.
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
 | `src/OpenVisionLab.ThreeD.Viewer/` | Viewer dependency is chosen | Rendering adapter, camera controller, picking, overlay drawing, screenshot capture. |
+| `src/OpenVisionLab.ThreeD.Shell/` | Main workspace begins | WPF application shell that hosts the 3D viewer as a document/tool view through a docking wrapper. |
+| `src/OpenVisionLab.ThreeD.Docking.Controls/` | Main shell needs docking | Dedicated docking controls library patterned after Dev's `OpenVisionLab.Docking.Controls`; owns AvalonDock integration instead of the app project. |
 | `src/OpenVisionLab.ThreeD.Tools/` | First validation tool starts | Rule-based 3D tools such as distance, bounds, alignment, plane fit, and mesh deviation. |
 | `tools/` | First command check is needed | Build, smoke, sample validation, screenshot, and contract checks. |
 | `samples/` | First redistributable public sample is added | Small public sample models and expected results. Current local samples live in `3D/`. |
@@ -65,6 +68,9 @@ Create these folders only when implementation begins.
 - Core code owns units, transforms, entity identity, layer identity, metrics, overlays, and result status.
 - Tool code owns rule parameters and algorithm execution.
 - App shell owns workflow composition and visible commands.
+- Docking code owns docking package integration and layout behavior; the app shell should consume wrapper APIs.
+- Keep the SharpGL viewer separate from the main shell so the viewer can be developed and tested independently.
+- Treat .NET 10 migration as a separate compatibility pass across WPF, SharpGL, docking, and vendored DLL/runtime dependencies.
 - A renderer dependency must stay behind a small adapter once a second viewer-related feature needs it. Do not add an adapter before the first prototype proves the library.
 
 ## 6. Starting Point For New Work

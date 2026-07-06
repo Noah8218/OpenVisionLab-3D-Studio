@@ -1,10 +1,16 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeDStudio.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    public const string CubeEntityId = "source.generated-cube";
+    public const string PointCloudEntityId = "source.generated-point-cloud";
+    public const string C3DEntityId = "source.c3d-thickness";
+    public const string SyntheticResultEntityId = "result.synthetic-height-deviation";
+
     private bool cubeVisible = true;
     private bool pointCloudVisible = true;
     private bool c3DSampleVisible;
@@ -24,15 +30,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool selectionOverlayVisible = true;
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
+    private ToolResult previewToolResult = CreateNotRunToolResult();
+    private IReadOnlyList<ResultEntity> resultEntities = [];
+    private string publishedResultSummary = "Published result: none";
+    private IReadOnlyList<EntityLayer> entityLayers = [];
+    private string sceneContractSummary = "(pending)";
     private double cameraTargetX = 2.05;
     private double cameraTargetY = -0.25;
     private double cameraTargetZ;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public MainWindowViewModel()
+    {
+        SourceEntities =
+        [
+            new SourceEntity(CubeEntityId, "Generated Unit Cube", EntityKind.Mesh, "unitless", null, ModelTransform.Identity),
+            new SourceEntity(PointCloudEntityId, "Generated Point Cloud", EntityKind.PointCloud, "unitless", null, ModelTransform.Identity),
+            new SourceEntity(C3DEntityId, "C3D Thickness Sample", EntityKind.HeightGrid, "raw-height", @"3D\Thickness\Ori_20240116_094414.C3D", ModelTransform.Identity)
+        ];
+
+        RefreshSceneContracts();
+    }
+
     public string[] ColorModes { get; } = ["Solid", "Height", "Deviation"];
 
     public string[] SelectionModes { get; } = ["Point", "Box ROI", "Section Plane"];
+
+    public IReadOnlyList<SourceEntity> SourceEntities { get; }
+
+    public IReadOnlyList<EntityLayer> EntityLayers
+    {
+        get => entityLayers;
+        private set => SetField(ref entityLayers, value);
+    }
+
+    public string SceneContractSummary
+    {
+        get => sceneContractSummary;
+        private set => SetField(ref sceneContractSummary, value);
+    }
 
     public bool CubeVisible
     {
@@ -42,6 +79,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref cubeVisible, value))
             {
                 ViewerStatus = value ? "Cube layer visible" : "Cube layer hidden";
+                RefreshSceneContracts();
             }
         }
     }
@@ -54,6 +92,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref pointCloudVisible, value))
             {
                 ViewerStatus = value ? "Point cloud layer visible" : "Point cloud layer hidden";
+                RefreshSceneContracts();
             }
         }
     }
@@ -66,6 +105,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref c3DSampleVisible, value))
             {
                 ViewerStatus = value ? "C3D sample visible" : "C3D sample hidden";
+                RefreshSceneContracts();
             }
         }
     }
@@ -164,10 +204,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref resultOverlayVisible, value))
             {
-                ResultSummary = value
-                    ? "PASS band + FAIL markers: viewer-only sample result layer"
-                    : "Result overlay hidden";
+                PreviewToolResult = value ? CreateSyntheticHeightDeviationPreview() : CreateNotRunToolResult();
+                ResultSummary = FormatToolResult(PreviewToolResult);
                 ViewerStatus = value ? "Result overlay visible" : "Result overlay hidden";
+                RefreshSceneContracts();
             }
         }
     }
@@ -176,6 +216,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => resultSummary;
         set => SetField(ref resultSummary, value);
+    }
+
+    public ToolResult PreviewToolResult
+    {
+        get => previewToolResult;
+        private set => SetField(ref previewToolResult, value);
+    }
+
+    public IReadOnlyList<ResultEntity> ResultEntities
+    {
+        get => resultEntities;
+        private set => SetField(ref resultEntities, value);
+    }
+
+    public string PublishedResultSummary
+    {
+        get => publishedResultSummary;
+        private set => SetField(ref publishedResultSummary, value);
     }
 
     public string SelectedEntity
@@ -358,6 +416,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ViewerStatus = "Smoke scene: result overlay";
     }
 
+    public bool PublishPreviewResult()
+    {
+        if (PreviewToolResult.Status == ResultStatus.NotRun)
+        {
+            ViewerStatus = "No preview result to publish";
+            return false;
+        }
+
+        var resultEntity = CreatePublishedResultEntity(PreviewToolResult);
+        ResultEntities = [resultEntity];
+        PublishedResultSummary = FormatPublishedResult(resultEntity);
+        ViewerStatus = "Published synthetic result layer";
+        RefreshSceneContracts();
+        return true;
+    }
+
     public void Pan(double deltaX, double deltaY, double deltaZ)
     {
         CameraTargetX += deltaX;
@@ -377,6 +451,96 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CameraTargetX = x;
         CameraTargetY = y;
         CameraTargetZ = z;
+    }
+
+    private void RefreshSceneContracts()
+    {
+        var layers = new List<EntityLayer>
+        {
+            new EntityLayer("layer.source.generated-cube", "Generated Unit Cube", LayerKind.Source, CubeVisible, [CubeEntityId]),
+            new EntityLayer("layer.source.generated-point-cloud", "Generated Point Cloud", LayerKind.Source, PointCloudVisible, [PointCloudEntityId]),
+            new EntityLayer("layer.source.c3d-thickness", "C3D Thickness Sample", LayerKind.Source, C3DSampleVisible, [C3DEntityId])
+        };
+
+        if (PreviewToolResult.Status != ResultStatus.NotRun)
+        {
+            layers.Add(new EntityLayer(
+                "layer.preview.synthetic-height-deviation",
+                "Preview: Synthetic Height Deviation",
+                LayerKind.Preview,
+                ResultOverlayVisible,
+                [PointCloudEntityId]));
+        }
+
+        if (ResultEntities.Count > 0)
+        {
+            layers.Add(new EntityLayer(
+                "layer.result.synthetic-height-deviation",
+                "Published Synthetic Height Deviation",
+                LayerKind.Result,
+                true,
+                ResultEntities.Select(entity => entity.Id).ToArray()));
+        }
+
+        EntityLayers = layers;
+
+        var sourceLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Source);
+        var visibleSourceLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Source && layer.IsVisible);
+        var previewLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Preview);
+        SceneContractSummary =
+            $"Source entities: {SourceEntities.Count} | Source layers: {sourceLayerCount} | Visible source layers: {visibleSourceLayerCount} | Preview layers: {previewLayerCount} | Published results: {ResultEntities.Count}";
+    }
+
+    private static ToolResult CreateNotRunToolResult() =>
+        new(
+            "Synthetic Height Deviation Preview",
+            ResultStatus.NotRun,
+            "No preview result is active.",
+            TimeSpan.Zero,
+            [],
+            []);
+
+    private static ToolResult CreateSyntheticHeightDeviationPreview() =>
+        new(
+            "Synthetic Height Deviation Preview",
+            ResultStatus.Warning,
+            "Preview only; source geometry is unchanged and no result is published.",
+            TimeSpan.Zero,
+            [
+                new Metric("Synthetic peak deviation", MetricKind.Deviation, 0.42, "unitless", ResultStatus.Warning),
+                new Metric("Preview overlay count", MetricKind.Count, 3, "count", ResultStatus.Warning)
+            ],
+            [
+                new Overlay("overlay.synthetic-pass-band", OverlayKind.Box, "PASS tolerance band", ResultStatus.Pass, PointCloudEntityId),
+                new Overlay("overlay.synthetic-profile", OverlayKind.Polyline, "Preview profile line", ResultStatus.Warning, PointCloudEntityId),
+                new Overlay("overlay.synthetic-fail-markers", OverlayKind.Marker, "FAIL marker cluster", ResultStatus.Fail, PointCloudEntityId)
+            ]);
+
+    private static ResultEntity CreatePublishedResultEntity(ToolResult result) =>
+        new(
+            SyntheticResultEntityId,
+            "Published Synthetic Height Deviation",
+            PointCloudEntityId,
+            result.Status,
+            "Published from synthetic preview; source geometry remains unchanged.",
+            result.Metrics,
+            result.Overlays);
+
+    private static string FormatToolResult(ToolResult result)
+    {
+        if (result.Status == ResultStatus.NotRun)
+        {
+            return "Result overlay hidden";
+        }
+
+        var metric = result.Metrics.First();
+        return $"Preview: {result.ToolName}: {result.Status}\n{result.Message}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nOverlays: {result.Overlays.Count}";
+    }
+
+    private static string FormatPublishedResult(ResultEntity result)
+    {
+        var metric = result.Metrics.First();
+        return $"{result.Name}: {result.Status}\nSource: {result.SourceEntityId}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nLayer: published result";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

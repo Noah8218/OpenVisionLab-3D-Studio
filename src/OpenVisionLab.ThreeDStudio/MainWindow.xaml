@@ -58,6 +58,9 @@
                 <CheckBox Margin="0,8,0,0"
                           Content="Result Overlay"
                           IsChecked="{Binding ResultOverlayVisible, Mode=TwoWay}" />
+                <Button Margin="0,8,0,0"
+                        Content="Publish Result"
+                        Click="PublishResult_Click" />
                 <Separator Margin="0,16,0,12" />
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Selection" />
                 <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Mode" />
@@ -87,6 +90,9 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Result Overlay" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding ResultSummary}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Published Result" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding PublishedResultSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Point Cloud" />
                 <TextBlock Text="{Binding PointCloudPointCount, StringFormat=Points: {0}}" />
                 <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color mode: {0}}" />
