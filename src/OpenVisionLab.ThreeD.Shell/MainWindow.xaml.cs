@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -35,6 +36,11 @@ public partial class MainWindow : Window
         _viewer.SaveCurrentRecipeWithDialog();
     }
 
+    private void ApplyRoiAlignment_Click(object sender, RoutedEventArgs e)
+    {
+        _viewer.ApplyRoiReferenceAlignment();
+    }
+
     private void EnableShellSmokeFromCommandLine()
     {
         var shellScreenshotPath = GetCommandLineValue("--shell-smoke-screenshot");
@@ -51,9 +57,16 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (_viewer.SmokeExitCode != 0)
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewer.ViewModel.ViewerStatus);
+                    UpdateLayout();
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                }
+
                 CaptureShellWindow(shellScreenshotPath);
                 await Task.Delay(100);
-                Application.Current.Shutdown();
+                Application.Current.Shutdown(_viewer.SmokeExitCode);
             };
         }
     }

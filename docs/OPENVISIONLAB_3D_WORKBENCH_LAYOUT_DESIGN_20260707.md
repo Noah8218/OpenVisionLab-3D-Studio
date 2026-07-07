@@ -96,10 +96,19 @@ The implemented split is:
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |
-| Run history | Evidence Workbench | Done |
+| Run history | Evidence Workbench | Done, C3D/LAZ |
 | Viewer-internal coordinate HUD | 3D Inspection View | Done |
 | Two-point distance and height delta | 3D Inspection View + Tool / Inspector | Done |
-| Transform/alignment state | Data & Layers + Tool / Inspector | Medium |
+| Interactive ROI step-height comparison | 3D Inspection View + Tool / Inspector | Done, minimal |
+| Transform/alignment state | 3D Inspection View + Data & Layers | Done, minimal |
+| Recipe-persisted ROI/alignment replay | Recipe + Evidence Workbench | Done, minimal |
+| Recipe-owned ROI/alignment parameter edit | Tool / Inspector + standalone Viewer side panel | Done, minimal |
+| Interactive ROI reference alignment | Tool / Inspector + 3D Inspection View | Done, minimal |
+| ROI/alignment validation warnings | Tool / Inspector + recipe save path | Done, minimal |
+| External mesh/point-cloud import evidence | 3D Inspection View + Viewer contract | Done, minimal |
+| Shell active viewer context mirroring | Data & Layers + Tool / Inspector | Done, minimal |
+| Active linked view context | Linked View Strip | Done, minimal |
+| Long linked-view status details | Linked View Strip | Done, minimal |
 | Performance HUD | 3D Inspection View | Done, minimal |
 | Screenshot/report snapshots | Evidence Workbench | Medium |
 | CAD/GD&T | Not in current layout phase | Later |
@@ -128,13 +137,48 @@ The implemented split is:
    - The same C3D sample can be reviewed as 2D height image and 3D point cloud.
    - Smoke contract records height-map visibility, bitmap size, and raw-height range.
 7. Add run history. Done.
-   - History tab shows the current replay evidence row with run time, status, peak deviation, match state, and report path.
+   - History tab shows the current replay evidence row with run time, status, key metric, match state, and report path.
+   - C3D key metric is peak deviation; LAZ/LAS key metrics are distance and source-Z height delta.
    - Smoke can open the tab with `--shell-evidence-tab history`.
 8. Add Viewer-internal coordinate HUD, two-point measurement, and ROI step-height comparison. Done.
-   - The Viewer must show axis meaning and selected measurement state even when Shell side panes are hidden.
-   - Two-point measurement should report distance, dX/dY/dZ, model height delta, and raw-height delta for C3D points.
-   - ROI step-height comparison should report left/right point counts, mean raw heights, raw-height delta, and model Y delta.
-   - Minimal performance HUD should report FPS, draw time, and rendered C3D point count.
+    - The Viewer must show axis meaning and selected measurement state even when Shell side panes are hidden.
+    - Two-point measurement should report distance, dX/dY/dZ, model height delta, and raw-height delta for C3D points.
+    - ROI step-height comparison should report left/right point counts, mean raw heights, raw-height delta, and model Y delta.
+    - Minimal performance HUD should report FPS, draw time, and rendered C3D point count.
+9. Add visible recipe-owned ROI/alignment parameter editing. Done.
+   - Standalone Viewer and Shell `Tool / Inspector` expose numeric transform and ROI region fields.
+   - Edited values update the measurement overlay, save to recipe JSON, and replay through Runner.
+10. Add minimal interactive ROI reference alignment. Done.
+   - `Align From ROI` uses the current left/right ROI pair to translate the aligned coordinate frame so the ROI pair center and reference height become the local reference.
+   - The workflow updates transform fields, ROI regions, viewport overlays, saved recipe JSON, and Runner replay evidence.
+11. Add minimal ROI/alignment validation warnings. Done.
+   - Invalid overlapped ROI regions show a visible warning in Viewer and Shell.
+   - Recipe save is blocked when the active ROI step is invalid.
+12. Mirror active Viewer context into Shell side panes. Done.
+   - `Data & Layers` shows active entity, coordinate frame, scene contract summary, and live entity layers from the hosted Viewer.
+   - `Tool / Inspector` shows active entity, selection mode, measurement summary, pick coordinate, and Viewer status from the hosted Viewer.
+13. Switch Linked View by active Viewer context. Done.
+   - C3D keeps the Height Map and Profile/Section panels.
+   - LAZ/LAS shows Point Cloud Sample plus linked measurement/pick state.
+   - GLB shows Mesh Sample plus linked measurement/pick state.
+14. Publish LAZ/LAS two-point measurement as result evidence. Done.
+   - LAZ/LAS two-point measurement creates a preview layer and publishable result layer.
+   - Contract evidence records distance, dX/dY/dZ, source-Z height delta, and point-cloud overlay sources without mutating the source point cloud.
+15. Surface basic LAZ/LAS acceptance status in Viewer/Shell inspector. Done.
+   - Viewer and Shell Tool / Inspector show the distance/source-Z height acceptance summary for the measured LAZ/LAS sampled points.
+   - Contract evidence records `LAZAcceptance|summary=LAZ/LAS acceptance: Pass ...`.
+16. Edit and save LAZ/LAS two-point acceptance parameters. Done.
+   - Viewer and Shell Tool / Inspector expose expected distance, distance tolerance, expected height delta, and height tolerance fields.
+   - Saved point-cloud recipe JSON replays through Runner, and contract evidence records `LAZAcceptanceParameters`.
+17. Reopen saved LAZ/LAS two-point recipes. Done.
+   - Viewer and Shell `--smoke-recipe` restore the saved LAZ/LAS source, two-point measurement preview, and editable acceptance values.
+   - Runner comparison against the reopened Viewer contract passes with the saved acceptance recipe.
+18. Surface LAZ saved-recipe comparison in Evidence Workbench History. Done.
+    - Shell comparison reads generic `PreviewToolResult` and Runner `ToolResult` evidence instead of C3D-only peak-deviation lines.
+    - History shows LAZ `Pass`, distance/source-Z height key metric, matched state, and runner report path.
+19. Keep Linked View usable for long loader failure details. Done.
+    - Linked View Strip has vertical scrolling so long GLB/STL/LAS/LAZ source paths and loader errors stay reachable inside the docked panel.
+    - Tool / Inspector and the Viewer HUD remain the primary failure summary surfaces.
 
 ## Acceptance Checklist For Layout Skeleton
 
@@ -207,6 +251,10 @@ The implemented split is:
 - After screenshot: `artifacts/shell_run_history_after.png`
 - Runner report: `artifacts/runner_run_history_after.txt`
 - Smoke command opens the Evidence Workbench `History` tab and shows the current runner/UI matched row.
+- LAZ/LAS run-history screenshot: `artifacts/shell_laz_run_history_after.png`
+- LAZ/LAS run-history runner report: `artifacts/runner_laz_run_history_after.txt`
+- C3D run-history regression screenshot: `artifacts/shell_c3d_run_history_regression_after.png`
+- C3D run-history regression report: `artifacts/runner_c3d_run_history_regression_after.txt`
 
 ## Viewer Internal HUD Evidence
 
@@ -219,6 +267,93 @@ The implemented split is:
 - ROI step viewer contract: `artifacts/viewer_roi_step_after.txt`
 - ROI step shell-hosted screenshot: `artifacts/shell_roi_step_after.png`
 - ROI contract evidence: `RoiStep|visible=True`, left/right point counts, left/right mean raw heights, raw-height delta, and model Y delta.
+- Interactive ROI before screenshot: `artifacts/viewer_roi_interactive_before.png`
+- Interactive ROI after screenshot: `artifacts/viewer_roi_interactive_after.png`
+- Interactive ROI contract: `artifacts/viewer_roi_interactive_after.txt`
+- Interactive ROI shell-hosted screenshot: `artifacts/shell_roi_interactive_after.png`
+- Interactive ROI contract evidence: `RoiStep|mode=Interactive`, edit prompt, and source-to-aligned transform mapping.
+- Transform baseline screenshot: `artifacts/viewer_transform_before.png`
+- Transform after screenshot: `artifacts/viewer_alignment_after.png`
+- Transform contract: `artifacts/viewer_alignment_after.txt`
+- Transform shell-hosted screenshot: `artifacts/shell_alignment_after.png`
+- Transform contract evidence: `TransformAlignment`, `C3DTransform`, transform translation/rotation/scale, alignment summary, and source-to-aligned mapping.
+- ROI/alignment recipe save screenshot: `artifacts/viewer_roi_recipe_save_after.png`
+- ROI/alignment recipe roundtrip screenshot: `artifacts/viewer_roi_recipe_roundtrip_after.png`
+- ROI/alignment shell roundtrip screenshot: `artifacts/shell_roi_recipe_roundtrip_after.png`
+- ROI/alignment runner report: `artifacts/runner_roi_alignment_recipe_after.txt`
+- ROI/alignment recipe evidence: `RecipeTransform`, `RecipeRoiStep`, and runner `RoiStepResult` preserve the same transform and ROI step metrics after reload.
+
+## Shell Active Context Evidence
+
+- Closest before screenshot: `artifacts/shell_laz_two_point_after.png`
+- After full workbench screenshot: `artifacts/shell_laz_context_after.png`
+- Embedded Viewer screenshot: `artifacts/shell_laz_context_viewer_after.png`
+- Viewer contract: `artifacts/shell_laz_context_after.txt`
+- Evidence: Shell `Data & Layers` and `Tool / Inspector` show `LAZ/LAS Two Point Measurement` while the Viewer contract records `TwoPoint|visible=True` and `LAZPick|selected=True`.
+
+## Linked View Context Evidence
+
+- LAZ full workbench screenshot: `artifacts/shell_laz_linked_after.png`
+- LAZ embedded Viewer screenshot: `artifacts/shell_laz_linked_viewer_after.png`
+- LAZ Viewer contract: `artifacts/shell_laz_linked_after.txt`
+- GLB full workbench screenshot: `artifacts/shell_glb_linked_after.png`
+- GLB embedded Viewer screenshot: `artifacts/shell_glb_linked_viewer_after.png`
+- GLB Viewer contract: `artifacts/shell_glb_linked_after.txt`
+- Evidence: LAZ Linked View shows `Point Cloud Sample` and linked measurement state; GLB Linked View shows `Mesh Sample` and pick state instead of C3D Height Map/Profile.
+- Long failure before screenshot: `artifacts/shell_linked_failure_clip_before.png`
+- Long failure after screenshot: `artifacts/shell_linked_failure_clip_after.png`
+- Normal LAZ regression screenshot: `artifacts/shell_linked_valid_laz_after.png`
+- Evidence: long corrupt LAZ loader details remain available through the Linked View scroll region, while normal LAZ linked context keeps the same three-column layout.
+
+## LAZ Result Publish Evidence
+
+- Viewer publish screenshot: `artifacts/laz_two_point_publish_after.png`
+- Viewer publish contract: `artifacts/laz_two_point_publish_after.txt`
+- Shell embedded Viewer publish screenshot: `artifacts/shell_laz_two_point_publish_viewer_after.png`
+- Shell publish contract: `artifacts/shell_laz_two_point_publish_after.txt`
+- Shell full workbench publish screenshot: `artifacts/shell_laz_two_point_publish_after.png`
+- Runner replay pass report: `artifacts/runner_laz_two_point_after.txt`
+- Runner replay fail report: `artifacts/runner_laz_two_point_fail_after.txt`
+- Contract evidence: `layer.preview.laz-two-point-measurement`, `layer.result.laz-two-point-measurement`, 5 published metrics, and 2 published overlays tied to `source.public-laz-manuscript`.
+- Acceptance inspector evidence: `artifacts/laz_acceptance_inspector_viewer_after.txt`, `artifacts/shell_laz_acceptance_inspector_after.txt`, and `artifacts/shell_laz_acceptance_inspector_after.png`.
+- Acceptance edit/save evidence: `artifacts/laz_acceptance_edit_save_viewer_after.txt`, `artifacts/saved_laz_two_point_acceptance.recipe.json`, `artifacts/runner_laz_acceptance_edit_save_after.txt`, and `artifacts/shell_laz_acceptance_edit_after.png`.
+- Acceptance recipe reopen evidence: `artifacts/laz_acceptance_recipe_reopen_viewer_after.txt`, `artifacts/runner_laz_acceptance_recipe_reopen_after.txt`, and `artifacts/shell_laz_acceptance_recipe_reopen_after.png`.
+- Evidence Workbench history evidence: `artifacts/runner_laz_run_history_after.txt` and `artifacts/shell_laz_run_history_after.png`.
+
+## Recipe Parameter Edit Evidence
+
+- Before Viewer screenshot: `artifacts/viewer_recipe_parameter_edit_before.png`
+- After Viewer screenshot: `artifacts/viewer_recipe_parameter_edit_after.png`
+- Before Shell screenshot: `artifacts/shell_recipe_parameter_edit_before.png`
+- After Shell screenshot: `artifacts/shell_recipe_parameter_edit_after.png`
+- Edited recipe: `artifacts/saved_roi_alignment_edited.recipe.json`
+- Viewer contract: `artifacts/viewer_recipe_parameter_edit_after.txt`
+- Runner report: `artifacts/runner_recipe_parameter_edit_after.txt`
+- Contract evidence: edited `RecipeTransform`, `RecipeRoiStep`, and runner `RoiStepResult` match the saved edited recipe.
+
+## Interactive Alignment Evidence
+
+- Before Viewer screenshot: `artifacts/viewer_interactive_alignment_before.png`
+- After Viewer screenshot: `artifacts/viewer_interactive_alignment_after.png`
+- Before Shell screenshot: `artifacts/shell_interactive_alignment_before.png`
+- After Shell screenshot: `artifacts/shell_interactive_alignment_after.png`
+- Saved aligned recipe: `artifacts/saved_roi_alignment_auto.recipe.json`
+- Viewer contract: `artifacts/viewer_interactive_alignment_after.txt`
+- Runner report: `artifacts/runner_interactive_alignment_after.txt`
+- Contract evidence: `AlignmentWorkflow`, `RecipeTransform`, `RecipeRoiStep`, and runner `RoiStepResult` match after `Align From ROI`.
+
+## ROI Validation Evidence
+
+- Before Viewer screenshot: `artifacts/viewer_roi_validation_before.png`
+- Before Shell screenshot: `artifacts/shell_roi_validation_before.png`
+- Valid Viewer screenshot: `artifacts/viewer_roi_validation_valid_after.png`
+- Valid Viewer contract: `artifacts/viewer_roi_validation_valid_after.txt`
+- Valid saved recipe: `artifacts/saved_roi_validation_valid.recipe.json`
+- Valid Runner report: `artifacts/runner_roi_validation_valid_after.txt`
+- Invalid Viewer screenshot: `artifacts/viewer_roi_validation_invalid_after.png`
+- Invalid Viewer contract: `artifacts/viewer_roi_validation_invalid_after.txt`
+- Invalid Shell screenshot: `artifacts/shell_roi_validation_invalid_after.png`
+- Contract evidence: `RecipeValidation` reports overlap, and the invalid save path does not create `artifacts/saved_roi_validation_invalid.recipe.json`.
 
 ## Deferred Decisions
 

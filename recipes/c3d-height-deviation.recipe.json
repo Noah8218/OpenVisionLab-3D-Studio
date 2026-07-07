@@ -9,5 +9,30 @@
   },
   "rule": {
     "peakTolerance": 1200.0
+  },
+  "transform": {
+    "translateX": 0.0,
+    "translateY": 0.0,
+    "translateZ": 0.0,
+    "rotateXDegrees": 0.0,
+    "rotateYDegrees": 0.0,
+    "rotateZDegrees": 0.0,
+    "scale": 1.0
+  },
+  "roiStep": {
+    "mode": "Auto",
+    "left": {
+      "centerX": -1.653,
+      "centerZ": 0.0,
+      "halfWidth": 0.992,
+      "halfDepth": 2.5
+    },
+    "right": {
+      "centerX": 1.653,
+      "centerZ": 0.0,
+      "halfWidth": 0.992,
+      "halfDepth": 2.5
+    },
+    "maxSampledPoints": 55000
   }
 }

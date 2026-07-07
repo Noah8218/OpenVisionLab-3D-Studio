@@ -62,6 +62,12 @@
                 <CheckBox Margin="0,8,0,0"
                           Content="C3D Thickness Sample"
                           IsChecked="{Binding C3DSampleVisible, Mode=TwoWay}" />
+                <CheckBox Margin="0,8,0,0"
+                          Content="{Binding ImportedMeshLayerLabel}"
+                          IsChecked="{Binding GlbSampleVisible, Mode=TwoWay}" />
+                <CheckBox Margin="0,8,0,0"
+                          Content="Public LAZ/LAS Point Cloud"
+                          IsChecked="{Binding LazSampleVisible, Mode=TwoWay}" />
                 <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Color" />
                 <ComboBox ItemsSource="{Binding ColorModes}"
                           SelectedItem="{Binding SelectedColorMode, Mode=TwoWay}" />
@@ -110,6 +116,7 @@
                 Background="#ffffff"
                 BorderBrush="#d1d5db"
                 BorderThickness="1,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="12">
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Inspection" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selected Entity" />
@@ -120,11 +127,119 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Measurement" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding MeasurementSummary}" />
+                <StackPanel Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Margin="0,4,0,0"
+                               TextWrapping="Wrap"
+                               Text="{Binding LazTwoPointAcceptanceSummary}" />
+                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="LAZ/LAS Acceptance" />
+                    <WrapPanel>
+                        <StackPanel Width="78" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                            <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="64" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                            <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="78" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp H" />
+                            <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="64" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol H" />
+                            <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                    </WrapPanel>
+                </StackPanel>
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Recipe" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding RecipeSummary}" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="#b91c1c"
+                           TextWrapping="Wrap"
+                           Text="{Binding RecipeValidationSummary}" />
                 <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Peak Tolerance" />
                 <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
+                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Alignment" />
+                <Button Margin="0,0,0,8"
+                        Content="Align From ROI"
+                        Click="ApplyRoiAlignment_Click" />
+                <WrapPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T X" />
+                        <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Y" />
+                        <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Z" />
+                        <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R X" />
+                        <TextBox Text="{Binding RecipeTransformRotateXDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Y" />
+                        <TextBox Text="{Binding RecipeTransformRotateYDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Z" />
+                        <TextBox Text="{Binding RecipeTransformRotateZDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Scale" />
+                        <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                </WrapPanel>
+                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Left" />
+                <WrapPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                        <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                        <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                        <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                        <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                </WrapPanel>
+                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Right" />
+                <WrapPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                        <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                        <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                        <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                    <StackPanel Width="64" Margin="0,0,6,6">
+                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                        <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                    </StackPanel>
+                </WrapPanel>
+                <TextBlock Margin="0,2,0,0"
+                           Foreground="#6b7280"
+                           TextWrapping="Wrap"
+                           Text="{Binding RecipeParameterSummary}" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="#6b7280"
+                           TextWrapping="Wrap"
+                           Text="{Binding AlignmentWorkflowSummary}" />
                 <Button Margin="0,8,0,0"
                         Content="Save Recipe"
                         Click="SaveRecipe_Click" />
@@ -144,6 +259,14 @@
                 <TextBlock Text="{Binding C3DSamplePointCount, StringFormat=Rendered points: {0}}" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding C3DSampleSummary}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Imported Mesh" />
+                <TextBlock Text="{Binding GlbSampleTriangleCount, StringFormat=Triangles: {0}}" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding GlbSampleSummary}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="LAZ/LAS Point Cloud" />
+                <TextBlock Text="{Binding LazSamplePointCount, StringFormat=Points: {0}}" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding LazSampleSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selection" />
                 <TextBlock Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
                 <TextBlock TextWrapping="Wrap"
@@ -152,6 +275,7 @@
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding LastScreenshotPath}" />
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#111827" Padding="10,6">
@@ -206,6 +330,21 @@
                                Foreground="#d1d5db"
                                TextWrapping="Wrap"
                                Text="{Binding CoordinateFrameSummary}" />
+                    <TextBlock Margin="0,6,0,0"
+                               FontSize="11"
+                               Foreground="#f9fafb"
+                               TextWrapping="Wrap"
+                               Text="{Binding TransformSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#d1d5db"
+                               TextWrapping="Wrap"
+                               Text="{Binding AlignmentSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#93c5fd"
+                               TextWrapping="Wrap"
+                               Text="{Binding CoordinateMappingSummary}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"
@@ -216,11 +355,13 @@
                                Foreground="#f9fafb"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"
+                               Visibility="{Binding TwoPointMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding TwoPointMeasurementSummary}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#fbbf24"
                                TextWrapping="Wrap"
+                               Visibility="{Binding TwoPointMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding TwoPointMeasurementDetails}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
@@ -235,14 +376,33 @@
                                TextWrapping="Wrap"
                                Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding RoiStepMeasurementDetails}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#bfdbfe"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding RoiStepEditSummary}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"
                                TextWrapping="Wrap"
                                Text="{Binding PerformanceSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#fed7aa"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding GlbSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding GlbSampleSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#fde68a"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding LazSampleSummary}" />
                 </StackPanel>
             </Border>
-            <Border HorizontalAlignment="Right"
+            <Border x:Name="PointCloudColorLegendPanel"
+                    HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Width="260"
                     Margin="0,0,12,12"
@@ -252,7 +412,64 @@
                     BorderThickness="1"
                     CornerRadius="4"
                     IsHitTestVisible="False"
-                    Visibility="{Binding DeviationLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                    Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               Text="{Binding PointCloudColorLegendTitle}" />
+                    <Border Height="10" Margin="0,8,0,8" CornerRadius="2">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="#0d59f2" Offset="0.0" />
+                                <GradientStop Color="#0de6a6" Offset="0.5" />
+                                <GradientStop Color="#ffb31a" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10"
+                                   Foreground="#374151"
+                                   Text="{Binding PointCloudColorLegendLow}" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontSize="10"
+                                   Foreground="#374151"
+                                   Text="{Binding PointCloudColorLegendHigh}" />
+                    </Grid>
+                    <StackPanel Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="10" Height="10" Fill="#0d59f2" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Lower source Z" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                            <Rectangle Width="10" Height="10" Fill="#ffb31a" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Higher source Z" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#6b7280"
+                               TextWrapping="Wrap"
+                               Text="{Binding PointCloudColorLegendScale}" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="DeviationLegendPanel"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Width="260"
+                    Margin="0,0,12,12"
+                    Padding="10"
+                    Background="#eef9fafb"
+                    BorderBrush="#9ca3af"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
                 <StackPanel>
                     <TextBlock FontSize="13"
                                FontWeight="SemiBold"

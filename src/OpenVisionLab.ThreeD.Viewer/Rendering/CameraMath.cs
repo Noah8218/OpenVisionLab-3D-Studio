@@ -42,8 +42,8 @@ public static class CameraMath
 
         Matrix4x4.Invert(view * projection, out var inverseViewProjection);
 
-        var near = Vector3.Transform(new Vector3(x, y, 0.0f), inverseViewProjection);
-        var far = Vector3.Transform(new Vector3(x, y, 1.0f), inverseViewProjection);
+        var near = Unproject(new Vector4(x, y, 0.0f, 1.0f), inverseViewProjection);
+        var far = Unproject(new Vector4(x, y, 1.0f, 1.0f), inverseViewProjection);
         return (near, Vector3.Normalize(far - near));
     }
 
@@ -110,6 +110,17 @@ public static class CameraMath
         string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
 
     private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
+
+    private static Vector3 Unproject(Vector4 point, Matrix4x4 inverseViewProjection)
+    {
+        var transformed = Vector4.Transform(point, inverseViewProjection);
+        if (Math.Abs(transformed.W) < 0.000001f)
+        {
+            return new Vector3(transformed.X, transformed.Y, transformed.Z);
+        }
+
+        return new Vector3(transformed.X, transformed.Y, transformed.Z) / transformed.W;
+    }
 
     private static float GetAxis(Vector3 vector, int axis) => axis switch
     {

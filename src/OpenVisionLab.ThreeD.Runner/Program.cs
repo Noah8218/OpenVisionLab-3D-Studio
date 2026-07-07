@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Numerics;
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -7,23 +9,53 @@ return Run(args);
 
 static int Run(string[] args)
 {
+    var lazProbePath = ReadOption(args, "--laz-probe");
     var recipePath = ReadOption(args, "--recipe");
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
     var compareContractPath = ReadOption(args, "--compare-contract");
 
+    if (lazProbePath is not null)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+            return 2;
+        }
+
+        int maxSampledPoints;
+        try
+        {
+            maxSampledPoints = ReadIntOption(args, "--max-sampled-points") ?? 50000;
+        }
+        catch (InvalidDataException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 2;
+        }
+
+        return RunLazProbe(lazProbePath, reportPath, maxSampledPoints);
+    }
+
     if (recipePath is null || reportPath is null)
     {
         Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
         return 2;
     }
 
     try
     {
         var fullRecipePath = Path.GetFullPath(recipePath);
+        var recipeType = ReadRecipeType(fullRecipePath);
+        if (recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            return RunLazTwoPointRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+        }
+
         var recipe = HeightDeviationRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
-        var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
+        var grid = C3DHeightGrid.Load(sourcePath, recipe.RoiStep?.MaxSampledPoints ?? 0);
         var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
             recipe.Source.EntityId,
             recipe.Source.Name,
@@ -33,8 +65,11 @@ static int Run(string[] args)
             grid.ValidSampleCount,
             recipe.Rule.PeakTolerance,
             recipe.Source.Unit));
+        var roiStepResult = recipe.RoiStep is null
+            ? null
+            : EvaluateRoiStep(recipe.RoiStep, recipe.Transform ?? ModelTransform.Identity, grid);
 
-        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result);
+        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult);
         if (compareContractPath is not null)
         {
             CompareUiContract(compareContractPath, result);
@@ -50,7 +85,64 @@ static int Run(string[] args)
         Console.WriteLine($"{result.ToolName}: {result.Status}");
         return result.Status == ResultStatus.Error ? 4 : 0;
     }
-    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return 1;
+    }
+}
+
+static int RunLazTwoPointRecipe(
+    string fullRecipePath,
+    string reportPath,
+    string? expectedStatus,
+    string? compareContractPath)
+{
+    var recipe = LazTwoPointMeasurementRecipe.Load(fullRecipePath);
+    var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+    var pointCloud = LazPointCloud.Load(sourcePath, recipe.Measurement.MaxSampledPoints);
+    if (pointCloud.SampledPoints.Length < 2)
+    {
+        throw new InvalidDataException("LAZ/LAS two-point recipe requires at least two sampled points.");
+    }
+
+    var first = pointCloud.SampledPoints.MinBy(point => MapLazPosition(point.Position).X);
+    var second = pointCloud.SampledPoints.MaxBy(point => MapLazPosition(point.Position).X);
+    var result = CreateLazTwoPointResult(first, second, recipe.Measurement.HeightUnit, recipe.Source.EntityId, recipe.Acceptance);
+
+    WriteLazTwoPointReport(reportPath, fullRecipePath, sourcePath, recipe, pointCloud, first, second, result);
+    if (compareContractPath is not null)
+    {
+        CompareUiContract(compareContractPath, result);
+    }
+
+    if (expectedStatus is not null
+        && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
+    {
+        Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {result.Status}.");
+        return 3;
+    }
+
+    Console.WriteLine($"{result.ToolName}: {result.Status}");
+    return result.Status == ResultStatus.Error ? 4 : 0;
+}
+
+static int RunLazProbe(string lazPath, string reportPath, int maxSampledPoints)
+{
+    try
+    {
+        var pointCloud = LazPointCloud.Load(lazPath, maxSampledPoints);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        File.WriteAllLines(reportPath, [
+            "LazPointCloudProbe",
+            pointCloud.FormatContractLine(),
+            $"Metadata|version={pointCloud.Metadata.Version}|rawPointFormat={pointCloud.Metadata.RawPointDataFormat}|recordLength={pointCloud.Metadata.PointDataRecordLength}|laszipVlr={pointCloud.Metadata.HasLaszipVlr}|pointOffset={pointCloud.Metadata.PointDataOffset}",
+            $"Sample|first={(pointCloud.SampledPoints.Length == 0 ? "(none)" : FormatLazPoint(pointCloud.SampledPoints[0]))}"
+        ]);
+        Console.WriteLine(pointCloud.FormatContractLine());
+        return pointCloud.BoundsMatch && pointCloud.HasRgb && pointCloud.SampledPoints.Length > 0 ? 0 : 5;
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentOutOfRangeException)
     {
         Console.Error.WriteLine(ex.Message);
         return 1;
@@ -70,6 +162,28 @@ static string? ReadOption(IReadOnlyList<string> args, string name)
     return null;
 }
 
+static int? ReadIntOption(IReadOnlyList<string> args, string name)
+{
+    var value = ReadOption(args, name);
+    if (value is null)
+    {
+        return null;
+    }
+
+    return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+        ? parsed
+        : throw new InvalidDataException($"{name} must be an integer.");
+}
+
+static string ReadRecipeType(string path)
+{
+    using var stream = File.OpenRead(path);
+    using var document = JsonDocument.Parse(stream);
+    return document.RootElement.TryGetProperty("recipeType", out var recipeType)
+        ? recipeType.GetString() ?? throw new InvalidDataException($"Recipe type is empty: {path}")
+        : throw new InvalidDataException($"Recipe type is missing: {path}");
+}
+
 static string ResolveRecipePath(string path, string recipeDirectory)
 {
     return Path.GetFullPath(Path.IsPathRooted(path)
@@ -83,34 +197,210 @@ static void WriteReport(
     string sourcePath,
     HeightDeviationRecipe recipe,
     C3DHeightGrid grid,
-    ToolResult result)
+    ToolResult result,
+    RoiStepReport? roiStepResult)
 {
+    var transform = recipe.Transform ?? ModelTransform.Identity;
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
     var lines = new List<string>
     {
         $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
         $"Source|{recipe.Source.EntityId}|name={recipe.Source.Name}|path={sourcePath}|unit={recipe.Source.Unit}",
         $"HeightGrid|width={grid.Width}|height={grid.Height}|valid={grid.ValidSampleCount}|zero={grid.ZeroSampleCount}|min={grid.Min.ToString("F3", CultureInfo.InvariantCulture)}|max={grid.Max.ToString("F3", CultureInfo.InvariantCulture)}|mean={grid.Mean.ToString("F3", CultureInfo.InvariantCulture)}",
-        $"ToolResult|{result.ToolName}|{result.Status}|elapsedMs={result.Elapsed.TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}|metrics={result.Metrics.Count}|overlays={result.Overlays.Count}|message={result.Message}",
-        "Metrics"
+        InspectionContractText.FormatToolResult(result, includePrefix: true),
+        "RecipeTransform",
+        $"Transform|configured={recipe.Transform is not null}|tx={FormatNumber(transform.TranslateX)}|ty={FormatNumber(transform.TranslateY)}|tz={FormatNumber(transform.TranslateZ)}|rx={FormatNumber(transform.RotateXDegrees)}|ry={FormatNumber(transform.RotateYDegrees)}|rz={FormatNumber(transform.RotateZDegrees)}|scale={FormatNumber(transform.Scale)}",
+        "RecipeRoiStep",
+        recipe.RoiStep is null
+            ? "RoiStep|configured=False"
+            : $"RoiStep|configured=True|mode={recipe.RoiStep.Mode}|maxSampledPoints={recipe.RoiStep.MaxSampledPoints}|left={FormatRegion(recipe.RoiStep.Left)}|right={FormatRegion(recipe.RoiStep.Right)}",
+        InspectionContractText.MetricsMarker
     };
 
-    lines.AddRange(result.Metrics.Select(metric =>
-        $"{metric.Name}|{metric.Kind}|value={metric.Value.ToString("F3", CultureInfo.InvariantCulture)}|unit={metric.Unit}|status={metric.Status?.ToString() ?? "(none)"}"));
-    lines.Add("Overlays");
-    lines.AddRange(result.Overlays.Select(overlay =>
-        $"{overlay.Id}|{overlay.Kind}|label={overlay.Label}|status={overlay.Status?.ToString() ?? "(none)"}|source={overlay.SourceEntityId ?? "(none)"}"));
+    lines.AddRange(result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
+    lines.Add(InspectionContractText.OverlaysMarker);
+    lines.AddRange(result.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
+    if (roiStepResult is not null)
+    {
+        lines.Add("RoiStepResult");
+        lines.Add(
+            $"RoiStepResult|leftCount={roiStepResult.LeftCount}|rightCount={roiStepResult.RightCount}|leftMeanRaw={FormatNumber(roiStepResult.LeftRawMean)}|rightMeanRaw={FormatNumber(roiStepResult.RightRawMean)}|heightDeltaRaw={FormatNumber(roiStepResult.RawHeightDelta)}|modelDeltaY={FormatNumber(roiStepResult.ModelHeightDelta)}");
+    }
 
     File.WriteAllLines(reportPath, lines);
 }
 
+static void WriteLazTwoPointReport(
+    string reportPath,
+    string recipePath,
+    string sourcePath,
+    LazTwoPointMeasurementRecipe recipe,
+    LazPointCloud pointCloud,
+    LazPointCloudPoint first,
+    LazPointCloudPoint second,
+    ToolResult result)
+{
+    var firstPosition = MapLazPosition(first.Position);
+    var secondPosition = MapLazPosition(second.Position);
+    var delta = secondPosition - firstPosition;
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+    var lines = new List<string>
+    {
+        $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
+        $"Source|{recipe.Source.EntityId}|name={recipe.Source.Name}|path={sourcePath}|unit={recipe.Source.Unit}",
+        pointCloud.FormatContractLine(),
+        InspectionContractText.FormatToolResult(result, includePrefix: true),
+        $"MeasurementSelection|selection={recipe.Measurement.Selection}|maxSampledPoints={recipe.Measurement.MaxSampledPoints}|heightUnit={recipe.Measurement.HeightUnit}",
+        $"Acceptance|expectedDistance={FormatNumber(recipe.Acceptance.ExpectedDistance)}|distanceTolerance={FormatNumber(recipe.Acceptance.DistanceTolerance)}|expectedHeightDelta={FormatNumber(recipe.Acceptance.ExpectedHeightDelta)}|heightDeltaTolerance={FormatNumber(recipe.Acceptance.HeightDeltaTolerance)}",
+        $"TwoPointResult|distance={FormatNumber(delta.Length())}|dx={FormatNumber(delta.X)}|dy={FormatNumber(delta.Y)}|dz={FormatNumber(delta.Z)}|heightDeltaRaw={FormatNumber(secondPosition.Y - firstPosition.Y)}|first={FormatLazPoint(first)}|second={FormatLazPoint(second)}",
+        InspectionContractText.MetricsMarker
+    };
+
+    lines.AddRange(result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
+    lines.Add(InspectionContractText.OverlaysMarker);
+    lines.AddRange(result.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
+
+    File.WriteAllLines(reportPath, lines);
+}
+
+static ToolResult CreateLazTwoPointResult(
+    LazPointCloudPoint first,
+    LazPointCloudPoint second,
+    string heightUnit,
+    string sourceEntityId,
+    LazTwoPointMeasurementRecipeAcceptance acceptance)
+{
+    var firstPosition = MapLazPosition(first.Position);
+    var secondPosition = MapLazPosition(second.Position);
+    var delta = secondPosition - firstPosition;
+    var distance = delta.Length();
+    var heightDelta = secondPosition.Y - firstPosition.Y;
+    var distanceStatus = IsWithinTolerance(distance, acceptance.ExpectedDistance, acceptance.DistanceTolerance)
+        ? ResultStatus.Pass
+        : ResultStatus.Fail;
+    var heightStatus = IsWithinTolerance(heightDelta, acceptance.ExpectedHeightDelta, acceptance.HeightDeltaTolerance)
+        ? ResultStatus.Pass
+        : ResultStatus.Fail;
+    var status = distanceStatus == ResultStatus.Pass && heightStatus == ResultStatus.Pass
+        ? ResultStatus.Pass
+        : ResultStatus.Fail;
+
+    return new ToolResult(
+        "LAZ/LAS Two Point Measurement",
+        status,
+        status == ResultStatus.Pass
+            ? "Runner replay within configured tolerance; source point cloud is unchanged."
+            : "Runner replay exceeds configured tolerance; source point cloud is unchanged.",
+        TimeSpan.Zero,
+        [
+            new Metric("Distance", MetricKind.Length, distance, "model", distanceStatus),
+            new Metric("Delta X", MetricKind.Length, delta.X, "model", ResultStatus.Pass),
+            new Metric("Delta Y", MetricKind.Length, delta.Y, "model", ResultStatus.Pass),
+            new Metric("Delta Z", MetricKind.Length, delta.Z, "model", ResultStatus.Pass),
+            new Metric("Source Z height delta", MetricKind.Length, heightDelta, heightUnit, heightStatus)
+        ],
+        [
+            new Overlay("overlay.laz-two-point-line", OverlayKind.Polyline, "LAZ/LAS two-point distance line", distanceStatus, sourceEntityId),
+            new Overlay("overlay.laz-two-point-height-marker", OverlayKind.Marker, "LAZ/LAS source-Z height delta marker", heightStatus, sourceEntityId)
+        ]);
+}
+
+static RoiStepReport EvaluateRoiStep(HeightDeviationRecipeRoiStep roiStep, ModelTransform transform, C3DHeightGrid grid)
+{
+    if (!TryCalculateRoiStats(grid.Points, roiStep.Left, transform, out var left))
+    {
+        throw new InvalidDataException("ROI step found no C3D points in the left recipe region.");
+    }
+
+    if (!TryCalculateRoiStats(grid.Points, roiStep.Right, transform, out var right))
+    {
+        throw new InvalidDataException("ROI step found no C3D points in the right recipe region.");
+    }
+
+    return new RoiStepReport(
+        left.Count,
+        right.Count,
+        left.RawMean,
+        right.RawMean,
+        right.RawMean - left.RawMean,
+        right.ModelYMean - left.ModelYMean);
+}
+
+static bool TryCalculateRoiStats(
+    IReadOnlyList<HeightGridPoint> points,
+    HeightDeviationRecipeRoiRegion region,
+    ModelTransform transform,
+    out (int Count, double RawMean, double ModelYMean) stats)
+{
+    var minX = region.CenterX - region.HalfWidth;
+    var maxX = region.CenterX + region.HalfWidth;
+    var minZ = region.CenterZ - region.HalfDepth;
+    var maxZ = region.CenterZ + region.HalfDepth;
+    var count = 0;
+    var rawSum = 0.0;
+    var ySum = 0.0;
+
+    foreach (var point in points)
+    {
+        var position = ApplyModelTransform(point.Position, transform);
+        if (position.X < minX || position.X > maxX || position.Z < minZ || position.Z > maxZ)
+        {
+            continue;
+        }
+
+        count++;
+        rawSum += point.RawValue;
+        ySum += position.Y;
+    }
+
+    if (count == 0)
+    {
+        stats = default;
+        return false;
+    }
+
+    var inverse = 1.0 / count;
+    stats = (count, rawSum * inverse, ySum * inverse);
+    return true;
+}
+
+static Vector3 ApplyModelTransform(Vector3 sourcePosition, ModelTransform transform)
+{
+    var position = sourcePosition * (float)transform.Scale;
+    position = Vector3.Transform(position, Matrix4x4.CreateRotationX(ToRadians(transform.RotateXDegrees)));
+    position = Vector3.Transform(position, Matrix4x4.CreateRotationY(ToRadians(transform.RotateYDegrees)));
+    position = Vector3.Transform(position, Matrix4x4.CreateRotationZ(ToRadians(transform.RotateZDegrees)));
+    return position + new Vector3((float)transform.TranslateX, (float)transform.TranslateY, (float)transform.TranslateZ);
+}
+
+static float ToRadians(double degrees) => (float)(degrees * Math.PI / 180.0);
+
+static string FormatRegion(HeightDeviationRecipeRoiRegion region) =>
+    string.Create(
+        CultureInfo.InvariantCulture,
+        $"cx={region.CenterX:F3},cz={region.CenterZ:F3},halfWidth={region.HalfWidth:F3},halfDepth={region.HalfDepth:F3}");
+
+static string FormatNumber(double value) =>
+    double.IsFinite(value) ? value.ToString("F3", CultureInfo.InvariantCulture) : "(pending)";
+
+static bool IsWithinTolerance(double actual, double expected, double tolerance) =>
+    Math.Abs(actual - expected) <= tolerance;
+
+static Vector3 MapLazPosition(Vector3 source) =>
+    new(source.X, source.Z, source.Y);
+
+static string FormatLazPoint(LazPointCloudPoint point) =>
+    string.Create(
+        CultureInfo.InvariantCulture,
+        $"x={point.Position.X:F3},y={point.Position.Y:F3},z={point.Position.Z:F3},rgb={point.Red},{point.Green},{point.Blue}");
+
 static void CompareUiContract(string path, ToolResult result)
 {
     var lines = File.ReadAllLines(path);
-    var toolResultLine = lines.FirstOrDefault(line => line.StartsWith("C3D Height Deviation Rule|", StringComparison.Ordinal));
+    var toolResultLine = lines.FirstOrDefault(line => line.StartsWith($"{result.ToolName}|", StringComparison.Ordinal));
     if (toolResultLine is null)
     {
-        throw new InvalidDataException($"UI contract has no C3D Height Deviation Rule result: {path}");
+        throw new InvalidDataException($"UI contract has no {result.ToolName} result: {path}");
     }
 
     var parts = toolResultLine.Split('|');
@@ -119,17 +409,17 @@ static void CompareUiContract(string path, ToolResult result)
         throw new InvalidDataException($"UI status mismatch. UI={parts.ElementAtOrDefault(1) ?? "(missing)"}, runner={result.Status}.");
     }
 
-    var runnerPeak = result.Metrics.First(metric => metric.Name == "Peak absolute deviation").Value;
-    var uiPeakLine = lines.FirstOrDefault(line => line.StartsWith("Peak absolute deviation|", StringComparison.Ordinal));
-    if (uiPeakLine is null)
+    var runnerMetric = result.Metrics.First();
+    var uiMetricLine = lines.FirstOrDefault(line => line.StartsWith($"{runnerMetric.Name}|", StringComparison.Ordinal));
+    if (uiMetricLine is null)
     {
-        throw new InvalidDataException($"UI contract has no peak deviation metric: {path}");
+        throw new InvalidDataException($"UI contract has no {runnerMetric.Name} metric: {path}");
     }
 
-    var uiPeak = ParseMetricValue(uiPeakLine);
-    if (Math.Abs(uiPeak - runnerPeak) > 0.001)
+    var uiMetric = ParseMetricValue(uiMetricLine);
+    if (Math.Abs(uiMetric - runnerMetric.Value) > 0.001)
     {
-        throw new InvalidDataException($"Peak deviation mismatch. UI={uiPeak:F3}, runner={runnerPeak:F3}.");
+        throw new InvalidDataException($"{runnerMetric.Name} mismatch. UI={uiMetric:F3}, runner={runnerMetric.Value:F3}.");
     }
 }
 
@@ -145,3 +435,11 @@ static double ParseMetricValue(string line)
 
     throw new InvalidDataException($"Metric line has no value field: {line}");
 }
+
+public sealed record RoiStepReport(
+    int LeftCount,
+    int RightCount,
+    double LeftRawMean,
+    double RightRawMean,
+    double RawHeightDelta,
+    double ModelHeightDelta);

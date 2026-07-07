@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Sample Data
 
-Checked: 2026-07-06
+Checked: 2026-07-08
 
 Sample data is currently stored under `C:\Git\OpenVisionLab-3D-Studio\3D`.
 
@@ -12,8 +12,19 @@ Sample data is currently stored under `C:\Git\OpenVisionLab-3D-Studio\3D`.
 | `3D/Thickness/Ori_20240116_094414.png` | 539,528 bytes | 2D preview/reference image, 1301 x 1967. |
 | `3D/Warpage/Ori_20240116_094430.C3D` | 10,236,276 bytes | Candidate raw 3D height/depth grid. |
 | `3D/Warpage/Ori_20240116_094430.png` | 539,528 bytes | 2D preview/reference image, 1301 x 1967. |
+| `3D/PublicSamples/glTF/Box.glb` | 1,664 bytes | Public GLB mesh import baseline. |
+| `3D/PublicSamples/glTF/BoxTextured.glb` | 6,540 bytes | Public GLB texture/material import baseline. |
+| `3D/PublicSamples/glTF/BoxVertexColors.glb` | 1,924 bytes | Public GLB vertex-color import baseline. |
+| `3D/PublicSamples/glTF/Avocado.glb` | 8,110,040 bytes | Public GLB realistic non-box textured mesh import baseline. |
+| `3D/PublicSamples/STL/Tetrahedron.stl` | 534 bytes | Local generated STL triangle-mesh import baseline. |
+| `3D/PublicSamples/PointCloud/xyzrgb_manuscript.laz` | 5,351,794 bytes | Public LAZ metadata/bounds and sampled XYZ/RGB point-cloud render baseline. |
+| `3D/PublicSamples/PointCloud/interesting.las` | 37,698 bytes | Public LAS small uncompressed XYZ/RGB point-cloud render baseline. |
 
 Current SHA256 check shows the `Thickness` and `Warpage` C3D files are byte-identical. The PNG files are also byte-identical. Treat this as a current data fact, not a product assumption.
+
+Public sample source and license details are recorded in `3D/PublicSamples/README.md`.
+
+Loader/viewer acceptance coverage for these samples is tracked in `docs/OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`.
 
 ## 2. C3D Format Observation
 
@@ -60,8 +71,17 @@ Use the samples in this order:
 
 1. Use the PNG files as visual references for expected shape, crop, invalid regions, and color-map style.
 2. Keep the first C3D use viewer-only: render, color mode, camera, picking, and screenshot smoke.
-3. Define source/result entity contracts before any C3D rule result mutates or publishes geometry.
-4. Start Thickness/Warpage algorithm work only after the viewer completion gate passes.
+3. Use `3D/PublicSamples/glTF/Box.glb` as the first external mesh import baseline. Current Viewer smoke renders this sample and records vertex/triangle/bounds evidence.
+4. Use `3D/PublicSamples/glTF/BoxVertexColors.glb` to verify GLB `COLOR_0` vertex-color import. Current Viewer smoke records vertex-color evidence.
+5. Use `3D/PublicSamples/glTF/BoxTextured.glb` to verify GLB `TEXCOORD_0` plus embedded PNG base-color texture import. Current Viewer smoke records UV/texture upload evidence.
+6. Use `3D/PublicSamples/glTF/Avocado.glb` to verify a realistic non-box textured mesh. Current Viewer smoke records mesh bounds, triangle count, UVs, texture upload, fit camera distance, triangle-surface picking, triangle-index/normal metadata, visible surface-normal overlay, and two-point distance/model-Y height evidence.
+7. Use `3D/PublicSamples/STL/Tetrahedron.stl` to verify ASCII STL triangle loading, bounds, surface picking, and two-point distance/model-Y height evidence without GLB material metadata.
+8. Use `3D/PublicSamples/PointCloud/xyzrgb_manuscript.laz` and `3D/PublicSamples/PointCloud/interesting.las` together to verify point-cloud camera fitting across dense local-scale and sparse large-coordinate data. Current Viewer smoke records bounds-fit camera distances for both, proves RGB/height point-cloud color modes with height range legend evidence, guards non-result deviation mode, and records load time plus sampling ratio for Balanced/Fast point-cloud density.
+9. Use `3D/PublicSamples/PointCloud/xyzrgb_manuscript.laz` to verify LAS/LAZ header metadata, LASzip compression detection, point count, decoded XYZ/RGB, sampled point rendering, picking, two-point distance/height measurement, and bounds matching. Viewer supports metadata, sampled point, picked-point, and two-point measurement smoke; Runner `--laz-probe` remains the headless decode check.
+10. Use `3D/PublicSamples/PointCloud/interesting.las` to verify uncompressed LAS RGB decoding, local viewer-origin mapping for large source coordinates, picking, two-point measurement, and a small low-density point-cloud view.
+11. Refresh the data loading test matrix before adding algorithm work, especially when a new sample or loader is added.
+12. Define source/result entity contracts before any C3D rule result mutates or publishes geometry.
+13. Start Thickness/Warpage algorithm work only after the viewer completion gate passes.
 
 ## 4. Guardrails
 
@@ -69,3 +89,4 @@ Use the samples in this order:
 - Do not assume `Thickness` and `Warpage` represent different measurements until non-identical samples are available or the source format is confirmed.
 - Do not build production C3D import around the inferred layout without a small validation command.
 - Keep these files local sample data; do not copy them into `C:\Git\OpenVisionLab_Dev`.
+- Keep public sample license notes with the downloaded files before committing or redistributing them.

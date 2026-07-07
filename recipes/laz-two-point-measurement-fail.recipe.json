@@ -1,0 +1,21 @@
+{
+  "recipeType": "laz-two-point-measurement",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.public-laz-manuscript",
+    "name": "Public LAZ Point Cloud",
+    "path": "../3D/PublicSamples/PointCloud/xyzrgb_manuscript.laz",
+    "unit": "source-units"
+  },
+  "measurement": {
+    "selection": "sample-extreme-x",
+    "maxSampledPoints": 50000,
+    "heightUnit": "source-z-units"
+  },
+  "acceptance": {
+    "expectedDistance": 0.0,
+    "distanceTolerance": 0.001,
+    "expectedHeightDelta": 0.0,
+    "heightDeltaTolerance": 0.001
+  }
+}

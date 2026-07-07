@@ -42,9 +42,13 @@
                                        Text="Data &amp; Layers" />
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Display State" />
+                            <TextBlock Text="{Binding SelectedEntity, StringFormat=Active: {0}}" />
                             <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color: {0}}" />
-                            <TextBlock Margin="0,4,0,0" Text="Units: raw height" />
-                            <TextBlock Margin="0,4,0,0" Text="Transform: Identity" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateFrameSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding SceneContractSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding TransformSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding AlignmentSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateMappingSummary}" />
 
                             <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
                             <Slider Minimum="1"
@@ -62,16 +66,33 @@
                                        TextWrapping="Wrap"
                                        Text="{Binding RenderDensitySummary}" />
                             <TextBlock Margin="0,4,0,0"
+                                       Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Text="{Binding C3DSamplePointCount, StringFormat=Rendered C3D points: {0}}" />
+                            <StackPanel Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding LazSampleSummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding LazSamplingSummary}" />
+                            </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Source Geometry" />
-                            <TextBlock FontWeight="SemiBold" Text="Generated Unit Cube" />
-                            <TextBlock Margin="0,4,0,0" Text="Generated Point Cloud" />
-                            <TextBlock Margin="0,4,0,0" Text="C3D Thickness Sample" />
-
-                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Result Layers" />
-                            <TextBlock FontWeight="SemiBold" Text="C3D Height Deviation Preview" />
-                            <TextBlock Margin="0,4,0,0" Text="Published Result Layer" />
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Entity Layers" />
+                            <ItemsControl ItemsSource="{Binding EntityLayers}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Foreground="#6b7280"
+                                                       Text="{Binding Kind, StringFormat=Kind: {0}}" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       Foreground="#6b7280"
+                                                       Text="{Binding IsVisible, StringFormat=Visible: {0}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                             <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Contracts" />
                             <TextBlock Text="Source/result separation: active" />
@@ -94,25 +115,177 @@
                                        Text="Tool / Inspector" />
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Active Tool" />
-                            <TextBlock FontWeight="SemiBold" Text="C3D Height Deviation Rule" />
-
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Rule Parameters" />
-                            <TextBlock Text="Tolerance: 1200 raw-height" />
-                            <TextBlock Margin="0,4,0,0" Text="Reference: C3D sample average" />
-                            <TextBlock Margin="0,4,0,0" Text="Output: preview result layer" />
+                            <StackPanel DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                <TextBlock FontWeight="SemiBold" Text="{Binding SelectedEntity}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#6b7280"
+                                           Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#374151"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ViewerStatus}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding MeasurementSummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#b91c1c"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeValidationSummary}" />
+                                <StackPanel Visibility="{Binding PointCloudColorLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{Binding PointCloudColorLegendTitle}" />
+                                    <TextBlock TextWrapping="Wrap" Text="{Binding PointCloudColorLegendLow}" />
+                                    <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding PointCloudColorLegendHigh}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding PointCloudColorLegendScale}" />
+                                </StackPanel>
+                                <StackPanel Visibility="{Binding DeviationLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Deviation Color Scale" />
+                                    <TextBlock TextWrapping="Wrap" Text="{Binding DeviationLegendStatus}" />
+                                    <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding DeviationLegendPeak}" />
+                                    <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding DeviationLegendTolerance}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding DeviationLegendScale}" />
+                                </StackPanel>
+                                <StackPanel Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,4,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding LazTwoPointAcceptanceSummary}" />
+                                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="LAZ/LAS Acceptance" />
+                                    <WrapPanel>
+                                        <StackPanel Width="78" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                                            <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="64" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                                            <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="78" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp H" />
+                                            <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="64" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol H" />
+                                            <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding PickCoordinate, StringFormat=Pick: {0}}" />
+                            </StackPanel>
 
                             <StackPanel Margin="0,14,0,0"
                                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
-                                <TextBlock Foreground="#6b7280" Text="Recipe Edit" />
+                                <TextBlock Foreground="#6b7280" Text="C3D Recipe Edit" />
                                 <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding RecipeSummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#b91c1c"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeValidationSummary}" />
                                 <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Peak Tolerance" />
                                 <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
+                                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Alignment" />
+                                <Button Margin="0,0,0,8"
+                                        Content="Align From ROI"
+                                        Click="ApplyRoiAlignment_Click" />
+                                <WrapPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T X" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Y" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Z" />
+                                        <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R X" />
+                                        <TextBox Text="{Binding RecipeTransformRotateXDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Y" />
+                                        <TextBox Text="{Binding RecipeTransformRotateYDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Z" />
+                                        <TextBox Text="{Binding RecipeTransformRotateZDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Scale" />
+                                        <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Left" />
+                                <WrapPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                                        <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                                        <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                                        <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                                        <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="ROI Right" />
+                                <WrapPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                                        <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                                        <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                                        <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                    <StackPanel Width="64" Margin="0,0,6,6">
+                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                                        <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Margin="0,2,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeParameterSummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding AlignmentWorkflowSummary}" />
                                 <Button Margin="0,8,0,0"
                                         Content="Save Recipe"
                                         Click="SaveRecipe_Click" />
                                 <TextBlock Margin="0,4,0,0"
                                            TextWrapping="Wrap"
                                            Text="{Binding RecipeSaveSummary}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,14,0,0"
+                                        DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                <TextBlock Foreground="#6b7280" Text="Viewer Evidence" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding SelectionSummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ViewerStatus}" />
                             </StackPanel>
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Latest Result" />
@@ -216,7 +389,7 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="150" />
                                                         <ColumnDefinition Width="70" />
-                                                        <ColumnDefinition Width="90" />
+                                                        <ColumnDefinition Width="270" />
                                                         <ColumnDefinition Width="90" />
                                                         <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
@@ -227,12 +400,13 @@
                                                                FontWeight="SemiBold"
                                                                Text="{Binding Status}" />
                                                     <TextBlock Grid.Column="2"
-                                                               Text="{Binding PeakDeviation}" />
+                                                               TextWrapping="Wrap"
+                                                               Text="{Binding KeyMetricSummary}" />
                                                     <TextBlock Grid.Column="3"
                                                                Text="{Binding EvidenceState}" />
                                                     <TextBlock Grid.Column="4"
                                                                Foreground="#6b7280"
-                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="Wrap"
                                                                Text="{Binding ReportPath}" />
                                                 </Grid>
                                             </Border>
@@ -251,84 +425,177 @@
                         BorderThickness="0,1,0,0"
                         Padding="10"
                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Margin="0,0,12,0">
-                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
-                            <Grid Margin="0,6,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="154" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="150"
-                                        Height="54"
-                                        HorizontalAlignment="Left"
-                                        Background="#111827"
-                                        BorderBrush="#d1d5db"
-                                        BorderThickness="1"
-                                        ClipToBounds="True">
-                                    <Image Source="{Binding HeightMapImageSource}"
-                                           Width="150"
-                                           Height="50"
-                                           Stretch="Fill"
-                                           SnapsToDevicePixels="True" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                    <TextBlock Foreground="#6b7280"
-                                               FontSize="11"
-                                               TextTrimming="CharacterEllipsis"
-                                               Text="{Binding HeightMapSummary}" />
+                            <StackPanel Margin="0,0,12,0">
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding C3DSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="154" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="150"
+                                                Height="54"
+                                                HorizontalAlignment="Left"
+                                                Background="#111827"
+                                                BorderBrush="#d1d5db"
+                                                BorderThickness="1"
+                                                ClipToBounds="True">
+                                            <Image Source="{Binding HeightMapImageSource}"
+                                                   Width="150"
+                                                   Height="50"
+                                                   Stretch="Fill"
+                                                   SnapsToDevicePixels="True" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                            <TextBlock Foreground="#6b7280"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding HeightMapSummary}" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       Foreground="#6b7280"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding HeightMapRange}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LazSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Point Cloud Sample" />
                                     <TextBlock Margin="0,4,0,0"
                                                Foreground="#6b7280"
-                                               FontSize="11"
-                                               TextTrimming="CharacterEllipsis"
-                                               Text="{Binding HeightMapRange}" />
+                                               TextWrapping="Wrap"
+                                               Text="{Binding LazSampleName}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding LazSampleSummary}" />
                                 </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="#6b7280"
-                                       TextWrapping="Wrap"
-                                       Text="{Binding SectionProfileSummary}" />
-                            <Border Height="58"
-                                    Margin="0,6,0,0"
-                                    Background="#f9fafb"
-                                    BorderBrush="#d1d5db"
-                                    BorderThickness="1"
-                                    ClipToBounds="True">
-                                <Canvas Width="240" Height="54" Margin="4,1">
-                                    <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="#d1d5db" StrokeThickness="1" />
-                                    <Path Data="{Binding SectionProfilePathData}"
-                                          Stroke="#f59e0b"
-                                          StrokeThickness="2"
-                                          StrokeLineJoin="Round"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round" />
-                                </Canvas>
-                            </Border>
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="#6b7280"
-                                       TextWrapping="Wrap"
-                                       Text="{Binding SectionProfileRange}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Camera / Pick State" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="#6b7280"
-                                       Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="#6b7280"
-                                       TextWrapping="Wrap"
-                                       Text="{Binding SelectionSummary}" />
-                        </StackPanel>
-                    </Grid>
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding GlbSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Mesh Sample" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding GlbSampleName}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding GlbSampleSummary}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding C3DSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SectionProfileSummary}" />
+                                    <Border Height="58"
+                                            Margin="0,6,0,0"
+                                            Background="#f9fafb"
+                                            BorderBrush="#d1d5db"
+                                            BorderThickness="1"
+                                            ClipToBounds="True">
+                                        <Canvas Width="240" Height="54" Margin="4,1">
+                                            <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="#d1d5db" StrokeThickness="1" />
+                                            <Path Data="{Binding SectionProfilePathData}"
+                                                  Stroke="#f59e0b"
+                                                  StrokeThickness="2"
+                                                  StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round" />
+                                        </Canvas>
+                                    </Border>
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SectionProfileRange}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LazSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding GlbSampleVisible}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Linked Measurement" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding MeasurementSummary}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding PickCoordinate, StringFormat=Pick: {0}}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Camera / Pick State" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#6b7280"
+                                           Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding SelectionSummary}" />
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
                 </Border>
             </dock:OpenVisionDockWorkspaceView.LinkedViewContent>
         </dock:OpenVisionDockWorkspaceView>
