@@ -53,7 +53,7 @@ The OpenVisionLab 3D layout should make that workflow visible on the first scree
 | --- | --- | --- |
 | App / Job Bar | Project state, recipe state, explicit Preview/Publish/Run commands, global status. | Rendering internals or tool algorithms. |
 | Data & Layers | Source/result entity tree, visibility, active source/result, color mode, unit/transform summary. | Tool parameter editing. |
-| 3D Inspection View | SharpGL render, camera, picking, ROI overlays, result overlays, color scale legend. | Recipe serialization or runner report parsing. |
+| 3D Inspection View | SharpGL render, camera, picking, ROI overlays, result overlays, color scale legend, viewer-internal coordinate/measurement HUD. | Recipe serialization or runner report parsing. |
 | Tool / Inspector | Active tool parameters, selected entity/point, metrics, tolerances, result state. | Camera state or docking layout. |
 | Evidence Workbench | UI contract, runner report, screenshot snapshot, comparison status, run history. | Tool execution logic. |
 | Linked View Strip | Height map, 2D intensity, profile/section chart synchronized with current selection. | Primary 3D interaction. |
@@ -81,6 +81,7 @@ The implemented split is:
 
 - A feature is not ready to implement until it has a home in one of the layout areas above.
 - Viewer rendering features go into the 3D Inspection View, not the Shell.
+- Core inspection facts must remain visible inside the Viewer itself: coordinate frame, selected mode, pick state, distance/height measurement summary, and performance state. Shell panes may mirror these facts but cannot be the only UI for them.
 - Workflow features go into Shell panes through `OpenVisionLab.ThreeD.Docking.Controls` content slots.
 - Tool parameters and metrics belong in Tool / Inspector, not in the Data & Layers tree.
 - Result evidence belongs in Evidence Workbench, not only inside viewport text.
@@ -96,7 +97,10 @@ The implemented split is:
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |
 | Run history | Evidence Workbench | Done |
+| Viewer-internal coordinate HUD | 3D Inspection View | Done |
+| Two-point distance and height delta | 3D Inspection View + Tool / Inspector | Done |
 | Transform/alignment state | Data & Layers + Tool / Inspector | Medium |
+| Performance HUD | 3D Inspection View | Done, minimal |
 | Screenshot/report snapshots | Evidence Workbench | Medium |
 | CAD/GD&T | Not in current layout phase | Later |
 | Sensor/PLC/robot/HMI | Out of current scope | Later |
@@ -126,6 +130,10 @@ The implemented split is:
 7. Add run history. Done.
    - History tab shows the current replay evidence row with run time, status, peak deviation, match state, and report path.
    - Smoke can open the tab with `--shell-evidence-tab history`.
+8. Add Viewer-internal coordinate HUD and two-point measurement. Done.
+   - The Viewer must show axis meaning and selected measurement state even when Shell side panes are hidden.
+   - Two-point measurement should report distance, dX/dY/dZ, model height delta, and raw-height delta for C3D points.
+   - Minimal performance HUD should report FPS, draw time, and rendered C3D point count.
 
 ## Acceptance Checklist For Layout Skeleton
 
@@ -198,6 +206,14 @@ The implemented split is:
 - After screenshot: `artifacts/shell_run_history_after.png`
 - Runner report: `artifacts/runner_run_history_after.txt`
 - Smoke command opens the Evidence Workbench `History` tab and shows the current runner/UI matched row.
+
+## Viewer Internal HUD Evidence
+
+- Before screenshot: `artifacts/viewer_two_point_before.png`
+- Viewer after screenshot: `artifacts/viewer_two_point_after.png`
+- Viewer contract: `artifacts/viewer_two_point_after.txt`
+- Shell-hosted after screenshot: `artifacts/shell_viewer_internal_hud_after.png`
+- Contract evidence: `CoordinateFrame|visible=True`, `TwoPoint|visible=True`, and `Performance|fps=...|drawMs=...`.
 
 ## Deferred Decisions
 

@@ -22,7 +22,14 @@
                     <Button Content="Reset" Width="72" Margin="0,0,8,0" Click="Reset_Click" />
                     <Button Content="Screenshot" Width="104" Margin="0,0,8,0" Click="Screenshot_Click" />
                     <Button Content="Open Recipe" Width="104" Margin="0,0,8,0" Click="OpenRecipe_Click" />
-                    <Button Content="Save Recipe" Width="104" Click="SaveRecipe_Click" />
+                    <Button Content="Save Recipe" Width="104" Margin="0,0,12,0" Click="SaveRecipe_Click" />
+                    <TextBlock VerticalAlignment="Center"
+                               Margin="0,0,6,0"
+                               Foreground="#6b7280"
+                               Text="Mode" />
+                    <ComboBox Width="150"
+                              ItemsSource="{Binding SelectionModes}"
+                              SelectedItem="{Binding SelectedSelectionMode, Mode=TwoWay}" />
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"
@@ -163,6 +170,65 @@
                                    MouseMove="Viewport_MouseMove"
                                    MouseUp="Viewport_MouseUp"
                                    MouseWheel="Viewport_MouseWheel" />
+            <Border HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Width="330"
+                    Margin="12"
+                    Padding="10"
+                    Background="#ee111827"
+                    BorderBrush="#4b5563"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsHitTestVisible="False">
+                <StackPanel>
+                    <TextBlock FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#f9fafb"
+                               Text="Viewer Measurement HUD" />
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontWeight="SemiBold" Foreground="#ef4444" Text="X" />
+                        <TextBlock Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" Foreground="#22c55e" Text="Y height" />
+                        <TextBlock Grid.Column="2" Margin="12,0,0,0" FontWeight="SemiBold" Foreground="#60a5fa" Text="Z" />
+                        <TextBlock Grid.Column="3"
+                                   Margin="12,0,0,0"
+                                   Foreground="#d1d5db"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
+                    </Grid>
+                    <TextBlock Margin="0,6,0,0"
+                               FontSize="11"
+                               Foreground="#d1d5db"
+                               TextWrapping="Wrap"
+                               Text="{Binding CoordinateFrameSummary}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#d1d5db"
+                               TextWrapping="Wrap"
+                               Text="{Binding PickCoordinate, StringFormat=Pick: {0}}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#f9fafb"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Text="{Binding TwoPointMeasurementSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#fbbf24"
+                               TextWrapping="Wrap"
+                               Text="{Binding TwoPointMeasurementDetails}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#d1d5db"
+                               TextWrapping="Wrap"
+                               Text="{Binding PerformanceSummary}" />
+                </StackPanel>
+            </Border>
             <Border HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Width="260"

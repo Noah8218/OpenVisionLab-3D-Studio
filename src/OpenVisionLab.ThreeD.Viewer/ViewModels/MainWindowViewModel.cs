@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using OpenVisionLab.ThreeD.Core;
@@ -66,6 +67,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string sectionProfileRange = "Range: not loaded";
     private string sectionProfilePathData = "M 0,30 L 240,30";
     private int sectionProfileSampleCount;
+    private bool twoPointMeasurementVisible;
+    private string twoPointMeasurementSummary = "Two-point: pick P1 and P2 on the C3D height grid.";
+    private string twoPointMeasurementDetails = "Distance and height delta: pending";
+    private double twoPointDistance = double.NaN;
+    private double twoPointDeltaX = double.NaN;
+    private double twoPointDeltaY = double.NaN;
+    private double twoPointDeltaZ = double.NaN;
+    private double twoPointRawHeightDelta = double.NaN;
+    private string performanceSummary = "Performance: waiting for first frame";
+    private double viewportFps = double.NaN;
+    private double viewportDrawMilliseconds = double.NaN;
     private string activePreviewLayerId = "layer.preview.synthetic-height-deviation";
     private string activePreviewLayerName = "Preview: Synthetic Height Deviation";
     private string activePreviewSourceEntityId = PointCloudEntityId;
@@ -93,7 +105,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Box ROI", "Section Plane"];
+
+    public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
 
     public IReadOnlyList<SourceEntity> SourceEntities { get; }
 
@@ -256,6 +270,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 SelectionSummary = value switch
                 {
                     "Box ROI" => "Box ROI: viewer state only",
+                    "Two Point Measure" => TwoPointMeasurementSummary,
                     "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
                 };
@@ -547,6 +562,72 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref sectionProfileSampleCount, value);
     }
 
+    public bool TwoPointMeasurementVisible
+    {
+        get => twoPointMeasurementVisible;
+        private set => SetField(ref twoPointMeasurementVisible, value);
+    }
+
+    public string TwoPointMeasurementSummary
+    {
+        get => twoPointMeasurementSummary;
+        private set => SetField(ref twoPointMeasurementSummary, value);
+    }
+
+    public string TwoPointMeasurementDetails
+    {
+        get => twoPointMeasurementDetails;
+        private set => SetField(ref twoPointMeasurementDetails, value);
+    }
+
+    public double TwoPointDistance
+    {
+        get => twoPointDistance;
+        private set => SetField(ref twoPointDistance, value);
+    }
+
+    public double TwoPointDeltaX
+    {
+        get => twoPointDeltaX;
+        private set => SetField(ref twoPointDeltaX, value);
+    }
+
+    public double TwoPointDeltaY
+    {
+        get => twoPointDeltaY;
+        private set => SetField(ref twoPointDeltaY, value);
+    }
+
+    public double TwoPointDeltaZ
+    {
+        get => twoPointDeltaZ;
+        private set => SetField(ref twoPointDeltaZ, value);
+    }
+
+    public double TwoPointRawHeightDelta
+    {
+        get => twoPointRawHeightDelta;
+        private set => SetField(ref twoPointRawHeightDelta, value);
+    }
+
+    public string PerformanceSummary
+    {
+        get => performanceSummary;
+        private set => SetField(ref performanceSummary, value);
+    }
+
+    public double ViewportFps
+    {
+        get => viewportFps;
+        private set => SetField(ref viewportFps, value);
+    }
+
+    public double ViewportDrawMilliseconds
+    {
+        get => viewportDrawMilliseconds;
+        private set => SetField(ref viewportDrawMilliseconds, value);
+    }
+
     public void FitAll()
     {
         if (C3DSampleVisible)
@@ -646,6 +727,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             "Section Plane" when SectionProfileVisible => SectionProfileSummary,
             "Section Plane" => "Section plane: profile not loaded",
+            "Two Point Measure" => TwoPointMeasurementSummary,
             "Box ROI" => "Box ROI: viewer state only",
             _ => "Point selection: generated point cloud peak"
         };
@@ -683,6 +765,71 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntity = "Result Overlay";
         PickCoordinate = "(viewer-only sample)";
         ViewerStatus = "Smoke scene: result overlay";
+    }
+
+    public void SetTwoPointMeasurementStart(Vector3 point, float rawValue)
+    {
+        TwoPointMeasurementVisible = true;
+        TwoPointDistance = double.NaN;
+        TwoPointDeltaX = double.NaN;
+        TwoPointDeltaY = double.NaN;
+        TwoPointDeltaZ = double.NaN;
+        TwoPointRawHeightDelta = double.NaN;
+        TwoPointMeasurementSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"P1: {FormatVector(point)} | raw {rawValue:F3}");
+        TwoPointMeasurementDetails = "Pick P2 to measure distance and height delta.";
+        SelectionSummary = TwoPointMeasurementSummary;
+        MeasurementSummary = TwoPointMeasurementDetails;
+        ViewerStatus = "Two-point P1 set";
+    }
+
+    public void SetTwoPointMeasurement(Vector3 first, float firstRaw, Vector3 second, float secondRaw)
+    {
+        var delta = second - first;
+        var distance = delta.Length();
+        var rawDelta = secondRaw - firstRaw;
+
+        TwoPointMeasurementVisible = true;
+        TwoPointDistance = distance;
+        TwoPointDeltaX = delta.X;
+        TwoPointDeltaY = delta.Y;
+        TwoPointDeltaZ = delta.Z;
+        TwoPointRawHeightDelta = rawDelta;
+        TwoPointMeasurementSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"P1 {FormatVector(first)} -> P2 {FormatVector(second)}");
+        TwoPointMeasurementDetails = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Distance {distance:F3} model | dX {delta.X:F3}, dY {delta.Y:F3}, dZ {delta.Z:F3} | height delta {rawDelta:F3} raw-height");
+        SelectionSummary = TwoPointMeasurementDetails;
+        MeasurementSummary = TwoPointMeasurementDetails;
+        ViewerStatus = "Two-point measurement updated";
+    }
+
+    public void ClearTwoPointMeasurement()
+    {
+        TwoPointMeasurementVisible = false;
+        TwoPointDistance = double.NaN;
+        TwoPointDeltaX = double.NaN;
+        TwoPointDeltaY = double.NaN;
+        TwoPointDeltaZ = double.NaN;
+        TwoPointRawHeightDelta = double.NaN;
+        TwoPointMeasurementSummary = "Two-point: pick P1 and P2 on the C3D height grid.";
+        TwoPointMeasurementDetails = "Distance and height delta: pending";
+        if (SelectedSelectionMode == "Two Point Measure")
+        {
+            SelectionSummary = TwoPointMeasurementSummary;
+        }
+    }
+
+    public void SetRenderPerformance(double fps, double drawMilliseconds)
+    {
+        ViewportFps = fps;
+        ViewportDrawMilliseconds = drawMilliseconds;
+        PerformanceSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Performance: {fps:F1} fps | draw {drawMilliseconds:F2} ms | C3D points {C3DSamplePointCount}");
     }
 
     public void UseC3DHeightDeviationRuleSmokeScene()
@@ -986,6 +1133,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             CultureInfo.InvariantCulture,
             $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}");
     }
+
+    private static string FormatVector(Vector3 point) =>
+        string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

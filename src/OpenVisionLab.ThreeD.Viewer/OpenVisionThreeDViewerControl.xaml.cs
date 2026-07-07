@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -30,6 +31,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private const float FieldOfViewDegrees = 45.0f;
     private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
+    private const string TwoPointSelectionMode = "Two Point Measure";
 
     private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private C3DHeightGrid? c3dSample;
@@ -42,6 +44,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private bool isOrbiting;
     private bool isPanning;
     private string? smokePickTarget;
+    private HeightGridPoint? twoPointFirst;
+    private HeightGridPoint? twoPointSecond;
+    private long lastFrameTimestamp;
+    private int performanceFrameCount;
+    private int performanceDrawCount;
+    private double accumulatedFrameIntervalMilliseconds;
+    private double accumulatedDrawMilliseconds;
     private Point lastMousePosition;
 
     public OpenVisionThreeDViewerControl()
@@ -197,6 +206,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
         }
 
+        var measureIndex = Array.IndexOf(args, "--smoke-measure");
+        if (measureIndex >= 0 && measureIndex + 1 < args.Length)
+        {
+            ApplySmokeMeasure(args[measureIndex + 1]);
+        }
+
         var contractsIndex = Array.IndexOf(args, "--smoke-contracts");
         if (contractsIndex >= 0 && contractsIndex + 1 < args.Length)
         {
@@ -239,6 +254,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void Viewport_OpenGLDraw(object sender, OpenGLRoutedEventArgs args)
     {
+        var drawStart = Stopwatch.GetTimestamp();
+        UpdateFrameInterval(drawStart);
+
         var gl = args.OpenGL;
         gl.Clear(OpenGL.GL_COLOR_BUFFER_BIT | OpenGL.GL_DEPTH_BUFFER_BIT);
 
@@ -272,12 +290,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             InspectionOverlayRenderer.DrawSelectionOverlay(gl, viewModel.SelectedSelectionMode);
         }
 
+        DrawTwoPointMeasurement(gl);
+
         if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
         {
             InspectionOverlayRenderer.DrawResultOverlay(gl, viewModel.C3DSampleVisible);
         }
 
         gl.Flush();
+        UpdateDrawPerformance(drawStart);
     }
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
@@ -288,6 +309,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
         if (e.ChangedButton == MouseButton.Left && !panRequested)
         {
+            if (TryHandleTwoPointPick(lastMousePosition))
+            {
+                RenderNow();
+                return;
+            }
+
             if (TryPickCube(lastMousePosition, out var hit))
             {
                 viewModel.SelectedEntity = "Generated Unit Cube";
@@ -320,6 +347,37 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             isOrbiting = true;
             Viewport.CaptureMouse();
         }
+    }
+
+    private void UpdateFrameInterval(long timestamp)
+    {
+        if (lastFrameTimestamp != 0)
+        {
+            accumulatedFrameIntervalMilliseconds += Stopwatch.GetElapsedTime(lastFrameTimestamp, timestamp).TotalMilliseconds;
+            performanceFrameCount++;
+        }
+
+        lastFrameTimestamp = timestamp;
+    }
+
+    private void UpdateDrawPerformance(long drawStart)
+    {
+        accumulatedDrawMilliseconds += Stopwatch.GetElapsedTime(drawStart).TotalMilliseconds;
+        performanceDrawCount++;
+
+        if (performanceFrameCount < 15 || accumulatedFrameIntervalMilliseconds <= 0.0)
+        {
+            return;
+        }
+
+        var averageFrameInterval = accumulatedFrameIntervalMilliseconds / performanceFrameCount;
+        var averageDraw = accumulatedDrawMilliseconds / Math.Max(1, performanceDrawCount);
+        viewModel.SetRenderPerformance(1000.0 / averageFrameInterval, averageDraw);
+
+        performanceFrameCount = 0;
+        performanceDrawCount = 0;
+        accumulatedFrameIntervalMilliseconds = 0.0;
+        accumulatedDrawMilliseconds = 0.0;
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
@@ -475,12 +533,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
+        await Task.Delay(900);
         if (smokeContractsPath is not null)
         {
             WriteSceneContracts(smokeContractsPath);
         }
 
-        await Task.Delay(900);
         CaptureWindow(smokeScreenshotPath!);
         await Task.Delay(100);
         Application.Current.Shutdown(smokeExitCode);
@@ -524,10 +582,26 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             "box" or "box-roi" => "Box ROI",
             "section" or "section-plane" => "Section Plane",
+            "two-point" or "distance" or "distance-height" => TwoPointSelectionMode,
             _ => "Point"
         };
 
+        if (selectionMode == TwoPointSelectionMode)
+        {
+            ApplySmokeTwoPointMeasurement();
+            return;
+        }
+
         viewModel.UseSelectionSmokeScene(selectionMode);
+    }
+
+    private void ApplySmokeMeasure(string measure)
+    {
+        if (measure.Equals("two-point", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("distance-height", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokeTwoPointMeasurement();
+        }
     }
 
     private void ApplySmokeOverlay(string overlay)
@@ -704,6 +778,26 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
     }
 
+    private void ApplySmokeTwoPointMeasurement()
+    {
+        if (c3dSample is null || c3dSample.Points.Length < 2)
+        {
+            viewModel.ViewerStatus = "Smoke measure failed: C3D sample missing";
+            return;
+        }
+
+        viewModel.UseC3DSmokeScene();
+        viewModel.SelectedSelectionMode = TwoPointSelectionMode;
+        viewModel.SelectionOverlayVisible = true;
+
+        var first = c3dSample.Points.MinBy(point => point.RawValue);
+        var second = c3dSample.Points.MaxBy(point => point.RawValue);
+        SetTwoPointMeasurement(first, second);
+        viewModel.SelectedEntity = "Two Point Measurement";
+        viewModel.PickCoordinate = FormatC3DPoint(second);
+        viewModel.ViewerStatus = "Smoke measure: two-point distance and height delta";
+    }
+
     private void ConfigureProjection(OpenGL gl)
     {
         var width = Math.Max(1, (int)Viewport.ActualWidth);
@@ -772,6 +866,36 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.Vertex(0.0, 0.0, 2.3);
 
         gl.End();
+    }
+
+    private void DrawTwoPointMeasurement(OpenGL gl)
+    {
+        if (twoPointFirst is not { } first || twoPointSecond is not { } second)
+        {
+            return;
+        }
+
+        gl.LineWidth(3.0f);
+        gl.Begin(OpenGL.GL_LINES);
+
+        gl.Color(1.0, 0.72, 0.10);
+        gl.Vertex(first.Position.X, first.Position.Y, first.Position.Z);
+        gl.Vertex(second.Position.X, second.Position.Y, second.Position.Z);
+
+        gl.Color(0.20, 0.95, 0.45);
+        gl.Vertex(second.Position.X, first.Position.Y, second.Position.Z);
+        gl.Vertex(second.Position.X, second.Position.Y, second.Position.Z);
+
+        gl.End();
+
+        gl.PointSize(8.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(1.0, 1.0, 1.0);
+        gl.Vertex(first.Position.X, first.Position.Y, first.Position.Z);
+        gl.Color(1.0, 0.72, 0.10);
+        gl.Vertex(second.Position.X, second.Position.Y, second.Position.Z);
+        gl.End();
+        gl.PointSize(1.0f);
     }
 
     private void DrawCube(OpenGL gl)
@@ -945,6 +1069,44 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         return bestDistance <= maxDistance;
+    }
+
+    private bool TryHandleTwoPointPick(Point screenPoint)
+    {
+        if (viewModel.SelectedSelectionMode != TwoPointSelectionMode)
+        {
+            return false;
+        }
+
+        if (!TryPickC3DPoint(screenPoint, out var point))
+        {
+            viewModel.SelectedEntity = "Two Point Measurement";
+            viewModel.PickCoordinate = "(none)";
+            viewModel.ViewerStatus = "Two-point pick missed C3D height grid";
+            return true;
+        }
+
+        if (twoPointFirst is null || twoPointSecond is not null)
+        {
+            twoPointFirst = point;
+            twoPointSecond = null;
+            viewModel.SetTwoPointMeasurementStart(point.Position, point.RawValue);
+        }
+        else
+        {
+            SetTwoPointMeasurement(twoPointFirst.Value, point);
+        }
+
+        viewModel.SelectedEntity = "Two Point Measurement";
+        viewModel.PickCoordinate = FormatC3DPoint(point);
+        return true;
+    }
+
+    private void SetTwoPointMeasurement(HeightGridPoint first, HeightGridPoint second)
+    {
+        twoPointFirst = first;
+        twoPointSecond = second;
+        viewModel.SetTwoPointMeasurement(first.Position, first.RawValue, second.Position, second.RawValue);
     }
 
     private (Vector3 origin, Vector3 direction) CreatePickRay(Point screenPoint)
@@ -1190,6 +1352,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private void ReloadDefaultC3DSample()
     {
         c3dSample = LoadDefaultC3DSample();
+        twoPointFirst = null;
+        twoPointSecond = null;
+        viewModel.ClearTwoPointMeasurement();
         SetC3DSampleStatus();
         ConfigureC3DHeightDeviationRule();
     }
@@ -1242,6 +1407,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add("RenderControls");
         lines.Add($"PointSize|value={viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture)}");
         lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|summary={viewModel.RenderDensitySummary}");
+        lines.Add("ViewerInternalHud");
+        lines.Add($"CoordinateFrame|visible=True|summary={CleanContractText(viewModel.CoordinateFrameSummary)}");
+        lines.Add($"SelectionMode|value={viewModel.SelectedSelectionMode}");
+        lines.Add($"PickCoordinate|value={CleanContractText(viewModel.PickCoordinate)}");
+        lines.Add($"Performance|fps={FormatContractNumber(viewModel.ViewportFps)}|drawMs={FormatContractNumber(viewModel.ViewportDrawMilliseconds)}|summary={CleanContractText(viewModel.PerformanceSummary)}");
+        lines.Add("TwoPointMeasurement");
+        lines.Add($"TwoPoint|visible={viewModel.TwoPointMeasurementVisible}|distance={FormatContractNumber(viewModel.TwoPointDistance)}|dx={FormatContractNumber(viewModel.TwoPointDeltaX)}|dy={FormatContractNumber(viewModel.TwoPointDeltaY)}|dz={FormatContractNumber(viewModel.TwoPointDeltaZ)}|heightDeltaRaw={FormatContractNumber(viewModel.TwoPointRawHeightDelta)}|summary={CleanContractText(viewModel.TwoPointMeasurementDetails)}");
         lines.Add("RecipeState");
         lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
         lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
@@ -1267,6 +1439,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private static string FormatC3DPoint(HeightGridPoint point) =>
         string.Create(CultureInfo.InvariantCulture, $"{CameraMath.FormatPoint(point.Position)} | raw {point.RawValue:F3}");
+
+    private static string FormatContractNumber(double value) =>
+        double.IsFinite(value) ? value.ToString("F3", CultureInfo.InvariantCulture) : "(pending)";
+
+    private static string CleanContractText(string value) => value.Replace('|', '/').Replace(Environment.NewLine, " ");
 
     private static void Quad(OpenGL gl, (double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) c, (double X, double Y, double Z) d)
     {
