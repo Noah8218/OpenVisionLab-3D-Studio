@@ -68,64 +68,72 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (smokeIndex >= 0 && smokeIndex + 1 < args.Length)
         {
             smokeScreenshotPath = args[smokeIndex + 1];
-            var sceneIndex = Array.IndexOf(args, "--smoke-scene");
-            if (sceneIndex >= 0 && sceneIndex + 1 < args.Length && args[sceneIndex + 1].Equals("pointcloud", StringComparison.OrdinalIgnoreCase))
-            {
-                viewModel.UsePointCloudSmokeScene();
-            }
+        }
 
-            var c3dIndex = Array.IndexOf(args, "--smoke-c3d");
-            if (c3dIndex >= 0)
-            {
-                ApplySmokeC3D();
-            }
-
-            var actionIndex = Array.IndexOf(args, "--smoke-action");
-            if (actionIndex >= 0 && actionIndex + 1 < args.Length)
-            {
-                ApplySmokeAction(args[actionIndex + 1]);
-            }
-
-            var selectionIndex = Array.IndexOf(args, "--smoke-selection");
-            if (selectionIndex >= 0 && selectionIndex + 1 < args.Length)
-            {
-                ApplySmokeSelection(args[selectionIndex + 1]);
-            }
-
-            var overlayIndex = Array.IndexOf(args, "--smoke-overlay");
-            if (overlayIndex >= 0 && overlayIndex + 1 < args.Length)
-            {
-                ApplySmokeOverlay(args[overlayIndex + 1]);
-            }
-
-            var ruleIndex = Array.IndexOf(args, "--smoke-rule");
-            if (ruleIndex >= 0 && ruleIndex + 1 < args.Length)
-            {
-                ApplySmokeRule(args[ruleIndex + 1]);
-            }
-
-            var recipeIndex = Array.IndexOf(args, "--smoke-recipe");
-            if (recipeIndex >= 0 && recipeIndex + 1 < args.Length)
-            {
-                ApplySmokeRecipe(args[recipeIndex + 1]);
-            }
-
-            var pickIndex = Array.IndexOf(args, "--smoke-pick");
-            if (pickIndex >= 0 && pickIndex + 1 < args.Length)
-            {
-                smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
-            }
-
-            var contractsIndex = Array.IndexOf(args, "--smoke-contracts");
-            if (contractsIndex >= 0 && contractsIndex + 1 < args.Length)
-            {
-                smokeContractsPath = args[contractsIndex + 1];
-            }
-
-            smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
-
+        ApplySmokeArguments(args);
+        if (smokeScreenshotPath is not null)
+        {
             Loaded += SmokeCaptureOnLoaded;
         }
+    }
+
+    private void ApplySmokeArguments(string[] args)
+    {
+        var sceneIndex = Array.IndexOf(args, "--smoke-scene");
+        if (sceneIndex >= 0 && sceneIndex + 1 < args.Length && args[sceneIndex + 1].Equals("pointcloud", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.UsePointCloudSmokeScene();
+        }
+
+        var c3dIndex = Array.IndexOf(args, "--smoke-c3d");
+        if (c3dIndex >= 0)
+        {
+            ApplySmokeC3D();
+        }
+
+        var actionIndex = Array.IndexOf(args, "--smoke-action");
+        if (actionIndex >= 0 && actionIndex + 1 < args.Length)
+        {
+            ApplySmokeAction(args[actionIndex + 1]);
+        }
+
+        var selectionIndex = Array.IndexOf(args, "--smoke-selection");
+        if (selectionIndex >= 0 && selectionIndex + 1 < args.Length)
+        {
+            ApplySmokeSelection(args[selectionIndex + 1]);
+        }
+
+        var overlayIndex = Array.IndexOf(args, "--smoke-overlay");
+        if (overlayIndex >= 0 && overlayIndex + 1 < args.Length)
+        {
+            ApplySmokeOverlay(args[overlayIndex + 1]);
+        }
+
+        var ruleIndex = Array.IndexOf(args, "--smoke-rule");
+        if (ruleIndex >= 0 && ruleIndex + 1 < args.Length)
+        {
+            ApplySmokeRule(args[ruleIndex + 1]);
+        }
+
+        var recipeIndex = Array.IndexOf(args, "--smoke-recipe");
+        if (recipeIndex >= 0 && recipeIndex + 1 < args.Length)
+        {
+            ApplySmokeRecipe(args[recipeIndex + 1]);
+        }
+
+        var pickIndex = Array.IndexOf(args, "--smoke-pick");
+        if (pickIndex >= 0 && pickIndex + 1 < args.Length)
+        {
+            smokePickTarget = args[pickIndex + 1].ToLowerInvariant();
+        }
+
+        var contractsIndex = Array.IndexOf(args, "--smoke-contracts");
+        if (contractsIndex >= 0 && contractsIndex + 1 < args.Length)
+        {
+            smokeContractsPath = args[contractsIndex + 1];
+        }
+
+        smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
     }
 
     private void Viewport_OpenGLInitialized(object sender, OpenGLRoutedEventArgs args)

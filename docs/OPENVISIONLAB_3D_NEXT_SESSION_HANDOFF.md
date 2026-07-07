@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, and replays/compares that rule through a non-UI recipe runner.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, replays/compares that rule through a non-UI recipe runner, and shows the latest persisted Shell recipe comparison evidence.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -50,6 +50,8 @@ Completed in the first implementation slice:
 - The C3D height deviation rule evaluates the local `3D/Thickness` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
 - First recipe and runner path are in place: `recipes/c3d-height-deviation.recipe.json` and `src/OpenVisionLab.ThreeD.Runner` replay the rule outside the UI and write `artifacts/runner_c3d_height_rule_after.txt`.
 - Viewer and Shell smoke can load the JSON recipe with `--smoke-recipe`; the shared Viewer toolbar exposes `Open Recipe` for manual JSON selection; Runner can compare its result against UI contracts with `--compare-contract`.
+- Shell now has a docked `Recipe Comparison` pane. It reads persisted UI contract and runner report artifacts, shows status/peak-deviation comparison, and can be refreshed without coupling Shell to Runner internals.
+- Shell-wide screenshot evidence now uses `--shell-smoke-screenshot`; existing `--smoke-screenshot` remains the embedded Viewer capture path.
 
 Local sample data now exists:
 
@@ -60,11 +62,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay contract-first now that the first recipe can replay, compare outside the UI, and load through a visible command:
+Next implementation should stay contract-first now that the first recipe can replay, compare outside the UI, load through a visible command, and display persisted comparison evidence:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add the first persisted recipe history/result comparison view so a loaded recipe can be reviewed against runner output and previous UI contract evidence.
-3. Add a minimal recipe save/edit path only after the history/comparison state is visible and verified.
+2. Add a minimal recipe save/edit path so the visible loaded rule can produce a new JSON recipe intentionally.
+3. Add a real run-history list only after there are at least two user-created recipe runs to compare.
 
 ## Remaining Project Priority
 
@@ -78,7 +80,7 @@ After the viewer completion gate, define and implement the 3D core contracts:
 - tool result,
 - recipe step.
 
-Then make recipe load/save/replay reviewable in the Shell workflow before adding more tools.
+Then make recipe save/replay reviewable in the Shell workflow before adding more tools.
 
 ## Evidence Already Gathered
 
@@ -124,6 +126,8 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_ui_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_ui_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_ui_compare_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_ui_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_compare_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_comparison_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_comparison_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_recipe_comparison_after.txt --recipe-comparison-report artifacts\runner_shell_recipe_comparison_after.txt --shell-smoke-screenshot artifacts\shell_recipe_comparison_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -155,11 +159,15 @@ Build and smoke evidence:
 - Shell recipe-loaded height rule smoke report: `artifacts\shell_recipe_height_rule_after.txt`
 - Shell visible recipe UI after screenshot: `artifacts\shell_recipe_ui_after.png`
 - Shell visible recipe UI smoke report: `artifacts\shell_recipe_ui_after.txt`
+- Shell recipe comparison closest-before screenshot: `artifacts\shell_recipe_comparison_before.png`
+- Shell recipe comparison full-window after screenshot: `artifacts\shell_recipe_comparison_after.png`
+- Shell recipe comparison smoke report: `artifacts\shell_recipe_comparison_after.txt`
 - Runner C3D height rule report: `artifacts\runner_c3d_height_rule_after.txt`
 - Runner-to-viewer compare report: `artifacts\runner_recipe_compare_after.txt`
 - Runner-to-viewer visible recipe UI compare report: `artifacts\runner_recipe_ui_compare_after.txt`
 - Runner-to-shell compare report: `artifacts\runner_shell_recipe_compare_after.txt`
 - Runner-to-shell visible recipe UI compare report: `artifacts\runner_shell_recipe_ui_compare_after.txt`
+- Runner-to-shell recipe comparison report: `artifacts\runner_shell_recipe_comparison_after.txt`
 
 ## Guardrails
 

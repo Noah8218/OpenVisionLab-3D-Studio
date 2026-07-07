@@ -27,6 +27,70 @@
             </Grid>
         </Border>
 
-        <dock:OpenVisionDockWorkspaceView x:Name="Workspace" />
+        <dock:OpenVisionDockWorkspaceView x:Name="Workspace">
+            <dock:OpenVisionDockWorkspaceView.RecipeComparisonContent>
+                <Border Background="#ffffff"
+                        BorderBrush="#d1d5db"
+                        BorderThickness="0,1,0,0"
+                        Padding="12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       Text="Recipe Comparison" />
+                            <Button Grid.Column="1"
+                                    MinWidth="78"
+                                    Padding="10,4"
+                                    Content="Refresh"
+                                    Click="RefreshRecipeComparison_Click" />
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Foreground="#6b7280" Text="Latest Result" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontWeight="SemiBold"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding RecipeComparisonSummary}" />
+                                    <TextBlock Margin="0,12,0,0"
+                                               Foreground="#6b7280"
+                                               Text="Persisted Evidence" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding RecipeComparisonHistory}" />
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <ScrollViewer Grid.Column="2"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                                <TextBlock FontFamily="Consolas"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeComparisonDetails}" />
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </dock:OpenVisionDockWorkspaceView.RecipeComparisonContent>
+        </dock:OpenVisionDockWorkspaceView>
     </DockPanel>
 </Window>

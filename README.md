@@ -24,11 +24,14 @@ The current viewer MVP can:
 - Publish preview results into an explicit result entity/layer without mutating source geometry.
 - Open a JSON C3D height deviation recipe from the Viewer/Shell UI and show the loaded recipe source/tolerance beside the preview result.
 - Replay the C3D height deviation rule from a JSON recipe through the non-UI runner.
+- Show the latest persisted Shell recipe comparison evidence from UI contract and runner report artifacts.
 - Capture screenshot smoke artifacts from the running app.
 
 Still not included: general 3D data import beyond the first recipe source, external mesh import, CAD import, multi-step recipes, and runner-driven screenshots.
 
 ## Build And Smoke
+
+`--smoke-screenshot` captures the embedded Viewer control. Use `--shell-smoke-screenshot` when the evidence must include Shell docking panes.
 
 ```powershell
 dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug
@@ -55,6 +58,8 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_height_rule_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_ui_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_ui_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_ui_compare_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_ui_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_comparison_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_comparison_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_recipe_comparison_after.txt --recipe-comparison-report artifacts\runner_shell_recipe_comparison_after.txt --shell-smoke-screenshot artifacts\shell_recipe_comparison_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json
 ```
 
 ## Document Map
@@ -74,7 +79,7 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 
 ## Shell Direction
 
-The SharpGL viewer stays as a separate 3D viewer project. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable viewer control, `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock integration, and `src/OpenVisionLab.ThreeD.Shell` hosts the viewer through those wrapper projects. Following `C:\Git\OpenVisionLab_Dev`, the Shell app owns the `WPF-UI` package and theme dictionaries; Viewer and Docking.Controls do not reference `WPF-UI` directly. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
+The SharpGL viewer stays as a separate 3D viewer project. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable viewer control, `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock integration and content slots, and `src/OpenVisionLab.ThreeD.Shell` hosts the viewer plus the recipe comparison tool pane through those wrapper projects. Following `C:\Git\OpenVisionLab_Dev`, the Shell app owns the `WPF-UI` package and theme dictionaries; Viewer and Docking.Controls do not reference `WPF-UI` directly. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
 
 ## First Principle
 

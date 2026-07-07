@@ -15,9 +15,9 @@ This repository contains the initial operating documents and the first SharpGL W
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
 | `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here. |
 | `src/OpenVisionLab.ThreeD.Data/` | Exists | Shared non-UI C3D height-grid loader used by Viewer and Runner. |
-| `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference so the Shell app does not use raw docking APIs directly. |
+| `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference and exposes content slots so the Shell app does not use raw docking APIs directly. |
 | `src/OpenVisionLab.ThreeD.Runner/` | Exists | Non-UI recipe runner for replaying the first C3D height deviation recipe and writing a report. |
-| `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and the separate 3D viewer module. Owns app-level `WPF-UI` package/theme resources. |
+| `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper, the separate 3D viewer module, and the first recipe comparison pane. Owns app-level `WPF-UI` package/theme resources. |
 | `src/OpenVisionLab.ThreeD.Tools/` | Exists | First rule-tool library. Contains the sample-backed C3D height deviation rule and JSON recipe model. Depends on Core, not WPF or SharpGL. |
 | `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
@@ -70,8 +70,8 @@ Create these folders only when implementation begins.
 - Core code owns units, transforms, entity identity, layer identity, metrics, overlays, and result status.
 - Tool code owns rule parameters, recipe shape, and algorithm execution.
 - Runner code owns non-UI recipe replay and report writing.
-- App shell owns workflow composition, visible commands, and app-level `WPF-UI` theme resources.
-- Docking code owns docking package integration and layout behavior; the app shell should consume wrapper APIs.
+- App shell owns workflow composition, visible commands, recipe comparison display state, and app-level `WPF-UI` theme resources.
+- Docking code owns docking package integration, layout behavior, and content slots; the app shell should consume wrapper APIs.
 - Keep the SharpGL viewer separate from the main shell so the viewer can be developed and tested independently.
 - Keep `WPF-UI` out of Viewer and Docking.Controls unless a reusable control has a direct, proven need for it.
 - Treat .NET 10 migration as a separate compatibility pass across WPF, SharpGL, docking, and vendored DLL/runtime dependencies.

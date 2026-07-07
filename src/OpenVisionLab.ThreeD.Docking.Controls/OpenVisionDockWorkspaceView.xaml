@@ -10,13 +10,22 @@
                                    BorderBrush="#d1d5db"
                                    BorderThickness="1">
             <avalonDock:LayoutRoot>
-                <avalonDock:LayoutPanel Orientation="Horizontal">
+                <avalonDock:LayoutPanel Orientation="Vertical">
                     <avalonDock:LayoutAnchorablePane x:Name="primaryPane">
                         <avalonDock:LayoutAnchorable Title="3D Viewer"
                                                      ContentId="three-d-viewer"
                                                      CanClose="False"
                                                      CanFloat="False">
                             <ContentPresenter Content="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                    </avalonDock:LayoutAnchorablePane>
+                    <avalonDock:LayoutAnchorablePane x:Name="recipeComparisonPane"
+                                                     DockHeight="230">
+                        <avalonDock:LayoutAnchorable Title="Recipe Comparison"
+                                                     ContentId="recipe-comparison"
+                                                     CanClose="False"
+                                                     CanFloat="False">
+                            <ContentPresenter Content="{Binding RecipeComparisonContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
                     </avalonDock:LayoutAnchorablePane>
                 </avalonDock:LayoutPanel>
