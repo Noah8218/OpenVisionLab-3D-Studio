@@ -22,9 +22,10 @@ The current viewer MVP can:
 - Draw viewer-only measurement and result overlays.
 - Run the first sample-backed C3D height deviation rule with metrics and result overlays.
 - Publish preview results into an explicit result entity/layer without mutating source geometry.
+- Replay the C3D height deviation rule from a JSON recipe through the non-UI runner.
 - Capture screenshot smoke artifacts from the running app.
 
-Still not included: general file-open import, external mesh import, CAD import, persisted recipes, and headless rule execution.
+Still not included: general file-open import, external mesh import, CAD import, multi-step recipes, and runner-driven screenshots.
 
 ## Build And Smoke
 
@@ -45,6 +46,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_c3d_height_rule_after.txt --expect-status Fail
 ```
 
 ## Document Map
@@ -60,7 +62,7 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 
 ## Core Contracts
 
-`src/OpenVisionLab.ThreeD.Core` contains the first source/result/layer/metric/overlay contracts. `src/OpenVisionLab.ThreeD.Tools` contains the first sample-backed C3D height deviation rule. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable SharpGL viewer control, viewer UI, render loop, data/rendering/state helpers, and screenshot smoke path. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; synthetic and C3D rule previews can be explicitly published into a `ResultEntity` and result layer.
+`src/OpenVisionLab.ThreeD.Core` contains the first source/result/layer/metric/overlay contracts. `src/OpenVisionLab.ThreeD.Data` contains the shared C3D height-grid loader. `src/OpenVisionLab.ThreeD.Tools` contains the first sample-backed C3D height deviation rule and recipe model. `src/OpenVisionLab.ThreeD.Runner` replays that recipe outside the UI. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable SharpGL viewer control, viewer UI, render loop, rendering state helpers, and screenshot smoke path.
 
 ## Shell Direction
 

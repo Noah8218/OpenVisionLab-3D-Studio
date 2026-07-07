@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Platform Direction
 
-Updated: 2026-07-06
+Updated: 2026-07-07
 
 OpenVisionLab 3D Studio should become a rule-based 3D inspection workbench. The first deliverable is not a full inspection platform; it is a reliable 3D viewer that can support measurable validation. 3D algorithm development starts after the viewer completion gate passes.
 
@@ -129,6 +129,7 @@ No 3D algorithm feature work should start before this gate is stable.
 - Save/load the first recipe format.
 - Run the same rule outside the UI.
 - Produce a machine-readable report with metrics and screenshot path.
+- Current first slice saves the C3D height deviation parameters as JSON and replays them through `OpenVisionLab.ThreeD.Runner`; runner-driven screenshots are still future work.
 
 ### Phase 6: Format And Algorithm Expansion
 

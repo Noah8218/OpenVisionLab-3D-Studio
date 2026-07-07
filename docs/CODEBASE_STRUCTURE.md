@@ -14,13 +14,16 @@ This repository contains the initial operating documents and the first SharpGL W
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
 | `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here. |
+| `src/OpenVisionLab.ThreeD.Data/` | Exists | Shared non-UI C3D height-grid loader used by Viewer and Runner. |
 | `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference so the Shell app does not use raw docking APIs directly. |
+| `src/OpenVisionLab.ThreeD.Runner/` | Exists | Non-UI recipe runner for replaying the first C3D height deviation recipe and writing a report. |
 | `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and the separate 3D viewer module. Owns app-level `WPF-UI` package/theme resources. |
-| `src/OpenVisionLab.ThreeD.Tools/` | Exists | First rule-tool library. Contains the sample-backed C3D height deviation rule and depends on Core, not WPF or SharpGL. |
-| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, C3D reader, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. |
+| `src/OpenVisionLab.ThreeD.Tools/` | Exists | First rule-tool library. Contains the sample-backed C3D height deviation rule and JSON recipe model. Depends on Core, not WPF or SharpGL. |
+| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
+| `recipes/` | Exists | Local recipe samples for runner smoke. |
 
-There is a minimal core contract library, first tool library, docking wrapper, shell app, and hostable viewer control. There is no test project yet.
+There is a minimal core contract library, shared data loader, first tool library, runner, docking wrapper, shell app, and hostable viewer control. There is no test project yet.
 
 ## 2. Reference Repository
 
@@ -63,8 +66,10 @@ Create these folders only when implementation begins.
 ## 5. Ownership Rules
 
 - Viewer code owns rendering, camera, picking, hit testing, viewer data loading, viewer state, and screenshot capture.
+- Data code owns shared file parsing that must run both inside and outside the UI.
 - Core code owns units, transforms, entity identity, layer identity, metrics, overlays, and result status.
-- Tool code owns rule parameters and algorithm execution.
+- Tool code owns rule parameters, recipe shape, and algorithm execution.
+- Runner code owns non-UI recipe replay and report writing.
 - App shell owns workflow composition, visible commands, and app-level `WPF-UI` theme resources.
 - Docking code owns docking package integration and layout behavior; the app shell should consume wrapper APIs.
 - Keep the SharpGL viewer separate from the main shell so the viewer can be developed and tested independently.

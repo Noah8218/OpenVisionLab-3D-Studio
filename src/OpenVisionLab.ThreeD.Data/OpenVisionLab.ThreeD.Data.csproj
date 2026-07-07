@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OpenVisionLab.ThreeD.Data</RootNamespace>
+    <AssemblyName>OpenVisionLab.ThreeD.Data</AssemblyName>
+  </PropertyGroup>
+
+</Project>

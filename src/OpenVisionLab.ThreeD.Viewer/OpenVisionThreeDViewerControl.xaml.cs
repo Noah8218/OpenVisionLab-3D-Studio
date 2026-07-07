@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OpenVisionLab.ThreeD.Viewer.Data;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -21,7 +21,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
 
-    private readonly ViewerPoint[] generatedPointCloud = CreateGeneratedPointCloud();
+    private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private readonly C3DHeightGrid? c3dSample;
     private string? smokeScreenshotPath;
     private string? smokeContractsPath;
@@ -580,7 +580,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.End();
     }
 
-    private void DrawPointCloud(OpenGL gl, IReadOnlyList<ViewerPoint> points)
+    private void DrawPointCloud(OpenGL gl, IReadOnlyList<HeightGridPoint> points)
     {
         gl.PointSize(3.0f);
         gl.Begin(OpenGL.GL_POINTS);
@@ -639,7 +639,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.End();
     }
 
-    private void ApplyPointColor(OpenGL gl, ViewerPoint point)
+    private void ApplyPointColor(OpenGL gl, HeightGridPoint point)
     {
         var (r, g, b) = viewModel.SelectedColorMode switch
         {
@@ -670,7 +670,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         return true;
     }
 
-    private bool TryPickC3DPoint(Point screenPoint, out ViewerPoint hit)
+    private bool TryPickC3DPoint(Point screenPoint, out HeightGridPoint hit)
     {
         hit = default;
 
@@ -843,7 +843,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         File.WriteAllLines(path, lines);
     }
 
-    private static string FormatC3DPoint(ViewerPoint point) =>
+    private static string FormatC3DPoint(HeightGridPoint point) =>
         string.Create(CultureInfo.InvariantCulture, $"{CameraMath.FormatPoint(point.Position)} | raw {point.RawValue:F3}");
 
     private static void Quad(OpenGL gl, (double X, double Y, double Z) a, (double X, double Y, double Z) b, (double X, double Y, double Z) c, (double X, double Y, double Z) d)
@@ -860,11 +860,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.Vertex(b.X, b.Y, b.Z);
     }
 
-    private static ViewerPoint[] CreateGeneratedPointCloud()
+    private static HeightGridPoint[] CreateGeneratedPointCloud()
     {
         const int columns = 55;
         const int rows = 41;
-        var points = new ViewerPoint[columns * rows];
+        var points = new HeightGridPoint[columns * rows];
         var index = 0;
 
         for (var row = 0; row < rows; row++)
@@ -880,7 +880,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 var position = new Vector3(localX + 3.2f, y, z);
                 var heightScalar = Clamp01((y + 1.05) / 0.86);
                 var deviationScalar = Clamp01(Math.Abs(bump + dent) / 0.42);
-                points[index++] = new ViewerPoint(position, heightScalar, deviationScalar, y);
+                points[index++] = new HeightGridPoint(position, heightScalar, deviationScalar, y);
             }
         }
 

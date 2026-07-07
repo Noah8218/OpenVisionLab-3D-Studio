@@ -1,0 +1,13 @@
+{
+  "recipeType": "c3d-height-deviation",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "C3D Thickness Sample",
+    "path": "../3D/Thickness/Ori_20240116_094414.C3D",
+    "unit": "raw-height"
+  },
+  "rule": {
+    "peakTolerance": 1200.0
+  }
+}

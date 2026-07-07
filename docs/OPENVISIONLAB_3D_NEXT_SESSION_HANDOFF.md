@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, and the first sample-backed C3D height deviation rule result.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, and replays that rule through a non-UI recipe runner.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -35,19 +35,20 @@ Completed in the first implementation slice:
 - Screenshot smoke command for the result overlay scene.
 - MVVM target recorded in `AGENTS.md`; durable viewer state is in `OpenVisionLab.ThreeD.Viewer\ViewModels\MainWindowViewModel`, and shell status state is in `ShellMainWindowViewModel`.
 - Camera/picking math and measurement/selection/result overlay drawing are split into small `Rendering` support classes.
-- Minimal inferred-layout C3D reader is in `src/OpenVisionLab.ThreeD.Viewer/Data/`.
+- Minimal inferred-layout C3D reader is now shared in `src/OpenVisionLab.ThreeD.Data/`.
 - Minimal source/result/layer/metric/overlay/tool-result contracts are in `src/OpenVisionLab.ThreeD.Core/`.
 - Viewer sample state is wired to core `SourceEntity` and `EntityLayer` contracts without changing rendering behavior.
 - Result overlay scene now exposes a viewer-only synthetic `ToolResult` preview with metrics and overlays.
 - Synthetic preview can now be explicitly published into a separate `ResultEntity` and `LayerKind.Result` layer.
 - Minimal shell/docking boundary is in place: `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock and `src/OpenVisionLab.ThreeD.Shell` consumes only that wrapper.
 - Minimal hostable viewer boundary is in place: `src/OpenVisionLab.ThreeD.Viewer` owns a SharpGL `UserControl`, and Shell hosts it inside the docking document slot.
-- Viewer-owned C3D reader, camera/picking/rendering helpers, and viewer ViewModel state have moved from `OpenVisionLab.ThreeDStudio` into `OpenVisionLab.ThreeD.Viewer`.
+- Camera/picking/rendering helpers and viewer ViewModel state have moved from `OpenVisionLab.ThreeDStudio` into `OpenVisionLab.ThreeD.Viewer`; C3D parsing moved into `OpenVisionLab.ThreeD.Data` so Runner can reuse it.
 - The richer Studio render loop and viewer UI are now hosted by `OpenVisionLab.ThreeD.Viewer`; `OpenVisionLab.ThreeDStudio` is a thin standalone host.
 - Dev's WPF UI library boundary is mirrored: `src/OpenVisionLab.ThreeD.Shell` owns `WPF-UI` and app theme resources, while `OpenVisionLab.ThreeD.Viewer` keeps SharpGL/viewer concerns and `OpenVisionLab.ThreeD.Docking.Controls` keeps AvalonDock concerns.
 - Shell smoke now delegates to the embedded `OpenVisionThreeDViewerControl`, so Shell can exercise the same C3D/result overlay smoke scenes as the standalone Studio host.
-- First rule-tool library is in place: `src/OpenVisionLab.ThreeD.Tools` owns `HeightDeviationRule` and depends only on Core.
+- First rule-tool library is in place: `src/OpenVisionLab.ThreeD.Tools` owns `HeightDeviationRule` and `HeightDeviationRecipe`, and does not depend on WPF or SharpGL.
 - The C3D height deviation rule evaluates the local `3D/Thickness` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
+- First recipe and runner path are in place: `recipes/c3d-height-deviation.recipe.json` and `src/OpenVisionLab.ThreeD.Runner` replay the rule outside the UI and write `artifacts/runner_c3d_height_rule_after.txt`.
 
 Local sample data now exists:
 
@@ -58,11 +59,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay contract-first now that the first sample-backed rule is visible:
+Next implementation should stay contract-first now that the first recipe can replay outside the UI:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add recipe serialization for the C3D height deviation rule parameters and result contract.
-3. Add a runner path for that one rule outside the UI.
+2. Add a Shell/Viewer command path to load the JSON recipe and show the runner-equivalent result in the UI.
+3. Add a tiny regression check comparing UI smoke result values to runner report values.
 
 ## Remaining Project Priority
 
@@ -76,7 +77,7 @@ After the viewer completion gate, define and implement the 3D core contracts:
 - tool result,
 - recipe step.
 
-Then serialize and replay the first sample-backed rule outside the UI before adding more tools.
+Then connect recipe loading to the Shell workflow before adding more tools.
 
 ## Evidence Already Gathered
 
@@ -113,6 +114,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_c3d_height_rule_after.txt --expect-status Fail`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -135,6 +137,7 @@ Build and smoke evidence:
 - Shell result overlay smoke report: `artifacts\shell_result_overlay_after.txt`
 - Shell C3D height rule after screenshot: `artifacts\shell_height_rule_after.png`
 - Shell C3D height rule smoke report: `artifacts\shell_height_rule_after.txt`
+- Runner C3D height rule report: `artifacts\runner_c3d_height_rule_after.txt`
 
 ## Guardrails
 

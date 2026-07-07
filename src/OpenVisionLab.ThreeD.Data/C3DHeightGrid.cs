@@ -1,7 +1,7 @@
 using System.IO;
 using System.Numerics;
 
-namespace OpenVisionLab.ThreeD.Viewer.Data;
+namespace OpenVisionLab.ThreeD.Data;
 
 public sealed class C3DHeightGrid
 {
@@ -14,7 +14,7 @@ public sealed class C3DHeightGrid
         float min,
         float max,
         double mean,
-        ViewerPoint[] points)
+        HeightGridPoint[] points)
     {
         SourcePath = sourcePath;
         Width = width;
@@ -46,7 +46,7 @@ public sealed class C3DHeightGrid
 
     public double Mean { get; }
 
-    public ViewerPoint[] Points { get; }
+    public HeightGridPoint[] Points { get; }
 
     public float XHalfExtent { get; }
 
@@ -99,14 +99,15 @@ public sealed class C3DHeightGrid
         }
 
         var mean = sum / validCount;
-        var stride = Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints)));
-        var points = CreatePoints(samples, width, height, stride, min, max, mean);
+        var points = maxRenderedPoints <= 0
+            ? []
+            : CreatePoints(samples, width, height, Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints))), min, max, mean);
         return new C3DHeightGrid(path, width, height, validCount, zeroCount, min, max, mean, points);
     }
 
-    private static ViewerPoint[] CreatePoints(float[] samples, int width, int height, int stride, float min, float max, double mean)
+    private static HeightGridPoint[] CreatePoints(float[] samples, int width, int height, int stride, float min, float max, double mean)
     {
-        var points = new List<ViewerPoint>();
+        var points = new List<HeightGridPoint>();
         var xyScale = 10.0f / Math.Max(width - 1, height - 1);
         var yScale = 0.0006f;
         var centerX = (width - 1) / 2.0f;
@@ -129,7 +130,7 @@ public sealed class C3DHeightGrid
                 var z = (row - centerZ) * xyScale;
                 var heightScalar = Math.Clamp((value - min) / colorSpan, 0.0, 1.0);
                 var deviationScalar = Math.Clamp(Math.Abs(value - mean) / deviationSpan, 0.0, 1.0);
-                points.Add(new ViewerPoint(new Vector3(x, y, z), heightScalar, deviationScalar, value));
+                points.Add(new HeightGridPoint(new Vector3(x, y, z), heightScalar, deviationScalar, value));
             }
         }
 
@@ -137,4 +138,4 @@ public sealed class C3DHeightGrid
     }
 }
 
-public readonly record struct ViewerPoint(Vector3 Position, double HeightScalar, double DeviationScalar, float RawValue);
+public readonly record struct HeightGridPoint(Vector3 Position, double HeightScalar, double DeviationScalar, float RawValue);
