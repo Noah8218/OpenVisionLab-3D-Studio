@@ -31,9 +31,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
 
     private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
-    private readonly C3DHeightGrid? c3dSample;
+    private C3DHeightGrid? c3dSample;
     private string? smokeScreenshotPath;
     private string? smokeContractsPath;
+    private string? smokeSaveRecipePath;
     private bool smokePublishResult;
     private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
@@ -58,11 +59,23 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 or nameof(MainWindowViewModel.C3DSampleVisible)
                 or nameof(MainWindowViewModel.MeasurementVisible)
                 or nameof(MainWindowViewModel.SelectedColorMode)
+                or nameof(MainWindowViewModel.PointSize)
+                or nameof(MainWindowViewModel.RecipePeakTolerance)
                 or nameof(MainWindowViewModel.SelectedSelectionMode)
                 or nameof(MainWindowViewModel.SelectionOverlayVisible)
                 or nameof(MainWindowViewModel.ResultOverlayVisible)
                 or nameof(MainWindowViewModel.ResultEntities))
             {
+                if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
+                {
+                    ConfigureC3DHeightDeviationRule();
+                }
+
+                RenderNow();
+            }
+            else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
+            {
+                ReloadDefaultC3DSample();
                 RenderNow();
             }
         };
@@ -74,6 +87,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         get => (bool)GetValue(SidePanelsVisibleProperty);
         set => SetValue(SidePanelsVisibleProperty, value);
     }
+
+    public MainWindowViewModel ViewModel => viewModel;
 
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
@@ -110,6 +125,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void ApplySmokeArguments(string[] args)
     {
+        var densityIndex = Array.IndexOf(args, "--smoke-density");
+        if (densityIndex >= 0 && densityIndex + 1 < args.Length)
+        {
+            viewModel.SelectedRenderDensity = args[densityIndex + 1];
+        }
+
+        var pointSizeIndex = Array.IndexOf(args, "--smoke-point-size");
+        if (pointSizeIndex >= 0
+            && pointSizeIndex + 1 < args.Length
+            && double.TryParse(args[pointSizeIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var pointSize))
+        {
+            viewModel.PointSize = pointSize;
+        }
+
+        ApplySmokeTolerance(args);
+
         var sceneIndex = Array.IndexOf(args, "--smoke-scene");
         if (sceneIndex >= 0 && sceneIndex + 1 < args.Length && args[sceneIndex + 1].Equals("pointcloud", StringComparison.OrdinalIgnoreCase))
         {
@@ -152,6 +183,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             ApplySmokeRecipe(args[recipeIndex + 1]);
         }
 
+        ApplySmokeTolerance(args);
+
         var pickIndex = Array.IndexOf(args, "--smoke-pick");
         if (pickIndex >= 0 && pickIndex + 1 < args.Length)
         {
@@ -164,7 +197,24 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             smokeContractsPath = args[contractsIndex + 1];
         }
 
+        var saveRecipeIndex = Array.IndexOf(args, "--smoke-save-recipe");
+        if (saveRecipeIndex >= 0 && saveRecipeIndex + 1 < args.Length)
+        {
+            smokeSaveRecipePath = args[saveRecipeIndex + 1];
+        }
+
         smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
+    }
+
+    private void ApplySmokeTolerance(string[] args)
+    {
+        var toleranceIndex = Array.IndexOf(args, "--smoke-tolerance");
+        if (toleranceIndex >= 0
+            && toleranceIndex + 1 < args.Length
+            && double.TryParse(args[toleranceIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var tolerance))
+        {
+            viewModel.RecipePeakTolerance = tolerance;
+        }
     }
 
     private void Viewport_OpenGLInitialized(object sender, OpenGLRoutedEventArgs args)
@@ -360,6 +410,29 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
     }
 
+    private void SaveRecipe_Click(object sender, RoutedEventArgs e)
+    {
+        SaveCurrentRecipeWithDialog();
+    }
+
+    public void SaveCurrentRecipeWithDialog()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Save 3D Recipe",
+            Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
+            FileName = "c3d-height-deviation.recipe.json",
+            OverwritePrompt = true
+        };
+
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+        {
+            SaveCurrentHeightDeviationRecipe(dialog.FileName, isSmoke: false);
+        }
+    }
+
+    public bool SaveCurrentRecipe(string path, bool isSmoke) => SaveCurrentHeightDeviationRecipe(path, isSmoke);
+
     private void PublishResult_Click(object sender, RoutedEventArgs e)
     {
         viewModel.PublishPreviewResult();
@@ -383,6 +456,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (smokePublishResult)
         {
             viewModel.PublishPreviewResult();
+            await Dispatcher.InvokeAsync(RenderNow);
+        }
+
+        if (smokeSaveRecipePath is not null)
+        {
+            if (!SaveCurrentRecipe(smokeSaveRecipePath, isSmoke: true))
+            {
+                smokeExitCode = 1;
+            }
+
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
@@ -492,9 +575,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
             viewModel.SetC3DHeightDeviationPreview(result);
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
-            viewModel.RecipeSummary = string.Create(
-                CultureInfo.InvariantCulture,
-                $"Recipe: {Path.GetFileName(fullRecipePath)}\nSource: {recipe.Source.Name}\nTolerance: {recipe.Rule.PeakTolerance:F3} {recipe.Source.Unit}");
+            viewModel.SetRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit, recipe.Rule.PeakTolerance);
             viewModel.ViewerStatus = isSmoke
                 ? $"Smoke recipe: {Path.GetFileName(fullRecipePath)}"
                 : $"Recipe loaded: {Path.GetFileName(fullRecipePath)}";
@@ -505,6 +586,55 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             viewModel.ViewerStatus = $"{(isSmoke ? "Smoke recipe" : "Recipe")} failed: {ex.Message}";
             return false;
         }
+    }
+
+    private bool SaveCurrentHeightDeviationRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
+            var sourcePath = ResolveCurrentRecipeSourcePath();
+            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
+            var recipe = new HeightDeviationRecipe(
+                HeightDeviationRecipe.SupportedRecipeType,
+                "1.0",
+                new HeightDeviationRecipeSource(
+                    MainWindowViewModel.C3DEntityId,
+                    viewModel.RecipeSourceName,
+                    sourceRecipePath,
+                    viewModel.RecipeSourceUnit),
+                new HeightDeviationRecipeRule(viewModel.RecipePeakTolerance));
+
+            recipe.Save(fullRecipePath);
+            viewModel.SetRecipeSaved(fullRecipePath);
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke recipe saved: {Path.GetFileName(fullRecipePath)}"
+                : $"Recipe saved: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke recipe save" : "Recipe save")} failed: {ex.Message}";
+            return false;
+        }
+    }
+
+    private string ResolveCurrentRecipeSourcePath()
+    {
+        var candidate = viewModel.RecipeSourcePath;
+        if (!Path.IsPathRooted(candidate))
+        {
+            candidate = Path.GetFullPath(candidate);
+        }
+
+        if (File.Exists(candidate))
+        {
+            return candidate;
+        }
+
+        var defaultSample = FindDefaultC3DSamplePath();
+        return defaultSample is not null ? Path.GetFullPath(defaultSample) : candidate;
     }
 
     private void ApplySmokeC3D()
@@ -689,7 +819,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void DrawPointCloud(OpenGL gl, IReadOnlyList<HeightGridPoint> points)
     {
-        gl.PointSize(3.0f);
+        gl.PointSize((float)viewModel.PointSize);
         gl.Begin(OpenGL.GL_POINTS);
 
         foreach (var point in points)
@@ -705,7 +835,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void DrawC3DHeightGrid(OpenGL gl)
     {
-        gl.PointSize(2.0f);
+        gl.PointSize((float)viewModel.PointSize);
         gl.Begin(OpenGL.GL_POINTS);
 
         foreach (var point in c3dSample!.Points)
@@ -847,7 +977,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
         try
         {
-            return C3DHeightGrid.Load(path);
+            return C3DHeightGrid.Load(path, viewModel.C3DMaxRenderedPoints);
         }
         catch (IOException)
         {
@@ -898,7 +1028,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.C3DSamplePointCount = c3dSample.Points.Length.ToString("N0", CultureInfo.InvariantCulture);
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{c3dSample.Width} x {c3dSample.Height} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+            $"{c3dSample.Width} x {c3dSample.Height} | rendered {c3dSample.Points.Length:N0} | density {viewModel.SelectedRenderDensity} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+    }
+
+    private void ReloadDefaultC3DSample()
+    {
+        c3dSample = LoadDefaultC3DSample();
+        SetC3DSampleStatus();
+        ConfigureC3DHeightDeviationRule();
     }
 
     private void ConfigureC3DHeightDeviationRule()
@@ -910,13 +1047,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
         var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
             MainWindowViewModel.C3DEntityId,
-            "C3D Thickness Sample",
+            viewModel.RecipeSourceName,
             c3dSample.Min,
             c3dSample.Max,
             c3dSample.Mean,
             c3dSample.ValidSampleCount,
-            DefaultC3DHeightDeviationTolerance,
-            "raw-height"));
+            viewModel.RecipePeakTolerance,
+            viewModel.RecipeSourceUnit));
 
         viewModel.SetC3DHeightDeviationPreview(result);
     }
@@ -944,6 +1081,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add("PreviewOverlays");
         lines.AddRange(result.Overlays.Select(overlay =>
             $"{overlay.Id}|{overlay.Kind}|label={overlay.Label}|status={overlay.Status?.ToString() ?? "(none)"}|source={overlay.SourceEntityId ?? "(none)"}"));
+        lines.Add("ColorScaleLegend");
+        lines.Add($"DeviationLegend|visible={viewModel.DeviationLegendVisible}|{viewModel.DeviationLegendStatus}|{viewModel.DeviationLegendPeak}|{viewModel.DeviationLegendTolerance}|{viewModel.DeviationLegendScale}");
+        lines.Add("RenderControls");
+        lines.Add($"PointSize|value={viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture)}");
+        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|summary={viewModel.RenderDensitySummary}");
+        lines.Add("RecipeState");
+        lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
+        lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
+        lines.Add($"RecipeSave|summary={viewModel.RecipeSaveSummary}");
         lines.Add("PublishedResultEntities");
         lines.AddRange(viewModel.ResultEntities.Select(entity =>
             $"{entity.Id}|source={entity.SourceEntityId}|status={entity.Status}|metrics={entity.Metrics.Count}|overlays={entity.Overlays.Count}|message={entity.Message}"));

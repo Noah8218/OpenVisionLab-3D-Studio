@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 
@@ -23,6 +25,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
     private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
     private string selectedColorMode = "Height";
+    private double pointSize = 2.0;
+    private string selectedRenderDensity = "Balanced";
+    private string renderDensitySummary = FormatRenderDensitySummary("Balanced");
     private string pointCloudPointCount = "(pending)";
     private string c3DSamplePointCount = "(not loaded)";
     private string c3DSampleSummary = "C3D sample hidden";
@@ -31,13 +36,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool selectionOverlayVisible = true;
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
-    private string recipeSummary = "Recipe: none";
+    private string recipeSummary = "Recipe: current C3D height deviation\nSource: C3D Thickness Sample\nTolerance: 1200.000 raw-height";
+    private string recipeFileName = "(current)";
+    private string recipeSourceName = "C3D Thickness Sample";
+    private string recipeSourcePath = @"3D\Thickness\Ori_20240116_094414.C3D";
+    private string recipeSourceUnit = "raw-height";
+    private double recipePeakTolerance = 1200.0;
+    private string recipeSaveSummary = "Recipe save: not saved";
     private ToolResult previewToolResult = CreateNotRunToolResult();
     private ToolResult? c3dHeightDeviationPreview;
     private IReadOnlyList<ResultEntity> resultEntities = [];
     private string publishedResultSummary = "Published result: none";
     private IReadOnlyList<EntityLayer> entityLayers = [];
     private string sceneContractSummary = "(pending)";
+    private bool deviationLegendVisible;
+    private string deviationLegendStatus = "Status: inactive";
+    private string deviationLegendPeak = "Peak: none";
+    private string deviationLegendTolerance = "Tolerance: none";
+    private string deviationLegendScale = "Scale: mean to peak deviation";
     private string activePreviewLayerId = "layer.preview.synthetic-height-deviation";
     private string activePreviewLayerName = "Preview: Synthetic Height Deviation";
     private string activePreviewSourceEntityId = PointCloudEntityId;
@@ -62,6 +78,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public string[] ColorModes { get; } = ["Solid", "Height", "Deviation"];
+
+    public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
     public string[] SelectionModes { get; } = ["Point", "Box ROI", "Section Plane"];
 
@@ -158,6 +176,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public double PointSize
+    {
+        get => pointSize;
+        set
+        {
+            var clamped = Math.Clamp(value, 1.0, 6.0);
+            if (SetField(ref pointSize, clamped))
+            {
+                ViewerStatus = string.Create(CultureInfo.InvariantCulture, $"Point size: {clamped:F1}px");
+            }
+        }
+    }
+
+    public string SelectedRenderDensity
+    {
+        get => selectedRenderDensity;
+        set
+        {
+            var mode = RenderDensityModes.Contains(value) ? value : "Balanced";
+            if (SetField(ref selectedRenderDensity, mode))
+            {
+                RenderDensitySummary = FormatRenderDensitySummary(mode);
+                ViewerStatus = $"Render density: {mode}";
+            }
+        }
+    }
+
+    public string RenderDensitySummary
+    {
+        get => renderDensitySummary;
+        private set => SetField(ref renderDensitySummary, value);
+    }
+
+    public int C3DMaxRenderedPoints => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 140000,
+        _ => 55000
+    };
+
     public string PointCloudPointCount
     {
         get => pointCloudPointCount;
@@ -248,10 +306,71 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         set => SetField(ref recipeSummary, value);
     }
 
+    public string RecipeSourceName
+    {
+        get => recipeSourceName;
+        set
+        {
+            if (SetField(ref recipeSourceName, string.IsNullOrWhiteSpace(value) ? "C3D Thickness Sample" : value))
+            {
+                RefreshRecipeSummary();
+            }
+        }
+    }
+
+    public string RecipeSourcePath
+    {
+        get => recipeSourcePath;
+        set
+        {
+            if (SetField(ref recipeSourcePath, string.IsNullOrWhiteSpace(value) ? @"3D\Thickness\Ori_20240116_094414.C3D" : value))
+            {
+                RefreshRecipeSummary();
+            }
+        }
+    }
+
+    public string RecipeSourceUnit
+    {
+        get => recipeSourceUnit;
+        set
+        {
+            if (SetField(ref recipeSourceUnit, string.IsNullOrWhiteSpace(value) ? "raw-height" : value))
+            {
+                RefreshRecipeSummary();
+            }
+        }
+    }
+
+    public double RecipePeakTolerance
+    {
+        get => recipePeakTolerance;
+        set
+        {
+            var clamped = double.IsFinite(value) ? Math.Max(0.001, value) : 1200.0;
+            if (SetField(ref recipePeakTolerance, clamped))
+            {
+                RefreshRecipeSummary();
+            }
+        }
+    }
+
+    public string RecipeSaveSummary
+    {
+        get => recipeSaveSummary;
+        private set => SetField(ref recipeSaveSummary, value);
+    }
+
     public ToolResult PreviewToolResult
     {
         get => previewToolResult;
-        private set => SetField(ref previewToolResult, value);
+        private set
+        {
+            if (SetField(ref previewToolResult, value))
+            {
+                RefreshDeviationLegend(value);
+            }
+        }
     }
 
     public IReadOnlyList<ResultEntity> ResultEntities
@@ -318,6 +437,36 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => cameraTargetZ;
         set => SetField(ref cameraTargetZ, value);
+    }
+
+    public bool DeviationLegendVisible
+    {
+        get => deviationLegendVisible;
+        private set => SetField(ref deviationLegendVisible, value);
+    }
+
+    public string DeviationLegendStatus
+    {
+        get => deviationLegendStatus;
+        private set => SetField(ref deviationLegendStatus, value);
+    }
+
+    public string DeviationLegendPeak
+    {
+        get => deviationLegendPeak;
+        private set => SetField(ref deviationLegendPeak, value);
+    }
+
+    public string DeviationLegendTolerance
+    {
+        get => deviationLegendTolerance;
+        private set => SetField(ref deviationLegendTolerance, value);
+    }
+
+    public string DeviationLegendScale
+    {
+        get => deviationLegendScale;
+        private set => SetField(ref deviationLegendScale, value);
     }
 
     public void FitAll()
@@ -452,6 +601,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         MeasurementVisible = false;
         MeasurementSummary = "C3D rule preview uses raw height statistics.";
         ResultOverlayVisible = true;
+        SelectedColorMode = "Deviation";
         SelectedEntity = "C3D Height Deviation Rule";
         PickCoordinate = "(sample-backed rule)";
         ViewerStatus = "Smoke scene: C3D height deviation rule";
@@ -607,6 +757,41 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         activeResultEntityName = "Published Synthetic Height Deviation";
     }
 
+    private void RefreshDeviationLegend(ToolResult result)
+    {
+        if (activePreviewSourceEntityId != C3DEntityId || result.Status == ResultStatus.NotRun)
+        {
+            DeviationLegendVisible = false;
+            DeviationLegendStatus = "Status: inactive";
+            DeviationLegendPeak = "Peak: none";
+            DeviationLegendTolerance = "Tolerance: none";
+            DeviationLegendScale = "Scale: mean to peak deviation";
+            return;
+        }
+
+        var peak = result.Metrics.FirstOrDefault(metric => metric.Name == "Peak absolute deviation");
+        var tolerance = result.Metrics.FirstOrDefault(metric => metric.Name == "Peak tolerance");
+        var unit = peak?.Unit ?? tolerance?.Unit ?? "raw-height";
+        var statusText = result.Status switch
+        {
+            ResultStatus.Pass => "Status: Pass | within tolerance",
+            ResultStatus.Fail => "Status: Fail | above tolerance",
+            ResultStatus.Warning => "Status: Warning | review tolerance",
+            ResultStatus.Error => "Status: Error | invalid result",
+            _ => $"Status: {result.Status}"
+        };
+
+        DeviationLegendStatus = statusText;
+        DeviationLegendPeak = peak is null
+            ? "Peak: none"
+            : string.Create(CultureInfo.InvariantCulture, $"Peak: {peak.Value:F3} {unit}");
+        DeviationLegendTolerance = tolerance is null
+            ? "Tolerance: none"
+            : string.Create(CultureInfo.InvariantCulture, $"Tolerance: +/- {tolerance.Value:F3} {unit}");
+        DeviationLegendScale = "Scale: 0 = mean, 1 = peak deviation";
+        DeviationLegendVisible = true;
+    }
+
     private static string FormatToolResult(ToolResult result)
     {
         if (result.Status == ResultStatus.NotRun)
@@ -622,6 +807,38 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var metric = result.Metrics.First();
         return $"{result.Name}: {result.Status}\nSource: {result.SourceEntityId}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nLayer: published result";
+    }
+
+    public void SetRecipeLoaded(string recipePath, string sourceName, string sourcePath, string unit, double peakTolerance)
+    {
+        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
+        RecipeSourceName = sourceName;
+        RecipeSourcePath = sourcePath;
+        RecipeSourceUnit = unit;
+        RecipePeakTolerance = peakTolerance;
+        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
+        RefreshRecipeSummary();
+    }
+
+    public void SetRecipeSaved(string recipePath)
+    {
+        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
+        RecipeSaveSummary = $"Recipe saved: {Path.GetFullPath(recipePath)}";
+        RefreshRecipeSummary();
+    }
+
+    private static string FormatRenderDensitySummary(string mode) => mode switch
+    {
+        "Fast" => "Fast: up to 25,000 C3D points",
+        "Detailed" => "Detailed: up to 140,000 C3D points",
+        _ => "Balanced: up to 55,000 C3D points"
+    };
+
+    private void RefreshRecipeSummary()
+    {
+        RecipeSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}");
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

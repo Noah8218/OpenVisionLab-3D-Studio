@@ -3,6 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sharpgl="clr-namespace:SharpGL.WPF;assembly=SharpGL.WPF"
              Background="#f3f4f6">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
     <DockPanel LastChildFill="True">
         <Border DockPanel.Dock="Top" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="0,0,0,1">
             <Grid Margin="10,8">
@@ -17,7 +21,8 @@
                     <Button Content="Fit Selection" Width="112" Margin="0,0,8,0" Click="FitSelection_Click" />
                     <Button Content="Reset" Width="72" Margin="0,0,8,0" Click="Reset_Click" />
                     <Button Content="Screenshot" Width="104" Margin="0,0,8,0" Click="Screenshot_Click" />
-                    <Button Content="Open Recipe" Width="104" Click="OpenRecipe_Click" />
+                    <Button Content="Open Recipe" Width="104" Margin="0,0,8,0" Click="OpenRecipe_Click" />
+                    <Button Content="Save Recipe" Width="104" Click="SaveRecipe_Click" />
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"
@@ -53,6 +58,21 @@
                 <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Color" />
                 <ComboBox ItemsSource="{Binding ColorModes}"
                           SelectedItem="{Binding SelectedColorMode, Mode=TwoWay}" />
+                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
+                <Slider Minimum="1"
+                        Maximum="6"
+                        TickFrequency="0.5"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Margin="0,2,0,0"
+                           Text="{Binding PointSize, StringFormat=Point size: {0:F1}px}" />
+                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Render Density" />
+                <ComboBox ItemsSource="{Binding RenderDensityModes}"
+                          SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="#6b7280"
+                           TextWrapping="Wrap"
+                           Text="{Binding RenderDensitySummary}" />
                 <CheckBox Margin="0,12,0,0"
                           Content="Measurement Overlay"
                           IsChecked="{Binding MeasurementVisible, Mode=TwoWay}" />
@@ -96,6 +116,14 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Recipe" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding RecipeSummary}" />
+                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Peak Tolerance" />
+                <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
+                <Button Margin="0,8,0,0"
+                        Content="Save Recipe"
+                        Click="SaveRecipe_Click" />
+                <TextBlock Margin="0,4,0,0"
+                           TextWrapping="Wrap"
+                           Text="{Binding RecipeSaveSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Result Overlay" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding ResultSummary}" />
@@ -135,6 +163,82 @@
                                    MouseMove="Viewport_MouseMove"
                                    MouseUp="Viewport_MouseUp"
                                    MouseWheel="Viewport_MouseWheel" />
+            <Border HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Width="260"
+                    Margin="0,0,12,12"
+                    Padding="10"
+                    Background="#eef9fafb"
+                    BorderBrush="#9ca3af"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsHitTestVisible="False"
+                    Visibility="{Binding DeviationLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               Text="Deviation Color Scale" />
+                    <Border Height="10" Margin="0,8,0,8" CornerRadius="2">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="#14b8a6" Offset="0.0" />
+                                <GradientStop Color="#facc15" Offset="0.62" />
+                                <GradientStop Color="#ef4444" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10" Foreground="#374151" Text="Mean" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Center"
+                                   FontSize="10"
+                                   Foreground="#374151"
+                                   Text="Tolerance" />
+                        <TextBlock Grid.Column="2"
+                                   HorizontalAlignment="Right"
+                                   FontSize="10"
+                                   Foreground="#374151"
+                                   Text="Peak" />
+                    </Grid>
+                    <StackPanel Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Rectangle Width="10" Height="10" Fill="#14b8a6" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Within tolerance" />
+                        </StackPanel>
+                        <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                            <Rectangle Width="10" Height="10" Fill="#ef4444" />
+                            <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Fail marker" />
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#111827"
+                               TextWrapping="Wrap"
+                               Text="{Binding DeviationLegendStatus}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#111827"
+                               TextWrapping="Wrap"
+                               Text="{Binding DeviationLegendPeak}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#111827"
+                               TextWrapping="Wrap"
+                               Text="{Binding DeviationLegendTolerance}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#6b7280"
+                               TextWrapping="Wrap"
+                               Text="{Binding DeviationLegendScale}" />
+                </StackPanel>
+            </Border>
         </Grid>
     </DockPanel>
 </UserControl>

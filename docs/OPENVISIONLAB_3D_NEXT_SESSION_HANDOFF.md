@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, replays/compares that rule through a non-UI recipe runner, and shows that evidence inside the first Shell workbench layout skeleton.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, shows the rule with a deviation color scale/tolerance legend, exposes point size/render-density controls, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, saves edited tolerance/source state as a new JSON recipe, replays/compares that rule through a non-UI recipe runner, and shows that evidence inside the first Shell workbench layout skeleton.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -54,6 +54,9 @@ Completed in the first implementation slice:
 - Shell-wide screenshot evidence now uses `--shell-smoke-screenshot`; existing `--smoke-screenshot` remains the embedded Viewer capture path.
 - Shell now has a commercial-style workbench layout skeleton through `OpenVisionLab.ThreeD.Docking.Controls`: `Data & Layers`, `3D Inspection View`, `Tool / Inspector`, `Evidence Workbench`, and `Linked View`.
 - Shell hosts the Viewer as a center inspection surface with `SidePanelsVisible=false`; the standalone Viewer host keeps the original side panels.
+- The C3D height deviation rule smoke scene now uses `Deviation` color mode and displays a viewport legend with pass/fail colors, peak deviation, and tolerance.
+- Viewer and Shell `Data & Layers` now expose point size and C3D render-density controls. The smoke path can set them with `--smoke-point-size` and `--smoke-density`.
+- Viewer and Shell can edit the C3D height deviation tolerance and save the current source/tolerance as a JSON recipe. The smoke path can set the tolerance with `--smoke-tolerance` and save with `--smoke-save-recipe`.
 
 Local sample data now exists:
 
@@ -64,12 +67,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay viewer-first now that the first recipe can replay, compare outside the UI, load through a visible command, display persisted comparison evidence, and sit inside the workbench layout:
+Next implementation should stay viewer-first now that the first recipe can replay, compare outside the UI, load through a visible command, save edited tolerance/source state, display persisted comparison evidence, and sit inside the workbench layout:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add a deviation color scale/tolerance legend in the `3D Inspection View` using the existing C3D height deviation rule and smoke evidence.
-3. Add a minimal recipe save/edit path after the color/legend evidence is visible.
-4. Add a real run-history list only after there are at least two user-created recipe runs to compare.
+2. Add a minimal section/profile tool so the existing Section Plane selection produces a profile chart in the `Linked View` strip.
+3. Add a real run-history list only after there are at least two user-created recipe runs to compare.
 
 ## Remaining Project Priority
 
@@ -118,6 +120,9 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\viewer_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_recipe_height_rule_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_recipe_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_recipe_ui_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_recipe_ui_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_deviation_legend_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_deviation_legend_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_render_controls_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-point-size 4 --smoke-density Detailed --smoke-contracts artifacts\viewer_render_controls_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_recipe_save_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_c3d_height_deviation.recipe.json --smoke-contracts artifacts\viewer_recipe_save_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
@@ -128,6 +133,9 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_recipe_height_rule_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_recipe_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_recipe_ui_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_recipe_ui_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_deviation_legend_viewer_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_deviation_legend_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_render_controls_viewer_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-point-size 4 --smoke-density Detailed --smoke-contracts artifacts\shell_render_controls_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_recipe_save_viewer_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_shell_viewer_c3d_height_deviation.recipe.json --smoke-contracts artifacts\shell_recipe_save_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_c3d_height_rule_after.txt --expect-status Fail`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_ui_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_ui_after.txt`
@@ -138,7 +146,14 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_workbench_layout_regression_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_workbench_layout_regression_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_workbench_layout_viewer_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_workbench_layout_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_workbench_layout_after.txt --expect-status Fail --compare-contract artifacts\shell_workbench_layout_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_deviation_legend_after.txt --expect-status Fail --compare-contract artifacts\shell_deviation_legend_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_render_controls_after.txt --expect-status Fail --compare-contract artifacts\shell_render_controls_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_height_deviation.recipe.json --report artifacts\runner_recipe_save_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_save_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_shell_c3d_height_deviation.recipe.json --report artifacts\runner_shell_recipe_save_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_save_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_workbench_layout_after.txt --recipe-comparison-report artifacts\runner_shell_workbench_layout_after.txt --shell-smoke-screenshot artifacts\shell_workbench_layout_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_deviation_legend_after.txt --recipe-comparison-report artifacts\runner_shell_deviation_legend_after.txt --shell-smoke-screenshot artifacts\shell_color_legend_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_render_controls_after.txt --recipe-comparison-report artifacts\runner_shell_render_controls_after.txt --shell-smoke-screenshot artifacts\shell_render_controls_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-point-size 4 --smoke-density Detailed`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_recipe_save_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_recipe_save_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_shell_c3d_height_deviation.recipe.json`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -154,6 +169,13 @@ Build and smoke evidence:
 - Viewer visible recipe UI before screenshot: `artifacts\viewer_recipe_ui_before.png`
 - Viewer visible recipe UI after screenshot: `artifacts\viewer_recipe_ui_after.png`
 - Viewer visible recipe UI smoke report: `artifacts\viewer_recipe_ui_after.txt`
+- Viewer deviation legend after screenshot: `artifacts\viewer_deviation_legend_after.png`
+- Viewer deviation legend smoke report: `artifacts\viewer_deviation_legend_after.txt`
+- Viewer render controls after screenshot: `artifacts\viewer_render_controls_after.png`
+- Viewer render controls smoke report: `artifacts\viewer_render_controls_after.txt`
+- Viewer recipe save after screenshot: `artifacts\viewer_recipe_save_after.png`
+- Viewer recipe save smoke report: `artifacts\viewer_recipe_save_after.txt`
+- Saved Viewer recipe: `artifacts\saved_c3d_height_deviation.recipe.json`
 - C3D height rule publish screenshot: `artifacts\viewer_height_rule_publish_after.png`
 - C3D height rule publish smoke report: `artifacts\viewer_height_rule_publish_after.txt`
 - Point selection after screenshot: `artifacts\viewer_selection_after_point.png`
@@ -170,6 +192,19 @@ Build and smoke evidence:
 - Shell recipe-loaded height rule smoke report: `artifacts\shell_recipe_height_rule_after.txt`
 - Shell visible recipe UI after screenshot: `artifacts\shell_recipe_ui_after.png`
 - Shell visible recipe UI smoke report: `artifacts\shell_recipe_ui_after.txt`
+- Shell color legend before screenshot: `artifacts\shell_color_legend_before.png`
+- Shell color legend after screenshot: `artifacts\shell_color_legend_after.png`
+- Shell embedded Viewer deviation legend screenshot: `artifacts\shell_deviation_legend_viewer_after.png`
+- Shell deviation legend smoke report: `artifacts\shell_deviation_legend_after.txt`
+- Shell render controls before screenshot: `artifacts\shell_render_controls_before.png`
+- Shell render controls after screenshot: `artifacts\shell_render_controls_after.png`
+- Shell embedded Viewer render controls screenshot: `artifacts\shell_render_controls_viewer_after.png`
+- Shell render controls smoke report: `artifacts\shell_render_controls_after.txt`
+- Shell recipe save before screenshot: `artifacts\shell_recipe_save_before.png`
+- Shell recipe save after screenshot: `artifacts\shell_recipe_save_after.png`
+- Shell embedded Viewer recipe save screenshot: `artifacts\shell_recipe_save_viewer_after.png`
+- Shell recipe save smoke report: `artifacts\shell_recipe_save_after.txt`
+- Saved Shell recipe: `artifacts\saved_shell_c3d_height_deviation.recipe.json`
 - Shell recipe comparison closest-before screenshot: `artifacts\shell_recipe_comparison_before.png`
 - Shell recipe comparison full-window after screenshot: `artifacts\shell_recipe_comparison_after.png`
 - Shell recipe comparison smoke report: `artifacts\shell_recipe_comparison_after.txt`
@@ -186,6 +221,10 @@ Build and smoke evidence:
 - Runner-to-shell visible recipe UI compare report: `artifacts\runner_shell_recipe_ui_compare_after.txt`
 - Runner-to-shell recipe comparison report: `artifacts\runner_shell_recipe_comparison_after.txt`
 - Runner-to-shell workbench layout compare report: `artifacts\runner_shell_workbench_layout_after.txt`
+- Runner-to-shell deviation legend compare report: `artifacts\runner_shell_deviation_legend_after.txt`
+- Runner-to-shell render controls compare report: `artifacts\runner_shell_render_controls_after.txt`
+- Runner saved Viewer recipe report: `artifacts\runner_recipe_save_after.txt`
+- Runner saved Shell recipe report: `artifacts\runner_shell_recipe_save_after.txt`
 
 ## Guardrails
 

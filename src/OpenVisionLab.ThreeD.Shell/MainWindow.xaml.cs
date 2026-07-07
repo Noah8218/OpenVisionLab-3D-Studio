@@ -29,15 +29,27 @@ public partial class MainWindow : Window
         _viewModel.RefreshRecipeComparison();
     }
 
+    private void SaveRecipe_Click(object sender, RoutedEventArgs e)
+    {
+        _viewer.SaveCurrentRecipeWithDialog();
+    }
+
     private void EnableShellSmokeFromCommandLine()
     {
         var shellScreenshotPath = GetCommandLineValue("--shell-smoke-screenshot");
+        var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         if (shellScreenshotPath is not null)
         {
             Loaded += async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
                 await Task.Delay(900);
+                if (smokeSaveRecipePath is not null && !_viewer.SaveCurrentRecipe(smokeSaveRecipePath, isSmoke: true))
+                {
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 CaptureShellWindow(shellScreenshotPath);
                 await Task.Delay(100);
                 Application.Current.Shutdown();

@@ -32,13 +32,37 @@
                 <Border Background="#ffffff"
                         BorderBrush="#d1d5db"
                         BorderThickness="0,1,1,0"
-                        Padding="12">
+                        Padding="12"
+                        DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock FontSize="15"
                                        FontWeight="SemiBold"
                                        Foreground="#111827"
                                        Text="Data &amp; Layers" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Display State" />
+                            <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color: {0}}" />
+                            <TextBlock Margin="0,4,0,0" Text="Units: raw height" />
+                            <TextBlock Margin="0,4,0,0" Text="Transform: Identity" />
+
+                            <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
+                            <Slider Minimum="1"
+                                    Maximum="6"
+                                    TickFrequency="0.5"
+                                    IsSnapToTickEnabled="True"
+                                    Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Text="{Binding PointSize, StringFormat=Point size: {0:F1}px}" />
+
+                            <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Render Density" />
+                            <ComboBox ItemsSource="{Binding RenderDensityModes}"
+                                      SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}" />
+                            <TextBlock Margin="0,4,0,0"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding RenderDensitySummary}" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Text="{Binding C3DSamplePointCount, StringFormat=Rendered C3D points: {0}}" />
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Source Geometry" />
                             <TextBlock FontWeight="SemiBold" Text="Generated Unit Cube" />
@@ -48,11 +72,6 @@
                             <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Result Layers" />
                             <TextBlock FontWeight="SemiBold" Text="C3D Height Deviation Preview" />
                             <TextBlock Margin="0,4,0,0" Text="Published Result Layer" />
-
-                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Display State" />
-                            <TextBlock Text="Color: Height" />
-                            <TextBlock Margin="0,4,0,0" Text="Units: raw height" />
-                            <TextBlock Margin="0,4,0,0" Text="Transform: Identity" />
 
                             <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Contracts" />
                             <TextBlock Text="Source/result separation: active" />
@@ -81,6 +100,20 @@
                             <TextBlock Text="Tolerance: 1200 raw-height" />
                             <TextBlock Margin="0,4,0,0" Text="Reference: C3D sample average" />
                             <TextBlock Margin="0,4,0,0" Text="Output: preview result layer" />
+
+                            <StackPanel Margin="0,14,0,0"
+                                        DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                <TextBlock Foreground="#6b7280" Text="Recipe Edit" />
+                                <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding RecipeSummary}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="Peak Tolerance" />
+                                <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
+                                <Button Margin="0,8,0,0"
+                                        Content="Save Recipe"
+                                        Click="SaveRecipe_Click" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeSaveSummary}" />
+                            </StackPanel>
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Latest Result" />
                             <TextBlock FontWeight="SemiBold"

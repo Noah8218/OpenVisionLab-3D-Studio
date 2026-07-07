@@ -91,8 +91,8 @@ The implemented split is:
 | Feature | Layout home | Priority |
 | --- | --- | --- |
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
-| Point size and render-density controls | 3D Inspection View or Data & Layers | Medium |
-| Recipe save/edit | App / Job Bar + Tool / Inspector | High |
+| Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
+| Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | High |
 | Height-map view | Linked View Strip | High |
 | Run history | Evidence Workbench | Medium, after save/edit |
@@ -103,21 +103,25 @@ The implemented split is:
 
 ## Implementation Sequence
 
-1. Build the layout skeleton.
+1. Build the layout skeleton. Done.
    - Shell has stable docking slots for center Viewer, left Data/Layers, right Tool/Inspector, bottom Evidence, and future Linked View.
    - Current functionality is rearranged only where needed.
-2. Add deviation color scale/tolerance legend.
+2. Add deviation color scale/tolerance legend. Done.
    - Use existing C3D height deviation rule.
    - Smoke screenshot must show the legend and fail/pass threshold colors.
-3. Add minimal recipe save/edit.
+3. Add point size/render-density controls. Done.
+   - Viewer side panel and Shell `Data & Layers` expose point size and C3D render density.
+   - Smoke contracts record selected point size, density mode, max rendered points, and rendered C3D point count.
+4. Add minimal recipe save/edit. Done.
    - Save current C3D height deviation tolerance/source as JSON.
    - Keep Preview and Publish separate.
-4. Add section/profile tool.
+   - Smoke confirms saved JSON can replay through Runner.
+5. Add section/profile tool.
    - Section line is selected in 3D.
    - Profile chart appears in Linked View Strip.
-5. Add height-map pane.
+6. Add height-map pane.
    - The same C3D sample can be reviewed as 2D height image and 3D point cloud.
-6. Add run history.
+7. Add run history.
    - Only after at least two saved/executed recipe results exist.
 
 ## Acceptance Checklist For Layout Skeleton
@@ -137,6 +141,37 @@ The implemented split is:
 - Viewer regression smoke: `artifacts/viewer_workbench_layout_regression_after.png`
 - Shell embedded Viewer contract: `artifacts/shell_workbench_layout_after.txt`
 - Runner comparison report: `artifacts/runner_shell_workbench_layout_after.txt`
+
+## Deviation Legend Evidence
+
+- Before screenshot: `artifacts/shell_color_legend_before.png`
+- After screenshot: `artifacts/shell_color_legend_after.png`
+- Viewer legend smoke: `artifacts/viewer_deviation_legend_after.png`
+- Viewer legend contract: `artifacts/viewer_deviation_legend_after.txt`
+- Shell embedded Viewer legend smoke: `artifacts/shell_deviation_legend_viewer_after.png`
+- Shell legend contract: `artifacts/shell_deviation_legend_after.txt`
+- Runner comparison report: `artifacts/runner_shell_deviation_legend_after.txt`
+
+## Render Controls Evidence
+
+- Before screenshot: `artifacts/shell_render_controls_before.png`
+- After screenshot: `artifacts/shell_render_controls_after.png`
+- Viewer render controls smoke: `artifacts/viewer_render_controls_after.png`
+- Viewer render controls contract: `artifacts/viewer_render_controls_after.txt`
+- Shell embedded Viewer render controls smoke: `artifacts/shell_render_controls_viewer_after.png`
+- Shell render controls contract: `artifacts/shell_render_controls_after.txt`
+- Runner comparison report: `artifacts/runner_shell_render_controls_after.txt`
+
+## Recipe Save/Edit Evidence
+
+- Before screenshot: `artifacts/shell_recipe_save_before.png`
+- After screenshot: `artifacts/shell_recipe_save_after.png`
+- Viewer recipe save smoke: `artifacts/viewer_recipe_save_after.png`
+- Viewer recipe save contract: `artifacts/viewer_recipe_save_after.txt`
+- Saved Viewer recipe: `artifacts/saved_c3d_height_deviation.recipe.json`
+- Saved Shell recipe: `artifacts/saved_shell_c3d_height_deviation.recipe.json`
+- Runner saved Viewer recipe report: `artifacts/runner_recipe_save_after.txt`
+- Runner saved Shell recipe report: `artifacts/runner_shell_recipe_save_after.txt`
 
 ## Deferred Decisions
 
