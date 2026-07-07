@@ -26,6 +26,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private string? smokeScreenshotPath;
     private string? smokeContractsPath;
     private bool smokePublishResult;
+    private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
     private bool isOrbiting;
     private bool isPanning;
@@ -99,6 +100,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             if (ruleIndex >= 0 && ruleIndex + 1 < args.Length)
             {
                 ApplySmokeRule(args[ruleIndex + 1]);
+            }
+
+            var recipeIndex = Array.IndexOf(args, "--smoke-recipe");
+            if (recipeIndex >= 0 && recipeIndex + 1 < args.Length)
+            {
+                ApplySmokeRecipe(args[recipeIndex + 1]);
             }
 
             var pickIndex = Array.IndexOf(args, "--smoke-pick");
@@ -330,7 +337,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         await Task.Delay(900);
         CaptureWindow(smokeScreenshotPath!);
         await Task.Delay(100);
-        Application.Current.Shutdown(0);
+        Application.Current.Shutdown(smokeExitCode);
     }
 
     private void CaptureWindow(string path)
@@ -397,6 +404,35 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (rule.Equals("height-deviation", StringComparison.OrdinalIgnoreCase))
         {
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
+        }
+    }
+
+    private void ApplySmokeRecipe(string path)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipe = HeightDeviationRecipe.Load(fullRecipePath);
+            var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+            var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
+            var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
+                recipe.Source.EntityId,
+                recipe.Source.Name,
+                grid.Min,
+                grid.Max,
+                grid.Mean,
+                grid.ValidSampleCount,
+                recipe.Rule.PeakTolerance,
+                recipe.Source.Unit));
+
+            viewModel.SetC3DHeightDeviationPreview(result);
+            viewModel.UseC3DHeightDeviationRuleSmokeScene();
+            viewModel.ViewerStatus = $"Smoke recipe: {Path.GetFileName(fullRecipePath)}";
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = $"Smoke recipe failed: {ex.Message}";
         }
     }
 
@@ -770,6 +806,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         return null;
+    }
+
+    private static string ResolveRecipePath(string path, string recipeDirectory)
+    {
+        return Path.GetFullPath(Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(recipeDirectory, path));
     }
 
     private void SetC3DSampleStatus()

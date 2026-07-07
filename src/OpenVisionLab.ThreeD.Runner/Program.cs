@@ -10,10 +10,11 @@ static int Run(string[] args)
     var recipePath = ReadOption(args, "--recipe");
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
+    var compareContractPath = ReadOption(args, "--compare-contract");
 
     if (recipePath is null || reportPath is null)
     {
-        Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error]");
+        Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
         return 2;
     }
 
@@ -34,6 +35,10 @@ static int Run(string[] args)
             recipe.Source.Unit));
 
         WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result);
+        if (compareContractPath is not null)
+        {
+            CompareUiContract(compareContractPath, result);
+        }
 
         if (expectedStatus is not null
             && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
@@ -97,4 +102,46 @@ static void WriteReport(
         $"{overlay.Id}|{overlay.Kind}|label={overlay.Label}|status={overlay.Status?.ToString() ?? "(none)"}|source={overlay.SourceEntityId ?? "(none)"}"));
 
     File.WriteAllLines(reportPath, lines);
+}
+
+static void CompareUiContract(string path, ToolResult result)
+{
+    var lines = File.ReadAllLines(path);
+    var toolResultLine = lines.FirstOrDefault(line => line.StartsWith("C3D Height Deviation Rule|", StringComparison.Ordinal));
+    if (toolResultLine is null)
+    {
+        throw new InvalidDataException($"UI contract has no C3D Height Deviation Rule result: {path}");
+    }
+
+    var parts = toolResultLine.Split('|');
+    if (parts.Length < 2 || !parts[1].Equals(result.Status.ToString(), StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidDataException($"UI status mismatch. UI={parts.ElementAtOrDefault(1) ?? "(missing)"}, runner={result.Status}.");
+    }
+
+    var runnerPeak = result.Metrics.First(metric => metric.Name == "Peak absolute deviation").Value;
+    var uiPeakLine = lines.FirstOrDefault(line => line.StartsWith("Peak absolute deviation|", StringComparison.Ordinal));
+    if (uiPeakLine is null)
+    {
+        throw new InvalidDataException($"UI contract has no peak deviation metric: {path}");
+    }
+
+    var uiPeak = ParseMetricValue(uiPeakLine);
+    if (Math.Abs(uiPeak - runnerPeak) > 0.001)
+    {
+        throw new InvalidDataException($"Peak deviation mismatch. UI={uiPeak:F3}, runner={runnerPeak:F3}.");
+    }
+}
+
+static double ParseMetricValue(string line)
+{
+    foreach (var part in line.Split('|'))
+    {
+        if (part.StartsWith("value=", StringComparison.Ordinal))
+        {
+            return double.Parse(part["value=".Length..], CultureInfo.InvariantCulture);
+        }
+    }
+
+    throw new InvalidDataException($"Metric line has no value field: {line}");
 }

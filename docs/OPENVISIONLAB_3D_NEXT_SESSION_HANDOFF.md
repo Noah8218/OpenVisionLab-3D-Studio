@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, and replays that rule through a non-UI recipe runner.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, loads that rule from JSON recipe in smoke mode, and replays/compares that rule through a non-UI recipe runner.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -49,6 +49,7 @@ Completed in the first implementation slice:
 - First rule-tool library is in place: `src/OpenVisionLab.ThreeD.Tools` owns `HeightDeviationRule` and `HeightDeviationRecipe`, and does not depend on WPF or SharpGL.
 - The C3D height deviation rule evaluates the local `3D/Thickness` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
 - First recipe and runner path are in place: `recipes/c3d-height-deviation.recipe.json` and `src/OpenVisionLab.ThreeD.Runner` replay the rule outside the UI and write `artifacts/runner_c3d_height_rule_after.txt`.
+- Viewer and Shell smoke can load the JSON recipe with `--smoke-recipe`; Runner can compare its result against UI contracts with `--compare-contract`.
 
 Local sample data now exists:
 
@@ -59,11 +60,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay contract-first now that the first recipe can replay outside the UI:
+Next implementation should stay contract-first now that the first recipe can replay and compare outside the UI:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add a Shell/Viewer command path to load the JSON recipe and show the runner-equivalent result in the UI.
-3. Add a tiny regression check comparing UI smoke result values to runner report values.
+2. Add a visible Shell/Viewer command path to choose the JSON recipe and show the runner-equivalent result in the UI.
+3. Add the first persisted recipe history/result comparison view after visible recipe loading works.
 
 ## Remaining Project Priority
 
@@ -106,6 +107,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_tool_result_after.png --smoke-overlay result --smoke-contracts artifacts\viewer_tool_result_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_publish_after.png --smoke-overlay result --smoke-publish-result --smoke-contracts artifacts\viewer_publish_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\viewer_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_recipe_height_rule_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_recipe_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
@@ -114,7 +116,10 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_recipe_height_rule_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_recipe_height_rule_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_c3d_height_rule_after.txt --expect-status Fail`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_recipe_compare_after.txt --expect-status Fail --compare-contract artifacts\viewer_recipe_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_recipe_compare_after.txt --expect-status Fail --compare-contract artifacts\shell_recipe_height_rule_after.txt`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -125,6 +130,8 @@ Build and smoke evidence:
 - C3D height rule before screenshot: `artifacts\viewer_height_rule_before.png`
 - C3D height rule after screenshot: `artifacts\viewer_height_rule_after.png`
 - C3D height rule smoke report: `artifacts\viewer_height_rule_after.txt`
+- Viewer recipe-loaded height rule screenshot: `artifacts\viewer_recipe_height_rule_after.png`
+- Viewer recipe-loaded height rule smoke report: `artifacts\viewer_recipe_height_rule_after.txt`
 - C3D height rule publish screenshot: `artifacts\viewer_height_rule_publish_after.png`
 - C3D height rule publish smoke report: `artifacts\viewer_height_rule_publish_after.txt`
 - Point selection after screenshot: `artifacts\viewer_selection_after_point.png`
@@ -137,7 +144,11 @@ Build and smoke evidence:
 - Shell result overlay smoke report: `artifacts\shell_result_overlay_after.txt`
 - Shell C3D height rule after screenshot: `artifacts\shell_height_rule_after.png`
 - Shell C3D height rule smoke report: `artifacts\shell_height_rule_after.txt`
+- Shell recipe-loaded height rule screenshot: `artifacts\shell_recipe_height_rule_after.png`
+- Shell recipe-loaded height rule smoke report: `artifacts\shell_recipe_height_rule_after.txt`
 - Runner C3D height rule report: `artifacts\runner_c3d_height_rule_after.txt`
+- Runner-to-viewer compare report: `artifacts\runner_recipe_compare_after.txt`
+- Runner-to-shell compare report: `artifacts\runner_shell_recipe_compare_after.txt`
 
 ## Guardrails
 
