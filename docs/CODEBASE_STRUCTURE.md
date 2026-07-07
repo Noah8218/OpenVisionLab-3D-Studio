@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Codebase Structure
 
-Updated: 2026-07-06
+Updated: 2026-07-07
 
 This repository contains the initial operating documents and the first SharpGL WPF viewer MVP skeleton.
 
@@ -15,13 +15,11 @@ This repository contains the initial operating documents and the first SharpGL W
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
 | `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here before rule algorithms begin. |
 | `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference so the Shell app does not use raw docking APIs directly. |
-| `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and reserves a document slot for the separate 3D viewer module. |
-| `src/OpenVisionLab.ThreeDStudio/` | Exists | WPF desktop app with SharpGL viewport, generated cube, generated point cloud, color modes, orbit/pan/zoom/fit controls, picking status, selection overlays, measurement/result overlays, and screenshot smoke paths. |
-| `src/OpenVisionLab.ThreeDStudio/Data/` | Exists | Minimal local C3D height-grid reader for the inferred sample layout and downsampled viewer points. |
-| `src/OpenVisionLab.ThreeDStudio/Rendering/` | Exists | Small SharpGL viewer support classes for camera/picking math and inspection overlay drawing. No renderer abstraction layer yet. |
-| `src/OpenVisionLab.ThreeDStudio/ViewModels/` | Exists | MVVM state for the current shell: visibility, color mode, selection mode, camera target/distance, status text, screenshot path, core source/layer contract projection, synthetic ToolResult preview state, and published result entity state. View code-behind remains a thin SharpGL and mouse-event bridge. |
+| `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and the separate 3D viewer module. Owns app-level `WPF-UI` package/theme resources. |
+| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, C3D reader, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. |
+| `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
 
-There is a minimal core contract library, docking wrapper, and shell app. There is no separate tool library or test project yet.
+There is a minimal core contract library, docking wrapper, shell app, and hostable viewer control. There is no separate tool library or test project yet.
 
 ## 2. Reference Repository
 
@@ -31,6 +29,7 @@ There is a minimal core contract library, docking wrapper, and shell app. There 
 - Preview versus publish separation.
 - Tool result contracts: status, metrics, overlays, and messages.
 - Dedicated docking controls ownership. In the Dev repository, AvalonDock is owned by `Library\OpenVisionLab.Docking.Controls`, not directly by the app project.
+- App-level WPF UI ownership. In the Dev repository, `WPF-UI` is referenced by the WPF app and its theme resources, not by the docking controls boundary.
 - Recipe and runner thinking.
 - WPF/MVVM direction, thin view code-behind, and screenshot smoke discipline.
 
@@ -42,7 +41,6 @@ Create these folders only when implementation begins.
 
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
-| `src/OpenVisionLab.ThreeD.Viewer/` | Viewer dependency is chosen | Rendering adapter, camera controller, picking, overlay drawing, screenshot capture. |
 | `src/OpenVisionLab.ThreeD.Tools/` | First validation tool starts | Rule-based 3D tools such as distance, bounds, alignment, plane fit, and mesh deviation. |
 | `tools/` | First command check is needed | Build, smoke, sample validation, screenshot, and contract checks. |
 | `samples/` | First redistributable public sample is added | Small public sample models and expected results. Current local samples live in `3D/`. |
@@ -64,12 +62,13 @@ Create these folders only when implementation begins.
 
 ## 5. Ownership Rules
 
-- Viewer code owns rendering, camera, picking, hit testing, and screenshot capture.
+- Viewer code owns rendering, camera, picking, hit testing, viewer data loading, viewer state, and screenshot capture.
 - Core code owns units, transforms, entity identity, layer identity, metrics, overlays, and result status.
 - Tool code owns rule parameters and algorithm execution.
-- App shell owns workflow composition and visible commands.
+- App shell owns workflow composition, visible commands, and app-level `WPF-UI` theme resources.
 - Docking code owns docking package integration and layout behavior; the app shell should consume wrapper APIs.
 - Keep the SharpGL viewer separate from the main shell so the viewer can be developed and tested independently.
+- Keep `WPF-UI` out of Viewer and Docking.Controls unless a reusable control has a direct, proven need for it.
 - Treat .NET 10 migration as a separate compatibility pass across WPF, SharpGL, docking, and vendored DLL/runtime dependencies.
 - A renderer dependency must stay behind a small adapter once a second viewer-related feature needs it. Do not add an adapter before the first prototype proves the library.
 

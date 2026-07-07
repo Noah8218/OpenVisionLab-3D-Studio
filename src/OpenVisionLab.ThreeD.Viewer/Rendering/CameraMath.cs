@@ -3,9 +3,9 @@ using System.Numerics;
 using WindowsPoint = System.Windows.Point;
 using WindowsVector = System.Windows.Vector;
 
-namespace OpenVisionLab.ThreeDStudio.Rendering;
+namespace OpenVisionLab.ThreeD.Viewer.Rendering;
 
-internal static class CameraMath
+public static class CameraMath
 {
     public static Vector3 CameraTarget(double x, double y, double z) =>
         new((float)x, (float)y, (float)z);

@@ -9,11 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpGL.WPF" Version="3.1.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
   </ItemGroup>
 
 </Project>

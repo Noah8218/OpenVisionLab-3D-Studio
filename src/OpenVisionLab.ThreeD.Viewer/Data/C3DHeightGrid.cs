@@ -1,9 +1,9 @@
 using System.IO;
 using System.Numerics;
 
-namespace OpenVisionLab.ThreeDStudio.Data;
+namespace OpenVisionLab.ThreeD.Viewer.Data;
 
-internal sealed class C3DHeightGrid
+public sealed class C3DHeightGrid
 {
     private C3DHeightGrid(
         string sourcePath,
@@ -137,4 +137,4 @@ internal sealed class C3DHeightGrid
     }
 }
 
-internal readonly record struct ViewerPoint(Vector3 Position, double HeightScalar, double DeviationScalar, float RawValue);
+public readonly record struct ViewerPoint(Vector3 Position, double HeightScalar, double DeviationScalar, float RawValue);

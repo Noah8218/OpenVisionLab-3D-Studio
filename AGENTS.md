@@ -23,6 +23,7 @@ This file defines the working agreement for Codex in this repository.
 - The first viewer implementation uses SharpGL because the project owner is already comfortable reading and debugging SharpGL-based code.
 - The 3D viewer must remain a separate project/library. The eventual main workspace should host it as a document/tool view instead of merging viewer internals into the main shell.
 - For the main workspace, follow the `C:\Git\OpenVisionLab_Dev` docking boundary: docking ownership belongs in a dedicated controls library like `Library\OpenVisionLab.Docking.Controls`; do not add AvalonDock or raw docking package usage directly to the app project.
+- For app-level WPF UI styling, follow the Dev repository's `WPF-UI` boundary: the Shell app owns `WPF-UI` package/theme resources, while Viewer and Docking.Controls stay free of direct `WPF-UI` dependencies unless a reusable control explicitly needs that dependency.
 - The project owner plans to move the product to .NET 10. Treat target framework migration as its own compatibility task; verify WPF, SharpGL, docking, vendored DLLs, and smoke checks before mixing it with feature work.
 - MVVM is the target application structure. Keep view code-behind as a thin UI/OpenGL event bridge, and move durable state, commands, result data, and workflow logic into ViewModel, Controller, Presenter, Runtime, or Service classes as soon as they stop being trivial.
 - Keep source geometry and result geometry separate. A validation result must not silently mutate the imported source model.
@@ -63,7 +64,8 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 For shell/docking work, also run:
 
 ```powershell
-dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_docking_after.png
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt
 ```
 
 UI/UX work requires current screenshots from the running build. Store before/after captures in an artifact folder and report the paths.

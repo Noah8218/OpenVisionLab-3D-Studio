@@ -11,7 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using OpenVisionLab.ThreeD.Core;
 
-namespace OpenVisionLab.ThreeDStudio.ViewModels;
+namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {

@@ -6,7 +6,7 @@ The reference product is `C:\Git\OpenVisionLab_Dev`, a 2D OpenCV/OpenCvSharp wor
 
 ## Current State
 
-As of 2026-07-06, this repository has the first SharpGL WPF viewer MVP skeleton.
+As of 2026-07-07, this repository has the first SharpGL WPF viewer MVP and the first Shell-hosted viewer boundary.
 
 The current viewer MVP can:
 
@@ -39,7 +39,8 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result
-dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_docking_after.png
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt
 ```
 
 ## Document Map
@@ -55,11 +56,11 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 
 ## Core Contracts
 
-`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; the result overlay scene exposes a synthetic `ToolResult` preview that can be explicitly published into a `ResultEntity` and result layer. Rule algorithms are not wired yet.
+`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable SharpGL viewer control, viewer UI, render loop, data/rendering/state helpers, and screenshot smoke path. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; the result overlay scene exposes a synthetic `ToolResult` preview that can be explicitly published into a `ResultEntity` and result layer. Rule algorithms are not wired yet.
 
 ## Shell Direction
 
-The SharpGL viewer is expected to stay as a separate 3D viewer project/library. The main workspace follows the `C:\Git\OpenVisionLab_Dev` docking pattern: `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock integration, while `src/OpenVisionLab.ThreeD.Shell` hosts documents and tools through that wrapper. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
+The SharpGL viewer stays as a separate 3D viewer project. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable viewer control, `src/OpenVisionLab.ThreeD.Docking.Controls` owns AvalonDock integration, and `src/OpenVisionLab.ThreeD.Shell` hosts the viewer through those wrapper projects. Following `C:\Git\OpenVisionLab_Dev`, the Shell app owns the `WPF-UI` package and theme dictionaries; Viewer and Docking.Controls do not reference `WPF-UI` directly. .NET 10 migration is planned, but should be handled as a separate compatibility pass before feature work depends on it.
 
 ## First Principle
 

@@ -1,9 +1,9 @@
 using System.Numerics;
 using SharpGL;
 
-namespace OpenVisionLab.ThreeDStudio.Rendering;
+namespace OpenVisionLab.ThreeD.Viewer.Rendering;
 
-internal static class InspectionOverlayRenderer
+public static class InspectionOverlayRenderer
 {
     public static void DrawMeasurement(OpenGL gl, bool cubeVisible, bool pointCloudVisible)
     {
