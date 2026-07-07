@@ -215,7 +215,8 @@
                 <Border Background="#ffffff"
                         BorderBrush="#d1d5db"
                         BorderThickness="0,1,0,0"
-                        Padding="10">
+                        Padding="10"
+                        DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -225,15 +226,47 @@
 
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
-                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: not loaded" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="#6b7280"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding C3DSampleSummary}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,12,0">
                             <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />
-                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: not loaded" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="#6b7280"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SectionProfileSummary}" />
+                            <Border Height="58"
+                                    Margin="0,6,0,0"
+                                    Background="#f9fafb"
+                                    BorderBrush="#d1d5db"
+                                    BorderThickness="1"
+                                    ClipToBounds="True">
+                                <Canvas Width="240" Height="54" Margin="4,1">
+                                    <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="#d1d5db" StrokeThickness="1" />
+                                    <Path Data="{Binding SectionProfilePathData}"
+                                          Stroke="#f59e0b"
+                                          StrokeThickness="2"
+                                          StrokeLineJoin="Round"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                </Canvas>
+                            </Border>
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="#6b7280"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SectionProfileRange}" />
                         </StackPanel>
                         <StackPanel Grid.Column="2">
                             <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Camera / Pick State" />
-                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: viewport active" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="#6b7280"
+                                       Text="{Binding SelectedSelectionMode, StringFormat=Mode: {0}}" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="#6b7280"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SelectionSummary}" />
                         </StackPanel>
                     </Grid>
                 </Border>

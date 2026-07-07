@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Numerics;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -184,6 +185,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         ApplySmokeTolerance(args);
+
+        if (recipeIndex >= 0 && selectionIndex >= 0 && selectionIndex + 1 < args.Length)
+        {
+            ApplySmokeSelection(args[selectionIndex + 1]);
+        }
 
         var pickIndex = Array.IndexOf(args, "--smoke-pick");
         if (pickIndex >= 0 && pickIndex + 1 < args.Length)
@@ -1022,6 +1028,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             viewModel.C3DSamplePointCount = "(missing)";
             viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
+            viewModel.ClearSectionProfile();
             return;
         }
 
@@ -1029,6 +1036,80 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"{c3dSample.Width} x {c3dSample.Height} | rendered {c3dSample.Points.Length:N0} | density {viewModel.SelectedRenderDensity} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+        UpdateSectionProfileFromC3D();
+    }
+
+    private void UpdateSectionProfileFromC3D()
+    {
+        if (c3dSample is null || c3dSample.Points.Length < 2)
+        {
+            viewModel.ClearSectionProfile();
+            return;
+        }
+
+        var centerZ = c3dSample.Points.MinBy(point => Math.Abs(point.Position.Z)).Position.Z;
+        var samples = c3dSample.Points
+            .Where(point => Math.Abs(point.Position.Z - centerZ) < 0.0005f)
+            .OrderBy(point => point.Position.X)
+            .ToArray();
+
+        if (samples.Length < 2)
+        {
+            viewModel.ClearSectionProfile();
+            return;
+        }
+
+        var min = samples.Min(point => point.RawValue);
+        var max = samples.Max(point => point.RawValue);
+        var mean = samples.Average(point => point.RawValue);
+        var rowIndex = EstimateProfileRowIndex(centerZ);
+        viewModel.SetSectionProfile(
+            "C3D Thickness Sample",
+            rowIndex,
+            samples.Length,
+            min,
+            max,
+            mean,
+            BuildSectionProfilePath(samples, min, max));
+    }
+
+    private int EstimateProfileRowIndex(float z)
+    {
+        if (c3dSample is null || c3dSample.ZHalfExtent <= 0.0f)
+        {
+            return 0;
+        }
+
+        var normalized = (z + c3dSample.ZHalfExtent) / (c3dSample.ZHalfExtent * 2.0f);
+        return (int)Math.Round(Math.Clamp(normalized, 0.0f, 1.0f) * (c3dSample.Height - 1));
+    }
+
+    private static string BuildSectionProfilePath(IReadOnlyList<HeightGridPoint> samples, double min, double max)
+    {
+        const double chartWidth = 240.0;
+        const double chartHeight = 54.0;
+        const double padding = 3.0;
+        var span = Math.Max(0.001, max - min);
+        var stride = Math.Max(1, (int)Math.Ceiling(samples.Count / 80.0));
+        var reduced = samples.Where((_, index) => index % stride == 0).ToList();
+        if (reduced[^1] != samples[^1])
+        {
+            reduced.Add(samples[^1]);
+        }
+
+        var builder = new StringBuilder();
+        for (var index = 0; index < reduced.Count; index++)
+        {
+            var sample = reduced[index];
+            var x = reduced.Count == 1 ? 0.0 : chartWidth * index / (reduced.Count - 1);
+            var y = padding + (1.0 - ((sample.RawValue - min) / span)) * (chartHeight - padding * 2.0);
+            builder.Append(index == 0 ? "M " : " L ");
+            builder.Append(x.ToString("F1", CultureInfo.InvariantCulture));
+            builder.Append(',');
+            builder.Append(y.ToString("F1", CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
     }
 
     private void ReloadDefaultC3DSample()
@@ -1090,6 +1171,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
         lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
         lines.Add($"RecipeSave|summary={viewModel.RecipeSaveSummary}");
+        lines.Add("LinkedViewProfile");
+        lines.Add($"SectionProfile|visible={viewModel.SectionProfileVisible}|samples={viewModel.SectionProfileSampleCount}|summary={viewModel.SectionProfileSummary.Replace('|', '/')}");
+        lines.Add($"SectionProfileRange|summary={viewModel.SectionProfileRange.Replace('|', '/')}");
         lines.Add("PublishedResultEntities");
         lines.AddRange(viewModel.ResultEntities.Select(entity =>
             $"{entity.Id}|source={entity.SourceEntityId}|status={entity.Status}|metrics={entity.Metrics.Count}|overlays={entity.Overlays.Count}|message={entity.Message}"));

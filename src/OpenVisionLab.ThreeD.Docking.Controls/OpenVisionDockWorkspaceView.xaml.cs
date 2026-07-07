@@ -78,9 +78,9 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     private void ApplyInitialDockSizes()
     {
-        workbenchPane.DockHeight = new GridLength(4.1, GridUnitType.Star);
-        evidencePane.DockHeight = new GridLength(1.9, GridUnitType.Star);
-        linkedViewPane.DockHeight = new GridLength(0.65, GridUnitType.Star);
+        workbenchPane.DockHeight = new GridLength(3.8, GridUnitType.Star);
+        evidencePane.DockHeight = new GridLength(1.55, GridUnitType.Star);
+        linkedViewPane.DockHeight = new GridLength(1.3, GridUnitType.Star);
         dataLayersPane.DockWidth = new GridLength(260);
         toolInspectorPane.DockWidth = new GridLength(320);
     }

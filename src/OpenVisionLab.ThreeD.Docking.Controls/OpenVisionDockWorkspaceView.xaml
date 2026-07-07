@@ -50,7 +50,7 @@
                         </avalonDock:LayoutAnchorable>
                     </avalonDock:LayoutAnchorablePane>
                     <avalonDock:LayoutAnchorablePane x:Name="linkedViewPane"
-                                                     DockHeight="110">
+                                                     DockHeight="170">
                         <avalonDock:LayoutAnchorable Title="Linked View"
                                                      ContentId="linked-view"
                                                      CanClose="False"

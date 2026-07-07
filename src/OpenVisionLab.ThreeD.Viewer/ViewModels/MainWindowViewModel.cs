@@ -54,6 +54,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string deviationLegendPeak = "Peak: none";
     private string deviationLegendTolerance = "Tolerance: none";
     private string deviationLegendScale = "Scale: mean to peak deviation";
+    private bool sectionProfileVisible;
+    private string sectionProfileSummary = "Profile: not loaded";
+    private string sectionProfileRange = "Range: not loaded";
+    private string sectionProfilePathData = "M 0,30 L 240,30";
+    private int sectionProfileSampleCount;
     private string activePreviewLayerId = "layer.preview.synthetic-height-deviation";
     private string activePreviewLayerName = "Preview: Synthetic Height Deviation";
     private string activePreviewSourceEntityId = PointCloudEntityId;
@@ -244,7 +249,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 SelectionSummary = value switch
                 {
                     "Box ROI" => "Box ROI: viewer state only",
-                    "Section Plane" => "Section plane: viewer state only",
+                    "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
                 };
                 ViewerStatus = $"Selection mode: {value}";
@@ -469,6 +474,36 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref deviationLegendScale, value);
     }
 
+    public bool SectionProfileVisible
+    {
+        get => sectionProfileVisible;
+        private set => SetField(ref sectionProfileVisible, value);
+    }
+
+    public string SectionProfileSummary
+    {
+        get => sectionProfileSummary;
+        private set => SetField(ref sectionProfileSummary, value);
+    }
+
+    public string SectionProfileRange
+    {
+        get => sectionProfileRange;
+        private set => SetField(ref sectionProfileRange, value);
+    }
+
+    public string SectionProfilePathData
+    {
+        get => sectionProfilePathData;
+        private set => SetField(ref sectionProfilePathData, value);
+    }
+
+    public int SectionProfileSampleCount
+    {
+        get => sectionProfileSampleCount;
+        private set => SetField(ref sectionProfileSampleCount, value);
+    }
+
     public void FitAll()
     {
         if (C3DSampleVisible)
@@ -550,7 +585,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseSelectionSmokeScene(string mode)
     {
-        UsePointCloudSmokeScene();
+        var keepCurrentC3DScene = mode == "Section Plane" && C3DSampleVisible;
+        if (!keepCurrentC3DScene)
+        {
+            UsePointCloudSmokeScene();
+        }
+
         SelectionOverlayVisible = true;
         SelectedSelectionMode = mode;
         SelectedEntity = mode switch
@@ -558,6 +598,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Box ROI" => "Box ROI",
             "Section Plane" => "Section Plane",
             _ => "Generated Point Cloud"
+        };
+        SelectionSummary = mode switch
+        {
+            "Section Plane" when SectionProfileVisible => SectionProfileSummary,
+            "Section Plane" => "Section plane: profile not loaded",
+            "Box ROI" => "Box ROI: viewer state only",
+            _ => "Point selection: generated point cloud peak"
         };
         ViewerStatus = $"Smoke scene: {mode}";
     }
@@ -825,6 +872,38 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
         RecipeSaveSummary = $"Recipe saved: {Path.GetFullPath(recipePath)}";
         RefreshRecipeSummary();
+    }
+
+    public void SetSectionProfile(string sourceName, int rowIndex, int sampleCount, double min, double max, double mean, string pathData)
+    {
+        SectionProfileVisible = sampleCount > 1;
+        SectionProfileSampleCount = sampleCount;
+        SectionProfileSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Profile: {sourceName} center section | row {rowIndex} | samples {sampleCount}");
+        SectionProfileRange = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
+        SectionProfilePathData = string.IsNullOrWhiteSpace(pathData) ? "M 0,30 L 240,30" : pathData;
+
+        if (SelectedSelectionMode == "Section Plane")
+        {
+            SelectionSummary = SectionProfileSummary;
+        }
+    }
+
+    public void ClearSectionProfile()
+    {
+        SectionProfileVisible = false;
+        SectionProfileSampleCount = 0;
+        SectionProfileSummary = "Profile: not loaded";
+        SectionProfileRange = "Range: not loaded";
+        SectionProfilePathData = "M 0,30 L 240,30";
+
+        if (SelectedSelectionMode == "Section Plane")
+        {
+            SelectionSummary = "Section plane: profile not loaded";
+        }
     }
 
     private static string FormatRenderDensitySummary(string mode) => mode switch

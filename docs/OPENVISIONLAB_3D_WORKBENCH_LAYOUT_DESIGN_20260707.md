@@ -93,7 +93,7 @@ The implemented split is:
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
-| Section/profile tool | 3D Inspection View + Linked View Strip | High |
+| Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | High |
 | Run history | Evidence Workbench | Medium, after save/edit |
 | Transform/alignment state | Data & Layers + Tool / Inspector | Medium |
@@ -116,9 +116,10 @@ The implemented split is:
    - Save current C3D height deviation tolerance/source as JSON.
    - Keep Preview and Publish separate.
    - Smoke confirms saved JSON can replay through Runner.
-5. Add section/profile tool.
+5. Add section/profile tool. Done.
    - Section line is selected in 3D.
    - Profile chart appears in Linked View Strip.
+   - Smoke contract records Linked View profile visibility, sample count, and range.
 6. Add height-map pane.
    - The same C3D sample can be reviewed as 2D height image and 3D point cloud.
 7. Add run history.
@@ -172,6 +173,14 @@ The implemented split is:
 - Saved Shell recipe: `artifacts/saved_shell_c3d_height_deviation.recipe.json`
 - Runner saved Viewer recipe report: `artifacts/runner_recipe_save_after.txt`
 - Runner saved Shell recipe report: `artifacts/runner_shell_recipe_save_after.txt`
+
+## Section/Profile Evidence
+
+- Baseline before section/profile: `artifacts/shell_recipe_save_after.png`
+- After screenshot: `artifacts/shell_section_profile_after.png`
+- Viewer section/profile smoke: `artifacts/viewer_section_profile_after.png`
+- Viewer section/profile contract: `artifacts/viewer_section_profile_after.txt`
+- Contract evidence: `SectionProfile|visible=True|samples=142`
 
 ## Deferred Decisions
 
