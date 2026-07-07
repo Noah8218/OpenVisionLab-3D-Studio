@@ -31,6 +31,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool selectionOverlayVisible = true;
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
+    private string recipeSummary = "Recipe: none";
     private ToolResult previewToolResult = CreateNotRunToolResult();
     private ToolResult? c3dHeightDeviationPreview;
     private IReadOnlyList<ResultEntity> resultEntities = [];
@@ -239,6 +240,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => resultSummary;
         set => SetField(ref resultSummary, value);
+    }
+
+    public string RecipeSummary
+    {
+        get => recipeSummary;
+        set => SetField(ref recipeSummary, value);
     }
 
     public ToolResult PreviewToolResult

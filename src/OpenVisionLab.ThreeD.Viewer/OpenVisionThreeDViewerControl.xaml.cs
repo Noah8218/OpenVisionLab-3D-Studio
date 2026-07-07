@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -303,6 +305,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         CaptureWindow(path);
     }
 
+    private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Open 3D Recipe",
+            Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+        {
+            ApplyHeightDeviationRecipe(dialog.FileName, isSmoke: false);
+            RenderNow();
+        }
+    }
+
     private void PublishResult_Click(object sender, RoutedEventArgs e)
     {
         viewModel.PublishPreviewResult();
@@ -409,6 +427,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void ApplySmokeRecipe(string path)
     {
+        if (!ApplyHeightDeviationRecipe(path, isSmoke: true))
+        {
+            smokeExitCode = 1;
+        }
+    }
+
+    private bool ApplyHeightDeviationRecipe(string path, bool isSmoke)
+    {
         try
         {
             var fullRecipePath = Path.GetFullPath(path);
@@ -427,12 +453,18 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
             viewModel.SetC3DHeightDeviationPreview(result);
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
-            viewModel.ViewerStatus = $"Smoke recipe: {Path.GetFileName(fullRecipePath)}";
+            viewModel.RecipeSummary = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Recipe: {Path.GetFileName(fullRecipePath)}\nSource: {recipe.Source.Name}\nTolerance: {recipe.Rule.PeakTolerance:F3} {recipe.Source.Unit}");
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke recipe: {Path.GetFileName(fullRecipePath)}"
+                : $"Recipe loaded: {Path.GetFileName(fullRecipePath)}";
+            return true;
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = $"Smoke recipe failed: {ex.Message}";
+            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke recipe" : "Recipe")} failed: {ex.Message}";
+            return false;
         }
     }
 

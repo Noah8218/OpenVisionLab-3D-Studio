@@ -14,9 +14,10 @@
 
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Fit All" Width="72" Margin="0,0,8,0" Click="FitAll_Click" />
-                    <Button Content="Fit Selection" Width="96" Margin="0,0,8,0" Click="FitSelection_Click" />
+                    <Button Content="Fit Selection" Width="112" Margin="0,0,8,0" Click="FitSelection_Click" />
                     <Button Content="Reset" Width="72" Margin="0,0,8,0" Click="Reset_Click" />
-                    <Button Content="Screenshot" Width="104" Click="Screenshot_Click" />
+                    <Button Content="Screenshot" Width="104" Margin="0,0,8,0" Click="Screenshot_Click" />
+                    <Button Content="Open Recipe" Width="104" Click="OpenRecipe_Click" />
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"
@@ -82,6 +83,9 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Measurement" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding MeasurementSummary}" />
+                <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Recipe" />
+                <TextBlock TextWrapping="Wrap"
+                           Text="{Binding RecipeSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Result Overlay" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding ResultSummary}" />
