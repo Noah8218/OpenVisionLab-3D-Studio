@@ -73,7 +73,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 
 For shell/docking work, also run:
 
-`--smoke-screenshot` captures the embedded Viewer control. Use `--shell-smoke-screenshot` when the evidence must include Shell docking panes.
+`--smoke-screenshot` captures the embedded Viewer control. Use `--shell-smoke-screenshot` when the evidence must include Shell docking panes. Use `--shell-evidence-tab history` when the capture must prove the Evidence Workbench run-history list.
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt
@@ -108,6 +108,8 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_recipe_save_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_recipe_save_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_shell_c3d_height_deviation.recipe.json
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_section_profile_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_run_history_after.txt --expect-status Fail --compare-contract artifacts\viewer_height_map_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_run_history_after.txt --shell-smoke-screenshot artifacts\shell_run_history_after.png --shell-evidence-tab history --smoke-recipe recipes\c3d-height-deviation.recipe.json
 ```
 
 For GitHub Actions CI workflow work, keep CI headless and Windows-based:

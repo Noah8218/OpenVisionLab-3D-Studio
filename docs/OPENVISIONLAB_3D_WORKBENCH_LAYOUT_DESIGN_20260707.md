@@ -95,7 +95,7 @@ The implemented split is:
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |
-| Run history | Evidence Workbench | Medium, after save/edit |
+| Run history | Evidence Workbench | Done |
 | Transform/alignment state | Data & Layers + Tool / Inspector | Medium |
 | Screenshot/report snapshots | Evidence Workbench | Medium |
 | CAD/GD&T | Not in current layout phase | Later |
@@ -123,8 +123,9 @@ The implemented split is:
 6. Add height-map pane. Done.
    - The same C3D sample can be reviewed as 2D height image and 3D point cloud.
    - Smoke contract records height-map visibility, bitmap size, and raw-height range.
-7. Add run history.
-   - Only after at least two saved/executed recipe results exist.
+7. Add run history. Done.
+   - History tab shows the current replay evidence row with run time, status, peak deviation, match state, and report path.
+   - Smoke can open the tab with `--shell-evidence-tab history`.
 
 ## Acceptance Checklist For Layout Skeleton
 
@@ -190,6 +191,13 @@ The implemented split is:
 - Viewer height-map smoke: `artifacts/viewer_height_map_after.png`
 - Viewer height-map contract: `artifacts/viewer_height_map_after.txt`
 - Contract evidence: `HeightMap|visible=True|pixels=240x72`
+
+## Run History Evidence
+
+- Closest before screenshot: `artifacts/shell_run_history_before.png`
+- After screenshot: `artifacts/shell_run_history_after.png`
+- Runner report: `artifacts/runner_run_history_after.txt`
+- Smoke command opens the Evidence Workbench `History` tab and shows the current runner/UI matched row.
 
 ## Deferred Decisions
 

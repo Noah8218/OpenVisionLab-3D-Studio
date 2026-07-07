@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
@@ -13,6 +14,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string recipeComparisonSummary = "No recipe comparison evidence loaded.";
     private string recipeComparisonHistory = "(pending)";
     private string recipeComparisonDetails = "(pending)";
+    private int selectedEvidenceTabIndex;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -47,6 +49,14 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref recipeComparisonDetails, value);
     }
 
+    public int SelectedEvidenceTabIndex
+    {
+        get => selectedEvidenceTabIndex;
+        set => SetField(ref selectedEvidenceTabIndex, Math.Clamp(value, 0, 2));
+    }
+
+    public ObservableCollection<RecipeRunHistoryItem> RecipeRunHistory { get; } = [];
+
     public void RefreshRecipeComparison()
     {
         var root = ResolveWorkspaceRoot();
@@ -70,9 +80,34 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             $"Recipe: {FormatEvidencePath(root, recipePath)}\nUI contract: {FormatEvidencePath(root, contractPath)}\nRunner report: {FormatEvidencePath(root, reportPath)}";
         RecipeComparisonDetails =
             $"{PreviewLines("Runner report", reportPath, reportLines)}\n\n{PreviewLines("UI contract", contractPath, contractLines)}";
+        RefreshRunHistory(root, contractPath, reportPath, uiStatus, runnerStatus, uiPeak, runnerPeak, comparisonState);
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
             : "Viewer hosted | recipe comparison pending";
+    }
+
+    private void RefreshRunHistory(
+        string root,
+        string contractPath,
+        string reportPath,
+        string uiStatus,
+        string runnerStatus,
+        string uiPeak,
+        string runnerPeak,
+        string comparisonState)
+    {
+        RecipeRunHistory.Clear();
+
+        var status = runnerStatus != "(missing)" ? runnerStatus : uiStatus;
+        var peakDeviation = runnerPeak != "(missing)" ? runnerPeak : uiPeak;
+        var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
+
+        RecipeRunHistory.Add(new RecipeRunHistoryItem(
+            FormatRunTime(reportPath, contractPath),
+            status,
+            peakDeviation,
+            evidenceState,
+            FormatShortEvidencePath(root, reportPath)));
     }
 
     private static string ResolveWorkspaceRoot()
@@ -151,6 +186,20 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         return $"{displayPath}\n  modified: {timestamp}";
     }
 
+    private static string FormatShortEvidencePath(string root, string path) =>
+        File.Exists(path) ? Path.GetRelativePath(root, path) : $"missing: {Path.GetRelativePath(root, path)}";
+
+    private static string FormatRunTime(string reportPath, string contractPath)
+    {
+        var evidencePath = File.Exists(reportPath) ? reportPath : contractPath;
+        if (!File.Exists(evidencePath))
+        {
+            return "(pending)";
+        }
+
+        return File.GetLastWriteTime(evidencePath).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+    }
+
     private static string PreviewLines(string title, string path, string[] lines)
     {
         if (lines.Length == 0)
@@ -172,4 +221,31 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
     }
+}
+
+public sealed class RecipeRunHistoryItem
+{
+    public RecipeRunHistoryItem(
+        string runTime,
+        string status,
+        string peakDeviation,
+        string evidenceState,
+        string reportPath)
+    {
+        RunTime = runTime;
+        Status = status;
+        PeakDeviation = peakDeviation;
+        EvidenceState = evidenceState;
+        ReportPath = reportPath;
+    }
+
+    public string RunTime { get; }
+
+    public string Status { get; }
+
+    public string PeakDeviation { get; }
+
+    public string EvidenceState { get; }
+
+    public string ReportPath { get; }
 }

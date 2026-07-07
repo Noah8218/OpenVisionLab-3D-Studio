@@ -17,6 +17,7 @@ public partial class MainWindow : Window
         _viewModel = new ShellMainWindowViewModel(
             GetCommandLineValue("--recipe-comparison-contract"),
             GetCommandLineValue("--recipe-comparison-report"));
+        _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _viewer.SidePanelsVisible = false;
         Workspace.ViewerContent = _viewer;
@@ -78,5 +79,15 @@ public partial class MainWindow : Window
         var args = Environment.GetCommandLineArgs();
         var index = Array.IndexOf(args, name);
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
+
+    private static int GetEvidenceTabIndex(string? tabName)
+    {
+        return tabName?.Trim().ToLowerInvariant() switch
+        {
+            "runner" or "runner-report" => 1,
+            "history" => 2,
+            _ => 0
+        };
     }
 }
