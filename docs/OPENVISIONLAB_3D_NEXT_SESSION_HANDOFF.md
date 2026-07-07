@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders a generated cube, generated point cloud, and local C3D height-grid sample.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, and the first sample-backed C3D height deviation rule result.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -46,6 +46,8 @@ Completed in the first implementation slice:
 - The richer Studio render loop and viewer UI are now hosted by `OpenVisionLab.ThreeD.Viewer`; `OpenVisionLab.ThreeDStudio` is a thin standalone host.
 - Dev's WPF UI library boundary is mirrored: `src/OpenVisionLab.ThreeD.Shell` owns `WPF-UI` and app theme resources, while `OpenVisionLab.ThreeD.Viewer` keeps SharpGL/viewer concerns and `OpenVisionLab.ThreeD.Docking.Controls` keeps AvalonDock concerns.
 - Shell smoke now delegates to the embedded `OpenVisionThreeDViewerControl`, so Shell can exercise the same C3D/result overlay smoke scenes as the standalone Studio host.
+- First rule-tool library is in place: `src/OpenVisionLab.ThreeD.Tools` owns `HeightDeviationRule` and depends only on Core.
+- The C3D height deviation rule evaluates the local `3D/Thickness` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
 
 Local sample data now exists:
 
@@ -56,11 +58,11 @@ Local sample data now exists:
 
 The C3D files currently appear to be `int32 width`, `int32 height`, then `float32` height/depth samples. The Thickness and Warpage samples are byte-identical as of the latest check, so do not assume different measurement meaning yet.
 
-Next implementation should stay contract-first now that the main workspace boundary is in place:
+Next implementation should stay contract-first now that the first sample-backed rule is visible:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add one sample-backed height/deviation rule that produces a `ToolResult` and publishes only through the explicit `ResultEntity` path.
-3. After the first rule is visible, add recipe serialization and a runner path for that one rule.
+2. Add recipe serialization for the C3D height deviation rule parameters and result contract.
+3. Add a runner path for that one rule outside the UI.
 
 ## Remaining Project Priority
 
@@ -74,7 +76,7 @@ After the viewer completion gate, define and implement the 3D core contracts:
 - tool result,
 - recipe step.
 
-Then build one sample-backed rule tool, such as a synthetic distance-to-plane or height-tolerance rule.
+Then serialize and replay the first sample-backed rule outside the UI before adding more tools.
 
 ## Evidence Already Gathered
 
@@ -102,12 +104,15 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_contracts_after.png --smoke-c3d thickness --smoke-contracts artifacts\viewer_contracts_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_tool_result_after.png --smoke-overlay result --smoke-contracts artifacts\viewer_tool_result_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_publish_after.png --smoke-overlay result --smoke-publish-result --smoke-contracts artifacts\viewer_publish_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\viewer_height_rule_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt`
 - Before screenshot: `artifacts\viewer_selection_before.png`
 - Cube picking after screenshot: `artifacts\viewer_pick_after_cube.png`
 - C3D height-grid after screenshot: `artifacts\viewer_c3d_after.png`
@@ -115,6 +120,11 @@ Build and smoke evidence:
 - Core contract smoke report: `artifacts\viewer_contracts_after.txt`
 - ToolResult preview smoke report: `artifacts\viewer_tool_result_after.txt`
 - ToolResult publish smoke report: `artifacts\viewer_publish_after.txt`
+- C3D height rule before screenshot: `artifacts\viewer_height_rule_before.png`
+- C3D height rule after screenshot: `artifacts\viewer_height_rule_after.png`
+- C3D height rule smoke report: `artifacts\viewer_height_rule_after.txt`
+- C3D height rule publish screenshot: `artifacts\viewer_height_rule_publish_after.png`
+- C3D height rule publish smoke report: `artifacts\viewer_height_rule_publish_after.txt`
 - Point selection after screenshot: `artifacts\viewer_selection_after_point.png`
 - Box ROI after screenshot: `artifacts\viewer_selection_after_box.png`
 - Section plane after screenshot: `artifacts\viewer_selection_after_section.png`
@@ -123,6 +133,8 @@ Build and smoke evidence:
 - Shell C3D smoke report: `artifacts\shell_c3d_after.txt`
 - Shell result overlay after screenshot: `artifacts\shell_result_overlay_after.png`
 - Shell result overlay smoke report: `artifacts\shell_result_overlay_after.txt`
+- Shell C3D height rule after screenshot: `artifacts\shell_height_rule_after.png`
+- Shell C3D height rule smoke report: `artifacts\shell_height_rule_after.txt`
 
 ## Guardrails
 

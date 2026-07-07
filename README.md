@@ -20,7 +20,8 @@ The current viewer MVP can:
 - Pick the cube or C3D height-grid points and display model coordinates.
 - Show viewer-only selection states for point, box ROI, and section plane.
 - Draw viewer-only measurement and result overlays.
-- Publish the synthetic preview into an explicit result entity/layer without mutating source geometry.
+- Run the first sample-backed C3D height deviation rule with metrics and result overlays.
+- Publish preview results into an explicit result entity/layer without mutating source geometry.
 - Capture screenshot smoke artifacts from the running app.
 
 Still not included: general file-open import, external mesh import, CAD import, persisted recipes, and headless rule execution.
@@ -35,12 +36,15 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_contracts_after.png --smoke-c3d thickness --smoke-contracts artifacts\viewer_contracts_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_tool_result_after.png --smoke-overlay result --smoke-contracts artifacts\viewer_tool_result_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_publish_after.png --smoke-overlay result --smoke-publish-result --smoke-contracts artifacts\viewer_publish_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\viewer_height_rule_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_section.png --smoke-selection section
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_result_overlay_after.png --smoke-overlay result
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_c3d_after.png --smoke-c3d thickness --smoke-contracts artifacts\shell_c3d_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_result_overlay_after.png --smoke-overlay result --smoke-contracts artifacts\shell_result_overlay_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_height_rule_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_height_rule_after.txt
 ```
 
 ## Document Map
@@ -56,7 +60,7 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 
 ## Core Contracts
 
-`src/OpenVisionLab.ThreeD.Core` now contains the first source/result/layer/metric/overlay contracts. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable SharpGL viewer control, viewer UI, render loop, data/rendering/state helpers, and screenshot smoke path. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; the result overlay scene exposes a synthetic `ToolResult` preview that can be explicitly published into a `ResultEntity` and result layer. Rule algorithms are not wired yet.
+`src/OpenVisionLab.ThreeD.Core` contains the first source/result/layer/metric/overlay contracts. `src/OpenVisionLab.ThreeD.Tools` contains the first sample-backed C3D height deviation rule. `src/OpenVisionLab.ThreeD.Viewer` owns the hostable SharpGL viewer control, viewer UI, render loop, data/rendering/state helpers, and screenshot smoke path. The viewer sample state is wired to `SourceEntity` and `EntityLayer`; synthetic and C3D rule previews can be explicitly published into a `ResultEntity` and result layer.
 
 ## Shell Direction
 

@@ -34,8 +34,14 @@ public static class InspectionOverlayRenderer
         }
     }
 
-    public static void DrawResultOverlay(OpenGL gl)
+    public static void DrawResultOverlay(OpenGL gl, bool c3dVisible)
     {
+        if (c3dVisible)
+        {
+            DrawC3DHeightDeviationOverlay(gl);
+            return;
+        }
+
         DrawPassToleranceBand(gl);
         DrawResultProfile(gl);
         DrawFailMarkers(gl);
@@ -199,6 +205,44 @@ public static class InspectionOverlayRenderer
         gl.Vertex(3.72, -0.14, -0.46);
         gl.Vertex(3.78, -0.12, -0.32);
         gl.Vertex(3.95, -0.18, -0.20);
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private static void DrawC3DHeightDeviationOverlay(OpenGL gl)
+    {
+        gl.LineWidth(2.5f);
+        gl.Color(1.0, 0.74, 0.18);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(-4.4, 0.0, -3.2);
+        gl.Vertex(4.4, 0.0, -3.2);
+        gl.Vertex(4.4, 0.0, 3.2);
+        gl.Vertex(-4.4, 0.0, 3.2);
+        gl.End();
+
+        gl.LineWidth(2.0f);
+        gl.Color(0.18, 0.95, 0.42);
+        gl.Begin(OpenGL.GL_LINES);
+        gl.Vertex(-4.4, -0.55, -3.2);
+        gl.Vertex(4.4, -0.55, -3.2);
+        gl.Vertex(-4.4, 0.55, 3.2);
+        gl.Vertex(4.4, 0.55, 3.2);
+        gl.End();
+
+        gl.LineWidth(3.0f);
+        gl.Color(1.0, 0.18, 0.12);
+        gl.Begin(OpenGL.GL_LINES);
+        DrawFailMarker(gl, 3.55, 1.05, 2.20);
+        DrawFailMarker(gl, 3.80, 1.18, 2.55);
+        DrawFailMarker(gl, 4.05, 1.02, 2.90);
+        gl.End();
+
+        gl.PointSize(10.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(1.0, 0.10, 0.08);
+        gl.Vertex(3.55, 1.05, 2.20);
+        gl.Vertex(3.80, 1.18, 2.55);
+        gl.Vertex(4.05, 1.02, 2.90);
         gl.End();
         gl.PointSize(1.0f);
     }

@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using OpenVisionLab.ThreeD.Viewer.Data;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
+using OpenVisionLab.ThreeD.Tools;
 using SharpGL;
 using SharpGL.WPF;
 
@@ -18,6 +19,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 {
     private const float FieldOfViewDegrees = 45.0f;
     private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
+    private const double DefaultC3DHeightDeviationTolerance = 1200.0;
 
     private readonly ViewerPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private readonly C3DHeightGrid? c3dSample;
@@ -35,6 +37,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         InitializeComponent();
         DataContext = viewModel;
         c3dSample = LoadDefaultC3DSample();
+        ConfigureC3DHeightDeviationRule();
         viewModel.PointCloudPointCount = generatedPointCloud.Length.ToString("N0", CultureInfo.InvariantCulture);
         SetC3DSampleStatus();
         viewModel.PropertyChanged += (_, args) =>
@@ -90,6 +93,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             if (overlayIndex >= 0 && overlayIndex + 1 < args.Length)
             {
                 ApplySmokeOverlay(args[overlayIndex + 1]);
+            }
+
+            var ruleIndex = Array.IndexOf(args, "--smoke-rule");
+            if (ruleIndex >= 0 && ruleIndex + 1 < args.Length)
+            {
+                ApplySmokeRule(args[ruleIndex + 1]);
             }
 
             var pickIndex = Array.IndexOf(args, "--smoke-pick");
@@ -161,7 +170,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
         if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
         {
-            InspectionOverlayRenderer.DrawResultOverlay(gl);
+            InspectionOverlayRenderer.DrawResultOverlay(gl, viewModel.C3DSampleVisible);
         }
 
         gl.Flush();
@@ -372,7 +381,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     {
         if (overlay.Equals("result", StringComparison.OrdinalIgnoreCase))
         {
-            viewModel.UseResultSmokeScene();
+            if (viewModel.C3DSampleVisible)
+            {
+                viewModel.UseC3DHeightDeviationRuleSmokeScene();
+            }
+            else
+            {
+                viewModel.UseResultSmokeScene();
+            }
+        }
+    }
+
+    private void ApplySmokeRule(string rule)
+    {
+        if (rule.Equals("height-deviation", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.UseC3DHeightDeviationRuleSmokeScene();
         }
     }
 
@@ -761,6 +785,26 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"{c3dSample.Width} x {c3dSample.Height} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+    }
+
+    private void ConfigureC3DHeightDeviationRule()
+    {
+        if (c3dSample is null)
+        {
+            return;
+        }
+
+        var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
+            MainWindowViewModel.C3DEntityId,
+            "C3D Thickness Sample",
+            c3dSample.Min,
+            c3dSample.Max,
+            c3dSample.Mean,
+            c3dSample.ValidSampleCount,
+            DefaultC3DHeightDeviationTolerance,
+            "raw-height"));
+
+        viewModel.SetC3DHeightDeviationPreview(result);
     }
 
     private void WriteSceneContracts(string path)

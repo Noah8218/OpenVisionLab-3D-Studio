@@ -10,6 +10,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public const string PointCloudEntityId = "source.generated-point-cloud";
     public const string C3DEntityId = "source.c3d-thickness";
     public const string SyntheticResultEntityId = "result.synthetic-height-deviation";
+    public const string C3DHeightDeviationResultEntityId = "result.c3d-height-deviation";
 
     private bool cubeVisible = true;
     private bool pointCloudVisible = true;
@@ -31,10 +32,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
     private ToolResult previewToolResult = CreateNotRunToolResult();
+    private ToolResult? c3dHeightDeviationPreview;
     private IReadOnlyList<ResultEntity> resultEntities = [];
     private string publishedResultSummary = "Published result: none";
     private IReadOnlyList<EntityLayer> entityLayers = [];
     private string sceneContractSummary = "(pending)";
+    private string activePreviewLayerId = "layer.preview.synthetic-height-deviation";
+    private string activePreviewLayerName = "Preview: Synthetic Height Deviation";
+    private string activePreviewSourceEntityId = PointCloudEntityId;
+    private string activeResultEntityId = SyntheticResultEntityId;
+    private string activeResultEntityName = "Published Synthetic Height Deviation";
     private double cameraTargetX = 2.05;
     private double cameraTargetY = -0.25;
     private double cameraTargetZ;
@@ -105,7 +112,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref c3DSampleVisible, value))
             {
                 ViewerStatus = value ? "C3D sample visible" : "C3D sample hidden";
-                RefreshSceneContracts();
+                if (ResultOverlayVisible)
+                {
+                    ApplyActivePreviewResult();
+                }
+                else
+                {
+                    RefreshSceneContracts();
+                }
             }
         }
     }
@@ -204,10 +218,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref resultOverlayVisible, value))
             {
-                PreviewToolResult = value ? CreateSyntheticHeightDeviationPreview() : CreateNotRunToolResult();
-                ResultSummary = FormatToolResult(PreviewToolResult);
+                if (value)
+                {
+                    ApplyActivePreviewResult();
+                }
+                else
+                {
+                    ResetActivePreviewIdentity();
+                    PreviewToolResult = CreateNotRunToolResult();
+                    ResultSummary = FormatToolResult(PreviewToolResult);
+                    RefreshSceneContracts();
+                }
+
                 ViewerStatus = value ? "Result overlay visible" : "Result overlay hidden";
-                RefreshSceneContracts();
             }
         }
     }
@@ -416,6 +439,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ViewerStatus = "Smoke scene: result overlay";
     }
 
+    public void UseC3DHeightDeviationRuleSmokeScene()
+    {
+        UseC3DSmokeScene();
+        MeasurementVisible = false;
+        MeasurementSummary = "C3D rule preview uses raw height statistics.";
+        ResultOverlayVisible = true;
+        SelectedEntity = "C3D Height Deviation Rule";
+        PickCoordinate = "(sample-backed rule)";
+        ViewerStatus = "Smoke scene: C3D height deviation rule";
+    }
+
+    public void SetC3DHeightDeviationPreview(ToolResult result)
+    {
+        c3dHeightDeviationPreview = result;
+        if (ResultOverlayVisible && C3DSampleVisible)
+        {
+            ApplyActivePreviewResult();
+        }
+    }
+
     public bool PublishPreviewResult()
     {
         if (PreviewToolResult.Status == ResultStatus.NotRun)
@@ -465,18 +508,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (PreviewToolResult.Status != ResultStatus.NotRun)
         {
             layers.Add(new EntityLayer(
-                "layer.preview.synthetic-height-deviation",
-                "Preview: Synthetic Height Deviation",
+                activePreviewLayerId,
+                activePreviewLayerName,
                 LayerKind.Preview,
                 ResultOverlayVisible,
-                [PointCloudEntityId]));
+                [activePreviewSourceEntityId]));
         }
 
         if (ResultEntities.Count > 0)
         {
+            var isC3DResult = ResultEntities.Any(entity => entity.Id == C3DHeightDeviationResultEntityId);
             layers.Add(new EntityLayer(
-                "layer.result.synthetic-height-deviation",
-                "Published Synthetic Height Deviation",
+                isC3DResult ? "layer.result.c3d-height-deviation" : "layer.result.synthetic-height-deviation",
+                isC3DResult ? "Published C3D Height Deviation" : "Published Synthetic Height Deviation",
                 LayerKind.Result,
                 true,
                 ResultEntities.Select(entity => entity.Id).ToArray()));
@@ -516,15 +560,45 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 new Overlay("overlay.synthetic-fail-markers", OverlayKind.Marker, "FAIL marker cluster", ResultStatus.Fail, PointCloudEntityId)
             ]);
 
-    private static ResultEntity CreatePublishedResultEntity(ToolResult result) =>
+    private ResultEntity CreatePublishedResultEntity(ToolResult result) =>
         new(
-            SyntheticResultEntityId,
-            "Published Synthetic Height Deviation",
-            PointCloudEntityId,
+            activeResultEntityId,
+            activeResultEntityName,
+            activePreviewSourceEntityId,
             result.Status,
-            "Published from synthetic preview; source geometry remains unchanged.",
+            "Published from preview; source geometry remains unchanged.",
             result.Metrics,
             result.Overlays);
+
+    private void ApplyActivePreviewResult()
+    {
+        if (C3DSampleVisible && c3dHeightDeviationPreview is not null)
+        {
+            activePreviewLayerId = "layer.preview.c3d-height-deviation";
+            activePreviewLayerName = "Preview: C3D Height Deviation Rule";
+            activePreviewSourceEntityId = C3DEntityId;
+            activeResultEntityId = C3DHeightDeviationResultEntityId;
+            activeResultEntityName = "Published C3D Height Deviation";
+            PreviewToolResult = c3dHeightDeviationPreview;
+        }
+        else
+        {
+            ResetActivePreviewIdentity();
+            PreviewToolResult = CreateSyntheticHeightDeviationPreview();
+        }
+
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        RefreshSceneContracts();
+    }
+
+    private void ResetActivePreviewIdentity()
+    {
+        activePreviewLayerId = "layer.preview.synthetic-height-deviation";
+        activePreviewLayerName = "Preview: Synthetic Height Deviation";
+        activePreviewSourceEntityId = PointCloudEntityId;
+        activeResultEntityId = SyntheticResultEntityId;
+        activeResultEntityName = "Published Synthetic Height Deviation";
+    }
 
     private static string FormatToolResult(ToolResult result)
     {
@@ -533,7 +607,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return "Result overlay hidden";
         }
 
-        var metric = result.Metrics.First();
+        var metric = result.Metrics.FirstOrDefault(metric => metric.Status is not null) ?? result.Metrics.First();
         return $"Preview: {result.ToolName}: {result.Status}\n{result.Message}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nOverlays: {result.Overlays.Count}";
     }
 

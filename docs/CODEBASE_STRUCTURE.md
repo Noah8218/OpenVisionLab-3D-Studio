@@ -13,13 +13,14 @@ This repository contains the initial operating documents and the first SharpGL W
 | `docs/` | Exists | Direction, research, viewer MVP, sample data, and handoff documents. |
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
-| `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here before rule algorithms begin. |
+| `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts. Source geometry and result evidence stay separate here. |
 | `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference so the Shell app does not use raw docking APIs directly. |
 | `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper and the separate 3D viewer module. Owns app-level `WPF-UI` package/theme resources. |
+| `src/OpenVisionLab.ThreeD.Tools/` | Exists | First rule-tool library. Contains the sample-backed C3D height deviation rule and depends on Core, not WPF or SharpGL. |
 | `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, C3D reader, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
 
-There is a minimal core contract library, docking wrapper, shell app, and hostable viewer control. There is no separate tool library or test project yet.
+There is a minimal core contract library, first tool library, docking wrapper, shell app, and hostable viewer control. There is no test project yet.
 
 ## 2. Reference Repository
 
@@ -41,7 +42,6 @@ Create these folders only when implementation begins.
 
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
-| `src/OpenVisionLab.ThreeD.Tools/` | First validation tool starts | Rule-based 3D tools such as distance, bounds, alignment, plane fit, and mesh deviation. |
 | `tools/` | First command check is needed | Build, smoke, sample validation, screenshot, and contract checks. |
 | `samples/` | First redistributable public sample is added | Small public sample models and expected results. Current local samples live in `3D/`. |
 | `artifacts/` | First smoke captures evidence | Generated screenshots, logs, and reports. Do not treat as source. |
