@@ -99,6 +99,8 @@ Viewer usage research is recorded in `docs/OPENVISIONLAB_3D_VIEWER_USAGE_RESEARC
 
 Commercial viewer/workbench baseline review is recorded in `docs/OPENVISIONLAB_3D_COMMERCIAL_VIEWER_REVIEW_20260707.md`.
 
+Workbench layout design is recorded in `docs/OPENVISIONLAB_3D_WORKBENCH_LAYOUT_DESIGN_20260707.md`.
+
 Local sample data notes are recorded in `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`.
 
 Build and smoke evidence:

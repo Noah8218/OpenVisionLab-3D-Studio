@@ -71,6 +71,7 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 - `docs/OPENVISIONLAB_3D_RESEARCH_NOTES_20260706.md`: local and web research notes.
 - `docs/OPENVISIONLAB_3D_VIEWER_USAGE_RESEARCH_20260706.md`: commercial 3D vision viewer usage patterns and next development track.
 - `docs/OPENVISIONLAB_3D_COMMERCIAL_VIEWER_REVIEW_20260707.md`: commercial 3D viewer/workbench baseline and current Viewer gap review.
+- `docs/OPENVISIONLAB_3D_WORKBENCH_LAYOUT_DESIGN_20260707.md`: commercial-style Shell/Viewer layout contract before further feature work.
 - `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`: local 3D sample inventory and inferred C3D layout notes.
 - `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: immediate next work.
 

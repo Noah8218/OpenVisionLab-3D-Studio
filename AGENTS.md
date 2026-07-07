@@ -19,6 +19,7 @@ This file defines the working agreement for Codex in this repository.
 ## Stable Contracts
 
 - Build the 3D viewer first. Rule authoring and 3D algorithm work must wait until the viewer completion gate passes.
+- Before adding new visible Viewer/Shell features, place them in the workbench layout contract in `docs/OPENVISIONLAB_3D_WORKBENCH_LAYOUT_DESIGN_20260707.md`; layout skeleton work comes before filling new feature behavior.
 - Viewer completion means reliable display, camera control, object/layer visibility, picking, selection, measurement/result overlay rendering, color modes, and screenshot smoke evidence.
 - The first viewer implementation uses SharpGL because the project owner is already comfortable reading and debugging SharpGL-based code.
 - The 3D viewer must remain a separate project/library. The eventual main workspace should host it as a document/tool view instead of merging viewer internals into the main shell.
@@ -94,11 +95,12 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 ## Priority Direction
 
 1. Establish the viewer MVP.
-2. Harden the viewer to the completion gate: mesh/point-cloud display, camera, selection, overlays, color modes, screenshots, and MVVM state separation.
-3. Define the 3D entity/layer/result contracts.
-4. Add one rule-based validation tool with metrics and overlays.
-5. Add recipe serialization and a headless runner path.
-6. Expand data formats, CAD precision, point-cloud processing, and AI assistance only after the core loop is verified.
+2. Lock the commercial-style workbench layout skeleton before adding more visible feature behavior.
+3. Harden the viewer to the completion gate: mesh/point-cloud display, camera, selection, overlays, color modes, screenshots, and MVVM state separation.
+4. Define the 3D entity/layer/result contracts.
+5. Add one rule-based validation tool with metrics and overlays.
+6. Add recipe serialization and a headless runner path.
+7. Expand data formats, CAD precision, point-cloud processing, and AI assistance only after the core loop is verified.
 
 When starting after orientation, state the immediate priority and the remaining project priority before editing files or running follow-up commands.
 
