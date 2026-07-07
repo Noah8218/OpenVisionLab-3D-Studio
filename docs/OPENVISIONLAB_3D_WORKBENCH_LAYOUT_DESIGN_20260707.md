@@ -94,7 +94,7 @@ The implemented split is:
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
-| Height-map view | Linked View Strip | High |
+| Height-map view | Linked View Strip | Done |
 | Run history | Evidence Workbench | Medium, after save/edit |
 | Transform/alignment state | Data & Layers + Tool / Inspector | Medium |
 | Screenshot/report snapshots | Evidence Workbench | Medium |
@@ -120,8 +120,9 @@ The implemented split is:
    - Section line is selected in 3D.
    - Profile chart appears in Linked View Strip.
    - Smoke contract records Linked View profile visibility, sample count, and range.
-6. Add height-map pane.
+6. Add height-map pane. Done.
    - The same C3D sample can be reviewed as 2D height image and 3D point cloud.
+   - Smoke contract records height-map visibility, bitmap size, and raw-height range.
 7. Add run history.
    - Only after at least two saved/executed recipe results exist.
 
@@ -182,11 +183,18 @@ The implemented split is:
 - Viewer section/profile contract: `artifacts/viewer_section_profile_after.txt`
 - Contract evidence: `SectionProfile|visible=True|samples=142`
 
+## Height Map Evidence
+
+- Baseline before height-map: `artifacts/shell_section_profile_after.png`
+- After screenshot: `artifacts/shell_height_map_after.png`
+- Viewer height-map smoke: `artifacts/viewer_height_map_after.png`
+- Viewer height-map contract: `artifacts/viewer_height_map_after.txt`
+- Contract evidence: `HeightMap|visible=True|pixels=240x72`
+
 ## Deferred Decisions
 
 - Exact icons and command styling.
 - Final tab names for Evidence Workbench.
 - Whether the Linked View Strip is bottom-docked or right-docked on smaller screens.
-- Whether the first height-map view is rendered in WPF bitmap, SharpGL texture, or a lightweight custom control.
 
 Do not resolve these until the layout skeleton exists and current smoke evidence shows the workspace is usable.

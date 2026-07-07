@@ -1,5 +1,7 @@
 # OpenVisionLab 3D Studio
 
+[![CI](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/workflows/ci.yml)
+
 OpenVisionLab 3D Studio is an early-stage desktop project for rule-based 3D inspection.
 
 The goal is to build a practical 3D vision workbench where users can load 3D data, inspect geometry, visualize measurements and result overlays, and create repeatable validation recipes.

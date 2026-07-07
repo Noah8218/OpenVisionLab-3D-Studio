@@ -1028,6 +1028,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             viewModel.C3DSamplePointCount = "(missing)";
             viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
+            viewModel.ClearHeightMap();
             viewModel.ClearSectionProfile();
             return;
         }
@@ -1036,7 +1037,81 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"{c3dSample.Width} x {c3dSample.Height} | rendered {c3dSample.Points.Length:N0} | density {viewModel.SelectedRenderDensity} | valid {c3dSample.ValidSampleCount:N0} | zero {c3dSample.ZeroSampleCount:N0} | min {c3dSample.Min:F3} | max {c3dSample.Max:F3}");
+        UpdateHeightMapFromC3D();
         UpdateSectionProfileFromC3D();
+    }
+
+    private void UpdateHeightMapFromC3D()
+    {
+        if (c3dSample is null || c3dSample.Points.Length == 0)
+        {
+            viewModel.ClearHeightMap();
+            return;
+        }
+
+        const int pixelWidth = 240;
+        const int pixelHeight = 72;
+        var pixels = new byte[pixelWidth * pixelHeight * 4];
+        for (var index = 0; index < pixels.Length; index += 4)
+        {
+            pixels[index] = 31;
+            pixels[index + 1] = 24;
+            pixels[index + 2] = 17;
+            pixels[index + 3] = 255;
+        }
+
+        foreach (var point in c3dSample.Points)
+        {
+            var x = (point.Position.X + c3dSample.XHalfExtent) / Math.Max(0.0001f, c3dSample.XHalfExtent * 2.0f);
+            var z = (point.Position.Z + c3dSample.ZHalfExtent) / Math.Max(0.0001f, c3dSample.ZHalfExtent * 2.0f);
+            var column = (int)Math.Round(Math.Clamp(x, 0.0f, 1.0f) * (pixelWidth - 1));
+            var row = (int)Math.Round(Math.Clamp(z, 0.0f, 1.0f) * (pixelHeight - 1));
+            PaintHeightMapPixel(pixels, pixelWidth, pixelHeight, column, row, point.HeightScalar);
+        }
+
+        var bitmap = BitmapSource.Create(
+            pixelWidth,
+            pixelHeight,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pixels,
+            pixelWidth * 4);
+        bitmap.Freeze();
+
+        viewModel.SetHeightMap(
+            bitmap,
+            c3dSample.Width,
+            c3dSample.Height,
+            c3dSample.Points.Length,
+            c3dSample.Min,
+            c3dSample.Max,
+            c3dSample.Mean,
+            pixelWidth,
+            pixelHeight);
+    }
+
+    private static void PaintHeightMapPixel(byte[] pixels, int pixelWidth, int pixelHeight, int column, int row, double heightScalar)
+    {
+        var (r, g, b) = HeightMapColor(heightScalar);
+        for (var y = Math.Max(0, row - 1); y <= Math.Min(pixelHeight - 1, row + 1); y++)
+        {
+            for (var x = Math.Max(0, column - 1); x <= Math.Min(pixelWidth - 1, column + 1); x++)
+            {
+                var index = (y * pixelWidth + x) * 4;
+                pixels[index] = b;
+                pixels[index + 1] = g;
+                pixels[index + 2] = r;
+                pixels[index + 3] = 255;
+            }
+        }
+    }
+
+    private static (byte R, byte G, byte B) HeightMapColor(double value)
+    {
+        var (r, g, b) = HeightColor(value);
+        return ((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
     }
 
     private void UpdateSectionProfileFromC3D()
@@ -1171,6 +1246,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
         lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
         lines.Add($"RecipeSave|summary={viewModel.RecipeSaveSummary}");
+        lines.Add("LinkedViewHeightMap");
+        lines.Add($"HeightMap|visible={viewModel.HeightMapVisible}|pixels={viewModel.HeightMapPixelWidth}x{viewModel.HeightMapPixelHeight}|summary={viewModel.HeightMapSummary.Replace('|', '/')}");
+        lines.Add($"HeightMapRange|summary={viewModel.HeightMapRange.Replace('|', '/')}");
         lines.Add("LinkedViewProfile");
         lines.Add($"SectionProfile|visible={viewModel.SectionProfileVisible}|samples={viewModel.SectionProfileSampleCount}|summary={viewModel.SectionProfileSummary.Replace('|', '/')}");
         lines.Add($"SectionProfileRange|summary={viewModel.SectionProfileRange.Replace('|', '/')}");

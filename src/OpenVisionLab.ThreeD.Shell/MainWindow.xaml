@@ -226,10 +226,36 @@
 
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Foreground="#6b7280"
-                                       TextWrapping="Wrap"
-                                       Text="{Binding C3DSampleSummary}" />
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="154" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="150"
+                                        Height="54"
+                                        HorizontalAlignment="Left"
+                                        Background="#111827"
+                                        BorderBrush="#d1d5db"
+                                        BorderThickness="1"
+                                        ClipToBounds="True">
+                                    <Image Source="{Binding HeightMapImageSource}"
+                                           Width="150"
+                                           Height="50"
+                                           Stretch="Fill"
+                                           SnapsToDevicePixels="True" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Foreground="#6b7280"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding HeightMapSummary}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding HeightMapRange}" />
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="0,0,12,0">
                             <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />

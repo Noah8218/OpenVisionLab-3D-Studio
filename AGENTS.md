@@ -63,6 +63,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_render_controls_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-point-size 4 --smoke-density Detailed --smoke-contracts artifacts\viewer_render_controls_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_recipe_save_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_c3d_height_deviation.recipe.json --smoke-contracts artifacts\viewer_recipe_save_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section --smoke-contracts artifacts\viewer_section_profile_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_height_map_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box
@@ -106,6 +107,15 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_render_controls_after.txt --recipe-comparison-report artifacts\runner_shell_render_controls_after.txt --shell-smoke-screenshot artifacts\shell_render_controls_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-point-size 4 --smoke-density Detailed
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_recipe_save_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_recipe_save_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-tolerance 1500 --smoke-save-recipe artifacts\saved_shell_c3d_height_deviation.recipe.json
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_section_profile_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json
+```
+
+For GitHub Actions CI workflow work, keep CI headless and Windows-based:
+
+```powershell
+dotnet restore OpenVisionLab.ThreeDStudio.slnx
+dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 ```
 
 UI/UX work requires current screenshots from the running build. Store before/after captures in an artifact folder and report the paths.

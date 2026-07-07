@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -54,6 +55,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string deviationLegendPeak = "Peak: none";
     private string deviationLegendTolerance = "Tolerance: none";
     private string deviationLegendScale = "Scale: mean to peak deviation";
+    private bool heightMapVisible;
+    private ImageSource? heightMapImageSource;
+    private string heightMapSummary = "Height map: not loaded";
+    private string heightMapRange = "Range: not loaded";
+    private int heightMapPixelWidth;
+    private int heightMapPixelHeight;
     private bool sectionProfileVisible;
     private string sectionProfileSummary = "Profile: not loaded";
     private string sectionProfileRange = "Range: not loaded";
@@ -474,6 +481,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref deviationLegendScale, value);
     }
 
+    public bool HeightMapVisible
+    {
+        get => heightMapVisible;
+        private set => SetField(ref heightMapVisible, value);
+    }
+
+    public ImageSource? HeightMapImageSource
+    {
+        get => heightMapImageSource;
+        private set => SetField(ref heightMapImageSource, value);
+    }
+
+    public string HeightMapSummary
+    {
+        get => heightMapSummary;
+        private set => SetField(ref heightMapSummary, value);
+    }
+
+    public string HeightMapRange
+    {
+        get => heightMapRange;
+        private set => SetField(ref heightMapRange, value);
+    }
+
+    public int HeightMapPixelWidth
+    {
+        get => heightMapPixelWidth;
+        private set => SetField(ref heightMapPixelWidth, value);
+    }
+
+    public int HeightMapPixelHeight
+    {
+        get => heightMapPixelHeight;
+        private set => SetField(ref heightMapPixelHeight, value);
+    }
+
     public bool SectionProfileVisible
     {
         get => sectionProfileVisible;
@@ -890,6 +933,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SelectionSummary = SectionProfileSummary;
         }
+    }
+
+    public void SetHeightMap(ImageSource imageSource, int sourceWidth, int sourceHeight, int renderedPoints, double min, double max, double mean, int pixelWidth, int pixelHeight)
+    {
+        HeightMapVisible = true;
+        HeightMapImageSource = imageSource;
+        HeightMapPixelWidth = pixelWidth;
+        HeightMapPixelHeight = pixelHeight;
+        HeightMapSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Height map: {sourceWidth} x {sourceHeight} C3D | rendered {renderedPoints:N0} points");
+        HeightMapRange = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
+    }
+
+    public void ClearHeightMap()
+    {
+        HeightMapVisible = false;
+        HeightMapImageSource = null;
+        HeightMapPixelWidth = 0;
+        HeightMapPixelHeight = 0;
+        HeightMapSummary = "Height map: not loaded";
+        HeightMapRange = "Range: not loaded";
     }
 
     public void ClearSectionProfile()
