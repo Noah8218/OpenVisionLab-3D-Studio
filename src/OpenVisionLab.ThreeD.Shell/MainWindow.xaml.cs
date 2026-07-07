@@ -18,6 +18,7 @@ public partial class MainWindow : Window
             GetCommandLineValue("--recipe-comparison-contract"),
             GetCommandLineValue("--recipe-comparison-report"));
         DataContext = _viewModel;
+        _viewer.SidePanelsVisible = false;
         Workspace.ViewerContent = _viewer;
         _viewer.EnableSmokeFromCommandLine();
         EnableShellSmokeFromCommandLine();

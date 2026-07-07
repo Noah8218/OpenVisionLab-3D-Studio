@@ -19,6 +19,13 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl : UserControl
 {
+    public static readonly DependencyProperty SidePanelsVisibleProperty =
+        DependencyProperty.Register(
+            nameof(SidePanelsVisible),
+            typeof(bool),
+            typeof(OpenVisionThreeDViewerControl),
+            new PropertyMetadata(true, OnSidePanelsVisibleChanged));
+
     private const float FieldOfViewDegrees = 45.0f;
     private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
@@ -38,6 +45,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     public OpenVisionThreeDViewerControl()
     {
         InitializeComponent();
+        UpdateSidePanelsVisibility();
         DataContext = viewModel;
         c3dSample = LoadDefaultC3DSample();
         ConfigureC3DHeightDeviationRule();
@@ -59,6 +67,29 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             }
         };
 
+    }
+
+    public bool SidePanelsVisible
+    {
+        get => (bool)GetValue(SidePanelsVisibleProperty);
+        set => SetValue(SidePanelsVisibleProperty, value);
+    }
+
+    private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+    {
+        ((OpenVisionThreeDViewerControl)dependencyObject).UpdateSidePanelsVisibility();
+    }
+
+    private void UpdateSidePanelsVisibility()
+    {
+        if (LeftSidePanel is null || RightSidePanel is null)
+        {
+            return;
+        }
+
+        var visibility = SidePanelsVisible ? Visibility.Visible : Visibility.Collapsed;
+        LeftSidePanel.Visibility = visibility;
+        RightSidePanel.Visibility = visibility;
     }
 
     public void EnableSmokeFromCommandLine()

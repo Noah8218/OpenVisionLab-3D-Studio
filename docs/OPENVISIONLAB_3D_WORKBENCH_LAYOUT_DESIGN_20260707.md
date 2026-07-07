@@ -60,15 +60,22 @@ The OpenVisionLab 3D layout should make that workflow visible on the first scree
 
 ## First Implementation Layout
 
-The next code phase should create the shell/view layout skeleton before adding new algorithms:
+Implemented in the first code slice:
 
-1. Keep the existing `3D Viewer` dock document as the center surface.
-2. Split the current Viewer sidebars conceptually into:
+1. `OpenVisionLab.ThreeD.Docking.Controls` exposes stable docking slots for `Data & Layers`, `3D Inspection View`, `Tool / Inspector`, `Evidence Workbench`, and `Linked View`.
+2. The Shell hosts `OpenVisionThreeDViewerControl` in the center `3D Inspection View` slot.
+3. The Viewer control keeps its standalone side panels by default, but Shell sets `SidePanelsVisible=false` so workflow panes live at the workbench level.
+4. The former `Recipe Comparison` pane is now the first `Evidence Workbench` tab group.
+5. The `Linked View` strip exists as a bottom slot for future height-map, section/profile, and camera/pick-linked views.
+6. No new algorithmic behavior was added during the layout skeleton pass.
+
+The implemented split is:
+
+1. Current Viewer sidebars become Shell-level workflow panes:
    - `Data & Layers`;
    - `Tool / Inspector`.
-3. Keep `Recipe Comparison` as the first `Evidence Workbench` pane.
-4. Reserve a future bottom/secondary pane for `Height Map / Profile`.
-5. Add no new algorithmic behavior during the layout skeleton pass except what is needed to keep current smoke checks passing.
+2. The Viewer remains responsible for SharpGL rendering, camera, picking, and overlays.
+3. Evidence and runner comparison remain outside the viewport.
 
 ## Feature Placement Rules
 
@@ -115,13 +122,21 @@ The next code phase should create the shell/view layout skeleton before adding n
 
 ## Acceptance Checklist For Layout Skeleton
 
-- Shell screenshot shows distinct workbench zones.
-- Viewer-only smoke still works.
-- Shell-wide smoke captures all docking panes.
-- Existing recipe load, preview, publish, runner comparison still pass.
-- AvalonDock remains owned by `OpenVisionLab.ThreeD.Docking.Controls`.
-- `WPF-UI` remains app-level in `OpenVisionLab.ThreeD.Shell`.
-- Viewer remains hostable outside the Shell.
+- [x] Shell screenshot shows distinct workbench zones.
+- [x] Viewer-only smoke still works.
+- [x] Shell-wide smoke captures all docking panes.
+- [x] Existing recipe load, preview, publish, runner comparison still pass.
+- [x] AvalonDock remains owned by `OpenVisionLab.ThreeD.Docking.Controls`.
+- [x] `WPF-UI` remains app-level in `OpenVisionLab.ThreeD.Shell`.
+- [x] Viewer remains hostable outside the Shell.
+
+## Implementation Evidence
+
+- Before screenshot: `artifacts/shell_workbench_layout_before.png`
+- After screenshot: `artifacts/shell_workbench_layout_after.png`
+- Viewer regression smoke: `artifacts/viewer_workbench_layout_regression_after.png`
+- Shell embedded Viewer contract: `artifacts/shell_workbench_layout_after.txt`
+- Runner comparison report: `artifacts/runner_shell_workbench_layout_after.txt`
 
 ## Deferred Decisions
 

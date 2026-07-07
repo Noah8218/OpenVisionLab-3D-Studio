@@ -33,7 +33,12 @@
             </Grid>
         </Border>
 
-        <Border DockPanel.Dock="Left" Width="240" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="0,0,1,0">
+        <Border x:Name="LeftSidePanel"
+                DockPanel.Dock="Left"
+                Width="240"
+                Background="#ffffff"
+                BorderBrush="#d1d5db"
+                BorderThickness="0,0,1,0">
             <StackPanel Margin="12">
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Entities" />
                 <CheckBox Margin="0,12,0,0"
@@ -72,7 +77,12 @@
             </StackPanel>
         </Border>
 
-        <Border DockPanel.Dock="Right" Width="300" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="1,0,0,0">
+        <Border x:Name="RightSidePanel"
+                DockPanel.Dock="Right"
+                Width="300"
+                Background="#ffffff"
+                BorderBrush="#d1d5db"
+                BorderThickness="1,0,0,0">
             <StackPanel Margin="12">
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Inspection" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Selected Entity" />

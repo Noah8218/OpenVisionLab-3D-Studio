@@ -11,21 +11,51 @@
                                    BorderThickness="1">
             <avalonDock:LayoutRoot>
                 <avalonDock:LayoutPanel Orientation="Vertical">
-                    <avalonDock:LayoutAnchorablePane x:Name="primaryPane">
-                        <avalonDock:LayoutAnchorable Title="3D Viewer"
+                    <avalonDock:LayoutPanel x:Name="workbenchPane"
+                                            Orientation="Horizontal">
+                        <avalonDock:LayoutAnchorablePane x:Name="dataLayersPane"
+                                                         DockWidth="250">
+                            <avalonDock:LayoutAnchorable Title="Data &amp; Layers"
+                                                         ContentId="data-layers"
+                                                         CanClose="False"
+                                                         CanFloat="False">
+                                <ContentPresenter Content="{Binding DataLayersContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                        <avalonDock:LayoutAnchorablePane x:Name="primaryPane">
+                            <avalonDock:LayoutAnchorable Title="3D Inspection View"
                                                      ContentId="three-d-viewer"
                                                      CanClose="False"
                                                      CanFloat="False">
-                            <ContentPresenter Content="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
-                        </avalonDock:LayoutAnchorable>
-                    </avalonDock:LayoutAnchorablePane>
-                    <avalonDock:LayoutAnchorablePane x:Name="recipeComparisonPane"
-                                                     DockHeight="230">
-                        <avalonDock:LayoutAnchorable Title="Recipe Comparison"
-                                                     ContentId="recipe-comparison"
+                                <ContentPresenter Content="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                        <avalonDock:LayoutAnchorablePane x:Name="toolInspectorPane"
+                                                         DockWidth="320">
+                            <avalonDock:LayoutAnchorable Title="Tool / Inspector"
+                                                         ContentId="tool-inspector"
+                                                         CanClose="False"
+                                                         CanFloat="False">
+                                <ContentPresenter Content="{Binding ToolInspectorContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                    </avalonDock:LayoutPanel>
+                    <avalonDock:LayoutAnchorablePane x:Name="evidencePane"
+                                                     DockHeight="205">
+                        <avalonDock:LayoutAnchorable Title="Evidence Workbench"
+                                                     ContentId="evidence-workbench"
                                                      CanClose="False"
                                                      CanFloat="False">
-                            <ContentPresenter Content="{Binding RecipeComparisonContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            <ContentPresenter Content="{Binding EvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                    </avalonDock:LayoutAnchorablePane>
+                    <avalonDock:LayoutAnchorablePane x:Name="linkedViewPane"
+                                                     DockHeight="110">
+                        <avalonDock:LayoutAnchorable Title="Linked View"
+                                                     ContentId="linked-view"
+                                                     CanClose="False"
+                                                     CanFloat="False">
+                            <ContentPresenter Content="{Binding LinkedViewContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
                     </avalonDock:LayoutAnchorablePane>
                 </avalonDock:LayoutPanel>

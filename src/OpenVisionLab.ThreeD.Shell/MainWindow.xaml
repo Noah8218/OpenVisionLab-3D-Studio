@@ -28,11 +28,78 @@
         </Border>
 
         <dock:OpenVisionDockWorkspaceView x:Name="Workspace">
-            <dock:OpenVisionDockWorkspaceView.RecipeComparisonContent>
+            <dock:OpenVisionDockWorkspaceView.DataLayersContent>
+                <Border Background="#ffffff"
+                        BorderBrush="#d1d5db"
+                        BorderThickness="0,1,1,0"
+                        Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       Text="Data &amp; Layers" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Source Geometry" />
+                            <TextBlock FontWeight="SemiBold" Text="Generated Unit Cube" />
+                            <TextBlock Margin="0,4,0,0" Text="Generated Point Cloud" />
+                            <TextBlock Margin="0,4,0,0" Text="C3D Thickness Sample" />
+
+                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Result Layers" />
+                            <TextBlock FontWeight="SemiBold" Text="C3D Height Deviation Preview" />
+                            <TextBlock Margin="0,4,0,0" Text="Published Result Layer" />
+
+                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Display State" />
+                            <TextBlock Text="Color: Height" />
+                            <TextBlock Margin="0,4,0,0" Text="Units: raw height" />
+                            <TextBlock Margin="0,4,0,0" Text="Transform: Identity" />
+
+                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="Contracts" />
+                            <TextBlock Text="Source/result separation: active" />
+                            <TextBlock Margin="0,4,0,0" Text="Unit metadata: visible" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </dock:OpenVisionDockWorkspaceView.DataLayersContent>
+
+            <dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
+                <Border Background="#ffffff"
+                        BorderBrush="#d1d5db"
+                        BorderThickness="1,1,0,0"
+                        Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       Text="Tool / Inspector" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Active Tool" />
+                            <TextBlock FontWeight="SemiBold" Text="C3D Height Deviation Rule" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Rule Parameters" />
+                            <TextBlock Text="Tolerance: 1200 raw-height" />
+                            <TextBlock Margin="0,4,0,0" Text="Reference: C3D sample average" />
+                            <TextBlock Margin="0,4,0,0" Text="Output: preview result layer" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Latest Result" />
+                            <TextBlock FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding RecipeComparisonSummary}" />
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Inspection Target" />
+                            <TextBlock Text="Selection: current viewport pick" />
+                            <TextBlock Margin="0,4,0,0" Text="Overlay: result and measurement evidence" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
+
+            <dock:OpenVisionDockWorkspaceView.EvidenceContent>
                 <Border Background="#ffffff"
                         BorderBrush="#d1d5db"
                         BorderThickness="0,1,0,0"
-                        Padding="12">
+                        Padding="10">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -48,7 +115,7 @@
                                        FontSize="15"
                                        FontWeight="SemiBold"
                                        Foreground="#111827"
-                                       Text="Recipe Comparison" />
+                                       Text="Evidence Workbench" />
                             <Button Grid.Column="1"
                                     MinWidth="78"
                                     Padding="10,4"
@@ -56,41 +123,88 @@
                                     Click="RefreshRecipeComparison_Click" />
                         </Grid>
 
-                        <Grid Grid.Row="1" Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="300" />
-                                <ColumnDefinition Width="16" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <TabControl Grid.Row="1" Margin="0,8,0,0">
+                            <TabItem Header="Result Summary">
+                                <Grid Margin="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="300" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel>
-                                    <TextBlock Foreground="#6b7280" Text="Latest Result" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
-                                               Text="{Binding RecipeComparisonSummary}" />
-                                    <TextBlock Margin="0,12,0,0"
-                                               Foreground="#6b7280"
-                                               Text="Persisted Evidence" />
-                                    <TextBlock Margin="0,4,0,0"
-                                               TextWrapping="Wrap"
-                                               Text="{Binding RecipeComparisonHistory}" />
-                                </StackPanel>
-                            </ScrollViewer>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel>
+                                            <TextBlock Foreground="#6b7280" Text="Latest Result" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding RecipeComparisonSummary}" />
+                                            <TextBlock Margin="0,12,0,0"
+                                                       Foreground="#6b7280"
+                                                       Text="Persisted Evidence" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding RecipeComparisonHistory}" />
+                                        </StackPanel>
+                                    </ScrollViewer>
 
-                            <ScrollViewer Grid.Column="2"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          VerticalScrollBarVisibility="Auto">
-                                <TextBlock FontFamily="Consolas"
-                                           FontSize="12"
+                                    <ScrollViewer Grid.Column="2"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <TextBlock FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding RecipeComparisonDetails}" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </TabItem>
+                            <TabItem Header="Runner Report">
+                                <ScrollViewer Margin="10"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <TextBlock FontFamily="Consolas"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding RecipeComparisonDetails}" />
+                                </ScrollViewer>
+                            </TabItem>
+                            <TabItem Header="History">
+                                <TextBlock Margin="10"
                                            TextWrapping="Wrap"
-                                           Text="{Binding RecipeComparisonDetails}" />
-                            </ScrollViewer>
-                        </Grid>
+                                           Text="{Binding RecipeComparisonHistory}" />
+                            </TabItem>
+                        </TabControl>
                     </Grid>
                 </Border>
-            </dock:OpenVisionDockWorkspaceView.RecipeComparisonContent>
+            </dock:OpenVisionDockWorkspaceView.EvidenceContent>
+
+            <dock:OpenVisionDockWorkspaceView.LinkedViewContent>
+                <Border Background="#ffffff"
+                        BorderBrush="#d1d5db"
+                        BorderThickness="0,1,0,0"
+                        Padding="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
+                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: not loaded" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />
+                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: not loaded" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Camera / Pick State" />
+                            <TextBlock Margin="0,4,0,0" Foreground="#6b7280" Text="Status: viewport active" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </dock:OpenVisionDockWorkspaceView.LinkedViewContent>
         </dock:OpenVisionDockWorkspaceView>
     </DockPanel>
 </Window>
