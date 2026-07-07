@@ -5,7 +5,7 @@ Updated: 2026-07-07
 ## Current State
 
 - Repository: `C:\Git\OpenVisionLab-3D-Studio`
-- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, shows the rule with a deviation color scale/tolerance legend, exposes point size/render-density controls, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, saves edited tolerance/source state as a new JSON recipe, displays linked Height Map and Section/Profile views for the C3D sample, exposes a Viewer-internal coordinate/measurement/performance HUD with two-point distance and height delta, replays/compares that rule through a non-UI recipe runner, shows that evidence and a minimal run-history row inside the first Shell workbench layout skeleton, and has a Windows GitHub Actions CI build with headless runner smoke.
+- Status: SharpGL WPF viewer MVP now renders generated geometry, the local C3D height-grid sample, previews/publishes the first C3D height deviation rule, shows the rule with a deviation color scale/tolerance legend, exposes point size/render-density controls, loads that rule from JSON recipe in smoke mode and the visible Open Recipe command, saves edited tolerance/source state as a new JSON recipe, displays linked Height Map and Section/Profile views for the C3D sample, exposes a Viewer-internal coordinate/measurement/performance HUD with two-point distance, height delta, and ROI step-height comparison, replays/compares that rule through a non-UI recipe runner, shows that evidence and a minimal run-history row inside the first Shell workbench layout skeleton, and has a Windows GitHub Actions CI build with headless runner smoke.
 - Reference repo checked: `C:\Git\OpenVisionLab_Dev`
 - App project: `src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj`
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
@@ -59,7 +59,7 @@ Completed in the first implementation slice:
 - Viewer and Shell can edit the C3D height deviation tolerance and save the current source/tolerance as a JSON recipe. The smoke path can set the tolerance with `--smoke-tolerance` and save with `--smoke-save-recipe`.
 - The existing Section Plane selection now has a minimal linked C3D center-section profile. Shell `Linked View` shows the profile chart, sample count, and raw-height range.
 - Shell `Linked View` now shows a C3D height-map bitmap generated from the same rendered C3D height-grid points, with source dimensions, rendered point count, and raw-height range.
-- Viewer now owns an internal measurement HUD that remains visible when hosted in Shell: axis meaning, coordinate frame, selected mode, pick coordinate, two-point distance/dX/dY/dZ/raw-height delta, FPS, draw time, and rendered C3D point count.
+- Viewer now owns an internal measurement HUD that remains visible when hosted in Shell: axis meaning, coordinate frame, selected mode, pick coordinate, two-point distance/dX/dY/dZ/raw-height delta, ROI left/right mean raw-height step comparison, FPS, draw time, and rendered C3D point count.
 - GitHub Actions CI is defined in `.github/workflows/ci.yml`; it restores and builds the solution on `windows-latest`, runs the headless C3D recipe runner smoke, and uploads CI artifacts.
 - Shell `Evidence Workbench` now has a minimal `History` tab row sourced from the current recipe runner report and UI contract, showing run time, status, peak deviation, match state, and report path.
 
@@ -75,8 +75,8 @@ The C3D files currently appear to be `int32 width`, `int32 height`, then `float3
 Next implementation should stay viewer-first now that the first recipe can replay, compare outside the UI, load through a visible command, save edited tolerance/source state, display persisted comparison evidence, and sit inside the workbench layout:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Add ROI/step-height compare measurements now that point-to-point distance and height delta are visible inside the Viewer.
-3. Add transform/alignment state before CAD, multi-sensor, or broader algorithm work.
+2. Add transform/alignment state before CAD, multi-sensor, or broader algorithm work.
+3. Convert the fixed smoke ROI step comparison into an interactive ROI selection workflow after transform/alignment state is explicit.
 
 ## Remaining Project Priority
 
@@ -133,6 +133,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section --smoke-contracts artifacts\viewer_section_profile_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_height_map_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_step_after.png --smoke-c3d thickness --smoke-measure roi-step --smoke-contracts artifacts\viewer_roi_step_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_rule_publish_after.png --smoke-rule height-deviation --smoke-publish-result --smoke-contracts artifacts\viewer_height_rule_publish_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_point.png --smoke-selection point`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_selection_after_box.png --smoke-selection box`
@@ -168,6 +169,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_section_profile_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_viewer_internal_hud_after.png --smoke-measure two-point`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_roi_step_after.png --smoke-measure roi-step`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_run_history_after.txt --expect-status Fail --compare-contract artifacts\viewer_height_map_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_run_history_after.txt --shell-smoke-screenshot artifacts\shell_run_history_after.png --shell-evidence-tab history --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - Before screenshot: `artifacts\viewer_selection_before.png`
@@ -199,6 +201,8 @@ Build and smoke evidence:
 - Viewer two-point closest-before screenshot: `artifacts\viewer_two_point_before.png`
 - Viewer two-point after screenshot: `artifacts\viewer_two_point_after.png`
 - Viewer two-point smoke report: `artifacts\viewer_two_point_after.txt`
+- Viewer ROI step-height after screenshot: `artifacts\viewer_roi_step_after.png`
+- Viewer ROI step-height smoke report: `artifacts\viewer_roi_step_after.txt`
 - C3D height rule publish screenshot: `artifacts\viewer_height_rule_publish_after.png`
 - C3D height rule publish smoke report: `artifacts\viewer_height_rule_publish_after.txt`
 - Point selection after screenshot: `artifacts\viewer_selection_after_point.png`
@@ -231,6 +235,7 @@ Build and smoke evidence:
 - Shell section/profile after screenshot: `artifacts\shell_section_profile_after.png`
 - Shell height-map after screenshot: `artifacts\shell_height_map_after.png`
 - Shell-hosted Viewer internal HUD screenshot: `artifacts\shell_viewer_internal_hud_after.png`
+- Shell-hosted ROI step-height screenshot: `artifacts\shell_roi_step_after.png`
 - Shell recipe comparison closest-before screenshot: `artifacts\shell_recipe_comparison_before.png`
 - Shell recipe comparison full-window after screenshot: `artifacts\shell_recipe_comparison_after.png`
 - Shell recipe comparison smoke report: `artifacts\shell_recipe_comparison_after.txt`

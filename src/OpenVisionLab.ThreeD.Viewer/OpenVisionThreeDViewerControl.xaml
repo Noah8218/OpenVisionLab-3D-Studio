@@ -224,6 +224,19 @@
                                Text="{Binding TwoPointMeasurementDetails}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
+                               Foreground="#f9fafb"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding RoiStepMeasurementSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#7dd3fc"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding RoiStepMeasurementDetails}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
                                Foreground="#d1d5db"
                                TextWrapping="Wrap"
                                Text="{Binding PerformanceSummary}" />

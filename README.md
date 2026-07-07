@@ -10,7 +10,7 @@ This repository is under active development and is not production-ready yet.
 
 - Product direction: local 3D vision inspection workbench.
 - Current focus: SharpGL/WPF viewer foundation before deeper 3D algorithms.
-- Current viewer scope: camera control, C3D height-grid rendering, picking, entity visibility, measurement HUD, overlays, recipe load/save, and screenshot smoke evidence.
+- Current viewer scope: camera control, C3D height-grid rendering, picking, entity visibility, measurement HUD, two-point and ROI step-height measurement, overlays, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: first C3D height-deviation recipe and a headless runner path.
 - Out of early scope: camera control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
@@ -66,6 +66,12 @@ Viewer screenshot and contract smoke:
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt
 ```
 
+ROI step-height smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_step_after.png --smoke-c3d thickness --smoke-measure roi-step --smoke-contracts artifacts\viewer_roi_step_after.txt
+```
+
 Shell-hosted viewer smoke:
 
 ```powershell
@@ -102,17 +108,17 @@ Current development snapshot:
 - C3D height-grid sample rendering and picking.
 - Viewer-internal coordinate, measurement, and performance HUD.
 - Two-point distance and height-delta measurement smoke.
+- ROI step-height comparison smoke.
 - First C3D height-deviation recipe and headless runner.
 - Windows GitHub Actions CI build and runner smoke.
 
 ## Roadmap
 
 1. Finish the viewer completion gate: reliable display, camera, picking, selection, overlays, color modes, screenshots, and MVVM state separation.
-2. Expand viewer-internal measurements, starting with ROI and step-height comparison.
-3. Define transform/alignment state before CAD, multi-sensor, or broader algorithm work.
-4. Harden 3D entity, layer, metric, overlay, and result contracts.
-5. Add more rule-based validation tools with UI preview and headless runner coverage.
-6. Expand file formats and heavier geometry libraries only after the core inspection loop is verified.
+2. Define transform/alignment state before CAD, multi-sensor, or broader algorithm work.
+3. Harden 3D entity, layer, metric, overlay, and result contracts.
+4. Add more rule-based validation tools with UI preview and headless runner coverage.
+5. Expand file formats and heavier geometry libraries only after the core inspection loop is verified.
 
 ## Known Limitations
 

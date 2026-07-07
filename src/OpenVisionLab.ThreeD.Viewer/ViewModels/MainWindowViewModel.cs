@@ -75,6 +75,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double twoPointDeltaY = double.NaN;
     private double twoPointDeltaZ = double.NaN;
     private double twoPointRawHeightDelta = double.NaN;
+    private bool roiStepMeasurementVisible;
+    private string roiStepMeasurementSummary = "ROI step: compare two C3D regions.";
+    private string roiStepMeasurementDetails = "Left/right ROI height delta: pending";
+    private double roiStepLeftRawMean = double.NaN;
+    private double roiStepRightRawMean = double.NaN;
+    private double roiStepRawHeightDelta = double.NaN;
+    private double roiStepModelHeightDelta = double.NaN;
+    private int roiStepLeftPointCount;
+    private int roiStepRightPointCount;
     private string performanceSummary = "Performance: waiting for first frame";
     private double viewportFps = double.NaN;
     private double viewportDrawMilliseconds = double.NaN;
@@ -105,7 +114,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "ROI Step Compare", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
 
@@ -271,6 +280,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 {
                     "Box ROI" => "Box ROI: viewer state only",
                     "Two Point Measure" => TwoPointMeasurementSummary,
+                    "ROI Step Compare" => RoiStepMeasurementDetails,
                     "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
                 };
@@ -610,6 +620,60 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref twoPointRawHeightDelta, value);
     }
 
+    public bool RoiStepMeasurementVisible
+    {
+        get => roiStepMeasurementVisible;
+        private set => SetField(ref roiStepMeasurementVisible, value);
+    }
+
+    public string RoiStepMeasurementSummary
+    {
+        get => roiStepMeasurementSummary;
+        private set => SetField(ref roiStepMeasurementSummary, value);
+    }
+
+    public string RoiStepMeasurementDetails
+    {
+        get => roiStepMeasurementDetails;
+        private set => SetField(ref roiStepMeasurementDetails, value);
+    }
+
+    public double RoiStepLeftRawMean
+    {
+        get => roiStepLeftRawMean;
+        private set => SetField(ref roiStepLeftRawMean, value);
+    }
+
+    public double RoiStepRightRawMean
+    {
+        get => roiStepRightRawMean;
+        private set => SetField(ref roiStepRightRawMean, value);
+    }
+
+    public double RoiStepRawHeightDelta
+    {
+        get => roiStepRawHeightDelta;
+        private set => SetField(ref roiStepRawHeightDelta, value);
+    }
+
+    public double RoiStepModelHeightDelta
+    {
+        get => roiStepModelHeightDelta;
+        private set => SetField(ref roiStepModelHeightDelta, value);
+    }
+
+    public int RoiStepLeftPointCount
+    {
+        get => roiStepLeftPointCount;
+        private set => SetField(ref roiStepLeftPointCount, value);
+    }
+
+    public int RoiStepRightPointCount
+    {
+        get => roiStepRightPointCount;
+        private set => SetField(ref roiStepRightPointCount, value);
+    }
+
     public string PerformanceSummary
     {
         get => performanceSummary;
@@ -709,7 +773,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseSelectionSmokeScene(string mode)
     {
-        var keepCurrentC3DScene = mode == "Section Plane" && C3DSampleVisible;
+        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare") && C3DSampleVisible;
         if (!keepCurrentC3DScene)
         {
             UsePointCloudSmokeScene();
@@ -720,6 +784,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedEntity = mode switch
         {
             "Box ROI" => "Box ROI",
+            "ROI Step Compare" => "ROI Step Compare",
             "Section Plane" => "Section Plane",
             _ => "Generated Point Cloud"
         };
@@ -728,6 +793,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Section Plane" when SectionProfileVisible => SectionProfileSummary,
             "Section Plane" => "Section plane: profile not loaded",
             "Two Point Measure" => TwoPointMeasurementSummary,
+            "ROI Step Compare" => RoiStepMeasurementDetails,
             "Box ROI" => "Box ROI: viewer state only",
             _ => "Point selection: generated point cloud peak"
         };
@@ -820,6 +886,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (SelectedSelectionMode == "Two Point Measure")
         {
             SelectionSummary = TwoPointMeasurementSummary;
+        }
+    }
+
+    public void SetRoiStepMeasurement(int leftPointCount, double leftRawMean, double leftModelMeanY, int rightPointCount, double rightRawMean, double rightModelMeanY)
+    {
+        var rawDelta = rightRawMean - leftRawMean;
+        var modelDelta = rightModelMeanY - leftModelMeanY;
+
+        RoiStepMeasurementVisible = true;
+        RoiStepLeftPointCount = leftPointCount;
+        RoiStepRightPointCount = rightPointCount;
+        RoiStepLeftRawMean = leftRawMean;
+        RoiStepRightRawMean = rightRawMean;
+        RoiStepRawHeightDelta = rawDelta;
+        RoiStepModelHeightDelta = modelDelta;
+        RoiStepMeasurementSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"ROI step: L {leftPointCount:N0} pts vs R {rightPointCount:N0} pts");
+        RoiStepMeasurementDetails = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Mean raw L {leftRawMean:F3}, R {rightRawMean:F3} | step {rawDelta:F3} raw-height | model dY {modelDelta:F3}");
+        SelectionSummary = RoiStepMeasurementDetails;
+        MeasurementSummary = RoiStepMeasurementDetails;
+        ViewerStatus = "ROI step comparison updated";
+    }
+
+    public void ClearRoiStepMeasurement(string details = "Left/right ROI height delta: pending")
+    {
+        RoiStepMeasurementVisible = false;
+        RoiStepLeftPointCount = 0;
+        RoiStepRightPointCount = 0;
+        RoiStepLeftRawMean = double.NaN;
+        RoiStepRightRawMean = double.NaN;
+        RoiStepRawHeightDelta = double.NaN;
+        RoiStepModelHeightDelta = double.NaN;
+        RoiStepMeasurementSummary = "ROI step: compare two C3D regions.";
+        RoiStepMeasurementDetails = details;
+        if (SelectedSelectionMode == "ROI Step Compare")
+        {
+            SelectionSummary = RoiStepMeasurementDetails;
         }
     }
 

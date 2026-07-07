@@ -32,6 +32,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private const string DefaultC3DSamplePath = @"3D\Thickness\Ori_20240116_094414.C3D";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
     private const string TwoPointSelectionMode = "Two Point Measure";
+    private const string RoiStepSelectionMode = "ROI Step Compare";
 
     private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private C3DHeightGrid? c3dSample;
@@ -46,6 +47,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private string? smokePickTarget;
     private HeightGridPoint? twoPointFirst;
     private HeightGridPoint? twoPointSecond;
+    private (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY)? roiStepLeftBounds;
+    private (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY)? roiStepRightBounds;
+    private Vector3? roiStepLeftCenter;
+    private Vector3? roiStepRightCenter;
     private long lastFrameTimestamp;
     private int performanceFrameCount;
     private int performanceDrawCount;
@@ -81,11 +86,23 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                     ConfigureC3DHeightDeviationRule();
                 }
 
+                if ((args.PropertyName == nameof(MainWindowViewModel.SelectedSelectionMode)
+                        || args.PropertyName == nameof(MainWindowViewModel.C3DSampleVisible))
+                    && viewModel.SelectedSelectionMode == RoiStepSelectionMode)
+                {
+                    UpdateRoiStepMeasurement();
+                }
+
                 RenderNow();
             }
             else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
             {
                 ReloadDefaultC3DSample();
+                if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
+                {
+                    UpdateRoiStepMeasurement();
+                }
+
                 RenderNow();
             }
         };
@@ -291,6 +308,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         DrawTwoPointMeasurement(gl);
+        DrawRoiStepMeasurement(gl);
 
         if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
         {
@@ -581,6 +599,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         var selectionMode = mode.ToLowerInvariant() switch
         {
             "box" or "box-roi" => "Box ROI",
+            "roi" or "roi-step" or "step-height" => RoiStepSelectionMode,
             "section" or "section-plane" => "Section Plane",
             "two-point" or "distance" or "distance-height" => TwoPointSelectionMode,
             _ => "Point"
@@ -589,6 +608,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (selectionMode == TwoPointSelectionMode)
         {
             ApplySmokeTwoPointMeasurement();
+            return;
+        }
+
+        if (selectionMode == RoiStepSelectionMode)
+        {
+            ApplySmokeRoiStepMeasurement();
             return;
         }
 
@@ -601,6 +626,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             || measure.Equals("distance-height", StringComparison.OrdinalIgnoreCase))
         {
             ApplySmokeTwoPointMeasurement();
+        }
+        else if (measure.Equals("roi-step", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("step-height", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("roi", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokeRoiStepMeasurement();
         }
     }
 
@@ -798,6 +829,25 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.ViewerStatus = "Smoke measure: two-point distance and height delta";
     }
 
+    private void ApplySmokeRoiStepMeasurement()
+    {
+        if (c3dSample is null || c3dSample.Points.Length < 2)
+        {
+            viewModel.ViewerStatus = "Smoke measure failed: C3D sample missing";
+            return;
+        }
+
+        viewModel.UseC3DSmokeScene();
+        viewModel.SelectedSelectionMode = RoiStepSelectionMode;
+        viewModel.SelectionOverlayVisible = true;
+
+        if (UpdateRoiStepMeasurement())
+        {
+            viewModel.SelectedEntity = "ROI Step Compare";
+            viewModel.ViewerStatus = "Smoke measure: ROI step-height comparison";
+        }
+    }
+
     private void ConfigureProjection(OpenGL gl)
     {
         var width = Math.Max(1, (int)Viewport.ActualWidth);
@@ -896,6 +946,52 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.Vertex(second.Position.X, second.Position.Y, second.Position.Z);
         gl.End();
         gl.PointSize(1.0f);
+    }
+
+    private void DrawRoiStepMeasurement(OpenGL gl)
+    {
+        if (roiStepLeftBounds is not { } left || roiStepRightBounds is not { } right
+            || roiStepLeftCenter is not { } leftCenter || roiStepRightCenter is not { } rightCenter)
+        {
+            return;
+        }
+
+        DrawRoiBounds(gl, left, 0.20, 0.95, 0.45);
+        DrawRoiBounds(gl, right, 1.0, 0.72, 0.10);
+
+        gl.LineWidth(3.0f);
+        gl.Begin(OpenGL.GL_LINES);
+
+        gl.Color(1.0, 0.85, 0.20);
+        gl.Vertex(leftCenter.X, leftCenter.Y, leftCenter.Z);
+        gl.Vertex(rightCenter.X, rightCenter.Y, rightCenter.Z);
+
+        gl.Color(0.20, 0.95, 0.45);
+        gl.Vertex(rightCenter.X, leftCenter.Y, rightCenter.Z);
+        gl.Vertex(rightCenter.X, rightCenter.Y, rightCenter.Z);
+
+        gl.End();
+
+        gl.PointSize(8.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(0.20, 0.95, 0.45);
+        gl.Vertex(leftCenter.X, leftCenter.Y, leftCenter.Z);
+        gl.Color(1.0, 0.72, 0.10);
+        gl.Vertex(rightCenter.X, rightCenter.Y, rightCenter.Z);
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private static void DrawRoiBounds(OpenGL gl, (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) bounds, double red, double green, double blue)
+    {
+        gl.LineWidth(2.5f);
+        gl.Color(red, green, blue);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(bounds.MinX, bounds.MeanY, bounds.MinZ);
+        gl.Vertex(bounds.MaxX, bounds.MeanY, bounds.MinZ);
+        gl.Vertex(bounds.MaxX, bounds.MeanY, bounds.MaxZ);
+        gl.Vertex(bounds.MinX, bounds.MeanY, bounds.MaxZ);
+        gl.End();
     }
 
     private void DrawCube(OpenGL gl)
@@ -1107,6 +1203,91 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         twoPointFirst = first;
         twoPointSecond = second;
         viewModel.SetTwoPointMeasurement(first.Position, first.RawValue, second.Position, second.RawValue);
+    }
+
+    private bool UpdateRoiStepMeasurement()
+    {
+        roiStepLeftBounds = null;
+        roiStepRightBounds = null;
+        roiStepLeftCenter = null;
+        roiStepRightCenter = null;
+
+        if (!viewModel.C3DSampleVisible || c3dSample is null || c3dSample.Points.Length < 2)
+        {
+            viewModel.ClearRoiStepMeasurement("ROI step requires a visible C3D height grid.");
+            viewModel.SelectedEntity = "ROI Step Compare";
+            return false;
+        }
+
+        var minX = c3dSample.Points.Min(point => point.Position.X);
+        var maxX = c3dSample.Points.Max(point => point.Position.X);
+        var minZ = c3dSample.Points.Min(point => point.Position.Z);
+        var maxZ = c3dSample.Points.Max(point => point.Position.Z);
+        var width = Math.Max(0.001f, maxX - minX);
+        var depth = Math.Max(0.001f, maxZ - minZ);
+        var zMin = minZ + depth * 0.25f;
+        var zMax = minZ + depth * 0.75f;
+        var leftBounds = (MinX: minX + width * 0.10f, MaxX: minX + width * 0.40f, MinZ: zMin, MaxZ: zMax, MeanY: 0.0f);
+        var rightBounds = (MinX: minX + width * 0.60f, MaxX: minX + width * 0.90f, MinZ: zMin, MaxZ: zMax, MeanY: 0.0f);
+
+        if (!TryCalculateRoiStats(leftBounds, out var left) || !TryCalculateRoiStats(rightBounds, out var right))
+        {
+            viewModel.ClearRoiStepMeasurement("ROI step found no C3D points in one region.");
+            viewModel.SelectedEntity = "ROI Step Compare";
+            return false;
+        }
+
+        roiStepLeftBounds = (leftBounds.MinX, leftBounds.MaxX, leftBounds.MinZ, leftBounds.MaxZ, (float)left.ModelYMean);
+        roiStepRightBounds = (rightBounds.MinX, rightBounds.MaxX, rightBounds.MinZ, rightBounds.MaxZ, (float)right.ModelYMean);
+        roiStepLeftCenter = left.Center;
+        roiStepRightCenter = right.Center;
+
+        viewModel.SetRoiStepMeasurement(left.Count, left.RawMean, left.ModelYMean, right.Count, right.RawMean, right.ModelYMean);
+        viewModel.SelectedEntity = "ROI Step Compare";
+        viewModel.PickCoordinate = string.Create(
+            CultureInfo.InvariantCulture,
+            $"ROI centers: L {CameraMath.FormatPoint(left.Center)} | R {CameraMath.FormatPoint(right.Center)}");
+        return true;
+    }
+
+    private bool TryCalculateRoiStats(
+        (float MinX, float MaxX, float MinZ, float MaxZ, float MeanY) bounds,
+        out (int Count, double RawMean, double ModelYMean, Vector3 Center) stats)
+    {
+        var count = 0;
+        var rawSum = 0.0;
+        var xSum = 0.0;
+        var ySum = 0.0;
+        var zSum = 0.0;
+
+        foreach (var point in c3dSample!.Points)
+        {
+            if (point.Position.X < bounds.MinX || point.Position.X > bounds.MaxX
+                || point.Position.Z < bounds.MinZ || point.Position.Z > bounds.MaxZ)
+            {
+                continue;
+            }
+
+            count++;
+            rawSum += point.RawValue;
+            xSum += point.Position.X;
+            ySum += point.Position.Y;
+            zSum += point.Position.Z;
+        }
+
+        if (count == 0)
+        {
+            stats = default;
+            return false;
+        }
+
+        var inverse = 1.0 / count;
+        stats = (
+            count,
+            rawSum * inverse,
+            ySum * inverse,
+            new Vector3((float)(xSum * inverse), (float)(ySum * inverse), (float)(zSum * inverse)));
+        return true;
     }
 
     private (Vector3 origin, Vector3 direction) CreatePickRay(Point screenPoint)
@@ -1354,7 +1535,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         c3dSample = LoadDefaultC3DSample();
         twoPointFirst = null;
         twoPointSecond = null;
+        roiStepLeftBounds = null;
+        roiStepRightBounds = null;
+        roiStepLeftCenter = null;
+        roiStepRightCenter = null;
         viewModel.ClearTwoPointMeasurement();
+        viewModel.ClearRoiStepMeasurement();
         SetC3DSampleStatus();
         ConfigureC3DHeightDeviationRule();
     }
@@ -1414,6 +1600,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"Performance|fps={FormatContractNumber(viewModel.ViewportFps)}|drawMs={FormatContractNumber(viewModel.ViewportDrawMilliseconds)}|summary={CleanContractText(viewModel.PerformanceSummary)}");
         lines.Add("TwoPointMeasurement");
         lines.Add($"TwoPoint|visible={viewModel.TwoPointMeasurementVisible}|distance={FormatContractNumber(viewModel.TwoPointDistance)}|dx={FormatContractNumber(viewModel.TwoPointDeltaX)}|dy={FormatContractNumber(viewModel.TwoPointDeltaY)}|dz={FormatContractNumber(viewModel.TwoPointDeltaZ)}|heightDeltaRaw={FormatContractNumber(viewModel.TwoPointRawHeightDelta)}|summary={CleanContractText(viewModel.TwoPointMeasurementDetails)}");
+        lines.Add("RoiStepMeasurement");
+        lines.Add($"RoiStep|visible={viewModel.RoiStepMeasurementVisible}|leftCount={viewModel.RoiStepLeftPointCount}|rightCount={viewModel.RoiStepRightPointCount}|leftMeanRaw={FormatContractNumber(viewModel.RoiStepLeftRawMean)}|rightMeanRaw={FormatContractNumber(viewModel.RoiStepRightRawMean)}|heightDeltaRaw={FormatContractNumber(viewModel.RoiStepRawHeightDelta)}|modelDeltaY={FormatContractNumber(viewModel.RoiStepModelHeightDelta)}|summary={CleanContractText(viewModel.RoiStepMeasurementDetails)}");
         lines.Add("RecipeState");
         lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
         lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");

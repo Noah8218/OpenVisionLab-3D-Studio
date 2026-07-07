@@ -130,9 +130,10 @@ The implemented split is:
 7. Add run history. Done.
    - History tab shows the current replay evidence row with run time, status, peak deviation, match state, and report path.
    - Smoke can open the tab with `--shell-evidence-tab history`.
-8. Add Viewer-internal coordinate HUD and two-point measurement. Done.
+8. Add Viewer-internal coordinate HUD, two-point measurement, and ROI step-height comparison. Done.
    - The Viewer must show axis meaning and selected measurement state even when Shell side panes are hidden.
    - Two-point measurement should report distance, dX/dY/dZ, model height delta, and raw-height delta for C3D points.
+   - ROI step-height comparison should report left/right point counts, mean raw heights, raw-height delta, and model Y delta.
    - Minimal performance HUD should report FPS, draw time, and rendered C3D point count.
 
 ## Acceptance Checklist For Layout Skeleton
@@ -214,6 +215,10 @@ The implemented split is:
 - Viewer contract: `artifacts/viewer_two_point_after.txt`
 - Shell-hosted after screenshot: `artifacts/shell_viewer_internal_hud_after.png`
 - Contract evidence: `CoordinateFrame|visible=True`, `TwoPoint|visible=True`, and `Performance|fps=...|drawMs=...`.
+- ROI step viewer screenshot: `artifacts/viewer_roi_step_after.png`
+- ROI step viewer contract: `artifacts/viewer_roi_step_after.txt`
+- ROI step shell-hosted screenshot: `artifacts/shell_roi_step_after.png`
+- ROI contract evidence: `RoiStep|visible=True`, left/right point counts, left/right mean raw heights, raw-height delta, and model Y delta.
 
 ## Deferred Decisions
 
