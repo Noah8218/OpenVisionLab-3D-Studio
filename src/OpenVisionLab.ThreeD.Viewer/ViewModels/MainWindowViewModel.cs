@@ -389,6 +389,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _ => 50000
     };
 
+    public int ImportedMeshMaxRenderedTriangles => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 180000,
+        _ => 60000
+    };
+
     public string PointCloudPointCount
     {
         get => pointCloudPointCount;
@@ -2129,9 +2136,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static string FormatRenderDensitySummary(string mode) => mode switch
     {
-        "Fast" => "Fast: up to 25,000 C3D points / 25,000 LAZ/LAS points",
-        "Detailed" => "Detailed: up to 140,000 C3D points / 150,000 LAZ/LAS points",
-        _ => "Balanced: up to 55,000 C3D points / 50,000 LAZ/LAS points"
+        "Fast" => "Fast: up to 25,000 C3D points / 25,000 LAZ/LAS points / 25,000 mesh triangles",
+        "Detailed" => "Detailed: up to 140,000 C3D points / 150,000 LAZ/LAS points / 180,000 mesh triangles",
+        _ => "Balanced: up to 55,000 C3D points / 50,000 LAZ/LAS points / 60,000 mesh triangles"
     };
 
     private static IReadOnlyList<SourceEntity> CreateSourceEntities(

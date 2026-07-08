@@ -2209,6 +2209,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private void DrawImportedMesh(OpenGL gl)
     {
         var mesh = importedMesh!;
+        var triangleStride = GetImportedMeshRenderTriangleStride();
         var useTexture = EnsureImportedMeshTexture(gl);
         if (useTexture)
         {
@@ -2218,26 +2219,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         gl.Begin(OpenGL.GL_TRIANGLES);
-        foreach (var index in mesh.Indices)
+        for (var triangle = 0; triangle < mesh.TriangleCount; triangle += triangleStride)
         {
-            if (useTexture)
-            {
-                var uv = mesh.TextureCoordinates[index];
-                gl.Color(1.0, 1.0, 1.0);
-                gl.TexCoord(uv.X, 1.0f - uv.Y);
-            }
-            else if (mesh.HasVertexColors)
-            {
-                var color = mesh.VertexColors[index];
-                gl.Color(color.X, color.Y, color.Z);
-            }
-            else
-            {
-                gl.Color(0.88, 0.48, 0.22);
-            }
-
-            var position = mesh.Positions[index];
-            gl.Vertex(position.X, position.Y, position.Z);
+            var offset = triangle * 3;
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset], useTexture);
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset + 1], useTexture);
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset + 2], useTexture);
         }
 
         gl.End();
@@ -2249,11 +2236,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.LineWidth(1.2f);
         gl.Color(1.0, 0.92, 0.78);
         gl.Begin(OpenGL.GL_LINES);
-        for (var i = 0; i + 2 < mesh.Indices.Length; i += 3)
+        for (var triangle = 0; triangle < mesh.TriangleCount; triangle += triangleStride)
         {
-            var a = mesh.Positions[mesh.Indices[i]];
-            var b = mesh.Positions[mesh.Indices[i + 1]];
-            var c = mesh.Positions[mesh.Indices[i + 2]];
+            var offset = triangle * 3;
+            var a = mesh.Positions[mesh.Indices[offset]];
+            var b = mesh.Positions[mesh.Indices[offset + 1]];
+            var c = mesh.Positions[mesh.Indices[offset + 2]];
             gl.Vertex(a.X, a.Y, a.Z);
             gl.Vertex(b.X, b.Y, b.Z);
             gl.Vertex(b.X, b.Y, b.Z);
@@ -2265,6 +2253,49 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.End();
         DrawImportedMeshFrame(gl);
         DrawSelectedGlbPoint(gl);
+    }
+
+    private static void DrawImportedMeshVertex(OpenGL gl, ImportedMesh mesh, int index, bool useTexture)
+    {
+        if (useTexture)
+        {
+            var uv = mesh.TextureCoordinates[index];
+            gl.Color(1.0, 1.0, 1.0);
+            gl.TexCoord(uv.X, 1.0f - uv.Y);
+        }
+        else if (mesh.HasVertexColors)
+        {
+            var color = mesh.VertexColors[index];
+            gl.Color(color.X, color.Y, color.Z);
+        }
+        else
+        {
+            gl.Color(0.88, 0.48, 0.22);
+        }
+
+        var position = mesh.Positions[index];
+        gl.Vertex(position.X, position.Y, position.Z);
+    }
+
+    private int GetImportedMeshRenderTriangleStride()
+    {
+        if (importedMesh is null || importedMesh.TriangleCount <= viewModel.ImportedMeshMaxRenderedTriangles)
+        {
+            return 1;
+        }
+
+        return Math.Max(1, (int)Math.Ceiling((double)importedMesh.TriangleCount / viewModel.ImportedMeshMaxRenderedTriangles));
+    }
+
+    private int GetImportedMeshRenderedTriangleCount()
+    {
+        if (importedMesh is null)
+        {
+            return 0;
+        }
+
+        var stride = GetImportedMeshRenderTriangleStride();
+        return (importedMesh.TriangleCount + stride - 1) / stride;
     }
 
     private void DrawPointCloudFrame(OpenGL gl)
@@ -3828,7 +3859,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"PointSize|value={viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture)}");
         lines.Add($"ColorMode|mode={CleanContractText(viewModel.SelectedColorMode)}");
         lines.Add($"MeasurementOverlay|visible={viewModel.MeasurementVisible}");
-        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|summary={viewModel.RenderDensitySummary}");
+        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
         lines.Add("ImportedMesh");
         lines.Add(CreateImportedMeshContractLine());
@@ -3967,27 +3998,42 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private (Vector3 First, Vector3 Second) FindImportedMeshSmokeMeasurementPair()
     {
-        var positions = importedMesh!.Positions;
-        var first = positions[0];
-        var second = positions[1];
-        var bestDistanceSquared = Vector3.DistanceSquared(first, second);
+        var mesh = importedMesh!;
+        var positions = mesh.Positions;
+        var extent = mesh.Max - mesh.Min;
+        var axis = extent.X >= extent.Y && extent.X >= extent.Z
+            ? 0
+            : extent.Y >= extent.Z ? 1 : 2;
 
-        for (var i = 0; i < positions.Length; i++)
+        var first = positions[0];
+        var second = positions[0];
+        var minValue = AxisValue(first, axis);
+        var maxValue = minValue;
+
+        foreach (var position in positions)
         {
-            for (var j = i + 1; j < positions.Length; j++)
+            var value = AxisValue(position, axis);
+            if (value < minValue)
             {
-                var distanceSquared = Vector3.DistanceSquared(positions[i], positions[j]);
-                if (distanceSquared > bestDistanceSquared)
-                {
-                    bestDistanceSquared = distanceSquared;
-                    first = positions[i];
-                    second = positions[j];
-                }
+                minValue = value;
+                first = position;
+            }
+            else if (value > maxValue)
+            {
+                maxValue = value;
+                second = position;
             }
         }
 
         return (first, second);
     }
+
+    private static float AxisValue(Vector3 point, int axis) => axis switch
+    {
+        0 => point.X,
+        1 => point.Y,
+        _ => point.Z
+    };
 
     private LazPointCloudPoint FindLazSmokePickTarget()
     {
@@ -4045,7 +4091,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             return $"{format}|loaded=False|source={CleanContractText(viewModel.GlbSampleSourcePath)}|summary={CleanContractText(viewModel.GlbSampleSummary)}";
         }
 
-        return $"{format}|loaded=True|entity={MainWindowViewModel.GlbEntityId}|visible={viewModel.GlbSampleVisible}|source={CleanContractText(viewModel.GlbSampleSourcePath)}|vertices={importedMesh.Positions.Length}|triangles={importedMesh.TriangleCount}|vertexColors={importedMesh.VertexColors.Length}|usesVertexColors={importedMesh.HasVertexColors}|texCoords={importedMesh.TextureCoordinates.Length}|hasTexture={importedMesh.HasBaseColorTexture}|textureBytes={importedMesh.BaseColorTexture?.Bytes.Length ?? 0}|textureMime={importedMesh.BaseColorTexture?.MimeType ?? "(none)"}|textureUpload={CleanContractText(importedMeshTextureUploadSummary)}|min={FormatVector(importedMesh.Min)}|max={FormatVector(importedMesh.Max)}|summary={CleanContractText(viewModel.GlbSampleSummary)}";
+        return $"{format}|loaded=True|entity={MainWindowViewModel.GlbEntityId}|visible={viewModel.GlbSampleVisible}|source={CleanContractText(viewModel.GlbSampleSourcePath)}|vertices={importedMesh.Positions.Length}|triangles={importedMesh.TriangleCount}|renderedTriangles={GetImportedMeshRenderedTriangleCount()}|renderTriangleStride={GetImportedMeshRenderTriangleStride()}|vertexColors={importedMesh.VertexColors.Length}|usesVertexColors={importedMesh.HasVertexColors}|texCoords={importedMesh.TextureCoordinates.Length}|hasTexture={importedMesh.HasBaseColorTexture}|textureBytes={importedMesh.BaseColorTexture?.Bytes.Length ?? 0}|textureMime={importedMesh.BaseColorTexture?.MimeType ?? "(none)"}|textureUpload={CleanContractText(importedMeshTextureUploadSummary)}|min={FormatVector(importedMesh.Min)}|max={FormatVector(importedMesh.Max)}|summary={CleanContractText(viewModel.GlbSampleSummary)}";
     }
 
     private string CreateLazContractLine()

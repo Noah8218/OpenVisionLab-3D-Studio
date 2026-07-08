@@ -51,7 +51,9 @@ Local sample data is expected under `3D\`:
 | `3D\PublicSamples\glTF\BoxVertexColors.glb` | Public GLB vertex-color import baseline. |
 | `3D\PublicSamples\glTF\BoxTextured.glb` | Public GLB texture/material import baseline. |
 | `3D\PublicSamples\glTF\Avocado.glb` | Public GLB realistic non-box textured mesh import baseline. |
+| `3D\PublicSamples\glTF\ToyCar.glb` | Public GLB complex textured car ad-hoc probe sample. |
 | `3D\PublicSamples\STL\Tetrahedron.stl` | Local generated STL triangle-mesh import baseline. |
+| `3D\PublicSamples\STL\3DBenchy.stl` | Public STL complex real mesh ad-hoc probe sample. |
 | `3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz` | Public LAZ metadata/bounds and sampled XYZ/RGB point-cloud render baseline. |
 | `3D\PublicSamples\PointCloud\interesting.las` | Public LAS small uncompressed XYZ/RGB point-cloud render baseline. |
 | `3D\PublicSamples\Invalid\corrupt.glb` | Intentional invalid GLB fixture for controlled loader-failure smoke. |
@@ -245,6 +247,8 @@ Current development snapshot:
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
 - Public `BoxTextured.glb` import smoke renders embedded PNG base-color texture and records UV/texture contract evidence.
 - Public `Avocado.glb` import smoke renders a realistic non-box textured mesh and records mesh/UV/texture, fit camera distance, triangle-surface pick, triangle-index/normal metadata, visible surface-normal overlay, and two-point distance/model-Y height evidence.
+- Public `ToyCar.glb` ad-hoc probe renders a larger CC0 textured GLB and records Viewer/Shell pick plus two-point measurement evidence without adding it to the fixed matrix yet.
+- Public `3DBenchy.stl` ad-hoc probe proves the STL loader can handle a real 225,706-triangle binary STL through Viewer/Shell load, pick, and two-point measurement. Imported-mesh render density now samples large mesh display while contracts keep full source triangle counts.
 - Public LAZ/LAS point-cloud smoke uses bounds-fit camera distances for both the dense `xyzrgb_manuscript.laz` and sparse large-coordinate `interesting.las` samples, proves RGB/height point-cloud color modes with height range legend evidence, guards non-result `Deviation` mode from advertising a false deviation map, and records load time plus sampling ratio for Balanced/Fast point-cloud density.
 - Public `xyzrgb_manuscript.laz` smoke reads LAS/LAZ header metadata, decodes XYZ/RGB points, renders, picks, measures sampled point-cloud data, and publishes LAZ/LAS two-point preview/result layer evidence in standalone Viewer and Shell. Decoder notes are in `docs\OPENVISIONLAB_3D_LAZ_DECODER_REVIEW_20260707.md`.
 - Public `interesting.las` smoke proves a small uncompressed LAS RGB point-cloud path, local viewer-origin mapping for large source coordinates, picking, two-point measurement, Shell hosting, and Runner bounds checks.

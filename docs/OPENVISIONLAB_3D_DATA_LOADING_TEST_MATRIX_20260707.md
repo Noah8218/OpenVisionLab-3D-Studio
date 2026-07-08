@@ -40,6 +40,13 @@ For UI-facing additions, keep the implementation order explicit: View first for 
 | `3D/PublicSamples/Invalid/corrupt.stl` | Invalid STL fixture | Inventory, controlled Viewer failure, controlled Shell failure, attempted path plus invalid-vertex cause in contract status. | `artifacts/viewer_corrupt_stl_cause_after.png`, `artifacts/viewer_corrupt_stl_cause_after.txt`, `artifacts/shell_corrupt_stl_cause_after.png` | Failure fixture only; do not treat as positive loader coverage. |
 | `3D/PublicSamples/Invalid/corrupt.laz` | Invalid LAZ fixture | Inventory, controlled Viewer failure, controlled Shell failure, attempted path plus corrupt-header cause in contract status. | `artifacts/viewer_corrupt_laz_cause_after.png`, `artifacts/viewer_corrupt_laz_cause_after.txt`, `artifacts/shell_corrupt_laz_cause_after.png` | Failure fixture only; do not treat as positive loader coverage. |
 
+## Ad Hoc Probe Evidence
+
+| Sample | Probe result | Evidence | Matrix decision |
+| --- | --- | --- | --- |
+| `3D/PublicSamples/glTF/ToyCar.glb` | Passed Viewer GLB load, pick, two-point measurement, Shell load, Shell pick, and Shell measurement. Contract recorded 66,951 vertices, 88,837 triangles, 66,951 UVs, embedded PNG texture upload, and GLB measurement overlay. | `artifacts/probe_toycar_after/probe_summary.txt`, `artifacts/probe_toycar_after/viewer_ToyCar_glb.txt`, `artifacts/probe_toycar_after/viewer_ToyCar_glb_measure.txt`, `artifacts/probe_toycar_after/shell_ToyCar_glb_measure.png` | Keep as probe-only for now. It did not expose a new loader, camera, picking, measurement, Shell, or contract gap that justifies increasing the fixed matrix runtime. |
+| `3D/PublicSamples/STL/3DBenchy.stl` | Passed Viewer STL load, pick, two-point measurement, Shell load, Shell pick, and Shell measurement. Contract recorded 677,118 vertices, 225,706 source triangles, 56,427 rendered triangles at Balanced density, render stride 4, binary STL bounds, surface pick normal, and STL measurement overlay. | `artifacts/probe_3dbenchy_after/probe_summary.txt`, `artifacts/probe_3dbenchy_after/viewer_3DBenchy_stl.txt`, `artifacts/probe_3dbenchy_after/viewer_3DBenchy_stl_pick.txt`, `artifacts/probe_3dbenchy_after/viewer_3DBenchy_stl_measure.txt`, `artifacts/probe_3dbenchy_after/shell_3DBenchy_stl_measure.png` | Keep as probe-only for now. It now proves imported-mesh render sampling and O(n) smoke measurement on a large STL, but would still add routine matrix time. |
+
 ## Refresh Commands
 
 Run these after a current build when validating loader coverage:
@@ -135,9 +142,10 @@ The refreshed text artifacts should include these signals:
 - C3D parsing is still inferred from the two local files.
 - Thickness and Warpage are currently byte-identical, so they cannot prove separate inspection behavior yet.
 - GLB support is intentionally minimal: mesh geometry, vertex colors, UVs, and embedded texture smoke evidence. It is not full glTF material, skinning, animation, scene-graph, or extension coverage.
+- Large imported meshes now have first-pass render sampling and O(n) smoke measurement. This is not a full VBO/LOD renderer yet; contracts must keep recording source triangle count, rendered triangle count, and render stride.
 - LAS/LAZ support is currently proven on one compressed LAZ sample and one small uncompressed LAS sample. It is not broad point-cloud format coverage.
 - The matrix does not cover OBJ, PLY, PCD, E57, STEP, or IGES yet.
 
 ## Next Data Priority
 
-Run the next real GLB/STL/LAS/LAZ dataset through `scripts\probe-3d-sample.ps1` first, then add it to this fixed matrix only if it exposes a new loader, camera, picking, measurement, Shell, or contract gap. Unsupported OBJ, PLY, PCD, E57, STEP, or IGES files should be recorded as format-expansion candidates instead of forcing them into the current supported-format matrix.
+Next implementation should decide whether to promote `3DBenchy.stl` into the fixed matrix or keep it as a large-mesh probe. After that, run the next real GLB/STL/LAS/LAZ dataset through `scripts\probe-3d-sample.ps1` first, then add it to this fixed matrix only if it exposes a new loader, camera, picking, measurement, Shell, or contract gap. Unsupported OBJ, PLY, PCD, E57, STEP, or IGES files should be recorded as format-expansion candidates instead of forcing them into the current supported-format matrix.
