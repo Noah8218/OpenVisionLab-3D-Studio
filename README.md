@@ -10,7 +10,7 @@ This repository is under active development and is not production-ready yet.
 
 - Product direction: local 3D vision inspection workbench.
 - Current focus: SharpGL/WPF viewer foundation before deeper 3D algorithms.
-- Current viewer scope: camera control, C3D height-grid rendering, GLB/STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
+- Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: first C3D height-deviation recipe, editable persisted transform/ROI parameters, editable LAZ/LAS two-point acceptance save/reopen/replay, headless runner path, Shell Evidence Workbench comparison/history for C3D and point-cloud key metrics, and shared Core evidence formatting for Viewer/Runner contracts.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
@@ -50,6 +50,7 @@ Local sample data is expected under `3D\`:
 | `3D\PublicSamples\glTF\Box.glb` | Public GLB baseline for the first external mesh import test. |
 | `3D\PublicSamples\glTF\BoxVertexColors.glb` | Public GLB vertex-color import baseline. |
 | `3D\PublicSamples\glTF\BoxTextured.glb` | Public GLB texture/material import baseline. |
+| `3D\PublicSamples\glTF\SimpleInstancing.glb` | Public GLB static `EXT_mesh_gpu_instancing` import baseline. |
 | `3D\PublicSamples\glTF\Avocado.glb` | Public GLB realistic non-box textured mesh import baseline. |
 | `3D\PublicSamples\glTF\ToyCar.glb` | Public GLB complex textured car ad-hoc probe sample. |
 | `3D\PublicSamples\STL\Tetrahedron.stl` | Local generated STL triangle-mesh import baseline. |
@@ -101,6 +102,7 @@ Public GLB import smoke:
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\glb_import_after.png --smoke-glb 3D\PublicSamples\glTF\Box.glb --smoke-contracts artifacts\glb_import_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\glb_vertex_color_after.png --smoke-glb 3D\PublicSamples\glTF\BoxVertexColors.glb --smoke-contracts artifacts\glb_vertex_color_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\glb_textured_after.png --smoke-glb 3D\PublicSamples\glTF\BoxTextured.glb --smoke-contracts artifacts\glb_textured_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\glb_simple_instancing_after.png --smoke-glb 3D\PublicSamples\glTF\SimpleInstancing.glb --smoke-contracts artifacts\glb_simple_instancing_after.txt
 ```
 
 Public STL import smoke:

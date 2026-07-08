@@ -137,6 +137,29 @@ Invoke-MatrixStep "viewer GLB avocado measurement" 0 @(
     "--smoke-measure", "glb-two-point",
     "--smoke-contracts", (Get-ArtifactPath "matrix_glb_avocado_measure_after.txt"))
 
+Invoke-MatrixStep "viewer GLB simple instancing" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_simple_instancing_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\SimpleInstancing.glb",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt"))
+
+Invoke-MatrixStep "viewer GLB simple instancing pick" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_simple_instancing_pick_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\SimpleInstancing.glb",
+    "--smoke-pick", "glb",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_simple_instancing_pick_after.txt"))
+
+Invoke-MatrixStep "viewer GLB simple instancing measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_simple_instancing_measure_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\SimpleInstancing.glb",
+    "--smoke-measure", "glb-two-point",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_simple_instancing_measure_after.txt"))
+
 Invoke-MatrixStep "viewer STL tetrahedron" 0 @(
     "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
     "-c", $Configuration, "--no-build", "--",
@@ -261,6 +284,13 @@ Invoke-MatrixStep "shell GLB avocado measurement" 0 @(
     "--smoke-glb", "3D\PublicSamples\glTF\Avocado.glb",
     "--smoke-measure", "glb-two-point")
 
+Invoke-MatrixStep "shell GLB simple instancing measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--shell-smoke-screenshot", (Get-ArtifactPath "matrix_shell_glb_simple_instancing_measure_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\SimpleInstancing.glb",
+    "--smoke-measure", "glb-two-point")
+
 Invoke-MatrixStep "shell STL tetrahedron measurement" 0 @(
     "run", "--project", "src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj",
     "-c", $Configuration, "--no-build", "--",
@@ -347,6 +377,12 @@ Assert-FileContains "contract GLB avocado measurement" (Get-ArtifactPath "matrix
 Assert-FileContains "contract GLB avocado measurement mode" (Get-ArtifactPath "matrix_glb_avocado_measure_after.txt") "SelectionMode|value=Two Point Measure"
 Assert-FileContains "contract GLB avocado measurement overlay" (Get-ArtifactPath "matrix_glb_avocado_measure_after.txt") "MeasurementOverlay|visible=True"
 Assert-FileContains "contract GLB hides LAZ/LAS acceptance" (Get-ArtifactPath "matrix_glb_avocado_measure_after.txt") "LAZAcceptance|visible=False"
+Assert-FileContains "contract GLB simple instancing sample" (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt") "SimpleInstancing.glb"
+Assert-FileContains "contract GLB simple instancing vertices" (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt") "vertices=3000"
+Assert-FileContains "contract GLB simple instancing triangles" (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt") "triangles=1500"
+Assert-FileContains "contract GLB simple instancing bounds" (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt") "max=(12.732, 12.732, 12.732)"
+Assert-FileContains "contract GLB simple instancing pick" (Get-ArtifactPath "matrix_glb_simple_instancing_pick_after.txt") "GLBPick|selected=True"
+Assert-FileContains "contract GLB simple instancing measurement" (Get-ArtifactPath "matrix_glb_simple_instancing_measure_after.txt") "TwoPoint|visible=True"
 Assert-FileContains "contract STL tetrahedron" (Get-ArtifactPath "matrix_stl_tetrahedron_after.txt") "STL|loaded=True"
 Assert-FileContains "contract STL tetrahedron bounds" (Get-ArtifactPath "matrix_stl_tetrahedron_after.txt") "max=(1.000, 1.000, 1.000)"
 Assert-FileContains "contract STL tetrahedron pick" (Get-ArtifactPath "matrix_stl_tetrahedron_pick_after.txt") "STLPick|selected=True"
