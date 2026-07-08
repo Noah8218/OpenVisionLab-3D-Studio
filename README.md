@@ -87,6 +87,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\probe-3d-sample.ps1 
 
 Use `-RenderDensity Fast|Balanced|Detailed` for Viewer/Shell point-cloud density and `-MaxSampledPoints <count>` for the LAS/LAZ runner probe sample budget.
 The probe writes Viewer/Shell screenshots, contract text where available, GLB/STL pick and two-point measurement evidence, LAS/LAZ runner probe output, LAS/LAZ pick and two-point measurement evidence, Shell GLB/STL pick/measurement evidence, Shell LAS/LAZ height-color and measurement evidence, and `probe_summary.txt`. Missing files, invalid probe options, and unsupported extensions also write a failing `probe_summary.txt`; common unsupported formats add a `FORMAT_CANDIDATE` line for the next loader task. Current supported extensions are `.glb`, `.stl`, `.las`, and `.laz`.
+Large mesh probes such as `ToyCar.glb` and `3DBenchy.stl` stay probe-only unless they expose a new loader, camera, picking, measurement, Shell, or contract gap that the fixed matrix does not already cover. The promotion policy is tracked in `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`.
 
 Viewer screenshot and contract smoke:
 
@@ -247,8 +248,10 @@ Current development snapshot:
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
 - Public `BoxTextured.glb` import smoke renders embedded PNG base-color texture and records UV/texture contract evidence.
 - Public `Avocado.glb` import smoke renders a realistic non-box textured mesh and records mesh/UV/texture, fit camera distance, triangle-surface pick, triangle-index/normal metadata, visible surface-normal overlay, and two-point distance/model-Y height evidence.
-- Public `ToyCar.glb` ad-hoc probe renders a larger CC0 textured GLB and records Viewer/Shell pick plus two-point measurement evidence without adding it to the fixed matrix yet.
-- Public `3DBenchy.stl` ad-hoc probe proves the STL loader can handle a real 225,706-triangle binary STL through Viewer/Shell load, pick, and two-point measurement. Imported-mesh render density now samples large mesh display while contracts keep full source triangle counts.
+- Public `ToyCar.glb` ad-hoc probe renders a larger CC0 textured GLB with bounds-fit camera framing and records Viewer/Shell pick plus two-point measurement evidence without adding it to the fixed matrix yet.
+- Public `3DBenchy.stl` ad-hoc probe proves the STL loader can handle a real 225,706-triangle binary STL through Viewer/Shell load, pick, bounds-fit camera framing, and two-point measurement. Imported-mesh render density now samples large mesh display while contracts keep full source triangle counts.
+- Large imported-mesh samples stay probe-only by default; promote them to the fixed matrix only when they reveal coverage that the matrix lacks and the added routine runtime is justified.
+- Viewer Measurement HUD now supports a details toggle; GLB/STL/LAZ smoke starts with compact HUD details so large first-load framing remains readable, source-specific HUD detail rows only show for the active source type, and contracts record `ViewerInternalHud|detailsVisible=...`.
 - Public LAZ/LAS point-cloud smoke uses bounds-fit camera distances for both the dense `xyzrgb_manuscript.laz` and sparse large-coordinate `interesting.las` samples, proves RGB/height point-cloud color modes with height range legend evidence, guards non-result `Deviation` mode from advertising a false deviation map, and records load time plus sampling ratio for Balanced/Fast point-cloud density.
 - Public `xyzrgb_manuscript.laz` smoke reads LAS/LAZ header metadata, decodes XYZ/RGB points, renders, picks, measures sampled point-cloud data, and publishes LAZ/LAS two-point preview/result layer evidence in standalone Viewer and Shell. Decoder notes are in `docs\OPENVISIONLAB_3D_LAZ_DECODER_REVIEW_20260707.md`.
 - Public `interesting.las` smoke proves a small uncompressed LAS RGB point-cloud path, local viewer-origin mapping for large source coordinates, picking, two-point measurement, Shell hosting, and Runner bounds checks.

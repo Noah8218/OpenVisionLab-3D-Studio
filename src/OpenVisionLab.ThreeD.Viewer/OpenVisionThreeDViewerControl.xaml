@@ -30,6 +30,10 @@
                     <ComboBox Width="150"
                               ItemsSource="{Binding SelectionModes}"
                               SelectedItem="{Binding SelectedSelectionMode, Mode=TwoWay}" />
+                    <CheckBox Margin="12,0,0,0"
+                              VerticalAlignment="Center"
+                              Content="HUD Details"
+                              IsChecked="{Binding HudDetailsVisible, Mode=TwoWay}" />
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"
@@ -334,16 +338,19 @@
                                FontSize="11"
                                Foreground="#f9fafb"
                                TextWrapping="Wrap"
+                               Visibility="{Binding HudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding TransformSummary}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"
                                TextWrapping="Wrap"
+                               Visibility="{Binding HudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding AlignmentSummary}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#93c5fd"
                                TextWrapping="Wrap"
+                               Visibility="{Binding HudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding CoordinateMappingSummary}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
@@ -391,13 +398,13 @@
                                FontSize="11"
                                Foreground="#fed7aa"
                                TextWrapping="Wrap"
-                               Visibility="{Binding GlbSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Visibility="{Binding ImportedMeshHudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding GlbSampleSummary}" />
                     <TextBlock Margin="0,3,0,0"
                                FontSize="11"
                                Foreground="#fde68a"
                                TextWrapping="Wrap"
-                               Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Visibility="{Binding LazHudDetailsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding LazSampleSummary}" />
                 </StackPanel>
             </Border>

@@ -365,6 +365,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             ApplySmokeMeasure(args[measureIndex + 1]);
         }
 
+        var hudIndex = Array.IndexOf(args, "--smoke-hud");
+        if (hudIndex >= 0 && hudIndex + 1 < args.Length)
+        {
+            viewModel.HudDetailsVisible = args[hudIndex + 1].Equals("details", StringComparison.OrdinalIgnoreCase);
+        }
+
         var editParametersIndex = Array.IndexOf(args, "--smoke-edit-parameters");
         if (editParametersIndex >= 0 && editParametersIndex + 1 < args.Length)
         {
@@ -654,8 +660,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private void Viewport_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         var zoomScale = e.Delta > 0 ? 0.88 : 1.14;
-        viewModel.CameraDistance = Math.Clamp(viewModel.CameraDistance * zoomScale, 2.4, 20.0);
-        viewModel.UpdateCameraStatus();
+        viewModel.ZoomCamera(zoomScale);
         RenderNow();
     }
 
@@ -3865,7 +3870,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add(CreateImportedMeshContractLine());
         lines.Add("ImportedPointCloud");
         lines.Add(CreateLazContractLine());
-        lines.Add("ViewerInternalHud");
+        lines.Add($"ViewerInternalHud|detailsVisible={viewModel.HudDetailsVisible}|importedMeshDetailsVisible={viewModel.ImportedMeshHudDetailsVisible}|lazDetailsVisible={viewModel.LazHudDetailsVisible}");
         lines.Add($"ViewerStatus|summary={CleanContractText(viewModel.ViewerStatus)}|smokeExitCode={smokeExitCode}");
         lines.Add($"CoordinateFrame|visible=True|summary={CleanContractText(viewModel.CoordinateFrameSummary)}");
         lines.Add($"Camera|yaw={FormatContractNumber(viewModel.YawDegrees)}|pitch={FormatContractNumber(viewModel.PitchDegrees)}|distance={FormatContractNumber(viewModel.CameraDistance)}|target={FormatVector(GetCameraTarget())}|summary={CleanContractText(viewModel.BottomStatus)}");

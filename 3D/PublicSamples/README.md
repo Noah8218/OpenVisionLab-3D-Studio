@@ -33,6 +33,8 @@ These files are small public 3D samples for import-loader and viewer smoke work.
 8. Load `xyzrgb_manuscript.laz` after the point-cloud loader path exists. Verify unit metadata, coordinate ranges, point count, RGB availability, and downsample behavior before rendering all points.
 9. Load `interesting.las` to verify uncompressed LAS RGB decoding on a small 1,065-point sample.
 
+Promote a probe-only sample into the fixed matrix only when it exposes a loader, camera, picking, measurement, Shell, or contract gap that the current matrix does not cover. Otherwise, keep it as an ad hoc probe to avoid slowing every routine smoke run.
+
 ## Guardrails
 
 - Do not rewrite or normalize these files in place.

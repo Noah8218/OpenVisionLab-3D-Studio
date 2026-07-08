@@ -91,6 +91,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string alignmentSummary = "Alignment: Not aligned | source frame";
     private string coordinateMappingSummary = "Mapping: source = aligned | raw-height retained";
     private string alignmentWorkflowSummary = "ROI alignment: not applied";
+    private bool hudDetailsVisible = true;
     private bool deviationLegendVisible;
     private string deviationLegendStatus = "Status: inactive";
     private string deviationLegendPeak = "Peak: none";
@@ -175,6 +176,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "ROI Step Compare", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
+
+    public bool HudDetailsVisible
+    {
+        get => hudDetailsVisible;
+        set
+        {
+            if (SetField(ref hudDetailsVisible, value))
+            {
+                OnPropertyChanged(nameof(ImportedMeshHudDetailsVisible));
+                OnPropertyChanged(nameof(LazHudDetailsVisible));
+            }
+        }
+    }
+
+    public bool ImportedMeshHudDetailsVisible => HudDetailsVisible && GlbSampleVisible;
+
+    public bool LazHudDetailsVisible => HudDetailsVisible && LazSampleVisible;
 
     public IReadOnlyList<SourceEntity> SourceEntities
     {
@@ -278,6 +296,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref glbSampleVisible, value))
             {
                 ViewerStatus = value ? $"{ImportedMeshFormat} mesh visible" : $"{ImportedMeshFormat} mesh hidden";
+                OnPropertyChanged(nameof(ImportedMeshHudDetailsVisible));
                 RefreshSceneContracts();
             }
         }
@@ -291,6 +310,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref lazSampleVisible, value))
             {
                 ViewerStatus = value ? "LAZ/LAS point cloud visible" : "LAZ/LAS point cloud hidden";
+                OnPropertyChanged(nameof(LazHudDetailsVisible));
                 RefreshPointCloudColorLegend();
                 RefreshSceneContracts();
             }
@@ -1260,6 +1280,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UsePointCloudSmokeScene()
     {
+        HudDetailsVisible = true;
         ClearC3DLinkedViews();
         CubeVisible = false;
         MeasurementVisible = false;
@@ -1308,6 +1329,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseC3DSmokeScene()
     {
+        HudDetailsVisible = true;
         CubeVisible = false;
         PointCloudVisible = false;
         GlbSampleVisible = false;
@@ -1331,6 +1353,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseGlbSmokeScene()
     {
+        HudDetailsVisible = false;
         var meshLabel = ImportedMeshDisplayName();
         ClearC3DLinkedViews();
         CubeVisible = false;
@@ -1355,6 +1378,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseGlbFailureScene(string summary)
     {
+        HudDetailsVisible = true;
         var meshLabel = ImportedMeshDisplayName();
         ClearC3DLinkedViews();
         CubeVisible = false;
@@ -1374,6 +1398,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseLazSmokeScene()
     {
+        HudDetailsVisible = false;
         ClearC3DLinkedViews();
         CubeVisible = false;
         PointCloudVisible = false;
@@ -1397,6 +1422,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseLazFailureScene(string summary)
     {
+        HudDetailsVisible = true;
         ClearC3DLinkedViews();
         CubeVisible = false;
         PointCloudVisible = false;
@@ -1622,7 +1648,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         importedMeshFitCenter = (min + max) * 0.5f;
         var radius = Math.Max(0.001, Vector3.Distance(min, max) * 0.5);
-        importedMeshFitDistance = Math.Clamp(radius / Math.Tan(Math.PI / 8.0) * 1.7, 0.35, 20.0);
+        importedMeshFitDistance = Math.Clamp(radius / Math.Tan(Math.PI / 8.0) * 1.7, 0.35, 12000.0);
     }
 
     public void SetLazSampleSource(string sourcePath, string sourceName)
@@ -1769,6 +1795,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         CameraTargetY += deltaY;
         CameraTargetZ += deltaZ;
         ViewerStatus = "Camera panned";
+        UpdateCameraStatus();
+    }
+
+    public void ZoomCamera(double zoomScale)
+    {
+        var minimumDistance = GlbSampleVisible
+            ? Math.Max(0.05, importedMeshFitDistance * 0.02)
+            : 2.4;
+        var maximumDistance = GlbSampleVisible
+            ? Math.Max(20.0, importedMeshFitDistance * 2.5)
+            : LazSampleVisible
+                ? Math.Max(20.0, lazFitDistance * 2.5)
+                : 20.0;
+        CameraDistance = Math.Clamp(CameraDistance * zoomScale, minimumDistance, maximumDistance);
         UpdateCameraStatus();
     }
 
