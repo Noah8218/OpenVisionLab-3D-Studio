@@ -116,7 +116,8 @@ public partial class MainWindow : Window
         {
             "runner" or "runner-report" => 1,
             "snapshot" or "run" or "run-record" => 2,
-            "history" => 3,
+            "steps" or "timeline" => 3,
+            "history" => 4,
             _ => 0
         };
     }

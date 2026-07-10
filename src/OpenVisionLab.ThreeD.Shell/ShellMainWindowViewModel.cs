@@ -21,6 +21,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string recipeComparisonDetails = "(pending)";
     private string runSnapshotSummary = "No run snapshot evidence loaded.";
     private string runSnapshotEvidence = "(pending)";
+    private string inspectionStepSummary = "No inspection steps loaded.";
     private int selectedEvidenceTabIndex;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -82,13 +83,21 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref runSnapshotEvidence, value);
     }
 
+    public string InspectionStepSummary
+    {
+        get => inspectionStepSummary;
+        private set => SetField(ref inspectionStepSummary, value);
+    }
+
     public int SelectedEvidenceTabIndex
     {
         get => selectedEvidenceTabIndex;
-        set => SetField(ref selectedEvidenceTabIndex, Math.Clamp(value, 0, 3));
+        set => SetField(ref selectedEvidenceTabIndex, Math.Clamp(value, 0, 4));
     }
 
     public ObservableCollection<RecipeRunHistoryItem> RecipeRunHistory { get; } = [];
+
+    public ObservableCollection<InspectionStepItem> InspectionSteps { get; } = [];
 
     public void SetViewerSmokeFailed(string viewerStatus)
     {
@@ -100,6 +109,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RecipeComparisonDetails = "See Tool / Inspector and Viewer contract output for the loader failure details.";
         RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
         RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(ResolveWorkspaceRoot())} | Runner: not created | UI: viewer smoke output";
+        InspectionStepSummary = "Viewer smoke: Failed";
+        InspectionSteps.Clear();
+        InspectionSteps.Add(new InspectionStepItem("1", "Viewer smoke", "Failed", string.IsNullOrWhiteSpace(viewerStatus) ? "Viewer smoke failed before recipe comparison." : viewerStatus));
         RecipeRunHistory.Clear();
         RecipeRunHistory.Add(new RecipeRunHistoryItem(
             DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
@@ -131,6 +143,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RecipeComparisonDetails =
             $"{PreviewLines(root, "Runner report", reportPath, reportLines)}\n\n{PreviewLines(root, "UI contract", contractPath, contractLines)}";
         RefreshRunSnapshot(root, recipePath, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
+        RefreshInspectionSteps(root, recipePath, contractPath, reportPath, contractLines, reportLines, uiEvidence, runnerEvidence, comparisonState);
         RefreshRunHistory(root, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
@@ -154,6 +167,30 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             $"{comparisonState} | Status: {status} | Key metric: {keyMetricSummary} | Evidence: {evidenceState} | Run: {FormatRunTime(reportPath, contractPath)}";
         RunSnapshotEvidence =
             $"Recipe: {FormatShortEvidencePath(root, recipePath)} | UI: {FormatShortEvidencePath(root, contractPath)} | Runner: {FormatShortEvidencePath(root, reportPath)} | Shell: {FormatShellScreenshotTarget(root)}";
+    }
+
+    private void RefreshInspectionSteps(
+        string root,
+        string recipePath,
+        string contractPath,
+        string reportPath,
+        string[] contractLines,
+        string[] reportLines,
+        ToolComparisonEvidence uiEvidence,
+        ToolComparisonEvidence runnerEvidence,
+        string comparisonState)
+    {
+        InspectionSteps.Clear();
+
+        var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
+        InspectionSteps.Add(new InspectionStepItem("1", "Recipe", File.Exists(recipePath) ? "Loaded" : "Missing", FormatShortEvidencePath(root, recipePath)));
+        InspectionSteps.Add(new InspectionStepItem("2", "Source", ExtractSourceLoadStatus(reportLines), ExtractSourceSummary(root, reportLines, contractLines)));
+        InspectionSteps.Add(new InspectionStepItem("3", "Viewer preview", uiEvidence.Status, $"{uiEvidence.ToolName} | {uiEvidence.KeyMetricSummary}"));
+        InspectionSteps.Add(new InspectionStepItem("4", "Runner replay", runnerEvidence.Status, $"{runnerEvidence.ToolName} | {runnerEvidence.KeyMetricSummary}"));
+        InspectionSteps.Add(new InspectionStepItem("5", "Evidence compare", evidenceState, $"{comparisonState} | UI {FormatShortEvidencePath(root, contractPath)} | Runner {FormatShortEvidencePath(root, reportPath)}"));
+
+        InspectionStepSummary =
+            $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {InspectionSteps[2].Status} | Runner: {InspectionSteps[3].Status} | Compare: {InspectionSteps[4].Status}";
     }
 
     private void RefreshRunHistory(
@@ -258,6 +295,31 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         return string.IsNullOrWhiteSpace(path)
             ? Path.Combine(root, "recipes", "c3d-height-deviation.recipe.json")
             : ResolvePath(root, path, path);
+    }
+
+    private static string ExtractSourceLoadStatus(string[] reportLines) =>
+        reportLines.Any(line => line.StartsWith("Source|", StringComparison.Ordinal)) ? "Loaded" : "Pending";
+
+    private static string ExtractSourceSummary(string root, string[] reportLines, string[] contractLines)
+    {
+        var sourceLine = reportLines.FirstOrDefault(line => line.StartsWith("Source|", StringComparison.Ordinal));
+        if (sourceLine is not null)
+        {
+            var parts = sourceLine.Split('|');
+            var name = ExtractTaggedValue(parts, "name=") ?? (parts.Length > 1 ? parts[1] : "source");
+            var unit = ExtractTaggedValue(parts, "unit=") ?? "(unit unknown)";
+            var path = ExtractTaggedValue(parts, "path=");
+            var shortPath = string.IsNullOrWhiteSpace(path) ? "(path unknown)" : ShortenWorkspacePaths(root, path);
+            return $"{name} | unit {unit} | {shortPath}";
+        }
+
+        var sourceEntitiesIndex = Array.FindIndex(contractLines, line => line.Equals("SourceEntities", StringComparison.Ordinal));
+        if (sourceEntitiesIndex >= 0 && sourceEntitiesIndex + 1 < contractLines.Length)
+        {
+            return ShortenWorkspacePaths(root, contractLines[sourceEntitiesIndex + 1]);
+        }
+
+        return "No source evidence found.";
     }
 
     private static string? FindLineAfterMarker(string[] lines, string marker)
@@ -436,6 +498,25 @@ public sealed class RecipeRunHistoryItem
     public string EvidenceState { get; }
 
     public string ReportPath { get; }
+}
+
+public sealed class InspectionStepItem
+{
+    public InspectionStepItem(string order, string stage, string status, string evidence)
+    {
+        Order = order;
+        Stage = stage;
+        Status = status;
+        Evidence = evidence;
+    }
+
+    public string Order { get; }
+
+    public string Stage { get; }
+
+    public string Status { get; }
+
+    public string Evidence { get; }
 }
 
 internal sealed record ToolComparisonEvidence(string ToolName, string Status, string KeyMetricSummary)
