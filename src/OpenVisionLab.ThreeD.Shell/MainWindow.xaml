@@ -1,4 +1,5 @@
-<Window x:Class="OpenVisionLab.ThreeD.Shell.MainWindow"
+<Window x:Name="ShellWindow"
+        x:Class="OpenVisionLab.ThreeD.Shell.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
@@ -8,6 +9,9 @@
         MinWidth="960"
         MinHeight="620"
         Background="#f3f4f6">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </Window.Resources>
     <DockPanel LastChildFill="True">
         <Border DockPanel.Dock="Top" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="0,0,0,1">
             <Grid Margin="12,8">
@@ -192,7 +196,7 @@
                                 <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Alignment" />
                                 <Button Margin="0,0,0,8"
                                         Content="Align From ROI"
-                                        Click="ApplyRoiAlignment_Click" />
+                                        Command="{Binding DataContext.ApplyRoiAlignmentCommand, ElementName=ShellWindow}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
                                         <TextBlock FontSize="11" Foreground="#6b7280" Text="T X" />
@@ -271,7 +275,7 @@
                                            Text="{Binding AlignmentWorkflowSummary}" />
                                 <Button Margin="0,8,0,0"
                                         Content="Save Recipe"
-                                        Click="SaveRecipe_Click" />
+                                        Command="{Binding DataContext.SaveRecipeCommand, ElementName=ShellWindow}" />
                                 <TextBlock Margin="0,4,0,0"
                                            TextWrapping="Wrap"
                                            Text="{Binding RecipeSaveSummary}" />
@@ -326,7 +330,7 @@
                                     MinWidth="78"
                                     Padding="10,4"
                                     Content="Refresh"
-                                    Click="RefreshRecipeComparison_Click" />
+                                    Command="{Binding RefreshRecipeComparisonCommand}" />
                         </Grid>
 
                         <TabControl Grid.Row="1"
@@ -374,6 +378,22 @@
                                                FontSize="12"
                                                TextWrapping="Wrap"
                                                Text="{Binding RecipeComparisonDetails}" />
+                                </ScrollViewer>
+                            </TabItem>
+                            <TabItem Header="Run Snapshot">
+                                <ScrollViewer Margin="10"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding RunSnapshotSummary}" />
+                                        <TextBlock FontFamily="Consolas"
+                                                   FontSize="12"
+                                                   Margin="0,3,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding RunSnapshotEvidence}" />
+                                    </StackPanel>
                                 </ScrollViewer>
                             </TabItem>
                             <TabItem Header="History">

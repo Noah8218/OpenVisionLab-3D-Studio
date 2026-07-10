@@ -3,28 +3,48 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
 public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 {
+    private bool c3DSampleVisible;
     private readonly string? comparisonContractPath;
     private readonly string? comparisonReportPath;
+    private readonly string? shellScreenshotPath;
     private string statusText = "Viewer hosted";
     private string recipeComparisonSummary = "No recipe comparison evidence loaded.";
     private string recipeComparisonHistory = "(pending)";
     private string recipeComparisonDetails = "(pending)";
+    private string runSnapshotSummary = "No run snapshot evidence loaded.";
+    private string runSnapshotEvidence = "(pending)";
     private int selectedEvidenceTabIndex;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? ApplyRoiAlignmentRequested;
+    public event EventHandler? RefreshRecipeComparisonRequested;
+    public event EventHandler? SaveRecipeRequested;
 
-    public ShellMainWindowViewModel(string? comparisonContractPath = null, string? comparisonReportPath = null)
+    public ShellMainWindowViewModel(
+        string? comparisonContractPath = null,
+        string? comparisonReportPath = null,
+        string? shellScreenshotPath = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
+        this.shellScreenshotPath = shellScreenshotPath;
+        ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
+        RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
+        SaveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         RefreshRecipeComparison();
     }
+
+    public ICommand ApplyRoiAlignmentCommand { get; }
+    public ICommand RefreshRecipeComparisonCommand { get; }
+    public ICommand SaveRecipeCommand { get; }
 
     public string StatusText
     {
@@ -50,10 +70,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref recipeComparisonDetails, value);
     }
 
+    public string RunSnapshotSummary
+    {
+        get => runSnapshotSummary;
+        private set => SetField(ref runSnapshotSummary, value);
+    }
+
+    public string RunSnapshotEvidence
+    {
+        get => runSnapshotEvidence;
+        private set => SetField(ref runSnapshotEvidence, value);
+    }
+
     public int SelectedEvidenceTabIndex
     {
         get => selectedEvidenceTabIndex;
-        set => SetField(ref selectedEvidenceTabIndex, Math.Clamp(value, 0, 2));
+        set => SetField(ref selectedEvidenceTabIndex, Math.Clamp(value, 0, 3));
     }
 
     public ObservableCollection<RecipeRunHistoryItem> RecipeRunHistory { get; } = [];
@@ -66,6 +98,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             : $"Viewer smoke failed before recipe comparison.\n{viewerStatus}";
         RecipeComparisonHistory = "No recipe comparison was run for this failed viewer smoke.";
         RecipeComparisonDetails = "See Tool / Inspector and Viewer contract output for the loader failure details.";
+        RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
+        RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(ResolveWorkspaceRoot())} | Runner: not created | UI: viewer smoke output";
         RecipeRunHistory.Clear();
         RecipeRunHistory.Add(new RecipeRunHistoryItem(
             DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
@@ -96,10 +130,30 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             $"Recipe: {FormatEvidencePath(root, recipePath)}\nUI contract: {FormatEvidencePath(root, contractPath)}\nRunner report: {FormatEvidencePath(root, reportPath)}";
         RecipeComparisonDetails =
             $"{PreviewLines(root, "Runner report", reportPath, reportLines)}\n\n{PreviewLines(root, "UI contract", contractPath, contractLines)}";
+        RefreshRunSnapshot(root, recipePath, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
         RefreshRunHistory(root, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
             : "Viewer hosted | recipe comparison pending";
+    }
+
+    private void RefreshRunSnapshot(
+        string root,
+        string recipePath,
+        string contractPath,
+        string reportPath,
+        ToolComparisonEvidence uiEvidence,
+        ToolComparisonEvidence runnerEvidence,
+        string comparisonState)
+    {
+        var status = SelectEvidenceStatus(uiEvidence, runnerEvidence);
+        var keyMetricSummary = SelectEvidenceMetric(uiEvidence, runnerEvidence);
+        var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
+
+        RunSnapshotSummary =
+            $"{comparisonState} | Status: {status} | Key metric: {keyMetricSummary} | Evidence: {evidenceState} | Run: {FormatRunTime(reportPath, contractPath)}";
+        RunSnapshotEvidence =
+            $"Recipe: {FormatShortEvidencePath(root, recipePath)} | UI: {FormatShortEvidencePath(root, contractPath)} | Runner: {FormatShortEvidencePath(root, reportPath)} | Shell: {FormatShellScreenshotTarget(root)}";
     }
 
     private void RefreshRunHistory(
@@ -112,8 +166,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     {
         RecipeRunHistory.Clear();
 
-        var status = runnerEvidence.Status != "(missing)" ? runnerEvidence.Status : uiEvidence.Status;
-        var keyMetricSummary = runnerEvidence.KeyMetricSummary != "(missing)" ? runnerEvidence.KeyMetricSummary : uiEvidence.KeyMetricSummary;
+        var status = SelectEvidenceStatus(uiEvidence, runnerEvidence);
+        var keyMetricSummary = SelectEvidenceMetric(uiEvidence, runnerEvidence);
         var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
 
         RecipeRunHistory.Add(new RecipeRunHistoryItem(
@@ -123,6 +177,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             evidenceState,
             FormatShortEvidencePath(root, reportPath)));
     }
+
+    private static string SelectEvidenceStatus(ToolComparisonEvidence uiEvidence, ToolComparisonEvidence runnerEvidence) =>
+        runnerEvidence.Status != "(missing)" ? runnerEvidence.Status : uiEvidence.Status;
+
+    private static string SelectEvidenceMetric(ToolComparisonEvidence uiEvidence, ToolComparisonEvidence runnerEvidence) =>
+        runnerEvidence.KeyMetricSummary != "(missing)" ? runnerEvidence.KeyMetricSummary : uiEvidence.KeyMetricSummary;
 
     private static string ResolveWorkspaceRoot()
     {
@@ -154,6 +214,20 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private static string[] ReadLinesOrEmpty(string path) =>
         File.Exists(path) ? File.ReadAllLines(path) : [];
+
+    public void UpdateC3DSampleVisible(bool isVisible)
+    {
+        if (c3DSampleVisible != isVisible)
+        {
+            c3DSampleVisible = isVisible;
+            RefreshCommandCanExecute();
+        }
+    }
+
+    private void RefreshCommandCanExecute()
+    {
+        ((RelayCommand)ApplyRoiAlignmentCommand).RaiseCanExecuteChanged();
+    }
 
     private static ToolComparisonEvidence ExtractUiEvidence(string[] lines)
     {
@@ -280,6 +354,19 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private static string FormatShortEvidencePath(string root, string path) =>
         File.Exists(path) ? Path.GetRelativePath(root, path) : $"missing: {Path.GetRelativePath(root, path)}";
+
+    private string FormatShellScreenshotTarget(string root)
+    {
+        if (string.IsNullOrWhiteSpace(shellScreenshotPath))
+        {
+            return "(not requested)";
+        }
+
+        var path = Path.IsPathRooted(shellScreenshotPath)
+            ? shellScreenshotPath
+            : Path.Combine(root, shellScreenshotPath);
+        return Path.GetRelativePath(root, path);
+    }
 
     private static string FormatRunTime(string reportPath, string contractPath)
     {

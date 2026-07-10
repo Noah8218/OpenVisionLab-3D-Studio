@@ -1,4 +1,5 @@
 using OpenVisionLab.ThreeD.Viewer;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -11,34 +12,47 @@ public partial class MainWindow : Window
 {
     private readonly OpenVisionThreeDViewerControl _viewer = new();
     private readonly ShellMainWindowViewModel _viewModel;
+    private readonly PropertyChangedEventHandler _viewerPropertyChangedHandler;
+    private readonly EventHandler _refreshRecipeComparisonRequestedHandler;
+    private readonly EventHandler _saveRecipeRequestedHandler;
+    private readonly EventHandler _applyRoiAlignmentRequestedHandler;
+    private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
     {
         InitializeComponent();
         _viewModel = new ShellMainWindowViewModel(
             GetCommandLineValue("--recipe-comparison-contract"),
-            GetCommandLineValue("--recipe-comparison-report"));
+            GetCommandLineValue("--recipe-comparison-report"),
+            GetCommandLineValue("--shell-smoke-screenshot"));
         _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _viewer.SidePanelsVisible = false;
         Workspace.ViewerContent = _viewer;
+        _viewModel.UpdateC3DSampleVisible(_viewer.ViewModel.C3DSampleVisible);
+
+        _viewerPropertyChangedHandler = OnViewerPropertyChanged;
+        _viewer.ViewModel.PropertyChanged += _viewerPropertyChangedHandler;
         _viewer.EnableSmokeFromCommandLine();
+
+        _refreshRecipeComparisonRequestedHandler = (_, _) => _viewModel.RefreshRecipeComparison();
+        _saveRecipeRequestedHandler = (_, _) => _viewer.SaveCurrentRecipeWithDialog();
+        _applyRoiAlignmentRequestedHandler = (_, _) => _viewer.ApplyRoiReferenceAlignment();
+        _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
+        _viewModel.SaveRecipeRequested += _saveRecipeRequestedHandler;
+        _viewModel.ApplyRoiAlignmentRequested += _applyRoiAlignmentRequestedHandler;
+
         EnableShellSmokeFromCommandLine();
     }
 
-    private void RefreshRecipeComparison_Click(object sender, RoutedEventArgs e)
+    protected override void OnClosed(EventArgs e)
     {
-        _viewModel.RefreshRecipeComparison();
-    }
-
-    private void SaveRecipe_Click(object sender, RoutedEventArgs e)
-    {
-        _viewer.SaveCurrentRecipeWithDialog();
-    }
-
-    private void ApplyRoiAlignment_Click(object sender, RoutedEventArgs e)
-    {
-        _viewer.ApplyRoiReferenceAlignment();
+        _viewer.ViewModel.PropertyChanged -= _viewerPropertyChangedHandler;
+        _viewModel.RefreshRecipeComparisonRequested -= _refreshRecipeComparisonRequestedHandler;
+        _viewModel.SaveRecipeRequested -= _saveRecipeRequestedHandler;
+        _viewModel.ApplyRoiAlignmentRequested -= _applyRoiAlignmentRequestedHandler;
+        Loaded -= _shellSmokeLoadedHandler;
+        base.OnClosed(e);
     }
 
     private void EnableShellSmokeFromCommandLine()
@@ -47,7 +61,7 @@ public partial class MainWindow : Window
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         if (shellScreenshotPath is not null)
         {
-            Loaded += async (_, _) =>
+            _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
                 await Task.Delay(900);
@@ -68,6 +82,8 @@ public partial class MainWindow : Window
                 await Task.Delay(100);
                 Application.Current.Shutdown(_viewer.SmokeExitCode);
             };
+
+            Loaded += _shellSmokeLoadedHandler;
         }
     }
 
@@ -99,8 +115,17 @@ public partial class MainWindow : Window
         return tabName?.Trim().ToLowerInvariant() switch
         {
             "runner" or "runner-report" => 1,
-            "history" => 2,
+            "snapshot" or "run" or "run-record" => 2,
+            "history" => 3,
             _ => 0
         };
+    }
+
+    private void OnViewerPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel.C3DSampleVisible))
+        {
+            _viewModel.UpdateC3DSampleVisible(_viewer.ViewModel.C3DSampleVisible);
+        }
     }
 }

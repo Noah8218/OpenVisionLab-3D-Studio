@@ -1,5 +1,6 @@
-using System.Globalization;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -69,6 +70,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private bool smokePublishResult;
     private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
+    private readonly EventHandler fitAllRequestedHandler;
+    private readonly EventHandler fitSelectionRequestedHandler;
+    private readonly EventHandler resetRequestedHandler;
+    private readonly EventHandler openRecipeRequestedHandler;
+    private readonly EventHandler saveRecipeRequestedHandler;
+    private readonly EventHandler applyRoiAlignmentRequestedHandler;
+    private readonly EventHandler screenshotRequestedHandler;
+    private readonly EventHandler publishPreviewResultRequestedHandler;
+    private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
+    private bool viewModelEventsSubscribed;
     private bool isOrbiting;
     private bool isPanning;
     private string? smokePickTarget;
@@ -101,6 +112,18 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         InitializeComponent();
         UpdateSidePanelsVisibility();
         DataContext = viewModel;
+        fitAllRequestedHandler = (_, _) => HandleFitAllCommand();
+        fitSelectionRequestedHandler = (_, _) => HandleFitSelectionCommand();
+        resetRequestedHandler = (_, _) => HandleResetCommand();
+        openRecipeRequestedHandler = (_, _) => HandleOpenRecipeCommand();
+        saveRecipeRequestedHandler = (_, _) => HandleSaveRecipeCommand();
+        applyRoiAlignmentRequestedHandler = (_, _) => HandleApplyRoiAlignmentCommand();
+        screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
+        publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
+        viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
+        SubscribeViewModelEvents();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         c3dSample = LoadDefaultC3DSample();
         importedMesh = LoadDefaultGlbSample();
         lazSample = LoadDefaultLazSample();
@@ -109,70 +132,49 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         SetC3DSampleStatus();
         SetGlbSampleStatus();
         SetLazSampleStatus();
-        viewModel.PropertyChanged += (_, args) =>
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        SubscribeViewModelEvents();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        UnsubscribeViewModelEvents();
+    }
+
+    private void SubscribeViewModelEvents()
+    {
+        if (viewModelEventsSubscribed)
         {
-            if (args.PropertyName == nameof(MainWindowViewModel.DeviationLegendVisible))
-            {
-                UpdateDeviationLegendVisibility();
-            }
+            return;
+        }
 
-            if (args.PropertyName == nameof(MainWindowViewModel.PointCloudColorLegendVisible))
-            {
-                UpdatePointCloudColorLegendVisibility();
-            }
+        viewModel.FitAllRequested += fitAllRequestedHandler;
+        viewModel.FitSelectionRequested += fitSelectionRequestedHandler;
+        viewModel.ResetRequested += resetRequestedHandler;
+        viewModel.OpenRecipeRequested += openRecipeRequestedHandler;
+        viewModel.SaveRecipeRequested += saveRecipeRequestedHandler;
+        viewModel.ApplyRoiAlignmentRequested += applyRoiAlignmentRequestedHandler;
+        viewModel.ScreenshotRequested += screenshotRequestedHandler;
+        viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
+        viewModel.PropertyChanged += viewModelPropertyChangedHandler;
+        viewModelEventsSubscribed = true;
+    }
 
-            if (args.PropertyName is nameof(MainWindowViewModel.CubeVisible)
-                or nameof(MainWindowViewModel.PointCloudVisible)
-                or nameof(MainWindowViewModel.C3DSampleVisible)
-                or nameof(MainWindowViewModel.GlbSampleVisible)
-                or nameof(MainWindowViewModel.LazSampleVisible)
-                or nameof(MainWindowViewModel.MeasurementVisible)
-                or nameof(MainWindowViewModel.SelectedColorMode)
-                or nameof(MainWindowViewModel.PointSize)
-                or nameof(MainWindowViewModel.RecipePeakTolerance)
-                or nameof(MainWindowViewModel.C3DModelTransform)
-                or nameof(MainWindowViewModel.SelectedSelectionMode)
-                or nameof(MainWindowViewModel.SelectionOverlayVisible)
-                or nameof(MainWindowViewModel.ResultOverlayVisible)
-                or nameof(MainWindowViewModel.ResultEntities))
-            {
-                if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
-                {
-                    ConfigureC3DHeightDeviationRule();
-                }
-
-                if ((args.PropertyName == nameof(MainWindowViewModel.SelectedSelectionMode)
-                        || args.PropertyName == nameof(MainWindowViewModel.C3DSampleVisible)
-                        || args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform))
-                    && viewModel.SelectedSelectionMode == RoiStepSelectionMode)
-                {
-                    UpdateRoiStepMeasurement();
-                }
-
-                RenderNow();
-            }
-            else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
-            {
-                ReloadDefaultC3DSample();
-                ReloadCurrentLazPointCloud();
-                if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
-                {
-                    UpdateRoiStepMeasurement();
-                }
-
-                RenderNow();
-            }
-            else if (IsRecipeRoiEditProperty(args.PropertyName))
-            {
-                if (!suppressRecipeParameterSync)
-                {
-                    ApplyEditedRoiStepParameters();
-                }
-
-                RenderNow();
-            }
-        };
-
+    private void UnsubscribeViewModelEvents()
+    {
+        viewModel.FitAllRequested -= fitAllRequestedHandler;
+        viewModel.FitSelectionRequested -= fitSelectionRequestedHandler;
+        viewModel.ResetRequested -= resetRequestedHandler;
+        viewModel.OpenRecipeRequested -= openRecipeRequestedHandler;
+        viewModel.SaveRecipeRequested -= saveRecipeRequestedHandler;
+        viewModel.ApplyRoiAlignmentRequested -= applyRoiAlignmentRequestedHandler;
+        viewModel.ScreenshotRequested -= screenshotRequestedHandler;
+        viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
+        viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
+        viewModelEventsSubscribed = false;
     }
 
     public bool SidePanelsVisible
@@ -188,6 +190,70 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
         ((OpenVisionThreeDViewerControl)dependencyObject).UpdateSidePanelsVisibility();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(MainWindowViewModel.DeviationLegendVisible))
+        {
+            UpdateDeviationLegendVisibility();
+        }
+
+        if (args.PropertyName == nameof(MainWindowViewModel.PointCloudColorLegendVisible))
+        {
+            UpdatePointCloudColorLegendVisibility();
+        }
+
+        if (args.PropertyName is nameof(MainWindowViewModel.CubeVisible)
+            or nameof(MainWindowViewModel.PointCloudVisible)
+            or nameof(MainWindowViewModel.C3DSampleVisible)
+            or nameof(MainWindowViewModel.GlbSampleVisible)
+            or nameof(MainWindowViewModel.LazSampleVisible)
+            or nameof(MainWindowViewModel.MeasurementVisible)
+            or nameof(MainWindowViewModel.SelectedColorMode)
+            or nameof(MainWindowViewModel.PointSize)
+            or nameof(MainWindowViewModel.RecipePeakTolerance)
+            or nameof(MainWindowViewModel.C3DModelTransform)
+            or nameof(MainWindowViewModel.SelectedSelectionMode)
+            or nameof(MainWindowViewModel.SelectionOverlayVisible)
+            or nameof(MainWindowViewModel.ResultOverlayVisible)
+            or nameof(MainWindowViewModel.ResultEntities))
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
+            {
+                ConfigureC3DHeightDeviationRule();
+            }
+
+            if ((args.PropertyName == nameof(MainWindowViewModel.SelectedSelectionMode)
+                    || args.PropertyName == nameof(MainWindowViewModel.C3DSampleVisible)
+                    || args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform))
+                && viewModel.SelectedSelectionMode == RoiStepSelectionMode)
+            {
+                UpdateRoiStepMeasurement();
+            }
+
+            RenderNow();
+        }
+        else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
+        {
+            ReloadDefaultC3DSample();
+            ReloadCurrentLazPointCloud();
+            if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
+            {
+                UpdateRoiStepMeasurement();
+            }
+
+            RenderNow();
+        }
+        else if (IsRecipeRoiEditProperty(args.PropertyName))
+        {
+            if (!suppressRecipeParameterSync)
+            {
+                ApplyEditedRoiStepParameters();
+            }
+
+            RenderNow();
+        }
     }
 
     private void UpdateSidePanelsVisibility()
@@ -664,31 +730,31 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         RenderNow();
     }
 
-    private void FitAll_Click(object sender, RoutedEventArgs e)
+    private void HandleFitAllCommand()
     {
         viewModel.FitAll();
         RenderNow();
     }
 
-    private void FitSelection_Click(object sender, RoutedEventArgs e)
+    private void HandleFitSelectionCommand()
     {
         viewModel.FitSelection();
         RenderNow();
     }
 
-    private void Reset_Click(object sender, RoutedEventArgs e)
+    private void HandleResetCommand()
     {
         viewModel.Reset();
         RenderNow();
     }
 
-    private void Screenshot_Click(object sender, RoutedEventArgs e)
+    private void HandleScreenshotCommand()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "artifacts", $"sharpgl_viewer_{DateTime.Now:yyyyMMdd_HHmmss}.png");
         CaptureWindow(path);
     }
 
-    private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+    private void HandleOpenRecipeCommand()
     {
         var dialog = new OpenFileDialog
         {
@@ -704,12 +770,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
     }
 
-    private void SaveRecipe_Click(object sender, RoutedEventArgs e)
+    private void HandleSaveRecipeCommand()
     {
         SaveCurrentRecipeWithDialog();
     }
 
-    private void ApplyRoiAlignment_Click(object sender, RoutedEventArgs e)
+    private void HandleApplyRoiAlignmentCommand()
     {
         ApplyRoiReferenceAlignment();
     }
@@ -809,7 +875,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         return false;
     }
 
-    private void PublishResult_Click(object sender, RoutedEventArgs e)
+    private void HandlePublishResultCommand()
     {
         viewModel.PublishPreviewResult();
         RenderNow();

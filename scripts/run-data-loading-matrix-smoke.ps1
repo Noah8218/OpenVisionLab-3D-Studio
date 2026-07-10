@@ -160,6 +160,29 @@ Invoke-MatrixStep "viewer GLB simple instancing measurement" 0 @(
     "--smoke-measure", "glb-two-point",
     "--smoke-contracts", (Get-ArtifactPath "matrix_glb_simple_instancing_measure_after.txt"))
 
+Invoke-MatrixStep "viewer GLB toy car" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_toycar_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\ToyCar.glb",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_toycar_after.txt"))
+
+Invoke-MatrixStep "viewer GLB toy car pick" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_toycar_pick_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\ToyCar.glb",
+    "--smoke-pick", "glb",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_toycar_pick_after.txt"))
+
+Invoke-MatrixStep "viewer GLB toy car measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_glb_toycar_measure_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\ToyCar.glb",
+    "--smoke-measure", "glb-two-point",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_glb_toycar_measure_after.txt"))
+
 Invoke-MatrixStep "viewer STL tetrahedron" 0 @(
     "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
     "-c", $Configuration, "--no-build", "--",
@@ -182,6 +205,29 @@ Invoke-MatrixStep "viewer STL tetrahedron measurement" 0 @(
     "--smoke-stl", "3D\PublicSamples\STL\Tetrahedron.stl",
     "--smoke-measure", "mesh-two-point",
     "--smoke-contracts", (Get-ArtifactPath "matrix_stl_tetrahedron_measure_after.txt"))
+
+Invoke-MatrixStep "viewer STL 3dbenchy" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_stl_3dbenchy_after.png"),
+    "--smoke-stl", "3D\PublicSamples\STL\3DBenchy.stl",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_stl_3dbenchy_after.txt"))
+
+Invoke-MatrixStep "viewer STL 3dbenchy pick" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_stl_3dbenchy_pick_after.png"),
+    "--smoke-stl", "3D\PublicSamples\STL\3DBenchy.stl",
+    "--smoke-pick", "mesh",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_stl_3dbenchy_pick_after.txt"))
+
+Invoke-MatrixStep "viewer STL 3dbenchy measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--smoke-screenshot", (Get-ArtifactPath "matrix_stl_3dbenchy_measure_after.png"),
+    "--smoke-stl", "3D\PublicSamples\STL\3DBenchy.stl",
+    "--smoke-measure", "mesh-two-point",
+    "--smoke-contracts", (Get-ArtifactPath "matrix_stl_3dbenchy_measure_after.txt"))
 
 Invoke-MatrixStep "viewer LAZ points" 0 @(
     "run", "--project", "src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj",
@@ -291,11 +337,25 @@ Invoke-MatrixStep "shell GLB simple instancing measurement" 0 @(
     "--smoke-glb", "3D\PublicSamples\glTF\SimpleInstancing.glb",
     "--smoke-measure", "glb-two-point")
 
+Invoke-MatrixStep "shell GLB toy car measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--shell-smoke-screenshot", (Get-ArtifactPath "matrix_shell_glb_toycar_measure_after.png"),
+    "--smoke-glb", "3D\PublicSamples\glTF\ToyCar.glb",
+    "--smoke-measure", "glb-two-point")
+
 Invoke-MatrixStep "shell STL tetrahedron measurement" 0 @(
     "run", "--project", "src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj",
     "-c", $Configuration, "--no-build", "--",
     "--shell-smoke-screenshot", (Get-ArtifactPath "matrix_shell_stl_tetrahedron_measure_after.png"),
     "--smoke-stl", "3D\PublicSamples\STL\Tetrahedron.stl",
+    "--smoke-measure", "mesh-two-point")
+
+Invoke-MatrixStep "shell STL 3dbenchy measurement" 0 @(
+    "run", "--project", "src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj",
+    "-c", $Configuration, "--no-build", "--",
+    "--shell-smoke-screenshot", (Get-ArtifactPath "matrix_shell_stl_3dbenchy_measure_after.png"),
+    "--smoke-stl", "3D\PublicSamples\STL\3DBenchy.stl",
     "--smoke-measure", "mesh-two-point")
 
 Invoke-MatrixStep "viewer missing GLB failure" 1 @(
@@ -383,11 +443,26 @@ Assert-FileContains "contract GLB simple instancing triangles" (Get-ArtifactPath
 Assert-FileContains "contract GLB simple instancing bounds" (Get-ArtifactPath "matrix_glb_simple_instancing_after.txt") "max=(12.732, 12.732, 12.732)"
 Assert-FileContains "contract GLB simple instancing pick" (Get-ArtifactPath "matrix_glb_simple_instancing_pick_after.txt") "GLBPick|selected=True"
 Assert-FileContains "contract GLB simple instancing measurement" (Get-ArtifactPath "matrix_glb_simple_instancing_measure_after.txt") "TwoPoint|visible=True"
+Assert-FileContains "contract GLB toy car sample" (Get-ArtifactPath "matrix_glb_toycar_after.txt") "ToyCar.glb"
+Assert-FileContains "contract GLB toy car vertices" (Get-ArtifactPath "matrix_glb_toycar_after.txt") "vertices=77429"
+Assert-FileContains "contract GLB toy car triangles" (Get-ArtifactPath "matrix_glb_toycar_after.txt") "triangles=108936"
+Assert-FileContains "contract GLB toy car texture" (Get-ArtifactPath "matrix_glb_toycar_after.txt") "hasTexture=True"
+Assert-FileContains "contract GLB toy car pick" (Get-ArtifactPath "matrix_glb_toycar_pick_after.txt") "GLBPick|selected=True"
+Assert-FileContains "contract GLB toy car measurement" (Get-ArtifactPath "matrix_glb_toycar_measure_after.txt") "TwoPoint|visible=True"
+Assert-FileContains "contract GLB toy car fit camera" (Get-ArtifactPath "matrix_glb_toycar_measure_after.txt") "distance=0.350"
 Assert-FileContains "contract STL tetrahedron" (Get-ArtifactPath "matrix_stl_tetrahedron_after.txt") "STL|loaded=True"
 Assert-FileContains "contract STL tetrahedron bounds" (Get-ArtifactPath "matrix_stl_tetrahedron_after.txt") "max=(1.000, 1.000, 1.000)"
 Assert-FileContains "contract STL tetrahedron pick" (Get-ArtifactPath "matrix_stl_tetrahedron_pick_after.txt") "STLPick|selected=True"
 Assert-FileContains "contract STL tetrahedron surface overlay" (Get-ArtifactPath "matrix_stl_tetrahedron_pick_after.txt") "STLSurfaceOverlay|visible=True"
 Assert-FileContains "contract STL tetrahedron measurement" (Get-ArtifactPath "matrix_stl_tetrahedron_measure_after.txt") "TwoPoint|visible=True"
+Assert-FileContains "contract STL 3DBenchy sample" (Get-ArtifactPath "matrix_stl_3dbenchy_after.txt") "STL|loaded=True"
+Assert-FileContains "contract STL 3DBenchy vertices" (Get-ArtifactPath "matrix_stl_3dbenchy_after.txt") "vertices=677118"
+Assert-FileContains "contract STL 3DBenchy triangles" (Get-ArtifactPath "matrix_stl_3dbenchy_after.txt") "triangles=225706"
+Assert-FileContains "contract STL 3DBenchy stride" (Get-ArtifactPath "matrix_stl_3dbenchy_after.txt") "renderTriangleStride=4"
+Assert-FileContains "contract STL 3DBenchy bounds" (Get-ArtifactPath "matrix_stl_3dbenchy_measure_after.txt") "max=(30.825, 15.502, 48.000)"
+Assert-FileContains "contract STL 3DBenchy pick" (Get-ArtifactPath "matrix_stl_3dbenchy_pick_after.txt") "STLPick|selected=True"
+Assert-FileContains "contract STL 3DBenchy measurement" (Get-ArtifactPath "matrix_stl_3dbenchy_measure_after.txt") "TwoPoint|visible=True"
+Assert-FileContains "contract STL 3DBenchy fit camera" (Get-ArtifactPath "matrix_stl_3dbenchy_measure_after.txt") "distance=170.030"
 Assert-FileContains "contract STL hides LAZ/LAS acceptance" (Get-ArtifactPath "matrix_stl_tetrahedron_measure_after.txt") "LAZAcceptance|visible=False"
 Assert-FileContains "contract LAZ points" (Get-ArtifactPath "matrix_laz_points_after.txt") "decoder=points-decoded"
 Assert-FileContains "contract LAZ fit camera" (Get-ArtifactPath "matrix_laz_points_after.txt") "distance=343."

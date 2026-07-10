@@ -3,8 +3,10 @@ using System.Globalization;
 using System.IO;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using System.Windows.Media;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
@@ -158,15 +160,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double cameraTargetX = 2.05;
     private double cameraTargetY = -0.25;
     private double cameraTargetZ;
+    private readonly RelayCommand applyRoiAlignmentCommand;
+    private readonly RelayCommand publishResultCommand;
+    private readonly RelayCommand fitAllCommand;
+    private readonly RelayCommand fitSelectionCommand;
+    private readonly RelayCommand openRecipeCommand;
+    private readonly RelayCommand resetCommand;
+    private readonly RelayCommand saveRecipeCommand;
+    private readonly RelayCommand screenshotCommand;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event EventHandler? ApplyRoiAlignmentRequested;
+    public event EventHandler? FitAllRequested;
+    public event EventHandler? FitSelectionRequested;
+    public event EventHandler? OpenRecipeRequested;
+    public event EventHandler? ResetRequested;
+    public event EventHandler? SaveRecipeRequested;
+    public event EventHandler? ScreenshotRequested;
+    public event EventHandler? PublishPreviewResultRequested;
 
     public MainWindowViewModel()
     {
         SourceEntities = CreateSourceEntities(C3DModelTransform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
+        fitAllCommand = new RelayCommand(_ => FitAllRequested?.Invoke(this, EventArgs.Empty));
+        fitSelectionCommand = new RelayCommand(_ => FitSelectionRequested?.Invoke(this, EventArgs.Empty));
+        resetCommand = new RelayCommand(_ => ResetRequested?.Invoke(this, EventArgs.Empty));
+        openRecipeCommand = new RelayCommand(_ => OpenRecipeRequested?.Invoke(this, EventArgs.Empty));
+        applyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
+        saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
+        screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
 
         RefreshRecipeParameterSummary();
         RefreshSceneContracts();
+        RefreshCommandCanExecute();
     }
 
     public string[] ColorModes { get; } = ["Solid", "Height", "RGB", "Deviation"];
@@ -176,6 +203,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "ROI Step Compare", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
+    public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
+    public ICommand FitAllCommand => fitAllCommand;
+    public ICommand FitSelectionCommand => fitSelectionCommand;
+    public ICommand OpenRecipeCommand => openRecipeCommand;
+    public ICommand PublishResultCommand => publishResultCommand;
+    public ICommand ResetCommand => resetCommand;
+    public ICommand SaveRecipeCommand => saveRecipeCommand;
+    public ICommand ScreenshotCommand => screenshotCommand;
 
     public bool HudDetailsVisible
     {
@@ -284,6 +319,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 {
                     RefreshSceneContracts();
                 }
+
+                RefreshCommandCanExecute();
             }
         }
     }
@@ -789,8 +826,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref previewToolResult, value))
             {
                 RefreshDeviationLegend(value);
+                RefreshCommandCanExecute();
             }
         }
+    }
+
+    private void RefreshCommandCanExecute()
+    {
+        applyRoiAlignmentCommand.RaiseCanExecuteChanged();
+        publishResultCommand.RaiseCanExecuteChanged();
     }
 
     public IReadOnlyList<ResultEntity> ResultEntities
