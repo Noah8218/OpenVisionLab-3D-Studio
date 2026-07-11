@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next Session Handoff
 
-Updated: 2026-07-10
+Updated: 2026-07-11
 
 ## Current State
 
@@ -14,7 +14,9 @@ Updated: 2026-07-10
 
 ## Immediate Priority
 
-Complete the 3D Viewer before starting 3D algorithm development. Treat the viewer as a 3D vision inspection workbench, not as a generic model viewer.
+Viewer Foundation v1 passed for the current fixed sample matrix. Preserve its rendering, camera, visibility, picking, selection, overlay, color-mode, hosting, and screenshot contracts as regression coverage.
+
+The Inspection Recipe v1 baseline passed on 2026-07-11 for two independent typed C3D slices. Numeric-reference-ROI `Reference Plane + Flatness` has signed-deviation evidence and analytic plane/error verification. `Point Pair Dimensions` now has exact source-cell IDs, distance/XZ width/signed elevation angle with separate tolerances, explicit Preview/Publish, recipe save/reopen, Viewer/Runner parity, a real Shell step row, render-density-independent source reads, and `9/9` analytic/error golden cases. These are tool-specific single-step recipe families, not a general multi-step executor or metrology certification. The immediate priority is Gap/Flush as the next complete typed inspection step.
 
 Completed in the first implementation slice:
 
@@ -48,6 +50,7 @@ Completed in the first implementation slice:
 - Orbit/pan/zoom/reset/fit-all/fit-selection camera controls.
 - Cube picking and coordinate status.
 - C3D height-grid point picking and raw height status.
+- C3D point-pair distance, XZ planar width, and signed elevation angle acceptance using exact row/column references; Viewer/Shell fields, HUD, endpoint/line overlay, Preview/Publish, recipe roundtrip, Runner parity, and analytic/error golden verification are complete for the fixed sample.
 - Viewer-only selection states and overlays: point, box ROI, section plane.
 - Measurement overlay.
 - Viewer-only result overlay primitives: pass band, profile line, and fail markers.
@@ -90,7 +93,9 @@ Completed in the first implementation slice:
 - GitHub Actions CI is defined in `.github/workflows/ci.yml`; it restores and builds the solution on `windows-latest`, runs the headless C3D recipe runner smoke, and uploads CI artifacts.
 - Shell `Evidence Workbench` now has a minimal `History` tab row sourced from the current recipe runner report and UI contract, showing run time, status, a key metric, match state, and report path. C3D uses peak deviation; LAZ/LAS uses distance and source-Z height delta.
 - Shell `Evidence Workbench` now has a `Run Snapshot` tab that bundles the current runner/UI match state, status, key metric, run time, recipe path, UI contract path, runner report path, and Shell screenshot target so one inspection run can be reviewed without leaving the hosted workbench.
+- Shell `Evidence Workbench` Run Snapshot now exposes `UI Contract`, `Runner Report`, and `Screenshot` open actions. The Shell code-behind is only the OS file-open bridge; the ViewModel owns the command state and selected artifact paths.
 - Shell `Evidence Workbench` now has a `Steps` tab that summarizes the current inspection execution sequence as `Recipe -> Source -> Viewer preview -> Runner replay -> Evidence compare`, with compact status text visible in the docked workbench and detailed rows available below it.
+- Viewer and Shell now expose an explicit `Fit C3D Plane` command and fitted distance-to-plane measurement. `--smoke-measure plane-distance` fits `y = ax + bz + c` through a fixed measurement sample independent of render density, reports normal/RMS/largest orthogonal residual, draws the fitted plane plus projected distance line, mirrors the result in Tool / Inspector, and records `PlaneReference` contract evidence. Three-point/ROI reference selection remains later work.
 - Standalone Viewer and Shell `Tool / Inspector` now expose numeric recipe-owned transform and ROI fields. Edits update the ROI overlay, save to recipe JSON, and replay through Runner with `RecipeTransform`, `RecipeRoiStep`, and `RoiStepResult` evidence.
 - Standalone Viewer and Shell `Tool / Inspector` now expose `Align From ROI`. It translates the current transform so the selected left/right ROI pair center and average model height become the aligned reference, updates ROI regions into that new coordinate frame, saves to recipe JSON, and replays through Runner evidence.
 - ROI/alignment validation warnings are now visible in Viewer and Shell. Invalid overlapped ROI regions block recipe save; valid ROI/alignment recipes still save and replay through Runner.
@@ -123,26 +128,16 @@ Public sample source, license, size, and SHA256 details are recorded in `3D/Publ
 Current loader/viewer acceptance coverage is tracked in `docs/OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`.
 For a new one-off GLB/STL/LAS/LAZ file, start with `scripts\probe-3d-sample.ps1 -SamplePath <path> -ArtifactDir artifacts\probe_<name>_after` before adding it to the fixed matrix; it records GLB/STL pick/measurement evidence, LAS/LAZ runner, pick, height-color, and two-point measurement evidence, plus Shell GLB/STL pick/measurement and Shell LAS/LAZ height-color/measurement screenshots. Use `-RenderDensity` and `-MaxSampledPoints` when a large point cloud needs faster or denser probing. Promote a sample only if the data-loading matrix policy says it adds missing coverage; otherwise keep it probe-only. Unsupported common formats write `FORMAT_CANDIDATE` in `probe_summary.txt` so the next loader task is explicit.
 
-Next implementation should stay viewer-first now that the first recipe can replay, compare outside the UI, load through a visible command, save edited tolerance/source/transform/ROI state, save/reopen/replay edited LAZ/LAS acceptance state, display persisted comparison evidence, and sit inside the workbench layout:
+Next implementation should stay inspection-workflow-first while preserving the Viewer v1 baseline:
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
-2. Run the next real 3D datasets through the current data-loading matrix, then let the first concrete loader/viewer gap drive the next View -> ViewModel -> Model change. The latest concrete gap was static GLB instancing, now covered by `SimpleInstancing.glb`.
-3. Add a small contract parser/checker only if the next comparison path needs more than the current Shell/Runner text parsing.
-4. Decide whether the next alignment step needs rotation/plane fitting only after more real 3D samples expose a concrete need.
+2. Preserve the completed plane-flatness and point-pair-dimensions recipe, parity, screenshot, and analytic/error regression baselines.
+3. Build signed gap/flush from two explicit regions as the next complete typed inspection slice; include analytic golden cases and do not add a generic graph engine first.
+4. Extract only concrete shared recipe/execution code proven by the completed tools; do not create a speculative graph engine.
 
 ## Remaining Project Priority
 
-After the viewer completion gate, define and implement the 3D core contracts:
-
-- source entity/layer,
-- result entity/layer,
-- unit and transform,
-- metric,
-- overlay,
-- tool result,
-- recipe step.
-
-Then make recipe save/replay reviewable in the Shell workflow before adding more tools.
+Add signed gap/flush as the next complete surface measurement slice while preserving the plane/flatness and point-pair-dimensions baselines. Volume and cross-section dimensions follow. Nominal/actual comparison, durable reports, and deeper metrology-assurance evidence come after the shared reference and step contracts are stable. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
 
 ## Evidence Already Gathered
 
@@ -161,7 +156,7 @@ Viewer usage research is recorded in `docs/OPENVISIONLAB_3D_VIEWER_USAGE_RESEARC
 
 Commercial viewer/workbench baseline review is recorded in `docs/OPENVISIONLAB_3D_COMMERCIAL_VIEWER_REVIEW_20260707.md`.
 
-Current commercial-gap self evaluation and next development priority are recorded in `docs/OPENVISIONLAB_3D_COMMERCIAL_GAP_SELF_EVALUATION_20260710.md`.
+Current product target, commercial comparison, capability scorecard, gate decision, and next development priorities are recorded in `docs/OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`. The 2026-07-10 commercial-gap document is historical context.
 
 Workbench layout design is recorded in `docs/OPENVISIONLAB_3D_WORKBENCH_LAYOUT_DESIGN_20260707.md`.
 
@@ -174,6 +169,11 @@ Build and smoke evidence:
 - `dotnet restore OpenVisionLab.ThreeDStudio.slnx`
 - `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug`
 - `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_after.png --smoke-c3d thickness --smoke-measure dimensions --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_reopen_after.png --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_reopen_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --report artifacts\runner_point_pair_dimensions_after.txt --expect-status Pass --compare-contract artifacts\viewer_dimensions_reopen_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\point_pair_dimensions_golden_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_dimensions_viewer_after.png --smoke-contracts artifacts\shell_dimensions_after.txt --recipe-comparison-contract artifacts\viewer_dimensions_reopen_after.txt --recipe-comparison-report artifacts\runner_point_pair_dimensions_after.txt --shell-smoke-screenshot artifacts\shell_dimensions_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_pick_after_cube.png --smoke-pick cube`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\glb_import_after.png --smoke-glb 3D\PublicSamples\glTF\Box.glb --smoke-contracts artifacts\glb_import_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --laz-probe 3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz --report artifacts\laz_points_probe_after.txt --max-sampled-points 50000`
@@ -224,6 +224,9 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section --smoke-contracts artifacts\viewer_section_profile_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_height_map_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_plane_distance_after.png --smoke-c3d thickness --smoke-measure plane-distance --smoke-contracts artifacts\viewer_plane_distance_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_plane_fit_after.png --smoke-c3d thickness --smoke-measure plane-distance --smoke-contracts artifacts\viewer_plane_fit_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_plane_fit_tilt_after.png --smoke-c3d thickness --smoke-alignment tilt --smoke-measure plane-distance --smoke-contracts artifacts\viewer_plane_fit_tilt_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_step_after.png --smoke-c3d thickness --smoke-measure roi-step --smoke-contracts artifacts\viewer_roi_step_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_interactive_after.png --smoke-c3d thickness --smoke-alignment offset --smoke-measure roi-interactive --smoke-contracts artifacts\viewer_roi_interactive_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_recipe_save_after.png --smoke-c3d thickness --smoke-alignment offset --smoke-measure roi-interactive --smoke-save-recipe artifacts\saved_roi_alignment.recipe.json --smoke-contracts artifacts\viewer_roi_recipe_save_after.txt`
@@ -252,6 +255,7 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_run_snapshot_viewer_after.png --smoke-rule height-deviation --smoke-contracts artifacts\shell_run_snapshot_contract_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_shell_run_snapshot_after.txt --expect-status Fail --compare-contract artifacts\shell_run_snapshot_contract_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_run_snapshot_contract_after.txt --recipe-comparison-report artifacts\runner_shell_run_snapshot_after.txt --shell-smoke-screenshot artifacts\shell_run_snapshot_after.png --shell-evidence-tab snapshot --smoke-recipe recipes\c3d-height-deviation.recipe.json`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_run_snapshot_contract_after.txt --recipe-comparison-report artifacts\runner_shell_run_snapshot_after.txt --shell-smoke-screenshot artifacts\shell_evidence_actions_after.png --shell-evidence-tab snapshot --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\shell_run_snapshot_contract_after.txt --recipe-comparison-report artifacts\runner_shell_run_snapshot_after.txt --shell-smoke-screenshot artifacts\shell_steps_after.png --shell-evidence-tab steps --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - `dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_workbench_layout_regression_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_workbench_layout_regression_after.txt`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_workbench_layout_viewer_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\shell_workbench_layout_after.txt`
@@ -270,6 +274,10 @@ Build and smoke evidence:
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_section_profile_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\viewer_height_map_after.txt --recipe-comparison-report artifacts\runner_recipe_save_after.txt --shell-smoke-screenshot artifacts\shell_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_viewer_internal_hud_after.png --smoke-measure two-point`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_plane_distance_viewer_after.png --smoke-c3d thickness --smoke-measure plane-distance --smoke-contracts artifacts\shell_plane_distance_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_plane_distance_after.png --smoke-c3d thickness --smoke-measure plane-distance`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_plane_fit_viewer_after.png --smoke-c3d thickness --smoke-measure plane-distance --smoke-contracts artifacts\shell_plane_fit_after.txt`
+- `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_plane_fit_after.png --smoke-c3d thickness --smoke-measure plane-distance`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_roi_step_after.png --smoke-measure roi-step`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_roi_interactive_after.png --smoke-c3d thickness --smoke-alignment offset --smoke-measure roi-interactive`
 - `dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_roi_recipe_roundtrip_after.png --smoke-recipe artifacts\saved_roi_alignment.recipe.json`
@@ -327,6 +335,12 @@ Build and smoke evidence:
 - Viewer two-point closest-before screenshot: `artifacts\viewer_two_point_before.png`
 - Viewer two-point after screenshot: `artifacts\viewer_two_point_after.png`
 - Viewer two-point smoke report: `artifacts\viewer_two_point_after.txt`
+- Viewer plane-distance after screenshot: `artifacts\viewer_plane_distance_after.png`
+- Viewer plane-distance smoke report: `artifacts\viewer_plane_distance_after.txt`
+- Viewer fitted-plane closest-before screenshot: `artifacts\viewer_plane_fit_before.png`
+- Viewer fitted-plane after screenshot/contract: `artifacts\viewer_plane_fit_after.png`, `artifacts\viewer_plane_fit_after.txt`
+- Viewer tilted fitted-plane screenshot/contract: `artifacts\viewer_plane_fit_tilt_after.png`, `artifacts\viewer_plane_fit_tilt_after.txt`
+- Viewer fitted-plane render-density stability contracts: `artifacts\viewer_plane_fit_fast_after.txt`, `artifacts\viewer_plane_fit_detailed_after.txt`
 - Viewer ROI step-height after screenshot: `artifacts\viewer_roi_step_after.png`
 - Viewer ROI step-height smoke report: `artifacts\viewer_roi_step_after.txt`
 - Viewer interactive ROI before screenshot: `artifacts\viewer_roi_interactive_before.png`
@@ -383,6 +397,8 @@ Build and smoke evidence:
 - Shell Run Snapshot contract: `artifacts\shell_run_snapshot_contract_after.txt`
 - Runner Shell Run Snapshot report: `artifacts\runner_shell_run_snapshot_after.txt`
 - Shell Run Snapshot full-window screenshot: `artifacts\shell_run_snapshot_after.png`
+- Shell Evidence Artifact Actions before screenshot: `artifacts\shell_evidence_actions_before.png`
+- Shell Evidence Artifact Actions after screenshot: `artifacts\shell_evidence_actions_after.png`
 - Shell inspection Steps full-window screenshot: `artifacts\shell_steps_after.png`
 - Shell workbench layout before screenshot: `artifacts\shell_workbench_layout_before.png`
 - Shell workbench layout after screenshot: `artifacts\shell_workbench_layout_after.png`
@@ -457,6 +473,12 @@ Build and smoke evidence:
 - Shell LAZ/LAS two-point embedded Viewer screenshot: `artifacts\shell_laz_two_point_viewer_after.png`
 - Shell LAZ/LAS two-point contract: `artifacts\shell_laz_two_point_after.txt`
 - Shell LAZ/LAS two-point full workbench screenshot: `artifacts\shell_laz_two_point_after.png`
+- Shell C3D plane-distance embedded Viewer screenshot: `artifacts\shell_plane_distance_viewer_after.png`
+- Shell C3D plane-distance contract: `artifacts\shell_plane_distance_after.txt`
+- Shell C3D plane-distance full workbench screenshot: `artifacts\shell_plane_distance_after.png`
+- Shell C3D fitted-plane closest-before screenshot: `artifacts\shell_plane_fit_before.png`
+- Shell C3D fitted-plane embedded Viewer screenshot/contract: `artifacts\shell_plane_fit_viewer_after.png`, `artifacts\shell_plane_fit_after.txt`
+- Shell C3D fitted-plane full workbench screenshot: `artifacts\shell_plane_fit_after.png`
 - Shell LAZ/LAS two-point publish embedded Viewer screenshot: `artifacts\shell_laz_two_point_publish_viewer_after.png`
 - Shell LAZ/LAS two-point publish contract: `artifacts\shell_laz_two_point_publish_after.txt`
 - Shell LAZ/LAS two-point publish full workbench screenshot: `artifacts\shell_laz_two_point_publish_after.png`

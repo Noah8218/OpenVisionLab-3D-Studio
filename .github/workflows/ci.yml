@@ -33,6 +33,18 @@ jobs:
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 
+      - name: Runner plane flatness smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-plane-flatness.recipe.json --report artifacts\ci\runner_c3d_plane_flatness.txt --expect-status Fail
+
+      - name: Verify plane flatness golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\ci\plane_flatness_golden.txt
+
+      - name: Runner point pair dimensions smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-point-pair-dimensions.recipe.json --report artifacts\ci\runner_c3d_point_pair_dimensions.txt --expect-status Pass
+
+      - name: Verify point pair dimensions golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\ci\point_pair_dimensions_golden.txt
+
       - name: Upload CI artifacts
         if: always()
         uses: actions/upload-artifact@v4

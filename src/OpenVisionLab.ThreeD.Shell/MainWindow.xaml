@@ -131,6 +131,97 @@
                                 <TextBlock Margin="0,4,0,0"
                                            TextWrapping="Wrap"
                                            Text="{Binding MeasurementSummary}" />
+                                <Button Margin="0,8,0,0"
+                                        Content="Fit C3D Plane"
+                                        Command="{Binding DataContext.FitPlaneCommand, ElementName=ShellWindow}" />
+                                <StackPanel Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,12,0,4"
+                                               FontWeight="SemiBold"
+                                               Text="Point Pair Dimensions" />
+                                    <WrapPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                                            <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                                            <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp W" />
+                                            <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol W" />
+                                            <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp A" />
+                                            <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol A" />
+                                            <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0"
+                                                Content="Preview Dimensions"
+                                                Command="{Binding PreviewPointPairDimensionsCommand}" />
+                                        <Button Content="Publish Result"
+                                                Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding PointPairDimensionsSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding PointPairDimensionsDetails}" />
+                                    <TextBlock Margin="0,12,0,4"
+                                               FontWeight="SemiBold"
+                                               Text="Reference Plane + Flatness" />
+                                    <WrapPanel>
+                                        <StackPanel Width="50" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center X" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="50" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center Z" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="50" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="50" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tolerance" />
+                                            <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0"
+                                                Content="Preview Flatness"
+                                                Command="{Binding PreviewPlaneFlatnessCommand}" />
+                                        <Button Content="Publish Result"
+                                                Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding PlaneFlatnessSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding PlaneFlatnessDetails}" />
+                                </StackPanel>
                                 <TextBlock Margin="0,4,0,0"
                                            Foreground="#b91c1c"
                                            TextWrapping="Wrap"
@@ -384,38 +475,71 @@
                                 <ScrollViewer Margin="10"
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
-                                    <StackPanel>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
                                         <TextBlock FontWeight="SemiBold"
-                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
                                                    Text="{Binding RunSnapshotSummary}" />
+                                        <WrapPanel Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   HorizontalAlignment="Right">
+                                            <Button MinWidth="90"
+                                                    Margin="0,0,6,4"
+                                                    Padding="6,3"
+                                                    Content="UI Contract"
+                                                    Command="{Binding OpenUiContractCommand}" />
+                                            <Button MinWidth="90"
+                                                    Margin="0,0,6,4"
+                                                    Padding="6,3"
+                                                    Content="Runner Report"
+                                                    Command="{Binding OpenRunnerReportCommand}" />
+                                            <Button MinWidth="86"
+                                                    Margin="0,0,0,4"
+                                                    Padding="6,3"
+                                                    Content="Screenshot"
+                                                    Command="{Binding OpenShellScreenshotCommand}" />
+                                        </WrapPanel>
                                         <TextBlock FontFamily="Consolas"
                                                    FontSize="12"
-                                                   Margin="0,3,0,0"
+                                                   Grid.Row="1"
+                                                   Grid.ColumnSpan="2"
+                                                   Margin="0,2,0,0"
                                                    TextWrapping="Wrap"
                                                    Text="{Binding RunSnapshotEvidence}" />
-                                    </StackPanel>
+                                    </Grid>
                                 </ScrollViewer>
                             </TabItem>
                             <TabItem Header="Steps">
-                                <DockPanel Margin="10">
+                                <DockPanel Margin="6,3">
                                     <TextBlock DockPanel.Dock="Top"
+                                               FontSize="11"
                                                FontWeight="SemiBold"
-                                               TextWrapping="Wrap"
+                                               TextTrimming="CharacterEllipsis"
                                                Text="{Binding InspectionStepSummary}" />
-                                    <ScrollViewer Margin="0,6,0,0"
+                                    <ScrollViewer Margin="0,2,0,0"
                                                   HorizontalScrollBarVisibility="Disabled"
                                                   VerticalScrollBarVisibility="Auto">
                                         <ItemsControl ItemsSource="{Binding InspectionSteps}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Padding="4"
+                                                    <Border MinHeight="22"
+                                                            Padding="2"
                                                             Background="#f9fafb"
                                                             BorderBrush="#d1d5db"
                                                             BorderThickness="1">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="34" />
-                                                                <ColumnDefinition Width="120" />
+                                                                <ColumnDefinition Width="26" />
+                                                                <ColumnDefinition Width="150" />
                                                                 <ColumnDefinition Width="70" />
                                                                 <ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
@@ -424,12 +548,14 @@
                                                                        Text="{Binding Order}" />
                                                             <TextBlock Grid.Column="1"
                                                                        FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis"
                                                                        Text="{Binding Stage}" />
                                                             <TextBlock Grid.Column="2"
+                                                                       Margin="6,0,0,0"
                                                                        Text="{Binding Status}" />
                                                             <TextBlock Grid.Column="3"
                                                                        Foreground="#374151"
-                                                                       TextWrapping="Wrap"
+                                                                       TextTrimming="CharacterEllipsis"
                                                                        Text="{Binding Evidence}" />
                                                         </Grid>
                                                     </Border>

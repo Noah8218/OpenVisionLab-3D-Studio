@@ -131,6 +131,87 @@
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Measurement" />
                 <TextBlock TextWrapping="Wrap"
                            Text="{Binding MeasurementSummary}" />
+                <Button Margin="0,8,0,0"
+                        Content="Fit C3D Plane"
+                        Command="{Binding FitPlaneCommand}" />
+                <StackPanel Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Margin="0,12,0,4"
+                               FontWeight="SemiBold"
+                               Text="Point Pair Dimensions" />
+                    <WrapPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp D" />
+                            <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol D" />
+                            <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp W" />
+                            <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol W" />
+                            <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp A" />
+                            <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,0,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol A" />
+                            <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <WrapPanel>
+                        <Button Margin="0,0,6,0"
+                                Content="Preview Dimensions"
+                                Command="{Binding PreviewPointPairDimensionsCommand}" />
+                        <Button Content="Publish Result"
+                                Command="{Binding PublishResultCommand}" />
+                    </WrapPanel>
+                    <TextBlock Margin="0,6,0,0"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PointPairDimensionsSummary}" />
+                    <TextBlock Margin="0,12,0,4"
+                               FontWeight="SemiBold"
+                               Text="Reference Plane + Flatness" />
+                    <WrapPanel>
+                        <StackPanel Width="50" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center X" />
+                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="50" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Center Z" />
+                            <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="50" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half W" />
+                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="50" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Half D" />
+                            <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,0,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tolerance" />
+                            <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <WrapPanel>
+                        <Button Margin="0,0,6,0"
+                                Content="Preview Flatness"
+                                Command="{Binding PreviewPlaneFlatnessCommand}" />
+                        <Button Content="Publish Result"
+                                Command="{Binding PublishResultCommand}" />
+                    </WrapPanel>
+                    <TextBlock Margin="0,6,0,0"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PlaneFlatnessSummary}" />
+                </StackPanel>
                 <StackPanel Visibility="{Binding LazSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                     <TextBlock Margin="0,4,0,0"
                                TextWrapping="Wrap"
@@ -375,6 +456,45 @@
                                Foreground="#f9fafb"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap"
+                               Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PointPairDimensionsSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#7dd3fc"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PointPairDimensionsDetails}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#f9fafb"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlaneReferenceMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PlaneReferenceMeasurementSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#c4b5fd"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlaneReferenceMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PlaneReferenceMeasurementDetails}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#f9fafb"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PlaneFlatnessSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               Foreground="#c4b5fd"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding PlaneFlatnessDetails}" />
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#f9fafb"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
                                Visibility="{Binding RoiStepMeasurementVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding RoiStepMeasurementSummary}" />
                     <TextBlock Margin="0,3,0,0"
@@ -483,13 +603,32 @@
                                Foreground="#111827"
                                Text="Deviation Color Scale" />
                     <Border Height="10" Margin="0,8,0,8" CornerRadius="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                <GradientStop Color="#14b8a6" Offset="0.0" />
-                                <GradientStop Color="#facc15" Offset="0.62" />
-                                <GradientStop Color="#ef4444" Offset="1.0" />
-                            </LinearGradientBrush>
-                        </Border.Background>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                            <GradientStop Color="#14b8a6" Offset="0.0" />
+                                            <GradientStop Color="#facc15" Offset="0.62" />
+                                            <GradientStop Color="#ef4444" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PlaneFlatnessVisible}" Value="True">
+                                        <Setter Property="Background">
+                                            <Setter.Value>
+                                                <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                                    <GradientStop Color="#2563eb" Offset="0.0" />
+                                                    <GradientStop Color="#ffffff" Offset="0.5" />
+                                                    <GradientStop Color="#ef4444" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                     </Border>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -497,19 +636,29 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock FontSize="10" Foreground="#374151" Text="Mean" />
+                        <TextBlock FontSize="10" Foreground="#374151" Text="{Binding DeviationLegendLowLabel}" />
                         <TextBlock Grid.Column="1"
                                    HorizontalAlignment="Center"
                                    FontSize="10"
                                    Foreground="#374151"
-                                   Text="Tolerance" />
+                                   Text="{Binding DeviationLegendMiddleLabel}" />
                         <TextBlock Grid.Column="2"
                                    HorizontalAlignment="Right"
                                    FontSize="10"
                                    Foreground="#374151"
-                                   Text="Peak" />
+                                   Text="{Binding DeviationLegendHighLabel}" />
                     </Grid>
                     <StackPanel Margin="0,8,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PlaneFlatnessVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <StackPanel Orientation="Horizontal">
                             <Rectangle Width="10" Height="10" Fill="#14b8a6" />
                             <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Within tolerance" />
@@ -519,6 +668,11 @@
                             <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="#111827" Text="Fail marker" />
                         </StackPanel>
                     </StackPanel>
+                    <TextBlock Margin="0,8,0,0"
+                               FontSize="11"
+                               Foreground="#374151"
+                               Text="Blue: below plane | Red: above plane"
+                               Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                FontWeight="SemiBold"

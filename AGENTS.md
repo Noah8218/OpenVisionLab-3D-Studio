@@ -16,9 +16,30 @@ This file defines the working agreement for Codex in this repository.
 - The 2D reference product validates image layers with tools, metrics, overlays, acceptance rules, recipes, and repeatable runner checks. The 3D product should keep that operating model, but use 3D entities instead of images.
 - Early scope is local desktop work: load 3D data, inspect it, show overlays/measurements, and build repeatable rule-based validation. Do not start with camera, PLC, robot, cloud, or production-line integration.
 
+## Current Product Target
+
+- `docs/OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md` is the current product-direction and commercial-comparison source of truth. Update it when a product gate passes or the target changes.
+- Target an explainable, local, sensor-neutral 3D inspection recipe workbench for height maps, point clouds, and meshes.
+- The target workflow is measured/nominal data -> units/frame/reference/ROI -> ordered inspection steps -> explicit Preview -> metrics/tolerance/overlays -> explicit Publish -> recipe save -> headless Runner replay -> run record/report.
+- Viewer Foundation v1 passed on 2026-07-11 for the current C3D/GLB/STL/LAS/LAZ fixed sample matrix. Preserve it as a regression baseline; this is not a production-readiness claim.
+- Inspection Recipe v1 baseline passed on 2026-07-11 for one C3D numeric-reference-ROI plane-flatness step with stable input/reference IDs, recipe save/reopen, Viewer/Runner metric and status parity, Publish evidence, and a real Shell step row. This is a one-step baseline, not a general recipe graph or metrology claim.
+- Plane/flatness algorithm credibility baseline passed on 2026-07-11 with an analytic synthetic plane, exact signed-offset flatness/RMS answers, Pass/Fail thresholds, and controlled empty/insufficient/degenerate/non-finite/invalid-tolerance cases. This is not calibration or external metrology validation.
+- The second typed slice, C3D point-pair distance/width/signed-elevation-angle, passed on 2026-07-11 with explicit source-cell references, separate metric tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, Shell evidence, and 9/9 analytic/error golden cases. It measures selected cells; it does not find edges or fitted features.
+- Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
+- Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
+- Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
+
+## Default Product Priority
+
+1. Build gap/flush as the next complete typed inspection step using two explicit regions, signed results, separate tolerances, Preview/Publish, recipe roundtrip, Runner parity, analytic golden cases, and Shell evidence.
+2. Add the remaining basic surface tools one complete slice at a time: volume, then cross-section dimensions.
+3. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
+4. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
+5. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
+
 ## Stable Contracts
 
-- Build the 3D viewer first. Rule authoring and 3D algorithm work must wait until the viewer completion gate passes.
+- Viewer Foundation v1 has passed. New rule/algorithm work may proceed only as an end-to-end inspection slice while all viewer-gate smokes remain green.
 - Before adding new visible Viewer/Shell features, place them in the workbench layout contract in `docs/OPENVISIONLAB_3D_WORKBENCH_LAYOUT_DESIGN_20260707.md`; layout skeleton work comes before filling new feature behavior.
 - Viewer completion means reliable display, camera control, object/layer visibility, picking, selection, measurement/result overlay rendering, color modes, and screenshot smoke evidence.
 - The first viewer implementation uses SharpGL because the project owner is already comfortable reading and debugging SharpGL-based code.
@@ -31,6 +52,10 @@ This file defines the working agreement for Codex in this repository.
 - Keep source geometry and result geometry separate. A validation result must not silently mutate the imported source model.
 - Keep preview and publish separate. Preview is review state; publish creates or updates an explicit result layer/entity.
 - Every validation tool must expose metrics and visual evidence, not only OK/NG text.
+- A new inspection tool is incomplete until it has parameters, controlled validation, metrics, overlay evidence, tolerance status, recipe persistence, Runner replay, and current Viewer/Shell evidence.
+- Use stable step IDs and explicit entity/reference inputs. Runner replay must not depend on display names or implicit active selection.
+- Keep measurement sampling independent from render density.
+- Point-pair dimension recipes own exact C3D row/column references. Viewer and Runner must resolve those cells from the source file; render-density samples are display data, not measurement inputs.
 - Shared evidence lines for source entities, entity layers, tool results, metrics, overlays, and published result entities belong in `OpenVisionLab.ThreeD.Core.InspectionContractText`; do not duplicate those line formats in Viewer, Shell, Runner, or Tools.
 - Units must be explicit. Store model units, display units, tolerances, and transforms with the data they affect.
 - Selection, picking, measurement, and camera state are product contracts. Do not break orbit, pan, zoom, fit-to-view, object visibility, or result overlay toggles while adding tools.
@@ -84,6 +109,10 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_section_profile_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-selection section --smoke-contracts artifacts\viewer_section_profile_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_height_map_after.png --smoke-recipe recipes\c3d-height-deviation.recipe.json --smoke-contracts artifacts\viewer_height_map_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_flatness_after.png --smoke-recipe recipes\c3d-plane-flatness.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_plane_flatness.recipe.json --smoke-contracts artifacts\viewer_flatness_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_flatness_reopen_after.png --smoke-recipe artifacts\saved_c3d_plane_flatness.recipe.json --smoke-contracts artifacts\viewer_flatness_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_after.png --smoke-c3d thickness --smoke-measure dimensions --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_reopen_after.png --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_step_after.png --smoke-c3d thickness --smoke-measure roi-step --smoke-contracts artifacts\viewer_roi_step_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_interactive_after.png --smoke-c3d thickness --smoke-alignment offset --smoke-measure roi-interactive --smoke-contracts artifacts\viewer_roi_interactive_after.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_roi_recipe_save_after.png --smoke-c3d thickness --smoke-alignment offset --smoke-measure roi-interactive --smoke-save-recipe artifacts\saved_roi_alignment.recipe.json --smoke-contracts artifacts\viewer_roi_recipe_save_after.txt
@@ -127,12 +156,18 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_laz_acceptance_recipe_reopen_viewer_after.png --smoke-recipe artifacts\saved_laz_two_point_acceptance.recipe.json --smoke-contracts artifacts\shell_laz_acceptance_recipe_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\shell_laz_acceptance_recipe_reopen_after.png --smoke-recipe artifacts\saved_laz_two_point_acceptance.recipe.json
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\laz_acceptance_recipe_reopen_viewer_after.txt --recipe-comparison-report artifacts\runner_laz_run_history_after.txt --shell-smoke-screenshot artifacts\shell_laz_run_history_after.png --shell-evidence-tab history --smoke-recipe artifacts\saved_laz_two_point_acceptance.recipe.json
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_flatness_viewer_after.png --smoke-contracts artifacts\shell_flatness_after.txt --recipe-comparison-contract artifacts\viewer_flatness_reopen_after.txt --recipe-comparison-report artifacts\runner_flatness_after.txt --shell-smoke-screenshot artifacts\shell_flatness_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_plane_flatness.recipe.json
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_dimensions_viewer_after.png --smoke-contracts artifacts\shell_dimensions_after.txt --recipe-comparison-contract artifacts\viewer_dimensions_reopen_after.txt --recipe-comparison-report artifacts\runner_point_pair_dimensions_after.txt --shell-smoke-screenshot artifacts\shell_dimensions_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json
 ```
 
 For recipe/runner work, also run:
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\runner_c3d_height_rule_after.txt --expect-status Fail
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_plane_flatness.recipe.json --report artifacts\runner_flatness_after.txt --expect-status Fail --compare-contract artifacts\viewer_flatness_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\plane_flatness_golden_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --report artifacts\runner_point_pair_dimensions_after.txt --expect-status Pass --compare-contract artifacts\viewer_dimensions_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\point_pair_dimensions_golden_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement.recipe.json --report artifacts\runner_laz_two_point_after.txt --expect-status Pass --compare-contract artifacts\laz_two_point_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement-fail.recipe.json --report artifacts\runner_laz_two_point_fail_after.txt --expect-status Fail
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_laz_two_point_acceptance.recipe.json --report artifacts\runner_laz_acceptance_edit_save_after.txt --expect-status Pass --compare-contract artifacts\laz_acceptance_edit_save_viewer_after.txt
@@ -184,13 +219,12 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 
 ## Priority Direction
 
-1. Establish the viewer MVP.
-2. Lock the commercial-style workbench layout skeleton before adding more visible feature behavior.
-3. Harden the viewer to the completion gate: mesh/point-cloud display, camera, selection, overlays, color modes, screenshots, and MVVM state separation.
-4. Define the 3D entity/layer/result contracts.
-5. Add one rule-based validation tool with metrics and overlays.
-6. Add recipe serialization and a headless runner path.
-7. Expand data formats, CAD precision, point-cloud processing, and AI assistance only after the core loop is verified.
+1. Preserve the passed Viewer Foundation v1 and the plane/flatness plus point-pair-dimensions typed-slice baselines.
+2. Implement gap/flush as the next complete typed inspection slice without adding a generic graph engine first.
+3. Add volume and cross-section dimensions one verified slice at a time.
+4. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
+5. Add one measured/nominal comparison slice, then durable JSON run records and simple HTML/CSV reporting.
+6. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.
 
 When starting after orientation, state the immediate priority and the remaining project priority before editing files or running follow-up commands.
 

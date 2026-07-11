@@ -7,6 +7,7 @@ public static class InspectionContractText
     public const string Missing = "(none)";
     public const string GeneratedSource = "(generated)";
     public const string ToolResultPrefix = "ToolResult";
+    public const string InspectionStepMarker = "InspectionStep";
     public const string PreviewToolResultMarker = "PreviewToolResult";
     public const string PreviewMetricsMarker = "PreviewMetrics";
     public const string PreviewOverlaysMarker = "PreviewOverlays";
@@ -18,6 +19,9 @@ public static class InspectionContractText
 
     public static string FormatEntityLayer(EntityLayer layer) =>
         $"{layer.Id}|{layer.Kind}|visible={layer.IsVisible}|entities={string.Join(",", layer.EntityIds)}";
+
+    public static string FormatInspectionStep(InspectionStep step) =>
+        $"{InspectionStepMarker}|id={Clean(step.Id)}|tool={Clean(step.ToolName)}|source={Clean(step.SourceEntityId)}|reference={Clean(step.ReferenceId)}|enabled={step.IsEnabled}";
 
     public static string FormatToolResult(ToolResult result, bool includePrefix = false)
     {

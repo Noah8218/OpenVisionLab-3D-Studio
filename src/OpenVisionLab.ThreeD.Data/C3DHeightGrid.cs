@@ -52,6 +52,36 @@ public sealed class C3DHeightGrid
 
     public float ZHalfExtent { get; }
 
+    public HeightGridPoint ReadPoint(int row, int column)
+    {
+        if (row < 0 || row >= Height)
+        {
+            throw new ArgumentOutOfRangeException(nameof(row), row, $"C3D row must be between 0 and {Height - 1}.");
+        }
+
+        if (column < 0 || column >= Width)
+        {
+            throw new ArgumentOutOfRangeException(nameof(column), column, $"C3D column must be between 0 and {Width - 1}.");
+        }
+
+        using var reader = new BinaryReader(File.OpenRead(SourcePath));
+        var width = reader.ReadInt32();
+        var height = reader.ReadInt32();
+        if (width != Width || height != Height)
+        {
+            throw new InvalidDataException("C3D dimensions changed after the source was loaded.");
+        }
+
+        reader.BaseStream.Seek(8L + ((long)row * Width + column) * sizeof(float), SeekOrigin.Begin);
+        var value = reader.ReadSingle();
+        if (!float.IsFinite(value) || value == 0.0f)
+        {
+            throw new InvalidDataException($"C3D point ({row}, {column}) is not a finite non-zero sample.");
+        }
+
+        return CreatePoint(value, row, column, Width, Height, Min, Max, Mean);
+    }
+
     public static C3DHeightGrid Load(string path, int maxRenderedPoints = 55000)
     {
         using var reader = new BinaryReader(File.OpenRead(path));
@@ -108,13 +138,6 @@ public sealed class C3DHeightGrid
     private static HeightGridPoint[] CreatePoints(float[] samples, int width, int height, int stride, float min, float max, double mean)
     {
         var points = new List<HeightGridPoint>();
-        var xyScale = 10.0f / Math.Max(width - 1, height - 1);
-        var yScale = 0.0006f;
-        var centerX = (width - 1) / 2.0f;
-        var centerZ = (height - 1) / 2.0f;
-        var colorSpan = Math.Max(0.0001, max - min);
-        var deviationSpan = Math.Max(Math.Abs(min - mean), Math.Abs(max - mean));
-
         for (var row = 0; row < height; row += stride)
         {
             for (var column = 0; column < width; column += stride)
@@ -125,17 +148,46 @@ public sealed class C3DHeightGrid
                     continue;
                 }
 
-                var x = (column - centerX) * xyScale;
-                var y = (float)((value - mean) * yScale);
-                var z = (row - centerZ) * xyScale;
-                var heightScalar = Math.Clamp((value - min) / colorSpan, 0.0, 1.0);
-                var deviationScalar = Math.Clamp(Math.Abs(value - mean) / deviationSpan, 0.0, 1.0);
-                points.Add(new HeightGridPoint(new Vector3(x, y, z), heightScalar, deviationScalar, value));
+                points.Add(CreatePoint(value, row, column, width, height, min, max, mean));
             }
         }
 
         return points.ToArray();
     }
+
+    private static HeightGridPoint CreatePoint(
+        float value,
+        int row,
+        int column,
+        int width,
+        int height,
+        float min,
+        float max,
+        double mean)
+    {
+        var xyScale = 10.0f / Math.Max(width - 1, height - 1);
+        var centerX = (width - 1) / 2.0f;
+        var centerZ = (height - 1) / 2.0f;
+        var colorSpan = Math.Max(0.0001, max - min);
+        var deviationSpan = Math.Max(0.0001, Math.Max(Math.Abs(min - mean), Math.Abs(max - mean)));
+        var position = new Vector3(
+            (column - centerX) * xyScale,
+            (float)((value - mean) * 0.0006f),
+            (row - centerZ) * xyScale);
+        return new HeightGridPoint(
+            position,
+            Math.Clamp((value - min) / colorSpan, 0.0, 1.0),
+            Math.Clamp(Math.Abs(value - mean) / deviationSpan, 0.0, 1.0),
+            value,
+            row,
+            column);
+    }
 }
 
-public readonly record struct HeightGridPoint(Vector3 Position, double HeightScalar, double DeviationScalar, float RawValue);
+public readonly record struct HeightGridPoint(
+    Vector3 Position,
+    double HeightScalar,
+    double DeviationScalar,
+    float RawValue,
+    int Row = -1,
+    int Column = -1);

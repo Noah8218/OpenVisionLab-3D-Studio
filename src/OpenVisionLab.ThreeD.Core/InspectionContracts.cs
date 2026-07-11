@@ -69,6 +69,13 @@ public sealed record EntityLayer(
     bool IsVisible,
     IReadOnlyList<string> EntityIds);
 
+public sealed record InspectionStep(
+    string Id,
+    string ToolName,
+    string SourceEntityId,
+    string ReferenceId,
+    bool IsEnabled);
+
 public sealed record ToolResult(
     string ToolName,
     ResultStatus Status,

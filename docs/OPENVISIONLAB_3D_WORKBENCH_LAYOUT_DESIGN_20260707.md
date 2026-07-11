@@ -99,6 +99,8 @@ The implemented split is:
 | Run history | Evidence Workbench | Done, C3D/LAZ |
 | Viewer-internal coordinate HUD | 3D Inspection View | Done |
 | Two-point distance and height delta | 3D Inspection View + Tool / Inspector | Done |
+| Typed point-pair distance / XZ width / signed angle acceptance | 3D Inspection View + Tool / Inspector + Evidence Workbench | Done, explicit C3D cells |
+| Distance to fitted reference plane | 3D Inspection View + Tool / Inspector | Done, C3D height-field fit |
 | Interactive ROI step-height comparison | 3D Inspection View + Tool / Inspector | Done, minimal |
 | Transform/alignment state | 3D Inspection View + Data & Layers | Done, minimal |
 | Recipe-persisted ROI/alignment replay | Recipe + Evidence Workbench | Done, minimal |
@@ -110,7 +112,7 @@ The implemented split is:
 | Active linked view context | Linked View Strip | Done, minimal |
 | Long linked-view status details | Linked View Strip | Done, minimal |
 | Performance HUD | 3D Inspection View | Done, minimal |
-| Screenshot/report snapshots | Evidence Workbench | Medium |
+| Screenshot/report snapshots | Evidence Workbench | Done, minimal |
 | CAD/GD&T | Not in current layout phase | Later |
 | Sensor/PLC/robot/HMI | Out of current scope | Later |
 
@@ -179,6 +181,53 @@ The implemented split is:
 19. Keep Linked View usable for long loader failure details. Done.
     - Linked View Strip has vertical scrolling so long GLB/STL/LAS/LAZ source paths and loader errors stay reachable inside the docked panel.
     - Tool / Inspector and the Viewer HUD remain the primary failure summary surfaces.
+20. Add minimal Evidence Workbench artifact actions. Done.
+    - `Run Snapshot` exposes open actions for the current UI contract, Runner report, and Shell screenshot artifact.
+    - The Shell code-behind remains the OS-launch bridge; the ViewModel owns command state and target path selection.
+    - Smoke can open the tab with `--shell-evidence-tab snapshot` and prove the actions are visible without invoking OS file launch.
+21. Add minimal C3D distance-to-plane measurement. Done.
+    - `--smoke-measure plane-distance` uses the current C3D mean model-Y as a reference plane and measures the largest absolute point-to-plane distance.
+    - The Viewer HUD shows plane summary/details, the viewport draws the reference plane and target distance line, Tool / Inspector mirrors the same measurement summary, and contract text records `PlaneReference`.
+    - This is not plane fitting yet; fitted plane and multi-point reference definition remain later work.
+22. Upgrade C3D distance-to-plane to a fitted height-field plane. Done.
+    - Standalone Viewer and Shell Tool / Inspector expose an explicit `Fit C3D Plane` command.
+    - The command fits `y = ax + bz + c` from transformed C3D samples, reports RMS residual and fitted normal, and measures the largest orthogonal point-to-plane distance.
+    - A fixed `140,000`-point measurement budget keeps fitted metrics independent from Fast/Balanced/Detailed render-density sampling.
+    - Viewer code-behind remains the OpenGL/data bridge; the reusable least-squares calculation belongs to `OpenVisionLab.ThreeD.Tools` and ViewModel owns command/display state.
+    - Three picked points, ROI-only fitting, flatness tolerance, recipe persistence, and Runner replay remain later work.
+23. Add the first Inspection Recipe v1 vertical slice: reference ROI plane plus flatness. Done for numeric ROI baseline.
+    - Standalone Viewer and Shell `Tool / Inspector` own the editable reference ROI center/size and flatness tolerance fields.
+    - An explicit `Preview Flatness` command fits the reference plane only from the configured ROI, then evaluates signed orthogonal deviation over a fixed measurement sample set that is independent from render density.
+    - The 3D Inspection View owns the reference ROI, fitted plane, signed-deviation color evidence, extrema markers, and an internal flatness summary so hosting the Viewer alone does not hide essential inspection facts.
+    - `Publish Result` creates a separate result entity/layer; it does not mutate the C3D source geometry.
+    - Recipe JSON owns a stable step ID, explicit source/reference IDs, ROI, tolerance, unit, and sample budget. Viewer reopen and headless Runner replay must produce matching status and key metric evidence.
+    - This slice intentionally excludes three-point reference definition, CAD/GD&T, automatic datum construction, and a generic recipe graph editor.
+24. Add the second typed inspection slice: C3D point-pair width, distance, and angle. Done for explicit source-cell baseline.
+    - Standalone Viewer and Shell `Tool / Inspector` own expected 3D distance, XZ planar width, signed elevation angle, and a separate tolerance for each metric.
+    - The existing two-point pick interaction defines explicit C3D grid-cell references; `Preview Dimensions` evaluates only after both references exist.
+    - The Viewer HUD keeps the selected point IDs, distance, width, angle, and acceptance status visible when hosted without Shell panes.
+    - The 3D Inspection View owns the endpoint markers and connecting measurement line. `Publish Result` creates a separate result entity/layer without changing source C3D values.
+    - Recipe JSON owns a stable step ID, source entity ID, point-reference IDs, source row/column selectors, transform, units, expected values, and tolerances. Runner must resolve the same source cells independently of render density.
+    - This slice intentionally excludes automatic edge/feature extraction, feature fitting, CAD dimensions, and GD&T.
+
+## C3D Point Pair Dimensions Evidence
+
+- Before Viewer screenshot/contract: `artifacts/viewer_dimensions_before.png`, `artifacts/viewer_dimensions_before.txt`
+- Before Shell screenshot: `artifacts/shell_dimensions_before.png`
+- After Viewer screenshot/contract: `artifacts/viewer_dimensions_after.png`, `artifacts/viewer_dimensions_after.txt`
+- Saved-recipe reopen screenshot/contract: `artifacts/viewer_dimensions_reopen_after.png`, `artifacts/viewer_dimensions_reopen_after.txt`
+- Runner parity report: `artifacts/runner_point_pair_dimensions_after.txt`
+- Analytic/error golden report: `artifacts/point_pair_dimensions_golden_after.txt`
+- After Shell Viewer/contract/Steps workbench: `artifacts/shell_dimensions_viewer_after.png`, `artifacts/shell_dimensions_after.txt`, `artifacts/shell_dimensions_after.png`
+
+## Reference ROI Plane Flatness Evidence
+
+- Before Viewer screenshot: `artifacts/viewer_flatness_before.png`
+- Before Shell screenshot: `artifacts/shell_flatness_before.png`
+- After Viewer screenshot/contract: `artifacts/viewer_flatness_after.png`, `artifacts/viewer_flatness_after.txt`
+- Saved-recipe reopen screenshot/contract: `artifacts/viewer_flatness_reopen_after.png`, `artifacts/viewer_flatness_reopen_after.txt`
+- Runner parity report: `artifacts/runner_flatness_after.txt`
+- After Shell Viewer/contract/workbench: `artifacts/shell_flatness_viewer_after.png`, `artifacts/shell_flatness_after.txt`, `artifacts/shell_flatness_after.png`
 
 ## Acceptance Checklist For Layout Skeleton
 
@@ -255,6 +304,25 @@ The implemented split is:
 - LAZ/LAS run-history runner report: `artifacts/runner_laz_run_history_after.txt`
 - C3D run-history regression screenshot: `artifacts/shell_c3d_run_history_regression_after.png`
 - C3D run-history regression report: `artifacts/runner_c3d_run_history_regression_after.txt`
+
+## Evidence Artifact Action Evidence
+
+- Before screenshot: `artifacts/shell_evidence_actions_before.png`
+- After screenshot: `artifacts/shell_evidence_actions_after.png`
+- Viewer contract: `artifacts/shell_run_snapshot_contract_after.txt`
+- Runner report: `artifacts/runner_shell_run_snapshot_after.txt`
+
+## Plane Reference Measurement Evidence
+
+- Viewer screenshot: `artifacts/viewer_plane_distance_after.png`
+- Viewer contract: `artifacts/viewer_plane_distance_after.txt`
+- Shell embedded Viewer screenshot: `artifacts/shell_plane_distance_viewer_after.png`
+- Shell contract: `artifacts/shell_plane_distance_after.txt`
+- Shell full workbench screenshot: `artifacts/shell_plane_distance_after.png`
+- Fitted-plane closest-before screenshots: `artifacts/viewer_plane_fit_before.png`, `artifacts/shell_plane_fit_before.png`
+- Fitted-plane after screenshots: `artifacts/viewer_plane_fit_after.png`, `artifacts/shell_plane_fit_viewer_after.png`, `artifacts/shell_plane_fit_after.png`
+- Fitted-plane contracts: `artifacts/viewer_plane_fit_after.txt`, `artifacts/viewer_plane_fit_tilt_after.txt`, `artifacts/shell_plane_fit_after.txt`
+- Render-density stability contracts: `artifacts/viewer_plane_fit_fast_after.txt`, `artifacts/viewer_plane_fit_detailed_after.txt`
 
 ## Viewer Internal HUD Evidence
 

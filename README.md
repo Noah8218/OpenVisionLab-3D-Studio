@@ -9,9 +9,9 @@ This repository is under active development and is not production-ready yet.
 ## 1 Minute Summary
 
 - Product direction: local 3D vision inspection workbench.
-- Current focus: SharpGL/WPF viewer foundation before deeper 3D algorithms.
+- Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
-- Current rule scope: first C3D height-deviation recipe, editable persisted transform/ROI parameters, editable LAZ/LAS two-point acceptance save/reopen/replay, headless runner path, Shell Evidence Workbench comparison/history for C3D and point-cloud key metrics, and shared Core evidence formatting for Viewer/Runner contracts.
+- Current rule scope: C3D height deviation plus complete typed plane-flatness and explicit C3D point-pair distance/width/signed-angle slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
 ## Requirements
@@ -94,6 +94,23 @@ Viewer screenshot and contract smoke:
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt
+```
+
+C3D reference-plane flatness recipe smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_flatness_after.png --smoke-recipe recipes\c3d-plane-flatness.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_plane_flatness.recipe.json --smoke-contracts artifacts\viewer_flatness_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_plane_flatness.recipe.json --report artifacts\runner_flatness_after.txt --expect-status Fail --compare-contract artifacts\viewer_flatness_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\plane_flatness_golden_after.txt
+```
+
+C3D point-pair dimensions recipe smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_after.png --smoke-c3d thickness --smoke-measure dimensions --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_reopen_after.png --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --report artifacts\runner_point_pair_dimensions_after.txt --expect-status Pass --compare-contract artifacts\viewer_dimensions_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\point_pair_dimensions_golden_after.txt
 ```
 
 Public GLB import smoke:
@@ -225,8 +242,9 @@ CI currently runs on `windows-latest` and performs:
 
 1. `dotnet restore OpenVisionLab.ThreeDStudio.slnx`
 2. `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
-3. Headless C3D recipe runner smoke
-4. CI artifact upload from `artifacts\ci\`
+3. Headless C3D height-deviation, plane-flatness, and point-pair-dimensions recipe runner smokes
+4. Analytic/error golden verification for plane flatness and point-pair dimensions
+5. CI artifact upload from `artifacts\ci\`
 
 ## Release Notes
 
@@ -245,6 +263,11 @@ Current development snapshot:
 - Transform and ROI step parameters persisted in recipes and repeated by the headless runner.
 - Viewer and Shell expose numeric edit controls for recipe-owned transform and ROI step parameters, with save/replay smoke evidence.
 - Viewer and Shell expose a minimal `Align From ROI` workflow that centers the selected ROI pair and reference height in the aligned coordinate frame.
+- Viewer and Shell expose `Fit C3D Plane`, using a render-density-independent measurement sample to report fitted normal, RMS, and maximum orthogonal distance with overlay and contract evidence.
+- Viewer and Shell expose numeric reference-ROI plane flatness with signed deviation coloring, tolerance status, explicit Preview/Publish, stable step/source/reference IDs, recipe save/reopen, Runner parity, and Shell actual-step evidence.
+- Runner `--verify-plane-flatness` uses an analytic plane and known signed offsets to verify exact fit/flatness/RMS answers plus controlled invalid-reference/input states; CI preserves this regression.
+- Viewer and Shell expose explicit C3D point-pair distance, XZ planar width, and signed elevation angle with separate tolerances, stable source-cell IDs, Preview/Publish, recipe roundtrip, and Runner parity.
+- Runner `--verify-point-pair-dimensions` verifies a known `(3,4,4)` vector, signed angle, tolerance failure, and controlled invalid-input states; CI preserves this regression.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -270,19 +293,20 @@ Current development snapshot:
 
 ## Roadmap
 
-1. Finish the viewer completion gate: reliable display, camera, picking, selection, overlays, color modes, screenshots, and MVVM state separation.
-2. Run additional real 3D datasets through the data loading matrix and let the first concrete loader/viewer gap drive the next viewer change.
-3. Add a small contract parser/checker for Viewer/Runner evidence only if another comparison path starts duplicating text parsing.
-4. Add more rule-based validation tools with UI preview and headless runner coverage.
-5. Expand file formats and heavier geometry libraries only after the core inspection loop is verified.
+1. Preserve the passed Viewer Foundation v1 fixed-matrix regression baseline.
+2. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
+3. Add basic surface tools one complete slice at a time: gap/flush, volume, and cross-section dimensions.
+4. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
+5. Add a durable JSON run record and simple HTML/CSV reporting before batch trends or enterprise integration.
 
 ## Known Limitations
 
 - The project is not production-ready.
 - Current C3D parsing is inferred from local samples, not an official format contract.
 - The current Thickness and Warpage sample files may be byte-identical; do not assume they represent different measurements until new evidence is available.
-- Algorithm coverage is intentionally narrow; the viewer is still being completed first.
-- ROI/alignment editing is currently an MVP. `Align From ROI` applies translation from the selected ROI pair center/reference height; rotation, plane fitting, snapping, and richer guided warnings are not implemented yet.
+- Algorithm coverage is intentionally narrow; Viewer Foundation v1 and two independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
+- ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
+- Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
 - No packaged installer or binary release exists yet.
 - .NET 10 migration is planned as a separate compatibility task, not mixed into current feature work.
@@ -292,6 +316,7 @@ Current development snapshot:
 - `AGENTS.md`: repository working rules and verification commands.
 - `docs\CODEBASE_STRUCTURE.md`: project layout.
 - `docs\OPENVISIONLAB_3D_PLATFORM_DIRECTION.md`: product direction and roadmap.
+- `docs\OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`: current product target, commercial comparison, maturity scorecard, gates, and default priorities.
 - `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`: sample inventory and C3D observations.
 - `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`: loader/viewer evidence matrix for current C3D, GLB, STL, LAS, and LAZ samples.
 - `docs\OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: current engineering handoff.

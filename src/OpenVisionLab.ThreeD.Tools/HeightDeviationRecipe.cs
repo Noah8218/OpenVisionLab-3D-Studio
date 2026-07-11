@@ -9,7 +9,8 @@ public sealed record HeightDeviationRecipe(
     HeightDeviationRecipeSource Source,
     HeightDeviationRecipeRule Rule,
     ModelTransform? Transform = null,
-    HeightDeviationRecipeRoiStep? RoiStep = null)
+    HeightDeviationRecipeRoiStep? RoiStep = null,
+    HeightDeviationRecipePlaneFlatness? PlaneFlatness = null)
 {
     public const string SupportedRecipeType = "c3d-height-deviation";
 
@@ -62,6 +63,11 @@ public sealed record HeightDeviationRecipe(
             ValidateRoiStep(roiStep);
         }
 
+        if (recipe.PlaneFlatness is { } planeFlatness)
+        {
+            ValidatePlaneFlatness(planeFlatness, recipe.Source.EntityId);
+        }
+
         return recipe;
     }
 
@@ -103,6 +109,42 @@ public sealed record HeightDeviationRecipe(
         ValidateRoiRegion(roiStep.Right, "right");
     }
 
+    private static void ValidatePlaneFlatness(HeightDeviationRecipePlaneFlatness step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id))
+        {
+            throw new InvalidDataException("Plane flatness step ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Plane flatness source entity ID must match the recipe source entity ID.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.ReferenceId))
+        {
+            throw new InvalidDataException("Plane flatness reference ID is required.");
+        }
+
+        if (!double.IsFinite(step.Tolerance) || step.Tolerance <= 0.0)
+        {
+            throw new InvalidDataException("Plane flatness tolerance must be a positive finite value.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.Unit))
+        {
+            throw new InvalidDataException("Plane flatness unit is required.");
+        }
+
+        if (step.MaxSampledPoints < 3)
+        {
+            throw new InvalidDataException("Plane flatness max sampled points must be at least three.");
+        }
+
+        ValidateRoiRegion(step.ReferenceRegion, "reference-plane");
+    }
+
     private static void ValidateRoiRegion(HeightDeviationRecipeRoiRegion? region, string name)
     {
         if (region is null)
@@ -141,6 +183,16 @@ public sealed record HeightDeviationRecipeRoiRegion(
     double CenterZ,
     double HalfWidth,
     double HalfDepth);
+
+public sealed record HeightDeviationRecipePlaneFlatness(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    HeightDeviationRecipeRoiRegion ReferenceRegion,
+    double Tolerance,
+    string Unit,
+    int MaxSampledPoints,
+    bool Enabled = true);
 
 public sealed record LazTwoPointMeasurementRecipe(
     string RecipeType,

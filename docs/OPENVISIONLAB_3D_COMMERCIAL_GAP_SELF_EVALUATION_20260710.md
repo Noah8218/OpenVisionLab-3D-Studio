@@ -2,6 +2,8 @@
 
 Updated: 2026-07-10
 
+Status: historical review. Use `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md` for the current target, gate decision, and priorities.
+
 ## Purpose
 
 This document records the current self evaluation of OpenVisionLab 3D Studio against commercial 3D inspection, 3D vision, and metrology software. The goal is to choose the next development priorities before moving from viewer completion into deeper 3D algorithms.
@@ -61,9 +63,9 @@ Official or vendor-owned sources were preferred.
 | --- | --- | --- |
 | Repeatable inspection plan with editable steps. | One C3D height-deviation recipe and LAZ/LAS two-point recipe paths exist. | No first-class tool/step list in the Shell yet. |
 | Inspection run package: screenshot, contract, runner report, status, key metrics, and report/export. | Shell has Evidence Workbench and minimal history row. | No durable run snapshot bundle visible as a single inspection record. |
-| Standard measurement toolbox. | Two-point, ROI step height, section/profile, height map, and one height-deviation rule exist. | Missing common tools: plane fit, flatness, width, area, volume, angle, distance-to-plane, point-to-mesh deviation. |
+| Standard measurement toolbox. | Two-point, ROI step height, section/profile, height map, height-deviation rule, and fitted C3D distance-to-plane exist. | Missing common tools: selected-reference flatness, width, area, volume, angle, and point-to-mesh deviation. |
 | Nominal-actual comparison. | Current deviation is C3D height-rule based, not CAD/mesh nominal comparison. | No CAD/mesh nominal entity, no point/mesh-to-nominal color map, no best-fit alignment. |
-| Alignment beyond translation MVP. | `Align From ROI` applies a minimal translation workflow. | Missing plane fit, best-fit, constrained transform, feature-based frame definition, and alignment confidence evidence. |
+| Alignment beyond translation MVP. | `Align From ROI` applies a minimal translation workflow, and C3D has a fitted height-field plane. | Missing plane-derived rotation alignment, best-fit, constrained transform, feature-based frame definition, and alignment confidence evidence. |
 | Surface/defect inspection. | Loader failure handling and basic overlays exist. | No surface defect segmentation, dent/burr/chip/warpage classification, or defect clustering. |
 | Mesh/point-cloud preparation. | LAZ/LAS sampling and GLB/STL render-density controls exist. | No crop, clip box, denoise, voxel/grid downsample, mesh smoothing, or hole-fill workflow. |
 | Parametric inspection replay. | Runner can replay selected recipes and compare contracts. | Need a general step execution model before adding many tools. |
@@ -117,7 +119,7 @@ Acceptance:
 | --- | --- | --- | --- |
 | P0 | Evidence Workbench run snapshot bundle | Commercial tools treat reporting/evidence as part of inspection, not an afterthought. | Shell smoke screenshot + contract/report paths displayed. |
 | P1 | General inspection step list skeleton | Required before adding many tools without creating one-off UI/state per tool. | Shell shows recipe/tool steps for current C3D and LAZ recipes. |
-| P1 | Plane fit and distance-to-plane measurement | Basic 3D metrology primitive used by flatness, step, alignment, and height checks. | Viewer/Shell smoke with plane metrics and overlay. |
+| P1 | Three-point/ROI plane reference and flatness | The fitted height-field primitive exists; operators still need an explicit reference region and tolerance workflow. | Viewer/Shell smoke with selected reference, flatness metrics, and overlay. |
 | P1 | Clip/section box and crop ROI | Real point clouds and meshes need focused review before measurement. | Viewer smoke proves clipped bounds and unchanged source entity. |
 | P2 | Best-fit alignment MVP | Needed for nominal-actual comparison and commercial-style metrology workflows. | Runner and Viewer produce matching transform/alignment evidence. |
 | P2 | Point/mesh-to-nominal deviation color map | Commercial metrology depends on color-scale deviation review. | GLB/STL or point-cloud sample produces deviation legend and fail/pass overlay. |

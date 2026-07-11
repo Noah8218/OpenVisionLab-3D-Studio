@@ -15,6 +15,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private readonly string? comparisonContractPath;
     private readonly string? comparisonReportPath;
     private readonly string? shellScreenshotPath;
+    private string? currentContractPath;
+    private string? currentReportPath;
+    private string? currentShellScreenshotPath;
     private string statusText = "Viewer hosted";
     private string recipeComparisonSummary = "No recipe comparison evidence loaded.";
     private string recipeComparisonHistory = "(pending)";
@@ -26,8 +29,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
+    public event EventHandler? FitPlaneRequested;
     public event EventHandler? RefreshRecipeComparisonRequested;
     public event EventHandler? SaveRecipeRequested;
+    public event EventHandler<EvidenceArtifactOpenRequestEventArgs>? OpenEvidenceArtifactRequested;
 
     public ShellMainWindowViewModel(
         string? comparisonContractPath = null,
@@ -38,14 +43,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.comparisonReportPath = comparisonReportPath;
         this.shellScreenshotPath = shellScreenshotPath;
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
+        FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
         SaveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
+        OpenUiContractCommand = new RelayCommand(_ => RequestEvidenceArtifact("UI contract", currentContractPath), _ => !string.IsNullOrWhiteSpace(currentContractPath));
+        OpenRunnerReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("Runner report", currentReportPath), _ => !string.IsNullOrWhiteSpace(currentReportPath));
+        OpenShellScreenshotCommand = new RelayCommand(_ => RequestEvidenceArtifact("Shell screenshot", currentShellScreenshotPath), _ => !string.IsNullOrWhiteSpace(currentShellScreenshotPath));
         RefreshRecipeComparison();
     }
 
     public ICommand ApplyRoiAlignmentCommand { get; }
+    public ICommand FitPlaneCommand { get; }
     public ICommand RefreshRecipeComparisonCommand { get; }
     public ICommand SaveRecipeCommand { get; }
+    public ICommand OpenUiContractCommand { get; }
+    public ICommand OpenRunnerReportCommand { get; }
+    public ICommand OpenShellScreenshotCommand { get; }
 
     public string StatusText
     {
@@ -101,6 +114,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public void SetViewerSmokeFailed(string viewerStatus)
     {
+        var root = ResolveWorkspaceRoot();
+        currentContractPath = null;
+        currentReportPath = null;
+        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath);
+        RefreshCommandCanExecute();
+
         StatusText = "Viewer hosted | viewer smoke failed";
         RecipeComparisonSummary = string.IsNullOrWhiteSpace(viewerStatus)
             ? "Viewer smoke failed before recipe comparison."
@@ -108,7 +127,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RecipeComparisonHistory = "No recipe comparison was run for this failed viewer smoke.";
         RecipeComparisonDetails = "See Tool / Inspector and Viewer contract output for the loader failure details.";
         RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
-        RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(ResolveWorkspaceRoot())} | Runner: not created | UI: viewer smoke output";
+        RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(root)} | Runner: not created | UI: viewer smoke output";
         InspectionStepSummary = "Viewer smoke: Failed";
         InspectionSteps.Clear();
         InspectionSteps.Add(new InspectionStepItem("1", "Viewer smoke", "Failed", string.IsNullOrWhiteSpace(viewerStatus) ? "Viewer smoke failed before recipe comparison." : viewerStatus));
@@ -126,6 +145,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         var root = ResolveWorkspaceRoot();
         var contractPath = ResolvePath(root, comparisonContractPath, Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
         var reportPath = ResolvePath(root, comparisonReportPath, Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
+        currentContractPath = contractPath;
+        currentReportPath = reportPath;
+        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath);
+        RefreshCommandCanExecute();
 
         var contractLines = ReadLinesOrEmpty(contractPath);
         var reportLines = ReadLinesOrEmpty(reportPath);
@@ -183,14 +206,38 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         InspectionSteps.Clear();
 
         var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
-        InspectionSteps.Add(new InspectionStepItem("1", "Recipe", File.Exists(recipePath) ? "Loaded" : "Missing", FormatShortEvidencePath(root, recipePath)));
-        InspectionSteps.Add(new InspectionStepItem("2", "Source", ExtractSourceLoadStatus(reportLines), ExtractSourceSummary(root, reportLines, contractLines)));
-        InspectionSteps.Add(new InspectionStepItem("3", "Viewer preview", uiEvidence.Status, $"{uiEvidence.ToolName} | {uiEvidence.KeyMetricSummary}"));
-        InspectionSteps.Add(new InspectionStepItem("4", "Runner replay", runnerEvidence.Status, $"{runnerEvidence.ToolName} | {runnerEvidence.KeyMetricSummary}"));
-        InspectionSteps.Add(new InspectionStepItem("5", "Evidence compare", evidenceState, $"{comparisonState} | UI {FormatShortEvidencePath(root, contractPath)} | Runner {FormatShortEvidencePath(root, reportPath)}"));
+        var order = 1;
+        var recipeSteps = contractLines
+            .Concat(reportLines)
+            .Where(line => line.StartsWith(InspectionContractText.InspectionStepMarker + "|", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (var stepLine in recipeSteps)
+        {
+            var parts = stepLine.Split('|');
+            var enabled = ExtractTaggedValue(parts, "enabled=");
+            var status = enabled?.Equals("False", StringComparison.OrdinalIgnoreCase) == true ? "Disabled" : uiEvidence.Status;
+            var tool = ExtractTaggedValue(parts, "tool=") ?? "Inspection step";
+            var id = ExtractTaggedValue(parts, "id=") ?? "(missing ID)";
+            var source = ExtractTaggedValue(parts, "source=") ?? "(missing source)";
+            var reference = ExtractTaggedValue(parts, "reference=") ?? "(missing reference)";
+            InspectionSteps.Add(new InspectionStepItem(
+                (order++).ToString(CultureInfo.InvariantCulture),
+                tool,
+                status,
+                $"{id} | source {source} | reference {reference}"));
+        }
 
-        InspectionStepSummary =
-            $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {InspectionSteps[2].Status} | Runner: {InspectionSteps[3].Status} | Compare: {InspectionSteps[4].Status}";
+        InspectionSteps.Add(new InspectionStepItem((order++).ToString(CultureInfo.InvariantCulture), "Recipe", File.Exists(recipePath) ? "Loaded" : "Missing", FormatShortEvidencePath(root, recipePath)));
+        InspectionSteps.Add(new InspectionStepItem((order++).ToString(CultureInfo.InvariantCulture), "Source", ExtractSourceLoadStatus(reportLines), ExtractSourceSummary(root, reportLines, contractLines)));
+
+        InspectionSteps.Add(new InspectionStepItem((order++).ToString(CultureInfo.InvariantCulture), "Viewer preview", uiEvidence.Status, $"{uiEvidence.ToolName} | {uiEvidence.KeyMetricSummary}"));
+        InspectionSteps.Add(new InspectionStepItem((order++).ToString(CultureInfo.InvariantCulture), "Runner replay", runnerEvidence.Status, $"{runnerEvidence.ToolName} | {runnerEvidence.KeyMetricSummary}"));
+        InspectionSteps.Add(new InspectionStepItem(order.ToString(CultureInfo.InvariantCulture), "Evidence compare", evidenceState, $"{comparisonState} | UI {FormatShortEvidencePath(root, contractPath)} | Runner {FormatShortEvidencePath(root, reportPath)}"));
+
+        InspectionStepSummary = recipeSteps.Length == 0
+            ? $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}"
+            : $"Recipe steps: {recipeSteps.Length} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}";
     }
 
     private void RefreshRunHistory(
@@ -249,6 +296,13 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             : Path.Combine(root, requestedPath);
     }
 
+    private static string? ResolveOptionalPath(string root, string? requestedPath) =>
+        string.IsNullOrWhiteSpace(requestedPath)
+            ? null
+            : Path.IsPathRooted(requestedPath)
+                ? requestedPath
+                : Path.Combine(root, requestedPath);
+
     private static string[] ReadLinesOrEmpty(string path) =>
         File.Exists(path) ? File.ReadAllLines(path) : [];
 
@@ -264,6 +318,21 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private void RefreshCommandCanExecute()
     {
         ((RelayCommand)ApplyRoiAlignmentCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)FitPlaneCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenUiContractCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenRunnerReportCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenShellScreenshotCommand).RaiseCanExecuteChanged();
+    }
+
+    private void RequestEvidenceArtifact(string label, string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText = $"Viewer hosted | {label} artifact path is not available";
+            return;
+        }
+
+        OpenEvidenceArtifactRequested?.Invoke(this, new EvidenceArtifactOpenRequestEventArgs(label, path));
     }
 
     private static ToolComparisonEvidence ExtractUiEvidence(string[] lines)
@@ -517,6 +586,19 @@ public sealed class InspectionStepItem
     public string Status { get; }
 
     public string Evidence { get; }
+}
+
+public sealed class EvidenceArtifactOpenRequestEventArgs : EventArgs
+{
+    public EvidenceArtifactOpenRequestEventArgs(string label, string path)
+    {
+        Label = label;
+        Path = path;
+    }
+
+    public string Label { get; }
+
+    public string Path { get; }
 }
 
 internal sealed record ToolComparisonEvidence(string ToolName, string Status, string KeyMetricSummary)

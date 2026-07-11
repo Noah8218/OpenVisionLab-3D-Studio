@@ -35,6 +35,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private const string DefaultGlbSamplePath = @"3D\PublicSamples\glTF\Box.glb";
     private const string DefaultLazSamplePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;
+    private const int PlaneFitMaxSampledPoints = 140000;
     private const string TwoPointSelectionMode = "Two Point Measure";
     private const string RoiStepSelectionMode = "ROI Step Compare";
     private const uint GlTexture2D = 0x0DE1;
@@ -76,6 +77,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private readonly EventHandler openRecipeRequestedHandler;
     private readonly EventHandler saveRecipeRequestedHandler;
     private readonly EventHandler applyRoiAlignmentRequestedHandler;
+    private readonly EventHandler fitPlaneRequestedHandler;
+    private readonly EventHandler previewPlaneFlatnessRequestedHandler;
+    private readonly EventHandler previewPointPairDimensionsRequestedHandler;
     private readonly EventHandler screenshotRequestedHandler;
     private readonly EventHandler publishPreviewResultRequestedHandler;
     private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
@@ -97,6 +101,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private Vector3? roiStepRightAnchor;
     private HeightDeviationRecipeRoiRegion? roiStepLeftRecipeRegion;
     private HeightDeviationRecipeRoiRegion? roiStepRightRecipeRegion;
+    private (Vector3 A, Vector3 B, Vector3 C, Vector3 D, Vector3 Target, Vector3 Projection)? planeReferenceMeasurement;
+    private PlaneFlatnessEvaluation? planeFlatnessEvaluation;
     private bool roiStepInteractiveSelection;
     private bool roiStepNextPickSetsRight;
     private bool suppressRecipeParameterSync;
@@ -118,6 +124,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         openRecipeRequestedHandler = (_, _) => HandleOpenRecipeCommand();
         saveRecipeRequestedHandler = (_, _) => HandleSaveRecipeCommand();
         applyRoiAlignmentRequestedHandler = (_, _) => HandleApplyRoiAlignmentCommand();
+        fitPlaneRequestedHandler = (_, _) => FitC3DReferencePlane();
+        previewPlaneFlatnessRequestedHandler = (_, _) => PreviewC3DPlaneFlatness();
+        previewPointPairDimensionsRequestedHandler = (_, _) => PreviewC3DPointPairDimensions();
         screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
         publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
         viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
@@ -157,6 +166,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.OpenRecipeRequested += openRecipeRequestedHandler;
         viewModel.SaveRecipeRequested += saveRecipeRequestedHandler;
         viewModel.ApplyRoiAlignmentRequested += applyRoiAlignmentRequestedHandler;
+        viewModel.FitPlaneRequested += fitPlaneRequestedHandler;
+        viewModel.PreviewPlaneFlatnessRequested += previewPlaneFlatnessRequestedHandler;
+        viewModel.PreviewPointPairDimensionsRequested += previewPointPairDimensionsRequestedHandler;
         viewModel.ScreenshotRequested += screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged += viewModelPropertyChangedHandler;
@@ -171,6 +183,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.OpenRecipeRequested -= openRecipeRequestedHandler;
         viewModel.SaveRecipeRequested -= saveRecipeRequestedHandler;
         viewModel.ApplyRoiAlignmentRequested -= applyRoiAlignmentRequestedHandler;
+        viewModel.FitPlaneRequested -= fitPlaneRequestedHandler;
+        viewModel.PreviewPlaneFlatnessRequested -= previewPlaneFlatnessRequestedHandler;
+        viewModel.PreviewPointPairDimensionsRequested -= previewPointPairDimensionsRequestedHandler;
         viewModel.ScreenshotRequested -= screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
@@ -230,6 +245,21 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 && viewModel.SelectedSelectionMode == RoiStepSelectionMode)
             {
                 UpdateRoiStepMeasurement();
+            }
+
+            if (args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform)
+                && viewModel.SelectedSelectionMode == "Plane Distance"
+                && viewModel.PlaneReferenceMeasurementVisible)
+            {
+                FitC3DReferencePlane();
+            }
+
+            if (args.PropertyName == nameof(MainWindowViewModel.C3DModelTransform)
+                && viewModel.PlaneFlatnessVisible)
+            {
+                planeFlatnessEvaluation = null;
+                planeReferenceMeasurement = null;
+                viewModel.InvalidatePlaneFlatnessPreview("Alignment changed; run Preview Flatness again");
             }
 
             RenderNow();
@@ -482,6 +512,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             viewModel.RecipePeakTolerance = tolerance;
         }
+
+        var flatnessToleranceIndex = Array.IndexOf(args, "--smoke-flatness-tolerance");
+        if (flatnessToleranceIndex >= 0
+            && flatnessToleranceIndex + 1 < args.Length
+            && double.TryParse(args[flatnessToleranceIndex + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var flatnessTolerance))
+        {
+            viewModel.PlaneFlatnessTolerance = flatnessTolerance;
+        }
     }
 
     private void ApplySmokeAlignment(string mode)
@@ -573,6 +611,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         DrawTwoPointMeasurement(gl);
+        DrawPlaneReferenceMeasurement(gl);
+        DrawPlaneFlatnessExtrema(gl);
         DrawRoiStepMeasurement(gl);
 
         if (viewModel.ResultOverlayVisible || viewModel.ResultEntities.Count > 0)
@@ -786,7 +826,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             Title = "Save 3D Recipe",
             Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
-            FileName = ShouldSaveCurrentLazTwoPointRecipe() ? "laz-two-point-measurement.recipe.json" : "c3d-height-deviation.recipe.json",
+            FileName = ShouldSaveCurrentLazTwoPointRecipe()
+                ? "laz-two-point-measurement.recipe.json"
+                : ShouldSaveCurrentPointPairDimensionsRecipe()
+                    ? "c3d-point-pair-dimensions.recipe.json"
+                    : "c3d-height-deviation.recipe.json",
             OverwritePrompt = true
         };
 
@@ -799,7 +843,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     public bool SaveCurrentRecipe(string path, bool isSmoke) =>
         ShouldSaveCurrentLazTwoPointRecipe()
             ? SaveCurrentLazTwoPointRecipe(path, isSmoke)
-            : SaveCurrentHeightDeviationRecipe(path, isSmoke);
+            : ShouldSaveCurrentPointPairDimensionsRecipe()
+                ? SaveCurrentPointPairDimensionsRecipe(path, isSmoke)
+                : SaveCurrentHeightDeviationRecipe(path, isSmoke);
 
     private bool ShouldSaveCurrentLazTwoPointRecipe() =>
         lazPointCloud is not null
@@ -807,6 +853,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         && lazTwoPointSecond is not null
         && viewModel.SelectedEntity.Contains("Two Point Measurement", StringComparison.OrdinalIgnoreCase)
         && viewModel.LazSampleVisible;
+
+    private bool ShouldSaveCurrentPointPairDimensionsRecipe() =>
+        c3dSample is not null
+        && viewModel.C3DSampleVisible
+        && viewModel.PointPairDimensionsConfigured
+        && viewModel.HasPointPairReferences;
 
     public bool ApplyRoiReferenceAlignment()
     {
@@ -1033,7 +1085,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void ApplySmokeMeasure(string measure)
     {
-        if (measure.Equals("two-point", StringComparison.OrdinalIgnoreCase)
+        if (measure.Equals("dimensions", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("point-pair-dimensions", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("width-distance-angle", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokePointPairDimensions();
+        }
+        else if (measure.Equals("two-point", StringComparison.OrdinalIgnoreCase)
             || measure.Equals("distance-height", StringComparison.OrdinalIgnoreCase)
             || measure.Equals("laz-two-point", StringComparison.OrdinalIgnoreCase)
             || measure.Equals("laz-distance-height", StringComparison.OrdinalIgnoreCase)
@@ -1068,6 +1126,18 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             || measure.Equals("interactive-roi", StringComparison.OrdinalIgnoreCase))
         {
             ApplySmokeInteractiveRoiStepMeasurement();
+        }
+        else if (measure.Equals("plane-distance", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("distance-to-plane", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("reference-plane", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokePlaneReferenceMeasurement();
+        }
+        else if (measure.Equals("flatness", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("plane-flatness", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("reference-roi-flatness", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokePlaneFlatness();
         }
     }
 
@@ -1193,8 +1263,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             var fullRecipePath = Path.GetFullPath(path);
             var recipeType = ReadRecipeType(fullRecipePath);
-            return recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
-                ? ApplyLazTwoPointRecipe(fullRecipePath, isSmoke)
+            if (recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+            {
+                return ApplyLazTwoPointRecipe(fullRecipePath, isSmoke);
+            }
+
+            return recipeType.Equals(C3DPointPairDimensionsRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
+                ? ApplyC3DPointPairDimensionsRecipe(fullRecipePath, isSmoke)
                 : ApplyHeightDeviationRecipe(fullRecipePath, isSmoke);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
@@ -1210,7 +1285,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             var fullRecipePath = Path.GetFullPath(path);
             var recipe = HeightDeviationRecipe.Load(fullRecipePath);
             var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
-            var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
+            var grid = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+            c3dSample = grid;
+            SetC3DSampleStatus();
             var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
                 recipe.Source.EntityId,
                 recipe.Source.Name,
@@ -1221,11 +1298,21 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 recipe.Rule.PeakTolerance,
                 recipe.Source.Unit));
 
+            viewModel.ClearPlaneFlatnessRecipeStep();
+            viewModel.ClearPointPairDimensionsRecipeStep();
             viewModel.SetC3DHeightDeviationPreview(result);
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
             viewModel.SetRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit, recipe.Rule.PeakTolerance);
             viewModel.SetC3DAlignment(recipe.Transform ?? ModelTransform.Identity, recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment", recipe.Source.Name);
             ApplyRecipeRoiStep(recipe.RoiStep);
+            if (recipe.PlaneFlatness is { } planeFlatness)
+            {
+                viewModel.SetPlaneFlatnessRecipeStep(planeFlatness);
+                if (planeFlatness.Enabled)
+                {
+                    PreviewC3DPlaneFlatness();
+                }
+            }
             viewModel.ViewerStatus = isSmoke
                 ? $"Smoke recipe: {Path.GetFileName(fullRecipePath)}"
                 : $"Recipe loaded: {Path.GetFileName(fullRecipePath)}";
@@ -1234,6 +1321,51 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke recipe" : "Recipe", ex);
+        }
+    }
+
+    private bool ApplyC3DPointPairDimensionsRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipe = C3DPointPairDimensionsRecipe.Load(fullRecipePath);
+            var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+            var grid = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+            var first = grid.ReadPoint(recipe.Step.First.Row, recipe.Step.First.Column);
+            var second = grid.ReadPoint(recipe.Step.Second.Row, recipe.Step.Second.Column);
+
+            c3dSample = grid;
+            SetC3DSampleStatus();
+            planeFlatnessEvaluation = null;
+            planeReferenceMeasurement = null;
+            viewModel.ClearPlaneFlatnessRecipeStep();
+            viewModel.ClearPointPairDimensionsRecipeStep();
+            viewModel.UseC3DSmokeScene();
+            viewModel.SetC3DAlignment(
+                recipe.Transform ?? ModelTransform.Identity,
+                recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment",
+                recipe.Source.Name);
+            ApplyRecipeRoiStep(null);
+            viewModel.SetPointPairDimensionsRecipeStep(recipe.Step);
+            viewModel.SetPointPairRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
+            SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
+            viewModel.SelectedSelectionMode = TwoPointSelectionMode;
+            viewModel.SelectionOverlayVisible = true;
+
+            if (recipe.Step.Enabled && !PreviewC3DPointPairDimensions())
+            {
+                throw new InvalidDataException("Point pair dimensions preview failed for the configured source cells.");
+            }
+
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke point pair recipe: {Path.GetFileName(fullRecipePath)}"
+                : $"Point pair recipe loaded: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            return SetRecipeLoadFailure(isSmoke ? "Smoke point pair recipe" : "Point pair recipe", ex);
         }
     }
 
@@ -1288,6 +1420,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 return false;
             }
 
+            if (viewModel.PlaneFlatnessConfigured && !ValidatePlaneFlatnessRecipeState(out warning))
+            {
+                SetRecipeValidationWarning(warning);
+                viewModel.ViewerStatus = warning;
+                return false;
+            }
+
             var fullRecipePath = Path.GetFullPath(path);
             var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
             var sourcePath = ResolveCurrentRecipeSourcePath();
@@ -1302,7 +1441,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                     viewModel.RecipeSourceUnit),
                 new HeightDeviationRecipeRule(viewModel.RecipePeakTolerance),
                 viewModel.C3DModelTransform,
-                CreateCurrentRoiStepRecipe());
+                CreateCurrentRoiStepRecipe(),
+                viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null);
 
             recipe.Save(fullRecipePath);
             viewModel.SetRecipeSaved(fullRecipePath);
@@ -1362,6 +1502,49 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             viewModel.ViewerStatus = $"{(isSmoke ? "Smoke LAZ recipe save" : "LAZ recipe save")} failed: {ex.Message}";
+            return false;
+        }
+    }
+
+    private bool SaveCurrentPointPairDimensionsRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var step = viewModel.CreatePointPairDimensionsRecipeStep();
+            if (c3dSample is null || step is null)
+            {
+                viewModel.ViewerStatus = "Point pair recipe save requires two selected C3D source cells";
+                return false;
+            }
+
+            c3dSample.ReadPoint(step.First.Row, step.First.Column);
+            c3dSample.ReadPoint(step.Second.Row, step.Second.Column);
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
+            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
+            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
+            var recipe = new C3DPointPairDimensionsRecipe(
+                C3DPointPairDimensionsRecipe.SupportedRecipeType,
+                "1.0",
+                new HeightDeviationRecipeSource(
+                    MainWindowViewModel.C3DEntityId,
+                    viewModel.RecipeSourceName,
+                    sourceRecipePath,
+                    viewModel.RecipeSourceUnit),
+                viewModel.C3DModelTransform,
+                step);
+
+            recipe.Save(fullRecipePath);
+            viewModel.SetRecipeSaved(fullRecipePath);
+            SetRecipeValidationOk();
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke point pair recipe saved: {Path.GetFileName(fullRecipePath)}"
+                : $"Point pair recipe saved: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke point pair recipe save" : "Point pair recipe save")} failed: {ex.Message}";
             return false;
         }
     }
@@ -1468,6 +1651,34 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (!TryCalculateRoiStats(CreateRoiBounds(right, bounds), out var rightStats) || rightStats.Count < 10)
         {
             warning = "Validation warning: right ROI has too few C3D samples.";
+            return false;
+        }
+
+        warning = "Validation: OK";
+        return true;
+    }
+
+    private bool ValidatePlaneFlatnessRecipeState(out string warning)
+    {
+        var step = viewModel.CreatePlaneFlatnessRecipeStep();
+        if (!IsValidRegion(step.ReferenceRegion)
+            || !double.IsFinite(step.Tolerance)
+            || step.Tolerance <= 0.0)
+        {
+            warning = "Validation warning: flatness reference ROI and tolerance must be finite and positive.";
+            return false;
+        }
+
+        if (!viewModel.C3DSampleVisible || c3dSample is null || c3dSample.Points.Length == 0)
+        {
+            warning = "Validation warning: plane flatness requires a visible C3D height grid.";
+            return false;
+        }
+
+        var referenceSampleCount = c3dSample.Points.Count(point => Contains(step.ReferenceRegion, TransformC3DPosition(point.Position)));
+        if (referenceSampleCount < 3)
+        {
+            warning = "Validation warning: flatness reference ROI contains fewer than three C3D samples.";
             return false;
         }
 
@@ -1911,6 +2122,35 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.ViewerStatus = "Smoke measure: two-point distance and height delta";
     }
 
+    private void ApplySmokePointPairDimensions()
+    {
+        viewModel.UseC3DSmokeScene();
+        ApplySmokeTwoPointMeasurement();
+        if (twoPointFirst is null || twoPointSecond is null)
+        {
+            SetSmokeFailure("Smoke dimensions failed: C3D point pair missing");
+            return;
+        }
+
+        var delta = TransformC3DPosition(twoPointSecond.Value.Position)
+            - TransformC3DPosition(twoPointFirst.Value.Position);
+        var width = Math.Sqrt(delta.X * delta.X + delta.Z * delta.Z);
+        viewModel.PointPairExpectedDistance = delta.Length();
+        viewModel.PointPairDistanceTolerance = 0.001;
+        viewModel.PointPairExpectedWidth = width;
+        viewModel.PointPairWidthTolerance = 0.001;
+        viewModel.PointPairExpectedAngleDegrees = Math.Atan2(delta.Y, width) * 180.0 / Math.PI;
+        viewModel.PointPairAngleToleranceDegrees = 0.01;
+        if (PreviewC3DPointPairDimensions())
+        {
+            viewModel.ViewerStatus = "Smoke measure: C3D point pair width, distance, and angle";
+        }
+        else
+        {
+            smokeExitCode = 1;
+        }
+    }
+
     private void ApplySmokeLazTwoPointMeasurement(string heightUnit = "source-z-units")
     {
         if (lazPointCloud is null)
@@ -2023,6 +2263,222 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             viewModel.ViewerStatus = "Smoke measure: interactive ROI step-height comparison";
         }
     }
+
+    private void ApplySmokePlaneReferenceMeasurement()
+    {
+        viewModel.UseC3DSmokeScene();
+        if (FitC3DReferencePlane())
+        {
+            viewModel.ViewerStatus = "Smoke measure: distance to fitted C3D plane";
+        }
+    }
+
+    private void ApplySmokePlaneFlatness()
+    {
+        viewModel.UseC3DSmokeScene();
+        if (PreviewC3DPlaneFlatness())
+        {
+            viewModel.ViewerStatus = "Smoke measure: reference ROI plane flatness";
+        }
+    }
+
+    public bool FitC3DReferencePlane()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Plane fit requires a visible C3D height grid";
+            return false;
+        }
+
+        C3DHeightGrid fitSample;
+        try
+        {
+            fitSample = C3DHeightGrid.Load(c3dSample.SourcePath, PlaneFitMaxSampledPoints);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
+        {
+            viewModel.ViewerStatus = $"Plane fit sample load failed: {ex.Message}";
+            return false;
+        }
+
+        var transformed = fitSample.Points
+            .Select(point => (Point: point, Position: TransformC3DPosition(point.Position)))
+            .ToArray();
+        HeightFieldPlaneFitResult result;
+        try
+        {
+            result = HeightFieldPlaneFit.Fit(
+                transformed
+                    .Select(item => new HeightFieldPlaneSample(item.Position, item.Point.RawValue))
+                    .ToArray());
+        }
+        catch (ArgumentException ex)
+        {
+            viewModel.ViewerStatus = $"Plane fit failed: {ex.Message}";
+            return false;
+        }
+
+        twoPointFirst = null;
+        twoPointSecond = null;
+        importedMeshTwoPointFirst = null;
+        importedMeshTwoPointSecond = null;
+        selectedImportedMeshPoint = null;
+        lazTwoPointFirst = null;
+        lazTwoPointSecond = null;
+        selectedLazPoint = null;
+        roiStepLeftBounds = null;
+        roiStepRightBounds = null;
+        roiStepLeftCenter = null;
+        roiStepRightCenter = null;
+        viewModel.ClearTwoPointMeasurement();
+        viewModel.ClearRoiStepMeasurement();
+        viewModel.SelectedSelectionMode = "Plane Distance";
+        viewModel.SelectionOverlayVisible = true;
+        viewModel.MeasurementVisible = true;
+
+        var bounds = (
+            MinX: transformed.Min(item => item.Position.X),
+            MaxX: transformed.Max(item => item.Position.X),
+            MinZ: transformed.Min(item => item.Position.Z),
+            MaxZ: transformed.Max(item => item.Position.Z));
+        planeReferenceMeasurement = (
+            CreatePlaneCorner(result, bounds.MinX, bounds.MinZ),
+            CreatePlaneCorner(result, bounds.MaxX, bounds.MinZ),
+            CreatePlaneCorner(result, bounds.MaxX, bounds.MaxZ),
+            CreatePlaneCorner(result, bounds.MinX, bounds.MaxZ),
+            result.Target,
+            result.TargetProjection);
+        var target = transformed.MinBy(item => Vector3.DistanceSquared(item.Position, result.Target));
+        viewModel.SetPlaneReferenceMeasurement(result, "C3D least-squares height field / fixed sample");
+        viewModel.SelectedEntity = "Plane Distance Measurement";
+        viewModel.PickCoordinate = FormatC3DPoint(target.Point);
+        viewModel.ViewerStatus = "Fitted C3D plane and maximum residual measured";
+        RenderNow();
+        return true;
+    }
+
+    public bool PreviewC3DPlaneFlatness()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Plane flatness requires a visible C3D height grid";
+            return false;
+        }
+
+        var step = viewModel.CreatePlaneFlatnessRecipeStep();
+        C3DHeightGrid measurementSample;
+        try
+        {
+            measurementSample = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
+        {
+            viewModel.ViewerStatus = $"Plane flatness sample load failed: {ex.Message}";
+            return false;
+        }
+
+        var measurementSamples = measurementSample.Points
+            .Select(point => new HeightFieldPlaneSample(TransformC3DPosition(point.Position), point.RawValue))
+            .ToArray();
+        var referenceSamples = measurementSamples
+            .Where(sample => Contains(step.ReferenceRegion, sample.Position))
+            .ToArray();
+        var evaluation = PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
+            step.SourceEntityId,
+            referenceSamples,
+            measurementSamples,
+            step.Tolerance,
+            step.Unit));
+
+        twoPointFirst = null;
+        twoPointSecond = null;
+        roiStepLeftBounds = null;
+        roiStepRightBounds = null;
+        roiStepLeftCenter = null;
+        roiStepRightCenter = null;
+        viewModel.ClearTwoPointMeasurement();
+        viewModel.ClearPlaneReferenceMeasurement();
+        viewModel.ClearRoiStepMeasurement();
+        viewModel.SelectionOverlayVisible = true;
+        viewModel.MeasurementVisible = true;
+        planeFlatnessEvaluation = evaluation;
+
+        if (evaluation.ReferencePlane is { } plane)
+        {
+            var region = step.ReferenceRegion;
+            planeReferenceMeasurement = (
+                CreatePlaneCorner(plane, (float)(region.CenterX - region.HalfWidth), (float)(region.CenterZ - region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX + region.HalfWidth), (float)(region.CenterZ - region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX + region.HalfWidth), (float)(region.CenterZ + region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX - region.HalfWidth), (float)(region.CenterZ + region.HalfDepth)),
+                evaluation.MaximumPoint,
+                evaluation.MaximumProjection);
+            viewModel.PickCoordinate = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Maximum deviation point {CameraMath.FormatPoint(evaluation.MaximumPoint)}");
+        }
+        else
+        {
+            planeReferenceMeasurement = null;
+            viewModel.PickCoordinate = "(invalid reference ROI)";
+        }
+
+        viewModel.SetPlaneFlatnessPreview(evaluation);
+        RenderNow();
+        return evaluation.Result.Status != ResultStatus.Error;
+    }
+
+    public bool PreviewC3DPointPairDimensions()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Point pair dimensions require a visible C3D height grid";
+            return false;
+        }
+
+        var step = viewModel.CreatePointPairDimensionsRecipeStep();
+        if (step is null)
+        {
+            viewModel.ViewerStatus = "Point pair dimensions require two selected C3D source cells";
+            return false;
+        }
+
+        HeightGridPoint first;
+        HeightGridPoint second;
+        try
+        {
+            first = c3dSample.ReadPoint(step.First.Row, step.First.Column);
+            second = c3dSample.ReadPoint(step.Second.Row, step.Second.Column);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentOutOfRangeException)
+        {
+            viewModel.ViewerStatus = $"Point pair dimensions failed: {ex.Message}";
+            return false;
+        }
+
+        SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
+        var evaluation = PointPairDimensionsRule.Evaluate(new PointPairDimensionsInput(
+            step.SourceEntityId,
+            TransformC3DPosition(first.Position),
+            TransformC3DPosition(second.Position),
+            first.RawValue,
+            second.RawValue,
+            step.Acceptance,
+            step.Unit,
+            viewModel.RecipeSourceUnit));
+        viewModel.SetPointPairDimensionsPreview(evaluation);
+        RenderNow();
+        return evaluation.Result.Status != ResultStatus.Error;
+    }
+
+    private static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
+        point.X >= region.CenterX - region.HalfWidth
+        && point.X <= region.CenterX + region.HalfWidth
+        && point.Z >= region.CenterZ - region.HalfDepth
+        && point.Z <= region.CenterZ + region.HalfDepth;
+
+    private static Vector3 CreatePlaneCorner(HeightFieldPlaneFitResult result, float x, float z) =>
+        new(x, (float)result.EvaluateY(x, z), z);
 
     private void ConfigureProjection(OpenGL gl)
     {
@@ -2138,6 +2594,67 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.Vertex(firstPosition.X, firstPosition.Y, firstPosition.Z);
         gl.Color(1.0, 0.72, 0.10);
         gl.Vertex(secondPosition.X, secondPosition.Y, secondPosition.Z);
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private void DrawPlaneReferenceMeasurement(OpenGL gl)
+    {
+        if (planeReferenceMeasurement is not { } measurement
+            || (!viewModel.PlaneReferenceMeasurementVisible && !viewModel.PlaneFlatnessVisible))
+        {
+            return;
+        }
+
+        gl.LineWidth(2.0f);
+        gl.Color(0.68, 0.54, 1.0);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(measurement.A.X, measurement.A.Y, measurement.A.Z);
+        gl.Vertex(measurement.B.X, measurement.B.Y, measurement.B.Z);
+        gl.Vertex(measurement.C.X, measurement.C.Y, measurement.C.Z);
+        gl.Vertex(measurement.D.X, measurement.D.Y, measurement.D.Z);
+        gl.End();
+
+        gl.LineWidth(3.0f);
+        gl.Begin(OpenGL.GL_LINES);
+        gl.Color(1.0, 0.90, 0.20);
+        gl.Vertex(measurement.Projection.X, measurement.Projection.Y, measurement.Projection.Z);
+        gl.Vertex(measurement.Target.X, measurement.Target.Y, measurement.Target.Z);
+        gl.End();
+
+        gl.PointSize(8.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(1.0, 0.90, 0.20);
+        gl.Vertex(measurement.Target.X, measurement.Target.Y, measurement.Target.Z);
+        gl.Color(0.68, 0.54, 1.0);
+        gl.Vertex(measurement.Projection.X, measurement.Projection.Y, measurement.Projection.Z);
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private void DrawPlaneFlatnessExtrema(OpenGL gl)
+    {
+        if (!viewModel.PlaneFlatnessVisible
+            || planeFlatnessEvaluation is not { ReferencePlane: not null } evaluation)
+        {
+            return;
+        }
+        gl.LineWidth(3.0f);
+        gl.Begin(OpenGL.GL_LINES);
+        gl.Color(0.20, 0.80, 1.0);
+        gl.Vertex(evaluation.MinimumProjection.X, evaluation.MinimumProjection.Y, evaluation.MinimumProjection.Z);
+        gl.Vertex(evaluation.MinimumPoint.X, evaluation.MinimumPoint.Y, evaluation.MinimumPoint.Z);
+        gl.Color(1.0, 0.32, 0.20);
+        gl.Vertex(evaluation.MaximumProjection.X, evaluation.MaximumProjection.Y, evaluation.MaximumProjection.Z);
+        gl.Vertex(evaluation.MaximumPoint.X, evaluation.MaximumPoint.Y, evaluation.MaximumPoint.Z);
+        gl.End();
+
+        gl.PointSize(9.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(0.20, 0.80, 1.0);
+        gl.Vertex(evaluation.MinimumPoint.X, evaluation.MinimumPoint.Y, evaluation.MinimumPoint.Z);
+        gl.Color(1.0, 0.32, 0.20);
+        gl.Vertex(evaluation.MaximumPoint.X, evaluation.MaximumPoint.Y, evaluation.MaximumPoint.Z);
         gl.End();
         gl.PointSize(1.0f);
     }
@@ -2268,7 +2785,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         foreach (var point in c3dSample!.Points)
         {
             var position = TransformC3DPosition(point.Position);
-            ApplyPointColor(gl, point);
+            if (viewModel.SelectedColorMode == "Deviation"
+                && viewModel.PlaneFlatnessVisible
+                && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
+            {
+                ApplyPlaneFlatnessColor(gl, position, flatness);
+            }
+            else
+            {
+                ApplyPointColor(gl, point);
+            }
             gl.Vertex(position.X, position.Y, position.Z);
         }
 
@@ -2640,6 +3166,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         gl.Color(r, g, b);
     }
 
+    private static void ApplyPlaneFlatnessColor(OpenGL gl, Vector3 position, PlaneFlatnessEvaluation evaluation)
+    {
+        var plane = evaluation.ReferencePlane!;
+        var signedDistance = plane.Normal.X * position.X
+            + plane.Normal.Y * position.Y
+            + plane.Normal.Z * position.Z
+            + plane.Offset;
+        var range = Math.Max(1e-9, Math.Max(Math.Abs(evaluation.MinimumSignedDistance), Math.Abs(evaluation.MaximumSignedDistance)));
+        var normalized = Math.Clamp(signedDistance / range, -1.0, 1.0);
+        var intensity = Math.Abs(normalized);
+        var color = normalized >= 0.0
+            ? (R: 1.0, G: 1.0 - 0.78 * intensity, B: 1.0 - 0.88 * intensity)
+            : (R: 1.0 - 0.88 * intensity, G: 1.0 - 0.64 * intensity, B: 1.0);
+        gl.Color(color.R, color.G, color.B);
+    }
+
     private bool TryPickCube(Point screenPoint, out Vector3 hit)
     {
         hit = default;
@@ -2944,6 +3486,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             twoPointFirst = point;
             twoPointSecond = null;
             viewModel.SetTwoPointMeasurementStart(TransformC3DPosition(point.Position), point.RawValue);
+            viewModel.SetPointPairFirstReference(point.Row, point.Column);
         }
         else
         {
@@ -3055,8 +3598,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         return true;
     }
 
-    private void SetTwoPointMeasurement(HeightGridPoint first, HeightGridPoint second)
+    private void SetTwoPointMeasurement(HeightGridPoint first, HeightGridPoint second, bool updatePointPairReferences = true)
     {
+        ClearPlaneReferenceMeasurement();
         twoPointFirst = first;
         twoPointSecond = second;
         importedMeshTwoPointFirst = null;
@@ -3065,10 +3609,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lazTwoPointFirst = null;
         lazTwoPointSecond = null;
         viewModel.SetTwoPointMeasurement(TransformC3DPosition(first.Position), first.RawValue, TransformC3DPosition(second.Position), second.RawValue);
+        if (updatePointPairReferences)
+        {
+            viewModel.SetPointPairReferences(first.Row, first.Column, second.Row, second.Column);
+        }
     }
 
     private void SetLazTwoPointMeasurement(LazPointCloudPoint first, LazPointCloudPoint second, string heightUnit = "source-z-units")
     {
+        ClearPlaneReferenceMeasurement();
         lazTwoPointFirst = first;
         lazTwoPointSecond = second;
         selectedLazPoint = second;
@@ -3086,6 +3635,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void SetImportedMeshTwoPointMeasurement(Vector3 first, Vector3 second)
     {
+        ClearPlaneReferenceMeasurement();
         importedMeshTwoPointFirst = first;
         importedMeshTwoPointSecond = second;
         selectedImportedMeshPoint = second;
@@ -3102,8 +3652,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.MeasurementSummary = $"GLB measurement: {viewModel.TwoPointMeasurementDetails}";
     }
 
+    private void ClearPlaneReferenceMeasurement()
+    {
+        planeReferenceMeasurement = null;
+        viewModel.ClearPlaneReferenceMeasurement();
+    }
+
     private bool UpdateRoiStepMeasurement()
     {
+        ClearPlaneReferenceMeasurement();
         roiStepLeftBounds = null;
         roiStepRightBounds = null;
         roiStepLeftCenter = null;
@@ -3866,7 +4423,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private void ReloadDefaultC3DSample()
     {
-        c3dSample = LoadDefaultC3DSample();
+        var sourcePath = c3dSample?.SourcePath ?? FindDefaultC3DSamplePath();
+        var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
+        var restorePointPairPreview = viewModel.PointPairDimensionsVisible;
+        var restoreFlatnessPreview = viewModel.PlaneFlatnessVisible;
+        try
+        {
+            c3dSample = string.IsNullOrWhiteSpace(sourcePath)
+                ? null
+                : C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
+        {
+            c3dSample = null;
+            viewModel.ViewerStatus = $"C3D render-density reload failed: {ex.Message}";
+        }
+
         twoPointFirst = null;
         twoPointSecond = null;
         roiStepLeftBounds = null;
@@ -3881,7 +4453,31 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.ClearTwoPointMeasurement();
         viewModel.ClearRoiStepMeasurement();
         SetC3DSampleStatus();
-        ConfigureC3DHeightDeviationRule();
+        if (c3dSample is not null && pointPairStep is not null)
+        {
+            try
+            {
+                var first = c3dSample.ReadPoint(pointPairStep.First.Row, pointPairStep.First.Column);
+                var second = c3dSample.ReadPoint(pointPairStep.Second.Row, pointPairStep.Second.Column);
+                SetTwoPointMeasurement(first, second, updatePointPairReferences: false);
+                if (restorePointPairPreview)
+                {
+                    PreviewC3DPointPairDimensions();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentOutOfRangeException)
+            {
+                viewModel.InvalidatePointPairDimensionsPreview($"C3D reload invalidated point references: {ex.Message}");
+            }
+        }
+        else if (restoreFlatnessPreview)
+        {
+            PreviewC3DPlaneFlatness();
+        }
+        else
+        {
+            ConfigureC3DHeightDeviationRule();
+        }
     }
 
     private void ConfigureC3DHeightDeviationRule()
@@ -3954,6 +4550,44 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"TwoPoint|visible={viewModel.TwoPointMeasurementVisible}|distance={FormatContractNumber(viewModel.TwoPointDistance)}|dx={FormatContractNumber(viewModel.TwoPointDeltaX)}|dy={FormatContractNumber(viewModel.TwoPointDeltaY)}|dz={FormatContractNumber(viewModel.TwoPointDeltaZ)}|heightDeltaRaw={FormatContractNumber(viewModel.TwoPointRawHeightDelta)}|summary={CleanContractText(viewModel.TwoPointMeasurementDetails)}");
         lines.Add($"LAZAcceptance|visible={viewModel.LazSampleVisible}|summary={CleanContractText(viewModel.LazTwoPointAcceptanceSummary)}");
         lines.Add($"LAZAcceptanceParameters|visible={viewModel.LazSampleVisible}|expectedDistance={FormatContractNumber(viewModel.LazTwoPointExpectedDistance)}|distanceTolerance={FormatContractNumber(viewModel.LazTwoPointDistanceTolerance)}|expectedHeightDelta={FormatContractNumber(viewModel.LazTwoPointExpectedHeightDelta)}|heightDeltaTolerance={FormatContractNumber(viewModel.LazTwoPointHeightDeltaTolerance)}");
+        lines.Add("PointPairDimensionsInspection");
+        var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
+        if (pointPairStep is not null)
+        {
+            lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+                pointPairStep.Id,
+                PointPairDimensionsRule.ToolName,
+                pointPairStep.SourceEntityId,
+                $"{pointPairStep.First.Id},{pointPairStep.Second.Id}",
+                pointPairStep.Enabled)));
+            lines.Add($"PointPairDimensionsStep|configured=True|id={pointPairStep.Id}|source={pointPairStep.SourceEntityId}|first={pointPairStep.First.Id}@({pointPairStep.First.Row},{pointPairStep.First.Column})|second={pointPairStep.Second.Id}@({pointPairStep.Second.Row},{pointPairStep.Second.Column})|enabled={pointPairStep.Enabled}|expectedDistance={FormatContractNumber(pointPairStep.Acceptance.ExpectedDistance)}|distanceTolerance={FormatContractNumber(pointPairStep.Acceptance.DistanceTolerance)}|expectedWidth={FormatContractNumber(pointPairStep.Acceptance.ExpectedWidth)}|widthTolerance={FormatContractNumber(pointPairStep.Acceptance.WidthTolerance)}|expectedAngle={FormatContractNumber(pointPairStep.Acceptance.ExpectedElevationAngleDegrees)}|angleTolerance={FormatContractNumber(pointPairStep.Acceptance.ElevationAngleToleranceDegrees)}|unit={pointPairStep.Unit}");
+        }
+        else
+        {
+            lines.Add($"PointPairDimensionsStep|configured=False|references={viewModel.HasPointPairReferences}");
+        }
+
+        lines.Add($"PointPairDimensions|visible={viewModel.PointPairDimensionsVisible}|status={(viewModel.PointPairDimensionsVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|distance={FormatContractNumber(viewModel.PointPairDistance)}|width={FormatContractNumber(viewModel.PointPairWidth)}|angleDegrees={FormatContractNumber(viewModel.PointPairAngleDegrees)}|summary={CleanContractText(viewModel.PointPairDimensionsSummary)}|details={CleanContractText(viewModel.PointPairDimensionsDetails)}");
+        lines.Add("PlaneReferenceMeasurement");
+        lines.Add($"PlaneReference|visible={viewModel.PlaneReferenceMeasurementVisible}|fit=least-squares-height-field|sampleBudget={PlaneFitMaxSampledPoints}|samples={viewModel.PlaneReferenceSampleCount}|normal=({FormatContractNumber(viewModel.PlaneReferenceNormalX)},{FormatContractNumber(viewModel.PlaneReferenceNormalY)},{FormatContractNumber(viewModel.PlaneReferenceNormalZ)})|rms={FormatContractNumber(viewModel.PlaneReferenceFitRms)}|signedDistance={FormatContractNumber(viewModel.PlaneReferenceSignedDistance)}|absoluteDistance={FormatContractNumber(viewModel.PlaneReferenceAbsoluteDistance)}|referenceY={FormatContractNumber(viewModel.PlaneReferenceY)}|targetY={FormatContractNumber(viewModel.PlaneReferenceTargetY)}|rawHeightDelta={FormatContractNumber(viewModel.PlaneReferenceRawHeightDelta)}|summary={CleanContractText(viewModel.PlaneReferenceMeasurementDetails)}");
+        lines.Add("PlaneFlatnessInspection");
+        if (viewModel.PlaneFlatnessConfigured)
+        {
+            var flatnessStep = viewModel.CreatePlaneFlatnessRecipeStep();
+            lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+                flatnessStep.Id,
+                PlaneFlatnessRule.ToolName,
+                flatnessStep.SourceEntityId,
+                flatnessStep.ReferenceId,
+                flatnessStep.Enabled)));
+            lines.Add($"PlaneFlatnessStep|configured=True|id={flatnessStep.Id}|source={flatnessStep.SourceEntityId}|reference={flatnessStep.ReferenceId}|enabled={flatnessStep.Enabled}|roi={FormatContractRegion(flatnessStep.ReferenceRegion)}|tolerance={FormatContractNumber(flatnessStep.Tolerance)}|unit={flatnessStep.Unit}|maxSampledPoints={flatnessStep.MaxSampledPoints}");
+        }
+        else
+        {
+            lines.Add("PlaneFlatnessStep|configured=False");
+        }
+
+        lines.Add($"PlaneFlatness|visible={viewModel.PlaneFlatnessVisible}|status={(viewModel.PlaneFlatnessVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|referenceSamples={viewModel.PlaneFlatnessReferenceSampleCount}|measurementSamples={viewModel.PlaneFlatnessMeasurementSampleCount}|minimum={FormatContractNumber(viewModel.PlaneFlatnessMinimumDeviation)}|maximum={FormatContractNumber(viewModel.PlaneFlatnessMaximumDeviation)}|flatness={FormatContractNumber(viewModel.PlaneFlatnessValue)}|rms={FormatContractNumber(viewModel.PlaneFlatnessRms)}|summary={CleanContractText(viewModel.PlaneFlatnessSummary)}");
         lines.Add("RoiStepMeasurement");
         lines.Add($"RoiStep|visible={viewModel.RoiStepMeasurementVisible}|mode={viewModel.RoiStepSelectionMode}|leftCount={viewModel.RoiStepLeftPointCount}|rightCount={viewModel.RoiStepRightPointCount}|leftMeanRaw={FormatContractNumber(viewModel.RoiStepLeftRawMean)}|rightMeanRaw={FormatContractNumber(viewModel.RoiStepRightRawMean)}|heightDeltaRaw={FormatContractNumber(viewModel.RoiStepRawHeightDelta)}|modelDeltaY={FormatContractNumber(viewModel.RoiStepModelHeightDelta)}|summary={CleanContractText(viewModel.RoiStepMeasurementDetails)}|edit={CleanContractText(viewModel.RoiStepEditSummary)}");
         lines.Add("RecipeState");

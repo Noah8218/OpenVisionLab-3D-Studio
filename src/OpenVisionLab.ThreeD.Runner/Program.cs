@@ -14,6 +14,30 @@ static int Run(string[] args)
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
     var compareContractPath = ReadOption(args, "--compare-contract");
+    var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
+    var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
+
+    if (verifyPointPairDimensions)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
+            return 2;
+        }
+
+        return PointPairDimensionsGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyPlaneFlatness)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
+            return 2;
+        }
+
+        return PlaneFlatnessGoldenVerification.Run(reportPath);
+    }
 
     if (lazProbePath is not null)
     {
@@ -41,6 +65,8 @@ static int Run(string[] args)
     {
         Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         return 2;
     }
 
@@ -53,10 +79,18 @@ static int Run(string[] args)
             return RunLazTwoPointRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
         }
 
+        if (recipeType.Equals(C3DPointPairDimensionsRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            return RunC3DPointPairDimensionsRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+        }
+
         var recipe = HeightDeviationRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
-        var grid = C3DHeightGrid.Load(sourcePath, recipe.RoiStep?.MaxSampledPoints ?? 0);
-        var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
+        var maxSampledPoints = Math.Max(
+            recipe.RoiStep?.MaxSampledPoints ?? 0,
+            recipe.PlaneFlatness is { Enabled: true } planeFlatnessStep ? planeFlatnessStep.MaxSampledPoints : 0);
+        var grid = C3DHeightGrid.Load(sourcePath, maxSampledPoints);
+        var heightDeviationResult = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
             recipe.Source.EntityId,
             recipe.Source.Name,
             grid.Min,
@@ -68,8 +102,12 @@ static int Run(string[] args)
         var roiStepResult = recipe.RoiStep is null
             ? null
             : EvaluateRoiStep(recipe.RoiStep, recipe.Transform ?? ModelTransform.Identity, grid);
+        var planeFlatnessResult = recipe.PlaneFlatness is { Enabled: true } planeFlatness
+            ? EvaluatePlaneFlatness(planeFlatness, recipe.Transform ?? ModelTransform.Identity, grid)
+            : null;
+        var result = planeFlatnessResult?.Result ?? heightDeviationResult;
 
-        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult);
+        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult);
         if (compareContractPath is not null)
         {
             CompareUiContract(compareContractPath, result);
@@ -85,11 +123,55 @@ static int Run(string[] args)
         Console.WriteLine($"{result.ToolName}: {result.Status}");
         return result.Status == ResultStatus.Error ? 4 : 0;
     }
-    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentOutOfRangeException)
     {
         Console.Error.WriteLine(ex.Message);
         return 1;
     }
+}
+
+static int RunC3DPointPairDimensionsRecipe(
+    string fullRecipePath,
+    string reportPath,
+    string? expectedStatus,
+    string? compareContractPath)
+{
+    var recipe = C3DPointPairDimensionsRecipe.Load(fullRecipePath);
+    var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+    var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
+    var first = grid.ReadPoint(recipe.Step.First.Row, recipe.Step.First.Column);
+    var second = grid.ReadPoint(recipe.Step.Second.Row, recipe.Step.Second.Column);
+    var transform = recipe.Transform ?? ModelTransform.Identity;
+    var evaluation = PointPairDimensionsRule.Evaluate(new PointPairDimensionsInput(
+        recipe.Step.SourceEntityId,
+        ApplyModelTransform(first.Position, transform),
+        ApplyModelTransform(second.Position, transform),
+        first.RawValue,
+        second.RawValue,
+        recipe.Step.Acceptance,
+        recipe.Step.Unit,
+        recipe.Source.Unit));
+
+    WritePointPairDimensionsReport(reportPath, fullRecipePath, sourcePath, recipe, grid, first, second, evaluation);
+    if (compareContractPath is not null)
+    {
+        CompareUiContract(
+            compareContractPath,
+            evaluation.Result,
+            "3D distance",
+            "XZ planar width",
+            "Elevation angle");
+    }
+
+    if (expectedStatus is not null
+        && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
+    {
+        Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {evaluation.Result.Status}.");
+        return 3;
+    }
+
+    Console.WriteLine($"{evaluation.Result.ToolName}: {evaluation.Result.Status}");
+    return evaluation.Result.Status == ResultStatus.Error ? 4 : 0;
 }
 
 static int RunLazTwoPointRecipe(
@@ -198,7 +280,8 @@ static void WriteReport(
     HeightDeviationRecipe recipe,
     C3DHeightGrid grid,
     ToolResult result,
-    RoiStepReport? roiStepResult)
+    RoiStepReport? roiStepResult,
+    PlaneFlatnessEvaluation? planeFlatnessResult)
 {
     var transform = recipe.Transform ?? ModelTransform.Identity;
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
@@ -214,8 +297,24 @@ static void WriteReport(
         recipe.RoiStep is null
             ? "RoiStep|configured=False"
             : $"RoiStep|configured=True|mode={recipe.RoiStep.Mode}|maxSampledPoints={recipe.RoiStep.MaxSampledPoints}|left={FormatRegion(recipe.RoiStep.Left)}|right={FormatRegion(recipe.RoiStep.Right)}",
-        InspectionContractText.MetricsMarker
     };
+
+    if (recipe.PlaneFlatness is { } planeFlatness)
+    {
+        lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+            planeFlatness.Id,
+            PlaneFlatnessRule.ToolName,
+            planeFlatness.SourceEntityId,
+            planeFlatness.ReferenceId,
+            planeFlatness.Enabled)));
+        lines.Add($"PlaneFlatnessStep|configured=True|id={planeFlatness.Id}|source={planeFlatness.SourceEntityId}|reference={planeFlatness.ReferenceId}|enabled={planeFlatness.Enabled}|roi={FormatRegion(planeFlatness.ReferenceRegion)}|tolerance={FormatNumber(planeFlatness.Tolerance)}|unit={planeFlatness.Unit}|maxSampledPoints={planeFlatness.MaxSampledPoints}");
+    }
+    else
+    {
+        lines.Add("PlaneFlatnessStep|configured=False");
+    }
+
+    lines.Add(InspectionContractText.MetricsMarker);
 
     lines.AddRange(result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
     lines.Add(InspectionContractText.OverlaysMarker);
@@ -225,6 +324,11 @@ static void WriteReport(
         lines.Add("RoiStepResult");
         lines.Add(
             $"RoiStepResult|leftCount={roiStepResult.LeftCount}|rightCount={roiStepResult.RightCount}|leftMeanRaw={FormatNumber(roiStepResult.LeftRawMean)}|rightMeanRaw={FormatNumber(roiStepResult.RightRawMean)}|heightDeltaRaw={FormatNumber(roiStepResult.RawHeightDelta)}|modelDeltaY={FormatNumber(roiStepResult.ModelHeightDelta)}");
+    }
+
+    if (planeFlatnessResult is not null)
+    {
+        lines.Add($"PlaneFlatness|status={planeFlatnessResult.Result.Status}|referenceSamples={planeFlatnessResult.ReferenceSampleCount}|measurementSamples={planeFlatnessResult.MeasurementSampleCount}|minimum={FormatNumber(planeFlatnessResult.MinimumSignedDistance)}|maximum={FormatNumber(planeFlatnessResult.MaximumSignedDistance)}|flatness={FormatNumber(planeFlatnessResult.Flatness)}|rms={FormatNumber(planeFlatnessResult.RootMeanSquareDistance)}|summary={InspectionContractText.Clean(planeFlatnessResult.Result.Message)}");
     }
 
     File.WriteAllLines(reportPath, lines);
@@ -260,6 +364,44 @@ static void WriteLazTwoPointReport(
     lines.Add(InspectionContractText.OverlaysMarker);
     lines.AddRange(result.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
 
+    File.WriteAllLines(reportPath, lines);
+}
+
+static void WritePointPairDimensionsReport(
+    string reportPath,
+    string recipePath,
+    string sourcePath,
+    C3DPointPairDimensionsRecipe recipe,
+    C3DHeightGrid grid,
+    HeightGridPoint first,
+    HeightGridPoint second,
+    PointPairDimensionsEvaluation evaluation)
+{
+    var transform = recipe.Transform ?? ModelTransform.Identity;
+    var step = recipe.Step;
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+    var lines = new List<string>
+    {
+        $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
+        $"Source|{recipe.Source.EntityId}|name={recipe.Source.Name}|path={sourcePath}|unit={recipe.Source.Unit}",
+        $"HeightGrid|width={grid.Width}|height={grid.Height}|valid={grid.ValidSampleCount}|zero={grid.ZeroSampleCount}|min={FormatNumber(grid.Min)}|max={FormatNumber(grid.Max)}|mean={FormatNumber(grid.Mean)}",
+        "RecipeTransform",
+        $"Transform|configured={recipe.Transform is not null}|tx={FormatNumber(transform.TranslateX)}|ty={FormatNumber(transform.TranslateY)}|tz={FormatNumber(transform.TranslateZ)}|rx={FormatNumber(transform.RotateXDegrees)}|ry={FormatNumber(transform.RotateYDegrees)}|rz={FormatNumber(transform.RotateZDegrees)}|scale={FormatNumber(transform.Scale)}",
+        InspectionContractText.FormatInspectionStep(new InspectionStep(
+            step.Id,
+            PointPairDimensionsRule.ToolName,
+            step.SourceEntityId,
+            $"{step.First.Id},{step.Second.Id}",
+            step.Enabled)),
+        $"PointPairDimensionsStep|configured=True|id={step.Id}|source={step.SourceEntityId}|first={step.First.Id}@({step.First.Row},{step.First.Column})|second={step.Second.Id}@({step.Second.Row},{step.Second.Column})|enabled={step.Enabled}|expectedDistance={FormatNumber(step.Acceptance.ExpectedDistance)}|distanceTolerance={FormatNumber(step.Acceptance.DistanceTolerance)}|expectedWidth={FormatNumber(step.Acceptance.ExpectedWidth)}|widthTolerance={FormatNumber(step.Acceptance.WidthTolerance)}|expectedAngle={FormatNumber(step.Acceptance.ExpectedElevationAngleDegrees)}|angleTolerance={FormatNumber(step.Acceptance.ElevationAngleToleranceDegrees)}|unit={step.Unit}",
+        InspectionContractText.FormatToolResult(evaluation.Result, includePrefix: true),
+        $"PointPairDimensions|status={evaluation.Result.Status}|distance={FormatNumber(evaluation.Distance)}|width={FormatNumber(evaluation.PlanarWidth)}|angleDegrees={FormatNumber(evaluation.ElevationAngleDegrees)}|rawHeightDelta={FormatNumber(evaluation.RawHeightDelta)}|firstRaw={FormatNumber(first.RawValue)}|secondRaw={FormatNumber(second.RawValue)}",
+        InspectionContractText.MetricsMarker
+    };
+
+    lines.AddRange(evaluation.Result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
+    lines.Add(InspectionContractText.OverlaysMarker);
+    lines.AddRange(evaluation.Result.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
     File.WriteAllLines(reportPath, lines);
 }
 
@@ -304,6 +446,31 @@ static ToolResult CreateLazTwoPointResult(
             new Overlay("overlay.laz-two-point-height-marker", OverlayKind.Marker, "LAZ/LAS source-Z height delta marker", heightStatus, sourceEntityId)
         ]);
 }
+
+static PlaneFlatnessEvaluation EvaluatePlaneFlatness(
+    HeightDeviationRecipePlaneFlatness step,
+    ModelTransform transform,
+    C3DHeightGrid grid)
+{
+    var measurementSamples = grid.Points
+        .Select(point => new HeightFieldPlaneSample(ApplyModelTransform(point.Position, transform), point.RawValue))
+        .ToArray();
+    var referenceSamples = measurementSamples
+        .Where(sample => Contains(step.ReferenceRegion, sample.Position))
+        .ToArray();
+    return PlaneFlatnessRule.Evaluate(new PlaneFlatnessRuleInput(
+        step.SourceEntityId,
+        referenceSamples,
+        measurementSamples,
+        step.Tolerance,
+        step.Unit));
+}
+
+static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>
+    point.X >= region.CenterX - region.HalfWidth
+    && point.X <= region.CenterX + region.HalfWidth
+    && point.Z >= region.CenterZ - region.HalfDepth
+    && point.Z <= region.CenterZ + region.HalfDepth;
 
 static RoiStepReport EvaluateRoiStep(HeightDeviationRecipeRoiStep roiStep, ModelTransform transform, C3DHeightGrid grid)
 {
@@ -394,7 +561,7 @@ static string FormatLazPoint(LazPointCloudPoint point) =>
         CultureInfo.InvariantCulture,
         $"x={point.Position.X:F3},y={point.Position.Y:F3},z={point.Position.Z:F3},rgb={point.Red},{point.Green},{point.Blue}");
 
-static void CompareUiContract(string path, ToolResult result)
+static void CompareUiContract(string path, ToolResult result, params string[] metricNames)
 {
     var lines = File.ReadAllLines(path);
     var toolResultLine = lines.FirstOrDefault(line => line.StartsWith($"{result.ToolName}|", StringComparison.Ordinal));
@@ -409,17 +576,31 @@ static void CompareUiContract(string path, ToolResult result)
         throw new InvalidDataException($"UI status mismatch. UI={parts.ElementAtOrDefault(1) ?? "(missing)"}, runner={result.Status}.");
     }
 
-    var runnerMetric = result.Metrics.First();
-    var uiMetricLine = lines.FirstOrDefault(line => line.StartsWith($"{runnerMetric.Name}|", StringComparison.Ordinal));
-    if (uiMetricLine is null)
+    var metrics = metricNames.Length == 0
+        ? [result.Metrics.First()]
+        : metricNames.Select(name => result.Metrics.Single(metric => metric.Name == name)).ToArray();
+    foreach (var runnerMetric in metrics)
     {
-        throw new InvalidDataException($"UI contract has no {runnerMetric.Name} metric: {path}");
-    }
+        var uiMetricLine = lines.FirstOrDefault(line => line.StartsWith($"{runnerMetric.Name}|", StringComparison.Ordinal));
+        if (uiMetricLine is null)
+        {
+            throw new InvalidDataException($"UI contract has no {runnerMetric.Name} metric: {path}");
+        }
 
-    var uiMetric = ParseMetricValue(uiMetricLine);
-    if (Math.Abs(uiMetric - runnerMetric.Value) > 0.001)
-    {
-        throw new InvalidDataException($"{runnerMetric.Name} mismatch. UI={uiMetric:F3}, runner={runnerMetric.Value:F3}.");
+        var uiMetric = ParseMetricValue(uiMetricLine);
+        if (Math.Abs(uiMetric - runnerMetric.Value) > 0.001)
+        {
+            throw new InvalidDataException($"{runnerMetric.Name} mismatch. UI={uiMetric:F3}, runner={runnerMetric.Value:F3}.");
+        }
+
+        if (runnerMetric.Status is { } metricStatus)
+        {
+            var uiStatus = ParseMetricStatus(uiMetricLine);
+            if (!uiStatus.Equals(metricStatus.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException($"{runnerMetric.Name} status mismatch. UI={uiStatus}, runner={metricStatus}.");
+            }
+        }
     }
 }
 
@@ -434,6 +615,19 @@ static double ParseMetricValue(string line)
     }
 
     throw new InvalidDataException($"Metric line has no value field: {line}");
+}
+
+static string ParseMetricStatus(string line)
+{
+    foreach (var part in line.Split('|'))
+    {
+        if (part.StartsWith("status=", StringComparison.Ordinal))
+        {
+            return part["status=".Length..];
+        }
+    }
+
+    throw new InvalidDataException($"Metric line has no status field: {line}");
 }
 
 public sealed record RoiStepReport(

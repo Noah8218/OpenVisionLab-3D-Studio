@@ -2,6 +2,8 @@
 
 Updated: 2026-07-07
 
+Status: foundational direction. Use `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md` for the current commercial comparison, maturity decision, and development gates.
+
 OpenVisionLab 3D Studio should become a rule-based 3D inspection workbench. The first deliverable is not a full inspection platform; it is a reliable 3D viewer that can support measurable validation. 3D algorithm development starts after the viewer completion gate passes.
 
 ## 1. Product Position

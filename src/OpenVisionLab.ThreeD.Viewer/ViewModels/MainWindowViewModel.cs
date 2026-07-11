@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -19,7 +20,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public const string LazEntityId = "source.public-laz-manuscript";
     public const string SyntheticResultEntityId = "result.synthetic-height-deviation";
     public const string C3DHeightDeviationResultEntityId = "result.c3d-height-deviation";
+    public const string C3DPlaneFlatnessResultEntityId = "result.c3d-plane-flatness";
+    public const string C3DPointPairDimensionsResultEntityId = "result.c3d-point-pair-dimensions";
     public const string LazTwoPointResultEntityId = "result.laz-two-point-measurement";
+    private const string PlaneFlatnessStepId = "step.c3d-plane-flatness";
+    private const string PlaneFlatnessReferenceId = "reference.roi-plane";
+    private const int PlaneFlatnessMaxSampledPoints = 140000;
+    private const string PointPairDimensionsStepId = "step.c3d-point-pair-dimensions";
+    private const string PointPairFirstReferenceId = "reference.point-a";
+    private const string PointPairSecondReferenceId = "reference.point-b";
     private const double DefaultLazExpectedDistance = 116.919;
     private const double DefaultLazDistanceTolerance = 0.010;
     private const double DefaultLazExpectedHeightDelta = -0.624;
@@ -83,6 +92,50 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int recipeRoiMaxSampledPoints = 55000;
     private ToolResult previewToolResult = CreateNotRunToolResult();
     private ToolResult? c3dHeightDeviationPreview;
+    private ToolResult? c3dPlaneFlatnessPreview;
+    private bool c3dPlaneFlatnessPreviewActive;
+    private bool planeFlatnessConfigured;
+    private string planeFlatnessStepId = PlaneFlatnessStepId;
+    private string planeFlatnessSourceEntityId = C3DEntityId;
+    private string planeFlatnessReferenceId = PlaneFlatnessReferenceId;
+    private string planeFlatnessUnit = "model";
+    private int planeFlatnessMaxSampledPoints = PlaneFlatnessMaxSampledPoints;
+    private bool planeFlatnessEnabled = true;
+    private bool planeFlatnessVisible;
+    private string planeFlatnessSummary = "Flatness: preview not run";
+    private string planeFlatnessDetails = "Reference ROI and signed surface deviation: pending";
+    private double planeFlatnessReferenceCenterX;
+    private double planeFlatnessReferenceCenterZ;
+    private double planeFlatnessReferenceHalfWidth = 2.0;
+    private double planeFlatnessReferenceHalfDepth = 2.0;
+    private double planeFlatnessTolerance = 3.0;
+    private double planeFlatnessValue = double.NaN;
+    private double planeFlatnessMinimumDeviation = double.NaN;
+    private double planeFlatnessMaximumDeviation = double.NaN;
+    private double planeFlatnessRms = double.NaN;
+    private int planeFlatnessReferenceSampleCount;
+    private int planeFlatnessMeasurementSampleCount;
+    private ToolResult? c3dPointPairDimensionsPreview;
+    private bool c3dPointPairDimensionsPreviewActive;
+    private bool pointPairDimensionsConfigured;
+    private string pointPairDimensionsStepId = PointPairDimensionsStepId;
+    private string pointPairDimensionsSourceEntityId = C3DEntityId;
+    private string pointPairDimensionsUnit = "model";
+    private bool pointPairDimensionsEnabled = true;
+    private C3DGridPointReference? pointPairFirstReference;
+    private C3DGridPointReference? pointPairSecondReference;
+    private double pointPairExpectedDistance = 5.0;
+    private double pointPairDistanceTolerance = 0.5;
+    private double pointPairExpectedWidth = 5.0;
+    private double pointPairWidthTolerance = 0.5;
+    private double pointPairExpectedAngleDegrees;
+    private double pointPairAngleToleranceDegrees = 5.0;
+    private bool pointPairDimensionsVisible;
+    private string pointPairDimensionsSummary = "Point pair dimensions: preview not run";
+    private string pointPairDimensionsDetails = "Select two C3D points and run Preview Dimensions.";
+    private double pointPairDistance = double.NaN;
+    private double pointPairWidth = double.NaN;
+    private double pointPairAngleDegrees = double.NaN;
     private IReadOnlyList<SourceEntity> sourceEntities = [];
     private IReadOnlyList<ResultEntity> resultEntities = [];
     private string publishedResultSummary = "Published result: none";
@@ -99,6 +152,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string deviationLegendPeak = "Peak: none";
     private string deviationLegendTolerance = "Tolerance: none";
     private string deviationLegendScale = "Scale: mean to peak deviation";
+    private string deviationLegendLowLabel = "Mean";
+    private string deviationLegendMiddleLabel = "Tolerance";
+    private string deviationLegendHighLabel = "Peak";
     private bool pointCloudColorLegendVisible;
     private string pointCloudColorLegendTitle = "Point Cloud Height Scale";
     private string pointCloudColorLegendLow = "Low: not loaded";
@@ -134,6 +190,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double twoPointDeltaY = double.NaN;
     private double twoPointDeltaZ = double.NaN;
     private double twoPointRawHeightDelta = double.NaN;
+    private bool planeReferenceMeasurementVisible;
+    private string planeReferenceMeasurementSummary = "Plane reference: pending";
+    private string planeReferenceMeasurementDetails = "Distance to reference plane: pending";
+    private double planeReferenceSignedDistance = double.NaN;
+    private double planeReferenceAbsoluteDistance = double.NaN;
+    private double planeReferenceY = double.NaN;
+    private double planeReferenceTargetY = double.NaN;
+    private double planeReferenceRawHeightDelta = double.NaN;
+    private double planeReferenceNormalX = double.NaN;
+    private double planeReferenceNormalY = double.NaN;
+    private double planeReferenceNormalZ = double.NaN;
+    private double planeReferenceFitRms = double.NaN;
+    private int planeReferenceSampleCount;
     private bool roiStepMeasurementVisible;
     private string roiStepMeasurementSummary = "ROI step: compare two C3D regions.";
     private string roiStepMeasurementDetails = "Left/right ROI height delta: pending";
@@ -161,6 +230,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double cameraTargetY = -0.25;
     private double cameraTargetZ;
     private readonly RelayCommand applyRoiAlignmentCommand;
+    private readonly RelayCommand fitPlaneCommand;
+    private readonly RelayCommand previewPlaneFlatnessCommand;
+    private readonly RelayCommand previewPointPairDimensionsCommand;
     private readonly RelayCommand publishResultCommand;
     private readonly RelayCommand fitAllCommand;
     private readonly RelayCommand fitSelectionCommand;
@@ -171,6 +243,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
+    public event EventHandler? FitPlaneRequested;
+    public event EventHandler? PreviewPlaneFlatnessRequested;
+    public event EventHandler? PreviewPointPairDimensionsRequested;
     public event EventHandler? FitAllRequested;
     public event EventHandler? FitSelectionRequested;
     public event EventHandler? OpenRecipeRequested;
@@ -187,6 +262,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         resetCommand = new RelayCommand(_ => ResetRequested?.Invoke(this, EventArgs.Empty));
         openRecipeCommand = new RelayCommand(_ => OpenRecipeRequested?.Invoke(this, EventArgs.Empty));
         applyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        fitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        previewPlaneFlatnessCommand = new RelayCommand(_ => PreviewPlaneFlatnessRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        previewPointPairDimensionsCommand = new RelayCommand(
+            _ => PreviewPointPairDimensionsRequested?.Invoke(this, EventArgs.Empty),
+            _ => C3DSampleVisible && pointPairFirstReference is not null && pointPairSecondReference is not null);
         publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
         saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
@@ -200,10 +280,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "ROI Step Compare", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
     public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
+    public ICommand FitPlaneCommand => fitPlaneCommand;
+    public ICommand PreviewPlaneFlatnessCommand => previewPlaneFlatnessCommand;
+    public ICommand PreviewPointPairDimensionsCommand => previewPointPairDimensionsCommand;
     public ICommand FitAllCommand => fitAllCommand;
     public ICommand FitSelectionCommand => fitSelectionCommand;
     public ICommand OpenRecipeCommand => openRecipeCommand;
@@ -538,6 +621,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 {
                     "Box ROI" => "Box ROI: viewer state only",
                     "Two Point Measure" => TwoPointMeasurementSummary,
+                    "Plane Distance" => PlaneReferenceMeasurementDetails,
+                    "Plane Flatness" => PlaneFlatnessDetails,
                     "ROI Step Compare" => RoiStepMeasurementDetails,
                     "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
@@ -818,6 +903,129 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref recipeRoiMaxSampledPoints, Math.Max(1, value));
     }
 
+    public bool PlaneFlatnessConfigured
+    {
+        get => planeFlatnessConfigured;
+        private set => SetField(ref planeFlatnessConfigured, value);
+    }
+
+    public double PlaneFlatnessReferenceCenterX
+    {
+        get => planeFlatnessReferenceCenterX;
+        set => SetPlaneFlatnessParameter(ref planeFlatnessReferenceCenterX, CoerceFinite(value, planeFlatnessReferenceCenterX), nameof(PlaneFlatnessReferenceCenterX));
+    }
+
+    public double PlaneFlatnessReferenceCenterZ
+    {
+        get => planeFlatnessReferenceCenterZ;
+        set => SetPlaneFlatnessParameter(ref planeFlatnessReferenceCenterZ, CoerceFinite(value, planeFlatnessReferenceCenterZ), nameof(PlaneFlatnessReferenceCenterZ));
+    }
+
+    public double PlaneFlatnessReferenceHalfWidth
+    {
+        get => planeFlatnessReferenceHalfWidth;
+        set => SetPlaneFlatnessParameter(ref planeFlatnessReferenceHalfWidth, Math.Max(0.0001, CoerceFinite(value, planeFlatnessReferenceHalfWidth)), nameof(PlaneFlatnessReferenceHalfWidth));
+    }
+
+    public double PlaneFlatnessReferenceHalfDepth
+    {
+        get => planeFlatnessReferenceHalfDepth;
+        set => SetPlaneFlatnessParameter(ref planeFlatnessReferenceHalfDepth, Math.Max(0.0001, CoerceFinite(value, planeFlatnessReferenceHalfDepth)), nameof(PlaneFlatnessReferenceHalfDepth));
+    }
+
+    public double PlaneFlatnessTolerance
+    {
+        get => planeFlatnessTolerance;
+        set => SetPlaneFlatnessParameter(ref planeFlatnessTolerance, Math.Max(0.0001, CoerceFinite(value, planeFlatnessTolerance)), nameof(PlaneFlatnessTolerance));
+    }
+
+    public string PlaneFlatnessUnit => planeFlatnessUnit;
+
+    public bool PointPairDimensionsConfigured
+    {
+        get => pointPairDimensionsConfigured;
+        private set => SetField(ref pointPairDimensionsConfigured, value);
+    }
+
+    public bool HasPointPairReferences => pointPairFirstReference is not null && pointPairSecondReference is not null;
+
+    public double PointPairExpectedDistance
+    {
+        get => pointPairExpectedDistance;
+        set => SetPointPairParameter(ref pointPairExpectedDistance, Math.Max(0.0, CoerceFinite(value, pointPairExpectedDistance)), nameof(PointPairExpectedDistance));
+    }
+
+    public double PointPairDistanceTolerance
+    {
+        get => pointPairDistanceTolerance;
+        set => SetPointPairParameter(ref pointPairDistanceTolerance, Math.Max(0.0, CoerceFinite(value, pointPairDistanceTolerance)), nameof(PointPairDistanceTolerance));
+    }
+
+    public double PointPairExpectedWidth
+    {
+        get => pointPairExpectedWidth;
+        set => SetPointPairParameter(ref pointPairExpectedWidth, Math.Max(0.0, CoerceFinite(value, pointPairExpectedWidth)), nameof(PointPairExpectedWidth));
+    }
+
+    public double PointPairWidthTolerance
+    {
+        get => pointPairWidthTolerance;
+        set => SetPointPairParameter(ref pointPairWidthTolerance, Math.Max(0.0, CoerceFinite(value, pointPairWidthTolerance)), nameof(PointPairWidthTolerance));
+    }
+
+    public double PointPairExpectedAngleDegrees
+    {
+        get => pointPairExpectedAngleDegrees;
+        set => SetPointPairParameter(
+            ref pointPairExpectedAngleDegrees,
+            Math.Clamp(CoerceFinite(value, pointPairExpectedAngleDegrees), -90.0, 90.0),
+            nameof(PointPairExpectedAngleDegrees));
+    }
+
+    public double PointPairAngleToleranceDegrees
+    {
+        get => pointPairAngleToleranceDegrees;
+        set => SetPointPairParameter(ref pointPairAngleToleranceDegrees, Math.Max(0.0, CoerceFinite(value, pointPairAngleToleranceDegrees)), nameof(PointPairAngleToleranceDegrees));
+    }
+
+    public string PointPairDimensionsUnit => pointPairDimensionsUnit;
+
+    public bool PointPairDimensionsVisible
+    {
+        get => pointPairDimensionsVisible;
+        private set => SetField(ref pointPairDimensionsVisible, value);
+    }
+
+    public string PointPairDimensionsSummary
+    {
+        get => pointPairDimensionsSummary;
+        private set => SetField(ref pointPairDimensionsSummary, value);
+    }
+
+    public string PointPairDimensionsDetails
+    {
+        get => pointPairDimensionsDetails;
+        private set => SetField(ref pointPairDimensionsDetails, value);
+    }
+
+    public double PointPairDistance
+    {
+        get => pointPairDistance;
+        private set => SetField(ref pointPairDistance, value);
+    }
+
+    public double PointPairWidth
+    {
+        get => pointPairWidth;
+        private set => SetField(ref pointPairWidth, value);
+    }
+
+    public double PointPairAngleDegrees
+    {
+        get => pointPairAngleDegrees;
+        private set => SetField(ref pointPairAngleDegrees, value);
+    }
+
     public ToolResult PreviewToolResult
     {
         get => previewToolResult;
@@ -834,6 +1042,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void RefreshCommandCanExecute()
     {
         applyRoiAlignmentCommand.RaiseCanExecuteChanged();
+        fitPlaneCommand.RaiseCanExecuteChanged();
+        previewPlaneFlatnessCommand.RaiseCanExecuteChanged();
+        previewPointPairDimensionsCommand.RaiseCanExecuteChanged();
         publishResultCommand.RaiseCanExecuteChanged();
     }
 
@@ -931,6 +1142,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => deviationLegendScale;
         private set => SetField(ref deviationLegendScale, value);
+    }
+
+    public string DeviationLegendLowLabel
+    {
+        get => deviationLegendLowLabel;
+        private set => SetField(ref deviationLegendLowLabel, value);
+    }
+
+    public string DeviationLegendMiddleLabel
+    {
+        get => deviationLegendMiddleLabel;
+        private set => SetField(ref deviationLegendMiddleLabel, value);
+    }
+
+    public string DeviationLegendHighLabel
+    {
+        get => deviationLegendHighLabel;
+        private set => SetField(ref deviationLegendHighLabel, value);
     }
 
     public bool PointCloudColorLegendVisible
@@ -1131,6 +1360,138 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => twoPointRawHeightDelta;
         private set => SetField(ref twoPointRawHeightDelta, value);
+    }
+
+    public bool PlaneReferenceMeasurementVisible
+    {
+        get => planeReferenceMeasurementVisible;
+        private set => SetField(ref planeReferenceMeasurementVisible, value);
+    }
+
+    public string PlaneReferenceMeasurementSummary
+    {
+        get => planeReferenceMeasurementSummary;
+        private set => SetField(ref planeReferenceMeasurementSummary, value);
+    }
+
+    public string PlaneReferenceMeasurementDetails
+    {
+        get => planeReferenceMeasurementDetails;
+        private set => SetField(ref planeReferenceMeasurementDetails, value);
+    }
+
+    public double PlaneReferenceSignedDistance
+    {
+        get => planeReferenceSignedDistance;
+        private set => SetField(ref planeReferenceSignedDistance, value);
+    }
+
+    public double PlaneReferenceAbsoluteDistance
+    {
+        get => planeReferenceAbsoluteDistance;
+        private set => SetField(ref planeReferenceAbsoluteDistance, value);
+    }
+
+    public double PlaneReferenceY
+    {
+        get => planeReferenceY;
+        private set => SetField(ref planeReferenceY, value);
+    }
+
+    public double PlaneReferenceTargetY
+    {
+        get => planeReferenceTargetY;
+        private set => SetField(ref planeReferenceTargetY, value);
+    }
+
+    public double PlaneReferenceRawHeightDelta
+    {
+        get => planeReferenceRawHeightDelta;
+        private set => SetField(ref planeReferenceRawHeightDelta, value);
+    }
+
+    public double PlaneReferenceNormalX
+    {
+        get => planeReferenceNormalX;
+        private set => SetField(ref planeReferenceNormalX, value);
+    }
+
+    public double PlaneReferenceNormalY
+    {
+        get => planeReferenceNormalY;
+        private set => SetField(ref planeReferenceNormalY, value);
+    }
+
+    public double PlaneReferenceNormalZ
+    {
+        get => planeReferenceNormalZ;
+        private set => SetField(ref planeReferenceNormalZ, value);
+    }
+
+    public double PlaneReferenceFitRms
+    {
+        get => planeReferenceFitRms;
+        private set => SetField(ref planeReferenceFitRms, value);
+    }
+
+    public int PlaneReferenceSampleCount
+    {
+        get => planeReferenceSampleCount;
+        private set => SetField(ref planeReferenceSampleCount, value);
+    }
+
+    public bool PlaneFlatnessVisible
+    {
+        get => planeFlatnessVisible;
+        private set => SetField(ref planeFlatnessVisible, value);
+    }
+
+    public string PlaneFlatnessSummary
+    {
+        get => planeFlatnessSummary;
+        private set => SetField(ref planeFlatnessSummary, value);
+    }
+
+    public string PlaneFlatnessDetails
+    {
+        get => planeFlatnessDetails;
+        private set => SetField(ref planeFlatnessDetails, value);
+    }
+
+    public double PlaneFlatnessValue
+    {
+        get => planeFlatnessValue;
+        private set => SetField(ref planeFlatnessValue, value);
+    }
+
+    public double PlaneFlatnessMinimumDeviation
+    {
+        get => planeFlatnessMinimumDeviation;
+        private set => SetField(ref planeFlatnessMinimumDeviation, value);
+    }
+
+    public double PlaneFlatnessMaximumDeviation
+    {
+        get => planeFlatnessMaximumDeviation;
+        private set => SetField(ref planeFlatnessMaximumDeviation, value);
+    }
+
+    public double PlaneFlatnessRms
+    {
+        get => planeFlatnessRms;
+        private set => SetField(ref planeFlatnessRms, value);
+    }
+
+    public int PlaneFlatnessReferenceSampleCount
+    {
+        get => planeFlatnessReferenceSampleCount;
+        private set => SetField(ref planeFlatnessReferenceSampleCount, value);
+    }
+
+    public int PlaneFlatnessMeasurementSampleCount
+    {
+        get => planeFlatnessMeasurementSampleCount;
+        private set => SetField(ref planeFlatnessMeasurementSampleCount, value);
     }
 
     public bool RoiStepMeasurementVisible
@@ -1364,6 +1725,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Section Plane" when SectionProfileVisible => SectionProfileSummary,
             "Section Plane" => "Section plane: profile not loaded",
             "Two Point Measure" => TwoPointMeasurementSummary,
+            "Plane Distance" => PlaneReferenceMeasurementDetails,
             "ROI Step Compare" => RoiStepMeasurementDetails,
             "Box ROI" => "Box ROI: viewer state only",
             _ => "Point selection: generated point cloud peak"
@@ -1496,6 +1858,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ClearC3DLinkedViews()
     {
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
         ClearHeightMap();
         ClearSectionProfile();
     }
@@ -1599,6 +1963,335 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public void SetPlaneReferenceMeasurement(HeightFieldPlaneFitResult result, string referenceName)
+    {
+        PlaneReferenceMeasurementVisible = true;
+        PlaneReferenceSignedDistance = result.TargetSignedDistance;
+        PlaneReferenceAbsoluteDistance = result.TargetAbsoluteDistance;
+        PlaneReferenceY = result.TargetProjection.Y;
+        PlaneReferenceTargetY = result.Target.Y;
+        PlaneReferenceRawHeightDelta = result.TargetRawHeightDelta;
+        PlaneReferenceNormalX = result.Normal.X;
+        PlaneReferenceNormalY = result.Normal.Y;
+        PlaneReferenceNormalZ = result.Normal.Z;
+        PlaneReferenceFitRms = result.RootMeanSquareDistance;
+        PlaneReferenceSampleCount = result.SampleCount;
+        PlaneReferenceMeasurementSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Fitted plane: {referenceName} | {result.SampleCount:N0} samples | normal {FormatVector(result.Normal)}");
+        PlaneReferenceMeasurementDetails = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Orthogonal distance {result.TargetSignedDistance:F3} model | abs {result.TargetAbsoluteDistance:F3} | RMS {result.RootMeanSquareDistance:F3} | target {FormatVector(result.Target)} | raw residual {result.TargetRawHeightDelta:F3} raw-height");
+        SelectionSummary = PlaneReferenceMeasurementDetails;
+        MeasurementSummary = PlaneReferenceMeasurementDetails;
+        ViewerStatus = "Fitted C3D reference plane updated";
+    }
+
+    public void ClearPlaneReferenceMeasurement()
+    {
+        PlaneReferenceMeasurementVisible = false;
+        PlaneReferenceSignedDistance = double.NaN;
+        PlaneReferenceAbsoluteDistance = double.NaN;
+        PlaneReferenceY = double.NaN;
+        PlaneReferenceTargetY = double.NaN;
+        PlaneReferenceRawHeightDelta = double.NaN;
+        PlaneReferenceNormalX = double.NaN;
+        PlaneReferenceNormalY = double.NaN;
+        PlaneReferenceNormalZ = double.NaN;
+        PlaneReferenceFitRms = double.NaN;
+        PlaneReferenceSampleCount = 0;
+        PlaneReferenceMeasurementSummary = "Plane reference: pending";
+        PlaneReferenceMeasurementDetails = "Distance to reference plane: pending";
+    }
+
+    public HeightDeviationRecipePlaneFlatness CreatePlaneFlatnessRecipeStep() =>
+        new(
+            planeFlatnessStepId,
+            planeFlatnessSourceEntityId,
+            planeFlatnessReferenceId,
+            new HeightDeviationRecipeRoiRegion(
+                PlaneFlatnessReferenceCenterX,
+                PlaneFlatnessReferenceCenterZ,
+                PlaneFlatnessReferenceHalfWidth,
+            PlaneFlatnessReferenceHalfDepth),
+            PlaneFlatnessTolerance,
+            planeFlatnessUnit,
+            planeFlatnessMaxSampledPoints,
+            planeFlatnessEnabled);
+
+    public void SetPlaneFlatnessRecipeStep(HeightDeviationRecipePlaneFlatness step)
+    {
+        planeFlatnessStepId = step.Id;
+        planeFlatnessSourceEntityId = step.SourceEntityId;
+        planeFlatnessReferenceId = step.ReferenceId;
+        SetField(ref planeFlatnessUnit, step.Unit, nameof(PlaneFlatnessUnit));
+        planeFlatnessMaxSampledPoints = step.MaxSampledPoints;
+        planeFlatnessEnabled = step.Enabled;
+        SetField(ref planeFlatnessReferenceCenterX, step.ReferenceRegion.CenterX, nameof(PlaneFlatnessReferenceCenterX));
+        SetField(ref planeFlatnessReferenceCenterZ, step.ReferenceRegion.CenterZ, nameof(PlaneFlatnessReferenceCenterZ));
+        SetField(ref planeFlatnessReferenceHalfWidth, step.ReferenceRegion.HalfWidth, nameof(PlaneFlatnessReferenceHalfWidth));
+        SetField(ref planeFlatnessReferenceHalfDepth, step.ReferenceRegion.HalfDepth, nameof(PlaneFlatnessReferenceHalfDepth));
+        SetField(ref planeFlatnessTolerance, step.Tolerance, nameof(PlaneFlatnessTolerance));
+        PlaneFlatnessConfigured = true;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void SetPlaneFlatnessPreview(PlaneFlatnessEvaluation evaluation)
+    {
+        ClearPointPairDimensionsPreview();
+        PlaneFlatnessConfigured = true;
+        planeFlatnessEnabled = true;
+        c3dPlaneFlatnessPreview = evaluation.Result;
+        c3dPlaneFlatnessPreviewActive = true;
+        PlaneFlatnessVisible = true;
+        PlaneFlatnessValue = evaluation.Flatness;
+        PlaneFlatnessMinimumDeviation = evaluation.MinimumSignedDistance;
+        PlaneFlatnessMaximumDeviation = evaluation.MaximumSignedDistance;
+        PlaneFlatnessRms = evaluation.RootMeanSquareDistance;
+        PlaneFlatnessReferenceSampleCount = evaluation.ReferenceSampleCount;
+        PlaneFlatnessMeasurementSampleCount = evaluation.MeasurementSampleCount;
+
+        PlaneFlatnessSummary = evaluation.ReferencePlane is null
+            ? $"Flatness: {evaluation.Result.Status} | {evaluation.Result.Message}"
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"Flatness: {evaluation.Result.Status} | {evaluation.Flatness:F3} / {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}");
+        PlaneFlatnessDetails = evaluation.ReferencePlane is null
+            ? "Reference ROI did not produce a valid fitted plane."
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"Signed min {evaluation.MinimumSignedDistance:F3}, max {evaluation.MaximumSignedDistance:F3}, RMS {evaluation.RootMeanSquareDistance:F3} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
+
+        activePreviewLayerId = "layer.preview.c3d-plane-flatness";
+        activePreviewLayerName = "Preview: C3D Plane Flatness";
+        activePreviewSourceEntityId = C3DEntityId;
+        activeResultEntityId = C3DPlaneFlatnessResultEntityId;
+        activeResultEntityName = "Published C3D Plane Flatness";
+        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
+        PreviewToolResult = evaluation.Result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        SelectedColorMode = "Deviation";
+        SelectedSelectionMode = "Plane Flatness";
+        SelectedEntity = "C3D Plane Flatness";
+        SelectionSummary = PlaneFlatnessDetails;
+        MeasurementSummary = PlaneFlatnessDetails;
+        ViewerStatus = "C3D plane flatness preview updated";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+        RefreshSceneContracts();
+    }
+
+    public void ClearPlaneFlatnessPreview()
+    {
+        c3dPlaneFlatnessPreview = null;
+        c3dPlaneFlatnessPreviewActive = false;
+        PlaneFlatnessVisible = false;
+        PlaneFlatnessValue = double.NaN;
+        PlaneFlatnessMinimumDeviation = double.NaN;
+        PlaneFlatnessMaximumDeviation = double.NaN;
+        PlaneFlatnessRms = double.NaN;
+        PlaneFlatnessReferenceSampleCount = 0;
+        PlaneFlatnessMeasurementSampleCount = 0;
+        PlaneFlatnessSummary = "Flatness: preview not run";
+        PlaneFlatnessDetails = "Reference ROI and signed surface deviation: pending";
+    }
+
+    public void ClearPlaneFlatnessRecipeStep()
+    {
+        ClearPlaneFlatnessPreview();
+        planeFlatnessStepId = PlaneFlatnessStepId;
+        planeFlatnessSourceEntityId = C3DEntityId;
+        planeFlatnessReferenceId = PlaneFlatnessReferenceId;
+        planeFlatnessUnit = "model";
+        planeFlatnessMaxSampledPoints = PlaneFlatnessMaxSampledPoints;
+        planeFlatnessEnabled = true;
+        OnPropertyChanged(nameof(PlaneFlatnessUnit));
+        PlaneFlatnessConfigured = false;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void InvalidatePlaneFlatnessPreview(string reason)
+    {
+        if (!c3dPlaneFlatnessPreviewActive)
+        {
+            return;
+        }
+
+        ClearPlaneFlatnessPreview();
+        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
+        ResetActivePreviewIdentity();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ViewerStatus = reason;
+        RefreshSceneContracts();
+    }
+
+    public C3DPointPairDimensionsStep? CreatePointPairDimensionsRecipeStep()
+    {
+        if (pointPairFirstReference is null || pointPairSecondReference is null)
+        {
+            return null;
+        }
+
+        return new C3DPointPairDimensionsStep(
+            pointPairDimensionsStepId,
+            pointPairDimensionsSourceEntityId,
+            pointPairFirstReference,
+            pointPairSecondReference,
+            new C3DPointPairDimensionsAcceptance(
+                PointPairExpectedDistance,
+                PointPairDistanceTolerance,
+                PointPairExpectedWidth,
+                PointPairWidthTolerance,
+                PointPairExpectedAngleDegrees,
+                PointPairAngleToleranceDegrees),
+            pointPairDimensionsUnit,
+            pointPairDimensionsEnabled);
+    }
+
+    public void SetPointPairFirstReference(C3DGridPointReference reference)
+    {
+        pointPairFirstReference = reference;
+        pointPairSecondReference = null;
+        PointPairDimensionsConfigured = true;
+        InvalidatePointPairDimensionsPreview("Point pair selection changed; select P2 and run Preview Dimensions again");
+        OnPropertyChanged(nameof(HasPointPairReferences));
+        RefreshCommandCanExecute();
+    }
+
+    public void SetPointPairFirstReference(int row, int column) =>
+        SetPointPairFirstReference(new C3DGridPointReference(PointPairFirstReferenceId, row, column));
+
+    public void SetPointPairReferences(C3DGridPointReference first, C3DGridPointReference second)
+    {
+        pointPairFirstReference = first;
+        pointPairSecondReference = second;
+        PointPairDimensionsConfigured = true;
+        InvalidatePointPairDimensionsPreview("Point pair selection changed; run Preview Dimensions again");
+        OnPropertyChanged(nameof(HasPointPairReferences));
+        RefreshCommandCanExecute();
+    }
+
+    public void SetPointPairReferences(int firstRow, int firstColumn, int secondRow, int secondColumn) =>
+        SetPointPairReferences(
+            new C3DGridPointReference(PointPairFirstReferenceId, firstRow, firstColumn),
+            new C3DGridPointReference(PointPairSecondReferenceId, secondRow, secondColumn));
+
+    public void SetPointPairDimensionsRecipeStep(C3DPointPairDimensionsStep step)
+    {
+        pointPairDimensionsStepId = step.Id;
+        pointPairDimensionsSourceEntityId = step.SourceEntityId;
+        pointPairFirstReference = step.First;
+        pointPairSecondReference = step.Second;
+        pointPairDimensionsUnit = step.Unit;
+        pointPairDimensionsEnabled = step.Enabled;
+        SetField(ref pointPairExpectedDistance, step.Acceptance.ExpectedDistance, nameof(PointPairExpectedDistance));
+        SetField(ref pointPairDistanceTolerance, step.Acceptance.DistanceTolerance, nameof(PointPairDistanceTolerance));
+        SetField(ref pointPairExpectedWidth, step.Acceptance.ExpectedWidth, nameof(PointPairExpectedWidth));
+        SetField(ref pointPairWidthTolerance, step.Acceptance.WidthTolerance, nameof(PointPairWidthTolerance));
+        SetField(ref pointPairExpectedAngleDegrees, step.Acceptance.ExpectedElevationAngleDegrees, nameof(PointPairExpectedAngleDegrees));
+        SetField(ref pointPairAngleToleranceDegrees, step.Acceptance.ElevationAngleToleranceDegrees, nameof(PointPairAngleToleranceDegrees));
+        OnPropertyChanged(nameof(PointPairDimensionsUnit));
+        OnPropertyChanged(nameof(HasPointPairReferences));
+        PointPairDimensionsConfigured = true;
+        RefreshCommandCanExecute();
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void SetPointPairDimensionsPreview(PointPairDimensionsEvaluation evaluation)
+    {
+        ClearPlaneFlatnessPreview();
+        PointPairDimensionsConfigured = true;
+        pointPairDimensionsEnabled = true;
+        c3dPointPairDimensionsPreview = evaluation.Result;
+        c3dPointPairDimensionsPreviewActive = true;
+        PointPairDimensionsVisible = true;
+        PointPairDistance = evaluation.Distance;
+        PointPairWidth = evaluation.PlanarWidth;
+        PointPairAngleDegrees = evaluation.ElevationAngleDegrees;
+        PointPairDimensionsSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Point pair: {evaluation.Result.Status} | D {evaluation.Distance:F3}, W {evaluation.PlanarWidth:F3} {PointPairDimensionsUnit}, A {evaluation.ElevationAngleDegrees:F3} deg");
+        var referenceSummary = pointPairFirstReference is not null && pointPairSecondReference is not null
+            ? $"Refs {pointPairFirstReference.Id} ({pointPairFirstReference.Row},{pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row},{pointPairSecondReference.Column}) | "
+            : string.Empty;
+        PointPairDimensionsDetails = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{referenceSummary}Expected D {PointPairExpectedDistance:F3} +/- {PointPairDistanceTolerance:F3}, W {PointPairExpectedWidth:F3} +/- {PointPairWidthTolerance:F3} {PointPairDimensionsUnit} | A {PointPairExpectedAngleDegrees:F3} +/- {PointPairAngleToleranceDegrees:F3} deg");
+
+        activePreviewLayerId = "layer.preview.c3d-point-pair-dimensions";
+        activePreviewLayerName = "Preview: C3D Point Pair Dimensions";
+        activePreviewSourceEntityId = C3DEntityId;
+        activeResultEntityId = C3DPointPairDimensionsResultEntityId;
+        activeResultEntityName = "Published C3D Point Pair Dimensions";
+        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
+        PreviewToolResult = evaluation.Result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        SelectedColorMode = "Height";
+        SelectedSelectionMode = "Two Point Measure";
+        SelectedEntity = "C3D Point Pair Dimensions";
+        SelectionSummary = PointPairDimensionsDetails;
+        MeasurementSummary = PointPairDimensionsDetails;
+        ViewerStatus = "C3D point pair dimensions preview updated";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+        RefreshSceneContracts();
+    }
+
+    public void ClearPointPairDimensionsPreview()
+    {
+        c3dPointPairDimensionsPreview = null;
+        c3dPointPairDimensionsPreviewActive = false;
+        PointPairDimensionsVisible = false;
+        PointPairDistance = double.NaN;
+        PointPairWidth = double.NaN;
+        PointPairAngleDegrees = double.NaN;
+        PointPairDimensionsSummary = "Point pair dimensions: preview not run";
+        PointPairDimensionsDetails = "Select two C3D points and run Preview Dimensions.";
+    }
+
+    public void ClearPointPairDimensionsRecipeStep()
+    {
+        ClearPointPairDimensionsPreview();
+        pointPairDimensionsStepId = PointPairDimensionsStepId;
+        pointPairDimensionsSourceEntityId = C3DEntityId;
+        pointPairDimensionsUnit = "model";
+        pointPairDimensionsEnabled = true;
+        pointPairFirstReference = null;
+        pointPairSecondReference = null;
+        SetField(ref pointPairExpectedDistance, 5.0, nameof(PointPairExpectedDistance));
+        SetField(ref pointPairDistanceTolerance, 0.5, nameof(PointPairDistanceTolerance));
+        SetField(ref pointPairExpectedWidth, 5.0, nameof(PointPairExpectedWidth));
+        SetField(ref pointPairWidthTolerance, 0.5, nameof(PointPairWidthTolerance));
+        SetField(ref pointPairExpectedAngleDegrees, 0.0, nameof(PointPairExpectedAngleDegrees));
+        SetField(ref pointPairAngleToleranceDegrees, 5.0, nameof(PointPairAngleToleranceDegrees));
+        OnPropertyChanged(nameof(PointPairDimensionsUnit));
+        OnPropertyChanged(nameof(HasPointPairReferences));
+        PointPairDimensionsConfigured = false;
+        RefreshCommandCanExecute();
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void InvalidatePointPairDimensionsPreview(string reason)
+    {
+        if (!c3dPointPairDimensionsPreviewActive)
+        {
+            return;
+        }
+
+        ClearPointPairDimensionsPreview();
+        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
+        ResetActivePreviewIdentity();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ViewerStatus = reason;
+        RefreshSceneContracts();
+    }
+
     public void SetRoiStepSelectionPending(string summary, string details, string selectionMode)
     {
         RoiStepMeasurementVisible = true;
@@ -1665,6 +2358,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SetC3DAlignment(ModelTransform transform, string alignmentName, string referenceName)
     {
+        if (transform != C3DModelTransform)
+        {
+            InvalidatePointPairDimensionsPreview("Alignment changed; run Preview Dimensions again");
+        }
+
         C3DModelTransform = transform;
         SourceEntities = CreateSourceEntities(transform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
         TransformSummary = $"Transform: {FormatModelTransform(transform)}";
@@ -1810,6 +2508,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SetC3DHeightDeviationPreview(ToolResult result)
     {
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
         c3dHeightDeviationPreview = result;
         if (ResultOverlayVisible && C3DSampleVisible)
         {
@@ -2034,6 +2734,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return firstResult.Id switch
         {
             C3DHeightDeviationResultEntityId => ("layer.result.c3d-height-deviation", "Published C3D Height Deviation"),
+            C3DPlaneFlatnessResultEntityId => ("layer.result.c3d-plane-flatness", "Published C3D Plane Flatness"),
+            C3DPointPairDimensionsResultEntityId => ("layer.result.c3d-point-pair-dimensions", "Published C3D Point Pair Dimensions"),
             LazTwoPointResultEntityId => ("layer.result.laz-two-point-measurement", "Published LAZ/LAS Two Point Measurement"),
             SyntheticResultEntityId => ("layer.result.synthetic-height-deviation", "Published Synthetic Height Deviation"),
             _ => ($"layer.{firstResult.Id}", firstResult.Name)
@@ -2045,7 +2747,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void ApplyActivePreviewResult()
     {
-        if (C3DSampleVisible && c3dHeightDeviationPreview is not null)
+        if (C3DSampleVisible && c3dPointPairDimensionsPreviewActive && c3dPointPairDimensionsPreview is not null)
+        {
+            activePreviewLayerId = "layer.preview.c3d-point-pair-dimensions";
+            activePreviewLayerName = "Preview: C3D Point Pair Dimensions";
+            activePreviewSourceEntityId = C3DEntityId;
+            activeResultEntityId = C3DPointPairDimensionsResultEntityId;
+            activeResultEntityName = "Published C3D Point Pair Dimensions";
+            PreviewToolResult = c3dPointPairDimensionsPreview;
+        }
+        else if (C3DSampleVisible && c3dPlaneFlatnessPreviewActive && c3dPlaneFlatnessPreview is not null)
+        {
+            activePreviewLayerId = "layer.preview.c3d-plane-flatness";
+            activePreviewLayerName = "Preview: C3D Plane Flatness";
+            activePreviewSourceEntityId = C3DEntityId;
+            activeResultEntityId = C3DPlaneFlatnessResultEntityId;
+            activeResultEntityName = "Published C3D Plane Flatness";
+            PreviewToolResult = c3dPlaneFlatnessPreview;
+        }
+        else if (C3DSampleVisible && c3dHeightDeviationPreview is not null)
         {
             activePreviewLayerId = "layer.preview.c3d-height-deviation";
             activePreviewLayerName = "Preview: C3D Height Deviation Rule";
@@ -2077,16 +2797,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (activePreviewSourceEntityId != C3DEntityId || result.Status == ResultStatus.NotRun)
         {
-            DeviationLegendVisible = false;
-            DeviationLegendStatus = "Status: inactive";
-            DeviationLegendPeak = "Peak: none";
-            DeviationLegendTolerance = "Tolerance: none";
-            DeviationLegendScale = "Scale: mean to peak deviation";
+            HideDeviationLegend();
             return;
         }
 
-        var peak = result.Metrics.FirstOrDefault(metric => metric.Name == "Peak absolute deviation");
-        var tolerance = result.Metrics.FirstOrDefault(metric => metric.Name == "Peak tolerance");
+        var flatness = result.Metrics.FirstOrDefault(metric => metric.Name == "Flatness");
+        var peak = flatness ?? result.Metrics.FirstOrDefault(metric => metric.Name == "Peak absolute deviation");
+        var tolerance = result.Metrics.FirstOrDefault(metric => metric.Name == (flatness is null ? "Peak tolerance" : "Flatness tolerance"));
+        if (peak is null || tolerance is null)
+        {
+            HideDeviationLegend();
+            return;
+        }
+
         var unit = peak?.Unit ?? tolerance?.Unit ?? "raw-height";
         var statusText = result.Status switch
         {
@@ -2100,12 +2823,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         DeviationLegendStatus = statusText;
         DeviationLegendPeak = peak is null
             ? "Peak: none"
-            : string.Create(CultureInfo.InvariantCulture, $"Peak: {peak.Value:F3} {unit}");
+            : string.Create(CultureInfo.InvariantCulture, $"{(flatness is null ? "Peak" : "Flatness")}: {peak.Value:F3} {unit}");
         DeviationLegendTolerance = tolerance is null
             ? "Tolerance: none"
             : string.Create(CultureInfo.InvariantCulture, $"Tolerance: +/- {tolerance.Value:F3} {unit}");
-        DeviationLegendScale = "Scale: 0 = mean, 1 = peak deviation";
+        DeviationLegendScale = flatness is null
+            ? "Scale: 0 = mean, 1 = peak deviation"
+            : "Scale: signed deviation to ROI reference plane";
+        DeviationLegendLowLabel = flatness is null ? "Mean" : "Negative";
+        DeviationLegendMiddleLabel = flatness is null ? "Tolerance" : "Zero";
+        DeviationLegendHighLabel = flatness is null ? "Peak" : "Positive";
         DeviationLegendVisible = true;
+    }
+
+    private void HideDeviationLegend()
+    {
+        DeviationLegendVisible = false;
+        DeviationLegendStatus = "Status: inactive";
+        DeviationLegendPeak = "Peak: none";
+        DeviationLegendTolerance = "Tolerance: none";
+        DeviationLegendScale = "Scale: mean to peak deviation";
+        DeviationLegendLowLabel = "Mean";
+        DeviationLegendMiddleLabel = "Tolerance";
+        DeviationLegendHighLabel = "Peak";
     }
 
     private void RefreshPointCloudColorLegend()
@@ -2153,6 +2893,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             $"Recipe: {Path.GetFileName(recipePath)}\nSource: {sourceName}\nLAZ/LAS acceptance: editable");
         RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
         SetLazSampleSource(sourcePath, sourceName);
+    }
+
+    public void SetPointPairRecipeLoaded(string recipePath, string sourceName, string sourcePath, string sourceUnit)
+    {
+        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
+        RecipeSourceName = sourceName;
+        RecipeSourcePath = sourcePath;
+        RecipeSourceUnit = sourceUnit;
+        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
     }
 
     public void SetRecipeSaved(string recipePath)
@@ -2255,16 +3006,59 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshRecipeSummary()
     {
+        var flatnessLine = PlaneFlatnessConfigured
+            ? string.Create(CultureInfo.InvariantCulture, $"\nFlatness tolerance: {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}")
+            : string.Empty;
+        var pointPairLine = PointPairDimensionsConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nDimensions expected: D {PointPairExpectedDistance:F3}, W {PointPairExpectedWidth:F3} {PointPairDimensionsUnit}, A {PointPairExpectedAngleDegrees:F3} deg")
+            : string.Empty;
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}");
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}");
     }
 
     private void RefreshRecipeParameterSummary()
     {
+        var flatnessLine = PlaneFlatnessConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nReference ROI ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}) half ({PlaneFlatnessReferenceHalfWidth:F3}, {PlaneFlatnessReferenceHalfDepth:F3})")
+            : string.Empty;
+        var pointPairLine = pointPairFirstReference is not null && pointPairSecondReference is not null
+            ? $"\nPoint pair {pointPairFirstReference.Id} ({pointPairFirstReference.Row}, {pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row}, {pointPairSecondReference.Column})"
+            : string.Empty;
         RecipeParameterSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3})");
+            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}");
+    }
+
+    private void SetPlaneFlatnessParameter(ref double storage, double value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName))
+        {
+            return;
+        }
+
+        PlaneFlatnessConfigured = true;
+        InvalidatePlaneFlatnessPreview("Flatness parameters changed; run Preview Flatness again");
+
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void SetPointPairParameter(ref double storage, double value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName))
+        {
+            return;
+        }
+
+        PointPairDimensionsConfigured = true;
+        InvalidatePointPairDimensionsPreview("Dimension parameters changed; run Preview Dimensions again");
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
     }
 
     private static string FormatVector(Vector3 point) =>

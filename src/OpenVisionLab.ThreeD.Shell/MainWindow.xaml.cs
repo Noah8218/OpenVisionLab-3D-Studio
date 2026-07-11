@@ -1,5 +1,6 @@
 using OpenVisionLab.ThreeD.Viewer;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -16,6 +17,8 @@ public partial class MainWindow : Window
     private readonly EventHandler _refreshRecipeComparisonRequestedHandler;
     private readonly EventHandler _saveRecipeRequestedHandler;
     private readonly EventHandler _applyRoiAlignmentRequestedHandler;
+    private readonly EventHandler _fitPlaneRequestedHandler;
+    private readonly EventHandler<EvidenceArtifactOpenRequestEventArgs> _openEvidenceArtifactRequestedHandler;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -38,9 +41,13 @@ public partial class MainWindow : Window
         _refreshRecipeComparisonRequestedHandler = (_, _) => _viewModel.RefreshRecipeComparison();
         _saveRecipeRequestedHandler = (_, _) => _viewer.SaveCurrentRecipeWithDialog();
         _applyRoiAlignmentRequestedHandler = (_, _) => _viewer.ApplyRoiReferenceAlignment();
+        _fitPlaneRequestedHandler = (_, _) => _viewer.FitC3DReferencePlane();
+        _openEvidenceArtifactRequestedHandler = OnOpenEvidenceArtifactRequested;
         _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
         _viewModel.SaveRecipeRequested += _saveRecipeRequestedHandler;
         _viewModel.ApplyRoiAlignmentRequested += _applyRoiAlignmentRequestedHandler;
+        _viewModel.FitPlaneRequested += _fitPlaneRequestedHandler;
+        _viewModel.OpenEvidenceArtifactRequested += _openEvidenceArtifactRequestedHandler;
 
         EnableShellSmokeFromCommandLine();
     }
@@ -51,6 +58,8 @@ public partial class MainWindow : Window
         _viewModel.RefreshRecipeComparisonRequested -= _refreshRecipeComparisonRequestedHandler;
         _viewModel.SaveRecipeRequested -= _saveRecipeRequestedHandler;
         _viewModel.ApplyRoiAlignmentRequested -= _applyRoiAlignmentRequestedHandler;
+        _viewModel.FitPlaneRequested -= _fitPlaneRequestedHandler;
+        _viewModel.OpenEvidenceArtifactRequested -= _openEvidenceArtifactRequestedHandler;
         Loaded -= _shellSmokeLoadedHandler;
         base.OnClosed(e);
     }
@@ -74,10 +83,11 @@ public partial class MainWindow : Window
                 if (_viewer.SmokeExitCode != 0)
                 {
                     _viewModel.SetViewerSmokeFailed(_viewer.ViewModel.ViewerStatus);
-                    UpdateLayout();
-                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                 }
 
+                UpdateLayout();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                await Task.Delay(100);
                 CaptureShellWindow(shellScreenshotPath);
                 await Task.Delay(100);
                 Application.Current.Shutdown(_viewer.SmokeExitCode);
@@ -120,6 +130,34 @@ public partial class MainWindow : Window
             "history" => 4,
             _ => 0
         };
+    }
+
+    private void OnOpenEvidenceArtifactRequested(object? sender, EvidenceArtifactOpenRequestEventArgs args)
+    {
+        if (!File.Exists(args.Path))
+        {
+            MessageBox.Show(
+                this,
+                $"{args.Label} artifact was not found.\n\n{args.Path}",
+                "Open Evidence Artifact",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(args.Path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                $"Could not open {args.Label} artifact.\n\n{args.Path}\n\n{ex.Message}",
+                "Open Evidence Artifact",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     private void OnViewerPropertyChanged(object? sender, PropertyChangedEventArgs args)
