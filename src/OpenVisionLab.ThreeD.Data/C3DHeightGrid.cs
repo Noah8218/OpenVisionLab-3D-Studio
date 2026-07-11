@@ -5,6 +5,9 @@ namespace OpenVisionLab.ThreeD.Data;
 
 public sealed class C3DHeightGrid
 {
+    public const float ViewerHorizontalSpan = 10.0f;
+    public const float ViewerHeightScale = 0.0006f;
+
     private C3DHeightGrid(
         string sourcePath,
         int width,
@@ -14,6 +17,7 @@ public sealed class C3DHeightGrid
         float min,
         float max,
         double mean,
+        int pointStride,
         HeightGridPoint[] points)
     {
         SourcePath = sourcePath;
@@ -24,10 +28,11 @@ public sealed class C3DHeightGrid
         Min = min;
         Max = max;
         Mean = mean;
+        PointStride = pointStride;
         Points = points;
-        var xyScale = 10.0f / Math.Max(width - 1, height - 1);
-        XHalfExtent = (width - 1) * xyScale / 2.0f;
-        ZHalfExtent = (height - 1) * xyScale / 2.0f;
+        HorizontalScale = CalculateHorizontalScale(width, height);
+        XHalfExtent = (width - 1) * HorizontalScale / 2.0f;
+        ZHalfExtent = (height - 1) * HorizontalScale / 2.0f;
     }
 
     public string SourcePath { get; }
@@ -46,7 +51,11 @@ public sealed class C3DHeightGrid
 
     public double Mean { get; }
 
+    public int PointStride { get; }
+
     public HeightGridPoint[] Points { get; }
+
+    public float HorizontalScale { get; }
 
     public float XHalfExtent { get; }
 
@@ -129,10 +138,13 @@ public sealed class C3DHeightGrid
         }
 
         var mean = sum / validCount;
-        var points = maxRenderedPoints <= 0
+        var pointStride = maxRenderedPoints <= 0
+            ? 0
+            : Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints)));
+        var points = pointStride == 0
             ? []
-            : CreatePoints(samples, width, height, Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints))), min, max, mean);
-        return new C3DHeightGrid(path, width, height, validCount, zeroCount, min, max, mean, points);
+            : CreatePoints(samples, width, height, pointStride, min, max, mean);
+        return new C3DHeightGrid(path, width, height, validCount, zeroCount, min, max, mean, pointStride, points);
     }
 
     private static HeightGridPoint[] CreatePoints(float[] samples, int width, int height, int stride, float min, float max, double mean)
@@ -165,14 +177,14 @@ public sealed class C3DHeightGrid
         float max,
         double mean)
     {
-        var xyScale = 10.0f / Math.Max(width - 1, height - 1);
+        var xyScale = CalculateHorizontalScale(width, height);
         var centerX = (width - 1) / 2.0f;
         var centerZ = (height - 1) / 2.0f;
         var colorSpan = Math.Max(0.0001, max - min);
         var deviationSpan = Math.Max(0.0001, Math.Max(Math.Abs(min - mean), Math.Abs(max - mean)));
         var position = new Vector3(
             (column - centerX) * xyScale,
-            (float)((value - mean) * 0.0006f),
+            (float)((value - mean) * ViewerHeightScale),
             (row - centerZ) * xyScale);
         return new HeightGridPoint(
             position,
@@ -182,6 +194,9 @@ public sealed class C3DHeightGrid
             row,
             column);
     }
+
+    private static float CalculateHorizontalScale(int width, int height) =>
+        ViewerHorizontalSpan / Math.Max(1, Math.Max(width - 1, height - 1));
 }
 
 public readonly record struct HeightGridPoint(

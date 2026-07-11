@@ -11,12 +11,13 @@ Updated: 2026-07-11
 - Solution: `OpenVisionLab.ThreeDStudio.slnx`
 - Architecture note: the SharpGL viewer should remain a separate 3D viewer project/library. The future main workspace should host it through a docking shell patterned after Dev's `Library\OpenVisionLab.Docking.Controls`.
 - Migration note: .NET 10 is the intended product direction, but framework migration should be verified separately from feature work.
+- C3D trust note: fixed-sample display-frame fidelity now passes. The local `1301 x 1967` PNG confirms the unflipped row/column orientation, 10/10 synthetic mapping cases including a finite single-cell edge case pass, and 66,212 sampled Viewer points roundtrip through PLY with zero XYZ/RGB error. Physical scale remains unverified.
 
 ## Immediate Priority
 
 Viewer Foundation v1 passed for the current fixed sample matrix. Preserve its rendering, camera, visibility, picking, selection, overlay, color-mode, hosting, and screenshot contracts as regression coverage.
 
-The Inspection Recipe v1 baseline passed on 2026-07-11 for two independent typed C3D slices. Numeric-reference-ROI `Reference Plane + Flatness` has signed-deviation evidence and analytic plane/error verification. `Point Pair Dimensions` now has exact source-cell IDs, distance/XZ width/signed elevation angle with separate tolerances, explicit Preview/Publish, recipe save/reopen, Viewer/Runner parity, a real Shell step row, render-density-independent source reads, and `9/9` analytic/error golden cases. These are tool-specific single-step recipe families, not a general multi-step executor or metrology certification. The immediate priority is Gap/Flush as the next complete typed inspection step.
+The Inspection Recipe v1 baseline passed on 2026-07-11 for two independent typed C3D slices. Numeric-reference-ROI `Reference Plane + Flatness` has signed-deviation evidence and analytic plane/error verification. `Point Pair Dimensions` now has exact source-cell IDs, distance/XZ width/signed elevation angle with separate tolerances, explicit Preview/Publish, recipe save/reopen, Viewer/Runner parity, a real Shell step row, render-density-independent source reads, and `9/9` analytic/error golden cases. These are tool-specific single-step recipe families, not a general multi-step executor or metrology certification. The immediate priority is obtaining the C3D pitch/height/unit/calibration contract and representing it as an explicit mapping profile. Gap/Flush remains the next feature slice after that trust gate.
 
 Completed in the first implementation slice:
 
@@ -132,12 +133,13 @@ Next implementation should stay inspection-workflow-first while preserving the V
 
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
 2. Preserve the completed plane-flatness and point-pair-dimensions recipe, parity, screenshot, and analytic/error regression baselines.
-3. Build signed gap/flush from two explicit regions as the next complete typed inspection slice; include analytic golden cases and do not add a generic graph engine first.
-4. Extract only concrete shared recipe/execution code proven by the completed tools; do not create a speculative graph engine.
+3. Obtain C3D X/Z pitch, height scale/offset, units, axis orientation, and calibration identity; add an explicit mapping profile without changing the verified uncalibrated profile silently.
+4. Build signed gap/flush from two explicit regions as the next complete typed inspection slice; include analytic golden cases and do not add a generic graph engine first.
+5. Extract only concrete shared recipe/execution code proven by the completed tools; do not create a speculative graph engine.
 
 ## Remaining Project Priority
 
-Add signed gap/flush as the next complete surface measurement slice while preserving the plane/flatness and point-pair-dimensions baselines. Volume and cross-section dimensions follow. Nominal/actual comparison, durable reports, and deeper metrology-assurance evidence come after the shared reference and step contracts are stable. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
+First obtain the C3D physical mapping/calibration contract and add an explicit profile while preserving the passed display-frame fidelity baseline. Then add signed gap/flush as the next complete surface measurement slice while preserving plane/flatness and point-pair baselines. Volume and cross-section dimensions follow. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
 
 ## Evidence Already Gathered
 

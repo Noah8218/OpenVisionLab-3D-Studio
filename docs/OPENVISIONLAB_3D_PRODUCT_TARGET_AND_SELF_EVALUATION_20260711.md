@@ -25,6 +25,7 @@ Load measured 3D data and optional nominal data
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.
+- C3D map fidelity: **display frame passed for the fixed Thickness sample; physical scale unverified**.
 - Inspection Recipe v1: **baseline passed for two independent typed C3D slices: numeric-reference-ROI plane flatness and explicit-cell point-pair dimensions**.
 - Nominal/actual metrology: **not started as a product workflow**.
 - Production integration: **intentionally out of scope**.
@@ -42,10 +43,11 @@ Local checks performed on 2026-07-11:
 - Analytic plane/flatness verification: `artifacts/plane_flatness_golden_after.txt`; exact plane coefficients, signed extrema, flatness, RMS, Pass/Fail thresholds, and six controlled error paths pass.
 - Point-pair dimensions evidence: `artifacts/viewer_dimensions_after.*`, `artifacts/viewer_dimensions_reopen_after.*`, `artifacts/runner_point_pair_dimensions_after.txt`, and `artifacts/shell_dimensions_after.png`; the saved source cells replay the same distance, XZ width, signed elevation angle, and status.
 - Analytic point-pair verification: `artifacts/point_pair_dimensions_golden_after.txt`; a known `(3,4,4)` vector, signed descending angle, tolerance failure, and six controlled invalid-input paths pass (`9/9`).
+- C3D map fidelity: `artifacts/map_fidelity/c3d_map_fidelity_golden.txt` passes `10/10`, including a finite single-cell mapping edge case; `artifacts/map_fidelity/c3d_map_fidelity_actual.txt` records 66,212 sampled points with zero XYZ/RGB PLY roundtrip error; the local PNG identifies the unflipped source orientation; Microsoft 3D Viewer independently renders the same major shape from the compatibility PLY.
 - Current data matrix: C3D, GLB, STL, LAS, and LAZ with positive and controlled-failure paths.
 - Current architecture: separate Core, Data, Tools, Viewer, Docking.Controls, Shell, Runner, and app-host projects.
 
-The worktree also contains uncommitted plane/flatness, point-pair-dimensions, Viewer, and Evidence Workbench changes. This review treats the current working tree as the evaluated product state and does not claim those changes are published.
+The plane/flatness, point-pair-dimensions, Viewer, and Evidence Workbench baseline is published in commit `718792e`. The C3D map-fidelity update is evaluated by the current-build evidence listed above.
 
 ## Commercial Product Findings
 
@@ -104,7 +106,7 @@ Scale: `0` absent, `1` prototype, `2` working MVP, `3` operational baseline, `4`
 | Runner and evidence parity | 2 | Headless replay, contract comparison, screenshots, result layers, Shell history/snapshot views. | No durable machine-readable run bundle shared by every tool and no batch replay. |
 | Nominal/actual comparison | 0 | A C3D mean-height deviation color mode is not CAD/scan nominal comparison. | Nominal entity, alignment strategy, point-to-mesh distance, deviation map, and tolerances. |
 | Reporting and multipiece review | 1 | Text reports and visible evidence paths. | User-facing HTML/PDF/CSV report, batch table, trends, and statistics. |
-| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, and analytic plane/flatness plus point-pair-dimensions golden suites. | Formal unit contract, calibration provenance, uncertainty, external golden datasets, feature-fitting validation, and broader independent algorithm validation. |
+| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness and point-pair golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
 | Architecture and maintainability | 2 | Separate Viewer/Shell/Core/Data/Tools/Runner boundaries; MVVM direction; CI build. | Viewer code-behind remains large, recipe logic is tool-specific, and automated unit/integration tests are limited. |
 
 ## Gate Decision
@@ -151,6 +153,13 @@ Algorithm hardening status: `artifacts/plane_flatness_golden_after.txt` passes a
 Second typed-slice status on 2026-07-11: `recipes/c3d-point-pair-dimensions.recipe.json` passes explicit Preview/Publish, source-cell recipe save/reopen, Viewer/Runner parity, Shell step evidence, and render-density-independent source-cell resolution. `artifacts/point_pair_dimensions_golden_after.txt` passes `9/9` known-answer and controlled-error cases. This measures two selected C3D cells; it does not perform edge detection, line/circle fitting, CAD dimensions, or GD&T.
 
 ## Development Priorities
+
+### P0: C3D Map Fidelity - Display Baseline Done, Physical Profile Next
+
+- Preserve the passed source-grid orientation, mapping golden cases, and neutral PLY coordinate/color roundtrip.
+- Obtain X/Z pitch, height scale/offset, source/display units, axis directions, and calibration identity from the C3D producer or official format contract.
+- Store those values in an explicit mapping profile. Keep the current normalization as a named uncalibrated display profile and never silently relabel it as physical units.
+- Repeat the same neutral-file bounds/coordinate comparison in an independent metrology tool before making accuracy claims.
 
 ### P0: Reference Plane + Flatness End-To-End Slice - Baseline Done
 
@@ -206,6 +215,7 @@ Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persiste
 - Keep source geometry immutable. Preview and published result geometry remain separate.
 - Use stable step IDs and explicit entity/reference inputs. Never depend on display names or implicit active-selection state during replay.
 - Keep measurement sampling independent from render density.
+- Keep source-grid fidelity, Viewer display-frame fidelity, and calibrated physical fidelity as separate gates. Screenshots support numerical evidence but do not replace it.
 - Make invalid references, insufficient points, unit mismatch, degenerate fits, and missing inputs controlled result states rather than unhandled exceptions.
 - Prefer known synthetic truth before adding another public sample or external geometry dependency.
 - Update this document and `AGENTS.md` when a gate passes or the product target changes.
@@ -220,3 +230,5 @@ Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persiste
 - LMI Gocator emulator scenarios and built-in tools: https://lmi3d.com/testing-purpose/
 - LMI Surface Mask and Flatness workflow: https://lmi3d.com/blog/introducing-surface-masking/
 - Cognex VisionPro 3D-A5000 tools: https://www.cognex.com/products/machine-vision/3d-machine-vision-systems/3d-a5000-series-area-scan/software
+- CloudCompare cloud-to-cloud distance: https://www.cloudcompare.org/doc/wiki/index.php?title=Cloud-to-Cloud_Distance
+- Open3D geometry file I/O: https://www.open3d.org/docs/latest/tutorial/geometry/file_io.html

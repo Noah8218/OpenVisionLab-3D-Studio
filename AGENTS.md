@@ -22,6 +22,7 @@ This file defines the working agreement for Codex in this repository.
 - Target an explainable, local, sensor-neutral 3D inspection recipe workbench for height maps, point clouds, and meshes.
 - The target workflow is measured/nominal data -> units/frame/reference/ROI -> ordered inspection steps -> explicit Preview -> metrics/tolerance/overlays -> explicit Publish -> recipe save -> headless Runner replay -> run record/report.
 - Viewer Foundation v1 passed on 2026-07-11 for the current C3D/GLB/STL/LAS/LAZ fixed sample matrix. Preserve it as a regression baseline; this is not a production-readiness claim.
+- C3D map display-frame fidelity passed on 2026-07-11 for the fixed Thickness sample: the local reference PNG confirms dimensions and unflipped row/column orientation, a 10/10 synthetic golden suite fixes the mapping contract including a finite single-cell case, and 66,212 sampled Viewer points roundtrip through neutral PLY with zero XYZ/RGB error. Physical scale remains unverified because the official format and calibration metadata are unavailable.
 - Inspection Recipe v1 baseline passed on 2026-07-11 for one C3D numeric-reference-ROI plane-flatness step with stable input/reference IDs, recipe save/reopen, Viewer/Runner metric and status parity, Publish evidence, and a real Shell step row. This is a one-step baseline, not a general recipe graph or metrology claim.
 - Plane/flatness algorithm credibility baseline passed on 2026-07-11 with an analytic synthetic plane, exact signed-offset flatness/RMS answers, Pass/Fail thresholds, and controlled empty/insufficient/degenerate/non-finite/invalid-tolerance cases. This is not calibration or external metrology validation.
 - The second typed slice, C3D point-pair distance/width/signed-elevation-angle, passed on 2026-07-11 with explicit source-cell references, separate metric tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, Shell evidence, and 9/9 analytic/error golden cases. It measures selected cells; it does not find edges or fitted features.
@@ -31,11 +32,12 @@ This file defines the working agreement for Codex in this repository.
 
 ## Default Product Priority
 
-1. Build gap/flush as the next complete typed inspection step using two explicit regions, signed results, separate tolerances, Preview/Publish, recipe roundtrip, Runner parity, analytic golden cases, and Shell evidence.
-2. Add the remaining basic surface tools one complete slice at a time: volume, then cross-section dimensions.
-3. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
-4. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
-5. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
+1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
+2. Build gap/flush as the next complete typed inspection step using two explicit regions, signed results, separate tolerances, Preview/Publish, recipe roundtrip, Runner parity, analytic golden cases, and Shell evidence.
+3. Add the remaining basic surface tools one complete slice at a time: volume, then cross-section dimensions.
+4. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
+5. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
+6. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
 
 ## Stable Contracts
 
@@ -55,6 +57,8 @@ This file defines the working agreement for Codex in this repository.
 - A new inspection tool is incomplete until it has parameters, controlled validation, metrics, overlay evidence, tolerance status, recipe persistence, Runner replay, and current Viewer/Shell evidence.
 - Use stable step IDs and explicit entity/reference inputs. Runner replay must not depend on display names or implicit active selection.
 - Keep measurement sampling independent from render density.
+- C3D source-grid and display-frame fidelity are separate from physical fidelity. Preserve `column -> X`, `raw height -> Y`, `row -> Z`, source hashes, sample stride, and explicit `unitless`/`raw-height` labels until a calibration-backed mapping profile exists.
+- Neutral PLY map exports contain exact rendered sample vertices. Their optional faces exist only for external-viewer compatibility and must never be used as inspection geometry.
 - Point-pair dimension recipes own exact C3D row/column references. Viewer and Runner must resolve those cells from the source file; render-density samples are display data, not measurement inputs.
 - Shared evidence lines for source entities, entity layers, tool results, metrics, overlays, and published result entities belong in `OpenVisionLab.ThreeD.Core.InspectionContractText`; do not duplicate those line formats in Viewer, Shell, Runner, or Tools.
 - Units must be explicit. Store model units, display units, tolerances, and transforms with the data they affect.
@@ -72,6 +76,13 @@ For documentation-only work:
 ```powershell
 git diff --check
 rg -n "OpenVisionLab 3D|3D Viewer|rule-based|C:\\Git\\OpenVisionLab_Dev" .
+```
+
+For C3D map fidelity work:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
 ```
 
 For SharpGL viewer work, run:
@@ -219,12 +230,13 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 
 ## Priority Direction
 
-1. Preserve the passed Viewer Foundation v1 and the plane/flatness plus point-pair-dimensions typed-slice baselines.
-2. Implement gap/flush as the next complete typed inspection slice without adding a generic graph engine first.
-3. Add volume and cross-section dimensions one verified slice at a time.
-4. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
-5. Add one measured/nominal comparison slice, then durable JSON run records and simple HTML/CSV reporting.
-6. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.
+1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and plane/flatness plus point-pair-dimensions typed-slice baselines.
+2. Obtain the C3D calibration contract and add an explicit mapping profile; never infer or advertise physical units.
+3. Implement gap/flush as the next complete typed inspection slice without adding a generic graph engine first.
+4. Add volume and cross-section dimensions one verified slice at a time.
+5. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
+6. Add one measured/nominal comparison slice, then durable JSON run records and simple HTML/CSV reporting.
+7. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.
 
 When starting after orientation, state the immediate priority and the remaining project priority before editing files or running follow-up commands.
 

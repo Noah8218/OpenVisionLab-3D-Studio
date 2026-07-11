@@ -3089,7 +3089,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         var (r, g, b) = viewModel.SelectedColorMode switch
         {
             "Solid" => (0.72, 0.84, 1.0),
-            "Height" => HeightColor(NormalizeLazHeight(point.Position.Z)),
+            "Height" => C3DPointMapPalette.Height(NormalizeLazHeight(point.Position.Z)),
             _ => (Normalize(point.Red), Normalize(point.Green), Normalize(point.Blue))
         };
 
@@ -3160,7 +3160,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             "Solid" => (0.62, 0.82, 1.0),
             "Deviation" => DeviationColor(point.DeviationScalar),
-            _ => HeightColor(point.HeightScalar)
+            _ => C3DPointMapPalette.Height(point.HeightScalar)
         };
 
         gl.Color(r, g, b);
@@ -4344,7 +4344,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     private static (byte R, byte G, byte B) HeightMapColor(double value)
     {
-        var (r, g, b) = HeightColor(value);
+        var (r, g, b) = C3DPointMapPalette.Height(value);
         return ((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
     }
 
@@ -4527,6 +4527,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         lines.Add($"ColorMode|mode={CleanContractText(viewModel.SelectedColorMode)}");
         lines.Add($"MeasurementOverlay|visible={viewModel.MeasurementVisible}");
         lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
+        lines.Add(c3dSample is null
+            ? "C3DMap|loaded=False|displayFrame=NotAvailable|physicalScale=Unverified"
+            : string.Create(
+                CultureInfo.InvariantCulture,
+                $"C3DMap|loaded=True|displayFrame=right-handed-y-up|x=column|y=raw-height|z=row|modelUnit=unitless|rawUnit=raw-height|horizontalSpan={C3DHeightGrid.ViewerHorizontalSpan:R}|horizontalScale={c3dSample.HorizontalScale:R}|heightScale={C3DHeightGrid.ViewerHeightScale:R}|heightCenterRaw={c3dSample.Mean:R}|stride={c3dSample.PointStride}|physicalScale=Unverified"));
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
         lines.Add("ImportedMesh");
         lines.Add(CreateImportedMeshContractLine());
@@ -4905,19 +4910,6 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         return points;
-    }
-
-    private static (double R, double G, double B) HeightColor(double value)
-    {
-        var t = Clamp01(value);
-        if (t < 0.5)
-        {
-            var local = t / 0.5;
-            return (0.05, 0.35 + 0.55 * local, 0.95 - 0.30 * local);
-        }
-
-        var high = (t - 0.5) / 0.5;
-        return (0.05 + 0.95 * high, 0.90 - 0.20 * high, 0.65 - 0.55 * high);
     }
 
     private static (double R, double G, double B) DeviationColor(double value)

@@ -12,6 +12,7 @@ This repository is under active development and is not production-ready yet.
 - Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: C3D height deviation plus complete typed plane-flatness and explicit C3D point-pair distance/width/signed-angle slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
+- Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases including a finite single-cell edge case, and a neutral PLY Viewer-frame roundtrip with zero XYZ/RGB error. Physical units and calibration remain unverified.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
 ## Requirements
@@ -95,6 +96,15 @@ Viewer screenshot and contract smoke:
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt
 ```
+
+C3D map fidelity smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+```
+
+The PLY contains exact rendered sample vertices and deterministic height RGB values. Its faces are external-viewer compatibility surfaces only and are not measurement geometry. See `docs\OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`.
 
 C3D reference-plane flatness recipe smoke:
 
@@ -243,8 +253,9 @@ CI currently runs on `windows-latest` and performs:
 1. `dotnet restore OpenVisionLab.ThreeDStudio.slnx`
 2. `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
 3. Headless C3D height-deviation, plane-flatness, and point-pair-dimensions recipe runner smokes
-4. Analytic/error golden verification for plane flatness and point-pair dimensions
-5. CI artifact upload from `artifacts\ci\`
+4. Analytic/error golden verification for plane flatness, point-pair dimensions, and C3D map mapping
+5. Actual fixed-sample C3D-to-PLY independent roundtrip verification
+6. CI artifact upload from `artifacts\ci\`
 
 ## Release Notes
 
@@ -255,6 +266,7 @@ Current development snapshot:
 - SharpGL/WPF viewer foundation.
 - Standalone viewer host and docked shell host.
 - C3D height-grid sample rendering and picking.
+- C3D map fidelity Runner commands now lock the inferred display mapping with 10/10 synthetic cases, export a neutral PLY, independently reparse every sampled XYZ/RGB value, and record source/export hashes, bounds, stride, and explicit physical-scale status.
 - Viewer-internal coordinate, measurement, and performance HUD.
 - Two-point distance and height-delta measurement smoke.
 - ROI step-height comparison smoke.
@@ -293,16 +305,17 @@ Current development snapshot:
 
 ## Roadmap
 
-1. Preserve the passed Viewer Foundation v1 fixed-matrix regression baseline.
-2. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
-3. Add basic surface tools one complete slice at a time: gap/flush, volume, and cross-section dimensions.
-4. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
-5. Add a durable JSON run record and simple HTML/CSV reporting before batch trends or enterprise integration.
+1. Preserve the passed Viewer Foundation v1 and C3D display-frame fidelity regression baselines.
+2. Obtain the C3D calibration contract and add an explicit mapping profile for pitch, height scale/offset, units, axes, and calibration identity.
+3. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
+4. Add basic surface tools one complete slice at a time: gap/flush, volume, and cross-section dimensions.
+5. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
+6. Add a durable JSON run record and simple HTML/CSV reporting before batch trends or enterprise integration.
 
 ## Known Limitations
 
 - The project is not production-ready.
-- Current C3D parsing is inferred from local samples, not an official format contract.
+- Current C3D parsing and viewer scale are inferred from local samples, not an official format or calibration contract. Display-frame fidelity is verified for the fixed sample; physical coordinate and metrology fidelity are not.
 - The current Thickness and Warpage sample files may be byte-identical; do not assume they represent different measurements until new evidence is available.
 - Algorithm coverage is intentionally narrow; Viewer Foundation v1 and two independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
@@ -319,4 +332,5 @@ Current development snapshot:
 - `docs\OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`: current product target, commercial comparison, maturity scorecard, gates, and default priorities.
 - `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`: sample inventory and C3D observations.
 - `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`: loader/viewer evidence matrix for current C3D, GLB, STL, LAS, and LAZ samples.
+- `docs\OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`: C3D source-grid, Viewer-frame, independent-renderer, and physical-fidelity gates.
 - `docs\OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: current engineering handoff.

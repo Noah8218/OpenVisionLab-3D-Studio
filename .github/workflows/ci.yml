@@ -45,6 +45,12 @@ jobs:
       - name: Verify point pair dimensions golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\ci\point_pair_dimensions_golden.txt
 
+      - name: Verify C3D map fidelity golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\ci\c3d_map_fidelity_golden.txt
+
+      - name: Verify actual C3D viewer-frame roundtrip
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+
       - name: Upload CI artifacts
         if: always()
         uses: actions/upload-artifact@v4

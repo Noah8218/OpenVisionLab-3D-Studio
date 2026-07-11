@@ -10,12 +10,26 @@ return Run(args);
 static int Run(string[] args)
 {
     var lazProbePath = ReadOption(args, "--laz-probe");
+    var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
+    var c3DMapPlyPath = ReadOption(args, "--ply");
     var recipePath = ReadOption(args, "--recipe");
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
     var compareContractPath = ReadOption(args, "--compare-contract");
     var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
     var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
+    var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
+
+    if (verifyC3DMapFidelity)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
+            return 2;
+        }
+
+        return C3DMapFidelityVerification.RunGolden(reportPath);
+    }
 
     if (verifyPointPairDimensions)
     {
@@ -61,12 +75,36 @@ static int Run(string[] args)
         return RunLazProbe(lazProbePath, reportPath, maxSampledPoints);
     }
 
+    if (c3DMapProbePath is not null)
+    {
+        if (reportPath is null || c3DMapPlyPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>]");
+            return 2;
+        }
+
+        int maxSampledPoints;
+        try
+        {
+            maxSampledPoints = ReadIntOption(args, "--max-sampled-points") ?? 140000;
+        }
+        catch (InvalidDataException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 2;
+        }
+
+        return C3DMapFidelityVerification.RunProbe(c3DMapProbePath, c3DMapPlyPath, reportPath, maxSampledPoints);
+    }
+
     if (recipePath is null || reportPath is null)
     {
         Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
         return 2;
     }
 
