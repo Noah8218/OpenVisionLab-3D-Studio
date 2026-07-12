@@ -4,7 +4,7 @@ Updated: 2026-07-13
 
 ## Scope
 
-This policy covers the OpenVisionLab 3D Studio application, the separately hosted Viewer DLL bundle, the Viewer Host API, durable Run Record JSON, and recipe JSON contracts. No packaged binary release exists yet; the first release-candidate version `0.1.0-rc.1` passed local and pushed Windows CI validation at commit `4d1e7cb`.
+This policy covers the OpenVisionLab 3D Studio application, the separately hosted Viewer DLL bundle, the Viewer Host API, durable Run Record JSON, and recipe JSON contracts. The first Viewer bundle prerelease, `v0.1.0-rc.1`, is published at commit `ac57687`.
 
 ## Sources Of Truth
 
@@ -129,7 +129,8 @@ Known limitations:
 
 ## Current Decision
 
-- `0.1.0-rc.1` local validation and pushed Windows Actions run `29197915513` pass at commit `4d1e7cb`; uploaded evidence records a clean matching commit and `Matched` Viewer/Runner state.
-- Do not tag, package, or publish `0.1.0-rc.1` without explicit owner approval.
+- `v0.1.0-rc.1` is published as a GitHub prerelease at commit `ac57687`; Windows Actions run `29198517611` and the public archive manifest record the same clean commit and `Matched` Viewer/Runner state.
+- The public Viewer ZIP SHA-256 is `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`.
+- Do not replace prerelease assets or promote `0.1.0-rc.1` to stable `0.1.0` without explicit owner approval and a new complete release gate.
 - Do not create an installer, NuGet package, tag, or GitHub Release merely because the Viewer DLL bundle builds.
 - The first release candidate must preserve the current unitless/raw-height limitations and must not advertise physical calibration.

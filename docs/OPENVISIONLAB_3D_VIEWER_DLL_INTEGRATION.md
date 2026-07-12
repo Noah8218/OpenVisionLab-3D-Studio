@@ -22,6 +22,17 @@ The script uses `dotnet publish` because a plain class-library build does not co
 
 `Directory.Build.props` is the single source for the development product version and Viewer Host API version. Update those values deliberately when either public contract changes.
 
+## Published Prerelease Bundle
+
+Viewer bundle `0.1.0-rc.1` is available from the [GitHub prerelease](https://github.com/Noah8218/OpenVisionLab-3D-Studio/releases/tag/v0.1.0-rc.1).
+
+```text
+OpenVisionLab.ThreeD.Viewer-0.1.0-rc.1-windows.zip
+SHA-256: b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83
+```
+
+Verify the ZIP against the adjacent `SHA256SUMS.txt`, extract every file into one directory, and keep `viewer-dll-manifest.json` with the assemblies. This prerelease is the Viewer dependency bundle only; it is not an installer or a full Studio/Shell package.
+
 ## Reference From Another WPF Project
 
 The host must target `net10.0-windows` and enable WPF. Keep the complete Viewer bundle together in the host output directory.

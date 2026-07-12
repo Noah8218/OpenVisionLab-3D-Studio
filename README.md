@@ -331,9 +331,11 @@ CI currently runs on `windows-latest` and performs:
 
 ## Release Notes
 
-No packaged binary release is published yet.
+The first public prerelease is available at [OpenVisionLab 3D Studio 0.1.0-rc.1](https://github.com/Noah8218/OpenVisionLab-3D-Studio/releases/tag/v0.1.0-rc.1).
 
-Current release-candidate version: `0.1.0-rc.1`. Local release checks and Windows Actions run `29197915513` pass for pushed commit `4d1e7cb`, including a `Matched` Cross-section Viewer/Runner Run Record. No tag, packaged archive, or GitHub Release has been created for this candidate.
+The release contains `OpenVisionLab.ThreeD.Viewer-0.1.0-rc.1-windows.zip`, the complete Viewer dependency bundle, plus `SHA256SUMS.txt`. The ZIP SHA-256 is `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`.
+
+The release tag points to commit `ac57687`. Local release checks and Windows Actions run `29198517611` pass, including binary-only Host execution, Viewer/Shell screenshot quality, `Matched` Cross-section Viewer/Runner evidence, algorithm goldens, and C3D map fidelity.
 
 Current development snapshot:
 
@@ -404,7 +406,7 @@ Current development snapshot:
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
-- No packaged installer or binary release exists yet.
+- The published prerelease contains the Viewer DLL dependency bundle only; no installer or full Studio/Shell application package exists yet.
 - Run reporting is one-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow.
 - SharpGL.WPF 3.1.1 runs through its older compatible .NET Core asset rather than a direct .NET 10 build. Current C3D/GLB and full Viewer/Shell smokes pass, but this remains a maintained regression boundary.
 
