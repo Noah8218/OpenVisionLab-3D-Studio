@@ -13,7 +13,20 @@ public sealed record InspectionRunRecord(
     IReadOnlyList<InspectionRunMetric> Metrics,
     IReadOnlyList<InspectionRunOverlay> Overlays,
     string ViewerRunnerMatchState,
-    InspectionRunArtifacts Artifacts);
+    InspectionRunArtifacts Artifacts)
+{
+    public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
+}
+
+public sealed record InspectionRunEnvironment(
+    string ApplicationName,
+    string ApplicationVersion,
+    string ViewerHostApiVersion,
+    string GitCommit,
+    string GitWorkingTree,
+    string DotNetRuntime,
+    string OperatingSystem,
+    string ProcessArchitecture);
 
 public sealed record InspectionRunRecipe(
     string RecipeType,

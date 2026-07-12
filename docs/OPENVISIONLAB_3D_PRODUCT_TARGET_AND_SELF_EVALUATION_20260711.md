@@ -220,7 +220,9 @@ Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persiste
 - Generate simple JSON plus HTML or CSV before considering PDF or enterprise reporting.
 - Add batch/trend views only after multiple real runs use the same stable record.
 
-Status on 2026-07-12: baseline done for one real Cross-section run. `artifacts/run_record_cross_section/run.json`, `report.html`, `metrics.csv`, and `runner.txt` preserve the matched Pass result; `artifacts/shell_run_record_after.png` proves the Shell artifact commands. Broader multi-run reporting remains deferred.
+Status on 2026-07-12: schema `1.1` baseline done for one real Cross-section run. `artifacts/run_record_identity_20260712` preserves the matched Pass result plus product/Host API versions, Git commit/tree state, .NET runtime, OS, and architecture in JSON/HTML/CSV; current Shell remains compatible with schema `1.0`. Broader multi-run reporting remains deferred.
+
+Viewer deployment status on 2026-07-12: binary boundary proven. `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` has no project reference, builds from the published Viewer bundle, and its generated EXE directly passes C3D render/pick smoke with all required runtime dependencies. CI integration remains the next operational step.
 
 ### P3: Metrology Credibility
 

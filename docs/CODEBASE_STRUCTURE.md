@@ -20,7 +20,7 @@ This repository contains the initial operating documents and the first SharpGL W
 | `src/OpenVisionLab.ThreeD.Runner/` | Exists | Non-UI recipe runner for replaying C3D height deviation and LAZ/LAS two-point measurement recipes, comparing UI contracts, and writing reports. |
 | `src/OpenVisionLab.ThreeD.Shell/` | Exists | Minimal WPF main workspace shell that hosts the docking wrapper, the separate 3D viewer module, and the first workbench layout panes. Owns app-level `WPF-UI` package/theme resources. |
 | `src/OpenVisionLab.ThreeD.Tools/` | Exists | First rule-tool library. Contains the sample-backed C3D height deviation rule plus C3D/LAZ JSON recipe and acceptance models. Depends on Core, not WPF or SharpGL. |
-| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Hostable SharpGL WPF viewer control for Shell and Studio hosting. Owns the viewer UI, render loop, camera/picking/rendering helpers, screenshot smoke path, and viewer ViewModel state. User-facing labels use `Imported Mesh` for the shared GLB/STL path and `LAZ/LAS` for point-cloud display while older contract/CLI names stay compatible. |
+| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Separately releasable SharpGL WPF Viewer DLL for Shell, Studio, and external WPF hosting. Owns the viewer UI, ViewModel, render loop, camera/picking/rendering helpers, and screenshot smoke path. `scripts/build-viewer-dll.ps1` emits its validated dependency bundle and hash manifest. User-facing labels use `Imported Mesh` for the shared GLB/STL path and `LAZ/LAS` for point-cloud display while older contract/CLI names stay compatible. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
 | `recipes/` | Exists | Local recipe samples for runner smoke. |
 
@@ -74,8 +74,12 @@ Create these folders only when implementation begins.
 - App shell owns workflow composition, visible commands, recipe comparison display state, and app-level `WPF-UI` theme resources.
 - Docking code owns docking package integration, layout behavior, and workbench content slots; the app shell should consume wrapper APIs.
 - Keep the SharpGL viewer separate from the main shell so the viewer can be developed and tested independently.
+- Use `scripts/build-viewer-dll.ps1` for distributable Viewer output. A plain Viewer class-library build does not collect every SharpGL runtime dependency.
+- External code-behind integration uses `IOpenVisionThreeDViewerHost`, immutable `ViewerHostState`, and `HostStateChanged`; avoid direct `MainWindowViewModel.PropertyChanged` subscriptions.
+- `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` proves an external WPF executable can compile and run from the published DLL bundle without a repository project reference.
 - Keep `WPF-UI` out of Viewer and Docking.Controls unless a reusable control has a direct, proven need for it.
-- Treat .NET 10 migration as a separate compatibility pass across WPF, SharpGL, docking, and vendored DLL/runtime dependencies.
+- The repository targets .NET 10. Keep non-WPF projects on `net10.0`, WPF projects on `net10.0-windows`, and preserve the compatibility evidence in `OPENVISIONLAB_3D_DOTNET10_MIGRATION_20260712.md`.
+- `Directory.Build.props` owns the shared product and Viewer Host API versions stamped into assemblies, Viewer DLL manifests, and durable run evidence.
 - A renderer dependency must stay behind a small adapter once a second viewer-related feature needs it. Do not add an adapter before the first prototype proves the library.
 
 ## 6. Starting Point For New Work

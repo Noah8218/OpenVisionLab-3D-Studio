@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -41,7 +44,7 @@ internal static class RunRecordWriter
         var recipeHash = HashFile(recipePath);
         var sourceHash = HashFile(sourcePath);
         var record = new InspectionRunRecord(
-            "1.0",
+            "1.1",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe(recipeType, recipeVersion, Path.GetFullPath(recipePath), recipeHash),
@@ -59,7 +62,10 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.ViewerScreenshotPath),
                 FullOptionalPath(options.JsonPath),
                 FullOptionalPath(options.HtmlPath),
-                FullOptionalPath(options.CsvPath)));
+                FullOptionalPath(options.CsvPath)))
+        {
+            ExecutionEnvironment = CreateExecutionEnvironment(recipePath)
+        };
 
         if (options.JsonPath is not null) WriteJson(options.JsonPath, record);
         if (options.HtmlPath is not null) WriteHtml(options.HtmlPath, record);
@@ -95,6 +101,11 @@ internal static class RunRecordWriter
             <dt>Recipe</dt><dd>{{Encode(record.Recipe.Path)}}<br>SHA-256 {{record.Recipe.Sha256}}</dd>
             <dt>Source</dt><dd>{{Encode(record.Source.Path)}}<br>SHA-256 {{record.Source.Sha256}}</dd>
             <dt>Viewer/Runner</dt><dd>{{Encode(record.ViewerRunnerMatchState)}}</dd>
+            <dt>Application</dt><dd>{{Encode(FormatApplication(record.ExecutionEnvironment))}}</dd>
+            <dt>Viewer Host API</dt><dd>{{Encode(record.ExecutionEnvironment?.ViewerHostApiVersion ?? "unknown")}}</dd>
+            <dt>Git</dt><dd>{{Encode(FormatGit(record.ExecutionEnvironment))}}</dd>
+            <dt>.NET Runtime</dt><dd>{{Encode(record.ExecutionEnvironment?.DotNetRuntime ?? "unknown")}}</dd>
+            <dt>Platform</dt><dd>{{Encode(FormatPlatform(record.ExecutionEnvironment))}}</dd>
           </dl>
           <p>{{Encode(record.Message)}}</p>
           <table><thead><tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr></thead><tbody>
@@ -109,7 +120,7 @@ internal static class RunRecordWriter
     private static void WriteCsv(string path, InspectionRunRecord record)
     {
         EnsureDirectory(path);
-        var lines = new List<string> { "runId,recordedAtUtc,tool,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch" };
+        var lines = new List<string> { "runId,recordedAtUtc,tool,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,applicationName,applicationVersion,viewerHostApiVersion,gitCommit,gitWorkingTree,dotNetRuntime,operatingSystem,processArchitecture" };
         lines.AddRange(record.Metrics.Select(metric => string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
@@ -122,9 +133,109 @@ internal static class RunRecordWriter
             Csv(metric.Status?.ToString() ?? string.Empty),
             Csv(record.Recipe.Sha256),
             Csv(record.Source.Sha256),
-            Csv(record.ViewerRunnerMatchState))));
+            Csv(record.ViewerRunnerMatchState),
+            Csv(record.ExecutionEnvironment?.ApplicationName ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.ApplicationVersion ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.ViewerHostApiVersion ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.GitCommit ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.GitWorkingTree ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.DotNetRuntime ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.OperatingSystem ?? "unknown"),
+            Csv(record.ExecutionEnvironment?.ProcessArchitecture ?? "unknown"))));
         File.WriteAllLines(path, lines, new UTF8Encoding(false));
     }
+
+    private static InspectionRunEnvironment CreateExecutionEnvironment(string recipePath)
+    {
+        var assembly = Assembly.GetEntryAssembly() ?? typeof(RunRecordWriter).Assembly;
+        var metadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value, StringComparer.Ordinal);
+        var applicationVersion = metadata.GetValueOrDefault("OpenVisionLabProductVersion")
+            ?? assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        var viewerHostApiVersion = metadata.GetValueOrDefault("OpenVisionLabViewerHostApiVersion") ?? "unknown";
+        var (gitCommit, gitWorkingTree) = ReadGitIdentity(recipePath);
+
+        return new InspectionRunEnvironment(
+            assembly.GetName().Name ?? "OpenVisionLab.ThreeD.Runner",
+            applicationVersion,
+            viewerHostApiVersion,
+            gitCommit,
+            gitWorkingTree,
+            RuntimeInformation.FrameworkDescription,
+            RuntimeInformation.OSDescription,
+            RuntimeInformation.ProcessArchitecture.ToString());
+    }
+
+    private static (string Commit, string WorkingTree) ReadGitIdentity(string recipePath)
+    {
+        var workingDirectory = FindGitWorkingDirectory(Path.GetDirectoryName(Path.GetFullPath(recipePath)))
+            ?? FindGitWorkingDirectory(Environment.CurrentDirectory);
+        if (workingDirectory is null)
+        {
+            return (Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "unknown", "unknown");
+        }
+
+        var commit = RunGit(workingDirectory, "rev-parse", "HEAD");
+        var status = RunGit(workingDirectory, "status", "--porcelain");
+        return (
+            string.IsNullOrWhiteSpace(commit) ? Environment.GetEnvironmentVariable("GITHUB_SHA") ?? "unknown" : commit,
+            status is null ? "unknown" : string.IsNullOrWhiteSpace(status) ? "clean" : "dirty");
+    }
+
+    private static string? FindGitWorkingDirectory(string? startPath)
+    {
+        var directory = string.IsNullOrWhiteSpace(startPath) ? null : new DirectoryInfo(startPath);
+        while (directory is not null)
+        {
+            if (Directory.Exists(Path.Combine(directory.FullName, ".git"))
+                || File.Exists(Path.Combine(directory.FullName, ".git")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        return null;
+    }
+
+    private static string? RunGit(string workingDirectory, params string[] arguments)
+    {
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo("git")
+                {
+                    WorkingDirectory = workingDirectory,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
+            if (!process.Start()) return null;
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            if (!process.WaitForExit(3000) || process.ExitCode != 0) return null;
+            return output;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+    }
+
+    private static string FormatApplication(InspectionRunEnvironment? environment) =>
+        environment is null ? "unknown" : $"{environment.ApplicationName} {environment.ApplicationVersion}";
+
+    private static string FormatGit(InspectionRunEnvironment? environment) =>
+        environment is null ? "unknown" : $"{environment.GitCommit} ({environment.GitWorkingTree})";
+
+    private static string FormatPlatform(InspectionRunEnvironment? environment) =>
+        environment is null ? "unknown" : $"{environment.OperatingSystem} / {environment.ProcessArchitecture}";
 
     private static string HashFile(string path)
     {

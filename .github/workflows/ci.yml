@@ -22,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -34,6 +34,11 @@ jobs:
 
       - name: Build
         run: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
+
+      - name: Verify binary-only Viewer host
+        shell: pwsh
+        timeout-minutes: 5
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Release -ArtifactDirectory artifacts\ci\viewer-dll-host
 
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
@@ -69,9 +74,12 @@ jobs:
         shell: pwsh
         run: |
           $record = Get-Content artifacts\ci\cross_section_run.json -Raw | ConvertFrom-Json
-          if ($record.SchemaVersion -ne '1.0' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
+          if ($record.SchemaVersion -ne '1.1' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
           if ($record.Metrics.Count -ne 5 -or $record.Overlays.Count -ne 3) { throw 'Run record result evidence mismatch.' }
           if ($record.Recipe.Sha256.Length -ne 64 -or $record.Source.Sha256.Length -ne 64) { throw 'Run record provenance hash mismatch.' }
+          if ($record.ExecutionEnvironment.ApplicationVersion -eq 'unknown' -or $record.ExecutionEnvironment.ViewerHostApiVersion -eq 'unknown') { throw 'Run record application identity is missing.' }
+          if ($record.ExecutionEnvironment.GitCommit -ne $env:GITHUB_SHA -or $record.ExecutionEnvironment.GitWorkingTree -ne 'clean') { throw 'Run record Git identity mismatch.' }
+          if ($record.ExecutionEnvironment.DotNetRuntime -notlike '.NET 10.*' -or $record.ExecutionEnvironment.ProcessArchitecture -eq 'unknown') { throw 'Run record runtime identity is missing.' }
           if (-not (Test-Path artifacts\ci\cross_section_report.html) -or -not (Test-Path artifacts\ci\cross_section_metrics.csv)) { throw 'Run report artifact is missing.' }
 
       - name: Verify Cross-section Dimensions golden cases

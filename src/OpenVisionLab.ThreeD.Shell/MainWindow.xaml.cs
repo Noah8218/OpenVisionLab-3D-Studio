@@ -1,10 +1,8 @@
 using OpenVisionLab.ThreeD.Viewer;
-using System.ComponentModel;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace OpenVisionLab.ThreeD.Shell;
@@ -13,7 +11,7 @@ public partial class MainWindow : Window
 {
     private readonly OpenVisionThreeDViewerControl _viewer = new();
     private readonly ShellMainWindowViewModel _viewModel;
-    private readonly PropertyChangedEventHandler _viewerPropertyChangedHandler;
+    private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
     private readonly EventHandler _refreshRecipeComparisonRequestedHandler;
     private readonly EventHandler _saveRecipeRequestedHandler;
     private readonly EventHandler _applyRoiAlignmentRequestedHandler;
@@ -35,10 +33,10 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         _viewer.SidePanelsVisible = false;
         Workspace.ViewerContent = _viewer;
-        _viewModel.UpdateC3DSampleVisible(_viewer.ViewModel.C3DSampleVisible);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
 
-        _viewerPropertyChangedHandler = OnViewerPropertyChanged;
-        _viewer.ViewModel.PropertyChanged += _viewerPropertyChangedHandler;
+        _viewerHostStateChangedHandler = OnViewerHostStateChanged;
+        _viewer.HostStateChanged += _viewerHostStateChangedHandler;
         _viewer.EnableSmokeFromCommandLine();
 
         _refreshRecipeComparisonRequestedHandler = (_, _) => _viewModel.RefreshRecipeComparison();
@@ -57,7 +55,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _viewer.ViewModel.PropertyChanged -= _viewerPropertyChangedHandler;
+        _viewer.HostStateChanged -= _viewerHostStateChangedHandler;
         _viewModel.RefreshRecipeComparisonRequested -= _refreshRecipeComparisonRequestedHandler;
         _viewModel.SaveRecipeRequested -= _saveRecipeRequestedHandler;
         _viewModel.ApplyRoiAlignmentRequested -= _applyRoiAlignmentRequestedHandler;
@@ -85,13 +83,19 @@ public partial class MainWindow : Window
 
                 if (_viewer.SmokeExitCode != 0)
                 {
-                    _viewModel.SetViewerSmokeFailed(_viewer.ViewModel.ViewerStatus);
+                    _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
                 }
 
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                 await Task.Delay(100);
-                CaptureShellWindow(shellScreenshotPath);
+                if (!await CaptureShellWindowWithRetryAsync(shellScreenshotPath))
+                {
+                    _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 await Task.Delay(100);
                 Application.Current.Shutdown(_viewer.SmokeExitCode);
             };
@@ -100,21 +104,49 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CaptureShellWindow(string path)
+    private async Task<bool> CaptureShellWindowWithRetryAsync(string path)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        const int maximumAttempts = 3;
+        var fullPath = Path.GetFullPath(path);
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
 
-        var width = Math.Max(1, (int)Math.Ceiling(ActualWidth));
-        var height = Math.Max(1, (int)Math.Ceiling(ActualHeight));
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(this);
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            var previousRejectedPath = GetRejectedScreenshotPath(fullPath, attempt);
+            if (File.Exists(previousRejectedPath))
+            {
+                File.Delete(previousRejectedPath);
+            }
+        }
 
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-        using var stream = File.Create(path);
-        encoder.Save(stream);
+            var result = ShellScreenshotCapture.Capture(this);
+            Console.WriteLine($"ShellScreenshot|attempt={attempt}|{result.Quality.Summary}");
+            if (result.Quality.IsAcceptable)
+            {
+                ShellScreenshotCapture.Save(result.Bitmap, fullPath);
+                return true;
+            }
+
+            var rejectedPath = GetRejectedScreenshotPath(fullPath, attempt);
+            ShellScreenshotCapture.Save(result.Bitmap, rejectedPath);
+            await Task.Delay(250);
+        }
+
+        return false;
     }
+
+    private static string GetRejectedScreenshotPath(string fullPath, int attempt) =>
+        Path.Combine(
+            Path.GetDirectoryName(fullPath)!,
+            $"{Path.GetFileNameWithoutExtension(fullPath)}.rejected-attempt-{attempt}{Path.GetExtension(fullPath)}");
 
     private static string? GetCommandLineValue(string name)
     {
@@ -163,11 +195,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnViewerPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    private void OnViewerHostStateChanged(object? sender, ViewerHostStateChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel.C3DSampleVisible))
+        if (args.PropertyName == nameof(ViewerHostState.C3DSampleVisible))
         {
-            _viewModel.UpdateC3DSampleVisible(_viewer.ViewModel.C3DSampleVisible);
+            _viewModel.UpdateC3DSampleVisible(args.State.C3DSampleVisible);
         }
     }
 }

@@ -30,7 +30,10 @@ This file defines the working agreement for Codex in this repository.
 - The third typed slice, C3D Gap/Flush, passed on 2026-07-12 with two explicit recipe-owned regions, signed aligned-X gap, signed raw-height flush, separate tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 8/8 analytic/error golden cases. It does not perform automatic seam/edge detection or calibrated physical measurement.
 - The fourth typed slice, C3D Volume, passed on 2026-07-12 with an explicit reference-plane ROI and measurement ROI, signed above/below/net values, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 9/9 analytic/error golden cases. Its `model^3` values belong to the uncalibrated display frame and are not physical volume.
 - The fifth typed slice, C3D Cross-section Dimensions, passed on 2026-07-12 with an exact source row and inclusive column range, aligned-X width, raw-height range, separate tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 9/9 analytic/error golden cases. It does not find edges/features or provide calibrated physical dimensions.
-- Durable Run Record v1 passed on 2026-07-12 for a real Cross-section run: schema `1.0` JSON records recipe/source SHA-256, UTC time, status, all metrics/overlays, Viewer/Runner match state, and artifact paths; simple HTML/CSV reports and Shell open commands are present. This is one-run evidence, not database/SPC/PDF/retention infrastructure.
+- Durable Run Record v1.1 passed on 2026-07-12 for a real Cross-section run: JSON records recipe/source SHA-256, UTC time, status, metrics/overlays, Viewer/Runner match state, artifact paths, application/Host API versions, Git commit/tree state, .NET runtime, OS, and architecture; HTML/CSV carry the same execution identity and Shell still reads schema `1.0`. This is one-run evidence, not database/SPC/PDF/retention infrastructure.
+- .NET 10 migration passed on 2026-07-12: Core/Data/Tools/Runner target `net10.0`; Viewer/Docking/Shell/app target `net10.0-windows`; restore/build, all six golden suites, SharpGL C3D/textured-GLB rendering, WPF-UI/AvalonDock Shell, LASzip decode, and the 128-check matrix pass. Preserve `docs/OPENVISIONLAB_3D_DOTNET10_MIGRATION_20260712.md` as the compatibility source of truth.
+- Viewer binary-host boundary passed on 2026-07-12: the minimal external WPF Host has zero `ProjectReference`, compiles from the published DLL bundle, carries all 12 required host/runtime outputs, and its generated EXE directly renders and picks the C3D sample with current screenshot/contract evidence.
+- Windows CI now invokes the same binary-host direct-EXE verification and uploads its report, contract, and screenshot. Treat remote CI status as unverified until a pushed GitHub Actions run passes.
 - Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
 - Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
 - Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
@@ -40,7 +43,7 @@ This file defines the working agreement for Codex in this repository.
 1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
 2. Add nominal/actual comparison only after a genuinely distinct measured/nominal sample pair is available; the current Thickness and Warpage C3D files are byte-identical and cannot prove this gate.
 3. Extend durable reporting only after multiple real runs expose a concrete need; do not jump to batch trends, PDF, database, or enterprise reporting.
-4. Treat .NET 10 migration as the next executable compatibility task while calibration and measured/nominal prerequisites remain unavailable.
+4. After an explicit PUSH, confirm the first Windows CI binary-host run and inspect uploaded evidence before expanding the Host API.
 
 ## Next Priority Model Guidance
 
@@ -60,9 +63,13 @@ This file defines the working agreement for Codex in this repository.
 - Viewer completion means reliable display, camera control, object/layer visibility, picking, selection, measurement/result overlay rendering, color modes, and screenshot smoke evidence.
 - The first viewer implementation uses SharpGL because the project owner is already comfortable reading and debugging SharpGL-based code.
 - The 3D viewer must remain a separate project/library. The eventual main workspace should host it as a document/tool view instead of merging viewer internals into the main shell.
+- Treat `OpenVisionLab.ThreeD.Viewer` as a separately releasable WPF DLL boundary. Build distributable output with `scripts/build-viewer-dll.ps1`; ship the complete validated dependency bundle and manifest rather than copying only `OpenVisionLab.ThreeD.Viewer.dll`.
+- Host applications may own windows, docking, WPF-UI themes, and navigation, but must not copy SharpGL rendering or Viewer ViewModel logic out of the Viewer project.
+- Keep external hosts on the versioned `IOpenVisionThreeDViewerHost` state/event/command contract. The concrete Viewer ViewModel remains an internal Shell binding compatibility surface and must not become the default external integration API.
+- Preserve `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` as the binary-boundary proof: it must contain no `ProjectReference`, build from the published Viewer bundle, and pass `scripts/verify-viewer-dll-host.ps1` by launching its generated EXE directly.
 - For the main workspace, follow the `C:\Git\OpenVisionLab_Dev` docking boundary: docking ownership belongs in a dedicated controls library like `Library\OpenVisionLab.Docking.Controls`; do not add AvalonDock or raw docking package usage directly to the app project.
 - For app-level WPF UI styling, follow the Dev repository's `WPF-UI` boundary: the Shell app owns `WPF-UI` package/theme resources, while Viewer and Docking.Controls stay free of direct `WPF-UI` dependencies unless a reusable control explicitly needs that dependency.
-- The project owner plans to move the product to .NET 10. Treat target framework migration as its own compatibility task; verify WPF, SharpGL, docking, vendored DLLs, and smoke checks before mixing it with feature work.
+- The repository targets .NET 10. Preserve project platform boundaries, `global.json`, CI `10.0.x`, and the SharpGL/WPF-UI/AvalonDock/LASzip runtime evidence before changing SDK feature bands or package versions.
 - MVVM is the target application structure. For visible workflow work, develop in View -> ViewModel -> Model order: place or adjust the binding surface first, put durable state/commands/comparison logic in the ViewModel next, and change model/contract/parser code only when the existing data shape cannot support the workflow.
 - Keep view code-behind as a thin UI/OpenGL event bridge, and move durable state, commands, result data, and workflow logic into ViewModel, Controller, Presenter, Runtime, or Service classes as soon as they stop being trivial.
 - Keep source geometry and result geometry separate. A validation result must not silently mutate the imported source model.
@@ -84,6 +91,8 @@ This file defines the working agreement for Codex in this repository.
 ## Completion Means Evidence
 
 Do not mark work complete by explanation alone. Completion requires the smallest meaningful evidence for the touched area.
+
+Treat a Shell screenshot smoke as passing only when its built-in pixel-quality check accepts the frame. Preserve rejected attempts and do not substitute an older screenshot when all retries fail.
 
 For documentation-only work:
 
@@ -269,8 +278,8 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and all five typed inspection-slice baselines.
 2. Obtain the C3D calibration contract and add an explicit mapping profile; never infer or advertise physical units.
 3. Add one measured/nominal comparison slice without a CAD kernel when a distinct local sample pair is available.
-4. Preserve Durable Run Record v1; extend it only after multiple real runs expose a concrete need.
-5. Assess the planned .NET 10 migration as a separate compatibility task while product-data prerequisites remain blocked.
+4. Preserve Durable Run Record v1.1; extend it only after multiple real runs expose a concrete need.
+5. Preserve binary-only Viewer DLL hosting and add its verification to Windows CI before expanding the Host API.
 6. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
 7. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.
 

@@ -13,6 +13,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -21,7 +22,7 @@ using SharpGL.WPF;
 
 namespace OpenVisionLab.ThreeD.Viewer;
 
-public sealed partial class OpenVisionThreeDViewerControl : UserControl
+public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVisionThreeDViewerHost
 {
     public static readonly DependencyProperty SidePanelsVisibleProperty =
         DependencyProperty.Register(
@@ -214,6 +215,29 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
     public int SmokeExitCode => smokeExitCode;
 
+    public string HostApiVersion => ViewerHostContract.ApiVersion;
+
+    public ViewerHostState HostState => new(
+        viewModel.C3DSampleVisible,
+        viewModel.SelectedEntity,
+        viewModel.SelectedSelectionMode,
+        viewModel.PickCoordinate,
+        viewModel.MeasurementSummary,
+        viewModel.ResultSummary,
+        viewModel.RecipeSummary,
+        viewModel.ViewerStatus,
+        viewModel.CoordinateFrameSummary);
+
+    public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged;
+
+    public void FitAll() => ExecuteHostCommand(viewModel.FitAllCommand);
+
+    public void FitSelection() => ExecuteHostCommand(viewModel.FitSelectionCommand);
+
+    public void ResetView() => ExecuteHostCommand(viewModel.ResetCommand);
+
+    public bool SaveRecipe(string path) => SaveCurrentRecipe(path, isSmoke: false);
+
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
         ((OpenVisionThreeDViewerControl)dependencyObject).UpdateSidePanelsVisibility();
@@ -295,6 +319,37 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             }
 
             RenderNow();
+        }
+
+        RaiseHostStateChanged(args.PropertyName);
+    }
+
+    private void RaiseHostStateChanged(string? viewModelPropertyName)
+    {
+        var hostPropertyName = viewModelPropertyName switch
+        {
+            nameof(MainWindowViewModel.C3DSampleVisible) => nameof(ViewerHostState.C3DSampleVisible),
+            nameof(MainWindowViewModel.SelectedEntity) => nameof(ViewerHostState.ActiveEntity),
+            nameof(MainWindowViewModel.SelectedSelectionMode) => nameof(ViewerHostState.SelectionMode),
+            nameof(MainWindowViewModel.PickCoordinate) => nameof(ViewerHostState.PickCoordinate),
+            nameof(MainWindowViewModel.MeasurementSummary) => nameof(ViewerHostState.MeasurementSummary),
+            nameof(MainWindowViewModel.ResultSummary) => nameof(ViewerHostState.ResultSummary),
+            nameof(MainWindowViewModel.RecipeSummary) => nameof(ViewerHostState.RecipeSummary),
+            nameof(MainWindowViewModel.ViewerStatus) => nameof(ViewerHostState.ViewerStatus),
+            _ => null
+        };
+
+        if (hostPropertyName is not null)
+        {
+            HostStateChanged?.Invoke(this, new ViewerHostStateChangedEventArgs(HostState, hostPropertyName));
+        }
+    }
+
+    private static void ExecuteHostCommand(ICommand command)
+    {
+        if (command.CanExecute(null))
+        {
+            command.Execute(null);
         }
     }
 

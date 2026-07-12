@@ -18,10 +18,10 @@ This repository is under active development and is not production-ready yet.
 ## Requirements
 
 - Windows
-- .NET SDK 8.0.x
+- .NET SDK 10.0.300 or newer compatible feature band
 - Git
 
-The project owner plans to evaluate .NET 10 later, but the current checked build targets .NET 8.
+The checked build targets .NET 10. Non-WPF libraries use `net10.0`; Viewer/Shell/app projects use `net10.0-windows`.
 
 ## Install And Run
 
@@ -69,6 +69,20 @@ More details: `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`, `docs\OPENVISIONLAB_3D_DAT
 
 ```powershell
 dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug
+```
+
+Build the separately hostable Viewer DLL bundle:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-viewer-dll.ps1
+```
+
+The output under `artifacts\viewer-dll\net10.0-windows` includes `OpenVisionLab.ThreeD.Viewer.dll`, required runtime DLLs, and a SHA-256 manifest. The manifest also records product/Host API versions, Git commit/tree state, and .NET SDK version. See `docs\OPENVISIONLAB_3D_VIEWER_DLL_INTEGRATION.md` for WPF host integration.
+
+Verify a binary-only external WPF host:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1
 ```
 
 ## Smoke Commands
@@ -172,6 +186,8 @@ Durable JSON/HTML/CSV run bundle:
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\run_record_cross_section\runner.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt --viewer-screenshot artifacts\viewer_cross_section_reopen_after.png --run-record artifacts\run_record_cross_section\run.json --html-report artifacts\run_record_cross_section\report.html --csv-report artifacts\run_record_cross_section\metrics.csv
 ```
+
+Run Record schema `1.1` adds application version, Viewer Host API version, Git commit/tree state, .NET runtime, OS, and process architecture. Schema `1.0` JSON remains readable by the current Shell.
 
 Public GLB import smoke:
 
@@ -296,6 +312,8 @@ The expected `Fail` status is intentional for the current sample recipe because 
 
 ## CI
 
+Windows CI restores/builds the .NET 10 solution, runs the binary-only Viewer Host direct-EXE smoke, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
+
 GitHub Actions workflow: `.github\workflows\ci.yml`.
 
 CI currently runs on `windows-latest` and performs:
@@ -316,6 +334,7 @@ No packaged binary release is published yet.
 Current development snapshot:
 
 - SharpGL/WPF viewer foundation.
+- Binary-only WPF Host sample and direct-EXE verification for the separately published Viewer DLL bundle.
 - Standalone viewer host and docked shell host.
 - C3D height-grid sample rendering and picking.
 - C3D map fidelity now locks the inferred display mapping with 10/10 synthetic cases, supports point-only full-resolution PLY, verifies all 1,653,562 valid fixed-sample points through .NET and independent Python implementations, and records source/export hashes, bounds, stride, and explicit physical-scale status.
@@ -383,12 +402,13 @@ Current development snapshot:
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
 - No packaged installer or binary release exists yet.
 - Run reporting is one-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow.
-- .NET 10 migration is planned as a separate compatibility task, not mixed into current feature work.
+- SharpGL.WPF 3.1.1 runs through its older compatible .NET Core asset rather than a direct .NET 10 build. Current C3D/GLB and full Viewer/Shell smokes pass, but this remains a maintained regression boundary.
 
 ## Documentation
 
 - `AGENTS.md`: repository working rules and verification commands.
 - `docs\CODEBASE_STRUCTURE.md`: project layout.
+- `docs\OPENVISIONLAB_3D_DOTNET10_MIGRATION_20260712.md`: .NET 10 dependency boundary, evidence, and watch list.
 - `docs\OPENVISIONLAB_3D_PLATFORM_DIRECTION.md`: product direction and roadmap.
 - `docs\OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`: current product target, commercial comparison, maturity scorecard, gates, and default priorities.
 - `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`: sample inventory and C3D observations.
