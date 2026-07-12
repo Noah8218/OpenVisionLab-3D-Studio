@@ -222,7 +222,7 @@ Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persiste
 
 Status on 2026-07-12: schema `1.1` baseline done for one real Cross-section run. `artifacts/run_record_identity_20260712` preserves the matched Pass result plus product/Host API versions, Git commit/tree state, .NET runtime, OS, and architecture in JSON/HTML/CSV; current Shell remains compatible with schema `1.0`. Broader multi-run reporting remains deferred.
 
-Viewer deployment status on 2026-07-12: binary boundary proven. `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` has no project reference, builds from the published Viewer bundle, and its generated EXE directly passes C3D render/pick smoke with all required runtime dependencies. CI integration remains the next operational step.
+Viewer deployment status on 2026-07-12: binary boundary proven locally and in Windows Actions run `29195744796`. `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` has no project reference, builds from the published Viewer bundle, and its generated EXE directly passes C3D render/pick smoke with all required runtime dependencies; the CI evidence artifact was uploaded successfully.
 
 ### P3: Metrology Credibility
 
