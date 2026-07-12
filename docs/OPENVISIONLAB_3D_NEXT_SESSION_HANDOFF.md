@@ -26,6 +26,7 @@ Updated: 2026-07-13
 - Shell screenshot CI closure: local evidence passed on the first attempt with black ratio `0.0609`, white ratio `0.6215`, luminance `0..255`, and `1,024,000` sampled pixels. Windows Actions run `29196380343` then passed BinaryHost, full Shell C3D quality, release identity, Runner/golden/map checks, and uploaded `openvisionlab-3d-ci-artifacts` (`921,351` bytes).
 - Release/version policy: `docs\OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` defines independent product, Host API, Viewer manifest, Run Record, and recipe version rules plus RC gates, tag/artifact conventions, commands, and an evidence template. Product version is `0.1.0-rc.1`; commit `4d1e7cb` is pushed and validated, while no tag, package, or GitHub Release exists for this candidate.
 - Release identity CI closure: Windows Actions run `29197915513` passed at commit `4d1e7cb`. Its uploaded Viewer manifest and schema `1.1` Run Record agree on product `0.1.0-rc.1`, Host API `1.0`, commit/tree identity, runtime identity, and Cross-section Viewer/Runner `Matched` state. Artifact `openvisionlab-3d-ci-artifacts` is `1,164,689` bytes with SHA-256 `9a0d3803111bdfa0fa914531c43e12c6bf39314781e00f2025f466e30679f2e3`.
+- Viewer screenshot quality gate: standalone Viewer smoke and Shell smoke now use one shared WPF pixel assessment, retain rejected frames, retry at most three times, and fail when no acceptable frame is produced. CI requires an accepted Cross-section Viewer quality report before creating the `Matched` Run Record.
 
 ## Immediate Priority
 

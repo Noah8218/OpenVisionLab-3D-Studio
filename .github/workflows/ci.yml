@@ -86,7 +86,13 @@ jobs:
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\ci\volume_golden.txt
 
       - name: Viewer Cross-section Dimensions smoke
-        run: dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\ci\cross_section_viewer.png --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-contracts artifacts\ci\cross_section_viewer.txt
+        shell: pwsh
+        run: |
+          $qualityReport = 'artifacts\ci\cross_section_viewer_quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\ci\cross_section_viewer.png --smoke-screenshot-quality-report $qualityReport --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-contracts artifacts\ci\cross_section_viewer.txt
+          if ($LASTEXITCODE -ne 0) { throw "Viewer Cross-section screenshot smoke failed with exit code $LASTEXITCODE." }
+          $quality = Get-Content $qualityReport
+          if (-not ($quality -match 'ViewerScreenshotResult\|accepted=True')) { throw 'Viewer Cross-section screenshot quality was not accepted.' }
 
       - name: Runner Cross-section Dimensions smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-cross-section-dimensions.recipe.json --report artifacts\ci\runner_c3d_cross_section_dimensions.txt --expect-status Pass --compare-contract artifacts\ci\cross_section_viewer.txt --viewer-screenshot artifacts\ci\cross_section_viewer.png --run-record artifacts\ci\cross_section_run.json --html-report artifacts\ci\cross_section_report.html --csv-report artifacts\ci\cross_section_metrics.csv

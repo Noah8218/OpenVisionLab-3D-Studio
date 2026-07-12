@@ -312,7 +312,7 @@ The expected `Fail` status is intentional for the current sample recipe because 
 
 ## CI
 
-Windows CI restores/builds the .NET 10 solution, runs the binary-only Viewer Host direct-EXE smoke, verifies a full Shell C3D screenshot with pixel-quality metrics in the Actions summary, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
+Windows CI restores/builds the .NET 10 solution, runs the binary-only Viewer Host direct-EXE smoke, verifies standalone Cross-section Viewer and full Shell C3D screenshots with pixel-quality gates, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
 
 GitHub Actions workflow: `.github\workflows\ci.yml`.
 
@@ -320,12 +320,14 @@ CI currently runs on `windows-latest` and performs:
 
 1. `dotnet restore OpenVisionLab.ThreeDStudio.slnx`
 2. `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
-3. Headless C3D height-deviation, plane-flatness, and point-pair-dimensions recipe runner smokes
-4. Analytic/error golden verification for plane flatness, point-pair dimensions, and C3D map mapping
-5. Actual fixed-sample C3D-to-PLY .NET roundtrip verification
-6. Cross-runtime C3D-to-PLY verification through a dependency-free Python implementation
-7. PLY coordinate signature generation for external-viewer parity checks
-8. CI artifact upload from `artifacts\ci\`
+3. Binary-only Viewer Host and standalone Cross-section Viewer screenshot-quality smokes
+4. Full Shell C3D screenshot-quality smoke
+5. Headless recipe Runner smokes with Cross-section Viewer/Runner `Matched` evidence
+6. Analytic/error golden verification for all current typed C3D slices and map mapping
+7. Actual fixed-sample C3D-to-PLY .NET roundtrip verification
+8. Cross-runtime C3D-to-PLY verification through a dependency-free Python implementation
+9. PLY coordinate signature generation for external-viewer parity checks
+10. CI artifact upload from `artifacts\ci\`
 
 ## Release Notes
 

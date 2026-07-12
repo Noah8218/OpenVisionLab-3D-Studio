@@ -3,9 +3,9 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace OpenVisionLab.ThreeD.Shell;
+namespace OpenVisionLab.ThreeD.Viewer.Rendering;
 
-internal sealed record ShellScreenshotQuality(
+public sealed record WpfScreenshotQuality(
     bool IsAcceptable,
     double NearBlackRatio,
     double NearWhiteRatio,
@@ -17,23 +17,23 @@ internal sealed record ShellScreenshotQuality(
         $"acceptable={IsAcceptable}|blackRatio={NearBlackRatio:F4}|whiteRatio={NearWhiteRatio:F4}|luminance={MinimumLuminance}..{MaximumLuminance}|sampledPixels={SampledPixels}";
 }
 
-internal sealed record ShellScreenshotCaptureResult(
+public sealed record WpfScreenshotCaptureResult(
     RenderTargetBitmap Bitmap,
-    ShellScreenshotQuality Quality);
+    WpfScreenshotQuality Quality);
 
-internal static class ShellScreenshotCapture
+public static class WpfScreenshotCapture
 {
     private const double MaximumNearBlackRatio = 0.55;
     private const double MaximumNearWhiteRatio = 0.97;
     private const int MinimumLuminanceRange = 64;
 
-    public static ShellScreenshotCaptureResult Capture(FrameworkElement target)
+    public static WpfScreenshotCaptureResult Capture(FrameworkElement target)
     {
         var width = Math.Max(1, (int)Math.Ceiling(target.ActualWidth));
         var height = Math.Max(1, (int)Math.Ceiling(target.ActualHeight));
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(target);
-        return new ShellScreenshotCaptureResult(bitmap, Assess(bitmap));
+        return new WpfScreenshotCaptureResult(bitmap, Assess(bitmap));
     }
 
     public static void Save(BitmapSource bitmap, string path)
@@ -46,7 +46,7 @@ internal static class ShellScreenshotCapture
         encoder.Save(stream);
     }
 
-    private static ShellScreenshotQuality Assess(BitmapSource bitmap)
+    private static WpfScreenshotQuality Assess(BitmapSource bitmap)
     {
         var stride = bitmap.PixelWidth * 4;
         var pixels = new byte[stride * bitmap.PixelHeight];
@@ -87,7 +87,7 @@ internal static class ShellScreenshotCapture
             && nearWhiteRatio <= MaximumNearWhiteRatio
             && maximumLuminance - minimumLuminance >= MinimumLuminanceRange;
 
-        return new ShellScreenshotQuality(
+        return new WpfScreenshotQuality(
             isAcceptable,
             nearBlackRatio,
             nearWhiteRatio,

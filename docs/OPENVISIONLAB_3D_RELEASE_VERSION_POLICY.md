@@ -90,7 +90,7 @@ dotnet list OpenVisionLab.ThreeDStudio.slnx package --deprecated
 
 Do not create a release tag when any condition below is true:
 
-- Build, Runner, golden, map-fidelity, BinaryHost, or Shell screenshot-quality CI failed.
+- Build, Runner, golden, map-fidelity, BinaryHost, Viewer screenshot-quality, or Shell screenshot-quality CI failed.
 - Viewer bundle required files or SHA-256 manifest entries are missing.
 - Run Record or bundle identity contains `unknown`.
 - The release evidence reports a dirty Git working tree.
@@ -118,7 +118,7 @@ Run Record schema:
 Recipe type / version:
 Build result:
 BinaryHost result:
-Shell screenshot quality result:
+Viewer and Shell screenshot quality result:
 Viewer/Runner comparison:
 Golden and C3D map-fidelity results:
 NuGet vulnerable/deprecated result:

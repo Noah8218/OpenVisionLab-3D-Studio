@@ -67,6 +67,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private bool importedMeshTextureUploadFailed;
     private string importedMeshTextureUploadSummary = "texture none";
     private string? smokeScreenshotPath;
+    private string? smokeScreenshotQualityReportPath;
     private string? smokeContractsPath;
     private string? smokeSaveRecipePath;
     private bool smokePublishResult;
@@ -398,6 +399,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         if (smokeIndex >= 0 && smokeIndex + 1 < args.Length)
         {
             smokeScreenshotPath = args[smokeIndex + 1];
+        }
+
+        var screenshotQualityIndex = Array.IndexOf(args, "--smoke-screenshot-quality-report");
+        if (screenshotQualityIndex >= 0 && screenshotQualityIndex + 1 < args.Length)
+        {
+            smokeScreenshotQualityReportPath = args[screenshotQualityIndex + 1];
         }
 
         ApplySmokeArguments(args);
@@ -1056,26 +1063,81 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             WriteSceneContracts(smokeContractsPath);
         }
 
-        CaptureWindow(smokeScreenshotPath!);
+        if (!await CaptureSmokeWindowWithRetryAsync(smokeScreenshotPath!, smokeScreenshotQualityReportPath))
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = "Viewer screenshot remained blank or invalid after 3 attempts.";
+        }
+
         await Task.Delay(100);
         Application.Current.Shutdown(smokeExitCode);
     }
 
+    private async Task<bool> CaptureSmokeWindowWithRetryAsync(string path, string? qualityReportPath)
+    {
+        const int maximumAttempts = 3;
+        var fullPath = Path.GetFullPath(path);
+        var qualityLines = new List<string>();
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            var previousRejectedPath = GetRejectedScreenshotPath(fullPath, attempt);
+            if (File.Exists(previousRejectedPath))
+            {
+                File.Delete(previousRejectedPath);
+            }
+        }
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            RenderNow();
+            UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+
+            var result = WpfScreenshotCapture.Capture(this);
+            var qualityLine = $"ViewerScreenshot|attempt={attempt}|{result.Quality.Summary}";
+            qualityLines.Add(qualityLine);
+            Console.WriteLine(qualityLine);
+            if (result.Quality.IsAcceptable)
+            {
+                WpfScreenshotCapture.Save(result.Bitmap, fullPath);
+                qualityLines.Add($"ViewerScreenshotResult|accepted=True|attempts={attempt}|screenshot={fullPath}");
+                WriteScreenshotQualityReport(qualityReportPath, qualityLines);
+                viewModel.LastScreenshotPath = fullPath;
+                viewModel.ViewerStatus = "Screenshot captured";
+                return true;
+            }
+
+            WpfScreenshotCapture.Save(result.Bitmap, GetRejectedScreenshotPath(fullPath, attempt));
+            await Task.Delay(250);
+        }
+
+        qualityLines.Add($"ViewerScreenshotResult|accepted=False|attempts={maximumAttempts}|screenshot={fullPath}");
+        WriteScreenshotQualityReport(qualityReportPath, qualityLines);
+        return false;
+    }
+
+    private static void WriteScreenshotQualityReport(string? path, IReadOnlyList<string> lines)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        File.WriteAllLines(path, lines);
+    }
+
+    private static string GetRejectedScreenshotPath(string fullPath, int attempt) =>
+        Path.Combine(
+            Path.GetDirectoryName(fullPath)!,
+            $"{Path.GetFileNameWithoutExtension(fullPath)}.rejected-attempt-{attempt}{Path.GetExtension(fullPath)}");
+
     private void CaptureWindow(string path)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         RenderNow();
-
-        var width = Math.Max(1, (int)Math.Ceiling(ActualWidth));
-        var height = Math.Max(1, (int)Math.Ceiling(ActualHeight));
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(this);
-
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-
-        using var stream = File.Create(path);
-        encoder.Save(stream);
+        var result = WpfScreenshotCapture.Capture(this);
+        WpfScreenshotCapture.Save(result.Bitmap, path);
 
         viewModel.LastScreenshotPath = Path.GetFullPath(path);
         viewModel.ViewerStatus = "Screenshot captured";

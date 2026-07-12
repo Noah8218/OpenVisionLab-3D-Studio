@@ -37,6 +37,7 @@ This file defines the working agreement for Codex in this repository.
 - Windows CI binary-host gate passed on 2026-07-12 in Actions run `29195744796`: the direct-EXE step and all Runner/golden/map steps succeeded, and `openvisionlab-3d-ci-artifacts` was uploaded with the binary-host report, contract, and screenshot.
 - Windows CI Shell quality and release identity gates passed on 2026-07-12 in Actions run `29196380343`: BinaryHost, full Shell C3D screenshot quality, central/manifest/Run Record identity, all Runner/golden/map checks, and artifact upload succeeded.
 - Release candidate `0.1.0-rc.1` passed local and pushed Windows CI validation on 2026-07-13 at commit `4d1e7cb` in Actions run `29197915513`. The uploaded Viewer manifest and Run Record agree on product `0.1.0-rc.1`, Host API `1.0`, commit/tree identity, and the Cross-section Viewer/Runner state is `Matched`. No tag, packaged archive, or GitHub Release exists yet.
+- Standalone Viewer and Shell smoke screenshots share the same WPF pixel-quality assessment. Both preserve rejected attempts, retry at most three times, and fail the smoke when no acceptable frame is captured; an existing file path alone is not screenshot evidence.
 - Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
 - Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
 - Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
@@ -95,7 +96,7 @@ This file defines the working agreement for Codex in this repository.
 
 Do not mark work complete by explanation alone. Completion requires the smallest meaningful evidence for the touched area.
 
-Treat a Shell screenshot smoke as passing only when its built-in pixel-quality check accepts the frame. Preserve rejected attempts and do not substitute an older screenshot when all retries fail.
+Treat Viewer and Shell screenshot smokes as passing only when their built-in pixel-quality check accepts the frame. Preserve rejected attempts and do not substitute an older screenshot when all retries fail.
 
 For documentation-only work:
 

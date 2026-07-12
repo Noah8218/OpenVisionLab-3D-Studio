@@ -1,5 +1,6 @@
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -129,20 +130,20 @@ public partial class MainWindow : Window
             UpdateLayout();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            var result = ShellScreenshotCapture.Capture(this);
+            var result = WpfScreenshotCapture.Capture(this);
             var qualityLine = $"ShellScreenshot|attempt={attempt}|{result.Quality.Summary}";
             qualityLines.Add(qualityLine);
             Console.WriteLine(qualityLine);
             if (result.Quality.IsAcceptable)
             {
-                ShellScreenshotCapture.Save(result.Bitmap, fullPath);
+                WpfScreenshotCapture.Save(result.Bitmap, fullPath);
                 qualityLines.Add($"ShellScreenshotResult|accepted=True|attempts={attempt}|screenshot={fullPath}");
                 WriteScreenshotQualityReport(qualityReportPath, qualityLines);
                 return true;
             }
 
             var rejectedPath = GetRejectedScreenshotPath(fullPath, attempt);
-            ShellScreenshotCapture.Save(result.Bitmap, rejectedPath);
+            WpfScreenshotCapture.Save(result.Bitmap, rejectedPath);
             await Task.Delay(250);
         }
 
