@@ -224,7 +224,7 @@ Status on 2026-07-12: schema `1.1` baseline done for one real Cross-section run.
 
 Viewer deployment status on 2026-07-12: binary boundary proven locally and in Windows Actions run `29195744796`. `samples/OpenVisionLab.ThreeD.Viewer.BinaryHost` has no project reference, builds from the published Viewer bundle, and its generated EXE directly passes C3D render/pick smoke with all required runtime dependencies; the CI evidence artifact was uploaded successfully.
 
-Shell evidence status on 2026-07-12: CI summary wiring passes locally. The full Shell C3D capture was accepted on attempt 1 with black ratio `0.0609`, white ratio `0.6215`, luminance `0..255`, and `1,024,000` sampled pixels; PNG, quality report, and Markdown summary were generated. Remote status remains pending until an explicit push.
+Shell evidence status on 2026-07-12: local full Shell C3D capture was accepted on attempt 1 with black ratio `0.0609`, white ratio `0.6215`, luminance `0..255`, and `1,024,000` sampled pixels. Windows Actions run `29196380343` passed the Shell quality and release identity steps and uploaded the expanded CI evidence artifact.
 
 ### P3: Metrology Credibility
 
