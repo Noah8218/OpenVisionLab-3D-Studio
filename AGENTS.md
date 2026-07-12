@@ -36,6 +36,7 @@ This file defines the working agreement for Codex in this repository.
 - Viewer binary-host boundary passed on 2026-07-12: the minimal external WPF Host has zero `ProjectReference`, compiles from the published DLL bundle, carries all 12 required host/runtime outputs, and its generated EXE directly renders and picks the C3D sample with current screenshot/contract evidence.
 - Windows CI binary-host gate passed on 2026-07-12 in Actions run `29195744796`: the direct-EXE step and all Runner/golden/map steps succeeded, and `openvisionlab-3d-ci-artifacts` was uploaded with the binary-host report, contract, and screenshot.
 - Windows CI Shell quality and release identity gates passed on 2026-07-12 in Actions run `29196380343`: BinaryHost, full Shell C3D screenshot quality, central/manifest/Run Record identity, all Runner/golden/map checks, and artifact upload succeeded.
+- Release candidate `0.1.0-rc.1` passed local and pushed Windows CI validation on 2026-07-13 at commit `4d1e7cb` in Actions run `29197915513`. The uploaded Viewer manifest and Run Record agree on product `0.1.0-rc.1`, Host API `1.0`, commit/tree identity, and the Cross-section Viewer/Runner state is `Matched`. No tag, packaged archive, or GitHub Release exists yet.
 - Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
 - Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
 - Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
@@ -45,7 +46,7 @@ This file defines the working agreement for Codex in this repository.
 1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
 2. Add nominal/actual comparison only after a genuinely distinct measured/nominal sample pair is available; the current Thickness and Warpage C3D files are byte-identical and cannot prove this gate.
 3. Extend durable reporting only after multiple real runs expose a concrete need; do not jump to batch trends, PDF, database, or enterprise reporting.
-4. Preserve the passed Shell quality and release identity CI gates; do not start `0.1.0-rc.1` without explicit owner approval.
+4. Preserve the passed `0.1.0-rc.1` Shell-quality, binary-host, release-identity, and Viewer/Runner `Matched` CI gates. Create a tag, packaged archive, or GitHub Release only with explicit owner approval.
 
 ## Next Priority Model Guidance
 

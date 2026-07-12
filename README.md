@@ -331,7 +331,7 @@ CI currently runs on `windows-latest` and performs:
 
 No packaged binary release is published yet.
 
-Current release-candidate version under local validation: `0.1.0-rc.1`. No tag, packaged archive, GitHub Release, or PUSH has been created for this candidate.
+Current release-candidate version: `0.1.0-rc.1`. Local release checks and Windows Actions run `29197915513` pass for pushed commit `4d1e7cb`, including a `Matched` Cross-section Viewer/Runner Run Record. No tag, packaged archive, or GitHub Release has been created for this candidate.
 
 Current development snapshot:
 
