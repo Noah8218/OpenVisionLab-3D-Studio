@@ -85,8 +85,11 @@ jobs:
       - name: Verify Volume golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\ci\volume_golden.txt
 
+      - name: Viewer Cross-section Dimensions smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\ci\cross_section_viewer.png --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-contracts artifacts\ci\cross_section_viewer.txt
+
       - name: Runner Cross-section Dimensions smoke
-        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-cross-section-dimensions.recipe.json --report artifacts\ci\runner_c3d_cross_section_dimensions.txt --expect-status Pass --run-record artifacts\ci\cross_section_run.json --html-report artifacts\ci\cross_section_report.html --csv-report artifacts\ci\cross_section_metrics.csv
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-cross-section-dimensions.recipe.json --report artifacts\ci\runner_c3d_cross_section_dimensions.txt --expect-status Pass --compare-contract artifacts\ci\cross_section_viewer.txt --viewer-screenshot artifacts\ci\cross_section_viewer.png --run-record artifacts\ci\cross_section_run.json --html-report artifacts\ci\cross_section_report.html --csv-report artifacts\ci\cross_section_metrics.csv
 
       - name: Verify durable run bundle
         shell: pwsh
@@ -105,6 +108,8 @@ jobs:
           if ($record.ExecutionEnvironment.ApplicationVersion -eq 'unknown' -or $record.ExecutionEnvironment.ViewerHostApiVersion -eq 'unknown') { throw 'Run record application identity is missing.' }
           if ($record.ExecutionEnvironment.GitCommit -ne $env:GITHUB_SHA -or $record.ExecutionEnvironment.GitWorkingTree -ne 'clean') { throw 'Run record Git identity mismatch.' }
           if ($record.ExecutionEnvironment.DotNetRuntime -notlike '.NET 10.*' -or $record.ExecutionEnvironment.ProcessArchitecture -eq 'unknown') { throw 'Run record runtime identity is missing.' }
+          if ($record.ViewerRunnerMatchState -ne 'Matched') { throw 'Run record Viewer/Runner comparison did not match.' }
+          if (-not (Test-Path $record.Artifacts.ViewerContract) -or -not (Test-Path $record.Artifacts.ViewerScreenshot)) { throw 'Run record Viewer evidence is missing.' }
           if (-not (Test-Path artifacts\ci\cross_section_report.html) -or -not (Test-Path artifacts\ci\cross_section_metrics.csv)) { throw 'Run report artifact is missing.' }
           if ($env:GITHUB_STEP_SUMMARY) {
             Add-Content $env:GITHUB_STEP_SUMMARY "## Release identity`n"
@@ -112,6 +117,7 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer Host API: ``$hostApiVersion``"
             Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer manifest schema: ``$($manifest.schemaVersion)``"
             Add-Content $env:GITHUB_STEP_SUMMARY "- Run Record schema: ``$($record.SchemaVersion)``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer/Runner: ``$($record.ViewerRunnerMatchState)``"
           }
 
       - name: Verify Cross-section Dimensions golden cases
