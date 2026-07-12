@@ -40,6 +40,24 @@ jobs:
         timeout-minutes: 5
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Release -ArtifactDirectory artifacts\ci\viewer-dll-host
 
+      - name: Verify Shell screenshot quality
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\shell-screenshot-quality'
+          $screenshot = Join-Path $artifactDir 'shell-c3d.png'
+          $qualityReport = Join-Path $artifactDir 'shell-c3d-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $qualityReport --smoke-c3d thickness --smoke-pick c3d
+          if ($LASTEXITCODE -ne 0) { throw "Shell screenshot smoke failed with exit code $LASTEXITCODE." }
+          $quality = Get-Content $qualityReport
+          if (-not ($quality -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell screenshot quality was not accepted.' }
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Shell screenshot quality`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $quality
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 
@@ -73,14 +91,28 @@ jobs:
       - name: Verify durable run bundle
         shell: pwsh
         run: |
+          [xml]$buildProperties = Get-Content Directory.Build.props -Raw
+          $productVersion = [string]$buildProperties.Project.PropertyGroup.OpenVisionLabProductVersion
+          $hostApiVersion = [string]$buildProperties.Project.PropertyGroup.OpenVisionLabViewerHostApiVersion
+          if ([string]$buildProperties.Project.PropertyGroup.Version -ne $productVersion) { throw 'Central product versions do not match.' }
+          $manifest = Get-Content artifacts\ci\viewer-dll-host\viewer-dll-manifest.json -Raw | ConvertFrom-Json
           $record = Get-Content artifacts\ci\cross_section_run.json -Raw | ConvertFrom-Json
+          if ($manifest.schemaVersion -ne '1.0' -or $manifest.applicationVersion -ne $productVersion -or $manifest.viewerHostApiVersion -ne $hostApiVersion) { throw 'Viewer manifest version contract mismatch.' }
           if ($record.SchemaVersion -ne '1.1' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
+          if ($record.ExecutionEnvironment.ApplicationVersion -ne $productVersion -or $record.ExecutionEnvironment.ViewerHostApiVersion -ne $hostApiVersion) { throw 'Run record version contract mismatch.' }
           if ($record.Metrics.Count -ne 5 -or $record.Overlays.Count -ne 3) { throw 'Run record result evidence mismatch.' }
           if ($record.Recipe.Sha256.Length -ne 64 -or $record.Source.Sha256.Length -ne 64) { throw 'Run record provenance hash mismatch.' }
           if ($record.ExecutionEnvironment.ApplicationVersion -eq 'unknown' -or $record.ExecutionEnvironment.ViewerHostApiVersion -eq 'unknown') { throw 'Run record application identity is missing.' }
           if ($record.ExecutionEnvironment.GitCommit -ne $env:GITHUB_SHA -or $record.ExecutionEnvironment.GitWorkingTree -ne 'clean') { throw 'Run record Git identity mismatch.' }
           if ($record.ExecutionEnvironment.DotNetRuntime -notlike '.NET 10.*' -or $record.ExecutionEnvironment.ProcessArchitecture -eq 'unknown') { throw 'Run record runtime identity is missing.' }
           if (-not (Test-Path artifacts\ci\cross_section_report.html) -or -not (Test-Path artifacts\ci\cross_section_metrics.csv)) { throw 'Run report artifact is missing.' }
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Release identity`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Product: ``$productVersion``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer Host API: ``$hostApiVersion``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer manifest schema: ``$($manifest.schemaVersion)``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Run Record schema: ``$($record.SchemaVersion)``"
+          }
 
       - name: Verify Cross-section Dimensions golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-cross-section --report artifacts\ci\cross_section_dimensions_golden.txt

@@ -23,12 +23,15 @@ Updated: 2026-07-12
 - .NET 10 closure: restore/build passes with zero warnings/errors; all six golden suites, SharpGL C3D/textured GLB screenshots, WPF-UI/AvalonDock Shell, LASzip compressed decode, and the 128-check matrix pass. SharpGL.WPF remains a legacy-compatible package boundary rather than a native .NET 10 package.
 - Viewer binary-host closure: `samples\OpenVisionLab.ThreeD.Viewer.BinaryHost` contains no `ProjectReference`; `scripts\verify-viewer-dll-host.ps1` builds the published bundle and sample, confirms 12/12 host/runtime outputs and dependency entries, launches the generated EXE directly, and records C3D render/pick screenshot plus contract evidence under `artifacts\viewer-dll-host-direct-20260712`.
 - CI closure: Windows Actions run `29195744796` passed on 2026-07-12. The binary-host direct-EXE step and all Runner/golden/C3D map steps succeeded; artifact `openvisionlab-3d-ci-artifacts` (`788,909` bytes) contains the binary-host report, contract, screenshot, and the existing CI evidence.
+- Shell screenshot CI wiring: the workflow now runs a full Shell C3D capture, requires an accepted pixel-quality result, uploads the PNG/report, and writes metrics to the Actions summary. Local CI-block evidence passed on the first attempt with black ratio `0.0609`, white ratio `0.6215`, luminance `0..255`, and `1,024,000` sampled pixels; remote status remains pending until an explicit PUSH.
+- Release/version policy: `docs\OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` defines independent product, Host API, Viewer manifest, Run Record, and recipe version rules plus RC gates, tag/artifact conventions, commands, and an evidence template. Current decision remains `0.1.0-dev`; no packaged release or tag exists.
+- Release identity CI wiring: BinaryHost evidence now includes the Viewer manifest, and the Durable Run verification compares central product/Host API versions against both Viewer manifest and Run Record before writing product and schema values to the Actions summary. Local artifact verification passed for product `0.1.0-dev`, Host API `1.0`, manifest schema `1.0`, and Run Record schema `1.1`; remote status needs an explicit PUSH.
 
 ## Immediate Priority
 
 Viewer Foundation v1 passed and was revalidated on 2026-07-12 for the current fixed sample matrix. Preserve its rendering, camera, visibility, picking, selection, overlay, color-mode, hosting, screenshot, and external-interchange contracts as regression coverage. Do not add viewer-only work unless an inspection slice exposes a concrete gap.
 
-The Inspection Recipe v1 baseline passes for five independent typed C3D slices, Durable Run Record v1.1 passes for one real Cross-section replay, the repository runs on .NET 10, and the binary-only external WPF Host passes locally and in Windows CI. These remain tool-specific single-step recipe families, not a general multi-step executor or metrology certification. Calibration and measured/nominal work remain blocked by missing metadata/data. The next executable operational priority is adding Shell screenshot quality results to the CI summary.
+The Inspection Recipe v1 baseline passes for five independent typed C3D slices, Durable Run Record v1.1 passes for one real Cross-section replay, the repository runs on .NET 10, and the binary-only external WPF Host passes locally and in Windows CI. These remain tool-specific single-step recipe families, not a general multi-step executor or metrology certification. Calibration and measured/nominal work remain blocked by missing metadata/data. Shell screenshot quality summary wiring passes locally; its first remote result requires an explicit PUSH.
 
 Completed in the first implementation slice:
 
@@ -148,12 +151,12 @@ Next implementation should stay inspection-workflow-first while preserving the V
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
 2. Preserve the completed plane-flatness, point-pair-dimensions, Gap/Flush, Volume, and Cross-section recipe, parity, screenshot, and analytic/error regression baselines.
 3. Obtain C3D X/Z pitch, height scale/offset, units, axis orientation, and calibration identity; add an explicit mapping profile without changing the verified uncalibrated profile silently.
-4. Build one measured/nominal comparison slice when a distinct local sample pair is available; until then, add Shell screenshot quality results to the CI summary.
+4. Build one measured/nominal comparison slice when a distinct local sample pair is available; after an explicit PUSH, confirm the first remote Shell screenshot quality result and uploaded evidence.
 5. Extract only concrete shared recipe/execution code proven by the completed tools; do not create a speculative graph engine.
 
 ## Remaining Project Priority
 
-Obtain the C3D physical mapping/calibration contract and a genuinely distinct measured/nominal sample pair when available. Until then, preserve the locally and remotely passed binary-only Viewer Host and add Shell screenshot quality results to CI evidence. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
+Obtain the C3D physical mapping/calibration contract and a genuinely distinct measured/nominal sample pair when available. Until then, preserve the passed binary-only Viewer Host and confirm the locally passed Shell screenshot quality summary in remote CI after an explicit PUSH. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
 
 ## Evidence Already Gathered
 

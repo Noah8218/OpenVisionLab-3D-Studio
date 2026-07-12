@@ -312,7 +312,7 @@ The expected `Fail` status is intentional for the current sample recipe because 
 
 ## CI
 
-Windows CI restores/builds the .NET 10 solution, runs the binary-only Viewer Host direct-EXE smoke, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
+Windows CI restores/builds the .NET 10 solution, runs the binary-only Viewer Host direct-EXE smoke, verifies a full Shell C3D screenshot with pixel-quality metrics in the Actions summary, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
 
 GitHub Actions workflow: `.github\workflows\ci.yml`.
 
@@ -358,7 +358,7 @@ Current development snapshot:
 - Runner `--verify-volume` verifies exact signed integration, tolerance failure, insufficient/empty samples, invalid area/tolerance, non-finite input, and missing units; CI preserves this regression.
 - Viewer and Shell expose exact-row C3D Cross-section Dimensions using an inclusive source-column range, aligned-X width, raw-height range, separate tolerances, source/result separation, recipe roundtrip, Runner parity, linked profile, and a real Shell step row.
 - Runner `--verify-cross-section` verifies exact width/height range, independent tolerance failures, selector errors, insufficient/non-finite/out-of-range samples, invalid tolerance, and missing units; CI preserves this regression.
-- Runner can emit a durable schema `1.0` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, UTC time, status, all metrics/overlays, Viewer/Runner match state, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts.
+- Runner can emit a durable schema `1.1` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, UTC time, status, all metrics/overlays, Viewer/Runner match state, execution environment, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts and remains compatible with schema `1.0`.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -409,6 +409,7 @@ Current development snapshot:
 - `AGENTS.md`: repository working rules and verification commands.
 - `docs\CODEBASE_STRUCTURE.md`: project layout.
 - `docs\OPENVISIONLAB_3D_DOTNET10_MIGRATION_20260712.md`: .NET 10 dependency boundary, evidence, and watch list.
+- `docs\OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md`: product, Viewer Host API, manifest, Run Record, recipe, tag, and release-gate rules.
 - `docs\OPENVISIONLAB_3D_PLATFORM_DIRECTION.md`: product direction and roadmap.
 - `docs\OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`: current product target, commercial comparison, maturity scorecard, gates, and default priorities.
 - `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`: sample inventory and C3D observations.

@@ -29,6 +29,8 @@ if ($LASTEXITCODE -ne 0) { throw "Binary Host build failed with exit code $LASTE
 New-Item -ItemType Directory -Force -Path $artifactPath | Out-Null
 $screenshotPath = Join-Path $artifactPath 'viewer-binary-host.png'
 $contractPath = Join-Path $artifactPath 'viewer-binary-host.txt'
+$manifestEvidencePath = Join-Path $artifactPath 'viewer-dll-manifest.json'
+Copy-Item -LiteralPath (Join-Path $bundlePath 'viewer-dll-manifest.json') -Destination $manifestEvidencePath -Force
 $outputPath = Join-Path (Split-Path $sampleProject -Parent) "bin/$Configuration/net10.0-windows"
 $hostExecutable = Join-Path $outputPath 'OpenVisionLab.ThreeD.Viewer.BinaryHost.exe'
 $runArguments = @(
@@ -69,7 +71,7 @@ if (-not (Select-String -LiteralPath $contractPath -Pattern 'ViewerStatus\|summa
     throw 'Binary Host Viewer contract did not prove C3D picking.'
 }
 
-$manifest = Get-Content (Join-Path $bundlePath 'viewer-dll-manifest.json') -Raw | ConvertFrom-Json
+$manifest = Get-Content $manifestEvidencePath -Raw | ConvertFrom-Json
 $reportPath = Join-Path $artifactPath 'viewer-binary-host-report.txt'
 @(
     'BinaryHost|projectReferenceCount=0|targetFramework=net10.0-windows'

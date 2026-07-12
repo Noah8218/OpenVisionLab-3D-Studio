@@ -68,6 +68,7 @@ public partial class MainWindow : Window
     private void EnableShellSmokeFromCommandLine()
     {
         var shellScreenshotPath = GetCommandLineValue("--shell-smoke-screenshot");
+        var screenshotQualityReportPath = GetCommandLineValue("--shell-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         if (shellScreenshotPath is not null)
         {
@@ -89,7 +90,7 @@ public partial class MainWindow : Window
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                 await Task.Delay(100);
-                if (!await CaptureShellWindowWithRetryAsync(shellScreenshotPath))
+                if (!await CaptureShellWindowWithRetryAsync(shellScreenshotPath, screenshotQualityReportPath))
                 {
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
@@ -104,10 +105,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> CaptureShellWindowWithRetryAsync(string path)
+    private async Task<bool> CaptureShellWindowWithRetryAsync(string path, string? qualityReportPath)
     {
         const int maximumAttempts = 3;
         var fullPath = Path.GetFullPath(path);
+        var qualityLines = new List<string>();
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
@@ -128,10 +130,14 @@ public partial class MainWindow : Window
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             var result = ShellScreenshotCapture.Capture(this);
-            Console.WriteLine($"ShellScreenshot|attempt={attempt}|{result.Quality.Summary}");
+            var qualityLine = $"ShellScreenshot|attempt={attempt}|{result.Quality.Summary}";
+            qualityLines.Add(qualityLine);
+            Console.WriteLine(qualityLine);
             if (result.Quality.IsAcceptable)
             {
                 ShellScreenshotCapture.Save(result.Bitmap, fullPath);
+                qualityLines.Add($"ShellScreenshotResult|accepted=True|attempts={attempt}|screenshot={fullPath}");
+                WriteScreenshotQualityReport(qualityReportPath, qualityLines);
                 return true;
             }
 
@@ -140,7 +146,16 @@ public partial class MainWindow : Window
             await Task.Delay(250);
         }
 
+        qualityLines.Add($"ShellScreenshotResult|accepted=False|attempts={maximumAttempts}|screenshot={fullPath}");
+        WriteScreenshotQualityReport(qualityReportPath, qualityLines);
         return false;
+    }
+
+    private static void WriteScreenshotQualityReport(string? path, IReadOnlyList<string> lines)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        File.WriteAllLines(path, lines);
     }
 
     private static string GetRejectedScreenshotPath(string fullPath, int attempt) =>

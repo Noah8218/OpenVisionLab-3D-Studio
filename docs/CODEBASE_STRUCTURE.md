@@ -87,6 +87,7 @@ Create these folders only when implementation begins.
 | Work Type | First Document |
 | --- | --- |
 | Viewer prototype | `docs/OPENVISIONLAB_3D_VIEWER_MVP_PLAN.md` |
+| Release and version policy | `docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` |
 | Product direction | `docs/OPENVISIONLAB_3D_PLATFORM_DIRECTION.md` |
 | Library/engine choice | `docs/OPENVISIONLAB_3D_RESEARCH_NOTES_20260706.md` |
 | Local sample data | `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md` |
