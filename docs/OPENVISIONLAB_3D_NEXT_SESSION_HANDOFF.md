@@ -24,14 +24,14 @@ Updated: 2026-07-12
 - Viewer binary-host closure: `samples\OpenVisionLab.ThreeD.Viewer.BinaryHost` contains no `ProjectReference`; `scripts\verify-viewer-dll-host.ps1` builds the published bundle and sample, confirms 12/12 host/runtime outputs and dependency entries, launches the generated EXE directly, and records C3D render/pick screenshot plus contract evidence under `artifacts\viewer-dll-host-direct-20260712`.
 - CI closure: Windows Actions run `29195744796` passed on 2026-07-12. The binary-host direct-EXE step and all Runner/golden/C3D map steps succeeded; artifact `openvisionlab-3d-ci-artifacts` (`788,909` bytes) contains the binary-host report, contract, screenshot, and the existing CI evidence.
 - Shell screenshot CI closure: local evidence passed on the first attempt with black ratio `0.0609`, white ratio `0.6215`, luminance `0..255`, and `1,024,000` sampled pixels. Windows Actions run `29196380343` then passed BinaryHost, full Shell C3D quality, release identity, Runner/golden/map checks, and uploaded `openvisionlab-3d-ci-artifacts` (`921,351` bytes).
-- Release/version policy: `docs\OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` defines independent product, Host API, Viewer manifest, Run Record, and recipe version rules plus RC gates, tag/artifact conventions, commands, and an evidence template. Current decision remains `0.1.0-dev`; no packaged release or tag exists.
-- Release identity CI closure: BinaryHost evidence includes the Viewer manifest, and Durable Run verification compares central product/Host API versions against Viewer manifest and Run Record before writing schema values to the Actions summary. Local values `0.1.0-dev / 1.0 / 1.0 / 1.1` and remote Actions run `29196380343` pass.
+- Release/version policy: `docs\OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` defines independent product, Host API, Viewer manifest, Run Record, and recipe version rules plus RC gates, tag/artifact conventions, commands, and an evidence template. Product version is now `0.1.0-rc.1` for local validation; no tag, package, GitHub Release, or PUSH exists for this candidate.
+- Release identity CI closure: BinaryHost evidence includes the Viewer manifest, and Durable Run verification compares central product/Host API versions against Viewer manifest and Run Record before writing schema values to the Actions summary. The previous development baseline values `0.1.0-dev / 1.0 / 1.0 / 1.1` and remote Actions run `29196380343` pass; RC evidence is being regenerated for `0.1.0-rc.1`.
 
 ## Immediate Priority
 
 Viewer Foundation v1 passed and was revalidated on 2026-07-12 for the current fixed sample matrix. Preserve its rendering, camera, visibility, picking, selection, overlay, color-mode, hosting, screenshot, and external-interchange contracts as regression coverage. Do not add viewer-only work unless an inspection slice exposes a concrete gap.
 
-The Inspection Recipe v1 baseline passes for five independent typed C3D slices, Durable Run Record v1.1 passes for one real Cross-section replay, the repository runs on .NET 10, and the binary-only external WPF Host, Shell screenshot quality, and release identity pass locally and in Windows CI. These remain tool-specific single-step recipe families, not a general multi-step executor or metrology certification. Calibration and measured/nominal work remain blocked by missing metadata/data; `0.1.0-rc.1` requires an explicit owner decision.
+The Inspection Recipe v1 baseline passes for five independent typed C3D slices, Durable Run Record v1.1 passes for one real Cross-section replay, the repository runs on .NET 10, and the binary-only external WPF Host, Shell screenshot quality, and release identity pass locally and in Windows CI. These remain tool-specific single-step recipe families, not a general multi-step executor or metrology certification. Calibration and measured/nominal work remain blocked by missing metadata/data; local `0.1.0-rc.1` validation is active, while PUSH, tag, package, and GitHub Release require separate approval.
 
 Completed in the first implementation slice:
 
@@ -151,12 +151,12 @@ Next implementation should stay inspection-workflow-first while preserving the V
 1. Keep AvalonDock usage inside `OpenVisionLab.ThreeD.Docking.Controls`, app-level `WPF-UI` usage inside `OpenVisionLab.ThreeD.Shell`, and viewer state/rendering inside `OpenVisionLab.ThreeD.Viewer`.
 2. Preserve the completed plane-flatness, point-pair-dimensions, Gap/Flush, Volume, and Cross-section recipe, parity, screenshot, and analytic/error regression baselines.
 3. Obtain C3D X/Z pitch, height scale/offset, units, axis orientation, and calibration identity; add an explicit mapping profile without changing the verified uncalibrated profile silently.
-4. Build one measured/nominal comparison slice when a distinct local sample pair is available; otherwise preserve the passed CI gates until the owner explicitly requests `0.1.0-rc.1`.
+4. Build one measured/nominal comparison slice when a distinct local sample pair is available; otherwise complete local `0.1.0-rc.1` evidence and preserve the passed CI gates.
 5. Extract only concrete shared recipe/execution code proven by the completed tools; do not create a speculative graph engine.
 
 ## Remaining Project Priority
 
-Obtain the C3D physical mapping/calibration contract and a genuinely distinct measured/nominal sample pair when available. Until then, preserve the locally and remotely passed Viewer/BinaryHost/Shell-quality/release-identity gates; do not create `0.1.0-rc.1` without explicit approval. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
+Obtain the C3D physical mapping/calibration contract and a genuinely distinct measured/nominal sample pair when available. Until then, complete local `0.1.0-rc.1` validation while preserving Viewer/BinaryHost/Shell-quality/release-identity gates; do not PUSH, tag, package, or publish the RC without explicit approval. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
 
 ## Evidence Already Gathered
 

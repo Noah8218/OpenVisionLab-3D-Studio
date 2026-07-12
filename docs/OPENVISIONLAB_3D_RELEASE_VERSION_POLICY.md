@@ -4,13 +4,13 @@ Updated: 2026-07-12
 
 ## Scope
 
-This policy covers the OpenVisionLab 3D Studio application, the separately hosted Viewer DLL bundle, the Viewer Host API, durable Run Record JSON, and recipe JSON contracts. No packaged binary release exists yet; the current development version is `0.1.0-dev`.
+This policy covers the OpenVisionLab 3D Studio application, the separately hosted Viewer DLL bundle, the Viewer Host API, durable Run Record JSON, and recipe JSON contracts. No packaged binary release exists yet; the first release-candidate version `0.1.0-rc.1` is under local validation.
 
 ## Sources Of Truth
 
 | Version | Source | Current value |
 | --- | --- | --- |
-| Product and assembly package version | `Directory.Build.props` / `OpenVisionLabProductVersion` | `0.1.0-dev` |
+| Product and assembly package version | `Directory.Build.props` / `OpenVisionLabProductVersion` | `0.1.0-rc.1` |
 | Viewer Host API | `Directory.Build.props` / `OpenVisionLabViewerHostApiVersion` | `1.0` |
 | Viewer bundle manifest schema | `scripts/build-viewer-dll.ps1` | `1.0` |
 | Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` | `1.1` |
@@ -129,6 +129,6 @@ Known limitations:
 
 ## Current Decision
 
-- Keep `0.1.0-dev` until the owner explicitly requests the first release candidate.
+- Validate `0.1.0-rc.1` locally; do not tag, package, publish, or push it without explicit owner approval.
 - Do not create an installer, NuGet package, tag, or GitHub Release merely because the Viewer DLL bundle builds.
 - The first release candidate must preserve the current unitless/raw-height limitations and must not advertise physical calibration.
