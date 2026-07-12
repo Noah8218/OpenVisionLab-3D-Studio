@@ -22,10 +22,13 @@ This file defines the working agreement for Codex in this repository.
 - Target an explainable, local, sensor-neutral 3D inspection recipe workbench for height maps, point clouds, and meshes.
 - The target workflow is measured/nominal data -> units/frame/reference/ROI -> ordered inspection steps -> explicit Preview -> metrics/tolerance/overlays -> explicit Publish -> recipe save -> headless Runner replay -> run record/report.
 - Viewer Foundation v1 passed on 2026-07-11 for the current C3D/GLB/STL/LAS/LAZ fixed sample matrix. Preserve it as a regression baseline; this is not a production-readiness claim.
+- Viewer Foundation v1 was revalidated from the current source on 2026-07-12: the fixed data/loading/interaction/Shell matrix recorded 129 passing checks and no failures, and the C3D detailed display, pick, two-point measurement, independent Python mapping, and Open3D interchange checks passed. Viewer-only expansion is no longer the active priority; physical calibration remains a separate blocked trust gate.
 - C3D map display-frame fidelity passed on 2026-07-11 for the fixed Thickness sample: the local reference PNG confirms dimensions and unflipped row/column orientation, a 10/10 synthetic golden suite fixes the mapping contract including a finite single-cell case, and 66,212 sampled Viewer points roundtrip through neutral PLY with zero XYZ/RGB error. Physical scale remains unverified because the official format and calibration metadata are unavailable.
 - Inspection Recipe v1 baseline passed on 2026-07-11 for one C3D numeric-reference-ROI plane-flatness step with stable input/reference IDs, recipe save/reopen, Viewer/Runner metric and status parity, Publish evidence, and a real Shell step row. This is a one-step baseline, not a general recipe graph or metrology claim.
 - Plane/flatness algorithm credibility baseline passed on 2026-07-11 with an analytic synthetic plane, exact signed-offset flatness/RMS answers, Pass/Fail thresholds, and controlled empty/insufficient/degenerate/non-finite/invalid-tolerance cases. This is not calibration or external metrology validation.
 - The second typed slice, C3D point-pair distance/width/signed-elevation-angle, passed on 2026-07-11 with explicit source-cell references, separate metric tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, Shell evidence, and 9/9 analytic/error golden cases. It measures selected cells; it does not find edges or fitted features.
+- The third typed slice, C3D Gap/Flush, passed on 2026-07-12 with two explicit recipe-owned regions, signed aligned-X gap, signed raw-height flush, separate tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 8/8 analytic/error golden cases. It does not perform automatic seam/edge detection or calibrated physical measurement.
+- The fourth typed slice, C3D Volume, passed on 2026-07-12 with an explicit reference-plane ROI and measurement ROI, signed above/below/net values, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 9/9 analytic/error golden cases. Its `model^3` values belong to the uncalibrated display frame and are not physical volume.
 - Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
 - Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
 - Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
@@ -33,12 +36,22 @@ This file defines the working agreement for Codex in this repository.
 ## Default Product Priority
 
 1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
-2. Build gap/flush as the next complete typed inspection step using two explicit regions, signed results, separate tolerances, Preview/Publish, recipe roundtrip, Runner parity, analytic golden cases, and Shell evidence.
-3. Add the remaining basic surface tools one complete slice at a time: volume, then cross-section dimensions.
-4. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
-5. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
-6. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
+2. Add cross-section dimensions as the next basic surface slice.
+3. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
+4. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
+5. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
 
+## Next Priority Model Guidance
+
+- Every next-priority item reported to the user must include `Recommended model` and `Reasoning effort` so the user can choose a lower-cost run when the work does not require deep reasoning.
+- Recommend the least expensive currently available Codex-capable model that can complete the item safely. If a model named below is unavailable in the current surface, name the closest available equivalent explicitly.
+- Use `codex-mini-latest` with `low` for documentation, repository status, narrow research, and simple command verification when available.
+- Use `GPT-5.3-Codex` with `low` for small localized code edits with clear acceptance criteria.
+- Use `GPT-5.3-Codex` with `medium` for normal feature slices, multi-file MVVM work, Viewer/Runner parity, and test-driven bug fixes.
+- Use `GPT-5.3-Codex` with `high` for architecture changes, ambiguous cross-module defects, numerical reliability, physical calibration, metrology comparison, security, or difficult performance work.
+- Do not recommend `xhigh` by default. Use it only after `high` is insufficient or an explicitly high-risk task justifies the added reasoning cost.
+- If a priority is blocked by missing calibration data, sample data, credentials, hardware, or another prerequisite, state the prerequisite first and recommend `execution deferred` instead of spending model tokens prematurely.
+- Required compact format: `1. Implement C3DMappingProfile | Recommended model: GPT-5.3-Codex | Reasoning effort: medium`.
 ## Stable Contracts
 
 - Viewer Foundation v1 has passed. New rule/algorithm work may proceed only as an end-to-end inspection slice while all viewer-gate smokes remain green.
@@ -83,6 +96,16 @@ For C3D map fidelity work:
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000
+python scripts\ply-coordinate-signature.py --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\openvision_c3d_detailed_signature.txt
+```
+
+For an explicit full-resolution C3D audit, add `--point-only --max-sampled-points 2147483647` to the Runner probe and pass the same budget to the Python verifier. Do not upload the resulting large PLY as a routine CI artifact.
+
+For external-viewer parity work, compare a PLY exported by OpenVisionLab with the same PLY re-saved by CloudCompare, ZEISS INSPECT, PolyWorks, Open3D, MeshLab, or another trusted tool using:
+
+```powershell
+python scripts\ply-coordinate-signature.py --reference artifacts\map_fidelity\openvision_c3d_detailed.ply --candidate artifacts\map_fidelity\external_resaved_c3d_detailed.ply --report artifacts\map_fidelity\external_resaved_c3d_detailed_compare.txt --ignore-faces --tolerance 0.00001
 ```
 
 For SharpGL viewer work, run:
@@ -169,6 +192,7 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --recipe-comparison-contract artifacts\laz_acceptance_recipe_reopen_viewer_after.txt --recipe-comparison-report artifacts\runner_laz_run_history_after.txt --shell-smoke-screenshot artifacts\shell_laz_run_history_after.png --shell-evidence-tab history --smoke-recipe artifacts\saved_laz_two_point_acceptance.recipe.json
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_flatness_viewer_after.png --smoke-contracts artifacts\shell_flatness_after.txt --recipe-comparison-contract artifacts\viewer_flatness_reopen_after.txt --recipe-comparison-report artifacts\runner_flatness_after.txt --shell-smoke-screenshot artifacts\shell_flatness_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_plane_flatness.recipe.json
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_dimensions_viewer_after.png --smoke-contracts artifacts\shell_dimensions_after.txt --recipe-comparison-contract artifacts\viewer_dimensions_reopen_after.txt --recipe-comparison-report artifacts\runner_point_pair_dimensions_after.txt --shell-smoke-screenshot artifacts\shell_dimensions_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\shell_gap_flush_viewer_after.png --smoke-contracts artifacts\shell_gap_flush_after.txt --recipe-comparison-contract artifacts\viewer_gap_flush_reopen_after.txt --recipe-comparison-report artifacts\runner_gap_flush_after.txt --shell-smoke-screenshot artifacts\shell_gap_flush_after.png --shell-evidence-tab steps --smoke-recipe artifacts\saved_c3d_gap_flush.recipe.json
 ```
 
 For recipe/runner work, also run:
@@ -179,6 +203,12 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\plane_flatness_golden_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --report artifacts\runner_point_pair_dimensions_after.txt --expect-status Pass --compare-contract artifacts\viewer_dimensions_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\point_pair_dimensions_golden_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_gap_flush.recipe.json --report artifacts\runner_gap_flush_after.txt --expect-status Pass --compare-contract artifacts\viewer_gap_flush_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-gap-flush --report artifacts\gap_flush_golden_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_after.png --smoke-recipe recipes\c3d-volume.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_reopen_after.png --smoke-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_volume.recipe.json --report artifacts\runner_volume_after.txt --expect-status Pass --compare-contract artifacts\viewer_volume_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\volume_golden_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement.recipe.json --report artifacts\runner_laz_two_point_after.txt --expect-status Pass --compare-contract artifacts\laz_two_point_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement-fail.recipe.json --report artifacts\runner_laz_two_point_fail_after.txt --expect-status Fail
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_laz_two_point_acceptance.recipe.json --report artifacts\runner_laz_acceptance_edit_save_after.txt --expect-status Pass --compare-contract artifacts\laz_acceptance_edit_save_viewer_after.txt
@@ -230,10 +260,10 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 
 ## Priority Direction
 
-1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and plane/flatness plus point-pair-dimensions typed-slice baselines.
+1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and plane/flatness, point-pair-dimensions, plus Gap/Flush typed-slice baselines.
 2. Obtain the C3D calibration contract and add an explicit mapping profile; never infer or advertise physical units.
-3. Implement gap/flush as the next complete typed inspection slice without adding a generic graph engine first.
-4. Add volume and cross-section dimensions one verified slice at a time.
+3. Implement volume as the next complete typed inspection slice without adding a generic graph engine first.
+4. Add cross-section dimensions as the following verified slice.
 5. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
 6. Add one measured/nominal comparison slice, then durable JSON run records and simple HTML/CSV reporting.
 7. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.

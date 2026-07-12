@@ -80,6 +80,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private readonly EventHandler fitPlaneRequestedHandler;
     private readonly EventHandler previewPlaneFlatnessRequestedHandler;
     private readonly EventHandler previewPointPairDimensionsRequestedHandler;
+    private readonly EventHandler previewGapFlushRequestedHandler;
+    private readonly EventHandler previewVolumeRequestedHandler;
     private readonly EventHandler screenshotRequestedHandler;
     private readonly EventHandler publishPreviewResultRequestedHandler;
     private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
@@ -127,6 +129,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         fitPlaneRequestedHandler = (_, _) => FitC3DReferencePlane();
         previewPlaneFlatnessRequestedHandler = (_, _) => PreviewC3DPlaneFlatness();
         previewPointPairDimensionsRequestedHandler = (_, _) => PreviewC3DPointPairDimensions();
+        previewGapFlushRequestedHandler = (_, _) => PreviewC3DGapFlush();
+        previewVolumeRequestedHandler = (_, _) => PreviewC3DVolume();
         screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
         publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
         viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
@@ -169,6 +173,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.FitPlaneRequested += fitPlaneRequestedHandler;
         viewModel.PreviewPlaneFlatnessRequested += previewPlaneFlatnessRequestedHandler;
         viewModel.PreviewPointPairDimensionsRequested += previewPointPairDimensionsRequestedHandler;
+        viewModel.PreviewGapFlushRequested += previewGapFlushRequestedHandler;
+        viewModel.PreviewVolumeRequested += previewVolumeRequestedHandler;
         viewModel.ScreenshotRequested += screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged += viewModelPropertyChangedHandler;
@@ -186,6 +192,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.FitPlaneRequested -= fitPlaneRequestedHandler;
         viewModel.PreviewPlaneFlatnessRequested -= previewPlaneFlatnessRequestedHandler;
         viewModel.PreviewPointPairDimensionsRequested -= previewPointPairDimensionsRequestedHandler;
+        viewModel.PreviewGapFlushRequested -= previewGapFlushRequestedHandler;
+        viewModel.PreviewVolumeRequested -= previewVolumeRequestedHandler;
         viewModel.ScreenshotRequested -= screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
@@ -828,6 +836,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
             FileName = ShouldSaveCurrentLazTwoPointRecipe()
                 ? "laz-two-point-measurement.recipe.json"
+                : ShouldSaveCurrentGapFlushRecipe()
+                    ? "c3d-gap-flush.recipe.json"
                 : ShouldSaveCurrentPointPairDimensionsRecipe()
                     ? "c3d-point-pair-dimensions.recipe.json"
                     : "c3d-height-deviation.recipe.json",
@@ -843,6 +853,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     public bool SaveCurrentRecipe(string path, bool isSmoke) =>
         ShouldSaveCurrentLazTwoPointRecipe()
             ? SaveCurrentLazTwoPointRecipe(path, isSmoke)
+            : ShouldSaveCurrentGapFlushRecipe()
+                ? SaveCurrentGapFlushRecipe(path, isSmoke)
             : ShouldSaveCurrentPointPairDimensionsRecipe()
                 ? SaveCurrentPointPairDimensionsRecipe(path, isSmoke)
                 : SaveCurrentHeightDeviationRecipe(path, isSmoke);
@@ -859,6 +871,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         && viewModel.C3DSampleVisible
         && viewModel.PointPairDimensionsConfigured
         && viewModel.HasPointPairReferences;
+
+    private bool ShouldSaveCurrentGapFlushRecipe() =>
+        c3dSample is not null
+        && viewModel.C3DSampleVisible
+        && viewModel.GapFlushConfigured
+        && viewModel.GapFlushVisible;
 
     public bool ApplyRoiReferenceAlignment()
     {
@@ -1139,6 +1157,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             ApplySmokePlaneFlatness();
         }
+        else if (measure.Equals("gap-flush", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("gapflush", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokeGapFlush();
+        }
+        else if (measure.Equals("volume", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokeVolume();
+        }
     }
 
     private void ApplySmokeRecipeParameterEdit(string mode)
@@ -1268,6 +1295,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 return ApplyLazTwoPointRecipe(fullRecipePath, isSmoke);
             }
 
+            if (recipeType.Equals(C3DGapFlushRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+            {
+                return ApplyC3DGapFlushRecipe(fullRecipePath, isSmoke);
+            }
+
             return recipeType.Equals(C3DPointPairDimensionsRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase)
                 ? ApplyC3DPointPairDimensionsRecipe(fullRecipePath, isSmoke)
                 : ApplyHeightDeviationRecipe(fullRecipePath, isSmoke);
@@ -1300,6 +1332,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
 
             viewModel.ClearPlaneFlatnessRecipeStep();
             viewModel.ClearPointPairDimensionsRecipeStep();
+            viewModel.ClearGapFlushRecipeStep();
+            viewModel.ClearVolumeRecipeStep();
             viewModel.SetC3DHeightDeviationPreview(result);
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
             viewModel.SetRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit, recipe.Rule.PeakTolerance);
@@ -1311,6 +1345,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 if (planeFlatness.Enabled)
                 {
                     PreviewC3DPlaneFlatness();
+                }
+            }
+            if (recipe.Volume is { } volume)
+            {
+                viewModel.SetVolumeRecipeStep(volume);
+                if (volume.Enabled)
+                {
+                    PreviewC3DVolume();
                 }
             }
             viewModel.ViewerStatus = isSmoke
@@ -1341,6 +1383,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             planeReferenceMeasurement = null;
             viewModel.ClearPlaneFlatnessRecipeStep();
             viewModel.ClearPointPairDimensionsRecipeStep();
+            viewModel.ClearGapFlushRecipeStep();
+            viewModel.ClearVolumeRecipeStep();
             viewModel.UseC3DSmokeScene();
             viewModel.SetC3DAlignment(
                 recipe.Transform ?? ModelTransform.Identity,
@@ -1366,6 +1410,49 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke point pair recipe" : "Point pair recipe", ex);
+        }
+    }
+
+    private bool ApplyC3DGapFlushRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipe = C3DGapFlushRecipe.Load(fullRecipePath);
+            var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+            c3dSample = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+            SetC3DSampleStatus();
+            planeFlatnessEvaluation = null;
+            planeReferenceMeasurement = null;
+            viewModel.ClearPlaneFlatnessRecipeStep();
+            viewModel.ClearPointPairDimensionsRecipeStep();
+            viewModel.ClearGapFlushRecipeStep();
+            viewModel.ClearVolumeRecipeStep();
+            viewModel.UseC3DSmokeScene();
+            viewModel.SetC3DAlignment(
+                recipe.Transform ?? ModelTransform.Identity,
+                recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment",
+                recipe.Source.Name);
+            viewModel.SetGapFlushRecipeStep(recipe.Step);
+            viewModel.SetPointPairRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit);
+            roiStepLeftRecipeRegion = recipe.Step.LeftRegion;
+            roiStepRightRecipeRegion = recipe.Step.RightRegion;
+            roiStepInteractiveSelection = false;
+            roiStepNextPickSetsRight = false;
+
+            if (recipe.Step.Enabled && !PreviewC3DGapFlush())
+            {
+                throw new InvalidDataException("Gap / Flush preview failed for the configured regions.");
+            }
+
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke Gap / Flush recipe: {Path.GetFileName(fullRecipePath)}"
+                : $"Gap / Flush recipe loaded: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            return SetRecipeLoadFailure(isSmoke ? "Smoke Gap / Flush recipe" : "Gap / Flush recipe", ex);
         }
     }
 
@@ -1442,7 +1529,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 new HeightDeviationRecipeRule(viewModel.RecipePeakTolerance),
                 viewModel.C3DModelTransform,
                 CreateCurrentRoiStepRecipe(),
-                viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null);
+                viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null,
+                viewModel.VolumeConfigured ? viewModel.CreateVolumeRecipeStep() : null);
 
             recipe.Save(fullRecipePath);
             viewModel.SetRecipeSaved(fullRecipePath);
@@ -1545,6 +1633,46 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             viewModel.ViewerStatus = $"{(isSmoke ? "Smoke point pair recipe save" : "Point pair recipe save")} failed: {ex.Message}";
+            return false;
+        }
+    }
+
+    private bool SaveCurrentGapFlushRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            if (c3dSample is null || !viewModel.GapFlushVisible)
+            {
+                viewModel.ViewerStatus = "Gap / Flush recipe save requires a successful preview";
+                return false;
+            }
+
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
+            var sourcePath = Path.GetFullPath(c3dSample.SourcePath);
+            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
+            var recipe = new C3DGapFlushRecipe(
+                C3DGapFlushRecipe.SupportedRecipeType,
+                "1.0",
+                new HeightDeviationRecipeSource(
+                    MainWindowViewModel.C3DEntityId,
+                    viewModel.RecipeSourceName,
+                    sourceRecipePath,
+                    viewModel.RecipeSourceUnit),
+                viewModel.C3DModelTransform,
+                viewModel.CreateGapFlushRecipeStep());
+
+            recipe.Save(fullRecipePath);
+            viewModel.SetRecipeSaved(fullRecipePath);
+            SetRecipeValidationOk();
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke Gap / Flush recipe saved: {Path.GetFileName(fullRecipePath)}"
+                : $"Gap / Flush recipe saved: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ViewerStatus = $"{(isSmoke ? "Smoke Gap / Flush recipe save" : "Gap / Flush recipe save")} failed: {ex.Message}";
             return false;
         }
     }
@@ -2282,6 +2410,25 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
     }
 
+    private void ApplySmokeGapFlush()
+    {
+        if (!viewModel.C3DSampleVisible)
+        {
+            ApplySmokeC3D();
+        }
+
+        if (!PreviewC3DGapFlush())
+        {
+            SetSmokeFailure("Smoke Gap / Flush preview failed");
+        }
+    }
+
+    private void ApplySmokeVolume()
+    {
+        if (!viewModel.C3DSampleVisible) ApplySmokeC3D();
+        if (!PreviewC3DVolume()) SetSmokeFailure("Smoke Volume preview failed");
+    }
+
     public bool FitC3DReferencePlane()
     {
         if (c3dSample is null || !viewModel.C3DSampleVisible)
@@ -2467,6 +2614,156 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             step.Unit,
             viewModel.RecipeSourceUnit));
         viewModel.SetPointPairDimensionsPreview(evaluation);
+        RenderNow();
+        return evaluation.Result.Status != ResultStatus.Error;
+    }
+
+    public bool PreviewC3DGapFlush()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Gap / Flush requires a visible C3D height grid";
+            return false;
+        }
+
+        var step = viewModel.CreateGapFlushRecipeStep();
+        C3DHeightGrid measurementSample;
+        try
+        {
+            measurementSample = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
+        {
+            viewModel.ViewerStatus = $"Gap / Flush sample load failed: {ex.Message}";
+            return false;
+        }
+
+        TryCalculateGapFlushStats(measurementSample.Points, step.LeftRegion, out var left);
+        TryCalculateGapFlushStats(measurementSample.Points, step.RightRegion, out var right);
+        var evaluation = GapFlushRule.Evaluate(new GapFlushInput(
+            step.SourceEntityId,
+            step.LeftRegion,
+            step.RightRegion,
+            left,
+            right,
+            step.Acceptance,
+            step.GapUnit,
+            step.FlushUnit));
+
+        roiStepLeftRecipeRegion = step.LeftRegion;
+        roiStepRightRecipeRegion = step.RightRegion;
+        roiStepInteractiveSelection = false;
+        roiStepNextPickSetsRight = false;
+        roiStepLeftBounds = (
+            (float)(step.LeftRegion.CenterX - step.LeftRegion.HalfWidth),
+            (float)(step.LeftRegion.CenterX + step.LeftRegion.HalfWidth),
+            (float)(step.LeftRegion.CenterZ - step.LeftRegion.HalfDepth),
+            (float)(step.LeftRegion.CenterZ + step.LeftRegion.HalfDepth),
+            (float)left.ModelYMean);
+        roiStepRightBounds = (
+            (float)(step.RightRegion.CenterX - step.RightRegion.HalfWidth),
+            (float)(step.RightRegion.CenterX + step.RightRegion.HalfWidth),
+            (float)(step.RightRegion.CenterZ - step.RightRegion.HalfDepth),
+            (float)(step.RightRegion.CenterZ + step.RightRegion.HalfDepth),
+            (float)right.ModelYMean);
+        roiStepLeftCenter = new Vector3((float)step.LeftRegion.CenterX, (float)left.ModelYMean, (float)step.LeftRegion.CenterZ);
+        roiStepRightCenter = new Vector3((float)step.RightRegion.CenterX, (float)right.ModelYMean, (float)step.RightRegion.CenterZ);
+        viewModel.SetRoiStepMeasurement(
+            left.PointCount,
+            left.RawMean,
+            left.ModelYMean,
+            right.PointCount,
+            right.RawMean,
+            right.ModelYMean,
+            "GapFlush");
+        viewModel.SelectionOverlayVisible = true;
+        viewModel.MeasurementVisible = true;
+        viewModel.SetGapFlushPreview(evaluation);
+        RenderNow();
+        return evaluation.Result.Status != ResultStatus.Error;
+    }
+
+    private bool TryCalculateGapFlushStats(
+        IReadOnlyList<HeightGridPoint> points,
+        HeightDeviationRecipeRoiRegion region,
+        out GapFlushRegionStats stats)
+    {
+        var count = 0;
+        var rawSum = 0.0;
+        var modelYSum = 0.0;
+        foreach (var point in points)
+        {
+            var position = TransformC3DPosition(point.Position);
+            if (!Contains(region, position))
+            {
+                continue;
+            }
+
+            count++;
+            rawSum += point.RawValue;
+            modelYSum += position.Y;
+        }
+
+        if (count == 0)
+        {
+            stats = new GapFlushRegionStats(0, double.NaN, double.NaN);
+            return false;
+        }
+
+        stats = new GapFlushRegionStats(count, rawSum / count, modelYSum / count);
+        return true;
+    }
+
+    public bool PreviewC3DVolume()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Volume requires a visible C3D height grid";
+            return false;
+        }
+
+        var step = viewModel.CreateVolumeRecipeStep();
+        C3DHeightGrid measurementGrid;
+        try { measurementGrid = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
+        {
+            viewModel.ViewerStatus = $"Volume sample load failed: {ex.Message}";
+            return false;
+        }
+
+        var samples = measurementGrid.Points
+            .Select(point => new HeightFieldPlaneSample(TransformC3DPosition(point.Position), point.RawValue))
+            .ToArray();
+        var reference = samples.Where(sample => Contains(step.ReferenceRegion, sample.Position)).ToArray();
+        var measured = samples.Where(sample => Contains(step.MeasurementRegion, sample.Position)).ToArray();
+        var spacing = measurementGrid.HorizontalScale * measurementGrid.PointStride * viewModel.C3DModelTransform.Scale;
+        var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
+            step.SourceEntityId, reference, measured, spacing * spacing,
+            step.ExpectedNetVolume, step.Tolerance, step.Unit));
+
+        if (evaluation.ReferencePlane is { } plane)
+        {
+            var region = step.ReferenceRegion;
+            planeReferenceMeasurement = (
+                CreatePlaneCorner(plane, (float)(region.CenterX - region.HalfWidth), (float)(region.CenterZ - region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX + region.HalfWidth), (float)(region.CenterZ - region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX + region.HalfWidth), (float)(region.CenterZ + region.HalfDepth)),
+                CreatePlaneCorner(plane, (float)(region.CenterX - region.HalfWidth), (float)(region.CenterZ + region.HalfDepth)),
+                plane.Target,
+                plane.TargetProjection);
+        }
+
+        var meanY = measured.Length == 0 ? 0.0 : measured.Average(sample => sample.Position.Y);
+        roiStepLeftBounds = (
+            (float)(step.MeasurementRegion.CenterX - step.MeasurementRegion.HalfWidth),
+            (float)(step.MeasurementRegion.CenterX + step.MeasurementRegion.HalfWidth),
+            (float)(step.MeasurementRegion.CenterZ - step.MeasurementRegion.HalfDepth),
+            (float)(step.MeasurementRegion.CenterZ + step.MeasurementRegion.HalfDepth),
+            (float)meanY);
+        roiStepRightBounds = null;
+        viewModel.SelectionOverlayVisible = true;
+        viewModel.MeasurementVisible = true;
+        viewModel.SetVolumePreview(evaluation);
         RenderNow();
         return evaluation.Result.Status != ResultStatus.Error;
     }
@@ -4427,6 +4724,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         var pointPairStep = viewModel.CreatePointPairDimensionsRecipeStep();
         var restorePointPairPreview = viewModel.PointPairDimensionsVisible;
         var restoreFlatnessPreview = viewModel.PlaneFlatnessVisible;
+        var restoreVolumePreview = viewModel.VolumeVisible;
         try
         {
             c3dSample = string.IsNullOrWhiteSpace(sourcePath)
@@ -4469,6 +4767,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             {
                 viewModel.InvalidatePointPairDimensionsPreview($"C3D reload invalidated point references: {ex.Message}");
             }
+        }
+        else if (restoreVolumePreview)
+        {
+            PreviewC3DVolume();
         }
         else if (restoreFlatnessPreview)
         {
@@ -4573,6 +4875,33 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
 
         lines.Add($"PointPairDimensions|visible={viewModel.PointPairDimensionsVisible}|status={(viewModel.PointPairDimensionsVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|distance={FormatContractNumber(viewModel.PointPairDistance)}|width={FormatContractNumber(viewModel.PointPairWidth)}|angleDegrees={FormatContractNumber(viewModel.PointPairAngleDegrees)}|summary={CleanContractText(viewModel.PointPairDimensionsSummary)}|details={CleanContractText(viewModel.PointPairDimensionsDetails)}");
+        lines.Add("GapFlushInspection");
+        if (viewModel.GapFlushConfigured)
+        {
+            var gapFlushStep = viewModel.CreateGapFlushRecipeStep();
+            lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+                gapFlushStep.Id,
+                GapFlushRule.ToolName,
+                gapFlushStep.SourceEntityId,
+                $"{gapFlushStep.LeftReferenceId},{gapFlushStep.RightReferenceId}",
+                gapFlushStep.Enabled)));
+            lines.Add($"GapFlushStep|configured=True|id={gapFlushStep.Id}|source={gapFlushStep.SourceEntityId}|leftReference={gapFlushStep.LeftReferenceId}|rightReference={gapFlushStep.RightReferenceId}|left={FormatContractRegion(gapFlushStep.LeftRegion)}|right={FormatContractRegion(gapFlushStep.RightRegion)}|expectedGap={FormatContractNumber(gapFlushStep.Acceptance.ExpectedGap)}|gapTolerance={FormatContractNumber(gapFlushStep.Acceptance.GapTolerance)}|expectedFlush={FormatContractNumber(gapFlushStep.Acceptance.ExpectedFlush)}|flushTolerance={FormatContractNumber(gapFlushStep.Acceptance.FlushTolerance)}|gapUnit={gapFlushStep.GapUnit}|flushUnit={gapFlushStep.FlushUnit}|maxSampledPoints={gapFlushStep.MaxSampledPoints}|enabled={gapFlushStep.Enabled}");
+        }
+        else
+        {
+            lines.Add("GapFlushStep|configured=False");
+        }
+
+        lines.Add($"GapFlush|visible={viewModel.GapFlushVisible}|status={(viewModel.GapFlushVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|gap={FormatContractNumber(viewModel.GapFlushGap)}|flush={FormatContractNumber(viewModel.GapFlushFlush)}|modelFlush={FormatContractNumber(viewModel.GapFlushModelFlush)}|leftCount={viewModel.GapFlushLeftPointCount}|rightCount={viewModel.GapFlushRightPointCount}|summary={CleanContractText(viewModel.GapFlushSummary)}|details={CleanContractText(viewModel.GapFlushDetails)}");
+        lines.Add("VolumeInspection");
+        if (viewModel.VolumeConfigured)
+        {
+            var volumeStep = viewModel.CreateVolumeRecipeStep();
+            lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(volumeStep.Id, VolumeRule.ToolName, volumeStep.SourceEntityId, $"{volumeStep.ReferenceId},{volumeStep.MeasurementId}", volumeStep.Enabled)));
+            lines.Add($"VolumeStep|configured=True|id={volumeStep.Id}|source={volumeStep.SourceEntityId}|reference={volumeStep.ReferenceId}|measurement={volumeStep.MeasurementId}|referenceRegion={FormatContractRegion(volumeStep.ReferenceRegion)}|measurementRegion={FormatContractRegion(volumeStep.MeasurementRegion)}|expectedNet={FormatContractNumber(volumeStep.ExpectedNetVolume)}|tolerance={FormatContractNumber(volumeStep.Tolerance)}|unit={volumeStep.Unit}|maxSampledPoints={volumeStep.MaxSampledPoints}|enabled={volumeStep.Enabled}");
+        }
+        else lines.Add("VolumeStep|configured=False");
+        lines.Add($"Volume|visible={viewModel.VolumeVisible}|status={(viewModel.VolumeVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|above={FormatContractNumber(viewModel.VolumeAbove)}|below={FormatContractNumber(viewModel.VolumeBelow)}|net={FormatContractNumber(viewModel.VolumeNet)}|referenceSamples={viewModel.VolumeReferenceSampleCount}|measurementSamples={viewModel.VolumeMeasurementSampleCount}|summary={CleanContractText(viewModel.VolumeSummary)}|details={CleanContractText(viewModel.VolumeDetails)}");
         lines.Add("PlaneReferenceMeasurement");
         lines.Add($"PlaneReference|visible={viewModel.PlaneReferenceMeasurementVisible}|fit=least-squares-height-field|sampleBudget={PlaneFitMaxSampledPoints}|samples={viewModel.PlaneReferenceSampleCount}|normal=({FormatContractNumber(viewModel.PlaneReferenceNormalX)},{FormatContractNumber(viewModel.PlaneReferenceNormalY)},{FormatContractNumber(viewModel.PlaneReferenceNormalZ)})|rms={FormatContractNumber(viewModel.PlaneReferenceFitRms)}|signedDistance={FormatContractNumber(viewModel.PlaneReferenceSignedDistance)}|absoluteDistance={FormatContractNumber(viewModel.PlaneReferenceAbsoluteDistance)}|referenceY={FormatContractNumber(viewModel.PlaneReferenceY)}|targetY={FormatContractNumber(viewModel.PlaneReferenceTargetY)}|rawHeightDelta={FormatContractNumber(viewModel.PlaneReferenceRawHeightDelta)}|summary={CleanContractText(viewModel.PlaneReferenceMeasurementDetails)}");
         lines.Add("PlaneFlatnessInspection");

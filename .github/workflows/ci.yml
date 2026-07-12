@@ -24,6 +24,11 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
       - name: Restore
         run: dotnet restore OpenVisionLab.ThreeDStudio.slnx
 
@@ -45,11 +50,29 @@ jobs:
       - name: Verify point pair dimensions golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\ci\point_pair_dimensions_golden.txt
 
+      - name: Runner Gap Flush smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-gap-flush.recipe.json --report artifacts\ci\runner_c3d_gap_flush.txt --expect-status Pass
+
+      - name: Verify Gap Flush golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-gap-flush --report artifacts\ci\gap_flush_golden.txt
+
+      - name: Runner Volume smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-volume.recipe.json --report artifacts\ci\runner_c3d_volume.txt --expect-status Pass
+
+      - name: Verify Volume golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\ci\volume_golden.txt
+
       - name: Verify C3D map fidelity golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\ci\c3d_map_fidelity_golden.txt
 
       - name: Verify actual C3D viewer-frame roundtrip
-        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000 --point-only
+
+      - name: Verify C3D map with independent Python implementation
+        run: python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000
+
+      - name: Generate PLY coordinate signature
+        run: python scripts\ply-coordinate-signature.py --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_reference_signature.txt
 
       - name: Upload CI artifacts
         if: always()

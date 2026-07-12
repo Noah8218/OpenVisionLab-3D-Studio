@@ -209,6 +209,37 @@ The implemented split is:
     - The 3D Inspection View owns the endpoint markers and connecting measurement line. `Publish Result` creates a separate result entity/layer without changing source C3D values.
     - Recipe JSON owns a stable step ID, source entity ID, point-reference IDs, source row/column selectors, transform, units, expected values, and tolerances. Runner must resolve the same source cells independently of render density.
     - This slice intentionally excludes automatic edge/feature extraction, feature fitting, CAD dimensions, and GD&T.
+25. Add the third typed inspection slice: C3D Gap / Flush. Done for explicit two-region baseline.
+    - Standalone Viewer and Shell `Tool / Inspector` own expected signed gap, gap tolerance, expected signed flush, and flush tolerance.
+    - The existing recipe-owned left/right ROI fields define the two explicit regions. Gap is the signed aligned-X distance from the left ROI's right edge to the right ROI's left edge; flush is right mean raw height minus left mean raw height.
+    - `Preview Gap / Flush` evaluates a fixed recipe-owned sample budget independent from render density. `Publish Result` creates a separate result entity/layer without changing source C3D values.
+    - The Viewer HUD and viewport retain both ROI regions, signed results, sample counts, units, and acceptance status when hosted without Shell panes.
+    - Recipe JSON owns stable step/source/reference IDs, both regions, transform, units, expected values, tolerances, and sample budget. Runner must reproduce the same status and key metrics.
+    - This slice intentionally excludes automatic seam/edge detection, arbitrary-direction gap, CAD nominal comparison, and calibrated physical-unit claims.
+
+## C3D Gap / Flush Evidence
+
+- Viewer Preview/Publish screenshot and contract: `artifacts/viewer_gap_flush_after.png`, `artifacts/viewer_gap_flush_after.txt`
+- Saved-recipe reopen screenshot and contract: `artifacts/viewer_gap_flush_reopen_after.png`, `artifacts/viewer_gap_flush_reopen_after.txt`
+- Runner parity report: `artifacts/runner_gap_flush_after.txt`
+- Analytic/error golden report: `artifacts/gap_flush_golden_after.txt`
+- Shell Viewer/contract/Steps workbench: `artifacts/shell_gap_flush_viewer_after.png`, `artifacts/shell_gap_flush_after.txt`, `artifacts/shell_gap_flush_after.png`
+
+26. Add the fourth typed inspection slice: C3D Volume above/below a reference plane. Done for the explicit height-field ROI baseline.
+    - The existing Flatness reference ROI defines the fitted height-field plane; the recipe-owned left ROI defines the measurement region.
+    - Standalone Viewer and Shell `Tool / Inspector` own expected signed net volume and tolerance with explicit Preview and Publish.
+    - Results include above-plane, below-plane magnitude, and signed net volume in `model^3`; physical volume remains unavailable without calibrated pitch and height units.
+    - Recipe JSON owns stable step/source/reference IDs, both regions, expected value, tolerance, unit, and fixed sample budget. Runner must reproduce Viewer status and all three volume metrics.
+    - This slice excludes watertight mesh volume, arbitrary closed solids, CAD nominal volume, and calibrated physical-volume claims.
+
+## C3D Volume Evidence
+
+- Before Viewer/Shell screenshots: `artifacts/viewer_volume_before.png`, `artifacts/shell_volume_before.png`
+- Viewer Preview/Publish screenshot and contract: `artifacts/viewer_volume_after.png`, `artifacts/viewer_volume_after.txt`
+- Saved-recipe reopen screenshot and contract: `artifacts/viewer_volume_reopen_after.png`, `artifacts/viewer_volume_reopen_after.txt`
+- Runner parity report: `artifacts/runner_volume_after.txt`
+- Analytic/error golden report: `artifacts/volume_golden_after.txt`
+- Shell Viewer/contract/Steps workbench: `artifacts/shell_volume_viewer_after.png`, `artifacts/shell_volume_after.txt`, `artifacts/shell_volume_steps_after.png`
 
 ## C3D Point Pair Dimensions Evidence
 

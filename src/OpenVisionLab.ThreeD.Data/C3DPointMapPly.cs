@@ -14,7 +14,7 @@ public sealed record C3DPointMapPlyExport(
 
 public static class C3DPointMapPly
 {
-    public static C3DPointMapPlyExport Export(C3DHeightGrid grid, string path)
+    public static C3DPointMapPlyExport Export(C3DHeightGrid grid, string path, bool includeFaces = true)
     {
         ArgumentNullException.ThrowIfNull(grid);
         if (grid.Points.Length == 0)
@@ -24,13 +24,15 @@ public static class C3DPointMapPly
 
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        var faces = CreateFaces(grid);
+        List<(int A, int B, int C)> faces = includeFaces ? CreateFaces(grid) : [];
         using (var writer = new StreamWriter(fullPath, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
         {
             writer.WriteLine("ply");
             writer.WriteLine("format ascii 1.0");
             writer.WriteLine("comment OpenVisionLab C3D viewer-frame reference export");
-            writer.WriteLine("comment vertices are exact rendered samples; faces are compatibility visualization only and must not be measured");
+            writer.WriteLine(includeFaces
+                ? "comment vertices are exact rendered samples; faces are compatibility visualization only and must not be measured"
+                : "comment point-only reference; vertices are exact rendered samples");
             writer.WriteLine(string.Create(
                 CultureInfo.InvariantCulture,
                 $"comment x=(column-center)*{grid.HorizontalScale:R} y=(raw-mean)*{C3DHeightGrid.ViewerHeightScale:R} z=(row-center)*{grid.HorizontalScale:R}"));

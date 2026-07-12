@@ -10,7 +10,8 @@ public sealed record HeightDeviationRecipe(
     HeightDeviationRecipeRule Rule,
     ModelTransform? Transform = null,
     HeightDeviationRecipeRoiStep? RoiStep = null,
-    HeightDeviationRecipePlaneFlatness? PlaneFlatness = null)
+    HeightDeviationRecipePlaneFlatness? PlaneFlatness = null,
+    HeightDeviationRecipeVolume? Volume = null)
 {
     public const string SupportedRecipeType = "c3d-height-deviation";
 
@@ -66,6 +67,11 @@ public sealed record HeightDeviationRecipe(
         if (recipe.PlaneFlatness is { } planeFlatness)
         {
             ValidatePlaneFlatness(planeFlatness, recipe.Source.EntityId);
+        }
+
+        if (recipe.Volume is { } volume)
+        {
+            ValidateVolume(volume, recipe.Source.EntityId);
         }
 
         return recipe;
@@ -145,6 +151,26 @@ public sealed record HeightDeviationRecipe(
         ValidateRoiRegion(step.ReferenceRegion, "reference-plane");
     }
 
+    private static void ValidateVolume(HeightDeviationRecipeVolume step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id)
+            || string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(step.ReferenceId)
+            || string.IsNullOrWhiteSpace(step.MeasurementId)
+            || !double.IsFinite(step.ExpectedNetVolume)
+            || !double.IsFinite(step.Tolerance)
+            || step.Tolerance < 0.0
+            || string.IsNullOrWhiteSpace(step.Unit)
+            || step.MaxSampledPoints < 3)
+        {
+            throw new InvalidDataException("Volume step IDs, finite acceptance, units, and sample budget are required.");
+        }
+
+        ValidateRoiRegion(step.ReferenceRegion, "volume-reference");
+        ValidateRoiRegion(step.MeasurementRegion, "volume-measurement");
+    }
+
     private static void ValidateRoiRegion(HeightDeviationRecipeRoiRegion? region, string name)
     {
         if (region is null)
@@ -189,6 +215,19 @@ public sealed record HeightDeviationRecipePlaneFlatness(
     string SourceEntityId,
     string ReferenceId,
     HeightDeviationRecipeRoiRegion ReferenceRegion,
+    double Tolerance,
+    string Unit,
+    int MaxSampledPoints,
+    bool Enabled = true);
+
+public sealed record HeightDeviationRecipeVolume(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    string MeasurementId,
+    HeightDeviationRecipeRoiRegion ReferenceRegion,
+    HeightDeviationRecipeRoiRegion MeasurementRegion,
+    double ExpectedNetVolume,
     double Tolerance,
     string Unit,
     int MaxSampledPoints,

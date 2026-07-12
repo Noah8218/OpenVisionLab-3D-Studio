@@ -1,0 +1,47 @@
+{
+  "recipeType": "c3d-gap-flush",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "C3D Thickness Sample",
+    "path": "../3D/Thickness/Ori_20240116_094414.C3D",
+    "unit": "raw-height"
+  },
+  "transform": {
+    "translateX": 0.0,
+    "translateY": 0.0,
+    "translateZ": 0.0,
+    "rotateXDegrees": 0.0,
+    "rotateYDegrees": 0.0,
+    "rotateZDegrees": 0.0,
+    "scale": 1.0
+  },
+  "step": {
+    "id": "step.c3d-gap-flush",
+    "sourceEntityId": "source.c3d-thickness",
+    "leftReferenceId": "reference.roi-left",
+    "rightReferenceId": "reference.roi-right",
+    "leftRegion": {
+      "centerX": -1.653,
+      "centerZ": 0.0,
+      "halfWidth": 0.992,
+      "halfDepth": 2.5
+    },
+    "rightRegion": {
+      "centerX": 1.653,
+      "centerZ": 0.0,
+      "halfWidth": 0.992,
+      "halfDepth": 2.5
+    },
+    "acceptance": {
+      "expectedGap": 1.322,
+      "gapTolerance": 0.1,
+      "expectedFlush": 243.5,
+      "flushTolerance": 5.0
+    },
+    "gapUnit": "model",
+    "flushUnit": "raw-height",
+    "maxSampledPoints": 140000,
+    "enabled": true
+  }
+}

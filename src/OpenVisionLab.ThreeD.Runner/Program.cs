@@ -18,7 +18,10 @@ static int Run(string[] args)
     var compareContractPath = ReadOption(args, "--compare-contract");
     var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
     var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
+    var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
+    var verifyVolume = args.Contains("--verify-volume", StringComparer.OrdinalIgnoreCase);
     var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
+    var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
     if (verifyC3DMapFidelity)
     {
@@ -40,6 +43,28 @@ static int Run(string[] args)
         }
 
         return PointPairDimensionsGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyGapFlush)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
+            return 2;
+        }
+
+        return GapFlushGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyVolume)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
+            return 2;
+        }
+
+        return VolumeGoldenVerification.Run(reportPath);
     }
 
     if (verifyPlaneFlatness)
@@ -79,7 +104,7 @@ static int Run(string[] args)
     {
         if (reportPath is null || c3DMapPlyPath is null)
         {
-            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>]");
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
             return 2;
         }
 
@@ -94,16 +119,18 @@ static int Run(string[] args)
             return 2;
         }
 
-        return C3DMapFidelityVerification.RunProbe(c3DMapProbePath, c3DMapPlyPath, reportPath, maxSampledPoints);
+        return C3DMapFidelityVerification.RunProbe(c3DMapProbePath, c3DMapPlyPath, reportPath, maxSampledPoints, includeFaces: !c3DMapPointOnly);
     }
 
     if (recipePath is null || reportPath is null)
     {
         Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
-        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
         return 2;
     }
@@ -122,11 +149,19 @@ static int Run(string[] args)
             return RunC3DPointPairDimensionsRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
         }
 
+        if (recipeType.Equals(C3DGapFlushRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            return RunC3DGapFlushRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+        }
+
         var recipe = HeightDeviationRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
-        var maxSampledPoints = Math.Max(
+        var maxSampledPoints = new[]
+        {
             recipe.RoiStep?.MaxSampledPoints ?? 0,
-            recipe.PlaneFlatness is { Enabled: true } planeFlatnessStep ? planeFlatnessStep.MaxSampledPoints : 0);
+            recipe.PlaneFlatness is { Enabled: true } planeFlatnessStep ? planeFlatnessStep.MaxSampledPoints : 0,
+            recipe.Volume is { Enabled: true } volumeStep ? volumeStep.MaxSampledPoints : 0
+        }.Max();
         var grid = C3DHeightGrid.Load(sourcePath, maxSampledPoints);
         var heightDeviationResult = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
             recipe.Source.EntityId,
@@ -143,12 +178,18 @@ static int Run(string[] args)
         var planeFlatnessResult = recipe.PlaneFlatness is { Enabled: true } planeFlatness
             ? EvaluatePlaneFlatness(planeFlatness, recipe.Transform ?? ModelTransform.Identity, grid)
             : null;
-        var result = planeFlatnessResult?.Result ?? heightDeviationResult;
+        var volumeResult = recipe.Volume is { Enabled: true } volume
+            ? EvaluateVolume(volume, recipe.Transform ?? ModelTransform.Identity, grid)
+            : null;
+        var result = volumeResult?.Result ?? planeFlatnessResult?.Result ?? heightDeviationResult;
 
-        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult);
+        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult, volumeResult);
         if (compareContractPath is not null)
         {
-            CompareUiContract(compareContractPath, result);
+            if (volumeResult is not null)
+                CompareUiContract(compareContractPath, result, "Above-plane volume", "Below-plane volume", "Signed net volume");
+            else
+                CompareUiContract(compareContractPath, result);
         }
 
         if (expectedStatus is not null
@@ -199,6 +240,45 @@ static int RunC3DPointPairDimensionsRecipe(
             "3D distance",
             "XZ planar width",
             "Elevation angle");
+    }
+
+    if (expectedStatus is not null
+        && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
+    {
+        Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {evaluation.Result.Status}.");
+        return 3;
+    }
+
+    Console.WriteLine($"{evaluation.Result.ToolName}: {evaluation.Result.Status}");
+    return evaluation.Result.Status == ResultStatus.Error ? 4 : 0;
+}
+
+static int RunC3DGapFlushRecipe(
+    string fullRecipePath,
+    string reportPath,
+    string? expectedStatus,
+    string? compareContractPath)
+{
+    var recipe = C3DGapFlushRecipe.Load(fullRecipePath);
+    var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+    var grid = C3DHeightGrid.Load(sourcePath, recipe.Step.MaxSampledPoints);
+    var transform = recipe.Transform ?? ModelTransform.Identity;
+    TryCalculateRoiStats(grid.Points, recipe.Step.LeftRegion, transform, out var left);
+    TryCalculateRoiStats(grid.Points, recipe.Step.RightRegion, transform, out var right);
+    var evaluation = GapFlushRule.Evaluate(new GapFlushInput(
+        recipe.Step.SourceEntityId,
+        recipe.Step.LeftRegion,
+        recipe.Step.RightRegion,
+        new GapFlushRegionStats(left.Count, left.RawMean, left.ModelYMean),
+        new GapFlushRegionStats(right.Count, right.RawMean, right.ModelYMean),
+        recipe.Step.Acceptance,
+        recipe.Step.GapUnit,
+        recipe.Step.FlushUnit));
+
+    WriteGapFlushReport(reportPath, fullRecipePath, sourcePath, recipe, grid, evaluation);
+    if (compareContractPath is not null)
+    {
+        CompareUiContract(compareContractPath, evaluation.Result, "Signed gap", "Signed flush");
     }
 
     if (expectedStatus is not null
@@ -319,7 +399,8 @@ static void WriteReport(
     C3DHeightGrid grid,
     ToolResult result,
     RoiStepReport? roiStepResult,
-    PlaneFlatnessEvaluation? planeFlatnessResult)
+    PlaneFlatnessEvaluation? planeFlatnessResult,
+    VolumeEvaluation? volumeResult)
 {
     var transform = recipe.Transform ?? ModelTransform.Identity;
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
@@ -352,6 +433,21 @@ static void WriteReport(
         lines.Add("PlaneFlatnessStep|configured=False");
     }
 
+    if (recipe.Volume is { } volume)
+    {
+        lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+            volume.Id,
+            VolumeRule.ToolName,
+            volume.SourceEntityId,
+            $"{volume.ReferenceId},{volume.MeasurementId}",
+            volume.Enabled)));
+        lines.Add($"VolumeStep|configured=True|id={volume.Id}|source={volume.SourceEntityId}|reference={volume.ReferenceId}|measurement={volume.MeasurementId}|referenceRegion={FormatRegion(volume.ReferenceRegion)}|measurementRegion={FormatRegion(volume.MeasurementRegion)}|expectedNet={FormatNumber(volume.ExpectedNetVolume)}|tolerance={FormatNumber(volume.Tolerance)}|unit={volume.Unit}|maxSampledPoints={volume.MaxSampledPoints}|enabled={volume.Enabled}");
+    }
+    else
+    {
+        lines.Add("VolumeStep|configured=False");
+    }
+
     lines.Add(InspectionContractText.MetricsMarker);
 
     lines.AddRange(result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
@@ -367,6 +463,11 @@ static void WriteReport(
     if (planeFlatnessResult is not null)
     {
         lines.Add($"PlaneFlatness|status={planeFlatnessResult.Result.Status}|referenceSamples={planeFlatnessResult.ReferenceSampleCount}|measurementSamples={planeFlatnessResult.MeasurementSampleCount}|minimum={FormatNumber(planeFlatnessResult.MinimumSignedDistance)}|maximum={FormatNumber(planeFlatnessResult.MaximumSignedDistance)}|flatness={FormatNumber(planeFlatnessResult.Flatness)}|rms={FormatNumber(planeFlatnessResult.RootMeanSquareDistance)}|summary={InspectionContractText.Clean(planeFlatnessResult.Result.Message)}");
+    }
+
+    if (volumeResult is not null)
+    {
+        lines.Add($"Volume|status={volumeResult.Result.Status}|above={FormatNumber(volumeResult.AboveVolume)}|below={FormatNumber(volumeResult.BelowVolume)}|net={FormatNumber(volumeResult.NetVolume)}|referenceSamples={volumeResult.ReferenceSampleCount}|measurementSamples={volumeResult.MeasurementSampleCount}|summary={InspectionContractText.Clean(volumeResult.Result.Message)}");
     }
 
     File.WriteAllLines(reportPath, lines);
@@ -443,6 +544,41 @@ static void WritePointPairDimensionsReport(
     File.WriteAllLines(reportPath, lines);
 }
 
+static void WriteGapFlushReport(
+    string reportPath,
+    string recipePath,
+    string sourcePath,
+    C3DGapFlushRecipe recipe,
+    C3DHeightGrid grid,
+    GapFlushEvaluation evaluation)
+{
+    var step = recipe.Step;
+    var transform = recipe.Transform ?? ModelTransform.Identity;
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+    var lines = new List<string>
+    {
+        $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
+        $"Source|{recipe.Source.EntityId}|name={recipe.Source.Name}|path={sourcePath}|unit={recipe.Source.Unit}",
+        $"HeightGrid|width={grid.Width}|height={grid.Height}|valid={grid.ValidSampleCount}|zero={grid.ZeroSampleCount}|min={FormatNumber(grid.Min)}|max={FormatNumber(grid.Max)}|mean={FormatNumber(grid.Mean)}",
+        "RecipeTransform",
+        $"Transform|configured={recipe.Transform is not null}|tx={FormatNumber(transform.TranslateX)}|ty={FormatNumber(transform.TranslateY)}|tz={FormatNumber(transform.TranslateZ)}|rx={FormatNumber(transform.RotateXDegrees)}|ry={FormatNumber(transform.RotateYDegrees)}|rz={FormatNumber(transform.RotateZDegrees)}|scale={FormatNumber(transform.Scale)}",
+        InspectionContractText.FormatInspectionStep(new InspectionStep(
+            step.Id,
+            GapFlushRule.ToolName,
+            step.SourceEntityId,
+            $"{step.LeftReferenceId},{step.RightReferenceId}",
+            step.Enabled)),
+        $"GapFlushStep|configured=True|id={step.Id}|source={step.SourceEntityId}|leftReference={step.LeftReferenceId}|rightReference={step.RightReferenceId}|left={FormatRegion(step.LeftRegion)}|right={FormatRegion(step.RightRegion)}|expectedGap={FormatNumber(step.Acceptance.ExpectedGap)}|gapTolerance={FormatNumber(step.Acceptance.GapTolerance)}|expectedFlush={FormatNumber(step.Acceptance.ExpectedFlush)}|flushTolerance={FormatNumber(step.Acceptance.FlushTolerance)}|gapUnit={step.GapUnit}|flushUnit={step.FlushUnit}|maxSampledPoints={step.MaxSampledPoints}|enabled={step.Enabled}",
+        InspectionContractText.FormatToolResult(evaluation.Result, includePrefix: true),
+        $"GapFlush|status={evaluation.Result.Status}|gap={FormatNumber(evaluation.SignedGap)}|flush={FormatNumber(evaluation.SignedFlush)}|modelFlush={FormatNumber(evaluation.ModelFlush)}|leftCount={evaluation.LeftPointCount}|rightCount={evaluation.RightPointCount}",
+        InspectionContractText.MetricsMarker
+    };
+    lines.AddRange(evaluation.Result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
+    lines.Add(InspectionContractText.OverlaysMarker);
+    lines.AddRange(evaluation.Result.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
+    File.WriteAllLines(reportPath, lines);
+}
+
 static ToolResult CreateLazTwoPointResult(
     LazPointCloudPoint first,
     LazPointCloudPoint second,
@@ -500,6 +636,27 @@ static PlaneFlatnessEvaluation EvaluatePlaneFlatness(
         step.SourceEntityId,
         referenceSamples,
         measurementSamples,
+        step.Tolerance,
+        step.Unit));
+}
+
+static VolumeEvaluation EvaluateVolume(
+    HeightDeviationRecipeVolume step,
+    ModelTransform transform,
+    C3DHeightGrid grid)
+{
+    var samples = grid.Points
+        .Select(point => new HeightFieldPlaneSample(ApplyModelTransform(point.Position, transform), point.RawValue))
+        .ToArray();
+    var referenceSamples = samples.Where(sample => Contains(step.ReferenceRegion, sample.Position)).ToArray();
+    var measurementSamples = samples.Where(sample => Contains(step.MeasurementRegion, sample.Position)).ToArray();
+    var spacing = grid.HorizontalScale * grid.PointStride * transform.Scale;
+    return VolumeRule.Evaluate(new VolumeRuleInput(
+        step.SourceEntityId,
+        referenceSamples,
+        measurementSamples,
+        spacing * spacing,
+        step.ExpectedNetVolume,
         step.Tolerance,
         step.Unit));
 }

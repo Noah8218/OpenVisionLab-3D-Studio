@@ -182,6 +182,67 @@
                                                Text="{Binding PointPairDimensionsDetails}" />
                                     <TextBlock Margin="0,12,0,4"
                                                FontWeight="SemiBold"
+                                               Text="Gap / Flush" />
+                                    <WrapPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Gap" />
+                                            <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Gap" />
+                                            <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Flush" />
+                                            <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Flush" />
+                                            <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0"
+                                                Content="Preview Gap / Flush"
+                                                Command="{Binding PreviewGapFlushCommand}" />
+                                        <Button Content="Publish Result"
+                                                Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding GapFlushVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding GapFlushSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding GapFlushVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding GapFlushDetails}" />
+                                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Volume" />
+                                    <WrapPanel>
+                                        <StackPanel Width="94" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Expected Net" />
+                                            <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="94" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tolerance" />
+                                            <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0" Content="Preview Volume" Command="{Binding PreviewVolumeCommand}" />
+                                        <Button Content="Publish Result" Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding VolumeSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding VolumeDetails}" />
+                                    <TextBlock Margin="0,12,0,4"
+                                               FontWeight="SemiBold"
                                                Text="Reference Plane + Flatness" />
                                     <WrapPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">

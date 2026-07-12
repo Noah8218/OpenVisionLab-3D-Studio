@@ -1,0 +1,45 @@
+{
+  "recipeType": "c3d-height-deviation",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "C3D Thickness Sample",
+    "path": "../3D/Thickness/Ori_20240116_094414.C3D",
+    "unit": "raw-height"
+  },
+  "rule": {
+    "peakTolerance": 1200.0
+  },
+  "transform": {
+    "translateX": 0.0,
+    "translateY": 0.0,
+    "translateZ": 0.0,
+    "rotateXDegrees": 0.0,
+    "rotateYDegrees": 0.0,
+    "rotateZDegrees": 0.0,
+    "scale": 1.0
+  },
+  "volume": {
+    "id": "step.c3d-volume",
+    "sourceEntityId": "source.c3d-thickness",
+    "referenceId": "reference.roi-plane",
+    "measurementId": "measurement.roi-volume",
+    "referenceRegion": {
+      "centerX": 0.0,
+      "centerZ": 0.0,
+      "halfWidth": 2.0,
+      "halfDepth": 2.0
+    },
+    "measurementRegion": {
+      "centerX": -1.653,
+      "centerZ": 0.0,
+      "halfWidth": 0.992,
+      "halfDepth": 2.5
+    },
+    "expectedNetVolume": -0.098,
+    "tolerance": 0.01,
+    "unit": "model^3",
+    "maxSampledPoints": 140000,
+    "enabled": true
+  }
+}

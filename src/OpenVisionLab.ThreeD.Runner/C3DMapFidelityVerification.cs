@@ -5,7 +5,7 @@ using OpenVisionLab.ThreeD.Data;
 
 internal static class C3DMapFidelityVerification
 {
-    public static int RunProbe(string sourcePath, string plyPath, string reportPath, int maxSampledPoints)
+    public static int RunProbe(string sourcePath, string plyPath, string reportPath, int maxSampledPoints, bool includeFaces)
     {
         try
         {
@@ -16,7 +16,7 @@ internal static class C3DMapFidelityVerification
 
             var fullSourcePath = Path.GetFullPath(sourcePath);
             var grid = C3DHeightGrid.Load(fullSourcePath, maxSampledPoints);
-            var export = C3DPointMapPly.Export(grid, plyPath);
+            var export = C3DPointMapPly.Export(grid, plyPath, includeFaces);
             var roundtrip = ReadPly(export.Path);
             var comparison = Compare(grid.Points, roundtrip.Points);
             var passed = roundtrip.DeclaredPointCount == grid.Points.Length
@@ -33,14 +33,16 @@ internal static class C3DMapFidelityVerification
                 $"Sampling|budget={maxSampledPoints}|stride={grid.PointStride}|renderedPoints={grid.Points.Length}",
                 $"ViewerBounds|min={FormatVector(export.Minimum)}|max={FormatVector(export.Maximum)}",
                 $"PLY|path={export.Path}|format=ascii-1.0|points={export.PointCount}|faces={export.FaceCount}|bytes={export.ByteLength}|sha256={HashFile(export.Path)}",
-                "ReferenceMesh|purpose=external-viewer-compatibility|vertices=exact-render-sample|faces=visualization-only|measurementUse=false",
+                includeFaces
+                    ? "ReferenceGeometry|mode=compatibility-mesh|vertices=exact-render-sample|faces=visualization-only|measurementUse=false"
+                    : "ReferenceGeometry|mode=point-only|vertices=exact-render-sample|faces=none|measurementUse=vertices-only",
                 $"Roundtrip|declaredPoints={roundtrip.DeclaredPointCount}|readPoints={roundtrip.Points.Length}|pointCountMatch={roundtrip.DeclaredPointCount == grid.Points.Length}|declaredFaces={roundtrip.DeclaredFaceCount}|readFaces={roundtrip.Faces.Length}|faceCountMatch={roundtrip.DeclaredFaceCount == export.FaceCount}|maxCoordinateError={comparison.MaxCoordinateError.ToString("G9", CultureInfo.InvariantCulture)}|maxColorChannelError={comparison.MaxColorChannelError}"
             };
             AddRepresentativePoints(lines, grid.Points);
 
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
             File.WriteAllLines(reportPath, lines);
-            Console.WriteLine($"C3D map display-frame fidelity: {status} ({grid.Points.Length:N0} points, max error {comparison.MaxCoordinateError:G3})");
+            Console.WriteLine($"C3D map display-frame fidelity: {status} ({grid.Points.Length:N0} points, {export.FaceCount:N0} faces, max error {comparison.MaxCoordinateError:G3})");
             return passed ? 0 : 5;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or OverflowException)

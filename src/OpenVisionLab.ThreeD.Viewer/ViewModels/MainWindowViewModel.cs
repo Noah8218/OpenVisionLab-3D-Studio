@@ -22,6 +22,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public const string C3DHeightDeviationResultEntityId = "result.c3d-height-deviation";
     public const string C3DPlaneFlatnessResultEntityId = "result.c3d-plane-flatness";
     public const string C3DPointPairDimensionsResultEntityId = "result.c3d-point-pair-dimensions";
+    public const string C3DGapFlushResultEntityId = "result.c3d-gap-flush";
+    public const string C3DVolumeResultEntityId = "result.c3d-volume";
     public const string LazTwoPointResultEntityId = "result.laz-two-point-measurement";
     private const string PlaneFlatnessStepId = "step.c3d-plane-flatness";
     private const string PlaneFlatnessReferenceId = "reference.roi-plane";
@@ -29,6 +31,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private const string PointPairDimensionsStepId = "step.c3d-point-pair-dimensions";
     private const string PointPairFirstReferenceId = "reference.point-a";
     private const string PointPairSecondReferenceId = "reference.point-b";
+    private const string GapFlushStepId = "step.c3d-gap-flush";
+    private const string GapFlushLeftReferenceId = "reference.roi-left";
+    private const string GapFlushRightReferenceId = "reference.roi-right";
+    private const int GapFlushMaxSampledPoints = 140000;
+    private const string VolumeStepId = "step.c3d-volume";
+    private const string VolumeReferenceId = "reference.roi-volume-plane";
+    private const string VolumeMeasurementId = "measurement.roi-volume";
+    private const int VolumeMaxSampledPoints = 140000;
     private const double DefaultLazExpectedDistance = 116.919;
     private const double DefaultLazDistanceTolerance = 0.010;
     private const double DefaultLazExpectedHeightDelta = -0.624;
@@ -136,6 +146,48 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double pointPairDistance = double.NaN;
     private double pointPairWidth = double.NaN;
     private double pointPairAngleDegrees = double.NaN;
+    private ToolResult? c3dGapFlushPreview;
+    private bool c3dGapFlushPreviewActive;
+    private bool gapFlushConfigured;
+    private string gapFlushStepId = GapFlushStepId;
+    private string gapFlushSourceEntityId = C3DEntityId;
+    private string gapFlushLeftReferenceId = GapFlushLeftReferenceId;
+    private string gapFlushRightReferenceId = GapFlushRightReferenceId;
+    private string gapFlushGapUnit = "model";
+    private string gapFlushFlushUnit = "raw-height";
+    private int gapFlushMaxSampledPoints = GapFlushMaxSampledPoints;
+    private bool gapFlushEnabled = true;
+    private double gapFlushExpectedGap = 1.322;
+    private double gapFlushGapTolerance = 0.100;
+    private double gapFlushExpectedFlush = 243.5;
+    private double gapFlushFlushTolerance = 5.0;
+    private bool gapFlushVisible;
+    private string gapFlushSummary = "Gap / Flush: preview not run";
+    private string gapFlushDetails = "Two recipe-owned C3D regions are required.";
+    private double gapFlushGap = double.NaN;
+    private double gapFlushFlush = double.NaN;
+    private double gapFlushModelFlush = double.NaN;
+    private int gapFlushLeftPointCount;
+    private int gapFlushRightPointCount;
+    private ToolResult? c3dVolumePreview;
+    private bool c3dVolumePreviewActive;
+    private bool volumeConfigured;
+    private bool volumeVisible;
+    private string volumeSummary = "Volume: preview not run";
+    private string volumeDetails = "Reference ROI plane and measurement ROI are required.";
+    private double volumeExpectedNet;
+    private double volumeTolerance = 1.0;
+    private double volumeAbove = double.NaN;
+    private double volumeBelow = double.NaN;
+    private double volumeNet = double.NaN;
+    private int volumeReferenceSampleCount;
+    private int volumeMeasurementSampleCount;
+    private string volumeStepId = VolumeStepId;
+    private string volumeReferenceId = VolumeReferenceId;
+    private string volumeMeasurementId = VolumeMeasurementId;
+    private string volumeUnit = "model^3";
+    private int volumeMaxSampledPoints = VolumeMaxSampledPoints;
+    private bool volumeEnabled = true;
     private IReadOnlyList<SourceEntity> sourceEntities = [];
     private IReadOnlyList<ResultEntity> resultEntities = [];
     private string publishedResultSummary = "Published result: none";
@@ -233,6 +285,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand fitPlaneCommand;
     private readonly RelayCommand previewPlaneFlatnessCommand;
     private readonly RelayCommand previewPointPairDimensionsCommand;
+    private readonly RelayCommand previewGapFlushCommand;
+    private readonly RelayCommand previewVolumeCommand;
     private readonly RelayCommand publishResultCommand;
     private readonly RelayCommand fitAllCommand;
     private readonly RelayCommand fitSelectionCommand;
@@ -246,6 +300,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? FitPlaneRequested;
     public event EventHandler? PreviewPlaneFlatnessRequested;
     public event EventHandler? PreviewPointPairDimensionsRequested;
+    public event EventHandler? PreviewGapFlushRequested;
+    public event EventHandler? PreviewVolumeRequested;
     public event EventHandler? FitAllRequested;
     public event EventHandler? FitSelectionRequested;
     public event EventHandler? OpenRecipeRequested;
@@ -267,6 +323,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         previewPointPairDimensionsCommand = new RelayCommand(
             _ => PreviewPointPairDimensionsRequested?.Invoke(this, EventArgs.Empty),
             _ => C3DSampleVisible && pointPairFirstReference is not null && pointPairSecondReference is not null);
+        previewGapFlushCommand = new RelayCommand(_ => PreviewGapFlushRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        previewVolumeCommand = new RelayCommand(_ => PreviewVolumeRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
         saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
@@ -280,13 +338,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
     public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
     public ICommand FitPlaneCommand => fitPlaneCommand;
     public ICommand PreviewPlaneFlatnessCommand => previewPlaneFlatnessCommand;
     public ICommand PreviewPointPairDimensionsCommand => previewPointPairDimensionsCommand;
+    public ICommand PreviewGapFlushCommand => previewGapFlushCommand;
+    public ICommand PreviewVolumeCommand => previewVolumeCommand;
     public ICommand FitAllCommand => fitAllCommand;
     public ICommand FitSelectionCommand => fitSelectionCommand;
     public ICommand OpenRecipeCommand => openRecipeCommand;
@@ -624,6 +684,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     "Plane Distance" => PlaneReferenceMeasurementDetails,
                     "Plane Flatness" => PlaneFlatnessDetails,
                     "ROI Step Compare" => RoiStepMeasurementDetails,
+                    "Gap / Flush" => GapFlushDetails,
+                    "Volume" => VolumeDetails,
                     "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
                 };
@@ -808,7 +870,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiLeftCenterX, CoerceFinite(value, recipeRoiLeftCenterX)))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -820,7 +882,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiLeftCenterZ, CoerceFinite(value, recipeRoiLeftCenterZ)))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -832,7 +894,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiLeftHalfWidth, Math.Max(0.0001, CoerceFinite(value, recipeRoiLeftHalfWidth))))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -844,7 +906,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiLeftHalfDepth, Math.Max(0.0001, CoerceFinite(value, recipeRoiLeftHalfDepth))))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -856,7 +918,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiRightCenterX, CoerceFinite(value, recipeRoiRightCenterX)))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -868,7 +930,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiRightCenterZ, CoerceFinite(value, recipeRoiRightCenterZ)))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -880,7 +942,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiRightHalfWidth, Math.Max(0.0001, CoerceFinite(value, recipeRoiRightHalfWidth))))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -892,7 +954,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref recipeRoiRightHalfDepth, Math.Max(0.0001, CoerceFinite(value, recipeRoiRightHalfDepth))))
             {
-                RefreshRecipeParameterSummary();
+                OnRecipeRoiChanged();
             }
         }
     }
@@ -1026,6 +1088,131 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref pointPairAngleDegrees, value);
     }
 
+    public bool GapFlushConfigured
+    {
+        get => gapFlushConfigured;
+        private set => SetField(ref gapFlushConfigured, value);
+    }
+
+    public double GapFlushExpectedGap
+    {
+        get => gapFlushExpectedGap;
+        set => SetGapFlushParameter(ref gapFlushExpectedGap, CoerceFinite(value, gapFlushExpectedGap), nameof(GapFlushExpectedGap));
+    }
+
+    public double GapFlushGapTolerance
+    {
+        get => gapFlushGapTolerance;
+        set => SetGapFlushParameter(ref gapFlushGapTolerance, Math.Max(0.0, CoerceFinite(value, gapFlushGapTolerance)), nameof(GapFlushGapTolerance));
+    }
+
+    public double GapFlushExpectedFlush
+    {
+        get => gapFlushExpectedFlush;
+        set => SetGapFlushParameter(ref gapFlushExpectedFlush, CoerceFinite(value, gapFlushExpectedFlush), nameof(GapFlushExpectedFlush));
+    }
+
+    public double GapFlushFlushTolerance
+    {
+        get => gapFlushFlushTolerance;
+        set => SetGapFlushParameter(ref gapFlushFlushTolerance, Math.Max(0.0, CoerceFinite(value, gapFlushFlushTolerance)), nameof(GapFlushFlushTolerance));
+    }
+
+    public string GapFlushGapUnit => gapFlushGapUnit;
+    public string GapFlushFlushUnit => gapFlushFlushUnit;
+
+    public bool GapFlushVisible
+    {
+        get => gapFlushVisible;
+        private set => SetField(ref gapFlushVisible, value);
+    }
+
+    public string GapFlushSummary
+    {
+        get => gapFlushSummary;
+        private set => SetField(ref gapFlushSummary, value);
+    }
+
+    public string GapFlushDetails
+    {
+        get => gapFlushDetails;
+        private set => SetField(ref gapFlushDetails, value);
+    }
+
+    public double GapFlushGap
+    {
+        get => gapFlushGap;
+        private set => SetField(ref gapFlushGap, value);
+    }
+
+    public double GapFlushFlush
+    {
+        get => gapFlushFlush;
+        private set => SetField(ref gapFlushFlush, value);
+    }
+
+    public double GapFlushModelFlush
+    {
+        get => gapFlushModelFlush;
+        private set => SetField(ref gapFlushModelFlush, value);
+    }
+
+    public int GapFlushLeftPointCount
+    {
+        get => gapFlushLeftPointCount;
+        private set => SetField(ref gapFlushLeftPointCount, value);
+    }
+
+    public int GapFlushRightPointCount
+    {
+        get => gapFlushRightPointCount;
+        private set => SetField(ref gapFlushRightPointCount, value);
+    }
+
+    public bool VolumeConfigured
+    {
+        get => volumeConfigured;
+        private set => SetField(ref volumeConfigured, value);
+    }
+
+    public double VolumeExpectedNet
+    {
+        get => volumeExpectedNet;
+        set => SetVolumeParameter(ref volumeExpectedNet, CoerceFinite(value, volumeExpectedNet), nameof(VolumeExpectedNet));
+    }
+
+    public double VolumeTolerance
+    {
+        get => volumeTolerance;
+        set => SetVolumeParameter(ref volumeTolerance, Math.Max(0.0, CoerceFinite(value, volumeTolerance)), nameof(VolumeTolerance));
+    }
+
+    public string VolumeUnit => volumeUnit;
+
+    public bool VolumeVisible
+    {
+        get => volumeVisible;
+        private set => SetField(ref volumeVisible, value);
+    }
+
+    public string VolumeSummary
+    {
+        get => volumeSummary;
+        private set => SetField(ref volumeSummary, value);
+    }
+
+    public string VolumeDetails
+    {
+        get => volumeDetails;
+        private set => SetField(ref volumeDetails, value);
+    }
+
+    public double VolumeAbove { get => volumeAbove; private set => SetField(ref volumeAbove, value); }
+    public double VolumeBelow { get => volumeBelow; private set => SetField(ref volumeBelow, value); }
+    public double VolumeNet { get => volumeNet; private set => SetField(ref volumeNet, value); }
+    public int VolumeReferenceSampleCount { get => volumeReferenceSampleCount; private set => SetField(ref volumeReferenceSampleCount, value); }
+    public int VolumeMeasurementSampleCount { get => volumeMeasurementSampleCount; private set => SetField(ref volumeMeasurementSampleCount, value); }
+
     public ToolResult PreviewToolResult
     {
         get => previewToolResult;
@@ -1045,6 +1232,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         fitPlaneCommand.RaiseCanExecuteChanged();
         previewPlaneFlatnessCommand.RaiseCanExecuteChanged();
         previewPointPairDimensionsCommand.RaiseCanExecuteChanged();
+        previewGapFlushCommand.RaiseCanExecuteChanged();
+        previewVolumeCommand.RaiseCanExecuteChanged();
         publishResultCommand.RaiseCanExecuteChanged();
     }
 
@@ -1705,7 +1894,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseSelectionSmokeScene(string mode)
     {
-        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare") && C3DSampleVisible;
+        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare" || mode == "Gap / Flush") && C3DSampleVisible;
         if (!keepCurrentC3DScene)
         {
             UsePointCloudSmokeScene();
@@ -1717,6 +1906,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             "Box ROI" => "Box ROI",
             "ROI Step Compare" => "ROI Step Compare",
+            "Gap / Flush" => "C3D Gap / Flush",
             "Section Plane" => "Section Plane",
             _ => "Generated Point Cloud"
         };
@@ -1727,6 +1917,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Two Point Measure" => TwoPointMeasurementSummary,
             "Plane Distance" => PlaneReferenceMeasurementDetails,
             "ROI Step Compare" => RoiStepMeasurementDetails,
+            "Gap / Flush" => GapFlushDetails,
             "Box ROI" => "Box ROI: viewer state only",
             _ => "Point selection: generated point cloud peak"
         };
@@ -1860,6 +2051,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         ClearPlaneFlatnessPreview();
         ClearPointPairDimensionsPreview();
+        ClearGapFlushPreview();
+        ClearVolumePreview();
         ClearHeightMap();
         ClearSectionProfile();
     }
@@ -2040,6 +2233,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void SetPlaneFlatnessPreview(PlaneFlatnessEvaluation evaluation)
     {
         ClearPointPairDimensionsPreview();
+        ClearGapFlushPreview();
+        ClearVolumePreview();
         PlaneFlatnessConfigured = true;
         planeFlatnessEnabled = true;
         c3dPlaneFlatnessPreview = evaluation.Result;
@@ -2204,6 +2399,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void SetPointPairDimensionsPreview(PointPairDimensionsEvaluation evaluation)
     {
         ClearPlaneFlatnessPreview();
+        ClearGapFlushPreview();
+        ClearVolumePreview();
         PointPairDimensionsConfigured = true;
         pointPairDimensionsEnabled = true;
         c3dPointPairDimensionsPreview = evaluation.Result;
@@ -2292,6 +2489,268 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshSceneContracts();
     }
 
+    public C3DGapFlushStep CreateGapFlushRecipeStep() =>
+        new(
+            gapFlushStepId,
+            gapFlushSourceEntityId,
+            gapFlushLeftReferenceId,
+            gapFlushRightReferenceId,
+            new HeightDeviationRecipeRoiRegion(
+                RecipeRoiLeftCenterX,
+                RecipeRoiLeftCenterZ,
+                RecipeRoiLeftHalfWidth,
+                RecipeRoiLeftHalfDepth),
+            new HeightDeviationRecipeRoiRegion(
+                RecipeRoiRightCenterX,
+                RecipeRoiRightCenterZ,
+                RecipeRoiRightHalfWidth,
+                RecipeRoiRightHalfDepth),
+            new C3DGapFlushAcceptance(
+                GapFlushExpectedGap,
+                GapFlushGapTolerance,
+                GapFlushExpectedFlush,
+                GapFlushFlushTolerance),
+            gapFlushGapUnit,
+            gapFlushFlushUnit,
+            gapFlushMaxSampledPoints,
+            gapFlushEnabled);
+
+    public void SetGapFlushRecipeStep(C3DGapFlushStep step)
+    {
+        gapFlushStepId = step.Id;
+        gapFlushSourceEntityId = step.SourceEntityId;
+        gapFlushLeftReferenceId = step.LeftReferenceId;
+        gapFlushRightReferenceId = step.RightReferenceId;
+        gapFlushGapUnit = step.GapUnit;
+        gapFlushFlushUnit = step.FlushUnit;
+        gapFlushMaxSampledPoints = step.MaxSampledPoints;
+        gapFlushEnabled = step.Enabled;
+        SetField(ref gapFlushExpectedGap, step.Acceptance.ExpectedGap, nameof(GapFlushExpectedGap));
+        SetField(ref gapFlushGapTolerance, step.Acceptance.GapTolerance, nameof(GapFlushGapTolerance));
+        SetField(ref gapFlushExpectedFlush, step.Acceptance.ExpectedFlush, nameof(GapFlushExpectedFlush));
+        SetField(ref gapFlushFlushTolerance, step.Acceptance.FlushTolerance, nameof(GapFlushFlushTolerance));
+        SetRecipeRoiStepEdit(
+            "GapFlush",
+            step.LeftRegion.CenterX,
+            step.LeftRegion.CenterZ,
+            step.LeftRegion.HalfWidth,
+            step.LeftRegion.HalfDepth,
+            step.RightRegion.CenterX,
+            step.RightRegion.CenterZ,
+            step.RightRegion.HalfWidth,
+            step.RightRegion.HalfDepth,
+            step.MaxSampledPoints);
+        OnPropertyChanged(nameof(GapFlushGapUnit));
+        OnPropertyChanged(nameof(GapFlushFlushUnit));
+        GapFlushConfigured = true;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void SetGapFlushPreview(GapFlushEvaluation evaluation)
+    {
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
+        ClearVolumePreview();
+        GapFlushConfigured = true;
+        gapFlushEnabled = true;
+        c3dGapFlushPreview = evaluation.Result;
+        c3dGapFlushPreviewActive = true;
+        GapFlushVisible = true;
+        GapFlushGap = evaluation.SignedGap;
+        GapFlushFlush = evaluation.SignedFlush;
+        GapFlushModelFlush = evaluation.ModelFlush;
+        GapFlushLeftPointCount = evaluation.LeftPointCount;
+        GapFlushRightPointCount = evaluation.RightPointCount;
+        GapFlushSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Gap / Flush: {evaluation.Result.Status} | gap {evaluation.SignedGap:F3} {GapFlushGapUnit}, flush {evaluation.SignedFlush:F3} {GapFlushFlushUnit}");
+        GapFlushDetails = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Signed left-right ROI edges | L {evaluation.LeftPointCount:N0}, R {evaluation.RightPointCount:N0} points | model dY {evaluation.ModelFlush:F3} | expected gap {GapFlushExpectedGap:F3} +/- {GapFlushGapTolerance:F3}, flush {GapFlushExpectedFlush:F3} +/- {GapFlushFlushTolerance:F3}");
+
+        activePreviewLayerId = "layer.preview.c3d-gap-flush";
+        activePreviewLayerName = "Preview: C3D Gap / Flush";
+        activePreviewSourceEntityId = C3DEntityId;
+        activeResultEntityId = C3DGapFlushResultEntityId;
+        activeResultEntityName = "Published C3D Gap / Flush";
+        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
+        PreviewToolResult = evaluation.Result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        SelectedColorMode = "Height";
+        SelectedSelectionMode = "Gap / Flush";
+        SelectedEntity = "C3D Gap / Flush";
+        SelectionSummary = GapFlushDetails;
+        MeasurementSummary = GapFlushDetails;
+        ViewerStatus = "C3D Gap / Flush preview updated";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+        RefreshSceneContracts();
+    }
+
+    public void ClearGapFlushPreview()
+    {
+        c3dGapFlushPreview = null;
+        c3dGapFlushPreviewActive = false;
+        GapFlushVisible = false;
+        GapFlushGap = double.NaN;
+        GapFlushFlush = double.NaN;
+        GapFlushModelFlush = double.NaN;
+        GapFlushLeftPointCount = 0;
+        GapFlushRightPointCount = 0;
+        GapFlushSummary = "Gap / Flush: preview not run";
+        GapFlushDetails = "Two recipe-owned C3D regions are required.";
+    }
+
+    public void ClearGapFlushRecipeStep()
+    {
+        ClearGapFlushPreview();
+        gapFlushStepId = GapFlushStepId;
+        gapFlushSourceEntityId = C3DEntityId;
+        gapFlushLeftReferenceId = GapFlushLeftReferenceId;
+        gapFlushRightReferenceId = GapFlushRightReferenceId;
+        gapFlushGapUnit = "model";
+        gapFlushFlushUnit = "raw-height";
+        gapFlushMaxSampledPoints = GapFlushMaxSampledPoints;
+        gapFlushEnabled = true;
+        SetField(ref gapFlushExpectedGap, 1.322, nameof(GapFlushExpectedGap));
+        SetField(ref gapFlushGapTolerance, 0.100, nameof(GapFlushGapTolerance));
+        SetField(ref gapFlushExpectedFlush, 243.5, nameof(GapFlushExpectedFlush));
+        SetField(ref gapFlushFlushTolerance, 5.0, nameof(GapFlushFlushTolerance));
+        GapFlushConfigured = false;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void InvalidateGapFlushPreview(string reason)
+    {
+        if (!c3dGapFlushPreviewActive)
+        {
+            return;
+        }
+
+        ClearGapFlushPreview();
+        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
+        ResetActivePreviewIdentity();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ViewerStatus = reason;
+        RefreshSceneContracts();
+    }
+
+    public HeightDeviationRecipeVolume CreateVolumeRecipeStep() =>
+        new(
+            volumeStepId,
+            C3DEntityId,
+            volumeReferenceId,
+            volumeMeasurementId,
+            new HeightDeviationRecipeRoiRegion(PlaneFlatnessReferenceCenterX, PlaneFlatnessReferenceCenterZ, PlaneFlatnessReferenceHalfWidth, PlaneFlatnessReferenceHalfDepth),
+            new HeightDeviationRecipeRoiRegion(RecipeRoiLeftCenterX, RecipeRoiLeftCenterZ, RecipeRoiLeftHalfWidth, RecipeRoiLeftHalfDepth),
+            VolumeExpectedNet,
+            VolumeTolerance,
+            volumeUnit,
+            volumeMaxSampledPoints,
+            volumeEnabled);
+
+    public void SetVolumeRecipeStep(HeightDeviationRecipeVolume step)
+    {
+        volumeStepId = step.Id;
+        volumeReferenceId = step.ReferenceId;
+        volumeMeasurementId = step.MeasurementId;
+        volumeUnit = step.Unit;
+        volumeMaxSampledPoints = step.MaxSampledPoints;
+        volumeEnabled = step.Enabled;
+        SetField(ref planeFlatnessReferenceCenterX, step.ReferenceRegion.CenterX, nameof(PlaneFlatnessReferenceCenterX));
+        SetField(ref planeFlatnessReferenceCenterZ, step.ReferenceRegion.CenterZ, nameof(PlaneFlatnessReferenceCenterZ));
+        SetField(ref planeFlatnessReferenceHalfWidth, step.ReferenceRegion.HalfWidth, nameof(PlaneFlatnessReferenceHalfWidth));
+        SetField(ref planeFlatnessReferenceHalfDepth, step.ReferenceRegion.HalfDepth, nameof(PlaneFlatnessReferenceHalfDepth));
+        SetField(ref recipeRoiLeftCenterX, step.MeasurementRegion.CenterX, nameof(RecipeRoiLeftCenterX));
+        SetField(ref recipeRoiLeftCenterZ, step.MeasurementRegion.CenterZ, nameof(RecipeRoiLeftCenterZ));
+        SetField(ref recipeRoiLeftHalfWidth, step.MeasurementRegion.HalfWidth, nameof(RecipeRoiLeftHalfWidth));
+        SetField(ref recipeRoiLeftHalfDepth, step.MeasurementRegion.HalfDepth, nameof(RecipeRoiLeftHalfDepth));
+        SetField(ref volumeExpectedNet, step.ExpectedNetVolume, nameof(VolumeExpectedNet));
+        SetField(ref volumeTolerance, step.Tolerance, nameof(VolumeTolerance));
+        OnPropertyChanged(nameof(VolumeUnit));
+        VolumeConfigured = true;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void SetVolumePreview(VolumeEvaluation evaluation)
+    {
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
+        ClearGapFlushPreview();
+        VolumeConfigured = true;
+        c3dVolumePreview = evaluation.Result;
+        c3dVolumePreviewActive = true;
+        VolumeVisible = true;
+        VolumeAbove = evaluation.AboveVolume;
+        VolumeBelow = evaluation.BelowVolume;
+        VolumeNet = evaluation.NetVolume;
+        VolumeReferenceSampleCount = evaluation.ReferenceSampleCount;
+        VolumeMeasurementSampleCount = evaluation.MeasurementSampleCount;
+        VolumeSummary = string.Create(CultureInfo.InvariantCulture, $"Volume: {evaluation.Result.Status} | net {evaluation.NetVolume:F3} {VolumeUnit}");
+        VolumeDetails = string.Create(CultureInfo.InvariantCulture, $"Above {evaluation.AboveVolume:F3}, below {evaluation.BelowVolume:F3} {VolumeUnit} | expected {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
+        activePreviewLayerId = "layer.preview.c3d-volume";
+        activePreviewLayerName = "Preview: C3D Volume";
+        activePreviewSourceEntityId = C3DEntityId;
+        activeResultEntityId = C3DVolumeResultEntityId;
+        activeResultEntityName = "Published C3D Volume";
+        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
+        PreviewToolResult = evaluation.Result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        SelectedColorMode = "Deviation";
+        SelectedSelectionMode = "Volume";
+        SelectedEntity = "C3D Volume";
+        SelectionSummary = VolumeDetails;
+        MeasurementSummary = VolumeDetails;
+        ViewerStatus = "C3D Volume preview updated";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+        RefreshSceneContracts();
+    }
+
+    public void ClearVolumePreview()
+    {
+        c3dVolumePreview = null;
+        c3dVolumePreviewActive = false;
+        VolumeVisible = false;
+        VolumeAbove = double.NaN;
+        VolumeBelow = double.NaN;
+        VolumeNet = double.NaN;
+        VolumeReferenceSampleCount = 0;
+        VolumeMeasurementSampleCount = 0;
+        VolumeSummary = "Volume: preview not run";
+        VolumeDetails = "Reference ROI plane and measurement ROI are required.";
+    }
+
+    public void ClearVolumeRecipeStep()
+    {
+        ClearVolumePreview();
+        volumeStepId = VolumeStepId;
+        volumeReferenceId = VolumeReferenceId;
+        volumeMeasurementId = VolumeMeasurementId;
+        volumeUnit = "model^3";
+        volumeMaxSampledPoints = VolumeMaxSampledPoints;
+        volumeEnabled = true;
+        SetField(ref volumeExpectedNet, 0.0, nameof(VolumeExpectedNet));
+        SetField(ref volumeTolerance, 1.0, nameof(VolumeTolerance));
+        VolumeConfigured = false;
+    }
+
+    public void InvalidateVolumePreview(string reason)
+    {
+        if (!c3dVolumePreviewActive) return;
+        ClearVolumePreview();
+        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
+        ResetActivePreviewIdentity();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ViewerStatus = reason;
+        RefreshSceneContracts();
+    }
+
     public void SetRoiStepSelectionPending(string summary, string details, string selectionMode)
     {
         RoiStepMeasurementVisible = true;
@@ -2361,6 +2820,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (transform != C3DModelTransform)
         {
             InvalidatePointPairDimensionsPreview("Alignment changed; run Preview Dimensions again");
+            InvalidateGapFlushPreview("Alignment changed; run Preview Gap / Flush again");
+            InvalidateVolumePreview("Alignment changed; run Preview Volume again");
         }
 
         C3DModelTransform = transform;
@@ -2436,6 +2897,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         double rightHalfDepth,
         int maxSampledPoints)
     {
+        InvalidateGapFlushPreview("ROI parameters changed; run Preview Gap / Flush again");
         RecipeRoiMode = mode;
         SetField(ref recipeRoiLeftCenterX, CoerceFinite(leftCenterX, recipeRoiLeftCenterX), nameof(RecipeRoiLeftCenterX));
         SetField(ref recipeRoiLeftCenterZ, CoerceFinite(leftCenterZ, recipeRoiLeftCenterZ), nameof(RecipeRoiLeftCenterZ));
@@ -3014,9 +3476,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CultureInfo.InvariantCulture,
                 $"\nDimensions expected: D {PointPairExpectedDistance:F3}, W {PointPairExpectedWidth:F3} {PointPairDimensionsUnit}, A {PointPairExpectedAngleDegrees:F3} deg")
             : string.Empty;
+        var gapFlushLine = GapFlushConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nGap / Flush expected: {GapFlushExpectedGap:F3} {GapFlushGapUnit}, {GapFlushExpectedFlush:F3} {GapFlushFlushUnit}")
+            : string.Empty;
+        var volumeLine = VolumeConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nVolume expected net: {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} {VolumeUnit}")
+            : string.Empty;
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}");
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}");
     }
 
     private void RefreshRecipeParameterSummary()
@@ -3029,9 +3501,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var pointPairLine = pointPairFirstReference is not null && pointPairSecondReference is not null
             ? $"\nPoint pair {pointPairFirstReference.Id} ({pointPairFirstReference.Row}, {pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row}, {pointPairSecondReference.Column})"
             : string.Empty;
+        var volumeLine = VolumeConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nVolume reference ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}); measurement ({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3})")
+            : string.Empty;
         RecipeParameterSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}");
+            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}{volumeLine}");
     }
 
     private void SetPlaneFlatnessParameter(ref double storage, double value, string propertyName)
@@ -3043,6 +3520,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         PlaneFlatnessConfigured = true;
         InvalidatePlaneFlatnessPreview("Flatness parameters changed; run Preview Flatness again");
+        InvalidateVolumePreview("Reference ROI changed; run Preview Volume again");
 
         RefreshRecipeSummary();
         RefreshRecipeParameterSummary();
@@ -3058,6 +3536,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PointPairDimensionsConfigured = true;
         InvalidatePointPairDimensionsPreview("Dimension parameters changed; run Preview Dimensions again");
         RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void SetGapFlushParameter(ref double storage, double value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName))
+        {
+            return;
+        }
+
+        GapFlushConfigured = true;
+        InvalidateGapFlushPreview("Gap / Flush parameters changed; run Preview Gap / Flush again");
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void SetVolumeParameter(ref double storage, double value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName)) return;
+        VolumeConfigured = true;
+        InvalidateVolumePreview("Volume parameters changed; run Preview Volume again");
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void OnRecipeRoiChanged()
+    {
+        InvalidateGapFlushPreview("ROI parameters changed; run Preview Gap / Flush again");
+        InvalidateVolumePreview("Measurement ROI changed; run Preview Volume again");
         RefreshRecipeParameterSummary();
     }
 

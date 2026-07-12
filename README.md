@@ -11,8 +11,8 @@ This repository is under active development and is not production-ready yet.
 - Product direction: local 3D vision inspection workbench.
 - Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
-- Current rule scope: C3D height deviation plus complete typed plane-flatness and explicit C3D point-pair distance/width/signed-angle slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
-- Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases including a finite single-cell edge case, and a neutral PLY Viewer-frame roundtrip with zero XYZ/RGB error. Physical units and calibration remain unverified.
+- Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, and reference-plane Volume slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
+- Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, and an independent Python recalculation within `2.37e-7` Viewer units with zero RGB error. Physical units and calibration remain unverified.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
 ## Requirements
@@ -102,9 +102,26 @@ C3D map fidelity smoke:
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000
+python scripts\ply-coordinate-signature.py --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\openvision_c3d_detailed_signature.txt
 ```
 
 The PLY contains exact rendered sample vertices and deterministic height RGB values. Its faces are external-viewer compatibility surfaces only and are not measurement geometry. See `docs\OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`.
+
+External viewer parity check after re-saving the same PLY from CloudCompare, ZEISS INSPECT, PolyWorks, Open3D, MeshLab, or another trusted tool:
+
+```powershell
+python scripts\ply-coordinate-signature.py --reference artifacts\map_fidelity\openvision_c3d_detailed.ply --candidate artifacts\map_fidelity\external_resaved_c3d_detailed.ply --report artifacts\map_fidelity\external_resaved_c3d_detailed_compare.txt --ignore-faces --tolerance 0.00001
+```
+
+This compares ordered ASCII PLY vertices, RGB values, bounds-derived signatures, and file hashes. `--ignore-faces` is appropriate when a point-cloud tool drops OpenVisionLab's visualization-only compatibility faces. Open3D 0.19.0 ASCII re-save was observed to round coordinates to a maximum `5e-6` Viewer units, so external ASCII re-save parity uses `1e-5` while the internal .NET/Python C3D mapping still uses `1e-6`. If the external tool reorders points, use its own cloud-to-cloud distance report and keep this signature report as the import/export identity check.
+
+Full-resolution point-only audit:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_dotnet.txt --max-sampled-points 2147483647 --point-only
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_python.txt --max-sampled-points 2147483647
+```
 
 C3D reference-plane flatness recipe smoke:
 
@@ -121,6 +138,24 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_dimensions_reopen_after.png --smoke-recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --smoke-contracts artifacts\viewer_dimensions_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_point_pair_dimensions.recipe.json --report artifacts\runner_point_pair_dimensions_after.txt --expect-status Pass --compare-contract artifacts\viewer_dimensions_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\point_pair_dimensions_golden_after.txt
+```
+
+C3D Gap / Flush recipe smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_gap_flush_after.png --smoke-recipe recipes\c3d-gap-flush.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_gap_flush.recipe.json --smoke-contracts artifacts\viewer_gap_flush_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_gap_flush_reopen_after.png --smoke-recipe artifacts\saved_c3d_gap_flush.recipe.json --smoke-contracts artifacts\viewer_gap_flush_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_gap_flush.recipe.json --report artifacts\runner_gap_flush_after.txt --expect-status Pass --compare-contract artifacts\viewer_gap_flush_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-gap-flush --report artifacts\gap_flush_golden_after.txt
+```
+
+C3D Volume recipe smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_after.png --smoke-recipe recipes\c3d-volume.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_reopen_after.png --smoke-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_volume.recipe.json --report artifacts\runner_volume_after.txt --expect-status Pass --compare-contract artifacts\viewer_volume_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\volume_golden_after.txt
 ```
 
 Public GLB import smoke:
@@ -254,8 +289,10 @@ CI currently runs on `windows-latest` and performs:
 2. `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
 3. Headless C3D height-deviation, plane-flatness, and point-pair-dimensions recipe runner smokes
 4. Analytic/error golden verification for plane flatness, point-pair dimensions, and C3D map mapping
-5. Actual fixed-sample C3D-to-PLY independent roundtrip verification
-6. CI artifact upload from `artifacts\ci\`
+5. Actual fixed-sample C3D-to-PLY .NET roundtrip verification
+6. Cross-runtime C3D-to-PLY verification through a dependency-free Python implementation
+7. PLY coordinate signature generation for external-viewer parity checks
+8. CI artifact upload from `artifacts\ci\`
 
 ## Release Notes
 
@@ -266,7 +303,8 @@ Current development snapshot:
 - SharpGL/WPF viewer foundation.
 - Standalone viewer host and docked shell host.
 - C3D height-grid sample rendering and picking.
-- C3D map fidelity Runner commands now lock the inferred display mapping with 10/10 synthetic cases, export a neutral PLY, independently reparse every sampled XYZ/RGB value, and record source/export hashes, bounds, stride, and explicit physical-scale status.
+- C3D map fidelity now locks the inferred display mapping with 10/10 synthetic cases, supports point-only full-resolution PLY, verifies all 1,653,562 valid fixed-sample points through .NET and independent Python implementations, and records source/export hashes, bounds, stride, and explicit physical-scale status.
+- PLY coordinate signature tooling now records deterministic point-count, bounds, centroid, RGB, and quantized-coordinate hashes so external viewer re-saves can be checked without relying only on screenshots. A local Open3D 0.19.0 re-save of the sampled C3D PLY preserved all `66,212` vertices and RGB values with maximum coordinate drift `5e-6` Viewer units.
 - Viewer-internal coordinate, measurement, and performance HUD.
 - Two-point distance and height-delta measurement smoke.
 - ROI step-height comparison smoke.
@@ -280,6 +318,10 @@ Current development snapshot:
 - Runner `--verify-plane-flatness` uses an analytic plane and known signed offsets to verify exact fit/flatness/RMS answers plus controlled invalid-reference/input states; CI preserves this regression.
 - Viewer and Shell expose explicit C3D point-pair distance, XZ planar width, and signed elevation angle with separate tolerances, stable source-cell IDs, Preview/Publish, recipe roundtrip, and Runner parity.
 - Runner `--verify-point-pair-dimensions` verifies a known `(3,4,4)` vector, signed angle, tolerance failure, and controlled invalid-input states; CI preserves this regression.
+- Viewer and Shell expose signed C3D Gap/Flush from two explicit recipe-owned regions with separate tolerances, source/result separation, recipe roundtrip, Runner parity, and a real Shell step row. Gap uses aligned model X and Flush uses raw-height until calibration is available.
+- Runner `--verify-gap-flush` verifies signed separation/overlap, independent gap/flush failures, empty regions, non-finite statistics, invalid tolerances, and missing units; CI preserves this regression.
+- Viewer and Shell expose C3D above-plane, below-plane, and signed net Volume for explicit reference and measurement ROIs, with Preview/Publish, recipe roundtrip, Runner parity, and a real Shell step row. Values use uncalibrated `model^3`, not physical volume.
+- Runner `--verify-volume` verifies exact signed integration, tolerance failure, insufficient/empty samples, invalid area/tolerance, non-finite input, and missing units; CI preserves this regression.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -308,7 +350,7 @@ Current development snapshot:
 1. Preserve the passed Viewer Foundation v1 and C3D display-frame fidelity regression baselines.
 2. Obtain the C3D calibration contract and add an explicit mapping profile for pitch, height scale/offset, units, axes, and calibration identity.
 3. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
-4. Add basic surface tools one complete slice at a time: gap/flush, volume, and cross-section dimensions.
+4. Add basic surface tools one complete slice at a time: Gap/Flush and Volume done; cross-section dimensions next.
 5. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
 6. Add a durable JSON run record and simple HTML/CSV reporting before batch trends or enterprise integration.
 
@@ -317,7 +359,7 @@ Current development snapshot:
 - The project is not production-ready.
 - Current C3D parsing and viewer scale are inferred from local samples, not an official format or calibration contract. Display-frame fidelity is verified for the fixed sample; physical coordinate and metrology fidelity are not.
 - The current Thickness and Warpage sample files may be byte-identical; do not assume they represent different measurements until new evidence is available.
-- Algorithm coverage is intentionally narrow; Viewer Foundation v1 and two independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
+- Algorithm coverage is intentionally narrow; Viewer Foundation v1 and four independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
