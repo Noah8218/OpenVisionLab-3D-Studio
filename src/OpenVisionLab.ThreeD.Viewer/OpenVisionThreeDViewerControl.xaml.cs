@@ -82,6 +82,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
     private readonly EventHandler previewPointPairDimensionsRequestedHandler;
     private readonly EventHandler previewGapFlushRequestedHandler;
     private readonly EventHandler previewVolumeRequestedHandler;
+    private readonly EventHandler previewCrossSectionRequestedHandler;
     private readonly EventHandler screenshotRequestedHandler;
     private readonly EventHandler publishPreviewResultRequestedHandler;
     private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
@@ -131,6 +132,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         previewPointPairDimensionsRequestedHandler = (_, _) => PreviewC3DPointPairDimensions();
         previewGapFlushRequestedHandler = (_, _) => PreviewC3DGapFlush();
         previewVolumeRequestedHandler = (_, _) => PreviewC3DVolume();
+        previewCrossSectionRequestedHandler = (_, _) => PreviewC3DCrossSection();
         screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
         publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
         viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
@@ -175,6 +177,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.PreviewPointPairDimensionsRequested += previewPointPairDimensionsRequestedHandler;
         viewModel.PreviewGapFlushRequested += previewGapFlushRequestedHandler;
         viewModel.PreviewVolumeRequested += previewVolumeRequestedHandler;
+        viewModel.PreviewCrossSectionRequested += previewCrossSectionRequestedHandler;
         viewModel.ScreenshotRequested += screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged += viewModelPropertyChangedHandler;
@@ -194,6 +197,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.PreviewPointPairDimensionsRequested -= previewPointPairDimensionsRequestedHandler;
         viewModel.PreviewGapFlushRequested -= previewGapFlushRequestedHandler;
         viewModel.PreviewVolumeRequested -= previewVolumeRequestedHandler;
+        viewModel.PreviewCrossSectionRequested -= previewCrossSectionRequestedHandler;
         viewModel.ScreenshotRequested -= screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
         viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
@@ -1166,6 +1170,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         {
             ApplySmokeVolume();
         }
+        else if (measure.Equals("cross-section", StringComparison.OrdinalIgnoreCase)
+            || measure.Equals("cross-section-dimensions", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySmokeCrossSection();
+        }
     }
 
     private void ApplySmokeRecipeParameterEdit(string mode)
@@ -1334,6 +1343,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             viewModel.ClearPointPairDimensionsRecipeStep();
             viewModel.ClearGapFlushRecipeStep();
             viewModel.ClearVolumeRecipeStep();
+            viewModel.ClearCrossSectionRecipeStep();
             viewModel.SetC3DHeightDeviationPreview(result);
             viewModel.UseC3DHeightDeviationRuleSmokeScene();
             viewModel.SetRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit, recipe.Rule.PeakTolerance);
@@ -1353,6 +1363,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 if (volume.Enabled)
                 {
                     PreviewC3DVolume();
+                }
+            }
+            if (recipe.CrossSection is { } crossSection)
+            {
+                viewModel.SetCrossSectionRecipeStep(crossSection);
+                if (crossSection.Enabled)
+                {
+                    PreviewC3DCrossSection();
                 }
             }
             viewModel.ViewerStatus = isSmoke
@@ -1385,6 +1403,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             viewModel.ClearPointPairDimensionsRecipeStep();
             viewModel.ClearGapFlushRecipeStep();
             viewModel.ClearVolumeRecipeStep();
+            viewModel.ClearCrossSectionRecipeStep();
             viewModel.UseC3DSmokeScene();
             viewModel.SetC3DAlignment(
                 recipe.Transform ?? ModelTransform.Identity,
@@ -1428,6 +1447,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             viewModel.ClearPointPairDimensionsRecipeStep();
             viewModel.ClearGapFlushRecipeStep();
             viewModel.ClearVolumeRecipeStep();
+            viewModel.ClearCrossSectionRecipeStep();
             viewModel.UseC3DSmokeScene();
             viewModel.SetC3DAlignment(
                 recipe.Transform ?? ModelTransform.Identity,
@@ -1530,7 +1550,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
                 viewModel.C3DModelTransform,
                 CreateCurrentRoiStepRecipe(),
                 viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null,
-                viewModel.VolumeConfigured ? viewModel.CreateVolumeRecipeStep() : null);
+                viewModel.VolumeConfigured ? viewModel.CreateVolumeRecipeStep() : null,
+                viewModel.CrossSectionConfigured ? viewModel.CreateCrossSectionRecipeStep() : null);
 
             recipe.Save(fullRecipePath);
             viewModel.SetRecipeSaved(fullRecipePath);
@@ -2429,6 +2450,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         if (!PreviewC3DVolume()) SetSmokeFailure("Smoke Volume preview failed");
     }
 
+    private void ApplySmokeCrossSection()
+    {
+        if (!viewModel.C3DSampleVisible) ApplySmokeC3D();
+        if (!PreviewC3DCrossSection()) SetSmokeFailure("Smoke Cross-section Dimensions preview failed");
+    }
+
     public bool FitC3DReferencePlane()
     {
         if (c3dSample is null || !viewModel.C3DSampleVisible)
@@ -2764,6 +2791,64 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         viewModel.SelectionOverlayVisible = true;
         viewModel.MeasurementVisible = true;
         viewModel.SetVolumePreview(evaluation);
+        RenderNow();
+        return evaluation.Result.Status != ResultStatus.Error;
+    }
+
+    public bool PreviewC3DCrossSection()
+    {
+        if (c3dSample is null || !viewModel.C3DSampleVisible)
+        {
+            viewModel.ViewerStatus = "Cross-section Dimensions requires a visible C3D height grid";
+            return false;
+        }
+
+        var step = viewModel.CreateCrossSectionRecipeStep();
+        HeightGridPoint[] sourcePoints;
+        try
+        {
+            sourcePoints = c3dSample.ReadRowRange(step.Row, step.StartColumn, step.EndColumn);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentOutOfRangeException)
+        {
+            viewModel.ViewerStatus = $"Cross-section source read failed: {ex.Message}";
+            return false;
+        }
+
+        var samples = sourcePoints
+            .Select(point => new CrossSectionSample(point.Column, TransformC3DPosition(point.Position), point.RawValue))
+            .ToArray();
+        var evaluation = CrossSectionDimensionsRule.Evaluate(new CrossSectionDimensionsInput(
+            step.SourceEntityId,
+            step.Row,
+            step.StartColumn,
+            step.EndColumn,
+            samples,
+            step.ExpectedWidth,
+            step.WidthTolerance,
+            step.ExpectedHeightRange,
+            step.HeightTolerance,
+            step.WidthUnit,
+            step.HeightUnit));
+
+        if (sourcePoints.Length >= 2)
+        {
+            var minimum = sourcePoints.Min(point => point.RawValue);
+            var maximum = sourcePoints.Max(point => point.RawValue);
+            var mean = sourcePoints.Average(point => point.RawValue);
+            viewModel.SetSectionProfile(
+                viewModel.RecipeSourceName,
+                step.Row,
+                sourcePoints.Length,
+                minimum,
+                maximum,
+                mean,
+                BuildSectionProfilePath(sourcePoints, minimum, maximum));
+        }
+
+        viewModel.SelectionOverlayVisible = true;
+        viewModel.MeasurementVisible = true;
+        viewModel.SetCrossSectionPreview(evaluation);
         RenderNow();
         return evaluation.Result.Status != ResultStatus.Error;
     }
@@ -4725,6 +4810,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         var restorePointPairPreview = viewModel.PointPairDimensionsVisible;
         var restoreFlatnessPreview = viewModel.PlaneFlatnessVisible;
         var restoreVolumePreview = viewModel.VolumeVisible;
+        var restoreCrossSectionPreview = viewModel.CrossSectionVisible;
         try
         {
             c3dSample = string.IsNullOrWhiteSpace(sourcePath)
@@ -4767,6 +4853,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
             {
                 viewModel.InvalidatePointPairDimensionsPreview($"C3D reload invalidated point references: {ex.Message}");
             }
+        }
+        else if (restoreCrossSectionPreview)
+        {
+            PreviewC3DCrossSection();
         }
         else if (restoreVolumePreview)
         {
@@ -4902,6 +4992,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl
         }
         else lines.Add("VolumeStep|configured=False");
         lines.Add($"Volume|visible={viewModel.VolumeVisible}|status={(viewModel.VolumeVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|above={FormatContractNumber(viewModel.VolumeAbove)}|below={FormatContractNumber(viewModel.VolumeBelow)}|net={FormatContractNumber(viewModel.VolumeNet)}|referenceSamples={viewModel.VolumeReferenceSampleCount}|measurementSamples={viewModel.VolumeMeasurementSampleCount}|summary={CleanContractText(viewModel.VolumeSummary)}|details={CleanContractText(viewModel.VolumeDetails)}");
+        lines.Add("CrossSectionInspection");
+        if (viewModel.CrossSectionConfigured)
+        {
+            var crossSectionStep = viewModel.CreateCrossSectionRecipeStep();
+            lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(crossSectionStep.Id, CrossSectionDimensionsRule.ToolName, crossSectionStep.SourceEntityId, crossSectionStep.ReferenceId, crossSectionStep.Enabled)));
+            lines.Add($"CrossSectionStep|configured=True|id={crossSectionStep.Id}|source={crossSectionStep.SourceEntityId}|reference={crossSectionStep.ReferenceId}|row={crossSectionStep.Row}|startColumn={crossSectionStep.StartColumn}|endColumn={crossSectionStep.EndColumn}|expectedWidth={FormatContractNumber(crossSectionStep.ExpectedWidth)}|widthTolerance={FormatContractNumber(crossSectionStep.WidthTolerance)}|expectedHeightRange={FormatContractNumber(crossSectionStep.ExpectedHeightRange)}|heightTolerance={FormatContractNumber(crossSectionStep.HeightTolerance)}|widthUnit={crossSectionStep.WidthUnit}|heightUnit={crossSectionStep.HeightUnit}|enabled={crossSectionStep.Enabled}");
+        }
+        else lines.Add("CrossSectionStep|configured=False");
+        lines.Add($"CrossSection|visible={viewModel.CrossSectionVisible}|status={(viewModel.CrossSectionVisible ? viewModel.PreviewToolResult.Status : ResultStatus.NotRun)}|width={FormatContractNumber(viewModel.CrossSectionWidth)}|heightRange={FormatContractNumber(viewModel.CrossSectionHeightRange)}|rawMinimum={FormatContractNumber(viewModel.CrossSectionRawMinimum)}|rawMaximum={FormatContractNumber(viewModel.CrossSectionRawMaximum)}|validSamples={viewModel.CrossSectionValidSampleCount}|summary={CleanContractText(viewModel.CrossSectionSummary)}|details={CleanContractText(viewModel.CrossSectionDetails)}");
         lines.Add("PlaneReferenceMeasurement");
         lines.Add($"PlaneReference|visible={viewModel.PlaneReferenceMeasurementVisible}|fit=least-squares-height-field|sampleBudget={PlaneFitMaxSampledPoints}|samples={viewModel.PlaneReferenceSampleCount}|normal=({FormatContractNumber(viewModel.PlaneReferenceNormalX)},{FormatContractNumber(viewModel.PlaneReferenceNormalY)},{FormatContractNumber(viewModel.PlaneReferenceNormalZ)})|rms={FormatContractNumber(viewModel.PlaneReferenceFitRms)}|signedDistance={FormatContractNumber(viewModel.PlaneReferenceSignedDistance)}|absoluteDistance={FormatContractNumber(viewModel.PlaneReferenceAbsoluteDistance)}|referenceY={FormatContractNumber(viewModel.PlaneReferenceY)}|targetY={FormatContractNumber(viewModel.PlaneReferenceTargetY)}|rawHeightDelta={FormatContractNumber(viewModel.PlaneReferenceRawHeightDelta)}|summary={CleanContractText(viewModel.PlaneReferenceMeasurementDetails)}");
         lines.Add("PlaneFlatnessInspection");

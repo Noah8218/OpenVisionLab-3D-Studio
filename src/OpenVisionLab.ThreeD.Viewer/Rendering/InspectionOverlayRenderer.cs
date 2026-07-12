@@ -26,6 +26,7 @@ public static class InspectionOverlayRenderer
                 DrawBoxRoi(gl);
                 break;
             case "Section Plane":
+            case "Cross-section Dimensions":
                 DrawSectionPlane(gl);
                 break;
             default:

@@ -24,6 +24,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public const string C3DPointPairDimensionsResultEntityId = "result.c3d-point-pair-dimensions";
     public const string C3DGapFlushResultEntityId = "result.c3d-gap-flush";
     public const string C3DVolumeResultEntityId = "result.c3d-volume";
+    public const string C3DCrossSectionResultEntityId = "result.c3d-cross-section-dimensions";
     public const string LazTwoPointResultEntityId = "result.laz-two-point-measurement";
     private const string PlaneFlatnessStepId = "step.c3d-plane-flatness";
     private const string PlaneFlatnessReferenceId = "reference.roi-plane";
@@ -39,6 +40,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private const string VolumeReferenceId = "reference.roi-volume-plane";
     private const string VolumeMeasurementId = "measurement.roi-volume";
     private const int VolumeMaxSampledPoints = 140000;
+    private const string CrossSectionStepId = "step.c3d-cross-section-dimensions";
+    private const string CrossSectionReferenceId = "reference.c3d-row-range";
     private const double DefaultLazExpectedDistance = 116.919;
     private const double DefaultLazDistanceTolerance = 0.010;
     private const double DefaultLazExpectedHeightDelta = -0.624;
@@ -188,6 +191,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string volumeUnit = "model^3";
     private int volumeMaxSampledPoints = VolumeMaxSampledPoints;
     private bool volumeEnabled = true;
+    private ToolResult? c3dCrossSectionPreview;
+    private bool c3dCrossSectionPreviewActive;
+    private bool crossSectionConfigured;
+    private bool crossSectionVisible;
+    private string crossSectionSummary = "Cross-section: preview not run";
+    private string crossSectionDetails = "An exact C3D row and inclusive column range are required.";
+    private string crossSectionStepId = CrossSectionStepId;
+    private string crossSectionReferenceId = CrossSectionReferenceId;
+    private int crossSectionRow = 983;
+    private int crossSectionStartColumn = 200;
+    private int crossSectionEndColumn = 1100;
+    private double crossSectionExpectedWidth = 4.247;
+    private double crossSectionWidthTolerance = 0.010;
+    private double crossSectionExpectedHeightRange = 1708.232;
+    private double crossSectionHeightTolerance = 0.010;
+    private double crossSectionWidth = double.NaN;
+    private double crossSectionHeightRange = double.NaN;
+    private double crossSectionRawMinimum = double.NaN;
+    private double crossSectionRawMaximum = double.NaN;
+    private int crossSectionValidSampleCount;
+    private string crossSectionWidthUnit = "model";
+    private string crossSectionHeightUnit = "raw-height";
+    private bool crossSectionEnabled = true;
     private IReadOnlyList<SourceEntity> sourceEntities = [];
     private IReadOnlyList<ResultEntity> resultEntities = [];
     private string publishedResultSummary = "Published result: none";
@@ -287,6 +313,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand previewPointPairDimensionsCommand;
     private readonly RelayCommand previewGapFlushCommand;
     private readonly RelayCommand previewVolumeCommand;
+    private readonly RelayCommand previewCrossSectionCommand;
     private readonly RelayCommand publishResultCommand;
     private readonly RelayCommand fitAllCommand;
     private readonly RelayCommand fitSelectionCommand;
@@ -302,6 +329,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? PreviewPointPairDimensionsRequested;
     public event EventHandler? PreviewGapFlushRequested;
     public event EventHandler? PreviewVolumeRequested;
+    public event EventHandler? PreviewCrossSectionRequested;
     public event EventHandler? FitAllRequested;
     public event EventHandler? FitSelectionRequested;
     public event EventHandler? OpenRecipeRequested;
@@ -325,6 +353,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _ => C3DSampleVisible && pointPairFirstReference is not null && pointPairSecondReference is not null);
         previewGapFlushCommand = new RelayCommand(_ => PreviewGapFlushRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         previewVolumeCommand = new RelayCommand(_ => PreviewVolumeRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        previewCrossSectionCommand = new RelayCommand(_ => PreviewCrossSectionRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
         saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
@@ -338,7 +367,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
     public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
@@ -347,6 +376,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand PreviewPointPairDimensionsCommand => previewPointPairDimensionsCommand;
     public ICommand PreviewGapFlushCommand => previewGapFlushCommand;
     public ICommand PreviewVolumeCommand => previewVolumeCommand;
+    public ICommand PreviewCrossSectionCommand => previewCrossSectionCommand;
     public ICommand FitAllCommand => fitAllCommand;
     public ICommand FitSelectionCommand => fitSelectionCommand;
     public ICommand OpenRecipeCommand => openRecipeCommand;
@@ -686,6 +716,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     "ROI Step Compare" => RoiStepMeasurementDetails,
                     "Gap / Flush" => GapFlushDetails,
                     "Volume" => VolumeDetails,
+                    "Cross-section Dimensions" => CrossSectionDetails,
                     "Section Plane" => SectionProfileVisible ? SectionProfileSummary : "Section plane: profile not loaded",
                     _ => "Point selection: generated point cloud peak"
                 };
@@ -1213,6 +1244,65 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int VolumeReferenceSampleCount { get => volumeReferenceSampleCount; private set => SetField(ref volumeReferenceSampleCount, value); }
     public int VolumeMeasurementSampleCount { get => volumeMeasurementSampleCount; private set => SetField(ref volumeMeasurementSampleCount, value); }
 
+    public bool CrossSectionConfigured
+    {
+        get => crossSectionConfigured;
+        private set => SetField(ref crossSectionConfigured, value);
+    }
+
+    public int CrossSectionRow
+    {
+        get => crossSectionRow;
+        set => SetCrossSectionParameter(ref crossSectionRow, Math.Max(0, value), nameof(CrossSectionRow));
+    }
+
+    public int CrossSectionStartColumn
+    {
+        get => crossSectionStartColumn;
+        set => SetCrossSectionParameter(ref crossSectionStartColumn, Math.Max(0, value), nameof(CrossSectionStartColumn));
+    }
+
+    public int CrossSectionEndColumn
+    {
+        get => crossSectionEndColumn;
+        set => SetCrossSectionParameter(ref crossSectionEndColumn, Math.Max(0, value), nameof(CrossSectionEndColumn));
+    }
+
+    public double CrossSectionExpectedWidth
+    {
+        get => crossSectionExpectedWidth;
+        set => SetCrossSectionParameter(ref crossSectionExpectedWidth, CoerceFinite(value, crossSectionExpectedWidth), nameof(CrossSectionExpectedWidth));
+    }
+
+    public double CrossSectionWidthTolerance
+    {
+        get => crossSectionWidthTolerance;
+        set => SetCrossSectionParameter(ref crossSectionWidthTolerance, Math.Max(0.0, CoerceFinite(value, crossSectionWidthTolerance)), nameof(CrossSectionWidthTolerance));
+    }
+
+    public double CrossSectionExpectedHeightRange
+    {
+        get => crossSectionExpectedHeightRange;
+        set => SetCrossSectionParameter(ref crossSectionExpectedHeightRange, CoerceFinite(value, crossSectionExpectedHeightRange), nameof(CrossSectionExpectedHeightRange));
+    }
+
+    public double CrossSectionHeightTolerance
+    {
+        get => crossSectionHeightTolerance;
+        set => SetCrossSectionParameter(ref crossSectionHeightTolerance, Math.Max(0.0, CoerceFinite(value, crossSectionHeightTolerance)), nameof(CrossSectionHeightTolerance));
+    }
+
+    public bool CrossSectionVisible { get => crossSectionVisible; private set => SetField(ref crossSectionVisible, value); }
+    public string CrossSectionSummary { get => crossSectionSummary; private set => SetField(ref crossSectionSummary, value); }
+    public string CrossSectionDetails { get => crossSectionDetails; private set => SetField(ref crossSectionDetails, value); }
+    public double CrossSectionWidth { get => crossSectionWidth; private set => SetField(ref crossSectionWidth, value); }
+    public double CrossSectionHeightRange { get => crossSectionHeightRange; private set => SetField(ref crossSectionHeightRange, value); }
+    public double CrossSectionRawMinimum { get => crossSectionRawMinimum; private set => SetField(ref crossSectionRawMinimum, value); }
+    public double CrossSectionRawMaximum { get => crossSectionRawMaximum; private set => SetField(ref crossSectionRawMaximum, value); }
+    public int CrossSectionValidSampleCount { get => crossSectionValidSampleCount; private set => SetField(ref crossSectionValidSampleCount, value); }
+    public string CrossSectionWidthUnit => crossSectionWidthUnit;
+    public string CrossSectionHeightUnit => crossSectionHeightUnit;
+
     public ToolResult PreviewToolResult
     {
         get => previewToolResult;
@@ -1234,6 +1324,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         previewPointPairDimensionsCommand.RaiseCanExecuteChanged();
         previewGapFlushCommand.RaiseCanExecuteChanged();
         previewVolumeCommand.RaiseCanExecuteChanged();
+        previewCrossSectionCommand.RaiseCanExecuteChanged();
         publishResultCommand.RaiseCanExecuteChanged();
     }
 
@@ -1894,7 +1985,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UseSelectionSmokeScene(string mode)
     {
-        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare" || mode == "Gap / Flush") && C3DSampleVisible;
+        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare" || mode == "Gap / Flush" || mode == "Cross-section Dimensions") && C3DSampleVisible;
         if (!keepCurrentC3DScene)
         {
             UsePointCloudSmokeScene();
@@ -1907,6 +1998,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Box ROI" => "Box ROI",
             "ROI Step Compare" => "ROI Step Compare",
             "Gap / Flush" => "C3D Gap / Flush",
+            "Cross-section Dimensions" => "C3D Cross-section Dimensions",
             "Section Plane" => "Section Plane",
             _ => "Generated Point Cloud"
         };
@@ -1918,6 +2010,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             "Plane Distance" => PlaneReferenceMeasurementDetails,
             "ROI Step Compare" => RoiStepMeasurementDetails,
             "Gap / Flush" => GapFlushDetails,
+            "Cross-section Dimensions" => CrossSectionDetails,
             "Box ROI" => "Box ROI: viewer state only",
             _ => "Point selection: generated point cloud peak"
         };
@@ -2053,6 +2146,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClearPointPairDimensionsPreview();
         ClearGapFlushPreview();
         ClearVolumePreview();
+        ClearCrossSectionPreview();
         ClearHeightMap();
         ClearSectionProfile();
     }
@@ -2235,6 +2329,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClearPointPairDimensionsPreview();
         ClearGapFlushPreview();
         ClearVolumePreview();
+        ClearCrossSectionPreview();
         PlaneFlatnessConfigured = true;
         planeFlatnessEnabled = true;
         c3dPlaneFlatnessPreview = evaluation.Result;
@@ -2401,6 +2496,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClearPlaneFlatnessPreview();
         ClearGapFlushPreview();
         ClearVolumePreview();
+        ClearCrossSectionPreview();
         PointPairDimensionsConfigured = true;
         pointPairDimensionsEnabled = true;
         c3dPointPairDimensionsPreview = evaluation.Result;
@@ -2552,6 +2648,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClearPlaneFlatnessPreview();
         ClearPointPairDimensionsPreview();
         ClearVolumePreview();
+        ClearCrossSectionPreview();
         GapFlushConfigured = true;
         gapFlushEnabled = true;
         c3dGapFlushPreview = evaluation.Result;
@@ -2681,6 +2778,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ClearPlaneFlatnessPreview();
         ClearPointPairDimensionsPreview();
         ClearGapFlushPreview();
+        ClearCrossSectionPreview();
         VolumeConfigured = true;
         c3dVolumePreview = evaluation.Result;
         c3dVolumePreviewActive = true;
@@ -2743,6 +2841,125 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!c3dVolumePreviewActive) return;
         ClearVolumePreview();
+        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
+        ResetActivePreviewIdentity();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ViewerStatus = reason;
+        RefreshSceneContracts();
+    }
+
+    public HeightDeviationRecipeCrossSection CreateCrossSectionRecipeStep() =>
+        new(
+            crossSectionStepId,
+            C3DEntityId,
+            crossSectionReferenceId,
+            CrossSectionRow,
+            CrossSectionStartColumn,
+            CrossSectionEndColumn,
+            CrossSectionExpectedWidth,
+            CrossSectionWidthTolerance,
+            CrossSectionExpectedHeightRange,
+            CrossSectionHeightTolerance,
+            crossSectionWidthUnit,
+            crossSectionHeightUnit,
+            crossSectionEnabled);
+
+    public void SetCrossSectionRecipeStep(HeightDeviationRecipeCrossSection step)
+    {
+        crossSectionStepId = step.Id;
+        crossSectionReferenceId = step.ReferenceId;
+        crossSectionWidthUnit = step.WidthUnit;
+        crossSectionHeightUnit = step.HeightUnit;
+        crossSectionEnabled = step.Enabled;
+        SetField(ref crossSectionRow, step.Row, nameof(CrossSectionRow));
+        SetField(ref crossSectionStartColumn, step.StartColumn, nameof(CrossSectionStartColumn));
+        SetField(ref crossSectionEndColumn, step.EndColumn, nameof(CrossSectionEndColumn));
+        SetField(ref crossSectionExpectedWidth, step.ExpectedWidth, nameof(CrossSectionExpectedWidth));
+        SetField(ref crossSectionWidthTolerance, step.WidthTolerance, nameof(CrossSectionWidthTolerance));
+        SetField(ref crossSectionExpectedHeightRange, step.ExpectedHeightRange, nameof(CrossSectionExpectedHeightRange));
+        SetField(ref crossSectionHeightTolerance, step.HeightTolerance, nameof(CrossSectionHeightTolerance));
+        OnPropertyChanged(nameof(CrossSectionWidthUnit));
+        OnPropertyChanged(nameof(CrossSectionHeightUnit));
+        CrossSectionConfigured = true;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void SetCrossSectionPreview(CrossSectionEvaluation evaluation)
+    {
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
+        ClearGapFlushPreview();
+        ClearVolumePreview();
+        CrossSectionConfigured = true;
+        c3dCrossSectionPreview = evaluation.Result;
+        c3dCrossSectionPreviewActive = true;
+        CrossSectionVisible = true;
+        CrossSectionWidth = evaluation.Width;
+        CrossSectionHeightRange = evaluation.HeightRange;
+        CrossSectionRawMinimum = evaluation.RawMinimum;
+        CrossSectionRawMaximum = evaluation.RawMaximum;
+        CrossSectionValidSampleCount = evaluation.ValidSampleCount;
+        CrossSectionSummary = string.Create(CultureInfo.InvariantCulture, $"Cross-section: {evaluation.Result.Status} | width {evaluation.Width:F3} {CrossSectionWidthUnit}, height {evaluation.HeightRange:F3} {CrossSectionHeightUnit}");
+        CrossSectionDetails = string.Create(CultureInfo.InvariantCulture, $"Row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn} | valid {evaluation.ValidSampleCount:N0} | raw {evaluation.RawMinimum:F3}..{evaluation.RawMaximum:F3}");
+        activePreviewLayerId = "layer.preview.c3d-cross-section-dimensions";
+        activePreviewLayerName = "Preview: C3D Cross-section Dimensions";
+        activePreviewSourceEntityId = C3DEntityId;
+        activeResultEntityId = C3DCrossSectionResultEntityId;
+        activeResultEntityName = "Published C3D Cross-section Dimensions";
+        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
+        PreviewToolResult = evaluation.Result;
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        SelectedColorMode = "Height";
+        SelectedSelectionMode = "Cross-section Dimensions";
+        SelectedEntity = "C3D Cross-section Dimensions";
+        SelectionSummary = CrossSectionDetails;
+        MeasurementSummary = CrossSectionDetails;
+        ViewerStatus = "C3D Cross-section Dimensions preview updated";
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+        RefreshSceneContracts();
+    }
+
+    public void ClearCrossSectionPreview()
+    {
+        c3dCrossSectionPreview = null;
+        c3dCrossSectionPreviewActive = false;
+        CrossSectionVisible = false;
+        CrossSectionWidth = double.NaN;
+        CrossSectionHeightRange = double.NaN;
+        CrossSectionRawMinimum = double.NaN;
+        CrossSectionRawMaximum = double.NaN;
+        CrossSectionValidSampleCount = 0;
+        CrossSectionSummary = "Cross-section: preview not run";
+        CrossSectionDetails = "An exact C3D row and inclusive column range are required.";
+    }
+
+    public void ClearCrossSectionRecipeStep()
+    {
+        ClearCrossSectionPreview();
+        crossSectionStepId = CrossSectionStepId;
+        crossSectionReferenceId = CrossSectionReferenceId;
+        crossSectionWidthUnit = "model";
+        crossSectionHeightUnit = "raw-height";
+        crossSectionEnabled = true;
+        SetField(ref crossSectionRow, 983, nameof(CrossSectionRow));
+        SetField(ref crossSectionStartColumn, 200, nameof(CrossSectionStartColumn));
+        SetField(ref crossSectionEndColumn, 1100, nameof(CrossSectionEndColumn));
+        SetField(ref crossSectionExpectedWidth, 4.247, nameof(CrossSectionExpectedWidth));
+        SetField(ref crossSectionWidthTolerance, 0.010, nameof(CrossSectionWidthTolerance));
+        SetField(ref crossSectionExpectedHeightRange, 1708.232, nameof(CrossSectionExpectedHeightRange));
+        SetField(ref crossSectionHeightTolerance, 0.010, nameof(CrossSectionHeightTolerance));
+        CrossSectionConfigured = false;
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    public void InvalidateCrossSectionPreview(string reason)
+    {
+        if (!c3dCrossSectionPreviewActive) return;
+        ClearCrossSectionPreview();
         SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
         ResetActivePreviewIdentity();
         PreviewToolResult = CreateNotRunToolResult();
@@ -2822,6 +3039,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             InvalidatePointPairDimensionsPreview("Alignment changed; run Preview Dimensions again");
             InvalidateGapFlushPreview("Alignment changed; run Preview Gap / Flush again");
             InvalidateVolumePreview("Alignment changed; run Preview Volume again");
+            InvalidateCrossSectionPreview("Alignment changed; run Preview Cross-section again");
         }
 
         C3DModelTransform = transform;
@@ -3381,7 +3599,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SectionProfileSampleCount = sampleCount;
         SectionProfileSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Profile: {sourceName} center section | row {rowIndex} | samples {sampleCount}");
+            $"Profile: {sourceName} section | row {rowIndex} | samples {sampleCount}");
         SectionProfileRange = string.Create(
             CultureInfo.InvariantCulture,
             $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
@@ -3486,9 +3704,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CultureInfo.InvariantCulture,
                 $"\nVolume expected net: {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} {VolumeUnit}")
             : string.Empty;
+        var crossSectionLine = CrossSectionConfigured
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\nCross-section expected: width {CrossSectionExpectedWidth:F3} {CrossSectionWidthUnit}, height {CrossSectionExpectedHeightRange:F3} {CrossSectionHeightUnit}")
+            : string.Empty;
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}");
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}");
     }
 
     private void RefreshRecipeParameterSummary()
@@ -3506,9 +3729,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 CultureInfo.InvariantCulture,
                 $"\nVolume reference ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}); measurement ({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3})")
             : string.Empty;
+        var crossSectionLine = CrossSectionConfigured
+            ? $"\nCross-section row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn}"
+            : string.Empty;
         RecipeParameterSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}{volumeLine}");
+            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}{volumeLine}{crossSectionLine}");
     }
 
     private void SetPlaneFlatnessParameter(ref double storage, double value, string propertyName)
@@ -3557,6 +3783,24 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!SetField(ref storage, value, propertyName)) return;
         VolumeConfigured = true;
         InvalidateVolumePreview("Volume parameters changed; run Preview Volume again");
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void SetCrossSectionParameter(ref int storage, int value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName)) return;
+        CrossSectionConfigured = true;
+        InvalidateCrossSectionPreview("Cross-section selectors changed; run Preview Cross-section again");
+        RefreshRecipeSummary();
+        RefreshRecipeParameterSummary();
+    }
+
+    private void SetCrossSectionParameter(ref double storage, double value, string propertyName)
+    {
+        if (!SetField(ref storage, value, propertyName)) return;
+        CrossSectionConfigured = true;
+        InvalidateCrossSectionPreview("Cross-section acceptance changed; run Preview Cross-section again");
         RefreshRecipeSummary();
         RefreshRecipeParameterSummary();
     }

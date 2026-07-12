@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
@@ -15,9 +17,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private readonly string? comparisonContractPath;
     private readonly string? comparisonReportPath;
     private readonly string? shellScreenshotPath;
+    private readonly string? runRecordPath;
+    private readonly string? htmlReportPath;
+    private readonly string? csvReportPath;
     private string? currentContractPath;
     private string? currentReportPath;
     private string? currentShellScreenshotPath;
+    private string? currentRunRecordPath;
+    private string? currentHtmlReportPath;
+    private string? currentCsvReportPath;
     private string statusText = "Viewer hosted";
     private string recipeComparisonSummary = "No recipe comparison evidence loaded.";
     private string recipeComparisonHistory = "(pending)";
@@ -26,6 +34,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string runSnapshotEvidence = "(pending)";
     private string inspectionStepSummary = "No inspection steps loaded.";
     private int selectedEvidenceTabIndex;
+    private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
@@ -37,11 +50,17 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ShellMainWindowViewModel(
         string? comparisonContractPath = null,
         string? comparisonReportPath = null,
-        string? shellScreenshotPath = null)
+        string? shellScreenshotPath = null,
+        string? runRecordPath = null,
+        string? htmlReportPath = null,
+        string? csvReportPath = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
         this.shellScreenshotPath = shellScreenshotPath;
+        this.runRecordPath = runRecordPath;
+        this.htmlReportPath = htmlReportPath;
+        this.csvReportPath = csvReportPath;
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
@@ -49,6 +68,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         OpenUiContractCommand = new RelayCommand(_ => RequestEvidenceArtifact("UI contract", currentContractPath), _ => !string.IsNullOrWhiteSpace(currentContractPath));
         OpenRunnerReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("Runner report", currentReportPath), _ => !string.IsNullOrWhiteSpace(currentReportPath));
         OpenShellScreenshotCommand = new RelayCommand(_ => RequestEvidenceArtifact("Shell screenshot", currentShellScreenshotPath), _ => !string.IsNullOrWhiteSpace(currentShellScreenshotPath));
+        OpenRunRecordCommand = new RelayCommand(_ => RequestEvidenceArtifact("Run JSON", currentRunRecordPath), _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
+        OpenHtmlReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("HTML report", currentHtmlReportPath), _ => !string.IsNullOrWhiteSpace(currentHtmlReportPath));
+        OpenCsvReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("CSV report", currentCsvReportPath), _ => !string.IsNullOrWhiteSpace(currentCsvReportPath));
         RefreshRecipeComparison();
     }
 
@@ -59,6 +81,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenUiContractCommand { get; }
     public ICommand OpenRunnerReportCommand { get; }
     public ICommand OpenShellScreenshotCommand { get; }
+    public ICommand OpenRunRecordCommand { get; }
+    public ICommand OpenHtmlReportCommand { get; }
+    public ICommand OpenCsvReportCommand { get; }
 
     public string StatusText
     {
@@ -118,6 +143,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         currentContractPath = null;
         currentReportPath = null;
         currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath);
+        currentRunRecordPath = ResolveOptionalPath(root, runRecordPath);
+        currentHtmlReportPath = ResolveOptionalPath(root, htmlReportPath);
+        currentCsvReportPath = ResolveOptionalPath(root, csvReportPath);
         RefreshCommandCanExecute();
 
         StatusText = "Viewer hosted | viewer smoke failed";
@@ -143,11 +171,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public void RefreshRecipeComparison()
     {
         var root = ResolveWorkspaceRoot();
-        var contractPath = ResolvePath(root, comparisonContractPath, Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
-        var reportPath = ResolvePath(root, comparisonReportPath, Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
+        currentRunRecordPath = ResolveOptionalPath(root, runRecordPath);
+        var runRecord = ReadRunRecord(currentRunRecordPath);
+        var contractPath = ResolvePath(root, comparisonContractPath ?? runRecord?.Artifacts.ViewerContract, Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
+        var reportPath = ResolvePath(root, comparisonReportPath ?? runRecord?.Artifacts.RunnerTextReport, Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
         currentContractPath = contractPath;
         currentReportPath = reportPath;
-        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath);
+        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath ?? runRecord?.Artifacts.ViewerScreenshot);
+        currentHtmlReportPath = ResolveOptionalPath(root, htmlReportPath ?? runRecord?.Artifacts.HtmlReport);
+        currentCsvReportPath = ResolveOptionalPath(root, csvReportPath ?? runRecord?.Artifacts.CsvReport);
         RefreshCommandCanExecute();
 
         var contractLines = ReadLinesOrEmpty(contractPath);
@@ -189,7 +221,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RunSnapshotSummary =
             $"{comparisonState} | Status: {status} | Key metric: {keyMetricSummary} | Evidence: {evidenceState} | Run: {FormatRunTime(reportPath, contractPath)}";
         RunSnapshotEvidence =
-            $"Recipe: {FormatShortEvidencePath(root, recipePath)} | UI: {FormatShortEvidencePath(root, contractPath)} | Runner: {FormatShortEvidencePath(root, reportPath)} | Shell: {FormatShellScreenshotTarget(root)}";
+            $"Recipe: {FormatShortEvidencePath(root, recipePath)} | UI: {FormatShortEvidencePath(root, contractPath)} | Runner: {FormatShortEvidencePath(root, reportPath)} | Shell: {FormatShellScreenshotTarget(root)} | JSON: {FormatOptionalArtifact(root, currentRunRecordPath)} | HTML: {FormatOptionalArtifact(root, currentHtmlReportPath)} | CSV: {FormatOptionalArtifact(root, currentCsvReportPath)}";
     }
 
     private void RefreshInspectionSteps(
@@ -306,6 +338,19 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private static string[] ReadLinesOrEmpty(string path) =>
         File.Exists(path) ? File.ReadAllLines(path) : [];
 
+    private static InspectionRunRecord? ReadRunRecord(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<InspectionRunRecord>(File.ReadAllText(path), RunRecordJsonOptions);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
     public void UpdateC3DSampleVisible(bool isVisible)
     {
         if (c3DSampleVisible != isVisible)
@@ -322,6 +367,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         ((RelayCommand)OpenUiContractCommand).RaiseCanExecuteChanged();
         ((RelayCommand)OpenRunnerReportCommand).RaiseCanExecuteChanged();
         ((RelayCommand)OpenShellScreenshotCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenRunRecordCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenHtmlReportCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenCsvReportCommand).RaiseCanExecuteChanged();
     }
 
     private void RequestEvidenceArtifact(string label, string? path)
@@ -485,6 +533,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private static string FormatShortEvidencePath(string root, string path) =>
         File.Exists(path) ? Path.GetRelativePath(root, path) : $"missing: {Path.GetRelativePath(root, path)}";
+
+    private static string FormatOptionalArtifact(string root, string? path) =>
+        string.IsNullOrWhiteSpace(path) ? "(not requested)" : FormatShortEvidencePath(root, path);
 
     private string FormatShellScreenshotTarget(string root)
     {

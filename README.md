@@ -11,7 +11,7 @@ This repository is under active development and is not production-ready yet.
 - Product direction: local 3D vision inspection workbench.
 - Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
-- Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, and reference-plane Volume slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
+- Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, reference-plane Volume, and exact-row Cross-section Dimensions slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
 - Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, and an independent Python recalculation within `2.37e-7` Viewer units with zero RGB error. Physical units and calibration remain unverified.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
@@ -156,6 +156,21 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_reopen_after.png --smoke-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_volume.recipe.json --report artifacts\runner_volume_after.txt --expect-status Pass --compare-contract artifacts\viewer_volume_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\volume_golden_after.txt
+```
+
+C3D Cross-section Dimensions recipe smoke:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_cross_section_after.png --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --smoke-contracts artifacts\viewer_cross_section_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_cross_section_reopen_after.png --smoke-recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --smoke-contracts artifacts\viewer_cross_section_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\runner_cross_section_after.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-cross-section --report artifacts\cross_section_golden_after.txt
+```
+
+Durable JSON/HTML/CSV run bundle:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\run_record_cross_section\runner.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt --viewer-screenshot artifacts\viewer_cross_section_reopen_after.png --run-record artifacts\run_record_cross_section\run.json --html-report artifacts\run_record_cross_section\report.html --csv-report artifacts\run_record_cross_section\metrics.csv
 ```
 
 Public GLB import smoke:
@@ -322,6 +337,9 @@ Current development snapshot:
 - Runner `--verify-gap-flush` verifies signed separation/overlap, independent gap/flush failures, empty regions, non-finite statistics, invalid tolerances, and missing units; CI preserves this regression.
 - Viewer and Shell expose C3D above-plane, below-plane, and signed net Volume for explicit reference and measurement ROIs, with Preview/Publish, recipe roundtrip, Runner parity, and a real Shell step row. Values use uncalibrated `model^3`, not physical volume.
 - Runner `--verify-volume` verifies exact signed integration, tolerance failure, insufficient/empty samples, invalid area/tolerance, non-finite input, and missing units; CI preserves this regression.
+- Viewer and Shell expose exact-row C3D Cross-section Dimensions using an inclusive source-column range, aligned-X width, raw-height range, separate tolerances, source/result separation, recipe roundtrip, Runner parity, linked profile, and a real Shell step row.
+- Runner `--verify-cross-section` verifies exact width/height range, independent tolerance failures, selector errors, insufficient/non-finite/out-of-range samples, invalid tolerance, and missing units; CI preserves this regression.
+- Runner can emit a durable schema `1.0` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, UTC time, status, all metrics/overlays, Viewer/Runner match state, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -350,20 +368,21 @@ Current development snapshot:
 1. Preserve the passed Viewer Foundation v1 and C3D display-frame fidelity regression baselines.
 2. Obtain the C3D calibration contract and add an explicit mapping profile for pitch, height scale/offset, units, axes, and calibration identity.
 3. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
-4. Add basic surface tools one complete slice at a time: Gap/Flush and Volume done; cross-section dimensions next.
+4. Preserve the completed basic surface slices: Gap/Flush, Volume, and Cross-section Dimensions.
 5. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
-6. Add a durable JSON run record and simple HTML/CSV reporting before batch trends or enterprise integration.
+6. Preserve the durable JSON run record and simple HTML/CSV one-run report baseline before adding batch trends or enterprise integration.
 
 ## Known Limitations
 
 - The project is not production-ready.
 - Current C3D parsing and viewer scale are inferred from local samples, not an official format or calibration contract. Display-frame fidelity is verified for the fixed sample; physical coordinate and metrology fidelity are not.
 - The current Thickness and Warpage sample files may be byte-identical; do not assume they represent different measurements until new evidence is available.
-- Algorithm coverage is intentionally narrow; Viewer Foundation v1 and four independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
+- Algorithm coverage is intentionally narrow; Viewer Foundation v1 and five independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
 - No packaged installer or binary release exists yet.
+- Run reporting is one-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow.
 - .NET 10 migration is planned as a separate compatibility task, not mixed into current feature work.
 
 ## Documentation

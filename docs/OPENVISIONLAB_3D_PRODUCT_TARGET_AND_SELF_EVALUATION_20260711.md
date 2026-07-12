@@ -26,7 +26,7 @@ Current maturity is **early inspection workbench MVP**. No repository-backed per
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.
 - C3D map fidelity: **display frame passed for the fixed Thickness sample; physical scale unverified**.
-- Inspection Recipe v1: **baseline passed for four independent typed C3D slices: numeric-reference-ROI plane flatness, explicit-cell point-pair dimensions, explicit two-region Gap/Flush, and explicit reference/measurement-ROI Volume**.
+- Inspection Recipe v1: **baseline passed for five independent typed C3D slices: numeric-reference-ROI plane flatness, explicit-cell point-pair dimensions, explicit two-region Gap/Flush, explicit reference/measurement-ROI Volume, and exact-row Cross-section Dimensions**.
 - Nominal/actual metrology: **not started as a product workflow**.
 - Production integration: **intentionally out of scope**.
 
@@ -49,6 +49,8 @@ Local checks performed on 2026-07-11:
 - Analytic Gap/Flush verification: `artifacts/gap_flush_golden_after.txt`; signed separation/overlap, independent tolerance failures, empty region, non-finite statistics, invalid tolerance, and missing-unit cases pass (`8/8`).
 - Volume evidence: `artifacts/viewer_volume_after.*`, `artifacts/viewer_volume_reopen_after.*`, `artifacts/runner_volume_after.txt`, and `artifacts/shell_volume_steps_after.png`; Viewer and Runner match above `0.874`, below `0.972`, signed net `-0.098 model^3`, sample counts, and Pass status.
 - Analytic Volume verification: `artifacts/volume_golden_after.txt`; exact above/below/net integration, signed acceptance, insufficient/empty samples, invalid area/tolerance, non-finite measurement, and missing-unit cases pass (`9/9`).
+- Cross-section evidence: `artifacts/viewer_cross_section_after.*`, `artifacts/viewer_cross_section_reopen_after.*`, `artifacts/runner_cross_section_after.txt`, and `artifacts/shell_cross_section_steps_after.png`; Viewer and Runner match row `983`, columns `200..1100`, `836` valid samples, width `4.247 model`, raw-height range `1708.232`, and Pass status.
+- Analytic Cross-section verification: `artifacts/cross_section_golden_after.txt`; exact width/range, independent tolerance failures, invalid selectors, insufficient/non-finite/out-of-range samples, invalid tolerance, and missing-unit cases pass (`9/9`).
 - C3D map fidelity: `artifacts/map_fidelity/c3d_map_fidelity_golden.txt` passes `10/10`; the full-resolution point-only audit roundtrips all 1,653,562 valid points with zero .NET XYZ/RGB error; an independent Python implementation reports maximum coordinate error `2.37e-7` and RGB error `0`; the local PNG identifies the unflipped source orientation; Microsoft 3D Viewer independently renders the same major shape from the sampled compatibility PLY; Open3D 0.19.0 sampled PLY re-save preserves `66,212` vertices and RGB with maximum coordinate drift `5e-6` Viewer units.
 - Current data matrix: C3D, GLB, STL, LAS, and LAZ with positive and controlled-failure paths.
 - Current architecture: separate Core, Data, Tools, Viewer, Docking.Controls, Shell, Runner, and app-host projects.
@@ -115,11 +117,11 @@ Scale: `0` absent, `1` prototype, `2` working MVP, `3` operational baseline, `4`
 | Data loading and 3D display | 3 | C3D, GLB, STL, LAS/LAZ fixed matrix; render density and controlled loader failures. | Clip/crop workflow, broader formats, and out-of-core scale are not yet operational. |
 | Camera, picking, selection, overlays | 3 | Orbit/pan/zoom/fit, point/mesh picks, ROI/section, measurement and result overlays, Viewer HUD. | Interaction regression coverage remains smoke-oriented rather than automated gesture testing. |
 | Reference and alignment | 2 | Transform state, translation-only Align From ROI, fitted C3D height-field plane, and numeric recipe-owned reference ROI. | No interactive plane ROI, 3-point frame, plane-derived rotation, 3-2-1, or best-fit. |
-| Measurement toolbox | 2 | Two-point, height delta, ROI step, section/profile, height map, fitted-plane distance, ROI-reference flatness, explicit-cell distance/XZ-width/signed-angle, explicit-region signed Gap/Flush, and reference-plane Volume acceptance. | Automatic feature-based dimensions, area, physical/calibrated volume, nominal deviation, and edge-detected gap remain incomplete. |
-| Recipe and inspection-step model | 2 | Typed flatness, point-pair-dimensions, Gap/Flush, and Volume slices with stable step/source/reference IDs, save/reopen, explicit Preview/Publish, Runner replay, and Shell step evidence. | The slices use tool-specific recipe families; there is no proven multi-step dependency executor. |
-| Runner and evidence parity | 2 | Headless replay, contract comparison, screenshots, result layers, Shell history/snapshot views. | No durable machine-readable run bundle shared by every tool and no batch replay. |
+| Measurement toolbox | 2 | Two-point, height delta, ROI step, section/profile, height map, fitted-plane distance, ROI-reference flatness, explicit-cell distance/XZ-width/signed-angle, explicit-region signed Gap/Flush, reference-plane Volume, and exact-row Cross-section acceptance. | Automatic feature-based dimensions, area, physical/calibrated volume, nominal deviation, and edge-detected gap remain incomplete. |
+| Recipe and inspection-step model | 2 | Typed flatness, point-pair-dimensions, Gap/Flush, Volume, and Cross-section slices with stable step/source/reference IDs, save/reopen, explicit Preview/Publish, Runner replay, and Shell step evidence. | The slices use tool-specific recipe families; there is no proven multi-step dependency executor. |
+| Runner and evidence parity | 2 | Headless replay, contract comparison, screenshots, result layers, Shell history/snapshot views, and schema `1.0` JSON run record with recipe/source hashes and artifact paths. | The durable bundle is proven for one Cross-section run, not yet a multi-run or batch replay contract. |
 | Nominal/actual comparison | 0 | A C3D mean-height deviation color mode is not CAD/scan nominal comparison. | Nominal entity, alignment strategy, point-to-mesh distance, deviation map, and tolerances. |
-| Reporting and multipiece review | 1 | Text reports and visible evidence paths. | User-facing HTML/PDF/CSV report, batch table, trends, and statistics. |
+| Reporting and multipiece review | 2 | Runner TXT, one-run JSON, human-readable HTML metric table, CSV metric export, and Shell artifact commands. | No PDF, database, retention/signing, batch table, trends, statistics, or SPC. |
 | Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness and point-pair golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
 | Architecture and maintainability | 2 | Separate Viewer/Shell/Core/Data/Tools/Runner boundaries; MVVM direction; CI build. | Viewer code-behind remains large, recipe logic is tool-specific, and automated unit/integration tests are limited. |
 
@@ -201,7 +203,7 @@ Add one complete tool at a time in this order:
 2. Explicit-cell width/distance/signed elevation angle. Baseline done; automatic feature extraction remains out of scope.
 3. Gap/flush or two-region step height. Explicit-region baseline done.
 4. Volume above/below a reference plane. Explicit height-field ROI baseline done; physical calibration remains blocked.
-5. Cross-section dimensions. Next priority.
+5. Cross-section dimensions. Exact source-row/range baseline done; automatic feature finding remains out of scope.
 
 Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persistence, Runner replay, and evidence before the next tool starts.
 
@@ -217,6 +219,8 @@ Each tool requires Viewer/Shell UI, metrics, overlay, tolerance, recipe persiste
 - Define a serializable run record containing recipe identity, source identity/hash, time, status, metrics, artifact paths, and Viewer/Runner match state.
 - Generate simple JSON plus HTML or CSV before considering PDF or enterprise reporting.
 - Add batch/trend views only after multiple real runs use the same stable record.
+
+Status on 2026-07-12: baseline done for one real Cross-section run. `artifacts/run_record_cross_section/run.json`, `report.html`, `metrics.csv`, and `runner.txt` preserve the matched Pass result; `artifacts/shell_run_record_after.png` proves the Shell artifact commands. Broader multi-run reporting remains deferred.
 
 ### P3: Metrology Credibility
 

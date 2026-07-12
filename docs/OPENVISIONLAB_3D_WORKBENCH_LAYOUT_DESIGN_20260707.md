@@ -241,6 +241,38 @@ The implemented split is:
 - Analytic/error golden report: `artifacts/volume_golden_after.txt`
 - Shell Viewer/contract/Steps workbench: `artifacts/shell_volume_viewer_after.png`, `artifacts/shell_volume_after.txt`, `artifacts/shell_volume_steps_after.png`
 
+27. Add the fifth typed inspection slice: C3D Cross-section Dimensions. Done for the exact source-row/range baseline.
+    - Recipe JSON owns one exact source row and an inclusive start/end column range; Runner reads those source cells independently from render density.
+    - Standalone Viewer and Shell `Tool / Inspector` own row/range selectors, expected aligned-X width, expected raw-height range, and a separate tolerance for each metric.
+    - `Preview Cross-section` reports valid sample count, aligned-X width, raw minimum/maximum, and raw-height range; `Publish Result` creates a separate result entity without changing source cells.
+    - The Viewer HUD, section-plane overlay, and linked profile retain the selected row/range and both acceptance results when hosted without Shell panes.
+    - This baseline excludes automatic edge/feature finding, threshold crossings, arbitrary section planes, fitted profile primitives, calibrated physical dimensions, and CAD nominal sections.
+
+## C3D Cross-section Dimensions Evidence
+
+- Before Viewer/Shell screenshots: `artifacts/viewer_cross_section_before.png`, `artifacts/shell_cross_section_before.png`
+- Viewer Preview/Publish screenshot and contract: `artifacts/viewer_cross_section_after.png`, `artifacts/viewer_cross_section_after.txt`
+- Saved-recipe reopen screenshot and contract: `artifacts/viewer_cross_section_reopen_after.png`, `artifacts/viewer_cross_section_reopen_after.txt`
+- Runner parity report: `artifacts/runner_cross_section_after.txt`
+- Analytic/error golden report: `artifacts/cross_section_golden_after.txt`
+- Shell Viewer/contract/Steps workbench: `artifacts/shell_cross_section_viewer_after.png`, `artifacts/shell_cross_section_after.txt`, `artifacts/shell_cross_section_steps_after.png`
+
+28. Add the first durable Run Snapshot bundle. Done for JSON plus simple HTML/CSV.
+    - Shell `Evidence Workbench -> Run Snapshot` owns explicit open commands for UI contract, Runner TXT, screenshot, run JSON, HTML report, and CSV metrics.
+    - Shell ViewModel owns all artifact paths and command state; code-behind remains only the shared OS file-open bridge.
+    - Runner JSON owns schema/run identity, UTC time, recipe/source identity and SHA-256, status/message/duration, every metric and overlay, Viewer/Runner match state, and artifact paths.
+    - HTML is a human-readable one-run metric table and CSV is a machine-friendly one-row-per-metric export. This baseline excludes PDF, database persistence, batch trends, SPC, signing, and retention policy.
+
+## Durable Run Bundle Evidence
+
+- Before Shell Run Snapshot: `artifacts/shell_run_record_before.png`
+- After Shell Run Snapshot: `artifacts/shell_run_record_after.png`
+- JSON record: `artifacts/run_record_cross_section/run.json`
+- HTML report: `artifacts/run_record_cross_section/report.html`
+- Browser-rendered HTML evidence: `artifacts/run_record_cross_section/report.png`
+- CSV metrics: `artifacts/run_record_cross_section/metrics.csv`
+- Runner TXT: `artifacts/run_record_cross_section/runner.txt`
+
 ## C3D Point Pair Dimensions Evidence
 
 - Before Viewer screenshot/contract: `artifacts/viewer_dimensions_before.png`, `artifacts/viewer_dimensions_before.txt`

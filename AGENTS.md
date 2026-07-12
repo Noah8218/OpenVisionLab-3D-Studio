@@ -29,6 +29,8 @@ This file defines the working agreement for Codex in this repository.
 - The second typed slice, C3D point-pair distance/width/signed-elevation-angle, passed on 2026-07-11 with explicit source-cell references, separate metric tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, Shell evidence, and 9/9 analytic/error golden cases. It measures selected cells; it does not find edges or fitted features.
 - The third typed slice, C3D Gap/Flush, passed on 2026-07-12 with two explicit recipe-owned regions, signed aligned-X gap, signed raw-height flush, separate tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 8/8 analytic/error golden cases. It does not perform automatic seam/edge detection or calibrated physical measurement.
 - The fourth typed slice, C3D Volume, passed on 2026-07-12 with an explicit reference-plane ROI and measurement ROI, signed above/below/net values, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 9/9 analytic/error golden cases. Its `model^3` values belong to the uncalibrated display frame and are not physical volume.
+- The fifth typed slice, C3D Cross-section Dimensions, passed on 2026-07-12 with an exact source row and inclusive column range, aligned-X width, raw-height range, separate tolerances, Preview/Publish, recipe roundtrip, Viewer/Runner parity, a real Shell step row, and 9/9 analytic/error golden cases. It does not find edges/features or provide calibrated physical dimensions.
+- Durable Run Record v1 passed on 2026-07-12 for a real Cross-section run: schema `1.0` JSON records recipe/source SHA-256, UTC time, status, all metrics/overlays, Viewer/Runner match state, and artifact paths; simple HTML/CSV reports and Shell open commands are present. This is one-run evidence, not database/SPC/PDF/retention infrastructure.
 - Emulate commercial products where they are strongest: ZEISS-style traceable parametric steps, PolyWorks-style explicit references/alignment and sequences, Geomagic-style repeatable scan comparison, and Gocator/Cognex-style ROI-based measurement tools with thresholds and visual evidence.
 - Do not attempt full CAD/GD&T, broad device integration, enterprise SPC/data management, production HMI, or AI recipe tuning in the current phase.
 - Do not claim calibrated, certified, or metrology-grade accuracy without explicit units, calibration provenance, uncertainty assumptions, golden datasets, and independent validation.
@@ -36,10 +38,9 @@ This file defines the working agreement for Codex in this repository.
 ## Default Product Priority
 
 1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
-2. Add cross-section dimensions as the next basic surface slice.
-3. Add nominal/actual comparison only after references and the shared step contract are stable; start with one measured/nominal sample pair and no CAD kernel.
-4. Add a durable JSON run record and simple HTML/CSV report before batch trends, PDF, database, or enterprise reporting.
-5. Treat .NET 10 migration as a separate compatibility task after the active inspection slice is green.
+2. Add nominal/actual comparison only after a genuinely distinct measured/nominal sample pair is available; the current Thickness and Warpage C3D files are byte-identical and cannot prove this gate.
+3. Extend durable reporting only after multiple real runs expose a concrete need; do not jump to batch trends, PDF, database, or enterprise reporting.
+4. Treat .NET 10 migration as the next executable compatibility task while calibration and measured/nominal prerequisites remain unavailable.
 
 ## Next Priority Model Guidance
 
@@ -209,6 +210,11 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_volume_reopen_after.png --smoke-recipe artifacts\saved_c3d_volume.recipe.json --smoke-contracts artifacts\viewer_volume_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_volume.recipe.json --report artifacts\runner_volume_after.txt --expect-status Pass --compare-contract artifacts\viewer_volume_reopen_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\volume_golden_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_cross_section_after.png --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-save-recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --smoke-contracts artifacts\viewer_cross_section_after.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_cross_section_reopen_after.png --smoke-recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --smoke-contracts artifacts\viewer_cross_section_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\runner_cross_section_after.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-cross-section --report artifacts\cross_section_golden_after.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\run_record_cross_section\runner.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt --viewer-screenshot artifacts\viewer_cross_section_reopen_after.png --run-record artifacts\run_record_cross_section\run.json --html-report artifacts\run_record_cross_section\report.html --csv-report artifacts\run_record_cross_section\metrics.csv
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement.recipe.json --report artifacts\runner_laz_two_point_after.txt --expect-status Pass --compare-contract artifacts\laz_two_point_publish_after.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\laz-two-point-measurement-fail.recipe.json --report artifacts\runner_laz_two_point_fail_after.txt --expect-status Fail
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_laz_two_point_acceptance.recipe.json --report artifacts\runner_laz_acceptance_edit_save_after.txt --expect-status Pass --compare-contract artifacts\laz_acceptance_edit_save_viewer_after.txt
@@ -260,12 +266,12 @@ UI/UX work requires current screenshots from the running build. Store before/aft
 
 ## Priority Direction
 
-1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and plane/flatness, point-pair-dimensions, plus Gap/Flush typed-slice baselines.
+1. Preserve the passed Viewer Foundation v1, C3D display-frame fidelity, and all five typed inspection-slice baselines.
 2. Obtain the C3D calibration contract and add an explicit mapping profile; never infer or advertise physical units.
-3. Implement volume as the next complete typed inspection slice without adding a generic graph engine first.
-4. Add cross-section dimensions as the following verified slice.
-5. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
-6. Add one measured/nominal comparison slice, then durable JSON run records and simple HTML/CSV reporting.
+3. Add one measured/nominal comparison slice without a CAD kernel when a distinct local sample pair is available.
+4. Preserve Durable Run Record v1; extend it only after multiple real runs expose a concrete need.
+5. Assess the planned .NET 10 migration as a separate compatibility task while product-data prerequisites remain blocked.
+6. Introduce shared parser/executor abstractions only when concrete duplication across completed tools justifies them.
 7. Expand CAD precision, device integration, enterprise data, and AI assistance only after the local inspection loop is verified.
 
 When starting after orientation, state the immediate priority and the remaining project priority before editing files or running follow-up commands.

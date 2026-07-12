@@ -1,0 +1,37 @@
+{
+  "recipeType": "c3d-height-deviation",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "C3D Thickness Sample",
+    "path": "../3D/Thickness/Ori_20240116_094414.C3D",
+    "unit": "raw-height"
+  },
+  "rule": {
+    "peakTolerance": 1200.0
+  },
+  "transform": {
+    "translateX": 0.0,
+    "translateY": 0.0,
+    "translateZ": 0.0,
+    "rotateXDegrees": 0.0,
+    "rotateYDegrees": 0.0,
+    "rotateZDegrees": 0.0,
+    "scale": 1.0
+  },
+  "crossSection": {
+    "id": "step.c3d-cross-section-dimensions",
+    "sourceEntityId": "source.c3d-thickness",
+    "referenceId": "reference.c3d-row-range",
+    "row": 983,
+    "startColumn": 200,
+    "endColumn": 1100,
+    "expectedWidth": 4.247,
+    "widthTolerance": 0.01,
+    "expectedHeightRange": 1708.232,
+    "heightTolerance": 0.01,
+    "widthUnit": "model",
+    "heightUnit": "raw-height",
+    "enabled": true
+  }
+}

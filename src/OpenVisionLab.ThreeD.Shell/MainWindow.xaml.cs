@@ -27,7 +27,10 @@ public partial class MainWindow : Window
         _viewModel = new ShellMainWindowViewModel(
             GetCommandLineValue("--recipe-comparison-contract"),
             GetCommandLineValue("--recipe-comparison-report"),
-            GetCommandLineValue("--shell-smoke-screenshot"));
+            GetCommandLineValue("--shell-smoke-screenshot"),
+            GetCommandLineValue("--run-record"),
+            GetCommandLineValue("--html-report"),
+            GetCommandLineValue("--csv-report"));
         _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _viewer.SidePanelsVisible = false;

@@ -16,10 +16,16 @@ static int Run(string[] args)
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
     var compareContractPath = ReadOption(args, "--compare-contract");
+    var runArtifacts = new RunArtifactOptions(
+        ReadOption(args, "--run-record"),
+        ReadOption(args, "--html-report"),
+        ReadOption(args, "--csv-report"),
+        ReadOption(args, "--viewer-screenshot"));
     var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
     var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
     var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
     var verifyVolume = args.Contains("--verify-volume", StringComparer.OrdinalIgnoreCase);
+    var verifyCrossSection = args.Contains("--verify-cross-section", StringComparer.OrdinalIgnoreCase);
     var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
@@ -65,6 +71,17 @@ static int Run(string[] args)
         }
 
         return VolumeGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyCrossSection)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
+            return 2;
+        }
+
+        return CrossSectionDimensionsGoldenVerification.Run(reportPath);
     }
 
     if (verifyPlaneFlatness)
@@ -124,13 +141,14 @@ static int Run(string[] args)
 
     if (recipePath is null || reportPath is null)
     {
-        Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>]");
+        Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>] [--run-record <json> --html-report <html> --csv-report <csv> --viewer-screenshot <png>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
         return 2;
     }
@@ -141,17 +159,17 @@ static int Run(string[] args)
         var recipeType = ReadRecipeType(fullRecipePath);
         if (recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
-            return RunLazTwoPointRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+            return RunLazTwoPointRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath, runArtifacts);
         }
 
         if (recipeType.Equals(C3DPointPairDimensionsRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
-            return RunC3DPointPairDimensionsRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+            return RunC3DPointPairDimensionsRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath, runArtifacts);
         }
 
         if (recipeType.Equals(C3DGapFlushRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
-            return RunC3DGapFlushRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath);
+            return RunC3DGapFlushRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath, runArtifacts);
         }
 
         var recipe = HeightDeviationRecipe.Load(fullRecipePath);
@@ -181,16 +199,33 @@ static int Run(string[] args)
         var volumeResult = recipe.Volume is { Enabled: true } volume
             ? EvaluateVolume(volume, recipe.Transform ?? ModelTransform.Identity, grid)
             : null;
-        var result = volumeResult?.Result ?? planeFlatnessResult?.Result ?? heightDeviationResult;
+        var crossSectionResult = recipe.CrossSection is { Enabled: true } crossSection
+            ? EvaluateCrossSection(crossSection, recipe.Transform ?? ModelTransform.Identity, grid)
+            : null;
+        var result = crossSectionResult?.Result ?? volumeResult?.Result ?? planeFlatnessResult?.Result ?? heightDeviationResult;
 
-        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult, volumeResult);
+        WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult, volumeResult, crossSectionResult);
         if (compareContractPath is not null)
         {
-            if (volumeResult is not null)
+            if (crossSectionResult is not null)
+                CompareUiContract(compareContractPath, result, "Section width", "Raw-height range");
+            else if (volumeResult is not null)
                 CompareUiContract(compareContractPath, result, "Above-plane volume", "Below-plane volume", "Signed net volume");
             else
                 CompareUiContract(compareContractPath, result);
         }
+
+        RunRecordWriter.Write(
+            runArtifacts,
+            fullRecipePath,
+            recipe.RecipeType,
+            recipe.Version,
+            sourcePath,
+            recipe.Source.EntityId,
+            recipe.Source.Unit,
+            result,
+            reportPath,
+            compareContractPath);
 
         if (expectedStatus is not null
             && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
@@ -213,7 +248,8 @@ static int RunC3DPointPairDimensionsRecipe(
     string fullRecipePath,
     string reportPath,
     string? expectedStatus,
-    string? compareContractPath)
+    string? compareContractPath,
+    RunArtifactOptions runArtifacts)
 {
     var recipe = C3DPointPairDimensionsRecipe.Load(fullRecipePath);
     var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
@@ -242,6 +278,9 @@ static int RunC3DPointPairDimensionsRecipe(
             "Elevation angle");
     }
 
+    RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
+        recipe.Source.EntityId, recipe.Source.Unit, evaluation.Result, reportPath, compareContractPath);
+
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
     {
@@ -257,7 +296,8 @@ static int RunC3DGapFlushRecipe(
     string fullRecipePath,
     string reportPath,
     string? expectedStatus,
-    string? compareContractPath)
+    string? compareContractPath,
+    RunArtifactOptions runArtifacts)
 {
     var recipe = C3DGapFlushRecipe.Load(fullRecipePath);
     var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
@@ -281,6 +321,9 @@ static int RunC3DGapFlushRecipe(
         CompareUiContract(compareContractPath, evaluation.Result, "Signed gap", "Signed flush");
     }
 
+    RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
+        recipe.Source.EntityId, recipe.Source.Unit, evaluation.Result, reportPath, compareContractPath);
+
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
     {
@@ -296,7 +339,8 @@ static int RunLazTwoPointRecipe(
     string fullRecipePath,
     string reportPath,
     string? expectedStatus,
-    string? compareContractPath)
+    string? compareContractPath,
+    RunArtifactOptions runArtifacts)
 {
     var recipe = LazTwoPointMeasurementRecipe.Load(fullRecipePath);
     var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
@@ -315,6 +359,9 @@ static int RunLazTwoPointRecipe(
     {
         CompareUiContract(compareContractPath, result);
     }
+
+    RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
+        recipe.Source.EntityId, recipe.Source.Unit, result, reportPath, compareContractPath);
 
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
@@ -400,7 +447,8 @@ static void WriteReport(
     ToolResult result,
     RoiStepReport? roiStepResult,
     PlaneFlatnessEvaluation? planeFlatnessResult,
-    VolumeEvaluation? volumeResult)
+    VolumeEvaluation? volumeResult,
+    CrossSectionEvaluation? crossSectionResult)
 {
     var transform = recipe.Transform ?? ModelTransform.Identity;
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
@@ -448,6 +496,21 @@ static void WriteReport(
         lines.Add("VolumeStep|configured=False");
     }
 
+    if (recipe.CrossSection is { } crossSection)
+    {
+        lines.Add(InspectionContractText.FormatInspectionStep(new InspectionStep(
+            crossSection.Id,
+            CrossSectionDimensionsRule.ToolName,
+            crossSection.SourceEntityId,
+            crossSection.ReferenceId,
+            crossSection.Enabled)));
+        lines.Add($"CrossSectionStep|configured=True|id={crossSection.Id}|source={crossSection.SourceEntityId}|reference={crossSection.ReferenceId}|row={crossSection.Row}|startColumn={crossSection.StartColumn}|endColumn={crossSection.EndColumn}|expectedWidth={FormatNumber(crossSection.ExpectedWidth)}|widthTolerance={FormatNumber(crossSection.WidthTolerance)}|expectedHeightRange={FormatNumber(crossSection.ExpectedHeightRange)}|heightTolerance={FormatNumber(crossSection.HeightTolerance)}|widthUnit={crossSection.WidthUnit}|heightUnit={crossSection.HeightUnit}|enabled={crossSection.Enabled}");
+    }
+    else
+    {
+        lines.Add("CrossSectionStep|configured=False");
+    }
+
     lines.Add(InspectionContractText.MetricsMarker);
 
     lines.AddRange(result.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
@@ -468,6 +531,11 @@ static void WriteReport(
     if (volumeResult is not null)
     {
         lines.Add($"Volume|status={volumeResult.Result.Status}|above={FormatNumber(volumeResult.AboveVolume)}|below={FormatNumber(volumeResult.BelowVolume)}|net={FormatNumber(volumeResult.NetVolume)}|referenceSamples={volumeResult.ReferenceSampleCount}|measurementSamples={volumeResult.MeasurementSampleCount}|summary={InspectionContractText.Clean(volumeResult.Result.Message)}");
+    }
+
+    if (crossSectionResult is not null)
+    {
+        lines.Add($"CrossSection|status={crossSectionResult.Result.Status}|width={FormatNumber(crossSectionResult.Width)}|heightRange={FormatNumber(crossSectionResult.HeightRange)}|rawMinimum={FormatNumber(crossSectionResult.RawMinimum)}|rawMaximum={FormatNumber(crossSectionResult.RawMaximum)}|validSamples={crossSectionResult.ValidSampleCount}|summary={InspectionContractText.Clean(crossSectionResult.Result.Message)}");
     }
 
     File.WriteAllLines(reportPath, lines);
@@ -659,6 +727,28 @@ static VolumeEvaluation EvaluateVolume(
         step.ExpectedNetVolume,
         step.Tolerance,
         step.Unit));
+}
+
+static CrossSectionEvaluation EvaluateCrossSection(
+    HeightDeviationRecipeCrossSection step,
+    ModelTransform transform,
+    C3DHeightGrid grid)
+{
+    var samples = grid.ReadRowRange(step.Row, step.StartColumn, step.EndColumn)
+        .Select(point => new CrossSectionSample(point.Column, ApplyModelTransform(point.Position, transform), point.RawValue))
+        .ToArray();
+    return CrossSectionDimensionsRule.Evaluate(new CrossSectionDimensionsInput(
+        step.SourceEntityId,
+        step.Row,
+        step.StartColumn,
+        step.EndColumn,
+        samples,
+        step.ExpectedWidth,
+        step.WidthTolerance,
+        step.ExpectedHeightRange,
+        step.HeightTolerance,
+        step.WidthUnit,
+        step.HeightUnit));
 }
 
 static bool Contains(HeightDeviationRecipeRoiRegion region, Vector3 point) =>

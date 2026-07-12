@@ -226,6 +226,46 @@
                                TextWrapping="Wrap"
                                Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding VolumeSummary}" />
+                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Cross-section Dimensions" />
+                    <WrapPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                            <TextBox Text="{Binding CrossSectionRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Start Col" />
+                            <TextBox Text="{Binding CrossSectionStartColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </StackPanel>
+                        <StackPanel Width="58" Margin="0,0,0,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="End Col" />
+                            <TextBox Text="{Binding CrossSectionEndColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <WrapPanel>
+                        <StackPanel Width="70" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Width" />
+                            <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="70" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Width" />
+                            <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="70" Margin="0,0,6,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Height" />
+                            <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                        <StackPanel Width="70" Margin="0,0,0,6">
+                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Height" />
+                            <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                        </StackPanel>
+                    </WrapPanel>
+                    <WrapPanel>
+                        <Button Margin="0,0,6,0" Content="Preview Cross-section" Command="{Binding PreviewCrossSectionCommand}" />
+                        <Button Content="Publish Result" Command="{Binding PublishResultCommand}" />
+                    </WrapPanel>
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding CrossSectionSummary}" />
                     <TextBlock Margin="0,12,0,4"
                                FontWeight="SemiBold"
                                Text="Reference Plane + Flatness" />
@@ -560,6 +600,12 @@
                     <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#fbbf24"
                                TextWrapping="Wrap" Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding VolumeDetails}" />
+                    <TextBlock Margin="0,8,0,0" FontSize="11" Foreground="#f9fafb" FontWeight="SemiBold"
+                               TextWrapping="Wrap" Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding CrossSectionSummary}" />
+                    <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#fbbf24"
+                               TextWrapping="Wrap" Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding CrossSectionDetails}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#f9fafb"

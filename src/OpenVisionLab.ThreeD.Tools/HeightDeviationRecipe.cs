@@ -11,7 +11,8 @@ public sealed record HeightDeviationRecipe(
     ModelTransform? Transform = null,
     HeightDeviationRecipeRoiStep? RoiStep = null,
     HeightDeviationRecipePlaneFlatness? PlaneFlatness = null,
-    HeightDeviationRecipeVolume? Volume = null)
+    HeightDeviationRecipeVolume? Volume = null,
+    HeightDeviationRecipeCrossSection? CrossSection = null)
 {
     public const string SupportedRecipeType = "c3d-height-deviation";
 
@@ -72,6 +73,11 @@ public sealed record HeightDeviationRecipe(
         if (recipe.Volume is { } volume)
         {
             ValidateVolume(volume, recipe.Source.EntityId);
+        }
+
+        if (recipe.CrossSection is { } crossSection)
+        {
+            ValidateCrossSection(crossSection, recipe.Source.EntityId);
         }
 
         return recipe;
@@ -171,6 +177,28 @@ public sealed record HeightDeviationRecipe(
         ValidateRoiRegion(step.MeasurementRegion, "volume-measurement");
     }
 
+    private static void ValidateCrossSection(HeightDeviationRecipeCrossSection step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id)
+            || string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(step.ReferenceId)
+            || step.Row < 0
+            || step.StartColumn < 0
+            || step.EndColumn <= step.StartColumn
+            || !double.IsFinite(step.ExpectedWidth)
+            || !double.IsFinite(step.WidthTolerance)
+            || step.WidthTolerance < 0.0
+            || !double.IsFinite(step.ExpectedHeightRange)
+            || !double.IsFinite(step.HeightTolerance)
+            || step.HeightTolerance < 0.0
+            || string.IsNullOrWhiteSpace(step.WidthUnit)
+            || string.IsNullOrWhiteSpace(step.HeightUnit))
+        {
+            throw new InvalidDataException("Cross-section IDs, ordered source selectors, finite acceptance, and units are required.");
+        }
+    }
+
     private static void ValidateRoiRegion(HeightDeviationRecipeRoiRegion? region, string name)
     {
         if (region is null)
@@ -231,6 +259,21 @@ public sealed record HeightDeviationRecipeVolume(
     double Tolerance,
     string Unit,
     int MaxSampledPoints,
+    bool Enabled = true);
+
+public sealed record HeightDeviationRecipeCrossSection(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    int Row,
+    int StartColumn,
+    int EndColumn,
+    double ExpectedWidth,
+    double WidthTolerance,
+    double ExpectedHeightRange,
+    double HeightTolerance,
+    string WidthUnit,
+    string HeightUnit,
     bool Enabled = true);
 
 public sealed record LazTwoPointMeasurementRecipe(

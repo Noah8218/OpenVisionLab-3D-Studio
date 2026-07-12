@@ -241,6 +241,49 @@
                                                TextWrapping="Wrap"
                                                Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding VolumeDetails}" />
+                                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Cross-section Dimensions" />
+                                    <WrapPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                                            <TextBox Text="{Binding CrossSectionRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Start Col" />
+                                            <TextBox Text="{Binding CrossSectionStartColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="End Col" />
+                                            <TextBox Text="{Binding CrossSectionEndColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Width" />
+                                            <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Width" />
+                                            <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Exp Height" />
+                                            <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="70" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Tol Height" />
+                                            <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0" Content="Preview Cross-section" Command="{Binding PreviewCrossSectionCommand}" />
+                                        <Button Content="Publish Result" Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                               Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding CrossSectionSummary}" />
+                                    <TextBlock Margin="0,3,0,0" Foreground="#6b7280" TextWrapping="Wrap"
+                                               Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                               Text="{Binding CrossSectionDetails}" />
                                     <TextBlock Margin="0,12,0,4"
                                                FontWeight="SemiBold"
                                                Text="Reference Plane + Flatness" />
@@ -564,10 +607,25 @@
                                                     Content="Runner Report"
                                                     Command="{Binding OpenRunnerReportCommand}" />
                                             <Button MinWidth="86"
-                                                    Margin="0,0,0,4"
+                                                    Margin="0,0,6,4"
                                                     Padding="6,3"
                                                     Content="Screenshot"
                                                     Command="{Binding OpenShellScreenshotCommand}" />
+                                            <Button MinWidth="82"
+                                                    Margin="0,0,6,4"
+                                                    Padding="6,3"
+                                                    Content="Run JSON"
+                                                    Command="{Binding OpenRunRecordCommand}" />
+                                            <Button MinWidth="90"
+                                                    Margin="0,0,6,4"
+                                                    Padding="6,3"
+                                                    Content="HTML Report"
+                                                    Command="{Binding OpenHtmlReportCommand}" />
+                                            <Button MinWidth="86"
+                                                    Margin="0,0,0,4"
+                                                    Padding="6,3"
+                                                    Content="CSV Report"
+                                                    Command="{Binding OpenCsvReportCommand}" />
                                         </WrapPanel>
                                         <TextBlock FontFamily="Consolas"
                                                    FontSize="12"

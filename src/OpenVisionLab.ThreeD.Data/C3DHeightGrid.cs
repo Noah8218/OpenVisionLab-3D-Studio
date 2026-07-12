@@ -91,6 +91,31 @@ public sealed class C3DHeightGrid
         return CreatePoint(value, row, column, Width, Height, Min, Max, Mean);
     }
 
+    public HeightGridPoint[] ReadRowRange(int row, int startColumn, int endColumn)
+    {
+        if (row < 0 || row >= Height)
+            throw new ArgumentOutOfRangeException(nameof(row), row, $"C3D row must be between 0 and {Height - 1}.");
+        if (startColumn < 0 || endColumn >= Width || startColumn > endColumn)
+            throw new ArgumentOutOfRangeException(nameof(startColumn), $"C3D columns must satisfy 0 <= start <= end < {Width}.");
+
+        using var reader = new BinaryReader(File.OpenRead(SourcePath));
+        var width = reader.ReadInt32();
+        var height = reader.ReadInt32();
+        if (width != Width || height != Height)
+            throw new InvalidDataException("C3D dimensions changed after the source was loaded.");
+
+        reader.BaseStream.Seek(8L + ((long)row * Width + startColumn) * sizeof(float), SeekOrigin.Begin);
+        var points = new List<HeightGridPoint>(endColumn - startColumn + 1);
+        for (var column = startColumn; column <= endColumn; column++)
+        {
+            var value = reader.ReadSingle();
+            if (float.IsFinite(value) && value != 0.0f)
+                points.Add(CreatePoint(value, row, column, Width, Height, Min, Max, Mean));
+        }
+
+        return points.ToArray();
+    }
+
     public static C3DHeightGrid Load(string path, int maxRenderedPoints = 55000)
     {
         using var reader = new BinaryReader(File.OpenRead(path));
