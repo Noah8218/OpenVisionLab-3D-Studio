@@ -48,7 +48,7 @@ This file defines the working agreement for Codex in this repository.
 
 ## Default Product Priority
 
-1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, and calibration identity are available. Until then, preserve and label the current profile as unitless/raw-height.
+1. Replace the uncalibrated C3D display normalization with an explicit selectable mapping profile only when X/Z pitch, height scale/offset, units, axis directions, origins, and calibration identity are available. Collect them with the template in `docs/OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`; until it is complete, preserve and label the current profile as unitless/raw-height.
 2. Add nominal/actual comparison only after a genuinely distinct measured/nominal sample pair is available; the current Thickness and Warpage C3D files are byte-identical and cannot prove this gate.
 3. Extend durable reporting only after multiple real runs expose a concrete need; do not jump to batch trends, PDF, database, or enterprise reporting.
 4. Preserve the published `v0.1.0-rc.1` Shell-quality, Viewer-quality, binary-host, release-identity, archive-hash, and Viewer/Runner `Matched` gates. Do not promote it to stable `0.1.0` or replace release assets without explicit owner approval and new evidence.

@@ -39,9 +39,10 @@ float32 data  = width * height samples
 Evidence:
 
 - First 8 bytes decode as `1301` and `1967`.
-- File size equals `8 + 1301 * 1967 * 4`.
+- File size equals `8 + 1301 * 1967 * 4 = 10,236,276` bytes exactly.
 - Float sample count is `2,559,067`.
 - All samples are finite in the checked file.
+- The exact length leaves no trailing bytes for embedded pitch, unit, axis, or calibration metadata; no calibration sidecar is present under `3D/`.
 
 Observed value stats for `3D/Thickness/Ori_20240116_094414.C3D`:
 

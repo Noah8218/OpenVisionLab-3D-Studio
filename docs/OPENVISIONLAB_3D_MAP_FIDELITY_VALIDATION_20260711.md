@@ -188,9 +188,61 @@ Viewer-frame acceptance is maximum component error `<= 1e-6` Viewer units for th
 | T1 Local reference orientation | Passed for fixed sample | Dimensions, invalid mask, and height-color correlation identify the unflipped orientation. |
 | T2 Neutral interchange roundtrip | Passed | Sampled and full-resolution PLY point counts, XYZ, and RGB match the .NET Viewer mapping; the independent Python calculation is within `1e-6` Viewer units. |
 | T3 Independent renderer/interchange | Passed for shape and Open3D point-cloud re-save | Microsoft 3D Viewer displays matching major geometry. Open3D 0.19.0 preserves sampled PLY point count and RGB and stays within `5e-6` Viewer units after ASCII re-save. CloudCompare/ZEISS/PolyWorks numerical comparison remains pending. |
-| T4 Physical calibration | Blocked | Obtain C3D specification or explicit X/Y pitch, height scale/offset, units, axis orientation, and calibration provenance. |
+| T4 Physical calibration | Blocked | Obtain C3D specification or explicit X/Z pitch, height scale/offset, units, axis orientation/origins, and calibration provenance. |
 | T5 Independent metrology comparison | Blocked | Compare a calibrated reference dataset and recorded measurements in a trusted metrology application. |
 
 ## Next Required Work
 
-Before treating C3D measurements as physical dimensions, add a recipe-owned `C3DMappingProfile` containing X pitch, Z pitch, height scale, height offset, source/display units, axis directions, and calibration identity. Preserve the current normalization profile only as an explicitly named uncalibrated display profile. After that gate passes, resume Gap/Flush as the next typed inspection slice.
+Before treating C3D measurements as physical dimensions, add a recipe-owned `C3DMappingProfile` containing X pitch, Z pitch, height scale, height offset, source/display units, axis directions/origins, and calibration identity. Preserve the current normalization profile only as an explicitly named uncalibrated display profile. After that gate passes, resume Gap/Flush as the next typed inspection slice.
+
+The checked file has no embedded calibration block: `8-byte dimensions + 1301 * 1967 * 4-byte samples` equals its exact `10,236,276`-byte length. Fill the following intake template only from the C3D writer configuration, sensor calibration, or another traceable source; `null` is intentionally invalid and must never trigger an inferred default.
+
+```json
+{
+  "profileId": null,
+  "sourceSha256": "79c02761f9b711c0f8980d4376b9fce25e00d425e6ca85da4d4349ecf5f0299c",
+  "sourceFormat": "C3D-inferred-raster-v1",
+  "sourceFrame": {
+    "columnAxis": "X",
+    "rowAxis": "Z",
+    "heightAxis": "Y",
+    "columnDirection": null,
+    "rowDirection": null,
+    "heightDirection": null,
+    "originColumn": null,
+    "originRow": null
+  },
+  "scale": {
+    "xPitch": null,
+    "zPitch": null,
+    "heightScale": null,
+    "heightOffset": null,
+    "horizontalUnit": null,
+    "heightUnit": null,
+    "displayUnit": null
+  },
+  "calibration": {
+    "identity": null,
+    "deviceOrWriter": null,
+    "capturedAtUtc": null,
+    "provenance": null
+  }
+}
+```
+
+Required mapping contract after unit conversion:
+
+```text
+X = (column - originColumn) * xPitch * columnDirection
+Y = (rawHeight * heightScale + heightOffset) * heightDirection
+Z = (row - originRow) * zPitch * rowDirection
+```
+
+Calibration intake is accepted only when:
+
+- every `null` field is replaced from traceable source material;
+- `xPitch` and `zPitch` are finite and positive, `heightScale` is finite and nonzero, and each direction is `-1` or `1`;
+- source, horizontal, height, and display units have explicit conversions;
+- `sourceSha256`, calibration identity, device/writer, timestamp, and provenance are retained;
+- at least one known X/Z distance and one known height step pass an independent golden comparison;
+- Viewer and Runner produce the same calibrated metrics while the existing unitless/raw-height profile remains unchanged.

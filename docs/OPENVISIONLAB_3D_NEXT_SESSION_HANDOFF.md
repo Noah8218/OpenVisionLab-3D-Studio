@@ -161,7 +161,7 @@ Next implementation should stay inspection-workflow-first while preserving the V
 
 ## Remaining Project Priority
 
-Obtain the C3D physical mapping/calibration contract and a genuinely distinct measured/nominal sample pair when available. Until then, preserve the published `v0.1.0-rc.1` Viewer/BinaryHost/Viewer-Shell-quality/release-identity/archive-hash/Viewer-Runner gates; do not promote it to stable or replace its assets without explicit approval. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
+Obtain the C3D physical mapping/calibration contract using the intake template in `docs/OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`, and obtain a genuinely distinct measured/nominal sample pair when available. The two current C3D files remain byte-identical and contain no trailing calibration block or sidecar. Until those prerequisites exist, preserve the published `v0.1.0-rc.1` Viewer/BinaryHost/Viewer-Shell-quality/release-identity/archive-hash/Viewer-Runner gates; do not promote it to stable or replace its assets without explicit approval. Full CAD/GD&T, device/PLC/robot integration, enterprise data management, and AI tuning remain out of scope.
 
 ## Evidence Already Gathered
 
