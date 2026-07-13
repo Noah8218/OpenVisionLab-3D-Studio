@@ -41,6 +41,8 @@ A fresh public-asset acceptance run on 2026-07-13 independently downloaded that 
 
 Host API v1.0 consumer acceptance on 2026-07-13 passed against both that public RC bundle and a current-source bundle. The zero-`ProjectReference` BinaryHost records a C3D `HostState` snapshot, nonzero `HostStateChanged` events, all three view-command invocations, and a successfully parsed `c3d-height-deviation` recipe saved through `IOpenVisionThreeDViewerHost.SaveRecipe`. A controlled missing-recipe run records `smokeExitCode=1` and now returns process exit code `1`, closing an external-host failure-propagation gap.
 
+Windows Actions run `29216983045` passed this Host API consumer gate at commit `95dd8da` together with all Shell/Runner/golden/map checks. Evidence artifact `8266920376` is `1,167,342` bytes with digest `sha256:254145a80071df39f88d4c199372d1c30c64057f6b931062de4c8dfbdc476c16`.
+
 Windows Actions run `29215566528` revalidated the hardened gate at commit `c50d196`. BinaryHost, Shell screenshot quality, Runner/golden/map checks, actual C3D roundtrip, independent Python mapping, and artifact upload all passed. Evidence artifact `8266449434` has digest `sha256:230b5607524e668ed47f59d85e08514bace873e631f676bb44a32282d2eb4c65`.
 
 ## Evidence Checked
