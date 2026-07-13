@@ -80,6 +80,8 @@ New-Item -ItemType Directory -Force -Path $artifactPath | Out-Null
 $screenshotPath = Join-Path $artifactPath 'viewer-binary-host.png'
 $screenshotQualityPath = Join-Path $artifactPath 'viewer-binary-host-quality.txt'
 $contractPath = Join-Path $artifactPath 'viewer-binary-host.txt'
+$hostApiReportPath = Join-Path $artifactPath 'viewer-binary-host-api.txt'
+$hostApiRecipePath = Join-Path $artifactPath 'viewer-binary-host.recipe.json'
 $manifestEvidencePath = Join-Path $artifactPath 'viewer-dll-manifest.json'
 Copy-Item -LiteralPath $manifestPath -Destination $manifestEvidencePath -Force
 $outputPath = Join-Path (Split-Path $sampleProject -Parent) "bin/$Configuration/net10.0-windows"
@@ -89,7 +91,9 @@ $runArguments = @(
     '--smoke-screenshot-quality-report', $screenshotQualityPath,
     '--smoke-c3d', 'thickness',
     '--smoke-pick', 'c3d',
-    '--smoke-contracts', $contractPath)
+    '--smoke-contracts', $contractPath,
+    '--host-api-report', $hostApiReportPath,
+    '--host-api-save-recipe', $hostApiRecipePath)
 $hostStart = @{
     FilePath = $hostExecutable
     ArgumentList = $runArguments
@@ -125,13 +129,34 @@ if (-not (Select-String -LiteralPath $screenshotQualityPath -Pattern 'ViewerScre
 if (-not (Select-String -LiteralPath $contractPath -Pattern 'ViewerStatus\|summary=Smoke pick: C3D height grid\|smokeExitCode=0' -Quiet)) {
     throw 'Binary Host Viewer contract did not prove C3D picking.'
 }
+if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern "HostApi\|version=$([regex]::Escape([string]$manifest.viewerHostApiVersion))" -Quiet)) {
+    throw 'Binary Host report did not prove the Viewer Host API version.'
+}
+$hostEventMatch = Select-String -LiteralPath $hostApiReportPath -Pattern 'HostEvents\|count=(\d+)' | Select-Object -First 1
+if ($null -eq $hostEventMatch -or [int]$hostEventMatch.Matches[0].Groups[1].Value -le 0) {
+    throw 'Binary Host report did not prove HostStateChanged events.'
+}
+if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostState\|activeEntity=C3D Height Grid\|selectionMode=Point\|viewerStatus=.+' -Quiet)) {
+    throw 'Binary Host report did not prove the expected HostState snapshot.'
+}
+if (-not (Select-String -LiteralPath $hostApiReportPath -Pattern 'HostCommands\|invoked=ResetView,FitAll,FitSelection\|saveRecipe=True' -Quiet)) {
+    throw 'Binary Host report did not prove Host API command invocation and recipe save.'
+}
+if (-not (Test-Path -LiteralPath $hostApiRecipePath -PathType Leaf) -or (Get-Item -LiteralPath $hostApiRecipePath).Length -eq 0) {
+    throw 'Binary Host API recipe was not saved.'
+}
+$hostApiRecipe = Get-Content -LiteralPath $hostApiRecipePath -Raw | ConvertFrom-Json
+if ($hostApiRecipe.recipeType -ne 'c3d-height-deviation') {
+    throw "Binary Host API saved an unexpected recipe type: $($hostApiRecipe.recipeType)"
+}
 
 $reportPath = Join-Path $artifactPath 'viewer-binary-host-report.txt'
 @(
     'BinaryHost|projectReferenceCount=0|targetFramework=net10.0-windows'
     "ViewerBundle|applicationVersion=$($manifest.applicationVersion)|hostApiVersion=$($manifest.viewerHostApiVersion)|viewerAssemblyVersion=$($manifest.viewerAssemblyVersion)|manifestFiles=$($manifestFiles.Count)/$($manifestFiles.Count)|requiredOutputs=$($requiredOutputs.Count)/$($requiredOutputs.Count)"
+    "HostApi|version=$($manifest.viewerHostApiVersion)|stateSnapshot=True|events=$($hostEventMatch.Matches[0].Groups[1].Value)|commands=3/3|saveRecipe=True"
     'Runtime|exitCode=0|scenario=C3D thickness pick'
-    "Evidence|screenshot=$screenshotPath|quality=$screenshotQualityPath|contract=$contractPath"
+    "Evidence|screenshot=$screenshotPath|quality=$screenshotQualityPath|contract=$contractPath|hostApi=$hostApiReportPath|hostRecipe=$hostApiRecipePath"
 ) | Set-Content -LiteralPath $reportPath -Encoding utf8
 
 Get-Content -LiteralPath $reportPath

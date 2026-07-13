@@ -110,7 +110,7 @@ The minimal sample under `samples\OpenVisionLab.ThreeD.Viewer.BinaryHost` has no
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1
 ```
 
-The default verification builds the bundle and sample, launches the generated Host EXE directly, then requires current C3D render/pick screenshot, accepted screenshot-quality, and contract evidence.
+The default verification builds the bundle and sample, launches the generated Host EXE directly, then requires current C3D render/pick screenshot, accepted screenshot-quality, and contract evidence. BinaryHost also consumes Host API v1.0 directly and records a state snapshot, state-change event count, `ResetView`/`FitAll`/`FitSelection` invocation, and a recipe saved through `SaveRecipe`.
 
 To test an already extracted release bundle without rebuilding Viewer from source:
 
@@ -120,4 +120,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-ho
   -ArtifactDirectory artifacts\release-host-acceptance
 ```
 
-Verify the downloaded ZIP against `SHA256SUMS.txt` before extraction. The BinaryHost verifier then rejects manifest entries with invalid/outside-bundle paths, missing files, wrong sizes, or SHA-256 mismatches before compiling against the supplied DLLs. It records the validated manifest, screenshot, quality report, contract, and summary under the selected artifact directory.
+Verify the downloaded ZIP against `SHA256SUMS.txt` before extraction. The BinaryHost verifier then rejects manifest entries with invalid/outside-bundle paths, missing files, wrong sizes, or SHA-256 mismatches before compiling against the supplied DLLs. It records the validated manifest, screenshot, quality report, Viewer contract, Host API report, Host-saved recipe, and summary under the selected artifact directory. The Host process returns the WPF application exit code so a failed Viewer smoke cannot be reported as a successful external-host run.

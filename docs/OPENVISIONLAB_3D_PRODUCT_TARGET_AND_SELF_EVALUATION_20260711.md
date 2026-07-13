@@ -39,6 +39,8 @@ Release-candidate revalidation on 2026-07-13 confirmed `0.1.0-rc.1` at commit `a
 
 A fresh public-asset acceptance run on 2026-07-13 independently downloaded that ZIP and `SHA256SUMS.txt`, matched the archive hash, and used the BinaryHost verifier to enforce all 13 manifest file paths, sizes, and SHA-256 values before build. The zero-`ProjectReference` Host passed with 12/12 required outputs, C3D render/pick, and an accepted first-attempt screenshot (`blackRatio=0.0045`, `whiteRatio=0.3578`, luminance `0..255`); a 4/4 rejection matrix blocked outside-bundle, missing, wrong-size, and same-size hash-mismatched entries before Host build. This proves package integrity and hostability for the tested Windows/.NET 10 environment, not physical measurement accuracy or broad host compatibility.
 
+Host API v1.0 consumer acceptance on 2026-07-13 passed against both that public RC bundle and a current-source bundle. The zero-`ProjectReference` BinaryHost records a C3D `HostState` snapshot, nonzero `HostStateChanged` events, all three view-command invocations, and a successfully parsed `c3d-height-deviation` recipe saved through `IOpenVisionThreeDViewerHost.SaveRecipe`. A controlled missing-recipe run records `smokeExitCode=1` and now returns process exit code `1`, closing an external-host failure-propagation gap.
+
 Windows Actions run `29215566528` revalidated the hardened gate at commit `c50d196`. BinaryHost, Shell screenshot quality, Runner/golden/map checks, actual C3D roundtrip, independent Python mapping, and artifact upload all passed. Evidence artifact `8266449434` has digest `sha256:230b5607524e668ed47f59d85e08514bace873e631f676bb44a32282d2eb4c65`.
 
 ## Evidence Checked
