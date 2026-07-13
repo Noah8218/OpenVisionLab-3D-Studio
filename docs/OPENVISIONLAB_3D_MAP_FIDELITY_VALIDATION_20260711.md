@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Map Fidelity Validation
 
-Updated: 2026-07-11
+Updated: 2026-07-13
 
 ## Decision
 
@@ -12,7 +12,7 @@ The current C3D map is verified in the OpenVisionLab **viewer display frame**. I
 | Are exported Viewer points identical to the points rendered by OpenVisionLab? | Pass. | The sampled compatibility mesh roundtrips `66,212` points with zero .NET XYZ/RGB error. The point-only full-resolution audit roundtrips all `1,653,562` valid points with zero .NET error. |
 | Does a separate implementation calculate the same map? | Pass in the Viewer display frame. | A dependency-free Python verifier independently reads C3D and PLY, recalculates every full-resolution XYZ/RGB value, and reports maximum XYZ error `2.36938477e-7` with RGB error `0`. |
 | Does another proprietary viewer show the same major geometry? | Pass for independent shape rendering, not metrology. | Microsoft 3D Viewer loads the compatibility-mesh PLY and shows the same long gaps, outer boundary, lower protrusion, and high spikes. Camera, shading, and color behavior differ. The installed app also identifies itself as no longer supported. |
-| Can an external tool re-save be checked numerically? | Pass for local Open3D point-cloud re-save, not metrology. | Open3D 0.19.0 read and re-saved the sampled PLY as ASCII point cloud: `66,212` vertices and RGB values are preserved, faces drop from `128,516` to `0` because faces are visualization-only, strict `1e-6` comparison fails with max coordinate drift `5e-6`, and external ASCII re-save tolerance `1e-5` passes. CloudCompare/MeshLab CLI are not installed in the current workspace. |
+| Can an external tool re-save be checked numerically? | Pass for Open3D sampled and CloudCompare full-resolution point-cloud re-saves, not metrology. | CloudCompare 2.13.2 preserved all `1,653,562` ordered vertices and RGB with maximum component drift `5e-7` at the internal `1e-6` tolerance. Its own C2C result has mean `4.91657e-7` and standard deviation `1.49337e-7` Viewer units. Open3D 0.19.0 preserved `66,212` sampled vertices and RGB within the external ASCII `1e-5` tolerance. |
 | Are the X/Y/Z values calibrated physical coordinates? | Unverified. | The C3D layout and scale are inferred; pixel pitch, height scale/offset, units, axis convention, and calibration provenance are unavailable. |
 | Does the Viewer match ZEISS/PolyWorks measurement results? | Not tested. | No licensed commercial metrology application or calibrated reference dataset is available in the workspace. |
 
@@ -25,7 +25,7 @@ Screenshots alone cannot establish 3D-map equality. Validation is separated into
 3. **Independent rendering parity**: a neutral file displays the same major geometry in another viewer.
 4. **Physical/metrology fidelity**: calibrated units, transforms, uncertainty, and measurements agree with an independent reference system.
 
-Levels 1-3 have evidence for the fixed sample, including a full-resolution cross-runtime comparison. Level 4 remains blocked.
+Levels 1-3 have evidence for the fixed sample, including full-resolution cross-runtime and CloudCompare interchange/C2C comparisons. Level 4 remains blocked.
 
 ## Current Mapping Contract
 
@@ -111,6 +111,24 @@ Strict 1e-6 comparison: Fail; maximum coordinate error 5e-6
 External ASCII 1e-5 comparison: Pass; maximum coordinate error 5e-6, maximum RGB channel error 0
 ```
 
+CloudCompare external runtime evidence:
+
+```text
+CloudCompare version: 2.13.2 stable portable
+Input points: 1,653,562
+Global shift before/after: (0,0,0)
+CloudCompare re-saved points: 1,653,562
+Ordered coordinate comparison: Pass at 1e-6
+Maximum coordinate component error: 5.00000001e-7
+Maximum RGB channel error: 0
+CloudCompare C2C mean/std deviation: 4.91657e-7 / 1.49337e-7 Viewer units
+Selected-cell distance error: 2.50054715e-7 model
+Selected-cell model-Y-delta error: 2.52845764e-7 model
+Physical scale: Unverified
+```
+
+The full procedure, tool hashes, point-pair metrics, and controlled `1e-7` failure are recorded in `docs/OPENVISIONLAB_3D_CLOUDCOMPARE_PARITY_20260713.md`.
+
 The exported PLY vertices are exact OpenVisionLab rendered samples. Faces exist only because the installed Microsoft 3D Viewer rejected point-only PLY. Faces connect sampled neighbors for visualization and must never be used as inspection or measurement geometry because downsampling can bridge unsampled cells.
 
 Evidence artifacts:
@@ -128,6 +146,11 @@ Evidence artifacts:
 - `artifacts/map_fidelity/open3d_resaved_c3d_detailed_signature.txt`
 - `artifacts/map_fidelity/open3d_resaved_c3d_detailed_compare_strict_1e6.txt`
 - `artifacts/map_fidelity/open3d_resaved_c3d_detailed_compare_tolerance_1e5.txt`
+- `artifacts/map_fidelity_cloudcompare_20260713/cloudcompare_resaved_c3d_full_resolution_python.txt`
+- `artifacts/map_fidelity_cloudcompare_20260713/cloudcompare_resaved_c3d_full_resolution_compare_1e6.txt`
+- `artifacts/map_fidelity_cloudcompare_20260713/cloudcompare_c2c_full_resolution_cli.log`
+- `artifacts/map_fidelity_cloudcompare_20260713/cloudcompare_c2c_full_resolution_stats.txt`
+- `artifacts/map_fidelity_cloudcompare_20260713/runner_point_pair_dimensions_current.txt`
 - `artifacts/map_fidelity/microsoft_3d_viewer_c3d_ply_final.png` from the final PLY
 - `artifacts/map_fidelity/microsoft_3d_viewer_c3d_ply_aligned.png`
 - `artifacts/map_fidelity/microsoft_3d_viewer_window.png` for the controlled point-only PLY rejection
@@ -141,11 +164,13 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
 
-python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 85,1190 --second-cell 10,995
 
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_dotnet.txt --max-sampled-points 2147483647 --point-only
 
 python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_python.txt --max-sampled-points 2147483647
+
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity_cloudcompare_20260713\cloudcompare_resaved_c3d_full_resolution_point_only.ply --report artifacts\map_fidelity_cloudcompare_20260713\cloudcompare_resaved_c3d_full_resolution_python.txt --max-sampled-points 2147483647 --first-cell 84,1190 --second-cell 7,994
 
 python scripts\ply-coordinate-signature.py --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\openvision_c3d_detailed_signature.txt
 
@@ -155,6 +180,8 @@ python scripts\ply-coordinate-signature.py --reference artifacts\map_fidelity\op
 
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\map_fidelity\openvision_c3d_detailed.png --smoke-c3d thickness --smoke-density Detailed --smoke-contracts artifacts\map_fidelity\openvision_c3d_detailed.txt
 ```
+
+The sampled Python command and Windows CI use stride-aligned cells `(85,1190)` and `(10,995)` so the point-pair branch is exercised without generating the 72 MB full-resolution PLY. The CloudCompare full-resolution audit separately uses the recipe-owned cells `(84,1190)` and `(7,994)`.
 
 CI runs the golden cases, sampled .NET roundtrip, independent Python recalculation, and sampled PLY coordinate signature generation. The 72 MB full-resolution PLY remains an explicit local audit and is not uploaded on every CI run.
 
@@ -187,7 +214,7 @@ Viewer-frame acceptance is maximum component error `<= 1e-6` Viewer units for th
 | T0 Parser and mapping golden cases | Passed | Known grid coordinates, colors, stride, direct-cell access, single-cell finite mapping, and controlled error cases pass. |
 | T1 Local reference orientation | Passed for fixed sample | Dimensions, invalid mask, and height-color correlation identify the unflipped orientation. |
 | T2 Neutral interchange roundtrip | Passed | Sampled and full-resolution PLY point counts, XYZ, and RGB match the .NET Viewer mapping; the independent Python calculation is within `1e-6` Viewer units. |
-| T3 Independent renderer/interchange | Passed for shape and Open3D point-cloud re-save | Microsoft 3D Viewer displays matching major geometry. Open3D 0.19.0 preserves sampled PLY point count and RGB and stays within `5e-6` Viewer units after ASCII re-save. CloudCompare/ZEISS/PolyWorks numerical comparison remains pending. |
+| T3 Independent renderer/interchange | Passed for shape, Open3D sampled re-save, and CloudCompare full-resolution re-save/C2C | Microsoft 3D Viewer displays matching major geometry. Open3D 0.19.0 preserves sampled point count/RGB within `5e-6`. CloudCompare 2.13.2 preserves all `1,653,562` ordered points/RGB within `5e-7`, passes C2C, and preserves the selected point-pair display-frame metrics. ZEISS/PolyWorks metrology comparison remains pending under T5. |
 | T4 Physical calibration | Blocked | Obtain C3D specification or explicit X/Z pitch, height scale/offset, units, axis orientation/origins, and calibration provenance. |
 | T5 Independent metrology comparison | Blocked | Compare a calibrated reference dataset and recorded measurements in a trusted metrology application. |
 

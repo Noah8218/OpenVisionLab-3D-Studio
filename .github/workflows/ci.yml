@@ -136,7 +136,7 @@ jobs:
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000 --point-only
 
       - name: Verify C3D map with independent Python implementation
-        run: python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000
+        run: python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 85,1190 --second-cell 10,995
 
       - name: Generate PLY coordinate signature
         run: python scripts\ply-coordinate-signature.py --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_reference_signature.txt

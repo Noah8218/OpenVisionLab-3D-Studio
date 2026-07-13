@@ -12,7 +12,7 @@ This repository is under active development and is not production-ready yet.
 - Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, reference-plane Volume, and exact-row Cross-section Dimensions slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
-- Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, and an independent Python recalculation within `2.37e-7` Viewer units with zero RGB error. Physical units and calibration remain unverified.
+- Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, independent Python recalculation within `2.37e-7`, and CloudCompare 2.13.2 full-resolution interchange/C2C and point-pair parity within `1e-6` Viewer units. Physical units, calibration, and licensed metrology parity remain unverified.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
 ## Requirements
@@ -116,7 +116,7 @@ C3D map fidelity smoke:
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
-python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 85,1190 --second-cell 10,995
 python scripts\ply-coordinate-signature.py --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\openvision_c3d_detailed_signature.txt
 ```
 
@@ -130,11 +130,13 @@ python scripts\ply-coordinate-signature.py --reference artifacts\map_fidelity\op
 
 This compares ordered ASCII PLY vertices, RGB values, bounds-derived signatures, and file hashes. `--ignore-faces` is appropriate when a point-cloud tool drops OpenVisionLab's visualization-only compatibility faces. Open3D 0.19.0 ASCII re-save was observed to round coordinates to a maximum `5e-6` Viewer units, so external ASCII re-save parity uses `1e-5` while the internal .NET/Python C3D mapping still uses `1e-6`. If the external tool reorders points, use its own cloud-to-cloud distance report and keep this signature report as the import/export identity check.
 
+CloudCompare 2.13.2 full-resolution validation passed for all `1,653,562` fixed-sample points/RGB at the stricter `1e-6` Viewer-frame tolerance and preserved the selected recipe point-pair metrics. This proves neutral interchange and derived display-frame consistency, not physical calibration or metrology-grade accuracy. See `docs/OPENVISIONLAB_3D_CLOUDCOMPARE_PARITY_20260713.md`.
+
 Full-resolution point-only audit:
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_dotnet.txt --max-sampled-points 2147483647 --point-only
-python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_python.txt --max-sampled-points 2147483647
+python scripts\verify-c3d-map-ply.py --source 3D\Thickness\Ori_20240116_094414.C3D --ply artifacts\map_fidelity\c3d_map_full_resolution.ply --report artifacts\map_fidelity\c3d_map_full_resolution_python.txt --max-sampled-points 2147483647 --first-cell 84,1190 --second-cell 7,994
 ```
 
 C3D reference-plane flatness recipe smoke:
@@ -344,7 +346,7 @@ Current development snapshot:
 - Standalone viewer host and docked shell host.
 - C3D height-grid sample rendering and picking.
 - C3D map fidelity now locks the inferred display mapping with 10/10 synthetic cases, supports point-only full-resolution PLY, verifies all 1,653,562 valid fixed-sample points through .NET and independent Python implementations, and records source/export hashes, bounds, stride, and explicit physical-scale status.
-- PLY coordinate signature tooling now records deterministic point-count, bounds, centroid, RGB, and quantized-coordinate hashes so external viewer re-saves can be checked without relying only on screenshots. A local Open3D 0.19.0 re-save of the sampled C3D PLY preserved all `66,212` vertices and RGB values with maximum coordinate drift `5e-6` Viewer units.
+- PLY coordinate signature tooling now records deterministic point-count, bounds, centroid, RGB, and quantized-coordinate hashes so external viewer re-saves can be checked without relying only on screenshots. Open3D 0.19.0 preserved all sampled `66,212` vertices/RGB within `5e-6`; CloudCompare 2.13.2 preserved all full-resolution `1,653,562` vertices/RGB within `5.00000001e-7` Viewer units and retained selected point-pair distance/height/angle values.
 - Viewer-internal coordinate, measurement, and performance HUD.
 - Two-point distance and height-delta measurement smoke.
 - ROI step-height comparison smoke.

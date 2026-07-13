@@ -1,0 +1,589 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:96348c7e-2d88-4c5b-a0d1-071320260001",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-07-13T09:07:51Z",
+    "component": {
+      "type": "library",
+      "bom-ref": "open3d:0.19.0:windows-x64-nongui-clean",
+      "name": "Open3D",
+      "version": "0.19.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a7744e3900fbf93c7f3d5828c93a489f2c7b90deb1eb30d94c2b591f0ed38b69"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/isl-org/Open3D/tree/1e7b17438687a0b0c1e5a7187321ac7044afe275"
+        },
+        {
+          "type": "distribution",
+          "url": "https://github.com/isl-org/Open3D/archive/refs/tags/v0.19.0.zip"
+        }
+      ],
+      "properties": [
+        {
+          "name": "openvisionlab:scope",
+          "value": "Candidate SBOM for the independently clean, non-GUI Windows x64 Release build; not distribution approval"
+        },
+        {
+          "name": "openvisionlab:sourceCommit",
+          "value": "1e7b17438687a0b0c1e5a7187321ac7044afe275"
+        },
+        {
+          "name": "openvisionlab:hashSubject",
+          "value": "Open3D v0.19.0 source ZIP"
+        },
+        {
+          "name": "openvisionlab:licenseEvidence",
+          "value": "source/Open3D-0.19.0/LICENSE;sha256=e5439bd70250da5f17b3435ff9efb05e96e7f9fdc34248d3355b0026baadaa41"
+        },
+        {
+          "name": "openvisionlab:buildEvidence",
+          "value": "artifacts/o3d-clean/open3d-release-link-evidence.json;Release|x64;60 link inputs;28 external project references"
+        },
+        {
+          "name": "openvisionlab:knownIncomplete",
+          "value": "Assimp contrib closure and exact upstream provenance/modifications for prebuilt BoringSSL, MKL, and VTK remain unresolved"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "assimp:5.4.2",
+      "name": "Assimp",
+      "version": "5.4.2",
+      "hashes": [{ "alg": "SHA-256", "content": "03e38d123f6bf19a48658d197fd09c9a69db88c076b56a476ab2da9f5eb87dcc" }],
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/assimp/assimp/archive/refs/tags/v5.4.2.zip" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_assimp project reference and assimp-vc143-mt.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "v5.4.2 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/assimp/LICENSE;sha256=147874443d242b4e2bae97036e26ec9d6b37f706174c1bd5ecfcc8c1294cef51" },
+        { "name": "openvisionlab:versionDiscrepancy", "value": "Archive tag is v5.4.2 while the extracted project declares 5.4.1" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Assimp contrib components actually compiled into the selected importer set are unresolved" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "boringssl:edfe413:open3d-win-amd64",
+      "name": "BoringSSL",
+      "version": "edfe413",
+      "hashes": [{ "alg": "SHA-256", "content": "fd538d545990a4657ee2b22c444e0baf61edaa1609f84cdfc9217659c44988c4" }],
+      "licenses": [{ "license": { "name": "OpenSSL, SSLeay, and ISC composite license" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/boringssl-bin/boringssl_edfe413_win_amd64.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_boringssl project reference and ssl.lib/crypto.lib final link inputs" },
+        { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows AMD64 prebuilt archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/boringssl/LICENSE;sha256=60bd7c54856bf9387221bde5ab55d516d7cea15870d0fed69406bcd1c8ec7c9d" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream commit, build recipe, and modifications for the prebuilt archive are unresolved" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "cppzmq:4.7.1",
+      "name": "cppzmq",
+      "version": "4.7.1",
+      "hashes": [{ "alg": "SHA-256", "content": "9853e0437d834cbed5d3c223bf1d755cadee70e7c964c6e42c4c6783dee5d02c" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/zeromq/cppzmq/archive/v4.7.1.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_cppzmq project reference; header-only build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "v4.7.1 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/zeromq/LICENSE;sha256=7e6db90e2e805c72b3daa77849d1cb5f1f92da0e69750c8a4aa1d86d70704748" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "curl:7.88.0",
+      "name": "curl",
+      "version": "7.88.0",
+      "hashes": [{ "alg": "SHA-256", "content": "fd17432cf28714a4cf39d89e26b8ace0d8901199fe5d01d75eb0ae3bbfcc731f" }],
+      "licenses": [{ "license": { "name": "curl license" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/curl/curl/releases/download/curl-7_88_0/curl-7.88.0.tar.xz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_curl project reference and libcurl.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "7.88.0 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/curl/LICENSE;sha256=6fd1a1c008b5ef4c4741dd188c3f8af6944c14c25afa881eb064f98fb98358e7" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "eigen:da7909592376c893dabbc4b6453a8ffe46b1eb8e",
+      "name": "Eigen",
+      "version": "da7909592376c893dabbc4b6453a8ffe46b1eb8e",
+      "hashes": [{ "alg": "SHA-256", "content": "37f71e1d7c408e2cc29ef90dcda265e2de0ad5ed6249d7552f6c33897eafd674" }],
+      "licenses": [{ "license": { "name": "MPL-2.0 with separately licensed source files" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://gitlab.com/libeigen/eigen/-/archive/da7909592376c893dabbc4b6453a8ffe46b1eb8e/eigen-da7909592376c893dabbc4b6453a8ffe46b1eb8e.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_eigen project reference; header-only build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "source archive for exact commit" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/eigen/LICENSE;sha256=c83230b770f17ef1386ea1fd3681271dd98aa93646bdbfb5bff3a1b7050fff9d" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "embree:4.3.3",
+      "name": "Embree",
+      "version": "4.3.3",
+      "hashes": [{ "alg": "SHA-256", "content": "8a3bc3c3e21aa209d9861a28f8ba93b2f82ed0dc93341dddac09f1f03c36ef2d" }],
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/embree/embree/archive/refs/tags/v4.3.3.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_embree project reference and eight Embree static library final link inputs" },
+        { "name": "openvisionlab:hashSubject", "value": "v4.3.3 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/embree/LICENSE;sha256=cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "fmt:10.2.1",
+      "name": "fmt",
+      "version": "10.2.1",
+      "hashes": [{ "alg": "SHA-256", "content": "1250e4cc58bf06ee631567523f48848dc4596133e163f02615c97f78bab6c811" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/fmtlib/fmt/archive/refs/tags/10.2.1.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_fmt project reference and fmt.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "10.2.1 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_fmt/LICENSE;sha256=07580f2a3b35709ce703d523f447b242f6dfec7582a8c0df102c7fa2849375f8" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "glew:2.1.0",
+      "name": "GLEW",
+      "version": "2.1.0",
+      "licenses": [{ "license": { "name": "BSD-3-Clause and MIT portions" } }],
+      "externalReferences": [{ "type": "website", "url": "https://glew.sourceforge.net/" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "3rdparty_glew project reference and Open3D_3rdparty_glew.lib final link input; code is vendored in Open3D source" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/glew/LICENSE;sha256=8991cd11befec7c6a63662700f03c0cc42e864b6e77c7e70b80297c951a7f0ff" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "glfw:3.4",
+      "name": "GLFW",
+      "version": "3.4",
+      "hashes": [{ "alg": "SHA-256", "content": "c038d34200234d071fae9345bc455e4a8f2f544ab60150765d7704e08f3dac01" }],
+      "licenses": [{ "license": { "id": "Zlib" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/glfw/glfw/archive/refs/tags/3.4.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_glfw project reference and glfw3.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "3.4 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_glfw/LICENSE.md;sha256=149704059b5d0bf551637e50042dd4de9c2cae921021f6636298911e3a5f9462" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "jsoncpp:1.9.4:open3d-patched",
+      "name": "JsonCpp",
+      "version": "1.9.4",
+      "hashes": [{ "alg": "SHA-256", "content": "e34a628a8142643b976c7233ef381457efad79468c67cb1ae0b83a33d7493999" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/open-source-parsers/jsoncpp/archive/refs/tags/1.9.4.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_jsoncpp project reference and jsoncpp.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "unpatched 1.9.4 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_jsoncpp/LICENSE;sha256=95039d77a20e75b428207740d9a8f97b2dce3c89da4b21f1ad862b5997160e0a" },
+        { "name": "openvisionlab:modification", "value": "3rdparty/jsoncpp/0001-optional-CXX11-ABI-and-MSVC-runtime.patch;sha256=227c717971e444a76d67c51e71179204543294fe08ae3a4eeafb945effdb361c" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "libjpeg-turbo:2.1.5.1",
+      "name": "libjpeg-turbo",
+      "version": "2.1.5.1",
+      "hashes": [{ "alg": "SHA-256", "content": "61846251941e5791005fb7face196eec24541fce04f12570c308557529e92c75" }],
+      "licenses": [{ "license": { "name": "BSD-style, IJG, and zlib licenses" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.1.5.1.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_turbojpeg project reference and turbojpeg-static.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "2.1.5.1 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_turbojpeg/LICENSE.md;sha256=60c756742db3ad1913304e8b13f0e86e22e51adb50cc0b3333c163f7e45ceec1" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "liblzf:1.5",
+      "name": "liblzf",
+      "version": "1.5",
+      "licenses": [{ "license": { "name": "BSD-2-Clause or GPL-2.0-or-later dual license" } }],
+      "externalReferences": [{ "type": "website", "url": "http://software.schmorp.de/pkg/liblzf.html" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "3rdparty_liblzf project reference and Open3D_3rdparty_liblzf.lib final link input; code is vendored in Open3D source" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/liblzf/LICENSE;sha256=71f85db195892fcaf0e048fbba166270f736e5150d9c84cb98a346f13fcc2a52" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "libpng:1.6.37",
+      "name": "libpng",
+      "version": "1.6.37",
+      "hashes": [{ "alg": "SHA-256", "content": "ca74a0dace179a8422187671aee97dd3892b53e168627145271cad5b5ac81307" }],
+      "licenses": [{ "license": { "id": "Libpng" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/glennrp/libpng/archive/refs/tags/v1.6.37.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_libpng project reference and libpng16_static.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "v1.6.37 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/libpng/LICENSE;sha256=4eaa21b0d801fc9c046923da19a89ceed9269ffc50cb3cb813004e8777ac08af" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "intel-onemkl:2024.1.0:open3d-win-amd64",
+      "name": "Intel oneMKL static subset",
+      "version": "2024.1.0",
+      "hashes": [{ "alg": "SHA-256", "content": "524de5395db5b7a9d9f0d9a76b2223c6edac429d4492c6a1cc79a5c22c4f3346" }],
+      "licenses": [{ "license": { "name": "Intel Simplified Software License" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/mkl-static-2024.1/mkl_static-2024.1.0-win_amd64.zip" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_mkl project reference and four MKL static library final link inputs" },
+        { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows AMD64 prebuilt archive assembled from Intel pip packages" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/mkl/LICENSE;sha256=c2a11e99bbb46a34565a04d28280a386f90d9b1fdd5db49c29336571224f9e25" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact input wheel hashes and archive assembly reproducibility are unresolved" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "msgpack-c:3.3.0",
+      "name": "msgpack-c",
+      "version": "3.3.0",
+      "hashes": [{ "alg": "SHA-256", "content": "6e114d12a5ddb8cb11f669f83f32246e484a8addd0ce93f274996f1941c1f07b" }],
+      "licenses": [{ "license": { "id": "BSL-1.0" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/msgpack/msgpack-c/releases/download/cpp-3.3.0/msgpack-3.3.0.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_msgpack-c project reference; header/build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "3.3.0 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/msgpack/LICENSE;sha256=c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "nanoflann:1.5.0",
+      "name": "nanoflann",
+      "version": "1.5.0",
+      "hashes": [{ "alg": "SHA-256", "content": "89aecfef1a956ccba7e40f24561846d064f309bc547cc184af7f4426e42f8e65" }],
+      "licenses": [{ "license": { "id": "BSD-2-Clause" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/jlblancoc/nanoflann/archive/refs/tags/v1.5.0.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_nanoflann project reference; header-only build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "v1.5.0 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/nanoflann/LICENSE;sha256=f8efea042b89cc7534abf51888747f87595e1616c63f0b42a2ead81da34e0237" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "open3d-poissonrecon:90f3f064e275b275cff445881ecee5a7c495c9e0",
+      "name": "Open3D-PoissonRecon",
+      "version": "90f3f064e275b275cff445881ecee5a7c495c9e0",
+      "hashes": [{ "alg": "SHA-256", "content": "1310df0c80ff0616b8fcf9b2fb568aa9b2190d0e071b0ead47dba339c146b1d3" }],
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/Open3D-PoissonRecon/archive/90f3f064e275b275cff445881ecee5a7c495c9e0.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_poisson project reference; compiled Open3D dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "source archive for exact commit" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/possionrecon/LICENSE;sha256=10c758ad12e91b19915b8401ad687403d151d97de0d4b6c4aa2d54bcba95db27" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "qhull:8.0.2",
+      "name": "Qhull",
+      "version": "8.0.2",
+      "hashes": [{ "alg": "SHA-256", "content": "8774e9a12c70b0180b95d6b0b563c5aa4bea8d5960c15e18ae3b6d2521d64f8b" }],
+      "licenses": [{ "license": { "name": "Qhull License" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/qhull/qhull/archive/refs/tags/v8.0.2.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "3rdparty_qhull_r and 3rdparty_qhullcpp project references; qhull_r/qhullcpp final link inputs" },
+        { "name": "openvisionlab:hashSubject", "value": "v8.0.2 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/qhull/LICENSE;sha256=106d55c931fd6a84822e5345d900273d059f1c27310d02567ccb313c5d18c55d" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "rply:1.1.3",
+      "name": "RPly",
+      "version": "1.1.3",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "website", "url": "http://w3.impa.br/~diego/software/rply/" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "3rdparty_rply project reference and Open3D_3rdparty_rply.lib final link input; code is vendored in Open3D source" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/rply/LICENSE;sha256=543700a1089f5a36b9a904fd9f6a7d0343fa5e28f6250d33353346564023414d" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "onetbb:2021.12.0",
+      "name": "oneTBB",
+      "version": "2021.12.0",
+      "hashes": [{ "alg": "SHA-256", "content": "c7bb7aa69c254d91b8f0041a71c5bcc3936acb64408a1719aec0b2b7639dd84f" }],
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.12.0.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "tbb project reference, tbb12 import library final link input, and adjacent tbb12.dll runtime" },
+        { "name": "openvisionlab:linkage", "value": "dynamic adjacent runtime" },
+        { "name": "openvisionlab:hashSubject", "value": "v2021.12.0 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_tbb-src/LICENSE.txt;sha256=c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tinyfiledialogs:2.7.2",
+      "name": "tinyfiledialogs",
+      "version": "2.7.2",
+      "licenses": [{ "license": { "id": "Zlib" } }],
+      "externalReferences": [{ "type": "website", "url": "https://sourceforge.net/projects/tinyfiledialogs/" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "3rdparty_tinyfiledialogs project reference and Open3D_3rdparty_tinyfiledialogs.lib final link input; code is vendored in Open3D source" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/tinyfiledialogs/LICENSE;sha256=63ea3ec24542558e903980614d8401484aee1ea37304c039b5e25ff35f942739" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tinygltf:72f4a55edd54742bca1a71ade8ac70afca1d3f07",
+      "name": "TinyGLTF",
+      "version": "72f4a55edd54742bca1a71ade8ac70afca1d3f07",
+      "hashes": [{ "alg": "SHA-256", "content": "9e848dcf0ec7dcb352ced782aea32064a63a51b3c68ed14c68531e08632a2d90" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/syoyo/tinygltf/archive/72f4a55edd54742bca1a71ade8ac70afca1d3f07.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_tinygltf project reference; header-only build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "source archive for exact commit" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/tinygltf/LICENSE;sha256=2ae461f8c8b78ed77c14e9c3b7e353ba277e44cb3dbfb5a6d380f76f2ae081a2" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tinyobjloader:2.0.0rc8",
+      "name": "tinyobjloader",
+      "version": "2.0.0rc8",
+      "hashes": [{ "alg": "SHA-256", "content": "b8c972dfbbcef33d55554e7c9031abe7040795b67778ad3660a50afa7df6ec56" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/tinyobjloader/tinyobjloader/archive/refs/tags/v2.0.0rc8.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_tinyobjloader project reference; header/build dependency" },
+        { "name": "openvisionlab:hashSubject", "value": "v2.0.0rc8 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/tinyobjloader/LICENSE;sha256=19e1b0242709694c6671369609544993a2dfcef8477f1aa19bd30de35ec58caa" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "uvatlas:may2022:open3d-sal-copy",
+      "name": "UVAtlas",
+      "version": "may2022",
+      "hashes": [{ "alg": "SHA-256", "content": "591516913a0f3c381f1fd01647cb1b8d1eeade575d1c726ae8f5dd9f83b81754" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/microsoft/UVAtlas/archive/refs/tags/may2022.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_uvatlas project reference and UVAtlas.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "may2022 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/uvatlas/LICENSE_uvatlas;sha256=13a631d86cd78efd08cfaa2e87230c6808ba669ba2496c8fd0f748193689511d" },
+        { "name": "openvisionlab:modification", "value": "Open3D copies 3rdparty/uvatlas/sal.h into the UVAtlas source;sha256=8d1acb5784aeb2a3fb0bafe5ed9a0854cabdffe0009f693a947e5164e35adb06" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk:9.1:open3d-win",
+      "name": "VTK prebuilt static subset",
+      "version": "9.1",
+      "hashes": [{ "alg": "SHA-256", "content": "6ee09115d23ec18d6d01d1e4c89fa236ec69406d8ba8cc1b8ec37c4123b93caa" }],
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/vtk/vtk_9.1_win.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_vtk project reference and fifteen VTK static library final link inputs" },
+        { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows prebuilt archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/vtk/Copyright.txt;sha256=11232448be82e0ea2c2c66219c2e36389f42249894070ee10c549ff182fc08b6" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision, build recipe, modifications, and complete enabled transitive set for the prebuilt archive are unresolved" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "libzmq:4.3.3:static",
+      "name": "libzmq",
+      "version": "4.3.3",
+      "hashes": [{ "alg": "SHA-256", "content": "9d9285db37ae942ed0780c016da87060497877af45094ff9e1a1ca736e3875a2" }],
+      "licenses": [{ "license": { "name": "LGPL-3.0-or-later with ZeroMQ static-linking exception" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/zeromq/libzmq/releases/download/v4.3.3/zeromq-4.3.3.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_zeromq project reference and libzmq-v143-mt-s-4_3_3.lib final link input" },
+        { "name": "openvisionlab:linkage", "value": "static" },
+        { "name": "openvisionlab:hashSubject", "value": "4.3.3 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_zeromq/COPYING.LESSER;sha256=83f32abe61ee58ffb1b007412c08415168c052501dbf56d7a47aaaac52b03ef6" },
+        { "name": "openvisionlab:licenseEvidence", "value": "clean-build ext_zeromq/COPYING;sha256=4fd86507c9b486764343065a9e035222869a27b5789efeb4fd93edc85412d7a3" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "zlib:1.2.13:open3d-patched",
+      "name": "zlib",
+      "version": "1.2.13",
+      "hashes": [{ "alg": "SHA-256", "content": "1525952a0a567581792613a9723333d7f8cc20b87a81f920fb8bc7e3f2251428" }],
+      "licenses": [{ "license": { "id": "Zlib" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://github.com/madler/zlib/archive/refs/tags/v1.2.13.tar.gz" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_zlib project reference and zlibstatic.lib final link input" },
+        { "name": "openvisionlab:hashSubject", "value": "unpatched v1.2.13 source archive" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/zlib/LICENSE;sha256=0aabf71c8758c1533bfedfadeec1ea2b0cb8a1ea64600962f26c6706a7c7990c" },
+        { "name": "openvisionlab:modification", "value": "3rdparty/zlib/0001-patch-zlib-to-enable-unzip.patch;sha256=43dff318c107f2751ab81ee8057891bdbf3dd54a315ec5028eab1d19e7648506" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "directx-headers:1.606.3",
+      "name": "DirectX-Headers",
+      "version": "1.606.3",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://github.com/microsoft/DirectX-Headers/tree/fd329244e62201bf959331d28514928fc1d45005" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_uvatlas build dependency cloned at tag v1.606.3" },
+        { "name": "openvisionlab:sourceCommit", "value": "fd329244e62201bf959331d28514928fc1d45005" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/uvatlas/LICENSE_directxheaders;sha256=fd532481d828e13a0b13ccb598e02338a3617740675a862ee6bdc1541b68e93d" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "directxmath:may2022",
+      "name": "DirectXMath",
+      "version": "may2022",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://github.com/microsoft/DirectXMath/tree/e95d84892ec894967c48151f9106bd4388e85e63" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "ext_uvatlas build dependency cloned at tag may2022" },
+        { "name": "openvisionlab:sourceCommit", "value": "e95d84892ec894967c48151f9106bd4388e85e63" },
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/uvatlas/LICENSE_directxmath;sha256=d93f2f2b06d05d717ac10b6a7e4049c4b1c4997b187fea71148071966b1e1a71" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-kissfft:bundled-with-vtk-9.1",
+      "name": "VTK kissfft",
+      "version": "bundled-with-vtk-9.1",
+      "licenses": [{ "license": { "name": "KISS FFT BSD-style license" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "vtkkissfft-9.1.lib final link input" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkkissfft/COPYING;sha256=a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-pugixml:bundled-with-vtk-9.1",
+      "name": "VTK pugixml",
+      "version": "bundled-with-vtk-9.1",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "vtkpugixml-9.1.lib final link input" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkpugixml/LICENSE.md;sha256=ee495f34aeff0c578a99f3350a2050d4e5860d27b2004c03c384a594fa2b0a7a" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-kwsys:bundled-with-vtk-9.1",
+      "name": "VTK KWSys",
+      "version": "bundled-with-vtk-9.1",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "vtksys-9.1.lib final link input" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtksys/Copyright.txt;sha256=7aa92ae0b86f73f81947d177639556fe7f8ea42a74762ecdf563e3daf7106a40" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "wepoll:bundled-with-libzmq-4.3.3",
+      "name": "wepoll",
+      "version": "bundled-with-libzmq-4.3.3",
+      "licenses": [{ "license": { "id": "BSD-2-Clause" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Windows polling implementation bundled and enabled by the libzmq 4.3.3 build" },
+        { "name": "openvisionlab:licenseEvidence", "value": "ext_zeromq/external/wepoll/license.txt;sha256=3c385cc8b036be73b77982e2b2e49f44b2fb5b23f8b94d060f8b9ddf383c80ad" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is not recorded by the parent source archive" }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "open3d:0.19.0:windows-x64-nongui-clean",
+      "dependsOn": [
+        "assimp:5.4.2",
+        "boringssl:edfe413:open3d-win-amd64",
+        "cppzmq:4.7.1",
+        "curl:7.88.0",
+        "eigen:da7909592376c893dabbc4b6453a8ffe46b1eb8e",
+        "embree:4.3.3",
+        "fmt:10.2.1",
+        "glew:2.1.0",
+        "glfw:3.4",
+        "jsoncpp:1.9.4:open3d-patched",
+        "libjpeg-turbo:2.1.5.1",
+        "liblzf:1.5",
+        "libpng:1.6.37",
+        "intel-onemkl:2024.1.0:open3d-win-amd64",
+        "msgpack-c:3.3.0",
+        "nanoflann:1.5.0",
+        "open3d-poissonrecon:90f3f064e275b275cff445881ecee5a7c495c9e0",
+        "qhull:8.0.2",
+        "rply:1.1.3",
+        "onetbb:2021.12.0",
+        "tinyfiledialogs:2.7.2",
+        "tinygltf:72f4a55edd54742bca1a71ade8ac70afca1d3f07",
+        "tinyobjloader:2.0.0rc8",
+        "uvatlas:may2022:open3d-sal-copy",
+        "vtk:9.1:open3d-win",
+        "libzmq:4.3.3:static",
+        "zlib:1.2.13:open3d-patched"
+      ]
+    },
+    { "ref": "assimp:5.4.2" },
+    { "ref": "boringssl:edfe413:open3d-win-amd64" },
+    { "ref": "cppzmq:4.7.1", "dependsOn": ["libzmq:4.3.3:static"] },
+    { "ref": "curl:7.88.0", "dependsOn": ["boringssl:edfe413:open3d-win-amd64", "zlib:1.2.13:open3d-patched"] },
+    { "ref": "eigen:da7909592376c893dabbc4b6453a8ffe46b1eb8e" },
+    { "ref": "embree:4.3.3", "dependsOn": ["onetbb:2021.12.0"] },
+    { "ref": "fmt:10.2.1" },
+    { "ref": "glew:2.1.0" },
+    { "ref": "glfw:3.4" },
+    { "ref": "jsoncpp:1.9.4:open3d-patched" },
+    { "ref": "libjpeg-turbo:2.1.5.1" },
+    { "ref": "liblzf:1.5" },
+    { "ref": "libpng:1.6.37", "dependsOn": ["zlib:1.2.13:open3d-patched"] },
+    { "ref": "intel-onemkl:2024.1.0:open3d-win-amd64", "dependsOn": ["onetbb:2021.12.0"] },
+    { "ref": "msgpack-c:3.3.0" },
+    { "ref": "nanoflann:1.5.0" },
+    { "ref": "open3d-poissonrecon:90f3f064e275b275cff445881ecee5a7c495c9e0" },
+    { "ref": "qhull:8.0.2" },
+    { "ref": "rply:1.1.3" },
+    { "ref": "onetbb:2021.12.0" },
+    { "ref": "tinyfiledialogs:2.7.2" },
+    { "ref": "tinygltf:72f4a55edd54742bca1a71ade8ac70afca1d3f07" },
+    { "ref": "tinyobjloader:2.0.0rc8" },
+    { "ref": "uvatlas:may2022:open3d-sal-copy", "dependsOn": ["directx-headers:1.606.3", "directxmath:may2022"] },
+    { "ref": "vtk:9.1:open3d-win", "dependsOn": ["vtk-kissfft:bundled-with-vtk-9.1", "vtk-pugixml:bundled-with-vtk-9.1", "vtk-kwsys:bundled-with-vtk-9.1"] },
+    { "ref": "libzmq:4.3.3:static", "dependsOn": ["wepoll:bundled-with-libzmq-4.3.3"] },
+    { "ref": "zlib:1.2.13:open3d-patched" },
+    { "ref": "directx-headers:1.606.3" },
+    { "ref": "directxmath:may2022" },
+    { "ref": "vtk-kissfft:bundled-with-vtk-9.1" },
+    { "ref": "vtk-pugixml:bundled-with-vtk-9.1" },
+    { "ref": "vtk-kwsys:bundled-with-vtk-9.1" },
+    { "ref": "wepoll:bundled-with-libzmq-4.3.3" }
+  ]
+}
