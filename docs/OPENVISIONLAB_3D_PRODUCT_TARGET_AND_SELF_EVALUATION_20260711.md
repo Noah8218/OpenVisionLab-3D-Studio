@@ -27,7 +27,7 @@ Current maturity is **early inspection workbench MVP**. No repository-backed per
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.
 - C3D map fidelity: **display frame passed for the fixed Thickness sample; physical scale unverified**.
 - Inspection Recipe v1: **baseline passed for five independent typed C3D slices: numeric-reference-ROI plane flatness, explicit-cell point-pair dimensions, explicit two-region Gap/Flush, explicit reference/measurement-ROI Volume, and exact-row Cross-section Dimensions**.
-- Release candidate: **Viewer bundle prerelease `v0.1.0-rc.1` is published at commit `ac57687`; local, Windows CI, public archive hash, and `Matched` Viewer/Runner gates pass**.
+- Release candidate: **Viewer bundle prerelease `v0.1.0-rc.1` is published at commit `ac57687`; local, Windows CI, public archive/manifest hash, downloaded-bundle BinaryHost, and `Matched` Viewer/Runner gates pass**.
 - Nominal/actual metrology: **not started as a product workflow**.
 - Production integration: **intentionally out of scope**.
 
@@ -36,6 +36,8 @@ Passing Viewer Foundation v1 does not mean the viewer is production-complete. It
 Current-source revalidation on 2026-07-12 confirmed the gate with `artifacts/viewer_validation_20260712/matrix_smoke_summary_after.txt`: 129 loader, display, pick, measurement, color, density, Shell-hosting, contract, and controlled-failure checks passed with no failures. C3D-specific detailed display, point picking, two-point distance/height evidence, the 10/10 mapping golden suite, a 66,212-point zero-error .NET PLY roundtrip, independent Python recalculation, and Open3D 0.19.0 re-save comparison also passed in the Viewer display frame. This closes the current fixed-scope Viewer validation; physical calibration and licensed metrology comparison remain separate blocked trust gates.
 
 Release-candidate revalidation on 2026-07-13 confirmed `0.1.0-rc.1` at commit `ac57687` in Windows Actions run `29198517611`. Build, binary-only Viewer Host, Viewer/Shell screenshot quality, six algorithm/map golden suites, actual C3D PLY roundtrip, independent Python mapping, and artifact upload passed. The uploaded Viewer manifest and schema `1.1` Cross-section Run Record carry the same clean commit and product/Host API identity, and the Viewer/Runner state is `Matched`. GitHub prerelease `v0.1.0-rc.1` publishes the complete Viewer dependency ZIP with SHA-256 `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`; this is not a stable, calibrated, or full-application release.
+
+A fresh public-asset acceptance run on 2026-07-13 independently downloaded that ZIP and `SHA256SUMS.txt`, matched the archive hash, and used the BinaryHost verifier to enforce all 13 manifest file paths, sizes, and SHA-256 values before build. The zero-`ProjectReference` Host passed with 12/12 required outputs, C3D render/pick, and an accepted first-attempt screenshot (`blackRatio=0.0045`, `whiteRatio=0.3578`, luminance `0..255`); a 4/4 rejection matrix blocked outside-bundle, missing, wrong-size, and same-size hash-mismatched entries before Host build. This proves package integrity and hostability for the tested Windows/.NET 10 environment, not physical measurement accuracy or broad host compatibility.
 
 ## Evidence Checked
 

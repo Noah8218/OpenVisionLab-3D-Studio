@@ -110,4 +110,14 @@ The minimal sample under `samples\OpenVisionLab.ThreeD.Viewer.BinaryHost` has no
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1
 ```
 
-The verification builds the bundle and sample, launches the generated Host EXE directly, then requires current C3D render/pick screenshot and contract evidence.
+The default verification builds the bundle and sample, launches the generated Host EXE directly, then requires current C3D render/pick screenshot, accepted screenshot-quality, and contract evidence.
+
+To test an already extracted release bundle without rebuilding Viewer from source:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 `
+  -ViewerBundlePath C:\path\to\OpenVisionLab.ThreeD.Viewer-0.1.0-rc.1-windows `
+  -ArtifactDirectory artifacts\release-host-acceptance
+```
+
+Verify the downloaded ZIP against `SHA256SUMS.txt` before extraction. The BinaryHost verifier then rejects manifest entries with invalid/outside-bundle paths, missing files, wrong sizes, or SHA-256 mismatches before compiling against the supplied DLLs. It records the validated manifest, screenshot, quality report, contract, and summary under the selected artifact directory.
