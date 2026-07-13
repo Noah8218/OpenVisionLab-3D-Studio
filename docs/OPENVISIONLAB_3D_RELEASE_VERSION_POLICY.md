@@ -131,6 +131,7 @@ Known limitations:
 
 - `v0.1.0-rc.1` is published as a GitHub prerelease at commit `ac57687`; Windows Actions run `29198517611` and the public archive manifest record the same clean commit and `Matched` Viewer/Runner state.
 - The public Viewer ZIP SHA-256 is `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`.
+- Post-release host verification was hardened at commit `c50d196`; Windows Actions run `29215566528` passed the BinaryHost, screenshot-quality, Runner/golden/map, C3D roundtrip, independent Python, and artifact-upload gates.
 - Do not replace prerelease assets or promote `0.1.0-rc.1` to stable `0.1.0` without explicit owner approval and a new complete release gate.
 - Do not create an installer, NuGet package, tag, or GitHub Release merely because the Viewer DLL bundle builds.
 - The first release candidate must preserve the current unitless/raw-height limitations and must not advertise physical calibration.
