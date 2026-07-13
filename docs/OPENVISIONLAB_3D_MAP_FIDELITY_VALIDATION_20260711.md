@@ -185,6 +185,8 @@ The sampled Python command and Windows CI use stride-aligned cells `(85,1190)` a
 
 CI runs the golden cases, sampled .NET roundtrip, independent Python recalculation, and sampled PLY coordinate signature generation. The 72 MB full-resolution PLY remains an explicit local audit and is not uploaded on every CI run.
 
+Windows Actions run `29288595132` passed this sampled point-pair CI guard at commit `cebdc8f` on 2026-07-14. The independent Python step and every existing workflow step succeeded; artifact `8294167228` records digest `sha256:485c6bbcfb0389ed2af2584eb9dfb359365fd95927bcfb3e3b2ccd4342d9b7bc`.
+
 ## Commercial Reliability Lessons
 
 - ZEISS INSPECT emphasizes traceable, repeatable parametric inspection steps and nominal/actual visualization. OpenVisionLab should retain source identity, mapping parameters, recipe inputs, and evidence for every result: https://www.zeiss.com/metrology/us/software/zeiss-inspect.html

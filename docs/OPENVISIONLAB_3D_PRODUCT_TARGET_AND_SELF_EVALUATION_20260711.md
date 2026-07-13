@@ -49,6 +49,8 @@ Windows Actions run `29216983045` passed this Host API consumer gate at commit `
 
 Windows Actions run `29215566528` revalidated the hardened gate at commit `c50d196`. BinaryHost, Shell screenshot quality, Runner/golden/map checks, actual C3D roundtrip, independent Python mapping, and artifact upload all passed. Evidence artifact `8266449434` has digest `sha256:230b5607524e668ed47f59d85e08514bace873e631f676bb44a32282d2eb4c65`.
 
+Windows Actions run `29288595132` revalidated the current Viewer trust baseline at commit `cebdc8f` on 2026-07-14. The existing BinaryHost, Shell screenshot-quality, Runner/golden/map, actual-map, PLY-signature, and artifact gates passed together with the new stride-aligned independent Python point-pair calculation. Evidence artifact `8294167228` is `1,167,597` bytes with digest `sha256:485c6bbcfb0389ed2af2584eb9dfb359365fd95927bcfb3e3b2ccd4342d9b7bc`.
+
 ## Evidence Checked
 
 Local checks performed on 2026-07-11:
