@@ -51,6 +51,8 @@ Windows Actions run `29215566528` revalidated the hardened gate at commit `c50d1
 
 Windows Actions run `29288595132` revalidated the current Viewer trust baseline at commit `cebdc8f` on 2026-07-14. The existing BinaryHost, Shell screenshot-quality, Runner/golden/map, actual-map, PLY-signature, and artifact gates passed together with the new stride-aligned independent Python point-pair calculation. Evidence artifact `8294167228` is `1,167,597` bytes with digest `sha256:485c6bbcfb0389ed2af2584eb9dfb359365fd95927bcfb3e3b2ccd4342d9b7bc`.
 
+Windows Actions run `29297655730` passed the NuGet package-health gate at commit `6779881` on 2026-07-14. The separate four-case verifier self-test and live audit passed for all eight solution projects with zero vulnerable or deprecated direct/transitive packages, and every existing BinaryHost, Shell screenshot-quality, Runner, golden, map, and upload step remained green. Evidence artifact `8297372590` is `1,168,807` bytes with digest `sha256:66a3a2650a720aa8810ca4a433f73f08d97053122f77750f740455e6b9385fde`; a fresh authenticated download matched the digest and contained both parseable raw JSON responses plus the zero-finding summary.
+
 ## Evidence Checked
 
 Local checks performed on 2026-07-11:

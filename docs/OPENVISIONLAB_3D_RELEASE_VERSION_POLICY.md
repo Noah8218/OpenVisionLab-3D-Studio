@@ -135,6 +135,7 @@ Known limitations:
 - The public Viewer ZIP SHA-256 is `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`.
 - Post-release host verification was hardened at commit `c50d196`; Windows Actions run `29215566528` passed the BinaryHost, screenshot-quality, Runner/golden/map, C3D roundtrip, independent Python, and artifact-upload gates.
 - Host API v1.0 consumer evidence was added at commit `95dd8da`; Windows Actions run `29216983045` passed the BinaryHost state/event/command/recipe gate and all existing release regressions.
+- NuGet supply-chain evidence was added at commit `6779881`; Windows Actions run `29297655730` passed separate verifier-self-test and live-audit steps for all eight solution projects with zero vulnerable/deprecated direct or transitive packages. Authenticated artifact `8297372590` matched digest `sha256:66a3a2650a720aa8810ca4a433f73f08d97053122f77750f740455e6b9385fde` and preserved both raw JSON responses plus the summary report.
 - Do not replace prerelease assets or promote `0.1.0-rc.1` to stable `0.1.0` without explicit owner approval and a new complete release gate.
 - Do not create an installer, NuGet package, tag, or GitHub Release merely because the Viewer DLL bundle builds.
 - The first release candidate must preserve the current unitless/raw-height limitations and must not advertise physical calibration.
