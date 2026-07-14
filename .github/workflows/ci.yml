@@ -112,6 +112,11 @@ jobs:
           if ([string]$buildProperties.Project.PropertyGroup.Version -ne $productVersion) { throw 'Central product versions do not match.' }
           $manifest = Get-Content artifacts\ci\viewer-dll-host\viewer-dll-manifest.json -Raw | ConvertFrom-Json
           $record = Get-Content artifacts\ci\cross_section_run.json -Raw | ConvertFrom-Json
+          $recipePath = 'recipes\c3d-cross-section-dimensions.recipe.json'
+          $recipeBytes = [System.IO.File]::ReadAllBytes($recipePath)
+          if ($recipeBytes -contains [byte]13) { throw 'Tracked recipe JSON must use LF line endings for stable raw provenance hashes.' }
+          $recipeHash = (Get-FileHash $recipePath -Algorithm SHA256).Hash
+          if ($record.Recipe.Sha256 -ne $recipeHash) { throw 'Run record recipe hash does not match the executed recipe bytes.' }
           if ($manifest.schemaVersion -ne '1.0' -or $manifest.applicationVersion -ne $productVersion -or $manifest.viewerHostApiVersion -ne $hostApiVersion) { throw 'Viewer manifest version contract mismatch.' }
           if ($record.SchemaVersion -ne '1.2' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
           if ($record.Step.Id -ne 'step.c3d-cross-section-dimensions' -or $record.Step.SourceEntityId -ne 'source.c3d-thickness') { throw 'Run record step identity mismatch.' }

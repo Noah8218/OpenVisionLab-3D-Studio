@@ -1,0 +1,2 @@
+# Keep raw recipe provenance hashes stable across Windows and CI checkouts.
+recipes/*.recipe.json text eol=lf

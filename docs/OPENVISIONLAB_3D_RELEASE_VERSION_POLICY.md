@@ -74,7 +74,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-ho
 ```
 
 6. Run the fixed data-loading matrix and relevant algorithm golden suites.
-7. Generate one schema `1.2` Run Record and confirm product, Host API, Git, .NET, OS, and architecture identity are not `unknown`; Git tree state must be `clean`. For a typed inspection step, confirm the stable step ID, source entity ID, and reference/measurement IDs agree across JSON, HTML, and CSV.
+7. Generate one schema `1.2` Run Record and confirm product, Host API, Git, .NET, OS, and architecture identity are not `unknown`; Git tree state must be `clean`. For a typed inspection step, confirm the stable step ID, source entity ID, and reference/measurement IDs agree across JSON, HTML, and CSV. Tracked recipe JSON must contain LF line endings only, and the recorded recipe SHA-256 must match the exact executed file bytes.
 8. Check direct and transitive NuGet packages:
 
 ```powershell

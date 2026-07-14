@@ -92,6 +92,7 @@ This file defines the working agreement for Codex in this repository.
 - Every validation tool must expose metrics and visual evidence, not only OK/NG text.
 - A new inspection tool is incomplete until it has parameters, controlled validation, metrics, overlay evidence, tolerance status, recipe persistence, Runner replay, and current Viewer/Shell evidence.
 - Use stable step IDs and explicit entity/reference inputs. Runner replay must not depend on display names or implicit active selection.
+- Tracked `recipes/*.recipe.json` files use LF through `.gitattributes`. Run Record recipe SHA-256 is the hash of the exact executed bytes; preserve the LF contract so clean Windows and local checkouts produce the same provenance hash.
 - Keep measurement sampling independent from render density.
 - C3D source-grid and display-frame fidelity are separate from physical fidelity. Preserve `column -> X`, `raw height -> Y`, `row -> Z`, source hashes, sample stride, and explicit `unitless`/`raw-height` labels until a calibration-backed mapping profile exists.
 - Neutral PLY map exports contain exact rendered sample vertices. Their optional faces exist only for external-viewer compatibility and must never be used as inspection geometry.
