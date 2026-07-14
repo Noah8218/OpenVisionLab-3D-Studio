@@ -113,7 +113,9 @@ jobs:
           $manifest = Get-Content artifacts\ci\viewer-dll-host\viewer-dll-manifest.json -Raw | ConvertFrom-Json
           $record = Get-Content artifacts\ci\cross_section_run.json -Raw | ConvertFrom-Json
           if ($manifest.schemaVersion -ne '1.0' -or $manifest.applicationVersion -ne $productVersion -or $manifest.viewerHostApiVersion -ne $hostApiVersion) { throw 'Viewer manifest version contract mismatch.' }
-          if ($record.SchemaVersion -ne '1.1' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
+          if ($record.SchemaVersion -ne '1.2' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
+          if ($record.Step.Id -ne 'step.c3d-cross-section-dimensions' -or $record.Step.SourceEntityId -ne 'source.c3d-thickness') { throw 'Run record step identity mismatch.' }
+          if (@($record.Step.ReferenceIds).Count -ne 1 -or $record.Step.ReferenceIds[0] -ne 'reference.c3d-row-range' -or @($record.Step.MeasurementIds).Count -ne 0) { throw 'Run record step references mismatch.' }
           if ($record.ExecutionEnvironment.ApplicationVersion -ne $productVersion -or $record.ExecutionEnvironment.ViewerHostApiVersion -ne $hostApiVersion) { throw 'Run record version contract mismatch.' }
           if ($record.Metrics.Count -ne 5 -or $record.Overlays.Count -ne 3) { throw 'Run record result evidence mismatch.' }
           if ($record.Recipe.Sha256.Length -ne 64 -or $record.Source.Sha256.Length -ne 64) { throw 'Run record provenance hash mismatch.' }
@@ -123,6 +125,11 @@ jobs:
           if ($record.ViewerRunnerMatchState -ne 'Matched') { throw 'Run record Viewer/Runner comparison did not match.' }
           if (-not (Test-Path $record.Artifacts.ViewerContract) -or -not (Test-Path $record.Artifacts.ViewerScreenshot)) { throw 'Run record Viewer evidence is missing.' }
           if (-not (Test-Path artifacts\ci\cross_section_report.html) -or -not (Test-Path artifacts\ci\cross_section_metrics.csv)) { throw 'Run report artifact is missing.' }
+          if ((Get-Content artifacts\ci\cross_section_report.html -Raw) -notlike '*step.c3d-cross-section-dimensions*') { throw 'HTML report step identity is missing.' }
+          $csvRows = @(Import-Csv artifacts\ci\cross_section_metrics.csv)
+          $csvStepIds = @($csvRows.stepId | Select-Object -Unique)
+          $csvReferenceIds = @($csvRows.stepReferenceIds | Select-Object -Unique)
+          if ($csvRows.Count -ne 5 -or $csvStepIds.Count -ne 1 -or $csvStepIds[0] -ne 'step.c3d-cross-section-dimensions' -or $csvReferenceIds.Count -ne 1 -or $csvReferenceIds[0] -ne 'reference.c3d-row-range') { throw 'CSV report step identity mismatch.' }
           if ($env:GITHUB_STEP_SUMMARY) {
             Add-Content $env:GITHUB_STEP_SUMMARY "## Release identity`n"
             Add-Content $env:GITHUB_STEP_SUMMARY "- Product: ``$productVersion``"
@@ -131,6 +138,15 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY "- Run Record schema: ``$($record.SchemaVersion)``"
             Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer/Runner: ``$($record.ViewerRunnerMatchState)``"
           }
+
+      - name: Verify Shell Run Record 1.2 compatibility
+        shell: pwsh
+        run: |
+          $screenshot = 'artifacts\ci\shell_run_record_1_2.png'
+          $qualityReport = 'artifacts\ci\shell_run_record_1_2_quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --run-record artifacts\ci\cross_section_run.json --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $qualityReport --shell-evidence-tab run-record --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json
+          if ($LASTEXITCODE -ne 0) { throw "Shell Run Record 1.2 smoke failed with exit code $LASTEXITCODE." }
+          if (-not ((Get-Content $qualityReport) -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell Run Record 1.2 screenshot quality was not accepted.' }
 
       - name: Verify Cross-section Dimensions golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-cross-section --report artifacts\ci\cross_section_dimensions_golden.txt

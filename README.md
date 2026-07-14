@@ -189,7 +189,7 @@ Durable JSON/HTML/CSV run bundle:
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe artifacts\saved_c3d_cross_section_dimensions.recipe.json --report artifacts\run_record_cross_section\runner.txt --expect-status Pass --compare-contract artifacts\viewer_cross_section_reopen_after.txt --viewer-screenshot artifacts\viewer_cross_section_reopen_after.png --run-record artifacts\run_record_cross_section\run.json --html-report artifacts\run_record_cross_section\report.html --csv-report artifacts\run_record_cross_section\metrics.csv
 ```
 
-Run Record schema `1.1` adds application version, Viewer Host API version, Git commit/tree state, .NET runtime, OS, and process architecture. Schema `1.0` JSON remains readable by the current Shell.
+Run Record schema `1.2` adds optional typed inspection-step identity (`Id`, source entity, reference IDs, and measurement IDs) to the schema `1.1` execution identity. The current Shell remains compatible with schema `1.0`, `1.1`, and `1.2` JSON.
 
 Public GLB import smoke:
 
@@ -314,7 +314,7 @@ The expected `Fail` status is intentional for the current sample recipe because 
 
 ## CI
 
-Windows CI restores/builds the .NET 10 solution, rejects vulnerable or deprecated direct/transitive NuGet packages, runs the binary-only Viewer Host direct-EXE smoke, verifies standalone Cross-section Viewer and full Shell C3D screenshots with pixel-quality gates, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
+Windows CI restores/builds the .NET 10 solution, rejects vulnerable or deprecated direct/transitive NuGet packages, runs the binary-only Viewer Host direct-EXE smoke, verifies standalone Cross-section Viewer and full Shell C3D screenshots with pixel-quality gates, checks schema `1.2` Run Record identity in JSON/HTML/CSV and Shell, executes Runner and algorithm golden checks, verifies C3D map fidelity independently, and uploads `artifacts\ci\**`.
 
 GitHub Actions workflow: `.github\workflows\ci.yml`.
 
@@ -325,7 +325,7 @@ CI currently runs on `windows-latest` and performs:
 3. `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore`
 4. Binary-only Viewer Host and standalone Cross-section Viewer screenshot-quality smokes
 5. Full Shell C3D screenshot-quality smoke
-6. Headless recipe Runner smokes with Cross-section Viewer/Runner `Matched` evidence
+6. Headless recipe Runner smokes with Cross-section Viewer/Runner `Matched` evidence, schema `1.2` step identity, and Shell Run Snapshot compatibility
 7. Analytic/error golden verification for all current typed C3D slices and map mapping
 8. Actual fixed-sample C3D-to-PLY .NET roundtrip verification
 9. Cross-runtime C3D-to-PLY verification through a dependency-free Python implementation
@@ -339,6 +339,8 @@ The first public prerelease is available at [OpenVisionLab 3D Studio 0.1.0-rc.1]
 The release contains `OpenVisionLab.ThreeD.Viewer-0.1.0-rc.1-windows.zip`, the complete Viewer dependency bundle, plus `SHA256SUMS.txt`. The ZIP SHA-256 is `b9a9b6d002f507da63da32934d93bf6e8deaff2d7c1b00ff70a6f36d6b784a83`.
 
 The release tag points to commit `ac57687`. Local release checks and Windows Actions run `29198517611` pass, including binary-only Host execution, Viewer/Shell screenshot quality, `Matched` Cross-section Viewer/Runner evidence, algorithm goldens, and C3D map fidelity.
+
+Current development builds identify as `0.1.1-dev`. This keeps post-RC manifests and Run Records distinct from the published `v0.1.0-rc.1` tag and assets; no `0.1.1-dev` package or release is published.
 
 Current development snapshot:
 
@@ -367,7 +369,7 @@ Current development snapshot:
 - Runner `--verify-volume` verifies exact signed integration, tolerance failure, insufficient/empty samples, invalid area/tolerance, non-finite input, and missing units; CI preserves this regression.
 - Viewer and Shell expose exact-row C3D Cross-section Dimensions using an inclusive source-column range, aligned-X width, raw-height range, separate tolerances, source/result separation, recipe roundtrip, Runner parity, linked profile, and a real Shell step row.
 - Runner `--verify-cross-section` verifies exact width/height range, independent tolerance failures, selector errors, insufficient/non-finite/out-of-range samples, invalid tolerance, and missing units; CI preserves this regression.
-- Runner can emit a durable schema `1.1` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, UTC time, status, all metrics/overlays, Viewer/Runner match state, execution environment, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts and remains compatible with schema `1.0`.
+- Runner can emit a durable schema `1.2` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, typed step/source/reference identity when present, UTC time, status, all metrics/overlays, Viewer/Runner match state, execution environment, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts and remains compatible with schema `1.0` and `1.1`.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -398,7 +400,7 @@ Current development snapshot:
 3. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
 4. Preserve the completed basic surface slices: Gap/Flush, Volume, and Cross-section Dimensions.
 5. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
-6. Preserve the durable JSON run record and simple HTML/CSV one-run report baseline before adding batch trends or enterprise integration.
+6. Preserve the durable per-run JSON and simple HTML/CSV report baseline before adding batch trends or enterprise integration.
 
 ## Known Limitations
 
@@ -410,7 +412,7 @@ Current development snapshot:
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
 - The published prerelease contains the Viewer DLL dependency bundle only; no installer or full Studio/Shell application package exists yet.
-- Run reporting is one-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow.
+- Run reporting is per-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow. Legacy Height Deviation and LAZ recipe `1.0` documents do not own stable step IDs, so their schema `1.2` records leave the optional `Step` field empty.
 - SharpGL.WPF 3.1.1 runs through its older compatible .NET Core asset rather than a direct .NET 10 build. Current C3D/GLB and full Viewer/Shell smokes pass, but this remains a maintained regression boundary.
 
 ## Documentation

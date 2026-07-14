@@ -34,6 +34,7 @@ internal static class RunRecordWriter
         string sourcePath,
         string sourceEntityId,
         string sourceUnit,
+        InspectionRunStep? step,
         ToolResult result,
         string runnerReportPath,
         string? viewerContractPath)
@@ -44,7 +45,7 @@ internal static class RunRecordWriter
         var recipeHash = HashFile(recipePath);
         var sourceHash = HashFile(sourcePath);
         var record = new InspectionRunRecord(
-            "1.1",
+            "1.2",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe(recipeType, recipeVersion, Path.GetFullPath(recipePath), recipeHash),
@@ -64,7 +65,8 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.HtmlPath),
                 FullOptionalPath(options.CsvPath)))
         {
-            ExecutionEnvironment = CreateExecutionEnvironment(recipePath)
+            ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
+            Step = step
         };
 
         if (options.JsonPath is not null) WriteJson(options.JsonPath, record);
@@ -97,6 +99,7 @@ internal static class RunRecordWriter
             <dt>Run ID</dt><dd>{{Encode(record.RunId)}}</dd>
             <dt>Recorded UTC</dt><dd>{{Encode(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture))}}</dd>
             <dt>Tool</dt><dd>{{Encode(record.ToolName)}}</dd>
+            <dt>Step</dt><dd>{{Encode(FormatStep(record.Step))}}</dd>
             <dt>Status</dt><dd class="{{record.Status}}">{{record.Status}}</dd>
             <dt>Recipe</dt><dd>{{Encode(record.Recipe.Path)}}<br>SHA-256 {{record.Recipe.Sha256}}</dd>
             <dt>Source</dt><dd>{{Encode(record.Source.Path)}}<br>SHA-256 {{record.Source.Sha256}}</dd>
@@ -120,11 +123,15 @@ internal static class RunRecordWriter
     private static void WriteCsv(string path, InspectionRunRecord record)
     {
         EnsureDirectory(path);
-        var lines = new List<string> { "runId,recordedAtUtc,tool,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,applicationName,applicationVersion,viewerHostApiVersion,gitCommit,gitWorkingTree,dotNetRuntime,operatingSystem,processArchitecture" };
+        var lines = new List<string> { "runId,recordedAtUtc,tool,stepId,stepSourceEntityId,stepReferenceIds,stepMeasurementIds,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,applicationName,applicationVersion,viewerHostApiVersion,gitCommit,gitWorkingTree,dotNetRuntime,operatingSystem,processArchitecture" };
         lines.AddRange(record.Metrics.Select(metric => string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
             Csv(record.ToolName),
+            Csv(record.Step?.Id ?? string.Empty),
+            Csv(record.Step?.SourceEntityId ?? string.Empty),
+            Csv(record.Step is null ? string.Empty : FormatIds(record.Step.ReferenceIds)),
+            Csv(record.Step is null ? string.Empty : FormatIds(record.Step.MeasurementIds)),
             Csv(record.Status.ToString()),
             Csv(metric.Name),
             Csv(metric.Kind.ToString()),
@@ -236,6 +243,13 @@ internal static class RunRecordWriter
 
     private static string FormatPlatform(InspectionRunEnvironment? environment) =>
         environment is null ? "unknown" : $"{environment.OperatingSystem} / {environment.ProcessArchitecture}";
+
+    private static string FormatStep(InspectionRunStep? step) => step is null
+        ? "Not recorded"
+        : $"{step.Id} | Source {step.SourceEntityId} | References {FormatIds(step.ReferenceIds)} | Measurements {FormatIds(step.MeasurementIds)}";
+
+    private static string FormatIds(IReadOnlyList<string>? ids) =>
+        ids is null || ids.Count == 0 ? "(none)" : string.Join(";", ids);
 
     private static string HashFile(string path)
     {

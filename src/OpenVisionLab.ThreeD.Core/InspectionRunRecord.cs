@@ -16,6 +16,7 @@ public sealed record InspectionRunRecord(
     InspectionRunArtifacts Artifacts)
 {
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
+    public InspectionRunStep? Step { get; init; }
 }
 
 public sealed record InspectionRunEnvironment(
@@ -40,6 +41,12 @@ public sealed record InspectionRunSource(
     string Sha256,
     long ByteLength,
     string Unit);
+
+public sealed record InspectionRunStep(
+    string Id,
+    string SourceEntityId,
+    IReadOnlyList<string> ReferenceIds,
+    IReadOnlyList<string> MeasurementIds);
 
 public sealed record InspectionRunMetric(
     string Name,

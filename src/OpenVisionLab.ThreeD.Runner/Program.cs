@@ -203,6 +203,13 @@ static int Run(string[] args)
             ? EvaluateCrossSection(crossSection, recipe.Transform ?? ModelTransform.Identity, grid)
             : null;
         var result = crossSectionResult?.Result ?? volumeResult?.Result ?? planeFlatnessResult?.Result ?? heightDeviationResult;
+        var runStep = crossSectionResult is not null
+            ? new InspectionRunStep(recipe.CrossSection!.Id, recipe.CrossSection.SourceEntityId, [recipe.CrossSection.ReferenceId], [])
+            : volumeResult is not null
+                ? new InspectionRunStep(recipe.Volume!.Id, recipe.Volume.SourceEntityId, [recipe.Volume.ReferenceId], [recipe.Volume.MeasurementId])
+                : planeFlatnessResult is not null
+                    ? new InspectionRunStep(recipe.PlaneFlatness!.Id, recipe.PlaneFlatness.SourceEntityId, [recipe.PlaneFlatness.ReferenceId], [])
+                    : null;
 
         WriteReport(reportPath, fullRecipePath, sourcePath, recipe, grid, result, roiStepResult, planeFlatnessResult, volumeResult, crossSectionResult);
         if (compareContractPath is not null)
@@ -223,6 +230,7 @@ static int Run(string[] args)
             sourcePath,
             recipe.Source.EntityId,
             recipe.Source.Unit,
+            runStep,
             result,
             reportPath,
             compareContractPath);
@@ -278,8 +286,13 @@ static int RunC3DPointPairDimensionsRecipe(
             "Elevation angle");
     }
 
+    var runStep = new InspectionRunStep(
+        recipe.Step.Id,
+        recipe.Step.SourceEntityId,
+        [recipe.Step.First.Id, recipe.Step.Second.Id],
+        []);
     RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
-        recipe.Source.EntityId, recipe.Source.Unit, evaluation.Result, reportPath, compareContractPath);
+        recipe.Source.EntityId, recipe.Source.Unit, runStep, evaluation.Result, reportPath, compareContractPath);
 
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
@@ -321,8 +334,13 @@ static int RunC3DGapFlushRecipe(
         CompareUiContract(compareContractPath, evaluation.Result, "Signed gap", "Signed flush");
     }
 
+    var runStep = new InspectionRunStep(
+        recipe.Step.Id,
+        recipe.Step.SourceEntityId,
+        [recipe.Step.LeftReferenceId, recipe.Step.RightReferenceId],
+        []);
     RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
-        recipe.Source.EntityId, recipe.Source.Unit, evaluation.Result, reportPath, compareContractPath);
+        recipe.Source.EntityId, recipe.Source.Unit, runStep, evaluation.Result, reportPath, compareContractPath);
 
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || evaluation.Result.Status != status))
@@ -361,7 +379,7 @@ static int RunLazTwoPointRecipe(
     }
 
     RunRecordWriter.Write(runArtifacts, fullRecipePath, recipe.RecipeType, recipe.Version, sourcePath,
-        recipe.Source.EntityId, recipe.Source.Unit, result, reportPath, compareContractPath);
+        recipe.Source.EntityId, recipe.Source.Unit, null, result, reportPath, compareContractPath);
 
     if (expectedStatus is not null
         && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
