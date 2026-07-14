@@ -78,9 +78,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-ho
 8. Check direct and transitive NuGet packages:
 
 ```powershell
-dotnet list OpenVisionLab.ThreeDStudio.slnx package --vulnerable --include-transitive
-dotnet list OpenVisionLab.ThreeDStudio.slnx package --deprecated
+python scripts\verify-nuget-package-health.py --self-test
+python scripts\verify-nuget-package-health.py --solution OpenVisionLab.ThreeDStudio.slnx --report artifacts\dependency_audit\nuget_package_health.txt --json-directory artifacts\dependency_audit\nuget-package-health
 ```
+
+The verifier runs both `--vulnerable --include-transitive` and `--deprecated --include-transitive` in JSON mode, preserves each raw response, and returns exit code `1` when either direct or transitive findings exist or when the JSON version, required parameters, or project sets are incomplete or inconsistent.
 
 9. Push only after explicit user approval and require Windows CI success.
 10. Inspect the uploaded CI Viewer/Shell PNG, quality report, contract, golden reports, and Run Record.

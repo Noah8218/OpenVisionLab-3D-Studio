@@ -32,6 +32,12 @@ jobs:
       - name: Restore
         run: dotnet restore OpenVisionLab.ThreeDStudio.slnx
 
+      - name: Verify NuGet package-health verifier
+        run: python scripts\verify-nuget-package-health.py --self-test
+
+      - name: Verify NuGet package health
+        run: python scripts\verify-nuget-package-health.py --solution OpenVisionLab.ThreeDStudio.slnx --report artifacts\ci\nuget_package_health.txt --json-directory artifacts\ci\nuget-package-health
+
       - name: Build
         run: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
 

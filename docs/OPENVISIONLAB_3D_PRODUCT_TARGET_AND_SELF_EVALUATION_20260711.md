@@ -140,7 +140,7 @@ Scale: `0` absent, `1` prototype, `2` working MVP, `3` operational baseline, `4`
 | Runner and evidence parity | 2 | Headless replay, contract comparison, screenshots, result layers, Shell history/snapshot views, and schema `1.0` JSON run record with recipe/source hashes and artifact paths. | The durable bundle is proven for one Cross-section run, not yet a multi-run or batch replay contract. |
 | Nominal/actual comparison | 0 | A C3D mean-height deviation color mode is not CAD/scan nominal comparison. | Nominal entity, alignment strategy, point-to-mesh distance, deviation map, and tolerances. |
 | Reporting and multipiece review | 2 | Runner TXT, one-run JSON, human-readable HTML metric table, CSV metric export, and Shell artifact commands. | No PDF, database, retention/signing, batch table, trends, statistics, or SPC. |
-| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness and point-pair golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
+| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness, point-pair, Gap/Flush, Volume, and Cross-section golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
 | Architecture and maintainability | 2 | Separate Viewer/Shell/Core/Data/Tools/Runner boundaries; MVVM direction; CI build. | Viewer code-behind remains large, recipe logic is tool-specific, and automated unit/integration tests are limited. |
 
 ## Gate Decision
@@ -189,6 +189,10 @@ Algorithm hardening status: `artifacts/plane_flatness_golden_after.txt` passes a
 Second typed-slice status on 2026-07-11: `recipes/c3d-point-pair-dimensions.recipe.json` passes explicit Preview/Publish, source-cell recipe save/reopen, Viewer/Runner parity, Shell step evidence, and render-density-independent source-cell resolution. `artifacts/point_pair_dimensions_golden_after.txt` passes `9/9` known-answer and controlled-error cases. This measures two selected C3D cells; it does not perform edge detection, line/circle fitting, CAD dimensions, or GD&T.
 
 Third typed-slice status on 2026-07-12: `recipes/c3d-gap-flush.recipe.json` passes explicit Preview/Publish, two-region recipe save/reopen, Viewer/Runner parity, Shell step evidence, and a fixed 140,000-point measurement budget independent from display density. `artifacts/gap_flush_golden_after.txt` passes `8/8` signed known-answer and controlled-error cases. Gap is the signed aligned-X distance between facing ROI edges; Flush is right-minus-left mean raw height. These remain unitless/raw-height results, not calibrated physical seam measurements.
+
+Fourth typed-slice status on 2026-07-12: `recipes/c3d-volume.recipe.json` passes explicit Preview/Publish, reference-plane and measurement-ROI recipe save/reopen, Viewer/Runner parity, Shell step evidence, and `9/9` analytic/error golden cases. Its above/below/net values remain uncalibrated display-frame `model^3`, not physical volume.
+
+Fifth typed-slice status on 2026-07-12: `recipes/c3d-cross-section-dimensions.recipe.json` passes explicit Preview/Publish, exact source-row/column-range recipe save/reopen, Viewer/Runner parity, Shell step evidence, and `9/9` analytic/error golden cases. It does not perform automatic feature finding or calibrated physical dimensioning.
 
 ## Development Priorities
 
@@ -247,7 +251,7 @@ Shell evidence status on 2026-07-12: local full Shell C3D capture was accepted o
 ### P3: Metrology Credibility
 
 - Make model/display/source units and conversions explicit in every measurement path.
-- Add synthetic golden datasets with known plane, angle, distance, flatness, and volume answers. Plane/flatness baseline done; angle, distance, and volume remain.
+- Preserve the passed synthetic golden baselines for plane/flatness (`9/9`), point-pair distance/angle (`9/9`), Gap/Flush (`8/8`), Volume (`9/9`), Cross-section (`9/9`), and C3D display mapping (`10/10`). The next credibility gap is physical mapping/calibration provenance, uncertainty, calibrated external datasets, and independent feature-fitting/metrology validation.
 - Record algorithm version, sample policy, calibration provenance, and uncertainty assumptions.
 - Do not use terms such as certified, calibrated, or metrology-grade until independently justified.
 

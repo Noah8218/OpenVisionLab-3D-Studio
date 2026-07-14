@@ -81,6 +81,7 @@ This file defines the working agreement for Codex in this repository.
 - For the main workspace, follow the `C:\Git\OpenVisionLab_Dev` docking boundary: docking ownership belongs in a dedicated controls library like `Library\OpenVisionLab.Docking.Controls`; do not add AvalonDock or raw docking package usage directly to the app project.
 - For app-level WPF UI styling, follow the Dev repository's `WPF-UI` boundary: the Shell app owns `WPF-UI` package/theme resources, while Viewer and Docking.Controls stay free of direct `WPF-UI` dependencies unless a reusable control explicitly needs that dependency.
 - The repository targets .NET 10. Preserve project platform boundaries, `global.json`, CI `10.0.x`, and the SharpGL/WPF-UI/AvalonDock/LASzip runtime evidence before changing SDK feature bands or package versions.
+- Windows CI must run `scripts/verify-nuget-package-health.py` after restore and fail when any direct or transitive NuGet package is reported as vulnerable or deprecated. Also fail closed when the JSON version, required query parameters, or project set is incomplete or inconsistent. Preserve the raw JSON responses and summary report in the CI artifact.
 - MVVM is the target application structure. For visible workflow work, develop in View -> ViewModel -> Model order: place or adjust the binding surface first, put durable state/commands/comparison logic in the ViewModel next, and change model/contract/parser code only when the existing data shape cannot support the workflow.
 - Keep view code-behind as a thin UI/OpenGL event bridge, and move durable state, commands, result data, and workflow logic into ViewModel, Controller, Presenter, Runtime, or Service classes as soon as they stop being trivial.
 - Keep source geometry and result geometry separate. A validation result must not silently mutate the imported source model.
@@ -279,6 +280,8 @@ For GitHub Actions CI workflow work, keep CI headless and Windows-based:
 
 ```powershell
 dotnet restore OpenVisionLab.ThreeDStudio.slnx
+python scripts\verify-nuget-package-health.py --self-test
+python scripts\verify-nuget-package-health.py --solution OpenVisionLab.ThreeDStudio.slnx --report artifacts\ci\nuget_package_health.txt --json-directory artifacts\ci\nuget-package-health
 dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 ```
