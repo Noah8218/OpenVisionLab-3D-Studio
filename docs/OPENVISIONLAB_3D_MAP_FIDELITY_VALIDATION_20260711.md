@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Map Fidelity Validation
 
-Updated: 2026-07-13
+Updated: 2026-07-14
 
 ## Decision
 
@@ -15,6 +15,16 @@ The current C3D map is verified in the OpenVisionLab **viewer display frame**. I
 | Can an external tool re-save be checked numerically? | Pass for Open3D sampled and CloudCompare full-resolution point-cloud re-saves, not metrology. | CloudCompare 2.13.2 preserved all `1,653,562` ordered vertices and RGB with maximum component drift `5e-7` at the internal `1e-6` tolerance. Its own C2C result has mean `4.91657e-7` and standard deviation `1.49337e-7` Viewer units. Open3D 0.19.0 preserved `66,212` sampled vertices and RGB within the external ASCII `1e-5` tolerance. |
 | Are the X/Y/Z values calibrated physical coordinates? | Unverified. | The C3D layout and scale are inferred; pixel pitch, height scale/offset, units, axis convention, and calibration provenance are unavailable. |
 | Does the Viewer match ZEISS/PolyWorks measurement results? | Not tested. | No licensed commercial metrology application or calibrated reference dataset is available in the workspace. |
+
+## 2026-07-14 Prerequisite Reaudit
+
+- The `3D` sample tree contains two local C3D files and their two PNG references, with no calibration, writer, sensor, unit, or axis sidecar.
+- The four files have only their primary NTFS data streams. Both PNG files contain only `IHDR`, `IDAT`, and `IEND` chunks; they have no `pHYs`, text, EXIF, ICC, or software-identification metadata. Their `IHDR` records only `1301 x 1967`, 8-bit RGB, and no interlace.
+- Repository history starts these files at commit `d728e45` (`Initialize SharpGL 3D viewer MVP`) without source-device or writer provenance.
+- Thickness and Warpage C3D are byte-identical at SHA-256 `79c02761f9b711c0f8980d4376b9fce25e00d425e6ca85da4d4349ecf5f0299c`; their PNG files are also byte-identical at SHA-256 `97c8cae2d39746398bede57fc66fd552ac95910287fa48c9b13968e4175a31a8`.
+- Each C3D is exactly `10,236,276` bytes: `8 + (1301 * 1967 * 4)`. There are no remaining bytes for an embedded calibration or metadata block.
+- The public motion-capture C3D specification is a different format. It requires a 512-byte header, a normal second-byte `0x50` point-data identifier, parameter records, and a separate data section. Those contracts do not match this sample's eight-byte raster header, so its scale/unit fields must not be borrowed for this file. See the official [C3D file structure](https://www.c3d.org/HTML/Documents/thec3dfilestructure.htm) and [header specification](https://www.c3d.org/HTML/Documents/headerrecordfunction.htm).
+- Conclusion: the workspace contains neither a distinct measured/nominal pair nor a traceable physical mapping source. The writer or sensor identity and its calibration/export configuration remain required before implementing `C3DMappingProfile`.
 
 ## What Equal Means
 
