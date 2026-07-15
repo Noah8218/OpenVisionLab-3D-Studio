@@ -16,7 +16,7 @@ Current status:
 
 | Phase | Current decision | What that means |
 | --- | --- | --- |
-| Phase 1 | **Passed locally for the fixed supported scope** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, and real WPF pointer-input gates pass locally. Remote Windows CI revalidation of the new pointer gate remains pending. |
+| Phase 1 | **Passed for the fixed supported scope locally and in current Windows CI** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, hosted dual-capture, and mandatory real WPF pointer-input gates pass. |
 | Phase 2 | **Not passed** | One fixed C3D sample and one fixed identity-frame NIST pair pass. A second distinct pair, known non-identity transform, and broader topology/sampling cases do not exist yet. |
 | Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
 
@@ -46,7 +46,7 @@ Prove that supported Viewer workflows are deterministic, inspectable, hostable, 
 
 ### Current Assessment
 
-Phase 1 is **passed locally for the fixed supported scope**. This means the current supported data, display, host, evidence, failure, and pointer-interaction paths have current-source regression evidence. It does not establish arbitrary-data geometric correctness, calibrated physical accuracy, metrology certification, or remote CI portability of foreground Windows input.
+Phase 1 is **passed for the fixed supported scope locally and in the current Windows CI workflow**. This means the current supported data, display, host, evidence, failure, dual-capture, and pointer-interaction paths have current-source regression evidence. It does not establish arbitrary-data geometric correctness, calibrated physical accuracy, metrology certification, or portability to every Windows desktop/session configuration.
 
 ### Selected-Point Provenance Gate
 
@@ -76,6 +76,8 @@ Passed locally on 2026-07-15 for the standalone Viewer and the same Viewer DLL h
 - Viewer and Shell each pass on two consecutive current-build runs. The two Viewer reports are byte-identical with SHA-256 `4D6C926DA834ED6AE017D98FEB84BCB043C1FA77AD3364A36D1B1EB842C7CF4E`; the two Shell reports are byte-identical with SHA-256 `2F2CBB688D8C3293C3176100CC6AE2D985BFF1A8F19DE840E77D98D72CCEA2A0`.
 - The before and after Viewer/Shell screenshots pass the shared pixel-quality gate. The post-input Shell shows the same cube coordinate in the hosted HUD, Tool / Inspector context, and `Camera / Pick State`; this closes the stale linked-summary issue exposed by the first passing input run.
 - Current evidence: `artifacts/pointer_input_regression_20260715`. The current-source build has zero warnings/errors, the fixed Viewer/Shell matrix passes `128/128`, and BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`.
+- Windows Actions observation run `29378562022` at commit `7bebc62` records Viewer and Shell exit `0`, report presence, `pass=True`, routed events `3/12/3/1`, and successful pick/orbit/pan/zoom. Its authenticated artifact `8328811080` is `1,592,037` bytes with digest `sha256:90f4c9aae4ab5dee126ebfc59ea81d85006ef249bf9481d8107aa6677ec229f0`.
+- Commit `8a841a6` made this a mandatory CI gate. Run `29378878976` passed the gate and every existing CI step; authenticated artifact `8328930089` is `1,593,122` bytes with digest `sha256:3179673b1d98406daaebc29bb1c4902e977bc9c49bf23a5d233e6dba5a5d8247` and repeats both host results with `Gate|mandatory=True`.
 
 ### Hosted Dual-Capture Gate
 
@@ -85,10 +87,11 @@ Passed locally on 2026-07-15 for quick C3D and the fixed full-resolution NIST no
 - The pre-fix full NIST command ended with process code `1` after about three minutes and produced zero capture artifacts. The fixed command completes with process code `0`; the embedded `411 x 380` Viewer and `1280 x 800` Shell captures both pass the shared quality gate on attempt 1.
 - The same-run Viewer contract records `4,223,524` full-query points, query point `2,724,128`, `Published` state, result entity `result.nominal-actual-surface-deviation`, and smoke exit code `0`. Source, Preview, and Published result separation is unchanged.
 - Current evidence: `artifacts/dual_capture_orchestration_20260715`. The current-source build has zero warnings/errors, standalone/hosted pointer reports retain their established SHA-256 values, the fixed Viewer/Shell matrix passes `128/128`, and BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`.
+- Windows Actions runs `29378562022` and `29378878976` both pass the mandatory hosted Viewer/Shell dual-capture step. In the mandatory run, the hosted Viewer and full Shell are accepted on attempt 1 before the pointer gate runs.
 
 ### Next Work Order
 
-1. On the next explicit push, confirm the mandatory hosted dual-capture CI step passes and execute the pointer gate on the Windows Actions environment. Inspect whether foreground Windows input is available there before making the pointer gate mandatory.
+1. Preserve the mandatory hosted dual-capture and Viewer/Shell pointer-input Windows CI gates as Phase 1 regression coverage.
 2. Do not start Phase 2 implementation until a second genuinely distinct measured/nominal pair and an independently known non-identity transform or alignment truth are available.
 
 ## Phase 2 - Geometric And Algorithm Reliability
