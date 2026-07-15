@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -12,6 +13,8 @@ public static class StlMesh
 
     public static ImportedMesh Load(string path)
     {
+        PreflightBinaryTriangleCount(path);
+
         var bytes = File.ReadAllBytes(path);
         if (bytes.Length < 15)
         {
@@ -24,6 +27,24 @@ public static class StlMesh
         }
 
         return LoadAscii(path, bytes);
+    }
+
+    private static void PreflightBinaryTriangleCount(string path)
+    {
+        using var stream = File.OpenRead(path);
+        if (stream.Length < BinaryHeaderBytes + 4)
+        {
+            return;
+        }
+
+        Span<byte> prefix = stackalloc byte[BinaryHeaderBytes + 4];
+        stream.ReadExactly(prefix);
+        var triangleCount = BinaryPrimitives.ReadUInt32LittleEndian(prefix[BinaryHeaderBytes..]);
+        var expectedLength = BinaryHeaderBytes + 4L + triangleCount * (long)BinaryTriangleBytes;
+        if (triangleCount > 0 && expectedLength == stream.Length)
+        {
+            ValidateTriangleCount(path, triangleCount);
+        }
     }
 
     private static bool TryLoadBinary(string path, byte[] bytes, out ImportedMesh mesh)
@@ -41,10 +62,7 @@ public static class StlMesh
             return false;
         }
 
-        if (triangleCount > MaxTriangleCount)
-        {
-            throw new InvalidDataException($"STL triangle count exceeds the smoke loader limit: {triangleCount:N0}");
-        }
+        ValidateTriangleCount(path, triangleCount);
 
         var positions = new Vector3[checked((int)triangleCount * 3)];
         var indices = new int[positions.Length];
@@ -101,14 +119,20 @@ public static class StlMesh
         }
 
         var triangleCount = vertices.Count / 3;
-        if (triangleCount > MaxTriangleCount)
-        {
-            throw new InvalidDataException($"STL triangle count exceeds the smoke loader limit: {triangleCount:N0}");
-        }
+        ValidateTriangleCount(path, triangleCount);
 
         var positions = vertices.ToArray();
         var indices = Enumerable.Range(0, positions.Length).ToArray();
         return ImportedMesh.CreateTriangleMesh(path, Path.GetFileNameWithoutExtension(path), "STL", positions, indices);
+    }
+
+    private static void ValidateTriangleCount(string path, long triangleCount)
+    {
+        if (triangleCount > MaxTriangleCount)
+        {
+            throw new InvalidDataException(
+                $"STL triangle count {triangleCount:N0} exceeds the supported limit {MaxTriangleCount:N0}: {path}");
+        }
     }
 
     private static float ParseSingle(string value, string path)

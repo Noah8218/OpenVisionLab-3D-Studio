@@ -10,6 +10,12 @@ return Run(args);
 static int Run(string[] args)
 {
     var lazProbePath = ReadOption(args, "--laz-probe");
+    var stlStreamProbePath = ReadOption(args, "--stl-stream-probe");
+    var meshDeviationParityPath = ReadOption(args, "--mesh-deviation-parity");
+    var meshDeviationNominalPath = ReadOption(args, "--nominal-stl");
+    var meshDeviationUnsignedPath = ReadOption(args, "--cloudcompare-unsigned");
+    var meshDeviationSignedPath = ReadOption(args, "--cloudcompare-signed");
+    var stlStreamProbeUnit = ReadOption(args, "--unit");
     var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
     var c3DMapPlyPath = ReadOption(args, "--ply");
     var recipePath = ReadOption(args, "--recipe");
@@ -27,7 +33,31 @@ static int Run(string[] args)
     var verifyVolume = args.Contains("--verify-volume", StringComparer.OrdinalIgnoreCase);
     var verifyCrossSection = args.Contains("--verify-cross-section", StringComparer.OrdinalIgnoreCase);
     var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
+    var verifyMeshDeviation = args.Contains("--verify-mesh-deviation", StringComparer.OrdinalIgnoreCase);
+    var verifyNominalActualComparison = args.Contains("--verify-nominal-actual-comparison", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
+
+    if (verifyNominalActualComparison)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
+            return 2;
+        }
+
+        return NominalActualComparisonVerification.Run(reportPath);
+    }
+
+    if (verifyMeshDeviation)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
+            return 2;
+        }
+
+        return MeshDeviationGoldenVerification.Run(reportPath);
+    }
 
     if (verifyC3DMapFidelity)
     {
@@ -117,6 +147,50 @@ static int Run(string[] args)
         return RunLazProbe(lazProbePath, reportPath, maxSampledPoints);
     }
 
+    if (stlStreamProbePath is not null)
+    {
+        if (reportPath is null || string.IsNullOrWhiteSpace(stlStreamProbeUnit))
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
+            return 2;
+        }
+
+        return RunStlStreamProbe(stlStreamProbePath, stlStreamProbeUnit, reportPath);
+    }
+
+    if (meshDeviationParityPath is not null)
+    {
+        if (reportPath is null
+            || string.IsNullOrWhiteSpace(stlStreamProbeUnit)
+            || meshDeviationNominalPath is null
+            || meshDeviationUnsignedPath is null
+            || meshDeviationSignedPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
+            return 2;
+        }
+
+        int? maxPoints;
+        try
+        {
+            maxPoints = ReadIntOption(args, "--max-points");
+        }
+        catch (InvalidDataException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 2;
+        }
+
+        return RunMeshDeviationParity(
+            meshDeviationNominalPath,
+            meshDeviationParityPath,
+            meshDeviationUnsignedPath,
+            meshDeviationSignedPath,
+            stlStreamProbeUnit,
+            reportPath,
+            maxPoints);
+    }
+
     if (c3DMapProbePath is not null)
     {
         if (reportPath is null || c3DMapPlyPath is null)
@@ -143,6 +217,8 @@ static int Run(string[] args)
     {
         Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>] [--run-record <json> --html-report <html> --csv-report <csv> --viewer-screenshot <png>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
@@ -150,6 +226,8 @@ static int Run(string[] args)
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
         return 2;
     }
 
@@ -157,6 +235,16 @@ static int Run(string[] args)
     {
         var fullRecipePath = Path.GetFullPath(recipePath);
         var recipeType = ReadRecipeType(fullRecipePath);
+        if (recipeType.Equals(NominalActualComparisonRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            return RunNominalActualComparisonRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                compareContractPath,
+                runArtifacts);
+        }
+
         if (recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
         {
             return RunLazTwoPointRecipe(fullRecipePath, reportPath, expectedStatus, compareContractPath, runArtifacts);
@@ -250,6 +338,76 @@ static int Run(string[] args)
         Console.Error.WriteLine(ex.Message);
         return 1;
     }
+}
+
+static int RunNominalActualComparisonRecipe(
+    string fullRecipePath,
+    string reportPath,
+    string? expectedStatus,
+    string? compareContractPath,
+    RunArtifactOptions runArtifacts)
+{
+    var recipe = NominalActualComparisonRecipe.Load(fullRecipePath);
+    var input = recipe.ToInput(fullRecipePath);
+    var result = new NominalActualComparisonExecutor()
+        .ExecuteAsync(input, maximumDisplaySamples: 0)
+        .GetAwaiter()
+        .GetResult();
+    var toolResult = NominalActualComparisonContract.CreateToolResult(result);
+    var comparisonState = "NotCompared";
+    try
+    {
+        if (compareContractPath is not null)
+        {
+            CompareNominalActualUiContract(compareContractPath, result);
+            comparisonState = "Matched";
+        }
+    }
+    catch (InvalidDataException exception)
+    {
+        WriteNominalActualReport(
+            reportPath,
+            fullRecipePath,
+            recipe,
+            result,
+            $"Mismatch: {exception.Message}");
+        throw;
+    }
+
+    WriteNominalActualReport(
+        reportPath,
+        fullRecipePath,
+        recipe,
+        result,
+        comparisonState);
+    var runStep = new InspectionRunStep(
+        input.StepId,
+        input.ActualSource.Id,
+        [input.NominalSource.Id],
+        [input.QuerySource.Id]);
+    RunRecordWriter.Write(
+        runArtifacts,
+        fullRecipePath,
+        recipe.RecipeType,
+        recipe.Version,
+        input.ActualSource.Path,
+        input.ActualSource.Id,
+        input.Unit,
+        runStep,
+        toolResult,
+        reportPath,
+        compareContractPath);
+
+    if (expectedStatus is not null
+        && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status)
+            || result.Status != status))
+    {
+        Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {result.Status}.");
+        return 3;
+    }
+
+    Console.WriteLine($"{toolResult.ToolName}: {toolResult.Status} | Viewer/Runner {comparisonState}");
+    return toolResult.Status == ResultStatus.Error ? 4 : 0;
 }
 
 static int RunC3DPointPairDimensionsRecipe(
@@ -411,6 +569,69 @@ static int RunLazProbe(string lazPath, string reportPath, int maxSampledPoints)
     {
         Console.Error.WriteLine(ex.Message);
         return 1;
+    }
+}
+
+static int RunStlStreamProbe(string stlPath, string unit, string reportPath)
+{
+    try
+    {
+        ValidateReportUnit(unit);
+
+        var summary = BinaryStlInspectionReader.Scan(stlPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        File.WriteAllLines(reportPath, [
+            "BinaryStlInspectionProbe|Pass",
+            $"Source|path={summary.SourcePath}|bytes={summary.SourceByteLength}|sha256={summary.SourceSha256}",
+            $"Geometry|declaredTriangles={summary.DeclaredTriangleCount}|processedTriangles={summary.ProcessedTriangleCount}|expandedVertices={summary.ExpandedVertexCount}",
+            $"Bounds|minimum={FormatStlVector(summary.BoundsMinimum)}|maximum={FormatStlVector(summary.BoundsMaximum)}|unit={unit}",
+            "Frame|transform=identity|coordinates=source-stl|alignment=none",
+            "Sampling|mode=none|renderDensity=independent|sourceTriangleOrder=preserved"
+        ]);
+        Console.WriteLine(
+            $"Binary STL inspection probe: Pass ({summary.ProcessedTriangleCount:N0} triangles, {summary.SourceByteLength:N0} bytes)");
+        return 0;
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return 1;
+    }
+}
+
+static int RunMeshDeviationParity(
+    string nominalStlPath,
+    string measuredPlyPath,
+    string cloudCompareUnsignedPlyPath,
+    string cloudCompareSignedPlyPath,
+    string unit,
+    string reportPath,
+    int? maxPoints)
+{
+    try
+    {
+        ValidateReportUnit(unit);
+        return MeshDeviationParityVerification.Run(
+            nominalStlPath,
+            measuredPlyPath,
+            cloudCompareUnsignedPlyPath,
+            cloudCompareSignedPlyPath,
+            unit,
+            reportPath,
+            maxPoints);
+    }
+    catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or OverflowException)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return 1;
+    }
+}
+
+static void ValidateReportUnit(string unit)
+{
+    if (unit.Length > 64 || unit.IndexOfAny(['|', '\r', '\n']) >= 0)
+    {
+        throw new InvalidDataException("--unit must be a single report-safe value of at most 64 characters.");
     }
 }
 
@@ -863,6 +1084,197 @@ static string FormatLazPoint(LazPointCloudPoint point) =>
     string.Create(
         CultureInfo.InvariantCulture,
         $"x={point.Position.X:F3},y={point.Position.Y:F3},z={point.Position.Z:F3},rgb={point.Red},{point.Green},{point.Blue}");
+
+static string FormatStlVector(Vector3 point) =>
+    string.Create(CultureInfo.InvariantCulture, $"({point.X:G9},{point.Y:G9},{point.Z:G9})");
+
+static void WriteNominalActualReport(
+    string reportPath,
+    string recipePath,
+    NominalActualComparisonRecipe recipe,
+    NominalActualComparisonResult result,
+    string viewerRunnerState)
+{
+    var input = result.Input;
+    var toolResult = NominalActualComparisonContract.CreateToolResult(result);
+    var lines = new List<string>
+    {
+        "OpenVisionLab 3D nominal/actual Runner report",
+        $"Recipe|{recipe.RecipeType}|version={recipe.Version}|path={Path.GetFullPath(recipePath)}",
+        $"NominalActualRecipeStep|id={input.StepId}|direction={NominalActualComparisonInput.Direction}|sampling={NominalActualComparisonRecipe.FullQuerySampling}|unit={input.Unit}|frame={input.FrameId}|alignment={input.AlignmentId}|lowerTolerance={FormatPreciseNumber(input.LowerTolerance)}|upperTolerance={FormatPreciseNumber(input.UpperTolerance)}",
+        $"NominalActualActualSource|id={input.ActualSource.Id}|path={input.ActualSource.Path}|bytes={input.ActualSource.ByteLength}|sha256={input.ActualSource.Sha256}",
+        $"NominalActualNominalSource|id={input.NominalSource.Id}|path={input.NominalSource.Path}|bytes={input.NominalSource.ByteLength}|sha256={input.NominalSource.Sha256}",
+        $"NominalActualQuerySource|id={input.QuerySource.Id}|path={input.QuerySource.Path}|bytes={input.QuerySource.ByteLength}|sha256={input.QuerySource.Sha256}",
+        $"NominalActualInput|sourceFingerprint={input.SourceFingerprint}|executionFingerprint={input.ExecutionFingerprint}",
+        $"NominalActualResult|status={result.Status}|points={result.ComparedPointCount}|below={result.BelowLowerToleranceCount}|within={result.WithinToleranceCount}|above={result.AboveUpperToleranceCount}|out={result.OutOfToleranceCount}|directSign={result.DirectSignResolvedCount}|robustRecovered={result.RobustSignRecoveredCount}|fullQuery=True|message={InspectionContractText.Clean(result.Message)}",
+        FormatNominalActualStatistics("NominalActualSignedStatistics", result.Signed, input.Unit),
+        FormatNominalActualStatistics("NominalActualUnsignedStatistics", result.Unsigned, input.Unit),
+        InspectionContractText.FormatInspectionStep(NominalActualComparisonContract.CreateInspectionStep(input)),
+        InspectionContractText.FormatToolResult(toolResult, includePrefix: true),
+        $"ViewerRunnerComparison|{viewerRunnerState}|contract={(viewerRunnerState == "NotCompared" ? InspectionContractText.Missing : "provided")}",
+        InspectionContractText.MetricsMarker
+    };
+    lines.AddRange(toolResult.Metrics.Select(metric => InspectionContractText.FormatMetric(metric)));
+    lines.Add(InspectionContractText.OverlaysMarker);
+    lines.AddRange(toolResult.Overlays.Select(overlay => InspectionContractText.FormatOverlay(overlay)));
+
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+    File.WriteAllLines(reportPath, lines);
+}
+
+static void CompareNominalActualUiContract(
+    string path,
+    NominalActualComparisonResult result)
+{
+    var lines = File.ReadAllLines(path);
+    var input = result.Input;
+    var inputFields = ReadContractFields(lines, "NominalActualInput");
+    RequireContractValue(inputFields, "configured", "True", "input configured");
+    RequireContractValue(inputFields, "step", input.StepId, "step ID");
+    RequireContractValue(inputFields, "direction", NominalActualComparisonInput.Direction, "direction");
+    RequireContractValue(inputFields, "unit", input.Unit, "unit");
+    RequireContractValue(inputFields, "frame", input.FrameId, "frame");
+    RequireContractValue(inputFields, "alignment", input.AlignmentId, "alignment");
+    RequireContractValue(inputFields, "actualId", input.ActualSource.Id, "actual ID");
+    RequireContractValue(inputFields, "actualSha256", input.ActualSource.Sha256, "actual SHA-256");
+    RequireContractValue(inputFields, "nominalId", input.NominalSource.Id, "nominal ID");
+    RequireContractValue(inputFields, "nominalSha256", input.NominalSource.Sha256, "nominal SHA-256");
+    RequireContractValue(inputFields, "queryId", input.QuerySource.Id, "query ID");
+    RequireContractValue(inputFields, "querySha256", input.QuerySource.Sha256, "query SHA-256");
+    RequireContractValue(inputFields, "sourceFingerprint", input.SourceFingerprint, "source fingerprint");
+
+    var viewModelFields = ReadContractFields(lines, "NominalActualViewModel");
+    RequireContractValue(viewModelFields, "state", "Published", "ViewModel state");
+    RequireContractValue(
+        viewModelFields,
+        "publishedFingerprint",
+        input.ExecutionFingerprint,
+        "published Preview fingerprint");
+
+    var resultFields = ReadContractFields(lines, "NominalActualResult");
+    RequireContractValue(resultFields, "available", "True", "result available");
+    RequireContractValue(resultFields, "status", result.Status.ToString(), "status");
+    RequireContractValue(resultFields, "executionFingerprint", input.ExecutionFingerprint, "execution fingerprint");
+    RequireContractLong(resultFields, "points", result.ComparedPointCount);
+    RequireContractLong(resultFields, "below", result.BelowLowerToleranceCount);
+    RequireContractLong(resultFields, "within", result.WithinToleranceCount);
+    RequireContractLong(resultFields, "above", result.AboveUpperToleranceCount);
+    RequireContractLong(resultFields, "directSign", result.DirectSignResolvedCount);
+    RequireContractLong(resultFields, "robustRecovered", result.RobustSignRecoveredCount);
+    RequireContractValue(resultFields, "fullQuery", "True", "full-query sampling");
+
+    CompareNominalActualStatistics(
+        ReadContractFields(lines, "NominalActualSignedStatistics"),
+        result.Signed,
+        input.Unit,
+        "signed");
+    CompareNominalActualStatistics(
+        ReadContractFields(lines, "NominalActualUnsignedStatistics"),
+        result.Unsigned,
+        input.Unit,
+        "unsigned");
+
+    var resultEntityFields = ReadContractFields(
+        lines,
+        NominalActualComparisonContract.ResultEntityId);
+    RequireContractValue(resultEntityFields, "source", input.ActualSource.Id, "published result source");
+    RequireContractValue(resultEntityFields, "status", result.Status.ToString(), "published result status");
+
+    var resultLayerFields = ReadContractFields(
+        lines,
+        NominalActualComparisonContract.ResultLayerId);
+    RequireContractValue(resultLayerFields, "visible", "True", "published result layer visibility");
+    RequireContractValue(
+        resultLayerFields,
+        "entities",
+        NominalActualComparisonContract.ResultEntityId,
+        "published result layer entity");
+}
+
+static Dictionary<string, string> ReadContractFields(
+    IReadOnlyList<string> lines,
+    string prefix)
+{
+    var line = lines.FirstOrDefault(item =>
+        item.StartsWith(prefix + "|", StringComparison.Ordinal));
+    if (line is null)
+    {
+        throw new InvalidDataException($"UI contract has no {prefix} line.");
+    }
+
+    return line.Split('|')
+        .Skip(1)
+        .Select(part => part.Split('=', 2))
+        .Where(parts => parts.Length == 2)
+        .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
+}
+
+static void RequireContractValue(
+    IReadOnlyDictionary<string, string> fields,
+    string name,
+    string expected,
+    string label)
+{
+    if (!fields.TryGetValue(name, out var actual)
+        || !actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidDataException(
+            $"Nominal/actual {label} mismatch. UI={actual ?? "(missing)"}, runner={expected}.");
+    }
+}
+
+static void RequireContractLong(
+    IReadOnlyDictionary<string, string> fields,
+    string name,
+    long expected)
+{
+    if (!fields.TryGetValue(name, out var text)
+        || !long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var actual)
+        || actual != expected)
+    {
+        throw new InvalidDataException(
+            $"Nominal/actual {name} mismatch. UI={text ?? "(missing)"}, runner={expected}.");
+    }
+}
+
+static void CompareNominalActualStatistics(
+    IReadOnlyDictionary<string, string> fields,
+    NominalActualDeviationStatistics expected,
+    string unit,
+    string label)
+{
+    RequireContractLong(fields, "count", expected.Count);
+    RequireContractDouble(fields, "min", expected.Minimum, label);
+    RequireContractDouble(fields, "max", expected.Maximum, label);
+    RequireContractDouble(fields, "mean", expected.Mean, label);
+    RequireContractDouble(fields, "stdPopulation", expected.StandardDeviationPopulation, label);
+    RequireContractDouble(fields, "rms", expected.RootMeanSquare, label);
+    RequireContractValue(fields, "unit", unit, $"{label} unit");
+}
+
+static void RequireContractDouble(
+    IReadOnlyDictionary<string, string> fields,
+    string name,
+    double expected,
+    string label)
+{
+    if (!fields.TryGetValue(name, out var text)
+        || !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var actual)
+        || Math.Abs(actual - expected) > 1e-12)
+    {
+        throw new InvalidDataException(
+            $"Nominal/actual {label} {name} mismatch. UI={text ?? "(missing)"}, runner={FormatPreciseNumber(expected)}.");
+    }
+}
+
+static string FormatNominalActualStatistics(
+    string label,
+    NominalActualDeviationStatistics statistics,
+    string unit) =>
+    $"{label}|count={statistics.Count}|min={FormatPreciseNumber(statistics.Minimum)}|max={FormatPreciseNumber(statistics.Maximum)}|mean={FormatPreciseNumber(statistics.Mean)}|stdPopulation={FormatPreciseNumber(statistics.StandardDeviationPopulation)}|rms={FormatPreciseNumber(statistics.RootMeanSquare)}|unit={unit}";
+
+static string FormatPreciseNumber(double value) =>
+    value.ToString("G17", CultureInfo.InvariantCulture);
 
 static void CompareUiContract(string path, ToolResult result, params string[] metricNames)
 {

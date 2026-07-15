@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Workbench Layout Design
 
-Updated: 2026-07-07
+Updated: 2026-07-14
 
 ## Purpose
 
@@ -47,6 +47,180 @@ The OpenVisionLab 3D layout should make that workflow visible on the first scree
 +--------------------------------------------------------------------------------+
 ```
 
+## Nominal / Actual Comparison Layout Contract
+
+The first nominal/actual product slice must use the existing workbench zones. It must not add another floating tool window or move inspection facts out of the separately hostable Viewer.
+
+Commercial workflow evidence behind this placement:
+
+- ZEISS INSPECT presents nominal/actual matching, deviation color scale, editable parametric steps, and reporting as one traceable inspection workflow: https://www.zeiss.com/metrology/us/software/zeiss-inspect.html and https://www.zeiss.com/metrology/us/software/zeiss-inspect/features/parametrics.html
+- PolyWorks|Inspector keeps alignment explicit and exposes surface, boundary, section, and thickness measured-to-nominal deviation through color maps: https://www.innovmetric.com/products/polyworks-inspector
+- OpenVisionLab should emulate the explicit input/alignment/result relationship, not their full CAD, GD&T, automation, or enterprise scope.
+
+### First Slice Scope
+
+The first slice is deliberately fixed to the local ignored NIST Overhang X4 evidence. It proves the product workflow around the already passed algorithm; it does not introduce a general CAD comparison engine.
+
+| Contract item | First-slice value |
+| --- | --- |
+| Actual source identity | Original Part 1 measured binary STL, SHA-256 `2108E1B17B2CCE59138C74E5DF4951D407F52A3649C257C3FE942DE874FACA00`, 8,560,096 triangles. |
+| Nominal source identity | Original `OverhangPart_9x5x5mm.STL`, SHA-256 `D9FC086CA8C0BC3722709E5C03A39C5C1CF60553845FF62F5699780E1D3C1734`, 2,904 triangles. |
+| Inspection query set | CloudCompare-extracted ordered measured-vertex PLY, 4,223,524 points. It is a traceable validation derivative, not replacement source geometry. |
+| Display proxy | A deterministic sample of the query set. Render density may change only this proxy, never the inspection query set or result metrics. |
+| Units and frame | Millimetres, NIST 3-2-1 part frame, identity transform in OpenVisionLab. |
+| Direction | Actual query points to nominal triangles. |
+| Signed mode | Robust signed C2M with the passed fixed-sample contract. |
+| Alignment | `Identity / source-provided NIST 3-2-1`; read-only in the first slice. No ICP, best-fit, center matching, or scale adjustment. |
+| Source policy | Source, derivative, display proxy, preview result, and published result remain separate identities and layers. |
+
+The ignored NIST files remain local trust inputs. No layout work authorizes committing or redistributing them.
+
+### Active Workbench Placement
+
+```text
++--------------------------------------------------------------------------------+
+| Job Bar: Recipe | Actual | Nominal | Preview Comparison | Publish | Progress   |
++----------------------+--------------------------------------+------------------+
+| Data & Layers        | 3D Inspection View                   | Tool / Inspector |
+| Actual source        | Actual display proxy                 | Surface Deviation|
+| Actual query set     |   signed deviation colors            | Direction A -> N |
+| Nominal source       | Nominal neutral reference toggle     | Alignment: source|
+| Preview result       | Fixed-zero tolerance legend          | Lower / upper tol|
+| Published result     | Picked deviation + nearest triangle  | Sampling contract|
+| Unit/frame/hash      | Source pair + frame + progress HUD    | Preview / Cancel |
++----------------------+--------------------------------------+------------------+
+| Evidence: metrics | source hashes | frame/alignment | Runner match | artifacts |
++--------------------------------------------------------------------------------+
+| Linked View: deviation distribution and selected-point/profile details          |
++--------------------------------------------------------------------------------+
+```
+
+### Panel Responsibilities For Comparison
+
+| Area | Required nominal/actual content |
+| --- | --- |
+| App / Job Bar | Actual and nominal readiness, recipe dirty state, explicit `Preview Comparison`, explicit `Publish Result`, running progress, and cancel. Loading or editing never runs comparison automatically. |
+| Data & Layers | Separate Actual Source, Actual Query Set, Nominal Source, Preview Result, and Published Result rows. Each row exposes identity, visibility, units, frame, and provenance status. Visibility toggles affect rendering only. |
+| 3D Inspection View | Actual proxy colored by signed deviation, independently toggled neutral nominal reference, lower/zero/upper legend in millimetres, selected deviation, nearest nominal triangle, workflow state, processed/total count, and essential result metrics in the Viewer-internal HUD. |
+| Tool / Inspector | Active `Surface Deviation` tool, actual-to-nominal direction, read-only first-slice alignment, lower/upper tolerances, robust signed mode, inspection query count, Preview/Cancel/Publish command state, and result summary. |
+| Evidence Workbench | Source and derivative hashes, frame/alignment identity, algorithm/tolerance fingerprint, Viewer/Runner metric match, run record, screenshot, and report paths. |
+| Linked View Strip | Signed-deviation distribution, threshold counts, and selected-point details. It is supporting evidence, not the only place where result state appears. |
+
+### Viewer Visual Contract
+
+- Before Preview, actual and nominal inputs use neutral source colors and are clearly labelled.
+- After Preview, the actual proxy owns the signed color map. Nominal is independently visible but defaults off so coincident geometry cannot hide deviation colors.
+- The legend is centered at zero and always displays lower tolerance, zero, upper tolerance, and `mm`.
+- Negative out-of-tolerance, in-tolerance, positive out-of-tolerance, and unavailable/no-correspondence states use distinct colors. Status must never depend on color alone; numeric range and Pass/Fail text stay visible.
+- Picking a colored actual point shows its ordered query index, stable actual/query source IDs, signed deviation, unsigned distance, nearest nominal triangle ID, and status. Do not invent an actual-source vertex index when the source/query relationship does not provide one.
+- Standalone Viewer and Shell-hosted Viewer show the same essential source pair, direction, unit, frame, progress, and result facts. Shell panes may add detail but cannot be required to understand the active comparison.
+- Nominal visibility, actual visibility, color mode, camera, selection, and render-density changes do not run Preview and do not change calculated metrics.
+
+### Workflow State Contract
+
+| State | Entry condition | Enabled commands | Visible evidence |
+| --- | --- | --- | --- |
+| `NoInputs` | Actual or nominal contract is missing. | Load/Open Recipe only. | Missing input and validation cause. |
+| `InputsReady` | Distinct sources, units, frame, query provenance, and hashes are valid. | Preview. | Both input summaries and `NotRun`. |
+| `PreviewStale` | A result-affecting input, tolerance, direction, frame, or sampling contract changed. | Preview. | Previous published result may remain visible as an older revision; preview is clearly stale. |
+| `PreviewRunning` | Explicit Preview started. | Cancel only for comparison execution. | Responsive UI, processed/total count, elapsed time, and source pair. |
+| `PreviewReady` | Full declared query set completed successfully. | Preview again, Publish. | Metrics, color map, legend, extrema, threshold counts, and preview fingerprint. |
+| `Published` | Explicit Publish accepted the current Preview fingerprint. | Preview, save recipe, run/compare. | Separate immutable result entity/layer and durable evidence identity. |
+| `Failed` | Input validation, cancellation, decode, or calculation failed. | Correct inputs or Preview again. | Controlled cause; no partial result is presented as complete. |
+
+State rules:
+
+1. Actual and nominal files must be distinct and their hashes must match the recipe/evidence contract.
+2. Parameter edits invalidate Preview but do not mutate the source or silently update Published evidence.
+3. Preview completion is atomic. Cancellation or failure cannot leave a partially colored result labelled ready.
+4. Publish is enabled only when the current input/parameter fingerprint matches the completed Preview.
+5. The full query set drives metrics. Display sampling remains independent and is reported separately.
+6. The current full NIST calculation takes about 162 seconds locally, so execution must be asynchronous, cancellable, and visibly progressive before it becomes an interactive product command.
+
+### View -> ViewModel -> Model Implementation Order
+
+The next implementation must follow this order and keep each checkpoint buildable:
+
+1. **View binding surface**
+   - Add the comparison rows, command controls, progress state, result summary, Viewer HUD lines, legend slot, and Linked View distribution slot to `OpenVisionThreeDViewerControl.xaml` and `Shell/MainWindow.xaml`.
+   - Bind through a single `NominalActual` child surface instead of adding another large flat property group to the existing Viewer ViewModel.
+   - Use only View-owned converters for visibility or presentation. No durable workflow state belongs in XAML code-behind.
+2. **ViewModel workflow**
+   - Add `NominalActualComparisonViewModel` under the Viewer project and expose it from `MainWindowViewModel`.
+   - Own state, validation summaries, command enablement, progress, cancellation, tolerances, visibility, result summaries, and preview/publish fingerprints there.
+   - Shell binds through `ViewerContent.ViewModel.NominalActual`; it does not duplicate comparison state.
+3. **Model and execution contracts**
+   - Add only the input, recipe, result, and execution types required by the proven View/ViewModel surface.
+   - Preserve stable IDs for actual source, nominal source, query derivative, alignment reference, comparison step, preview layer, and published result.
+   - Runner and Viewer use the same non-WPF algorithm/service contract. Render buffers and display proxies never become measurement inputs.
+4. **Bridge limits**
+   - Viewer code-behind may bridge file dialogs, OpenGL buffer upload, and pointer/render events.
+   - Long-running execution, cancellation state, result identity, command behavior, recipe persistence, and evidence formatting do not belong in code-behind.
+   - Viewer Host API v1.0 remains binary compatible; do not expose the concrete child ViewModel as an external host API.
+
+### View Binding Surface Checkpoint
+
+The first View-only checkpoint passed on 2026-07-14. `OpenVisionThreeDViewerControl.xaml` and Shell `MainWindow.xaml` now reserve bindings for the source pair, unit/frame summary, visibility, Surface Deviation state, tolerances, progress, explicit Preview/Cancel/Publish commands, Viewer HUD, signed legend, Evidence summary, and Linked View distribution. Missing ViewModel state renders as a disabled `No inputs` surface; hidden result-only slots remain collapsed.
+
+This checkpoint itself added no comparison calculation, durable state, command behavior, recipe/result model, or code-behind workflow logic. The subsequent ViewModel checkpoint below now owns presentation workflow state; shared models and execution remain next.
+
+Current-source evidence is under `artifacts/nominal_actual_view_20260714`:
+
+- before: `viewer_before.png`, `shell_before.png`, and `shell_viewer_before.png`;
+- after: `viewer_after.png`, `shell_after.png`, and `shell_viewer_after.png`;
+- contracts: `viewer_before.txt`, `shell_before.txt`, `viewer_after.txt`, and `shell_after.txt`.
+
+All three before and all three after Viewer/embedded-Viewer/Shell pixel-quality checks accepted their first capture. Visual comparison confirmed that the neutral NIST nominal mesh, camera area, existing HUD, docking panes, and scroll access remain available without overlap. The post-change report at `artifacts/nominal_actual_view_20260714/regression/matrix_smoke_summary_after.txt` records `128` passes and no failures, and `mesh_deviation_golden_after.txt` records `17/17` passes.
+
+### ViewModel Workflow Checkpoint
+
+The second checkpoint passed on 2026-07-14. `NominalActualComparisonViewModel` is exposed as the single `MainWindowViewModel.NominalActual` child surface and owns `NoInputs`, `InputsReady`, `PreviewStale`, `PreviewRunning`, `PreviewReady`, `Published`, and `Failed` state. It also owns source/frame/alignment summaries, actual/nominal visibility, zero-centred tolerance validation, command enablement, progress/cancellation, request IDs, and input/preview/published fingerprints. Shell continues to bind to the same Viewer-owned child state.
+
+`PreviewRequested` and `PublishRequested` are narrow workflow events. The ViewModel rejects invalid or same-file inputs, prevents a missing executor from leaving Preview permanently running, ignores stale/cancelled completions, and makes Publish available only for the matching completed fingerprint. Code-behind only invokes the deterministic smoke verifier and writes contract evidence; it does not own command behavior.
+
+Current-source evidence is under `artifacts/nominal_actual_viewmodel_20260714`:
+
+- deterministic state/command report: `viewmodel_verification_after.txt` (`50/50` pass);
+- before/after Viewer captures and contracts: `viewer_before.png`, `viewer_after.png`, `viewer_before.txt`, and `viewer_after.txt`;
+- before/after Shell captures and contracts: `shell_before.png`, `shell_after.png`, `shell_viewer_before.png`, `shell_viewer_after.png`, `shell_before.txt`, and `shell_after.txt`;
+- regression reports: `regression/matrix_smoke_summary_after.txt` (`128/128`) and `regression/mesh_deviation_golden_after.txt` (`17/17`).
+
+The after views show ViewModel-owned `-0.300` / `0.300` tolerances, controlled `No inputs` validation, disabled commands, and Shell evidence text without clipping. That checkpoint intentionally preceded the shared Model and execution work below.
+
+### Model And Preview Execution Checkpoint
+
+The third checkpoint passed locally on 2026-07-14. Core now owns immutable actual/nominal/query identities, source and execution fingerprints, tolerances, statistics, display samples, and typed results. Data owns ordered binary-PLY vertex parsing. Tools owns the render-independent full-query executor and depends on Core/Data, not WPF or SharpGL. The Viewer bridge maps the validated fixed NIST input to the executor, forwards progress/cancellation, stores no numerical policy, and renders only the typed result supplied through `NominalActualComparisonViewModel`.
+
+The executor verifier passes `12/12`, and the ViewModel verifier passes `56` checks. A real standalone Viewer and the docked Shell each process all `4,223,524` NIST query points, classify `548,207` below, `2,990,143` within, and `685,174` above `[-0.3, 0.3] mm`, and render `59,487` signed-color display samples at stride `71`. The maximum precise contract-statistic delta from the independently parsed CloudCompare PLY outputs is `1.3381639552001445e-7 mm`, below `1e-6 mm`.
+
+Current-source evidence is under `artifacts/nominal_actual_execution_20260714`. `viewer_before.png` and `shell_before.png` are the pre-execution baseline; `viewer_after_final.png` and `shell_after_final.png` are the accepted final Preview captures. The final View keeps the signed legend inside the Viewer HUD so it does not overlap in the narrow Shell host. ViewModel synchronization also keeps the `Nominal` toggle and imported-mesh source-layer visibility consistent. The isolated post-change matrix passes `128/128`, and the mesh-deviation golden remains `17/17`.
+
+### Publish, Recipe, And Runner Checkpoint
+
+The fourth checkpoint passed locally on 2026-07-14. Explicit Publish creates `result.nominal-actual-surface-deviation` on a separate result layer without mutating actual, nominal, or query source entities. The typed `nominal-actual-surface-deviation` recipe preserves stable actual/nominal/query IDs, original byte lengths and SHA-256 values, `mm`, the NIST part frame, source-provided identity alignment, `full-query` evaluation, direction, and tolerances. Reopen reproduces the stable Viewer contract with zero differences.
+
+Headless Runner dispatches the typed recipe through the same non-WPF executor and independently compares persisted Viewer evidence. For all `4,223,524` points it reproduces the expected `Fail` result, `548,207` below, `2,990,143` within, `685,174` above, and 13 metrics plus one signed color-map overlay. `ViewerRunnerComparison|Matched` passes, and schema `1.2` JSON plus HTML/CSV carry actual source, nominal reference, query measurement, step, metric, overlay, and execution identity. Shell parses nominal/actual Viewer and Runner status plus signed mean and out-of-tolerance count before showing `recipe comparison matched`.
+
+Current-source UI and workflow evidence is under `artifacts/nominal_actual_publish_20260714` and `artifacts/nominal_actual_render_density_20260714`. The latter preserves fresh before and accepted after Fast/Balanced/Detailed Viewer captures. Executor/recipe/result verification passes `26/26`, ViewModel verification passes `60` checks, the fixed matrix passes `128/128`, and existing typed algorithm/map goldens and BinaryHost remain green. Fast/Balanced/Detailed render `24,992` / `59,487` / `145,639` signed samples while all normalized measurement and published evidence remains byte-identical. See `docs/OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`.
+
+### First-Slice Acceptance Checklist
+
+- [x] Fresh before screenshots exist for standalone Viewer and full Shell before the first visible edit.
+- [x] Actual, nominal, query derivative, preview, and published result are separate visible identities.
+- [x] Source names, hashes, `mm`, NIST frame, identity alignment, and actual-to-nominal direction are visible in UI and contract evidence.
+- [x] The executor/recipe/result matrix covers display-budget invariance plus missing recipe/direct sources, empty unit/frame declarations, corrupt/truncated query PLY, same-file inputs, hash/byte-length mismatch, invalid direction, and invalid tolerance (`26/26`).
+- [ ] A non-empty but semantically wrong unit/frame declaration cannot be compared with source truth until the source contract carries independently derived unit/frame metadata.
+- [x] Camera, visibility, color, and render-density changes never trigger Preview.
+- [x] Result-affecting edits produce `PreviewStale`; Preview and Publish remain explicit separate actions.
+- [x] Preview runs asynchronously, reports progress, supports cancellation, and publishes no partial result on failure/cancel.
+- [x] Full-query metrics and published evidence remain identical across Fast/Balanced/Detailed Viewer modes while signed display samples change independently (`24,992` / `59,487` / `145,639`).
+- [x] Viewer and Runner reproduce the passed fixed-sample unsigned/signed metrics and status within declared tolerances.
+- [x] Actual signed colors, zero-centered legend, tolerance limits, result state, and selected-point provenance are readable in standalone Viewer and Shell. The fixed Balanced NIST smoke records query index, source IDs, signed/unsigned deviation, nearest nominal triangle, closest nominal point, sign path, and tolerance status.
+- [x] Publish creates a separate result layer/entity and does not modify either source.
+- [x] Recipe save/reopen preserves source/query hashes, units, frame, direction, alignment, tolerances, sampling contract, and stable IDs.
+- [x] Current-source Viewer and Shell screenshot-quality gates accept the after captures.
+- [x] Existing `128/128` data-loading/Viewer/Shell matrix and mesh-deviation golden remain green.
+
 ## Panel Responsibilities
 
 | Area | Responsibility | Must not own |
@@ -91,6 +265,7 @@ The implemented split is:
 
 | Feature | Layout home | Priority |
 | --- | --- | --- |
+| Measured/nominal signed surface comparison | Data & Layers + 3D Inspection View + Tool / Inspector + Evidence Workbench + Linked View | Fixed NIST identity-frame baseline done |
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
@@ -262,6 +437,20 @@ The implemented split is:
     - Shell ViewModel owns all artifact paths and command state; code-behind remains only the shared OS file-open bridge.
     - Runner JSON owns schema/run identity, UTC time, recipe/source identity and SHA-256, status/message/duration, every metric and overlay, Viewer/Runner match state, and artifact paths.
     - HTML is a human-readable one-run metric table and CSV is a machine-friendly one-row-per-metric export. This baseline excludes PDF, database persistence, batch trends, SPC, signing, and retention policy.
+
+29. Add the first measured/nominal signed surface-comparison slice. Done for the fixed NIST identity-frame baseline.
+    - Use the ignored NIST Overhang X4 source pair and passed 4,223,524-point identity-frame parity as the first controlled workflow.
+    - Preserve the completed View binding surface, `NominalActualComparisonViewModel`, Core contracts, Data parser, Tools executor/typed recipe, separate Publish result, and Runner parity.
+    - Keep actual source, nominal source, validation query derivative, display proxy, preview, and published result as separate traceable identities.
+    - Run full-query Preview asynchronously with progress/cancel, preserve explicit Publish, and keep metrics independent from render density.
+    - Standalone Viewer, Shell, recipe reopen, Runner parity, screenshot-quality, existing matrix/golden evidence, and schema `1.2` Run Record now pass. A second pair and non-identity alignment remain separate gates.
+
+30. Clarify current versus next-Preview nominal/actual display density. Done for the fixed NIST baseline.
+    - The standalone Viewer density control, Viewer-internal HUD, Shell `Data & Layers`, Shell `Tool / Inspector`, and linked deviation summary expose the display density used by the completed result separately from the density selected for the next explicit Preview.
+    - `Current display` records the completed density name, display-point budget, actual display sample count, and stride. `Next Preview` records the selected density name and budget and states when another explicit Preview is required.
+    - Changing render density must not rerun nominal/actual comparison, replace the completed display samples, change full-query metrics, or mutate a published result. The new density is snapshotted only when the user invokes `Preview Comparison`.
+    - Smoke evidence must complete Balanced Preview, change only the next density to Detailed, prove the existing `59,487` samples and stride `71` remain current, and then explicitly rerun Preview to prove Detailed becomes current.
+    - Current Viewer/Shell, contract, ViewModel, full density-regression, fixed matrix, and BinaryHost evidence is under `artifacts/nominal_actual_density_state_20260715`.
 
 ## Durable Run Bundle Evidence
 
@@ -492,4 +681,4 @@ The implemented split is:
 - Final tab names for Evidence Workbench.
 - Whether the Linked View Strip is bottom-docked or right-docked on smaller screens.
 
-Do not resolve these until the layout skeleton exists and current smoke evidence shows the workspace is usable.
+Keep these deferred until nominal/actual before/after evidence exposes a concrete usability problem; the existing layout skeleton alone is not a reason to redesign docking or command styling.

@@ -10,9 +10,11 @@ This repository is under active development and is not production-ready yet.
 
 - Product direction: local 3D vision inspection workbench.
 - Current focus: reliable typed inspection recipes on top of the passed SharpGL/WPF Viewer Foundation v1 baseline.
+- Current Viewer reliability: Phase 1 is passed locally for the fixed supported scope, including Foundation, fixed NIST selected-point provenance, current-versus-next-Preview density-state clarity, and repeatable real WPF click/orbit/pan/zoom input in standalone Viewer and hosted Shell. Remote CI portability of foreground Windows input is pending; Phase 2 geometric generalization is not passed; Phase 3 physical/metrology reliability is blocked and unverified. See `docs\OPENVISIONLAB_3D_VIEWER_RELIABILITY_PHASES_20260714.md`.
 - Current viewer scope: camera control, C3D height-grid rendering, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, reference-plane Volume, and exact-row Cross-section Dimensions slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
 - Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, independent Python recalculation within `2.37e-7`, and CloudCompare 2.13.2 full-resolution interchange/C2C and point-pair parity within `1e-6` Viewer units. Physical units, calibration, and licensed metrology parity remain unverified.
+- Current measured/nominal trust scope: the ignored NIST Overhang X4 measured STL streams all 8,560,096 original triangles with matching SHA-256/bounds; all 4,223,524 ordered validation vertices match CloudCompare unsigned/robust-signed C2M within `1e-6 mm` with zero sign mismatches. Standalone Viewer and Shell complete explicit full-query Preview, Publish to an independent result entity/layer, typed recipe save/reopen, and headless Runner replay. Viewer and Runner match the expected `Fail` result with 1,233,381 points outside `[-0.3, 0.3] mm`; current executor/result verification passes 27/27 and ViewModel verification passes 71 checks. A rendered result-point pick exposes ordered query index, actual/query source IDs, signed/unsigned deviation, nearest nominal triangle, and tolerance status in Viewer and Shell. Fast/Balanced/Detailed Viewer runs render 24,992/59,487/145,639 signed display points while preserving an identical normalized measurement/published-evidence SHA-256 across all modes. Other meshes, non-identity alignment, semantic unit/frame mismatch detection, metrology certification, and redistribution approval remain open.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
 
 ## Requirements
@@ -95,6 +97,26 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-data-loading-mat
 
 Use `-ArtifactDir artifacts\matrix_custom_after` when the matrix output should be isolated from the default evidence folder.
 
+Mesh-deviation stream/distance golden:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-mesh-deviation --report artifacts\mesh_deviation\mesh_deviation_golden.txt
+```
+
+Nominal/actual execution-contract golden:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report artifacts\nominal_actual_execution\executor_verification.txt
+```
+
+Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-nist-nominal-actual-render-density.ps1
+```
+
+The fixed ignored NIST end-to-end Publish, recipe reopen, Runner, Run Record, and Shell commands are recorded in `docs\OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`.
+
 Ad hoc GLB/STL/LAS/LAZ sample probe:
 
 ```powershell
@@ -109,6 +131,19 @@ Viewer screenshot and contract smoke:
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_two_point_after.png --smoke-c3d thickness --smoke-measure two-point --smoke-contracts artifacts\viewer_two_point_after.txt
+```
+
+Hosted Viewer and full-Shell evidence in one process. The Shell applies smoke actions once, captures the embedded Viewer first, captures the full workbench second, and exits only after both quality gates finish:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot artifacts\dual_capture\viewer.png --smoke-screenshot-quality-report artifacts\dual_capture\viewer_quality.txt --smoke-contracts artifacts\dual_capture\viewer_contract.txt --shell-smoke-screenshot artifacts\dual_capture\shell.png --shell-screenshot-quality-report artifacts\dual_capture\shell_quality.txt --smoke-c3d thickness --smoke-pick c3d
+```
+
+Real WPF pointer-input regression on an interactive Windows desktop:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\pointer\viewer.png --smoke-screenshot-quality-report artifacts\pointer\viewer_quality.txt --smoke-contracts artifacts\pointer\viewer_contract.txt --smoke-pointer-input-report artifacts\pointer\viewer_pointer.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\pointer\shell.png --shell-screenshot-quality-report artifacts\pointer\shell_quality.txt --smoke-pointer-input-report artifacts\pointer\shell_pointer.txt
 ```
 
 C3D map fidelity smoke:
@@ -370,6 +405,7 @@ Current development snapshot:
 - Viewer and Shell expose exact-row C3D Cross-section Dimensions using an inclusive source-column range, aligned-X width, raw-height range, separate tolerances, source/result separation, recipe roundtrip, Runner parity, linked profile, and a real Shell step row.
 - Runner `--verify-cross-section` verifies exact width/height range, independent tolerance failures, selector errors, insufficient/non-finite/out-of-range samples, invalid tolerance, and missing units; CI preserves this regression.
 - Runner can emit a durable schema `1.2` JSON run record plus HTML and CSV reports containing recipe/source SHA-256 provenance, typed step/source/reference identity when present, UTC time, status, all metrics/overlays, Viewer/Runner match state, execution environment, and evidence paths. Shell Run Snapshot exposes explicit open commands for all six evidence artifacts and remains compatible with schema `1.0` and `1.1`.
+- Viewer, Shell, and Runner complete the first fixed NIST nominal/actual surface-deviation slice with explicit actual/nominal/query identities, source-provided identity alignment, signed full-query metrics, separate display sampling, explicit Publish, typed recipe save/reopen, schema `1.2` Run Record evidence, and `Matched` Viewer/Runner output.
 - ROI validation warnings block invalid overlapped ROI recipes from being saved.
 - Public `Box.glb` import smoke renders a first external GLB mesh and records vertex/triangle/bounds contract evidence.
 - Public `BoxVertexColors.glb` import smoke renders per-vertex colors and records vertex-color contract evidence.
@@ -384,7 +420,7 @@ Current development snapshot:
 - Public `interesting.las` smoke proves a small uncompressed LAS RGB point-cloud path, local viewer-origin mapping for large source coordinates, picking, two-point measurement, Shell hosting, and Runner bounds checks.
 - LAZ/LAS two-point measurement now replays through `recipes\laz-two-point-measurement.recipe.json` and the headless Runner, uses distance/source-Z height acceptance tolerances, and matches the Viewer publish contract.
 - Viewer and Shell Tool / Inspector now expose editable LAZ/LAS two-point acceptance fields; saved point-cloud recipe JSON reopens in Viewer/Shell and replays through Runner with matching `LAZAcceptanceParameters` contract evidence.
-- Shell Evidence Workbench and History now compare C3D and point-cloud runner/UI evidence through generic `ToolResult` status plus key metrics: C3D peak deviation or point-cloud distance/source-Z height delta.
+- Shell Evidence Workbench and History compare C3D, point-cloud, and nominal/actual runner/UI evidence. Nominal/actual comparison independently parses signed mean and out-of-tolerance count from Viewer and Runner evidence before reporting `Matched`.
 - `OpenVisionLab.ThreeD.Core` now owns shared evidence contract-line formatting for `ToolResult`, metrics, overlays, source entities, entity layers, and published result entities so Viewer and Runner do not drift in report syntax.
 - Data loading coverage is tracked in `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md` so C3D, GLB, STL, LAS, and LAZ import/render/replay evidence stays explicit before algorithm expansion. Shell Inspector now carries point-cloud height scale text when the hosted Viewer hides standalone side panels.
 - Runner, Viewer, and Shell smoke paths now handle invalid recipe/CLI input with controlled errors: invalid LAZ sample-count options return usage failure, missing recipe source fields report validation failures, and Shell smoke propagates embedded Viewer smoke failures through the process exit code.
@@ -399,7 +435,7 @@ Current development snapshot:
 2. Obtain the C3D calibration contract and add an explicit mapping profile for pitch, height scale/offset, units, axes, and calibration identity.
 3. Preserve the passed plane/flatness and point-pair-dimensions analytic/error regression baselines.
 4. Preserve the completed basic surface slices: Gap/Flush, Volume, and Cross-section Dimensions.
-5. Add measured-to-nominal comparison using one local sample pair before considering a CAD kernel or broad CAD formats.
+5. Preserve the completed fixed NIST Overhang X4 Preview/Publish, typed recipe roundtrip, signed-color evidence, schema `1.2` Run Record, and Viewer/Runner `Matched` baseline. Generalize only after a second independent pair and known non-identity transform truth are available.
 6. Preserve the durable per-run JSON and simple HTML/CSV report baseline before adding batch trends or enterprise integration.
 
 ## Known Limitations
@@ -410,6 +446,7 @@ Current development snapshot:
 - Algorithm coverage is intentionally narrow; Viewer Foundation v1 and five independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.
+- The NIST Overhang X4 nominal STL loads, but its 8,560,096-triangle measured XCT surface exceeds the current 1,000,000-triangle Viewer limit. The inspection path streams and fingerprints the full source; a traceable 4,223,524-point validation derivative drives the passed identity-frame Viewer/Shell Preview, Publish, recipe roundtrip, and Runner parity while a separate sample drives display. It does not render or silently decimate the original measured mesh. Other sampling/topology cases, non-identity alignment, uncertainty, metrology certification, and redistribution approval remain open.
 - No industrial camera acquisition/control, PLC, robot, cloud, deployment, account, or production database integration exists.
 - The published prerelease contains the Viewer DLL dependency bundle only; no installer or full Studio/Shell application package exists yet.
 - Run reporting is per-run JSON/HTML/CSV only; there is no PDF, database, retention policy, digital signing, batch trend, or SPC workflow. Legacy Height Deviation and LAZ recipe `1.0` documents do not own stable step IDs, so their schema `1.2` records leave the optional `Step` field empty.
@@ -426,4 +463,5 @@ Current development snapshot:
 - `docs\OPENVISIONLAB_3D_SAMPLE_DATA.md`: sample inventory and C3D observations.
 - `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`: loader/viewer evidence matrix for current C3D, GLB, STL, LAS, and LAZ samples.
 - `docs\OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`: C3D source-grid, Viewer-frame, independent-renderer, and physical-fidelity gates.
+- `docs\OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`: fixed NIST Preview/Publish, typed recipe, Viewer/Runner parity, Run Record, evidence, and remaining trust gates.
 - `docs\OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: current engineering handoff.

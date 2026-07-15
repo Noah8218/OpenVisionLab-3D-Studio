@@ -1,6 +1,7 @@
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
+using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -38,7 +39,7 @@ public partial class MainWindow : Window
 
         _viewerHostStateChangedHandler = OnViewerHostStateChanged;
         _viewer.HostStateChanged += _viewerHostStateChangedHandler;
-        _viewer.EnableSmokeFromCommandLine();
+        _viewer.EnableSmokeFromCommandLine(ownsApplicationLifecycle: false);
 
         _refreshRecipeComparisonRequestedHandler = (_, _) => _viewModel.RefreshRecipeComparison();
         _saveRecipeRequestedHandler = (_, _) => _viewer.SaveCurrentRecipeWithDialog();
@@ -71,12 +72,48 @@ public partial class MainWindow : Window
         var shellScreenshotPath = GetCommandLineValue("--shell-smoke-screenshot");
         var screenshotQualityReportPath = GetCommandLineValue("--shell-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
-        if (shellScreenshotPath is not null)
+        var smokePublishResult = Environment.GetCommandLineArgs()
+            .Contains("--smoke-publish-result", StringComparer.OrdinalIgnoreCase);
+        var waitForNominalActualPreview = Environment.GetCommandLineArgs()
+            .Contains("--smoke-nominal-actual", StringComparer.OrdinalIgnoreCase)
+            || _viewer.ViewModel.NominalActualInput is not null;
+        if (shellScreenshotPath is not null || _viewer.HasConfiguredSmokeScreenshot)
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
+                var nominalActualReady = !waitForNominalActualPreview
+                    || await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10));
+                if (!nominalActualReady)
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Nominal/actual Preview did not complete before Shell screenshot capture.");
+                }
+
+                if (!_viewer.ApplyConfiguredSmokeNextDensity())
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
+                }
+
+                if (!_viewer.ApplyConfiguredSmokePick())
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
+                }
+
+                if (!await _viewer.RunConfiguredPointerInputRegressionAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
+                }
+
                 await Task.Delay(900);
+                if (smokePublishResult && !_viewer.PublishCurrentPreviewResult())
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Viewer Publish failed because current Preview evidence was unavailable.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (smokeSaveRecipePath is not null && !_viewer.SaveCurrentRecipe(smokeSaveRecipePath, isSmoke: true))
                 {
                     Application.Current.Shutdown(1);
@@ -88,10 +125,16 @@ public partial class MainWindow : Window
                     _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
                 }
 
+                if (!await _viewer.CaptureConfiguredSmokeViewAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
+                }
+
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                 await Task.Delay(100);
-                if (!await CaptureShellWindowWithRetryAsync(shellScreenshotPath, screenshotQualityReportPath))
+                if (shellScreenshotPath is not null
+                    && !await CaptureShellWindowWithRetryAsync(shellScreenshotPath, screenshotQualityReportPath))
                 {
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
@@ -99,11 +142,25 @@ public partial class MainWindow : Window
                 }
 
                 await Task.Delay(100);
-                Application.Current.Shutdown(_viewer.SmokeExitCode);
+                Application.Current.Shutdown(
+                    nominalActualReady ? _viewer.SmokeExitCode : 1);
             };
 
             Loaded += _shellSmokeLoadedHandler;
         }
+    }
+
+    private async Task<bool> WaitForNominalActualPreviewAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (_viewer.ViewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning
+            && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(100);
+        }
+
+        return _viewer.ViewModel.NominalActual.State is NominalActualComparisonState.PreviewReady
+            or NominalActualComparisonState.Published;
     }
 
     private async Task<bool> CaptureShellWindowWithRetryAsync(string path, string? qualityReportPath)

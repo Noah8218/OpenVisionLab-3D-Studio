@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -10,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -69,8 +71,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private string? smokeScreenshotPath;
     private string? smokeScreenshotQualityReportPath;
     private string? smokeContractsPath;
+    private string? smokePointerInputReportPath;
     private string? smokeSaveRecipePath;
     private bool smokePublishResult;
+    private bool smokeNominalActualPreview;
     private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
     private readonly EventHandler fitAllRequestedHandler;
@@ -87,11 +91,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private readonly EventHandler previewCrossSectionRequestedHandler;
     private readonly EventHandler screenshotRequestedHandler;
     private readonly EventHandler publishPreviewResultRequestedHandler;
+    private readonly EventHandler<NominalActualPreviewRequestedEventArgs> nominalActualPreviewRequestedHandler;
+    private readonly EventHandler<NominalActualPublishRequestedEventArgs> nominalActualPublishRequestedHandler;
     private readonly PropertyChangedEventHandler viewModelPropertyChangedHandler;
+    private readonly PropertyChangedEventHandler nominalActualPropertyChangedHandler;
+    private readonly NominalActualComparisonExecutor nominalActualComparisonExecutor = new();
     private bool viewModelEventsSubscribed;
     private bool isOrbiting;
     private bool isPanning;
+    private bool pointerInputRegressionActive;
+    private int pointerInputMouseDownCount;
+    private int pointerInputMouseMoveCount;
+    private int pointerInputMouseUpCount;
+    private int pointerInputMouseWheelCount;
+    private PointerInputRegressionResult? pointerInputRegressionResult;
     private string? smokePickTarget;
+    private string? smokeNextRenderDensity;
     private HeightGridPoint? twoPointFirst;
     private HeightGridPoint? twoPointSecond;
     private Vector3? importedMeshTwoPointFirst;
@@ -118,6 +133,37 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private double accumulatedDrawMilliseconds;
     private Point lastMousePosition;
 
+    private readonly record struct CameraSnapshot(
+        double Yaw,
+        double Pitch,
+        double Distance,
+        double TargetX,
+        double TargetY,
+        double TargetZ);
+
+    private sealed record PointerInputRegressionResult(
+        bool Passed,
+        bool WindowActivated,
+        bool PickPassed,
+        bool OrbitPassed,
+        bool PanPassed,
+        bool ZoomPassed,
+        bool RoutedEventsPassed,
+        int MouseDownCount,
+        int MouseMoveCount,
+        int MouseUpCount,
+        int MouseWheelCount,
+        double ViewportWidth,
+        double ViewportHeight,
+        CameraSnapshot InitialCamera,
+        CameraSnapshot OrbitCamera,
+        CameraSnapshot PanCamera,
+        CameraSnapshot ZoomCamera,
+        string PickedEntity,
+        string PickCoordinate,
+        string SelectionSummary,
+        string Failure);
+
     public OpenVisionThreeDViewerControl()
     {
         InitializeComponent();
@@ -137,7 +183,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         previewCrossSectionRequestedHandler = (_, _) => PreviewC3DCrossSection();
         screenshotRequestedHandler = (_, _) => HandleScreenshotCommand();
         publishPreviewResultRequestedHandler = (_, _) => HandlePublishResultCommand();
+        nominalActualPreviewRequestedHandler = OnNominalActualPreviewRequested;
+        nominalActualPublishRequestedHandler = OnNominalActualPublishRequested;
         viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
+        nominalActualPropertyChangedHandler = OnNominalActualPropertyChanged;
         SubscribeViewModelEvents();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -182,6 +231,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         viewModel.PreviewCrossSectionRequested += previewCrossSectionRequestedHandler;
         viewModel.ScreenshotRequested += screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested += publishPreviewResultRequestedHandler;
+        viewModel.NominalActual.PreviewRequested += nominalActualPreviewRequestedHandler;
+        viewModel.NominalActual.PublishRequested += nominalActualPublishRequestedHandler;
+        viewModel.NominalActual.PropertyChanged += nominalActualPropertyChangedHandler;
         viewModel.PropertyChanged += viewModelPropertyChangedHandler;
         viewModelEventsSubscribed = true;
     }
@@ -202,6 +254,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         viewModel.PreviewCrossSectionRequested -= previewCrossSectionRequestedHandler;
         viewModel.ScreenshotRequested -= screenshotRequestedHandler;
         viewModel.PublishPreviewResultRequested -= publishPreviewResultRequestedHandler;
+        viewModel.NominalActual.PreviewRequested -= nominalActualPreviewRequestedHandler;
+        viewModel.NominalActual.PublishRequested -= nominalActualPublishRequestedHandler;
+        viewModel.NominalActual.PropertyChanged -= nominalActualPropertyChangedHandler;
         viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
         viewModelEventsSubscribed = false;
     }
@@ -238,6 +293,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     public void ResetView() => ExecuteHostCommand(viewModel.ResetCommand);
 
     public bool SaveRecipe(string path) => SaveCurrentRecipe(path, isSmoke: false);
+
+    public bool PublishCurrentPreviewResult()
+    {
+        if (viewModel.NominalActualInput is not null)
+        {
+            if (!viewModel.NominalActual.CanPublish)
+            {
+                return false;
+            }
+
+            viewModel.NominalActual.PublishCommand.Execute(null);
+            return viewModel.NominalActual.State == NominalActualComparisonState.Published;
+        }
+
+        return viewModel.PublishPreviewResult();
+    }
 
     private static void OnSidePanelsVisibleChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
@@ -325,6 +396,107 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         RaiseHostStateChanged(args.PropertyName);
     }
 
+    private void OnNominalActualPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(NominalActualComparisonViewModel.ActualVisible)
+            or nameof(NominalActualComparisonViewModel.NominalVisible)
+            or nameof(NominalActualComparisonViewModel.LowerTolerance)
+            or nameof(NominalActualComparisonViewModel.UpperTolerance)
+            or nameof(NominalActualComparisonViewModel.PreviewResult)
+            or nameof(NominalActualComparisonViewModel.SelectedDeviation)
+            or nameof(NominalActualComparisonViewModel.State))
+        {
+            RenderNow();
+        }
+    }
+
+    private async void OnNominalActualPreviewRequested(
+        object? sender,
+        NominalActualPreviewRequestedEventArgs args)
+    {
+        var comparison = viewModel.NominalActual;
+        if (viewModel.NominalActualInput is not { } configuredInput)
+        {
+            comparison.FailPreview(args.RequestId, "Comparison inputs are not connected.");
+            return;
+        }
+
+        var executionInput = configuredInput with
+        {
+            LowerTolerance = comparison.LowerTolerance,
+            UpperTolerance = comparison.UpperTolerance
+        };
+        if (!executionInput.ExecutionFingerprint.Equals(args.Fingerprint, StringComparison.Ordinal))
+        {
+            comparison.FailPreview(args.RequestId, "Comparison input fingerprint changed before execution.");
+            return;
+        }
+
+        var progress = new Progress<NominalActualComparisonProgress>(value =>
+            comparison.ReportPreviewProgress(
+                args.RequestId,
+                value.ProcessedPointCount,
+                value.TotalPointCount,
+                value.Elapsed,
+                value.Stage));
+
+        try
+        {
+            var result = await nominalActualComparisonExecutor.ExecuteAsync(
+                executionInput,
+                args.MaximumDisplaySamples,
+                progress,
+                args.CancellationToken);
+            if (!comparison.CompletePreview(args.RequestId, result))
+            {
+                return;
+            }
+
+            viewModel.SelectedEntity = "Nominal / Actual Surface Deviation";
+            viewModel.MeasurementSummary = result.Message;
+            viewModel.ViewerStatus =
+                $"Nominal/actual Preview complete: {result.Status}, {result.ComparedPointCount:N0} full-query points";
+            RenderNow();
+        }
+        catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
+        {
+            // The ViewModel already owns the cancelled/stale state transition.
+        }
+        catch (Exception exception)
+        {
+            if (comparison.FailPreview(args.RequestId, exception.Message))
+            {
+                viewModel.ViewerStatus = $"Nominal/actual Preview failed: {exception.Message}";
+            }
+
+            if (smokeNominalActualPreview)
+            {
+                smokeExitCode = 1;
+            }
+
+            RenderNow();
+        }
+    }
+
+    private void OnNominalActualPublishRequested(
+        object? sender,
+        NominalActualPublishRequestedEventArgs args)
+    {
+        var comparison = viewModel.NominalActual;
+        var result = comparison.PreviewResult;
+        if (result is null
+            || !result.Input.ExecutionFingerprint.Equals(args.Fingerprint, StringComparison.Ordinal)
+            || !viewModel.PublishNominalActualComparison(result))
+        {
+            viewModel.ViewerStatus = "Nominal/actual Publish failed: current Preview evidence is unavailable";
+            return;
+        }
+
+        comparison.ConfirmPublished(
+            $"Published result entity {NominalActualComparisonContract.ResultEntityId} | fingerprint {args.Fingerprint}");
+        RenderNow();
+    }
+
     private void RaiseHostStateChanged(string? viewModelPropertyName)
     {
         var hostPropertyName = viewModelPropertyName switch
@@ -392,7 +564,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             : Visibility.Collapsed;
     }
 
-    public void EnableSmokeFromCommandLine()
+    public void EnableSmokeFromCommandLine() => EnableSmokeFromCommandLine(ownsApplicationLifecycle: true);
+
+    public void EnableSmokeFromCommandLine(bool ownsApplicationLifecycle)
     {
         var args = Environment.GetCommandLineArgs();
         var smokeIndex = Array.IndexOf(args, "--smoke-screenshot");
@@ -408,10 +582,401 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         }
 
         ApplySmokeArguments(args);
-        if (smokeScreenshotPath is not null)
+        if (ownsApplicationLifecycle && smokeScreenshotPath is not null)
         {
             Loaded += SmokeCaptureOnLoaded;
         }
+    }
+
+    public bool HasConfiguredSmokeScreenshot => smokeScreenshotPath is not null;
+
+    public async Task<bool> CaptureConfiguredSmokeViewAsync()
+    {
+        if (smokeContractsPath is not null)
+        {
+            WriteSceneContracts(smokeContractsPath);
+        }
+
+        if (smokeScreenshotPath is null)
+        {
+            return smokeExitCode == 0;
+        }
+
+        if (!await CaptureSmokeViewWithRetryAsync(smokeScreenshotPath, smokeScreenshotQualityReportPath))
+        {
+            SetSmokeFailure("Viewer screenshot remained blank or invalid after 3 attempts.");
+        }
+
+        return smokeExitCode == 0;
+    }
+
+    public bool ApplyConfiguredSmokePick()
+    {
+        switch (smokePickTarget)
+        {
+            case null:
+                return true;
+            case "cube":
+                ApplySmokePickCube();
+                break;
+            case "c3d":
+                ApplySmokePickC3D();
+                break;
+            case "laz":
+            case "laz-point":
+            case "laz-points":
+                ApplySmokePickLaz();
+                break;
+            case "glb":
+            case "mesh":
+            case "glb-mesh":
+                ApplySmokePickGlb();
+                break;
+            case "nominal-actual":
+            case "nominal":
+            case "deviation":
+                ApplySmokePickNominalActual();
+                break;
+            default:
+                SetSmokeFailure($"Unsupported smoke pick target: {smokePickTarget}");
+                break;
+        }
+
+        RenderNow();
+        return smokeExitCode == 0;
+    }
+
+    public bool ApplyConfiguredSmokeNextDensity()
+    {
+        if (smokeNextRenderDensity is null)
+        {
+            return true;
+        }
+
+        if (!viewModel.RenderDensityModes.Contains(smokeNextRenderDensity, StringComparer.Ordinal))
+        {
+            SetSmokeFailure($"Unsupported next Preview density: {smokeNextRenderDensity}");
+            return false;
+        }
+
+        if (viewModel.NominalActual.PreviewResult is null)
+        {
+            SetSmokeFailure("Next Preview density smoke requires a completed nominal/actual result");
+            return false;
+        }
+
+        viewModel.SelectedRenderDensity = smokeNextRenderDensity;
+        RenderNow();
+        return smokeExitCode == 0;
+    }
+
+    public async Task<bool> RunConfiguredPointerInputRegressionAsync()
+    {
+        if (smokePointerInputReportPath is null)
+        {
+            return true;
+        }
+
+        pointerInputRegressionResult = await RunPointerInputRegressionAsync();
+        WritePointerInputRegressionReport(smokePointerInputReportPath, pointerInputRegressionResult);
+        if (!pointerInputRegressionResult.Passed)
+        {
+            SetSmokeFailure($"Pointer input regression failed: {pointerInputRegressionResult.Failure}");
+        }
+        else
+        {
+            viewModel.ViewerStatus = "Pointer input regression passed: pick, orbit, pan, and zoom";
+        }
+
+        RenderNow();
+        return pointerInputRegressionResult.Passed;
+    }
+
+    private async Task<PointerInputRegressionResult> RunPointerInputRegressionAsync()
+    {
+        var initialCamera = CaptureCameraSnapshot();
+        var orbitCamera = initialCamera;
+        var panCamera = initialCamera;
+        var zoomCamera = initialCamera;
+        var pickedEntity = "(none)";
+        var pickCoordinate = "(none)";
+        var selectionSummary = "(none)";
+        var viewportWidth = 0.0;
+        var viewportHeight = 0.0;
+        var windowActivated = false;
+        var pickPassed = false;
+        var orbitPassed = false;
+        var panPassed = false;
+        var zoomPassed = false;
+        var failure = string.Empty;
+        var originalPointer = default(Point);
+        var hasOriginalPointer = false;
+        var leftPressed = false;
+        var rightPressed = false;
+        var middlePressed = false;
+        Window? hostWindow = null;
+        var originalTopmost = false;
+
+        pointerInputMouseDownCount = 0;
+        pointerInputMouseMoveCount = 0;
+        pointerInputMouseUpCount = 0;
+        pointerInputMouseWheelCount = 0;
+
+        try
+        {
+            hostWindow = Window.GetWindow(this)
+                ?? throw new InvalidOperationException("Viewer is not attached to a visible WPF window.");
+
+            originalTopmost = hostWindow.Topmost;
+            hostWindow.Topmost = true;
+            hostWindow.Activate();
+            hostWindow.Focus();
+            await Dispatcher.InvokeAsync(() =>
+            {
+                viewModel.Reset();
+                viewModel.CubeVisible = true;
+                viewModel.PointCloudVisible = false;
+                viewModel.SelectionOverlayVisible = false;
+                viewModel.ResultOverlayVisible = false;
+                viewModel.MeasurementVisible = true;
+                viewModel.SelectedEntity = "Generated Unit Cube";
+                viewModel.FitSelection();
+                viewModel.PickCoordinate = "(none)";
+                viewModel.ViewerStatus = "Pointer input regression ready";
+                RenderNow();
+            }, DispatcherPriority.Render);
+            await Task.Delay(250);
+
+            windowActivated = hostWindow.IsActive;
+            viewportWidth = Viewport.ActualWidth;
+            viewportHeight = Viewport.ActualHeight;
+            if (!Viewport.IsVisible || viewportWidth < 200.0 || viewportHeight < 180.0)
+            {
+                throw new InvalidOperationException(
+                    $"Viewport is not ready for pointer input ({viewportWidth:F0}x{viewportHeight:F0}).");
+            }
+
+            initialCamera = CaptureCameraSnapshot();
+            orbitCamera = initialCamera;
+            panCamera = initialCamera;
+            zoomCamera = initialCamera;
+            hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
+            pointerInputRegressionActive = true;
+
+            var center = Viewport.PointToScreen(new Point(viewportWidth * 0.5, viewportHeight * 0.5));
+            WindowsPointerInput.MoveTo(center);
+            await Task.Delay(120);
+            WindowsPointerInput.LeftDown();
+            leftPressed = true;
+            await Task.Delay(100);
+            WindowsPointerInput.LeftUp();
+            leftPressed = false;
+            await Task.Delay(180);
+
+            pickedEntity = viewModel.SelectedEntity;
+            pickCoordinate = viewModel.PickCoordinate;
+            selectionSummary = viewModel.SelectionSummary;
+            pickPassed = pickedEntity == "Generated Unit Cube"
+                && !pickCoordinate.Equals("(none)", StringComparison.Ordinal)
+                && selectionSummary.StartsWith("Cube pick:", StringComparison.Ordinal);
+
+            var orbitStart = Viewport.PointToScreen(new Point(viewportWidth * 0.72, viewportHeight * 0.60));
+            var orbitEnd = Viewport.PointToScreen(new Point(viewportWidth * 0.86, viewportHeight * 0.50));
+            WindowsPointerInput.MoveTo(orbitStart);
+            await Task.Delay(100);
+            WindowsPointerInput.RightDown();
+            rightPressed = true;
+            await Task.Delay(100);
+            WindowsPointerInput.MoveTo(orbitEnd);
+            await Task.Delay(180);
+            WindowsPointerInput.RightUp();
+            rightPressed = false;
+            await Task.Delay(160);
+            orbitCamera = CaptureCameraSnapshot();
+            orbitPassed = IsFinite(orbitCamera)
+                && Math.Abs(orbitCamera.Yaw - initialCamera.Yaw) > 1.0
+                && Math.Abs(orbitCamera.Pitch - initialCamera.Pitch) > 1.0;
+
+            var panStart = Viewport.PointToScreen(new Point(viewportWidth * 0.82, viewportHeight * 0.70));
+            var panEnd = Viewport.PointToScreen(new Point(viewportWidth * 0.70, viewportHeight * 0.62));
+            WindowsPointerInput.MoveTo(panStart);
+            await Task.Delay(100);
+            WindowsPointerInput.MiddleDown();
+            middlePressed = true;
+            await Task.Delay(100);
+            WindowsPointerInput.MoveTo(panEnd);
+            await Task.Delay(180);
+            WindowsPointerInput.MiddleUp();
+            middlePressed = false;
+            await Task.Delay(160);
+            panCamera = CaptureCameraSnapshot();
+            panPassed = IsFinite(panCamera) && TargetChanged(orbitCamera, panCamera);
+
+            WindowsPointerInput.MoveTo(center);
+            await Task.Delay(100);
+            WindowsPointerInput.Wheel(120);
+            await Task.Delay(180);
+            zoomCamera = CaptureCameraSnapshot();
+            zoomPassed = IsFinite(zoomCamera)
+                && zoomCamera.Distance < panCamera.Distance - 0.000001;
+        }
+        catch (Exception exception)
+        {
+            failure = exception.Message;
+        }
+        finally
+        {
+            pointerInputRegressionActive = false;
+            if (leftPressed)
+            {
+                WindowsPointerInput.LeftUp();
+            }
+
+            if (rightPressed)
+            {
+                WindowsPointerInput.RightUp();
+            }
+
+            if (middlePressed)
+            {
+                WindowsPointerInput.MiddleUp();
+            }
+
+            if (hasOriginalPointer)
+            {
+                try
+                {
+                    WindowsPointerInput.MoveTo(originalPointer);
+                }
+                catch (Win32Exception)
+                {
+                    // Pointer restoration is best effort after the regression evidence is captured.
+                }
+            }
+
+            if (hostWindow is not null)
+            {
+                hostWindow.Topmost = originalTopmost;
+            }
+        }
+
+        var routedEventsPassed = pointerInputMouseDownCount >= 3
+            && pointerInputMouseMoveCount >= 2
+            && pointerInputMouseUpCount >= 3
+            && pointerInputMouseWheelCount >= 1;
+        var passed = pickPassed && orbitPassed && panPassed && zoomPassed && routedEventsPassed;
+        if (!passed && string.IsNullOrWhiteSpace(failure))
+        {
+            failure = CreatePointerInputFailureSummary(
+                pickPassed,
+                orbitPassed,
+                panPassed,
+                zoomPassed,
+                routedEventsPassed);
+        }
+
+        return new PointerInputRegressionResult(
+            passed,
+            windowActivated,
+            pickPassed,
+            orbitPassed,
+            panPassed,
+            zoomPassed,
+            routedEventsPassed,
+            pointerInputMouseDownCount,
+            pointerInputMouseMoveCount,
+            pointerInputMouseUpCount,
+            pointerInputMouseWheelCount,
+            viewportWidth,
+            viewportHeight,
+            initialCamera,
+            orbitCamera,
+            panCamera,
+            zoomCamera,
+            pickedEntity,
+            pickCoordinate,
+            selectionSummary,
+            failure);
+    }
+
+    private CameraSnapshot CaptureCameraSnapshot() => new(
+        viewModel.YawDegrees,
+        viewModel.PitchDegrees,
+        viewModel.CameraDistance,
+        viewModel.CameraTargetX,
+        viewModel.CameraTargetY,
+        viewModel.CameraTargetZ);
+
+    private static bool IsFinite(CameraSnapshot camera) =>
+        double.IsFinite(camera.Yaw)
+        && double.IsFinite(camera.Pitch)
+        && double.IsFinite(camera.Distance)
+        && double.IsFinite(camera.TargetX)
+        && double.IsFinite(camera.TargetY)
+        && double.IsFinite(camera.TargetZ);
+
+    private static bool TargetChanged(CameraSnapshot before, CameraSnapshot after)
+    {
+        var dx = after.TargetX - before.TargetX;
+        var dy = after.TargetY - before.TargetY;
+        var dz = after.TargetZ - before.TargetZ;
+        return (dx * dx) + (dy * dy) + (dz * dz) > 0.00000001;
+    }
+
+    private static string CreatePointerInputFailureSummary(
+        bool pickPassed,
+        bool orbitPassed,
+        bool panPassed,
+        bool zoomPassed,
+        bool routedEventsPassed)
+    {
+        var failures = new List<string>();
+        if (!pickPassed) failures.Add("pick state did not change");
+        if (!orbitPassed) failures.Add("orbit camera did not change");
+        if (!panPassed) failures.Add("pan target did not change");
+        if (!zoomPassed) failures.Add("zoom distance did not change");
+        if (!routedEventsPassed) failures.Add("WPF mouse event counts were incomplete");
+        return string.Join("; ", failures);
+    }
+
+    private static void WritePointerInputRegressionReport(
+        string path,
+        PointerInputRegressionResult result)
+    {
+        var fullPath = Path.GetFullPath(path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var lines = new[]
+        {
+            "PointerInputRegression",
+            $"Result|pass={result.Passed}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}",
+            $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}",
+            $"Pick|pass={result.PickPassed}|entity={result.PickedEntity}|coordinate={result.PickCoordinate}|summary={result.SelectionSummary}",
+            $"Orbit|pass={result.OrbitPassed}|before={FormatCameraSnapshot(result.InitialCamera)}|after={FormatCameraSnapshot(result.OrbitCamera)}",
+            $"Pan|pass={result.PanPassed}|before={FormatCameraSnapshot(result.OrbitCamera)}|after={FormatCameraSnapshot(result.PanCamera)}",
+            $"Zoom|pass={result.ZoomPassed}|before={FormatCameraSnapshot(result.PanCamera)}|after={FormatCameraSnapshot(result.ZoomCamera)}",
+            $"Failure|summary={result.Failure}"
+        };
+        File.WriteAllLines(fullPath, lines, new UTF8Encoding(false));
+    }
+
+    private static string FormatCameraSnapshot(CameraSnapshot camera) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"yaw:{camera.Yaw:R},pitch:{camera.Pitch:R},distance:{camera.Distance:R},target:({camera.TargetX:R},{camera.TargetY:R},{camera.TargetZ:R})");
+
+    private string CreatePointerInputRegressionContractLine()
+    {
+        if (smokePointerInputReportPath is null)
+        {
+            return "PointerInputRegression|configured=False";
+        }
+
+        if (pointerInputRegressionResult is null)
+        {
+            return "PointerInputRegression|configured=True|pass=False|failure=not-run";
+        }
+
+        var result = pointerInputRegressionResult;
+        return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|zoom={result.ZoomPassed}|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
     }
 
     private void ApplySmokeArguments(string[] args)
@@ -420,6 +985,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         if (densityIndex >= 0 && densityIndex + 1 < args.Length)
         {
             viewModel.SelectedRenderDensity = args[densityIndex + 1];
+        }
+
+        var nextDensityIndex = Array.IndexOf(args, "--smoke-next-density");
+        if (nextDensityIndex >= 0 && nextDensityIndex + 1 < args.Length)
+        {
+            smokeNextRenderDensity = args[nextDensityIndex + 1];
         }
 
         var pointSizeIndex = Array.IndexOf(args, "--smoke-point-size");
@@ -479,6 +1050,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
                 : null;
             ApplySmokeLazPoints(lazPath);
         }
+
+        ApplySmokeNominalActual(args);
 
         var actionIndex = Array.IndexOf(args, "--smoke-action");
         if (actionIndex >= 0 && actionIndex + 1 < args.Length)
@@ -564,17 +1137,124 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             smokeContractsPath = args[contractsIndex + 1];
         }
 
+        var pointerInputReportIndex = Array.IndexOf(args, "--smoke-pointer-input-report");
+        if (pointerInputReportIndex >= 0 && pointerInputReportIndex + 1 < args.Length)
+        {
+            smokePointerInputReportPath = args[pointerInputReportIndex + 1];
+        }
+
         var saveRecipeIndex = Array.IndexOf(args, "--smoke-save-recipe");
         if (saveRecipeIndex >= 0 && saveRecipeIndex + 1 < args.Length)
         {
             smokeSaveRecipePath = args[saveRecipeIndex + 1];
         }
 
+        ApplyNominalActualViewModelVerification(args);
+
         smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
-        if (smokePublishResult && smokeScreenshotPath is null)
+        if (smokePublishResult && smokeScreenshotPath is null && !smokeNominalActualPreview)
         {
-            viewModel.PublishPreviewResult();
+            PublishCurrentPreviewResult();
         }
+    }
+
+    private void ApplyNominalActualViewModelVerification(string[] args)
+    {
+        var verificationIndex = Array.IndexOf(args, "--verify-nominal-actual-viewmodel");
+        if (verificationIndex < 0)
+        {
+            return;
+        }
+
+        if (verificationIndex + 1 >= args.Length
+            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = "Nominal/actual ViewModel verification requires a report path.";
+            return;
+        }
+
+        if (!NominalActualComparisonViewModelVerification.Verify(args[verificationIndex + 1], out var summary))
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = summary;
+        }
+    }
+
+    private void ApplySmokeNominalActual(string[] args)
+    {
+        var comparisonIndex = Array.IndexOf(args, "--smoke-nominal-actual");
+        if (comparisonIndex < 0)
+        {
+            return;
+        }
+
+        smokeNominalActualPreview = true;
+        if (comparisonIndex + 3 >= args.Length
+            || args[comparisonIndex + 1].StartsWith("--", StringComparison.Ordinal)
+            || args[comparisonIndex + 2].StartsWith("--", StringComparison.Ordinal)
+            || args[comparisonIndex + 3].StartsWith("--", StringComparison.Ordinal))
+        {
+            SetSmokeFailure(
+                "Nominal/actual smoke requires <actual.stl> <validation-query.ply> <nominal.stl>.");
+            return;
+        }
+
+        try
+        {
+            var actual = CaptureComparisonFileIdentity(
+                "source.nist-overhang-x4-actual-part1",
+                "NIST Overhang X4 Part 1 XCT surface",
+                args[comparisonIndex + 1]);
+            var query = CaptureComparisonFileIdentity(
+                "query.nist-overhang-x4-cloudcompare-vertices",
+                "NIST Overhang X4 validation vertices",
+                args[comparisonIndex + 2]);
+            var nominal = CaptureComparisonFileIdentity(
+                "source.nist-overhang-x4-nominal-9x5x5",
+                "NIST Overhang X4 nominal 9x5x5 mm",
+                args[comparisonIndex + 3]);
+            var comparison = viewModel.NominalActual;
+            var input = new NominalActualComparisonInput(
+                "step.nist-overhang-x4-surface-deviation",
+                actual,
+                nominal,
+                query,
+                "mm",
+                "frame.nist-overhang-x4-321-part",
+                "alignment.identity-source-provided",
+                comparison.LowerTolerance,
+                comparison.UpperTolerance);
+
+            ApplySmokeStl(nominal.Path);
+            if (importedMesh is null)
+            {
+                throw new InvalidDataException("The nominal comparison mesh could not be loaded for display.");
+            }
+
+            viewModel.ConfigureNominalActualComparison(input);
+            comparison.PreviewCommand.Execute(null);
+        }
+        catch (Exception exception)
+        {
+            viewModel.ClearNominalActualComparison(exception.Message);
+            SetSmokeFailure($"Nominal/actual smoke failed: {exception.Message}");
+        }
+    }
+
+    private static NominalActualFileIdentity CaptureComparisonFileIdentity(
+        string id,
+        string name,
+        string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        using var stream = File.OpenRead(fullPath);
+        return new NominalActualFileIdentity(
+            id,
+            name,
+            fullPath,
+            stream.Length,
+            Convert.ToHexString(SHA256.HashData(stream)));
     }
 
     private void ApplySmokeTolerance(string[] args)
@@ -657,9 +1337,18 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             DrawC3DHeightGrid(gl);
         }
 
-        if (viewModel.GlbSampleVisible && importedMesh is not null)
+        if (viewModel.GlbSampleVisible
+            && importedMesh is not null
+            && (viewModel.NominalActualInput is null || viewModel.NominalActual.NominalVisible))
         {
             DrawImportedMesh(gl);
+        }
+
+        if (viewModel.NominalActual.PreviewResult is not null
+            && viewModel.NominalActual.ActualVisible)
+        {
+            DrawNominalActualDeviation(gl);
+            DrawNominalActualSelectedDeviation(gl);
         }
 
         if (viewModel.LazSampleVisible && lazSample is not null)
@@ -700,6 +1389,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (pointerInputRegressionActive)
+        {
+            pointerInputMouseDownCount++;
+        }
+
         lastMousePosition = e.GetPosition(Viewport);
 
         var panRequested = e.ChangedButton == MouseButton.Middle || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
@@ -708,41 +1402,53 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         {
             if (TryHandleTwoPointPick(lastMousePosition))
             {
+                viewModel.NominalActual.ClearSelectedDeviation();
                 RenderNow();
                 return;
             }
 
             if (TryHandleRoiStepPick(lastMousePosition))
             {
+                viewModel.NominalActual.ClearSelectedDeviation();
                 RenderNow();
                 return;
             }
 
-            if (TryPickCube(lastMousePosition, out var hit))
+            if (TryPickNominalActualDeviation(lastMousePosition, out var deviationSample))
             {
-                viewModel.SelectedEntity = "Generated Unit Cube";
-                viewModel.PickCoordinate = CameraMath.FormatPoint(hit);
-                viewModel.ViewerStatus = "Picked generated cube face";
-            }
-            else if (TryPickC3DPoint(lastMousePosition, out var c3dPoint))
-            {
-                viewModel.SelectedEntity = "C3D Height Grid";
-                viewModel.PickCoordinate = FormatC3DPoint(c3dPoint);
-                viewModel.ViewerStatus = "Picked C3D height-grid point";
-            }
-            else if (TryPickImportedMesh(lastMousePosition, out var importedMeshPoint, out var importedMeshPickKind, out var importedMeshTriangleIndex, out var importedMeshSurfaceNormal))
-            {
-                SetImportedMeshPick(importedMeshPoint, $"Picked {viewModel.ImportedMeshFormat} {importedMeshPickKind}", importedMeshPickKind, importedMeshTriangleIndex, importedMeshSurfaceNormal);
-            }
-            else if (TryPickLazPoint(lastMousePosition, out var lazPoint))
-            {
-                SetLazPick(lazPoint, "Picked LAZ/LAS sampled point");
+                SetNominalActualDeviationPick(deviationSample, "Picked nominal/actual deviation point");
             }
             else
             {
-                viewModel.SelectedEntity = "(none)";
-                viewModel.PickCoordinate = "(none)";
-                viewModel.ViewerStatus = "No pick target under cursor";
+                viewModel.NominalActual.ClearSelectedDeviation();
+                if (TryPickCube(lastMousePosition, out var hit))
+                {
+                    var summary = CameraMath.FormatPoint(hit);
+                    viewModel.SelectedEntity = "Generated Unit Cube";
+                    viewModel.PickCoordinate = summary;
+                    viewModel.SelectionSummary = $"Cube pick: {summary}";
+                    viewModel.ViewerStatus = "Picked generated cube face";
+                }
+                else if (TryPickC3DPoint(lastMousePosition, out var c3dPoint))
+                {
+                    viewModel.SelectedEntity = "C3D Height Grid";
+                    viewModel.PickCoordinate = FormatC3DPoint(c3dPoint);
+                    viewModel.ViewerStatus = "Picked C3D height-grid point";
+                }
+                else if (TryPickImportedMesh(lastMousePosition, out var importedMeshPoint, out var importedMeshPickKind, out var importedMeshTriangleIndex, out var importedMeshSurfaceNormal))
+                {
+                    SetImportedMeshPick(importedMeshPoint, $"Picked {viewModel.ImportedMeshFormat} {importedMeshPickKind}", importedMeshPickKind, importedMeshTriangleIndex, importedMeshSurfaceNormal);
+                }
+                else if (TryPickLazPoint(lastMousePosition, out var lazPoint))
+                {
+                    SetLazPick(lazPoint, "Picked LAZ/LAS sampled point");
+                }
+                else
+                {
+                    viewModel.SelectedEntity = "(none)";
+                    viewModel.PickCoordinate = "(none)";
+                    viewModel.ViewerStatus = "No pick target under cursor";
+                }
             }
         }
 
@@ -793,6 +1499,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
+        if (pointerInputRegressionActive)
+        {
+            pointerInputMouseMoveCount++;
+        }
+
         if (!isOrbiting && !isPanning)
         {
             return;
@@ -832,6 +1543,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void Viewport_MouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (pointerInputRegressionActive)
+        {
+            pointerInputMouseUpCount++;
+        }
+
         isOrbiting = false;
         isPanning = false;
         Viewport.ReleaseMouseCapture();
@@ -839,6 +1555,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void Viewport_MouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (pointerInputRegressionActive)
+        {
+            pointerInputMouseWheelCount++;
+        }
+
         var zoomScale = e.Delta > 0 ? 0.88 : 1.14;
         viewModel.ZoomCamera(zoomScale);
         RenderNow();
@@ -900,7 +1621,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         {
             Title = "Save 3D Recipe",
             Filter = "OpenVisionLab 3D recipe (*.json)|*.json|All files (*.*)|*.*",
-            FileName = ShouldSaveCurrentLazTwoPointRecipe()
+            FileName = ShouldSaveCurrentNominalActualRecipe()
+                ? "nominal-actual-surface-deviation.recipe.json"
+                : ShouldSaveCurrentLazTwoPointRecipe()
                 ? "laz-two-point-measurement.recipe.json"
                 : ShouldSaveCurrentGapFlushRecipe()
                     ? "c3d-gap-flush.recipe.json"
@@ -917,13 +1640,21 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     }
 
     public bool SaveCurrentRecipe(string path, bool isSmoke) =>
-        ShouldSaveCurrentLazTwoPointRecipe()
+        ShouldSaveCurrentNominalActualRecipe()
+            ? SaveCurrentNominalActualRecipe(path, isSmoke)
+            : ShouldSaveCurrentLazTwoPointRecipe()
             ? SaveCurrentLazTwoPointRecipe(path, isSmoke)
             : ShouldSaveCurrentGapFlushRecipe()
                 ? SaveCurrentGapFlushRecipe(path, isSmoke)
             : ShouldSaveCurrentPointPairDimensionsRecipe()
                 ? SaveCurrentPointPairDimensionsRecipe(path, isSmoke)
                 : SaveCurrentHeightDeviationRecipe(path, isSmoke);
+
+    private bool ShouldSaveCurrentNominalActualRecipe() =>
+        viewModel.NominalActualInput is not null
+        && viewModel.NominalActual.PreviewResult is not null
+        && viewModel.NominalActual.State is NominalActualComparisonState.PreviewReady
+            or NominalActualComparisonState.Published;
 
     private bool ShouldSaveCurrentLazTwoPointRecipe() =>
         lazPointCloud is not null
@@ -1020,30 +1751,35 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private async void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
         await Dispatcher.InvokeAsync(RenderNow);
-        if (smokePickTarget == "cube")
+        if (smokeNominalActualPreview
+            && !await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10)))
         {
-            ApplySmokePickCube();
+            smokeExitCode = 1;
+            if (viewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning)
+            {
+                viewModel.ViewerStatus = "Nominal/actual Preview timed out before screenshot capture.";
+            }
+
             await Dispatcher.InvokeAsync(RenderNow);
         }
-        else if (smokePickTarget == "c3d")
+
+        ApplyConfiguredSmokeNextDensity();
+        await Dispatcher.InvokeAsync(RenderNow);
+
+        if (smokePickTarget is not null)
         {
-            ApplySmokePickC3D();
-            await Dispatcher.InvokeAsync(RenderNow);
-        }
-        else if (smokePickTarget is "laz" or "laz-point" or "laz-points")
-        {
-            ApplySmokePickLaz();
-            await Dispatcher.InvokeAsync(RenderNow);
-        }
-        else if (smokePickTarget is "glb" or "mesh" or "glb-mesh")
-        {
-            ApplySmokePickGlb();
+            ApplyConfiguredSmokePick();
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
         if (smokePublishResult)
         {
-            viewModel.PublishPreviewResult();
+            if (!PublishCurrentPreviewResult())
+            {
+                smokeExitCode = 1;
+                viewModel.ViewerStatus = "Smoke Publish failed: current Preview evidence is unavailable";
+            }
+
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
@@ -1057,23 +1793,30 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
-        await Task.Delay(900);
-        if (smokeContractsPath is not null)
-        {
-            WriteSceneContracts(smokeContractsPath);
-        }
+        await RunConfiguredPointerInputRegressionAsync();
+        await Dispatcher.InvokeAsync(RenderNow);
 
-        if (!await CaptureSmokeWindowWithRetryAsync(smokeScreenshotPath!, smokeScreenshotQualityReportPath))
-        {
-            smokeExitCode = 1;
-            viewModel.ViewerStatus = "Viewer screenshot remained blank or invalid after 3 attempts.";
-        }
+        await Task.Delay(900);
+        await CaptureConfiguredSmokeViewAsync();
 
         await Task.Delay(100);
         Application.Current.Shutdown(smokeExitCode);
     }
 
-    private async Task<bool> CaptureSmokeWindowWithRetryAsync(string path, string? qualityReportPath)
+    private async Task<bool> WaitForNominalActualPreviewAsync(TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (viewModel.NominalActual.State == NominalActualComparisonState.PreviewRunning
+            && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(100);
+        }
+
+        return viewModel.NominalActual.State is NominalActualComparisonState.PreviewReady
+            or NominalActualComparisonState.Published;
+    }
+
+    private async Task<bool> CaptureSmokeViewWithRetryAsync(string path, string? qualityReportPath)
     {
         const int maximumAttempts = 3;
         var fullPath = Path.GetFullPath(path);
@@ -1416,6 +2159,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         {
             var fullRecipePath = Path.GetFullPath(path);
             var recipeType = ReadRecipeType(fullRecipePath);
+            if (recipeType.Equals(NominalActualComparisonRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+            {
+                return ApplyNominalActualRecipe(fullRecipePath, isSmoke);
+            }
+
             if (recipeType.Equals(LazTwoPointMeasurementRecipe.SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
             {
                 return ApplyLazTwoPointRecipe(fullRecipePath, isSmoke);
@@ -1433,6 +2181,35 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke recipe" : "Recipe", ex);
+        }
+    }
+
+    private bool ApplyNominalActualRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipe = NominalActualComparisonRecipe.Load(fullRecipePath);
+            var input = recipe.ToInput(fullRecipePath);
+            ApplySmokeStl(input.NominalSource.Path);
+            if (importedMesh is null)
+            {
+                throw new InvalidDataException("The nominal comparison mesh could not be loaded for display.");
+            }
+
+            viewModel.ConfigureNominalActualComparison(input);
+            viewModel.SetNominalActualRecipeLoaded(fullRecipePath);
+            smokeNominalActualPreview |= isSmoke;
+            viewModel.NominalActual.PreviewCommand.Execute(null);
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke nominal/actual recipe: {Path.GetFileName(fullRecipePath)}"
+                : $"Nominal/actual recipe loaded: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ClearNominalActualComparison(ex.Message);
+            return SetRecipeLoadFailure(isSmoke ? "Smoke nominal/actual recipe" : "Nominal/actual recipe", ex);
         }
     }
 
@@ -1631,6 +2408,40 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         SetRecipeValidationWarning(message);
         viewModel.ViewerStatus = message;
         return false;
+    }
+
+    private bool SaveCurrentNominalActualRecipe(string path, bool isSmoke)
+    {
+        try
+        {
+            var comparison = viewModel.NominalActual;
+            if (comparison.PreviewResult is not { } result
+                || comparison.State is not (NominalActualComparisonState.PreviewReady
+                    or NominalActualComparisonState.Published)
+                || !result.Input.ExecutionFingerprint.Equals(
+                    comparison.CompletedPreviewFingerprint,
+                    StringComparison.Ordinal))
+            {
+                viewModel.ViewerStatus =
+                    "Nominal/actual recipe save requires a current completed Preview";
+                return false;
+            }
+
+            var fullRecipePath = Path.GetFullPath(path);
+            var recipe = NominalActualComparisonRecipe.FromInput(result.Input, fullRecipePath);
+            recipe.Save(fullRecipePath);
+            viewModel.SetNominalActualRecipeSaved(fullRecipePath);
+            viewModel.ViewerStatus = isSmoke
+                ? $"Smoke nominal/actual recipe saved: {Path.GetFileName(fullRecipePath)}"
+                : $"Nominal/actual recipe saved: {Path.GetFileName(fullRecipePath)}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ViewerStatus =
+                $"{(isSmoke ? "Smoke nominal/actual recipe save" : "Nominal/actual recipe save")} failed: {ex.Message}";
+            return false;
+        }
     }
 
     private bool SaveCurrentHeightDeviationRecipe(string path, bool isSmoke)
@@ -2318,6 +3129,28 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         }
     }
 
+    private void ApplySmokePickNominalActual()
+    {
+        var comparison = viewModel.NominalActual;
+        if (!comparison.ActualVisible || comparison.PreviewResult is null)
+        {
+            SetSmokeFailure("Smoke pick failed: nominal/actual Preview result is unavailable");
+            return;
+        }
+
+        viewModel.SelectedSelectionMode = "Point";
+        var center = new Point(
+            Math.Max(1.0, Viewport.ActualWidth) / 2.0,
+            Math.Max(1.0, Viewport.ActualHeight) / 2.0);
+        if (TryPickNominalActualDeviation(center, out var sample))
+        {
+            SetNominalActualDeviationPick(sample, "Smoke pick: nominal/actual deviation point");
+            return;
+        }
+
+        SetSmokeFailure("Smoke pick failed: no rendered nominal/actual point under the viewport center");
+    }
+
     private void ApplySmokePickCube()
     {
         viewModel.Reset();
@@ -2332,8 +3165,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         var center = new Point(Math.Max(1.0, Viewport.ActualWidth) / 2.0, Math.Max(1.0, Viewport.ActualHeight) / 2.0);
         if (TryPickCube(center, out var hit))
         {
+            var summary = CameraMath.FormatPoint(hit);
             viewModel.SelectedEntity = "Generated Unit Cube";
-            viewModel.PickCoordinate = CameraMath.FormatPoint(hit);
+            viewModel.PickCoordinate = summary;
+            viewModel.SelectionSummary = $"Cube pick: {summary}";
             viewModel.ViewerStatus = "Smoke pick: generated cube";
         }
         else
@@ -3302,6 +4137,91 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         DrawC3DFrame(gl);
     }
 
+    private void DrawNominalActualDeviation(OpenGL gl)
+    {
+        var result = viewModel.NominalActual.PreviewResult!;
+        gl.Disable(GlTexture2D);
+        gl.PointSize((float)Math.Max(2.0, viewModel.PointSize));
+        gl.Begin(OpenGL.GL_POINTS);
+        foreach (var sample in result.DisplaySamples)
+        {
+            var color = GetSignedDeviationColor(
+                sample.SignedDeviation,
+                result.Input.LowerTolerance,
+                result.Input.UpperTolerance);
+            gl.Color(color.Red, color.Green, color.Blue);
+            gl.Vertex(sample.Position.X, sample.Position.Y, sample.Position.Z);
+        }
+
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private void DrawNominalActualSelectedDeviation(OpenGL gl)
+    {
+        if (viewModel.NominalActual.SelectedDeviation is not { } sample)
+        {
+            return;
+        }
+
+        gl.Disable(OpenGL.GL_DEPTH_TEST);
+        gl.LineWidth(2.0f);
+        gl.Color(1.0, 0.75, 0.10);
+        gl.Begin(OpenGL.GL_LINES);
+        gl.Vertex(sample.Position.X, sample.Position.Y, sample.Position.Z);
+        gl.Vertex(sample.ClosestNominalPoint.X, sample.ClosestNominalPoint.Y, sample.ClosestNominalPoint.Z);
+        gl.End();
+
+        gl.PointSize(10.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Color(1.0, 0.85, 0.10);
+        gl.Vertex(sample.Position.X, sample.Position.Y, sample.Position.Z);
+        gl.Color(0.10, 0.90, 0.90);
+        gl.Vertex(sample.ClosestNominalPoint.X, sample.ClosestNominalPoint.Y, sample.ClosestNominalPoint.Z);
+        gl.End();
+        gl.PointSize(1.0f);
+        gl.LineWidth(1.0f);
+        gl.Enable(OpenGL.GL_DEPTH_TEST);
+    }
+
+    private static (double Red, double Green, double Blue) GetSignedDeviationColor(
+        double value,
+        double lowerTolerance,
+        double upperTolerance)
+    {
+        const double blueRed = 0.145;
+        const double blueGreen = 0.388;
+        const double blueBlue = 0.922;
+        const double redRed = 0.937;
+        const double redGreen = 0.267;
+        const double redBlue = 0.267;
+
+        if (value <= lowerTolerance)
+        {
+            return (blueRed, blueGreen, blueBlue);
+        }
+
+        if (value >= upperTolerance)
+        {
+            return (redRed, redGreen, redBlue);
+        }
+
+        if (value < 0)
+        {
+            var ratio = Math.Clamp(value / lowerTolerance, 0.0, 1.0);
+            return (
+                1.0 + (blueRed - 1.0) * ratio,
+                1.0 + (blueGreen - 1.0) * ratio,
+                1.0 + (blueBlue - 1.0) * ratio);
+        }
+
+        var positiveRatio = Math.Clamp(value / upperTolerance, 0.0, 1.0);
+        return (
+            1.0 + (redRed - 1.0) * positiveRatio,
+            1.0 + (redGreen - 1.0) * positiveRatio,
+            1.0 + (redBlue - 1.0) * positiveRatio);
+    }
+
     private void DrawImportedMesh(OpenGL gl)
     {
         var mesh = importedMesh!;
@@ -3679,6 +4599,51 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             ? (R: 1.0, G: 1.0 - 0.78 * intensity, B: 1.0 - 0.88 * intensity)
             : (R: 1.0 - 0.88 * intensity, G: 1.0 - 0.64 * intensity, B: 1.0);
         gl.Color(color.R, color.G, color.B);
+    }
+
+    private bool TryPickNominalActualDeviation(
+        Point screenPoint,
+        out NominalActualDeviationSample hit)
+    {
+        hit = default;
+        var comparison = viewModel.NominalActual;
+        if (viewModel.SelectedSelectionMode != "Point"
+            || !comparison.ActualVisible
+            || comparison.PreviewResult is not { } result
+            || Viewport.ActualWidth <= 0
+            || Viewport.ActualHeight <= 0)
+        {
+            return false;
+        }
+
+        var ray = CreatePickRay(screenPoint);
+        var maximumDistance = Math.Max(0.035f, (float)viewModel.CameraDistance * 0.006f);
+        var nearestDepth = float.PositiveInfinity;
+        var nearestRayDistance = float.PositiveInfinity;
+        foreach (var sample in result.DisplaySamples)
+        {
+            var toPoint = sample.Position - ray.origin;
+            var alongRay = Vector3.Dot(toPoint, ray.direction);
+            if (alongRay < 0.0f)
+            {
+                continue;
+            }
+
+            var closestOnRay = ray.origin + ray.direction * alongRay;
+            var rayDistance = Vector3.Distance(sample.Position, closestOnRay);
+            if (rayDistance > maximumDistance
+                || alongRay > nearestDepth
+                || (alongRay == nearestDepth && rayDistance >= nearestRayDistance))
+            {
+                continue;
+            }
+
+            nearestDepth = alongRay;
+            nearestRayDistance = rayDistance;
+            hit = sample;
+        }
+
+        return float.IsFinite(nearestDepth);
     }
 
     private bool TryPickCube(Point screenPoint, out Vector3 hit)
@@ -5035,7 +6000,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         lines.Add($"PointSize|value={viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture)}");
         lines.Add($"ColorMode|mode={CleanContractText(viewModel.SelectedColorMode)}");
         lines.Add($"MeasurementOverlay|visible={viewModel.MeasurementVisible}");
-        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
+        lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|maxNominalActualDisplaySamples={viewModel.NominalActualMaxDisplaySamples}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
         lines.Add(c3dSample is null
             ? "C3DMap|loaded=False|displayFrame=NotAvailable|physicalScale=Unverified"
             : string.Create(
@@ -5047,9 +6012,32 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         lines.Add("ImportedPointCloud");
         lines.Add(CreateLazContractLine());
         lines.Add($"ViewerInternalHud|detailsVisible={viewModel.HudDetailsVisible}|importedMeshDetailsVisible={viewModel.ImportedMeshHudDetailsVisible}|lazDetailsVisible={viewModel.LazHudDetailsVisible}");
+        var nominalActual = viewModel.NominalActual;
+        var nominalActualInput = viewModel.NominalActualInput;
+        var nominalActualResult = nominalActual.PreviewResult;
+        lines.Add("NominalActualComparison");
+        lines.Add($"NominalActualViewModel|type={nameof(NominalActualComparisonViewModel)}|state={nominalActual.State}|inputsReady={nominalActual.InputsReady}|canEdit={nominalActual.CanEdit}|canPreview={nominalActual.CanPreview}|canCancel={nominalActual.CanCancel}|canPublish={nominalActual.CanPublish}|actualVisible={nominalActual.ActualVisible}|nominalVisible={nominalActual.NominalVisible}|hudVisible={nominalActual.HudVisible}|legendVisible={nominalActual.LegendVisible}|distributionVisible={nominalActual.DistributionVisible}|typedResult={nominalActual.PreviewResult is not null}|lowerTolerance={FormatContractNumber(nominalActual.LowerTolerance)}|upperTolerance={FormatContractNumber(nominalActual.UpperTolerance)}|inputFingerprint={CleanContractText(nominalActual.CurrentInputFingerprint)}|previewFingerprint={CleanContractText(nominalActual.CompletedPreviewFingerprint)}|publishedFingerprint={CleanContractText(nominalActual.PublishedPreviewFingerprint)}");
+        lines.Add($"NominalActualSummary|state={CleanContractText(nominalActual.StateSummary)}|validation={CleanContractText(nominalActual.ValidationSummary)}|actual={CleanContractText(nominalActual.ActualSourceSummary)}|nominal={CleanContractText(nominalActual.NominalSourceSummary)}|query={CleanContractText(nominalActual.QuerySourceSummary)}|frame={CleanContractText(nominalActual.FrameSummary)}|alignment={CleanContractText(nominalActual.AlignmentSummary)}|result={CleanContractText(nominalActual.ResultSummary)}|evidence={CleanContractText(nominalActual.EvidenceSummary)}");
+        lines.Add(nominalActualInput is null
+            ? "NominalActualInput|configured=False"
+            : $"NominalActualInput|configured=True|step={CleanContractText(nominalActualInput.StepId)}|direction={NominalActualComparisonInput.Direction}|unit={CleanContractText(nominalActualInput.Unit)}|frame={CleanContractText(nominalActualInput.FrameId)}|alignment={CleanContractText(nominalActualInput.AlignmentId)}|actualId={CleanContractText(nominalActualInput.ActualSource.Id)}|actualBytes={nominalActualInput.ActualSource.ByteLength}|actualSha256={nominalActualInput.ActualSource.Sha256}|nominalId={CleanContractText(nominalActualInput.NominalSource.Id)}|nominalBytes={nominalActualInput.NominalSource.ByteLength}|nominalSha256={nominalActualInput.NominalSource.Sha256}|queryId={CleanContractText(nominalActualInput.QuerySource.Id)}|queryBytes={nominalActualInput.QuerySource.ByteLength}|querySha256={nominalActualInput.QuerySource.Sha256}|sourceFingerprint={nominalActualInput.SourceFingerprint}");
+        lines.Add(nominalActualResult is null
+            ? "NominalActualResult|available=False"
+            : $"NominalActualResult|available=True|status={nominalActualResult.Status}|message={CleanContractText(nominalActualResult.Message)}|executionFingerprint={nominalActualResult.Input.ExecutionFingerprint}|points={nominalActualResult.ComparedPointCount}|below={nominalActualResult.BelowLowerToleranceCount}|within={nominalActualResult.WithinToleranceCount}|above={nominalActualResult.AboveUpperToleranceCount}|directSign={nominalActualResult.DirectSignResolvedCount}|robustRecovered={nominalActualResult.RobustSignRecoveredCount}|indexMs={FormatContractNumber(nominalActualResult.IndexElapsed.TotalMilliseconds)}|calculationMs={FormatContractNumber(nominalActualResult.CalculationElapsed.TotalMilliseconds)}|totalMs={FormatContractNumber(nominalActualResult.TotalElapsed.TotalMilliseconds)}|fullQuery=True");
+        if (nominalActualResult is not null)
+        {
+            lines.Add($"NominalActualSignedStatistics|count={nominalActualResult.Signed.Count}|min={FormatPreciseContractNumber(nominalActualResult.Signed.Minimum)}|max={FormatPreciseContractNumber(nominalActualResult.Signed.Maximum)}|mean={FormatPreciseContractNumber(nominalActualResult.Signed.Mean)}|stdPopulation={FormatPreciseContractNumber(nominalActualResult.Signed.StandardDeviationPopulation)}|rms={FormatPreciseContractNumber(nominalActualResult.Signed.RootMeanSquare)}|unit={CleanContractText(nominalActualResult.Input.Unit)}");
+            lines.Add($"NominalActualUnsignedStatistics|count={nominalActualResult.Unsigned.Count}|min={FormatPreciseContractNumber(nominalActualResult.Unsigned.Minimum)}|max={FormatPreciseContractNumber(nominalActualResult.Unsigned.Maximum)}|mean={FormatPreciseContractNumber(nominalActualResult.Unsigned.Mean)}|stdPopulation={FormatPreciseContractNumber(nominalActualResult.Unsigned.StandardDeviationPopulation)}|rms={FormatPreciseContractNumber(nominalActualResult.Unsigned.RootMeanSquare)}|unit={CleanContractText(nominalActualResult.Input.Unit)}");
+            lines.Add($"NominalActualDisplaySampling|samples={nominalActualResult.DisplaySamples.Count}|stride={nominalActualResult.DisplaySampleStride}|measuredPoints={nominalActualResult.ComparedPointCount}|metricsIndependent=True|colorScale=zero-centred-blue-white-red");
+        }
+        lines.Add($"NominalActualDisplayDensityState|current={CleanContractText(nominalActual.CurrentDisplayDensity)}|currentBudget={nominalActual.CurrentDisplaySampleBudget}|next={CleanContractText(nominalActual.NextPreviewDisplayDensity)}|nextBudget={nominalActual.NextPreviewDisplaySampleBudget}|changePending={nominalActual.DisplaySamplingChangePending}|explicitPreviewRequired={nominalActual.DisplaySamplingChangePending}|currentSummary={CleanContractText(nominalActual.CurrentDisplaySamplingSummary)}|nextSummary={CleanContractText(nominalActual.NextPreviewSamplingSummary)}");
+        lines.Add(nominalActual.SelectedDeviation is not { } selectedDeviation
+            ? "NominalActualSelectedDeviation|selected=False"
+            : $"NominalActualSelectedDeviation|selected=True|queryIndex={selectedDeviation.QueryPointIndex}|position={FormatVector(selectedDeviation.Position)}|signedDeviation={FormatPreciseContractNumber(selectedDeviation.SignedDeviation)}|unsignedDeviation={FormatPreciseContractNumber(selectedDeviation.UnsignedDeviation)}|nominalTriangleIndex={selectedDeviation.NominalTriangleIndex}|closestNominal={FormatVector(selectedDeviation.ClosestNominalPoint)}|toleranceStatus={CleanContractText(nominalActual.SelectedDeviationToleranceStatus)}|robustSignRecovered={selectedDeviation.RobustSignRecovered}|actualId={CleanContractText(nominalActualResult!.Input.ActualSource.Id)}|queryId={CleanContractText(nominalActualResult.Input.QuerySource.Id)}|unit={CleanContractText(nominalActualResult.Input.Unit)}");
         lines.Add($"ViewerStatus|summary={CleanContractText(viewModel.ViewerStatus)}|smokeExitCode={smokeExitCode}");
         lines.Add($"CoordinateFrame|visible=True|summary={CleanContractText(viewModel.CoordinateFrameSummary)}");
         lines.Add($"Camera|yaw={FormatContractNumber(viewModel.YawDegrees)}|pitch={FormatContractNumber(viewModel.PitchDegrees)}|distance={FormatContractNumber(viewModel.CameraDistance)}|target={FormatVector(GetCameraTarget())}|summary={CleanContractText(viewModel.BottomStatus)}");
+        lines.Add(CreatePointerInputRegressionContractLine());
         lines.Add($"SelectionMode|value={viewModel.SelectedSelectionMode}");
         lines.Add($"PickCoordinate|value={CleanContractText(viewModel.PickCoordinate)}");
         lines.Add(CreateImportedMeshPickContractLine());
@@ -5141,14 +6129,28 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         lines.Add("RoiStepMeasurement");
         lines.Add($"RoiStep|visible={viewModel.RoiStepMeasurementVisible}|mode={viewModel.RoiStepSelectionMode}|leftCount={viewModel.RoiStepLeftPointCount}|rightCount={viewModel.RoiStepRightPointCount}|leftMeanRaw={FormatContractNumber(viewModel.RoiStepLeftRawMean)}|rightMeanRaw={FormatContractNumber(viewModel.RoiStepRightRawMean)}|heightDeltaRaw={FormatContractNumber(viewModel.RoiStepRawHeightDelta)}|modelDeltaY={FormatContractNumber(viewModel.RoiStepModelHeightDelta)}|summary={CleanContractText(viewModel.RoiStepMeasurementDetails)}|edit={CleanContractText(viewModel.RoiStepEditSummary)}");
         lines.Add("RecipeState");
-        lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
-        lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
-        lines.Add($"RecipeValidation|summary={CleanContractText(string.IsNullOrWhiteSpace(viewModel.RecipeValidationSummary) ? "Validation: OK" : viewModel.RecipeValidationSummary)}");
-        lines.Add($"RecipeParameterSummary|summary={CleanContractText(viewModel.RecipeParameterSummary)}");
-        lines.Add($"RecipeTransform|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}");
-        lines.Add(CreateCurrentRoiStepRecipe() is { } roiStep
-            ? $"RecipeRoiStep|configured=True|mode={roiStep.Mode}|maxSampledPoints={roiStep.MaxSampledPoints}|left={FormatContractRegion(roiStep.Left)}|right={FormatContractRegion(roiStep.Right)}"
-            : "RecipeRoiStep|configured=False");
+        if (nominalActualInput is not null)
+        {
+            lines.Add($"RecipeType|value={NominalActualComparisonRecipe.SupportedRecipeType}|version=1.0");
+            lines.Add($"RecipeTolerance|lower={FormatPreciseContractNumber(nominalActual.LowerTolerance)}|upper={FormatPreciseContractNumber(nominalActual.UpperTolerance)}|unit={CleanContractText(nominalActualInput.Unit)}");
+            lines.Add($"RecipeSource|actual={CleanContractText(nominalActualInput.ActualSource.Id)}|nominal={CleanContractText(nominalActualInput.NominalSource.Id)}|query={CleanContractText(nominalActualInput.QuerySource.Id)}");
+            lines.Add($"RecipeFrame|direction={NominalActualComparisonInput.Direction}|sampling={NominalActualComparisonRecipe.FullQuerySampling}|frame={CleanContractText(nominalActualInput.FrameId)}|alignment={CleanContractText(nominalActualInput.AlignmentId)}");
+            lines.Add("RecipeValidation|summary=Validation: OK");
+            lines.Add("RecipeParameterSummary|summary=Full-query metrics / display sampling independent");
+            lines.Add("RecipeTransform|applicable=False|reason=alignment-contract-owned");
+            lines.Add("RecipeRoiStep|configured=False");
+        }
+        else
+        {
+            lines.Add($"RecipeTolerance|value={viewModel.RecipePeakTolerance.ToString("F3", CultureInfo.InvariantCulture)}|unit={viewModel.RecipeSourceUnit}");
+            lines.Add($"RecipeSource|name={viewModel.RecipeSourceName}|path={viewModel.RecipeSourcePath}");
+            lines.Add($"RecipeValidation|summary={CleanContractText(string.IsNullOrWhiteSpace(viewModel.RecipeValidationSummary) ? "Validation: OK" : viewModel.RecipeValidationSummary)}");
+            lines.Add($"RecipeParameterSummary|summary={CleanContractText(viewModel.RecipeParameterSummary)}");
+            lines.Add($"RecipeTransform|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}");
+            lines.Add(CreateCurrentRoiStepRecipe() is { } roiStep
+                ? $"RecipeRoiStep|configured=True|mode={roiStep.Mode}|maxSampledPoints={roiStep.MaxSampledPoints}|left={FormatContractRegion(roiStep.Left)}|right={FormatContractRegion(roiStep.Right)}"
+                : "RecipeRoiStep|configured=False");
+        }
         lines.Add($"RecipeSave|summary={viewModel.RecipeSaveSummary}");
         lines.Add("LinkedViewHeightMap");
         lines.Add($"HeightMap|visible={viewModel.HeightMapVisible}|pixels={viewModel.HeightMapPixelWidth}x{viewModel.HeightMapPixelHeight}|summary={viewModel.HeightMapSummary.Replace('|', '/')}");
@@ -5190,6 +6192,31 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         viewModel.PickCoordinate = summary;
         viewModel.SelectionSummary = $"LAZ/LAS point: {summary}";
         viewModel.MeasurementSummary = $"LAZ/LAS point pick: {summary}";
+        viewModel.ViewerStatus = status;
+    }
+
+    private void SetNominalActualDeviationPick(
+        NominalActualDeviationSample sample,
+        string status)
+    {
+        var comparison = viewModel.NominalActual;
+        if (!comparison.SelectDeviation(sample))
+        {
+            viewModel.ViewerStatus = "Nominal/actual pick rejected: Preview sample is stale";
+            return;
+        }
+
+        selectedImportedMeshPoint = null;
+        selectedImportedMeshTriangleIndex = null;
+        selectedImportedMeshSurfaceNormal = null;
+        selectedLazPoint = null;
+        viewModel.SelectedEntity = "Nominal / Actual Deviation Point";
+        viewModel.SelectedSelectionMode = "Point";
+        viewModel.PickCoordinate = string.Create(
+            CultureInfo.InvariantCulture,
+            $"query #{sample.QueryPointIndex:N0} | {CameraMath.FormatPoint(sample.Position)} | signed {sample.SignedDeviation:G7} {comparison.PreviewResult!.Input.Unit}");
+        viewModel.SelectionSummary = comparison.SelectedDeviationSummary;
+        viewModel.MeasurementSummary = comparison.SelectedDeviationDetails;
         viewModel.ViewerStatus = status;
     }
 
@@ -5398,6 +6425,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private static string FormatContractNumber(double value) =>
         double.IsFinite(value) ? value.ToString("F3", CultureInfo.InvariantCulture) : "(pending)";
+
+    private static string FormatPreciseContractNumber(double value) =>
+        double.IsFinite(value) ? value.ToString("G17", CultureInfo.InvariantCulture) : "(pending)";
 
     private static string FormatContractRegion(HeightDeviationRecipeRoiRegion region) =>
         string.Create(

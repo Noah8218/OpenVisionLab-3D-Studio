@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
   </ItemGroup>
 
 </Project>

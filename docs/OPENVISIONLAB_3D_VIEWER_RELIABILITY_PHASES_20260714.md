@@ -1,0 +1,189 @@
+# OpenVisionLab 3D Viewer Reliability Phases
+
+Updated: 2026-07-15
+
+Status: current Viewer-reliability planning and claim-control source of truth. Use this document together with `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`; this document controls the order and exit gates for Viewer trust work.
+
+## Decision
+
+Viewer reliability is not one percentage. It has three different meanings that must not be combined:
+
+1. **Phase 1 - Software and visual reliability:** the same supported file and user action produce stable display, interaction, evidence, and failure behavior.
+2. **Phase 2 - Geometric and algorithm reliability:** different valid datasets, sampling patterns, and known transforms produce independently correct geometric results.
+3. **Phase 3 - Physical and metrology reliability:** displayed and calculated values are traceable to calibrated physical units with uncertainty and independent metrology evidence.
+
+Current status:
+
+| Phase | Current decision | What that means |
+| --- | --- | --- |
+| Phase 1 | **Passed locally for the fixed supported scope** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, and real WPF pointer-input gates pass locally. Remote Windows CI revalidation of the new pointer gate remains pending. |
+| Phase 2 | **Not passed** | One fixed C3D sample and one fixed identity-frame NIST pair pass. A second distinct pair, known non-identity transform, and broader topology/sampling cases do not exist yet. |
+| Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
+
+The accurate current claim is:
+
+> OpenVisionLab 3D has a repeatable fixed-scope engineering Viewer baseline and one independently cross-checked nominal/actual inspection slice. It is not yet a general-purpose geometric validator or a calibrated metrology system.
+
+## Phase 1 - Software And Visual Reliability
+
+### Goal
+
+Prove that supported Viewer workflows are deterministic, inspectable, hostable, and resistant to malformed input without confusing display sampling with measurement sampling.
+
+### Exit Checklist
+
+- [x] C3D, GLB, STL, LAS, and LAZ fixed positive/controlled-failure matrix passes in Viewer and Shell.
+- [x] Orbit, pan, zoom, fit, visibility, picking, two-point measurement, overlays, legends, and essential Viewer HUD facts have current smoke evidence.
+- [x] Source, Preview, and Published result entities remain separate; visibility changes never run Preview.
+- [x] Missing and corrupt inputs fail in a controlled state; screenshot-quality gates reject invalid frames.
+- [x] C3D display-frame mapping and external CloudCompare interchange pass for the fixed sample.
+- [x] Fast/Balanced/Detailed nominal/actual display sampling changes independently while full-query metrics and published evidence remain identical.
+- [x] Separate Viewer DLL, manifest, Host API, zero-`ProjectReference` BinaryHost, and Windows CI gates pass.
+- [x] Picking a nominal/actual colored point shows its ordered query-point index, actual/query source IDs, signed deviation, unsigned distance, nearest nominal triangle ID, and tolerance status in standalone Viewer and Shell evidence. The original actual STL has no proven one-to-one vertex index, so the UI does not invent one.
+- [x] Changing render density after a completed comparison clearly distinguishes the current displayed sample from the density selected for the next explicit Preview; it does not auto-run Preview.
+- [x] Pointer-driven orbit/pan/zoom/pick regressions have repeatable automated input evidence rather than only command-driven smoke state.
+- [x] A hosted smoke that requests both embedded Viewer and full-Shell evidence has one lifecycle owner, applies workflow actions once, captures both surfaces sequentially, and fails if either quality gate fails.
+
+### Current Assessment
+
+Phase 1 is **passed locally for the fixed supported scope**. This means the current supported data, display, host, evidence, failure, and pointer-interaction paths have current-source regression evidence. It does not establish arbitrary-data geometric correctness, calibrated physical accuracy, metrology certification, or remote CI portability of foreground Windows input.
+
+### Selected-Point Provenance Gate
+
+Passed locally on 2026-07-14 for the fixed NIST identity-frame slice:
+
+- `NominalActualDeviationSample` preserves the ordered query index, query position, closest nominal point, nearest source-triangle index, unsigned distance, signed deviation, and direct/robust sign path for display samples only. Full-query metrics remain independent of render sampling.
+- `NominalActualComparisonViewModel` owns selected-point state, tolerance classification, presentation, and stale-state clearing. The View/OpenGL code-behind only performs the pointer ray test, draws the selected-point evidence, and bridges current state to the host.
+- A real Balanced Viewer pointer-ray smoke selected query point `2,724,128` at `(6.270, 3.926, 4.603) mm`, signed deviation `-0.39734458923339844 mm`, unsigned distance `0.39734458923339844 mm`, nearest nominal triangle `725`, and `Below lower tolerance` status. The contract retains actual source `source.nist-overhang-x4-actual-part1` and query source `query.nist-overhang-x4-cloudcompare-vertices`.
+- Standalone Viewer and full Shell screenshots pass the shared pixel-quality gate and show the same selected evidence in the Viewer HUD, Tool/Inspector, and linked state. The first Shell attempt that omitted the configured pick is preserved as rejected functional evidence; the Shell-only smoke path now invokes the same configured Viewer pointer selection before capture.
+- Current evidence: `artifacts/nominal_actual_selected_point_20260714`. The executor/result golden passes `27/27`, ViewModel verification passes `65/65`, fixed Viewer/Shell regression passes `128/128`, and BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`.
+
+### Display-Density State Gate
+
+Passed locally on 2026-07-15 for the fixed NIST identity-frame slice:
+
+- View first exposes `Current display` and `Next Preview` in the standalone density control, Viewer HUD, Viewer Inspector, Shell `Data & Layers`, Shell `Tool / Inspector`, and linked deviation summary. `NominalActualComparisonViewModel` owns the applied/next density names, budgets, summaries, and pending state; no Core/Data/Tools model change was required.
+- Preview requests snapshot density and display budget together. Changing the global density after a published Balanced result leaves the current `59,487` samples and stride `71` unchanged, shows `Next Preview: Detailed`, retains the published result, and requires an explicit Preview.
+- A separate Detailed Preview applies `145,639` samples and stride `29`. Fast/Balanced/Detailed and the pending transition retain one normalized measurement/published-evidence SHA-256 `2FD93EF942D12C621A76964EF681816EE831CD8DEA214EF0A201F602BA30D1C9`.
+- Current evidence: `artifacts/nominal_actual_density_state_20260715`. ViewModel verification passes `71` checks, nominal/actual golden passes `27/27`, the fixed Viewer/Shell matrix passes `128/128`, BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`, and the extended four-run density regression passes.
+
+### Pointer-Input Gate
+
+Passed locally on 2026-07-15 for the standalone Viewer and the same Viewer DLL hosted in the Shell:
+
+- `--smoke-pointer-input-report` activates the visible WPF host for the smoke only, sends real Windows pointer input, and restores the original pointer position and topmost state afterward. The WPF/OpenGL code-behind remains the input bridge; existing ViewModel camera, pick, and selection properties are the acceptance state.
+- Each host receives `MouseDown=3`, `MouseMove=12`, `MouseUp=3`, and `MouseWheel=1`. A left click selects the generated cube and records its coordinate plus `Cube pick` linked summary, a right-button drag changes yaw and pitch, a middle-button drag changes the camera target, and a positive wheel event reduces camera distance.
+- Viewer and Shell each pass on two consecutive current-build runs. The two Viewer reports are byte-identical with SHA-256 `4D6C926DA834ED6AE017D98FEB84BCB043C1FA77AD3364A36D1B1EB842C7CF4E`; the two Shell reports are byte-identical with SHA-256 `2F2CBB688D8C3293C3176100CC6AE2D985BFF1A8F19DE840E77D98D72CCEA2A0`.
+- The before and after Viewer/Shell screenshots pass the shared pixel-quality gate. The post-input Shell shows the same cube coordinate in the hosted HUD, Tool / Inspector context, and `Camera / Pick State`; this closes the stale linked-summary issue exposed by the first passing input run.
+- Current evidence: `artifacts/pointer_input_regression_20260715`. The current-source build has zero warnings/errors, the fixed Viewer/Shell matrix passes `128/128`, and BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`.
+
+### Hosted Dual-Capture Gate
+
+Passed locally on 2026-07-15 for quick C3D and the fixed full-resolution NIST nominal/actual workflow:
+
+- The hosted Viewer no longer installs an independent shutdown handler. `OpenVisionLab.ThreeD.Shell` is the sole application-lifecycle owner, applies configured pick/pointer/publish/save actions once, captures the embedded Viewer, captures the full Shell, and then propagates the Viewer smoke exit code.
+- The pre-fix full NIST command ended with process code `1` after about three minutes and produced zero capture artifacts. The fixed command completes with process code `0`; the embedded `411 x 380` Viewer and `1280 x 800` Shell captures both pass the shared quality gate on attempt 1.
+- The same-run Viewer contract records `4,223,524` full-query points, query point `2,724,128`, `Published` state, result entity `result.nominal-actual-surface-deviation`, and smoke exit code `0`. Source, Preview, and Published result separation is unchanged.
+- Current evidence: `artifacts/dual_capture_orchestration_20260715`. The current-source build has zero warnings/errors, standalone/hosted pointer reports retain their established SHA-256 values, the fixed Viewer/Shell matrix passes `128/128`, and BinaryHost passes manifest `13/13`, outputs `12/12`, and Host API commands `3/3`.
+
+### Next Work Order
+
+1. On the next explicit push, confirm the mandatory hosted dual-capture CI step passes and execute the pointer gate on the Windows Actions environment. Inspect whether foreground Windows input is available there before making the pointer gate mandatory.
+2. Do not start Phase 2 implementation until a second genuinely distinct measured/nominal pair and an independently known non-identity transform or alignment truth are available.
+
+## Phase 2 - Geometric And Algorithm Reliability
+
+### Goal
+
+Prove that Viewer and Runner geometric results generalize beyond one fixed identity-frame dataset and remain correct under independently known transforms and materially different data conditions.
+
+### Entry Prerequisites
+
+- A second genuinely distinct measured/nominal pair with redistribution-safe or locally traceable provenance.
+- An independently known non-identity rigid transform or alignment truth.
+- External reference output from CloudCompare, ZEISS INSPECT, PolyWorks, Geomagic Control X, or another trusted implementation.
+
+Do not spend implementation effort fabricating these prerequisites from the existing NIST derivative. Synthetic cases may test errors, but they cannot prove cross-data generalization.
+
+### Exit Checklist
+
+- [x] One fixed identity-frame NIST pair matches independent CloudCompare unsigned and robust-signed output within the declared tolerance.
+- [ ] A second distinct pair passes source identity, Viewer/Runner parity, and external aggregate-statistic comparison.
+- [ ] A known non-identity transform passes translation and rotation plausibility plus point-level and aggregate expected output.
+- [ ] Duplicate vertices, non-finite normals, open surfaces, edge/vertex nearest hits, sparse/dense query sampling, and no-correspondence cases have controlled outcomes.
+- [ ] Registration acceptance records correspondence count and fitness before RMSE and rejects zero-correspondence false success.
+- [ ] Each accepted pair preserves actual/nominal/query hashes, units, frame, alignment, full-query/display-sample separation, recipe roundtrip, and Run Record identity.
+
+### Current Assessment
+
+Phase 2 is **not passed**. The current NIST result is strong fixed-sample evidence but cannot establish arbitrary-mesh, arbitrary-sampling, or arbitrary-alignment reliability.
+
+## Phase 3 - Physical And Metrology Reliability
+
+### Goal
+
+Connect Viewer coordinates and inspection values to traceable physical units, calibration identity, uncertainty assumptions, repeated observations, and independent metrology results.
+
+### Entry Prerequisites
+
+- C3D X/Z pitch, height scale/offset, units, axis directions, origins, and calibration identity.
+- A traceable physical artifact or dataset with independently certified dimensions/deviations.
+- Owner approval for any licensed metrology tool, calibration asset, or redistributable evidence.
+
+### Exit Checklist
+
+- [ ] A versioned mapping/calibration profile travels with source, recipe, Viewer evidence, Runner execution, and Run Record.
+- [ ] Raw, model, display, and physical units are distinguishable and conversion roundtrips have known-answer tests.
+- [ ] Measurement uncertainty assumptions and tolerance decision rules are recorded rather than implied.
+- [ ] Repeated scans/runs quantify repeatability and reproducibility instead of proving only same-file determinism.
+- [ ] At least one calibrated artifact matches an independent licensed metrology result within a declared acceptance budget.
+- [ ] Release documentation states the exact supported calibration and environmental scope.
+
+### Current Assessment
+
+Phase 3 is **blocked and unverified**. Current `unitless`, `raw-height`, `model`, and source-provided `mm` labels must not be converted into calibrated or certified claims without the prerequisites above.
+
+## Reliability Claims
+
+| Claim | Allowed now? | Required wording or reason |
+| --- | --- | --- |
+| Fixed supported Viewer matrix is repeatable | Yes | State the sample matrix, build/commit identity, and evidence artifact. |
+| Fixed C3D display-frame coordinates match independent interchange | Yes | Say `display-frame`; physical scale remains unverified. |
+| Fixed NIST identity-frame deviation matches CloudCompare | Yes | State the sample, query count, tolerance, and identity-frame limitation. |
+| Any valid 3D model will produce the same result as commercial tools | No | Phase 2 has no second pair or non-identity proof. |
+| C3D dimensions are physically calibrated | No | Phase 3 mapping/calibration metadata is missing. |
+| Metrology-grade, certified, or production-ready | No | Uncertainty, calibrated artifact, repeated-scan, and licensed-tool gates are open. |
+
+## Repeatable Evidence
+
+```powershell
+dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_reliability_phase1\pointer\viewer.png --smoke-screenshot-quality-report artifacts\viewer_reliability_phase1\pointer\viewer_quality.txt --smoke-contracts artifacts\viewer_reliability_phase1\pointer\viewer_contract.txt --smoke-pointer-input-report artifacts\viewer_reliability_phase1\pointer\viewer_pointer.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\viewer_reliability_phase1\pointer\shell.png --shell-screenshot-quality-report artifacts\viewer_reliability_phase1\pointer\shell_quality.txt --smoke-pointer-input-report artifacts\viewer_reliability_phase1\pointer\shell_pointer.txt
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-data-loading-matrix-smoke.ps1 -ArtifactDir artifacts\viewer_reliability_phase1\matrix -SkipBuild
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report artifacts\viewer_reliability_phase1\nominal_actual_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_reliability_phase1\viewer_selected.png --smoke-contracts artifacts\viewer_reliability_phase1\viewer_selected.txt --smoke-nominal-actual <actual.stl> <query.ply> <nominal.stl> --smoke-pick nominal-actual --smoke-publish-result
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-nist-nominal-actual-render-density.ps1 -ArtifactDir artifacts\viewer_reliability_phase1\render_density -SkipBuild
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Debug -ArtifactDirectory artifacts\viewer_reliability_phase1\binary_host -NoRestore
+```
+
+The pointer commands require an interactive Windows desktop because they send real OS pointer input. The ignored NIST files are required for the render-density command. If either prerequisite is unavailable, report that gate as not revalidated rather than substituting an older artifact.
+
+## Gate Update Template
+
+```text
+Gate:
+Phase:
+Decision: Pass | Partial | Fail | Blocked
+Build/commit identity:
+Input/source identity:
+Independent reference:
+Acceptance tolerance:
+Viewer result:
+Runner result:
+Artifacts:
+Known limitation:
+Next prerequisite:
+```
+
+Update this document only when a gate changes decision, a prerequisite becomes available, or the allowed reliability claim changes.

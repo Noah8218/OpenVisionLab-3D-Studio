@@ -46,23 +46,62 @@ jobs:
         timeout-minutes: 5
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Release -ArtifactDirectory artifacts\ci\viewer-dll-host
 
-      - name: Verify Shell screenshot quality
+      - name: Verify hosted Viewer and Shell screenshot quality
         shell: pwsh
         timeout-minutes: 5
         run: |
           $artifactDir = 'artifacts\ci\shell-screenshot-quality'
-          $screenshot = Join-Path $artifactDir 'shell-c3d.png'
-          $qualityReport = Join-Path $artifactDir 'shell-c3d-quality.txt'
-          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $qualityReport --smoke-c3d thickness --smoke-pick c3d
-          if ($LASTEXITCODE -ne 0) { throw "Shell screenshot smoke failed with exit code $LASTEXITCODE." }
-          $quality = Get-Content $qualityReport
-          if (-not ($quality -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell screenshot quality was not accepted.' }
+          $viewerScreenshot = Join-Path $artifactDir 'viewer-c3d.png'
+          $viewerQualityReport = Join-Path $artifactDir 'viewer-c3d-quality.txt'
+          $viewerContract = Join-Path $artifactDir 'viewer-c3d-contract.txt'
+          $shellScreenshot = Join-Path $artifactDir 'shell-c3d.png'
+          $shellQualityReport = Join-Path $artifactDir 'shell-c3d-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot $viewerScreenshot --smoke-screenshot-quality-report $viewerQualityReport --smoke-contracts $viewerContract --shell-smoke-screenshot $shellScreenshot --shell-screenshot-quality-report $shellQualityReport --smoke-c3d thickness --smoke-pick c3d
+          if ($LASTEXITCODE -ne 0) { throw "Hosted Viewer/Shell screenshot smoke failed with exit code $LASTEXITCODE." }
+          $viewerQuality = Get-Content $viewerQualityReport
+          $shellQuality = Get-Content $shellQualityReport
+          if (-not ($viewerQuality -match 'ViewerScreenshotResult\|accepted=True')) { throw 'Hosted Viewer screenshot quality was not accepted.' }
+          if (-not ($shellQuality -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell screenshot quality was not accepted.' }
+          if (-not ((Get-Content $viewerContract) -match 'C3DMap\|loaded=True')) { throw 'Hosted Viewer contract did not record the C3D map.' }
           if ($env:GITHUB_STEP_SUMMARY) {
-            Add-Content $env:GITHUB_STEP_SUMMARY "## Shell screenshot quality`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Hosted Viewer and Shell screenshot quality`n"
             Add-Content $env:GITHUB_STEP_SUMMARY '```text'
-            Add-Content $env:GITHUB_STEP_SUMMARY $quality
+            Add-Content $env:GITHUB_STEP_SUMMARY $viewerQuality
+            Add-Content $env:GITHUB_STEP_SUMMARY $shellQuality
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
+
+      - name: Observe WPF pointer input (non-gating)
+        continue-on-error: true
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $artifactDir = 'artifacts\ci\pointer-input-observation'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $viewerReport = Join-Path $artifactDir 'viewer-pointer.txt'
+          $shellReport = Join-Path $artifactDir 'shell-pointer.txt'
+          dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot (Join-Path $artifactDir 'viewer.png') --smoke-screenshot-quality-report (Join-Path $artifactDir 'viewer-quality.txt') --smoke-contracts (Join-Path $artifactDir 'viewer-contract.txt') --smoke-pointer-input-report $viewerReport
+          $viewerExitCode = $LASTEXITCODE
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot (Join-Path $artifactDir 'shell.png') --shell-screenshot-quality-report (Join-Path $artifactDir 'shell-quality.txt') --smoke-pointer-input-report $shellReport
+          $shellExitCode = $LASTEXITCODE
+          $viewerReportExists = Test-Path $viewerReport
+          $shellReportExists = Test-Path $shellReport
+          $viewerPassed = $viewerReportExists -and ((Get-Content $viewerReport -Raw) -match 'Result\|pass=True')
+          $shellPassed = $shellReportExists -and ((Get-Content $shellReport -Raw) -match 'Result\|pass=True')
+          $summary = @(
+            'PointerInputObservation'
+            "Viewer|exitCode=$viewerExitCode|report=$viewerReportExists|pass=$viewerPassed"
+            "Shell|exitCode=$shellExitCode|report=$shellReportExists|pass=$shellPassed"
+            'Gate|mandatory=False|reason=Windows Actions foreground input capability under evaluation'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## WPF pointer input observation (non-gating)`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+          exit 0
 
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail

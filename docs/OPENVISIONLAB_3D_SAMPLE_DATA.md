@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Sample Data
 
-Checked: 2026-07-08
+Checked: 2026-07-14
 
 Sample data is currently stored under `C:\Git\OpenVisionLab-3D-Studio\3D`.
 
@@ -25,6 +25,8 @@ Current SHA256 check shows the `Thickness` and `Warpage` C3D files are byte-iden
 Public sample source and license details are recorded in `3D/PublicSamples/README.md`.
 
 Loader/viewer acceptance coverage for these samples is tracked in `docs/OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`.
+
+The first distinct external measured/nominal candidate is NIST AMMT `Overhang Part X4`. It remains under ignored `artifacts/research_samples/nist_overhang_x4`, not under `3D/PublicSamples`. The nominal STL loads with 2,904 triangles and bounds `(0,0,0)..(9,5,5)`; the Part 1 XCT surface has 8,560,096 triangles and is controlled-rejected by the current 1,000,000-triangle Viewer limit. CloudCompare 2.13.2 supplies an independently verified signed/unsigned full-vertex deviation baseline in the documented NIST 3-2-1 part frame. OpenVisionLab reproduces the original measured SHA-256, triangle count, and bounds without render-density dependency; its controlled stream/PLY/distance/robust-sign golden passes `17/17`; and all 4,223,524 ordered validation vertices pass unsigned and robust-signed CloudCompare parity within `1e-6 mm` with zero sign mismatches. The visible Viewer/Runner workflow, generalization beyond this fixed identity-frame sample, and redistribution approval remain open. Source, hashes, licensing caution, local bounds, baseline evidence, and next acceptance gates are recorded in `docs/OPENVISIONLAB_3D_MEASURED_NOMINAL_SAMPLE_REVIEW_20260714.md` and `docs/OPENVISIONLAB_3D_NIST_CLOUDCOMPARE_DEVIATION_BASELINE_20260714.md`.
 
 ## 2. C3D Format Observation
 
@@ -91,3 +93,4 @@ Use the samples in this order:
 - Do not build production C3D import around the inferred layout without a small validation command.
 - Keep these files local sample data; do not copy them into `C:\Git\OpenVisionLab_Dev`.
 - Keep public sample license notes with the downloaded files before committing or redistributing them.
+- Keep the NIST pair probe-only until redistribution/derivative notices and a traceable large-mesh inspection path are accepted. Do not raise the triangle limit or silently decimate inspection geometry to make the sample render.

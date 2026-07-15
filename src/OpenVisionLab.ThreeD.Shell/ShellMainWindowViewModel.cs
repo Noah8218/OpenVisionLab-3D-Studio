@@ -385,6 +385,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private static ToolComparisonEvidence ExtractUiEvidence(string[] lines)
     {
+        var nominalActual = ExtractNominalActualUiEvidence(lines);
+        if (nominalActual is not null)
+        {
+            return nominalActual;
+        }
+
         var resultLine = FindLineAfterMarker(lines, InspectionContractText.PreviewToolResultMarker);
         var parts = resultLine?.Split('|');
         var metrics = ExtractMetrics(lines, InspectionContractText.PreviewMetricsMarker);
@@ -415,10 +421,29 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     }
 
     private static string ExtractSourceLoadStatus(string[] reportLines) =>
-        reportLines.Any(line => line.StartsWith("Source|", StringComparison.Ordinal)) ? "Loaded" : "Pending";
+        reportLines.Any(line =>
+            line.StartsWith("Source|", StringComparison.Ordinal)
+            || line.StartsWith("NominalActualActualSource|", StringComparison.Ordinal))
+            ? "Loaded"
+            : "Pending";
 
     private static string ExtractSourceSummary(string root, string[] reportLines, string[] contractLines)
     {
+        var actual = reportLines.FirstOrDefault(line =>
+            line.StartsWith("NominalActualActualSource|", StringComparison.Ordinal));
+        var nominal = reportLines.FirstOrDefault(line =>
+            line.StartsWith("NominalActualNominalSource|", StringComparison.Ordinal));
+        var query = reportLines.FirstOrDefault(line =>
+            line.StartsWith("NominalActualQuerySource|", StringComparison.Ordinal));
+        if (actual is not null && nominal is not null && query is not null)
+        {
+            return string.Join(
+                " | ",
+                FormatNominalActualSource(root, "actual", actual),
+                FormatNominalActualSource(root, "nominal", nominal),
+                FormatNominalActualSource(root, "query", query));
+        }
+
         var sourceLine = reportLines.FirstOrDefault(line => line.StartsWith("Source|", StringComparison.Ordinal));
         if (sourceLine is not null)
         {
@@ -437,6 +462,66 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
 
         return "No source evidence found.";
+    }
+
+    private static ToolComparisonEvidence? ExtractNominalActualUiEvidence(string[] lines)
+    {
+        var resultLine = lines.FirstOrDefault(line =>
+            line.StartsWith("NominalActualResult|", StringComparison.Ordinal));
+        var statisticsLine = lines.FirstOrDefault(line =>
+            line.StartsWith("NominalActualSignedStatistics|", StringComparison.Ordinal));
+        if (resultLine is null || statisticsLine is null)
+        {
+            return null;
+        }
+
+        var resultParts = resultLine.Split('|');
+        if (!string.Equals(
+                ExtractTaggedValue(resultParts, "available="),
+                "True",
+                StringComparison.OrdinalIgnoreCase)
+            || !long.TryParse(
+                ExtractTaggedValue(resultParts, "below="),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var below)
+            || !long.TryParse(
+                ExtractTaggedValue(resultParts, "above="),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var above))
+        {
+            return null;
+        }
+
+        var statisticsParts = statisticsLine.Split('|');
+        if (!double.TryParse(
+                ExtractTaggedValue(statisticsParts, "mean="),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var signedMean))
+        {
+            return null;
+        }
+
+        var unit = ExtractTaggedValue(statisticsParts, "unit=") ?? "(unitless)";
+        return new ToolComparisonEvidence(
+            NominalActualComparisonContract.ToolName,
+            ExtractTaggedValue(resultParts, "status=") ?? "(missing)",
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"Signed mean deviation {signedMean:F3} {unit} | Out-of-tolerance point count {below + above:F3} count"));
+    }
+
+    private static string FormatNominalActualSource(
+        string root,
+        string role,
+        string line)
+    {
+        var parts = line.Split('|');
+        var id = ExtractTaggedValue(parts, "id=") ?? "(missing ID)";
+        var path = ExtractTaggedValue(parts, "path=");
+        return $"{role} {id} ({(string.IsNullOrWhiteSpace(path) ? "path unknown" : ShortenWorkspacePaths(root, path))})";
     }
 
     private static string? FindLineAfterMarker(string[] lines, string marker)
@@ -497,6 +582,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private static string FormatKeyMetricSummary(IReadOnlyList<MetricEvidence> metrics)
     {
+        var signedMean = metrics.FirstOrDefault(metric =>
+            metric.Name.Equals("Signed mean deviation", StringComparison.Ordinal));
+        var outOfTolerance = metrics.FirstOrDefault(metric =>
+            metric.Name.Equals("Out-of-tolerance point count", StringComparison.Ordinal));
+        if (signedMean is not null && outOfTolerance is not null)
+        {
+            return $"Signed mean deviation {FormatMetricValue(signedMean)} | Out-of-tolerance point count {FormatMetricValue(outOfTolerance)}";
+        }
+
         var peakDeviation = metrics.FirstOrDefault(metric => metric.Name.Equals("Peak absolute deviation", StringComparison.Ordinal));
         if (peakDeviation is not null)
         {

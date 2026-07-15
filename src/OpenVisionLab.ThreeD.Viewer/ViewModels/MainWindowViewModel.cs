@@ -51,6 +51,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool pointCloudVisible = true;
     private bool c3DSampleVisible;
     private bool glbSampleVisible;
+    private bool syncingNominalMeshVisibility;
     private bool lazSampleVisible;
     private bool measurementVisible = true;
     private string selectedEntity = "Generated Unit Cube";
@@ -216,6 +217,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool crossSectionEnabled = true;
     private IReadOnlyList<SourceEntity> sourceEntities = [];
     private IReadOnlyList<ResultEntity> resultEntities = [];
+    private NominalActualComparisonInput? nominalActualInput;
     private string publishedResultSummary = "Published result: none";
     private IReadOnlyList<EntityLayer> entityLayers = [];
     private string sceneContractSummary = "(pending)";
@@ -340,7 +342,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public MainWindowViewModel()
     {
-        SourceEntities = CreateSourceEntities(C3DModelTransform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
+        NominalActual.PropertyChanged += OnNominalActualPropertyChanged;
+        NominalActual.ConfigureNextDisplaySampling(SelectedRenderDensity, NominalActualMaxDisplaySamples);
+        RefreshSourceEntities();
         fitAllCommand = new RelayCommand(_ => FitAllRequested?.Invoke(this, EventArgs.Empty));
         fitSelectionCommand = new RelayCommand(_ => FitSelectionRequested?.Invoke(this, EventArgs.Empty));
         resetCommand = new RelayCommand(_ => ResetRequested?.Invoke(this, EventArgs.Empty));
@@ -368,6 +372,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
     public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
+
+    public NominalActualComparisonViewModel NominalActual { get; } = new();
+
+    public NominalActualComparisonInput? NominalActualInput
+    {
+        get => nominalActualInput;
+        private set
+        {
+            if (SetField(ref nominalActualInput, value))
+            {
+                OnPropertyChanged(nameof(C3DRecipeEditorVisible));
+            }
+        }
+    }
+
+    public bool C3DRecipeEditorVisible => NominalActualInput is null;
 
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
     public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
@@ -505,10 +525,61 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetField(ref glbSampleVisible, value))
             {
+                if (NominalActual.InputsReady
+                    && !syncingNominalMeshVisibility
+                    && NominalActual.NominalVisible != value)
+                {
+                    syncingNominalMeshVisibility = true;
+                    try
+                    {
+                        NominalActual.NominalVisible = value;
+                    }
+                    finally
+                    {
+                        syncingNominalMeshVisibility = false;
+                    }
+                }
+
                 ViewerStatus = value ? $"{ImportedMeshFormat} mesh visible" : $"{ImportedMeshFormat} mesh hidden";
                 OnPropertyChanged(nameof(ImportedMeshHudDetailsVisible));
                 RefreshSceneContracts();
             }
+        }
+    }
+
+    private void OnNominalActualPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(NominalActualComparisonViewModel.InputsReady)
+            or nameof(NominalActualComparisonViewModel.Unit))
+        {
+            UpdateCameraStatus();
+        }
+
+        if (args.PropertyName is nameof(NominalActualComparisonViewModel.ActualVisible)
+            or nameof(NominalActualComparisonViewModel.NominalVisible)
+            or nameof(NominalActualComparisonViewModel.PreviewResult)
+            or nameof(NominalActualComparisonViewModel.State))
+        {
+            RefreshSceneContracts();
+        }
+
+        if (args.PropertyName is not nameof(NominalActualComparisonViewModel.InputsReady)
+            and not nameof(NominalActualComparisonViewModel.NominalVisible)
+            || !NominalActual.InputsReady
+            || syncingNominalMeshVisibility
+            || GlbSampleVisible == NominalActual.NominalVisible)
+        {
+            return;
+        }
+
+        syncingNominalMeshVisibility = true;
+        try
+        {
+            GlbSampleVisible = NominalActual.NominalVisible;
+        }
+        finally
+        {
+            syncingNominalMeshVisibility = false;
         }
     }
 
@@ -594,6 +665,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetField(ref selectedRenderDensity, mode))
             {
                 RenderDensitySummary = FormatRenderDensitySummary(mode);
+                OnPropertyChanged(nameof(C3DMaxRenderedPoints));
+                OnPropertyChanged(nameof(LazMaxSampledPoints));
+                OnPropertyChanged(nameof(ImportedMeshMaxRenderedTriangles));
+                OnPropertyChanged(nameof(NominalActualMaxDisplaySamples));
+                NominalActual.ConfigureNextDisplaySampling(mode, NominalActualMaxDisplaySamples);
                 ViewerStatus = $"Render density: {mode}";
             }
         }
@@ -623,6 +699,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         "Fast" => 25000,
         "Detailed" => 180000,
+        _ => 60000
+    };
+
+    public int NominalActualMaxDisplaySamples => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 150000,
         _ => 60000
     };
 
@@ -3043,7 +3126,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         C3DModelTransform = transform;
-        SourceEntities = CreateSourceEntities(transform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
+        RefreshSourceEntities();
         TransformSummary = $"Transform: {FormatModelTransform(transform)}";
         AlignmentSummary = $"Alignment: {alignmentName} | reference {referenceName}";
         CoordinateMappingSummary = ModelTransformIsIdentity(transform)
@@ -3061,7 +3144,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         GlbSampleSourcePath = sourcePath;
         GlbSampleName = string.IsNullOrWhiteSpace(sourceName) ? ImportedMeshDisplayName() : sourceName;
         OnPropertyChanged(nameof(ImportedMeshLayerLabel));
-        SourceEntities = CreateSourceEntities(C3DModelTransform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
+        RefreshSourceEntities();
         RefreshSceneContracts();
     }
 
@@ -3076,7 +3159,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         LazSampleSourcePath = sourcePath;
         LazSampleName = string.IsNullOrWhiteSpace(sourceName) ? "Public LAZ/LAS Point Cloud" : sourceName;
-        SourceEntities = CreateSourceEntities(C3DModelTransform, GlbSampleName, GlbSampleSourcePath, LazSampleName, LazSampleSourcePath);
+        RefreshSourceEntities();
         RefreshSceneContracts();
     }
 
@@ -3213,6 +3296,66 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
+    public void ConfigureNominalActualComparison(NominalActualComparisonInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        NominalActualInput = input;
+        RefreshSourceEntities();
+        NominalActual.ApplyInputValidation(
+            FormatNominalActualSource("Actual", input.ActualSource),
+            FormatNominalActualSource("Nominal", input.NominalSource),
+            FormatNominalActualSource("Validation query", input.QuerySource),
+            $"Frame: {input.FrameId} | Units: {input.Unit}",
+            $"Alignment: {input.AlignmentId}",
+            input.Unit,
+            input.SourceFingerprint);
+        NominalActual.ActualVisible = true;
+        NominalActual.NominalVisible = false;
+        SelectedEntity = "Nominal / Actual Surface Deviation";
+        MeasurementSummary = "Inputs validated; explicit Preview requested.";
+        RefreshSceneContracts();
+    }
+
+    public void ClearNominalActualComparison(string validationIssue)
+    {
+        NominalActualInput = null;
+        RefreshSourceEntities();
+        NominalActual.ApplyInputValidation(
+            "Actual: not loaded",
+            "Nominal: not loaded",
+            "Validation query: not loaded",
+            "Frame: not set | Units: not set",
+            "Alignment: not set",
+            "(not set)",
+            "(none)",
+            validationIssue);
+        RefreshSceneContracts();
+    }
+
+    public bool PublishNominalActualComparison(NominalActualComparisonResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (NominalActualInput is null
+            || NominalActual.PreviewResult is null
+            || !result.Input.ExecutionFingerprint.Equals(
+                NominalActual.CompletedPreviewFingerprint,
+                StringComparison.Ordinal)
+            || !result.Input.SourceFingerprint.Equals(
+                NominalActualInput.SourceFingerprint,
+                StringComparison.Ordinal))
+        {
+            ViewerStatus = "Nominal/actual Publish rejected: Preview evidence is stale or missing";
+            return false;
+        }
+
+        var resultEntity = NominalActualComparisonContract.CreateResultEntity(result);
+        ResultEntities = [resultEntity];
+        PublishedResultSummary = FormatPublishedResult(resultEntity);
+        ViewerStatus = $"Result published: {resultEntity.Name}";
+        RefreshSceneContracts();
+        return true;
+    }
+
     public void Pan(double deltaX, double deltaY, double deltaZ)
     {
         CameraTargetX += deltaX;
@@ -3238,7 +3381,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void UpdateCameraStatus()
     {
-        BottomStatus = $"Model units: unitless | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
+        var modelUnit = NominalActual.InputsReady ? NominalActual.Unit : "unitless";
+        BottomStatus = $"Model units: {modelUnit} | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
     }
 
     private void SetCameraTarget(double x, double y, double z)
@@ -3270,6 +3414,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             new EntityLayer("layer.source.imported-mesh", GlbSampleName, LayerKind.Source, GlbSampleVisible, [GlbEntityId]),
             new EntityLayer("layer.source.public-laz-manuscript", "Public LAZ/LAS Point Cloud", LayerKind.Source, LazSampleVisible, [LazEntityId])
         };
+
+        if (NominalActualInput is { } comparisonInput)
+        {
+            layers.Add(new EntityLayer(
+                "layer.source.nominal-actual-measured",
+                "Nominal / Actual Measured Source",
+                LayerKind.Source,
+                NominalActual.ActualVisible,
+                [comparisonInput.ActualSource.Id, comparisonInput.QuerySource.Id]));
+            layers.Add(new EntityLayer(
+                "layer.source.nominal-actual-nominal",
+                "Nominal / Actual Nominal Source",
+                LayerKind.Source,
+                NominalActual.NominalVisible,
+                [comparisonInput.NominalSource.Id]));
+            if (NominalActual.PreviewResult is not null)
+            {
+                layers.Add(new EntityLayer(
+                    "layer.preview.nominal-actual-surface-deviation",
+                    "Preview: Nominal / Actual Surface Deviation",
+                    LayerKind.Preview,
+                    NominalActual.ActualVisible,
+                    [comparisonInput.ActualSource.Id, comparisonInput.QuerySource.Id]));
+            }
+        }
 
         if (PreviewToolResult.Status != ResultStatus.NotRun)
         {
@@ -3413,6 +3582,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var firstResult = results[0];
         return firstResult.Id switch
         {
+            NominalActualComparisonContract.ResultEntityId =>
+                (NominalActualComparisonContract.ResultLayerId, NominalActualComparisonContract.ResultLayerName),
             C3DHeightDeviationResultEntityId => ("layer.result.c3d-height-deviation", "Published C3D Height Deviation"),
             C3DPlaneFlatnessResultEntityId => ("layer.result.c3d-plane-flatness", "Published C3D Plane Flatness"),
             C3DPointPairDimensionsResultEntityId => ("layer.result.c3d-point-pair-dimensions", "Published C3D Point Pair Dimensions"),
@@ -3565,6 +3736,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshRecipeSummary();
     }
 
+    public void SetNominalActualRecipeLoaded(string recipePath)
+    {
+        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
+        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
+        RefreshNominalActualRecipeSummary();
+    }
+
+    public void SetNominalActualRecipeSaved(string recipePath)
+    {
+        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
+        RecipeSaveSummary = $"Recipe saved: {Path.GetFullPath(recipePath)}";
+        RefreshNominalActualRecipeSummary();
+    }
+
     public void SetLazRecipeLoaded(string recipePath, string sourceName, string sourcePath)
     {
         SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
@@ -3669,6 +3854,59 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         new SourceEntity(GlbEntityId, glbName, EntityKind.Mesh, "unitless", glbSourcePath, ModelTransform.Identity),
         new SourceEntity(LazEntityId, lazName, EntityKind.PointCloud, "source-units", lazSourcePath, ModelTransform.Identity)
     ];
+
+    private void RefreshSourceEntities()
+    {
+        var entities = CreateSourceEntities(
+            C3DModelTransform,
+            GlbSampleName,
+            GlbSampleSourcePath,
+            LazSampleName,
+            LazSampleSourcePath).ToList();
+        if (NominalActualInput is { } input)
+        {
+            entities.Add(new SourceEntity(
+                input.ActualSource.Id,
+                input.ActualSource.Name,
+                EntityKind.Mesh,
+                input.Unit,
+                input.ActualSource.Path,
+                ModelTransform.Identity));
+            entities.Add(new SourceEntity(
+                input.NominalSource.Id,
+                input.NominalSource.Name,
+                EntityKind.Mesh,
+                input.Unit,
+                input.NominalSource.Path,
+                ModelTransform.Identity));
+            entities.Add(new SourceEntity(
+                input.QuerySource.Id,
+                input.QuerySource.Name,
+                EntityKind.PointCloud,
+                input.Unit,
+                input.QuerySource.Path,
+                ModelTransform.Identity));
+        }
+
+        SourceEntities = entities;
+    }
+
+    private void RefreshNominalActualRecipeSummary()
+    {
+        if (NominalActualInput is not { } input)
+        {
+            return;
+        }
+
+        RecipeSummary = string.Create(
+            CultureInfo.InvariantCulture,
+            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:G6}, {NominalActual.UpperTolerance:G6}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}");
+    }
+
+    private static string FormatNominalActualSource(
+        string role,
+        NominalActualFileIdentity identity) =>
+        $"{role}: {Path.GetFileName(identity.Path)} | {identity.Id} | sha256 {identity.Sha256[..8]}";
 
     private static string FormatModelTransform(ModelTransform transform) =>
         string.Create(

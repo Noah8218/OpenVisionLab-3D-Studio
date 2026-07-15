@@ -45,6 +45,35 @@
                                        Foreground="#111827"
                                        Text="Data &amp; Layers" />
 
+                            <StackPanel Margin="0,12,0,0"
+                                        DataContext="{Binding NominalActual}">
+                                <TextBlock Foreground="#6b7280" Text="Nominal / Actual" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ActualSourceSummary, FallbackValue='Actual: not loaded'}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding NominalSourceSummary, FallbackValue='Nominal: not loaded'}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding QuerySourceSummary, FallbackValue='Validation query: not loaded'}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding FrameSummary, FallbackValue='Frame: not set | Units: not set'}" />
+                                <WrapPanel Margin="0,6,0,0">
+                                    <CheckBox Margin="0,0,12,0"
+                                              Content="Actual"
+                                              IsChecked="{Binding ActualVisible, Mode=TwoWay, FallbackValue=False}"
+                                              IsEnabled="{Binding InputsReady, FallbackValue=False}" />
+                                    <CheckBox Content="Nominal"
+                                              IsChecked="{Binding NominalVisible, Mode=TwoWay, FallbackValue=False}"
+                                              IsEnabled="{Binding InputsReady, FallbackValue=False}" />
+                                </WrapPanel>
+                            </StackPanel>
+
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Display State" />
                             <TextBlock Text="{Binding SelectedEntity, StringFormat=Active: {0}}" />
                             <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color: {0}}" />
@@ -69,6 +98,28 @@
                             <TextBlock Margin="0,4,0,0"
                                        TextWrapping="Wrap"
                                        Text="{Binding RenderDensitySummary}" />
+                            <StackPanel Margin="0,5,0,0"
+                                        DataContext="{Binding NominalActual}"
+                                        Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+                                <TextBlock Foreground="#374151"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding CurrentDisplaySamplingSummary}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding NextPreviewSamplingSummary}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#6b7280" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
+                                                    <Setter Property="Foreground" Value="#b45309" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
                             <TextBlock Margin="0,4,0,0"
                                        Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Text="{Binding C3DSamplePointCount, StringFormat=Rendered C3D points: {0}}" />
@@ -117,6 +168,57 @@
                                        FontWeight="SemiBold"
                                        Foreground="#111827"
                                        Text="Tool / Inspector" />
+
+                            <StackPanel Margin="0,12,0,0"
+                                        DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                <TextBlock Foreground="#6b7280" Text="Surface Deviation" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding StateSummary, FallbackValue='Status: No inputs'}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding DirectionSummary, FallbackValue='Direction: Actual to Nominal'}" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="#374151"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding CurrentDisplaySamplingSummary}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding NextPreviewSamplingSummary}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#6b7280" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
+                                                    <Setter Property="Foreground" Value="#b45309" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ProgressBar Height="6"
+                                             Margin="0,7,0,0"
+                                             Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding ProgressPercent, Mode=OneWay, FallbackValue=0}" />
+                                <WrapPanel Margin="0,7,0,0">
+                                    <Button Margin="0,0,6,4"
+                                            Content="Preview Comparison"
+                                            Command="{Binding PreviewCommand}"
+                                            IsEnabled="{Binding CanPreview, FallbackValue=False}" />
+                                    <Button Margin="0,0,6,4"
+                                            Content="Cancel"
+                                            Command="{Binding CancelCommand}"
+                                            IsEnabled="{Binding CanCancel, FallbackValue=False}" />
+                                    <Button Margin="0,0,0,4"
+                                            Content="Publish"
+                                            Command="{Binding PublishCommand}"
+                                            IsEnabled="{Binding CanPublish, FallbackValue=False}" />
+                                </WrapPanel>
+                            </StackPanel>
 
                             <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Active Tool" />
                             <StackPanel DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
@@ -541,6 +643,11 @@
 
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel>
+                                            <StackPanel Margin="0,0,0,12">
+                                                <TextBlock Foreground="#6b7280"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding ViewerContent.ViewModel.NominalActual.EvidenceSummary, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, FallbackValue='No comparison evidence.', TargetNullValue='No comparison evidence.'}" />
+                                            </StackPanel>
                                             <TextBlock Foreground="#6b7280" Text="Latest Result" />
                                             <TextBlock Margin="0,4,0,0"
                                                        FontWeight="SemiBold"
@@ -743,6 +850,36 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Margin="0,0,12,0">
+                                <StackPanel Margin="0,0,0,8"
+                                            DataContext="{Binding NominalActual}"
+                                            Visibility="{Binding DistributionVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Foreground="#111827"
+                                               Text="Deviation Distribution" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding DistributionSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#374151"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding CurrentDisplaySamplingSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding NextPreviewSamplingSummary}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#6b7280" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
+                                                        <Setter Property="Foreground" Value="#b45309" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
                                 <StackPanel>
                                     <StackPanel.Style>
                                         <Style TargetType="StackPanel">
