@@ -55,6 +55,8 @@
                 Background="#ffffff"
                 BorderBrush="#d1d5db"
                 BorderThickness="0,0,1,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="12">
                 <TextBlock FontSize="15" FontWeight="SemiBold" Text="Entities" />
                 <CheckBox Margin="0,12,0,0"
@@ -101,9 +103,17 @@
                                   IsEnabled="{Binding InputsReady, FallbackValue=False}" />
                     </WrapPanel>
                 </StackPanel>
-                <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Color" />
-                <ComboBox ItemsSource="{Binding ColorModes}"
-                          SelectedItem="{Binding SelectedColorMode, Mode=TwoWay}" />
+                <Separator Margin="0,14,0,10" />
+                <TextBlock FontSize="15" FontWeight="SemiBold" Text="Display" />
+                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Geometry Style" />
+                <ComboBox ItemsSource="{Binding Display.AvailableGeometryStyles}"
+                          SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
+                          IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}">
+                </ComboBox>
+                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="Color Map" />
+                <ComboBox ItemsSource="{Binding Display.AvailableColorMaps}"
+                          SelectedItem="{Binding Display.SelectedColorMap, Mode=TwoWay}"
+                          IsEnabled="{Binding Display.CanSelectColorMap}" />
                 <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
                 <Slider Minimum="1"
                         Maximum="6"
@@ -163,6 +173,7 @@
                     Drag to orbit. Middle drag or Shift+drag pans. Mouse wheel zooms. Left click the cube to pick the nearest face.
                 </TextBlock>
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Border x:Name="RightSidePanel"
@@ -576,7 +587,7 @@
                            Text="{Binding PublishedResultSummary}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="Point Cloud" />
                 <TextBlock Text="{Binding PointCloudPointCount, StringFormat=Points: {0}}" />
-                <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color mode: {0}}" />
+                <TextBlock Text="{Binding Display.EffectiveColorMap, StringFormat=Color mode: {0}}" />
                 <TextBlock Margin="0,12,0,0" Foreground="#6b7280" Text="C3D Sample" />
                 <TextBlock Text="{Binding C3DSamplePointCount, StringFormat=Rendered points: {0}}" />
                 <TextBlock TextWrapping="Wrap"

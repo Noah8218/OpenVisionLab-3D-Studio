@@ -115,7 +115,7 @@ Fixed NIST Viewer render-density independence. This requires the ignored local N
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-nist-nominal-actual-render-density.ps1
 ```
 
-The fixed ignored NIST end-to-end Publish, recipe reopen, Runner, Run Record, and Shell commands are recorded in `docs\OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`.
+The fixed ignored NIST Part 1 end-to-end Publish, recipe reopen, Runner, Run Record, and Shell commands are recorded in `docs\OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`. The corresponding Part 2 visible workflow and explicit smoke dataset identity are recorded in `docs\OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`.
 
 Ad hoc GLB/STL/LAS/LAZ sample probe:
 
@@ -464,4 +464,5 @@ Current development snapshot:
 - `docs\OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`: loader/viewer evidence matrix for current C3D, GLB, STL, LAS, and LAZ samples.
 - `docs\OPENVISIONLAB_3D_MAP_FIDELITY_VALIDATION_20260711.md`: C3D source-grid, Viewer-frame, independent-renderer, and physical-fidelity gates.
 - `docs\OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md`: fixed NIST Preview/Publish, typed recipe, Viewer/Runner parity, Run Record, evidence, and remaining trust gates.
+- `docs\OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`: second NIST physical-instance Viewer/Shell, recipe reopen, selected-point, Runner `Matched`, and regression evidence.
 - `docs\OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`: current engineering handoff.

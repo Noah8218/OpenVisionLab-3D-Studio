@@ -60,6 +60,7 @@ internal static class MeshDeviationParityVerification
         long directUnresolvedVertexCount = 0;
         long finalUnresolvedCount = 0;
         long signedSignMismatchCount = 0;
+        long nearZeroSignEquivalentCount = 0;
         long robustRecoveredSignMismatchCount = 0;
         long directUnresolvedCloudPositiveCount = 0;
         long directUnresolvedCloudNegativeCount = 0;
@@ -151,7 +152,13 @@ internal static class MeshDeviationParityVerification
                     openSignedResolvedStats.Add(openSignedDistance);
                     cloudSignedResolvedStats.Add(cloudSignedDistance);
                     signedDifferences.Add(openSignedDistance, cloudSignedDistance);
-                    if (Math.Sign(openSignedDistance) != Math.Sign(cloudSignedDistance))
+                    if (Math.Sign(openSignedDistance) != Math.Sign(cloudSignedDistance)
+                        && Math.Abs(openSignedDistance) <= TriangleMeshDistanceIndex.RobustSignDistanceEpsilon
+                        && Math.Abs(cloudSignedDistance) <= TriangleMeshDistanceIndex.RobustSignDistanceEpsilon)
+                    {
+                        nearZeroSignEquivalentCount++;
+                    }
+                    else if (Math.Sign(openSignedDistance) != Math.Sign(cloudSignedDistance))
                     {
                         signedSignMismatchCount++;
                         if (recoveredByRobustSelection)
@@ -222,7 +229,7 @@ internal static class MeshDeviationParityVerification
             $"UnsignedOpenVision|{openUnsignedStats.Format()}|{thresholds.Format()}",
             $"UnsignedCloudCompare|{cloudUnsignedStats.Format()}|meanDelta={Format(openUnsignedStats.Mean - cloudUnsignedStats.Mean)}|stdDelta={Format(openUnsignedStats.StandardDeviationPopulation - cloudUnsignedStats.StandardDeviationPopulation)}",
             $"SignedDirectCoverage|resolved={directSignedCount}|unresolved={directUnresolvedCount}|edge={directUnresolvedEdgeCount}|vertex={directUnresolvedVertexCount}|coverage={FormatRatio(directSignedCount, processedPointCount)}",
-            $"SignedRobustParity|{(signedRobustPass ? "Pass" : "Fail")}|resolved={resolvedSignedCount}|recovered={robustRecoveredCount}|signMismatches={signedSignMismatchCount}|recoveredSignMismatches={robustRecoveredSignMismatchCount}|pointTolerance={Format(PointTolerance)}|selectionEpsilon={Format(TriangleMeshDistanceIndex.RobustSignDistanceEpsilon)}|{signedDifferences.Format()}",
+            $"SignedRobustParity|{(signedRobustPass ? "Pass" : "Fail")}|resolved={resolvedSignedCount}|recovered={robustRecoveredCount}|signMismatches={signedSignMismatchCount}|recoveredSignMismatches={robustRecoveredSignMismatchCount}|nearZeroSignEquivalent={nearZeroSignEquivalentCount}|pointTolerance={Format(PointTolerance)}|selectionEpsilon={Format(TriangleMeshDistanceIndex.RobustSignDistanceEpsilon)}|signZeroTolerance={Format(TriangleMeshDistanceIndex.RobustSignDistanceEpsilon)}|{signedDifferences.Format()}",
             $"SignedOpenVisionResolved|{openSignedResolvedStats.Format()}",
             $"SignedCloudCompareResolved|{cloudSignedResolvedStats.Format()}",
             $"SignedCoverage|complete={(finalUnresolvedCount == 0)}|resolved={resolvedSignedCount}|unresolved={finalUnresolvedCount}|coverage={FormatRatio(resolvedSignedCount, processedPointCount)}",

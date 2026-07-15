@@ -261,6 +261,105 @@ The implemented split is:
 - Result evidence belongs in Evidence Workbench, not only inside viewport text.
 - A visible layout change needs a Shell-wide screenshot, not only a Viewer-control screenshot.
 
+## Viewer Display Settings Contract
+
+The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style bridge and its local multi-frame performance gate are complete. Additional C3D LUTs, GLB/STL style switching, display range, and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
+
+ImageJ converts a regular 2D image grid into a height field. OpenVisionLab also handles arbitrary triangle meshes and unorganized point clouds, so it must not expose a mode that implies topology the source does not have. In particular, LAS/LAZ surface reconstruction is not authorized by this layout contract.
+
+### Layout And Ownership
+
+| Area | Display-settings responsibility |
+| --- | --- |
+| Standalone Viewer side panel | Add a compact `Display` group for active-entity geometry style, color map, point/line size, and later range/scene controls. |
+| Shell Data & Layers | Mirror the active entity's Viewer-owned display state. Do not duplicate it in `ShellMainWindowViewModel`. |
+| 3D Inspection View HUD | Show the effective geometry style, color map, and `Display only` state when a visual transform could change apparent shape or range. |
+| Tool / Inspector | Own no camera, palette, or geometry-style state. Inspection parameters remain separate from rendering preferences. |
+| Evidence contract | Record effective display settings for screenshot interpretation, but exclude them from measurement, Preview, and Published-result fingerprints. |
+| Viewer OpenGL bridge | Apply the ViewModel-owned settings to SharpGL. It may build display buffers but does not own durable setting state. |
+
+### Source Capability Matrix
+
+`Initial` is the first implementation slice. `Later` requires a separate accepted slice. `No` means the mode would invent unsupported topology or semantics.
+
+| Active data | Points | Row lines | Wireframe | Surface | Surface + edges | Contours | Initial color maps |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Organized C3D height grid | Initial | Later | Initial | Initial | Initial | Later | Solid, Grayscale, Height, Thermal, Deviation when a result exists |
+| GLB/STL triangle mesh | Initial vertices | No | Initial | Initial | Initial | Later only with an explicit scalar field | Source, Solid, Grayscale |
+| LAS/LAZ point cloud | Initial | No | No | No | No | No | Source RGB when present, Solid, Grayscale, Height |
+| Nominal/actual comparison | Actual query: Initial | No | Nominal only: Initial | Nominal only: Initial | Nominal only: Initial | Later only for a proven scalar field | Actual: Deviation; nominal: Source or Solid |
+
+The organized C3D surface and wireframe are display proxies built from valid neighboring rendered cells. They follow the existing row/column mapping and render-density stride, but they are never inspection geometry. This preserves the existing rule that compatibility PLY faces must not be measured.
+
+### Initial State Surface
+
+The first implementation slice owns only these choices:
+
+- `GeometryStyle`: `Points`, `Wireframe`, `Surface`, `SurfaceWithEdges` where the active source supports them.
+- `ColorMap`: `Source`, `Solid`, `Grayscale`, `Height`, `Thermal`, `Deviation` where the active source supplies the required color or scalar data.
+- Existing `PointSize` and `RenderDensity` remain in the same display group.
+- Unsupported combinations are disabled or omitted. The Viewer must not silently triangulate an unorganized cloud or silently substitute another color map.
+
+Defaults preserve current rendering behavior:
+
+| Active data | Default geometry | Default color |
+| --- | --- | --- |
+| C3D height grid | Points | Height |
+| GLB/STL mesh | SurfaceWithEdges | Source when texture/vertex color exists, otherwise Solid |
+| LAS/LAZ point cloud | Points | Source when RGB exists, otherwise Height or Solid |
+| Nominal/actual actual query | Points | Deviation |
+| Nominal reference mesh | Surface | Solid or Source |
+
+### Display-Only Invariants
+
+1. Changing geometry style, color map, point size, line size, range, lighting, background, or camera projection never runs Preview or Publish.
+2. Display settings never mutate source geometry, aligned measurement coordinates, the full query set, recipe parameters, metric values, tolerance status, or a Published result.
+3. Viewer/Runner measurement evidence and its normalized hash remain identical across supported display styles and color maps.
+4. Picking reports stable source/aligned coordinates and provenance. A future vertical exaggeration may change only the rendered position and must be visibly labelled `Display only`.
+5. Display settings may be stored in Viewer session/workspace state and screenshot contracts, but not in an inspection-result fingerprint. A result-owned deviation legend and tolerances remain evidence, not a free display preference.
+6. Display smoothing and inspection preprocessing are different features. Display smoothing may affect only a proxy; measurement-affecting filtering requires an explicit recipe step and explicit Preview.
+7. Surface reconstruction for unorganized point clouds remains unsupported until a separately validated inspection use case defines topology, error bounds, and provenance.
+8. A requested mode that becomes unavailable after the active source changes must fall back explicitly to that source's documented default and expose the effective mode in status/contract evidence.
+
+### Deferred Display Controls
+
+Implement these only after the initial geometry/color slice passes its regression gate:
+
+- automatic/manual color range, minimum, maximum, and invert;
+- display-only vertical exaggeration with an always-visible non-1:1 indicator;
+- row-line and contour rendering for organized height/scalar grids;
+- configurable perspective/FOV, orthographic projection, and lighting;
+- background, grid, axis, and line colors;
+- external texture assignment and display-only smoothing.
+
+### View -> ViewModel -> Model Order
+
+1. **View**
+   - Add the `Display` binding surface to `OpenVisionThreeDViewerControl.xaml` first and mirror it in Shell Data & Layers.
+   - Keep visibility/enabled converters in View resources. Do not put mode-selection behavior in code-behind.
+   - Capture fresh Viewer, embedded-Viewer, and Shell before/after evidence because this is a visible layout change.
+2. **ViewModel**
+   - Add one Viewer-owned child display-settings surface with available/effective modes, selected settings, fallback status, and render-only change notification.
+   - Keep Shell bound to the same Viewer-owned state. Display changes must not call inspection Preview commands.
+3. **Model**
+   - Add only the Viewer-local enums/immutable setting snapshot needed by the proven View and ViewModel surface.
+   - Keep display models out of `OpenVisionLab.ThreeD.Core` inspection contracts unless a future versioned Host API requirement proves that boundary necessary.
+4. **Rendering bridge**
+   - SharpGL code consumes the immutable setting snapshot and source capability result.
+   - C3D display triangles may reuse the source grid relationship, but measurement code continues to read source cells/full queries independently.
+
+### Acceptance Checklist
+
+- [x] C3D switches among Points, Wireframe, Surface, and Surface + Edges without changing pick coordinates or measurement evidence.
+- [x] Two 31-frame Fast/Balanced/Detailed runs pass all 24 C3D style-density cases with the declared local thresholds and active static render cache.
+- [ ] GLB/STL switches among vertex Points, Wireframe, Surface, and Surface + Edges while preserving source texture/vertex-color behavior.
+- [x] LAS/LAZ exposes only Point-compatible choices and never creates an implicit surface.
+- [ ] Source, Solid, Grayscale, Height, Thermal, and Deviation availability follows the capability matrix and unsupported choices cannot remain effective.
+- [ ] Current source-specific defaults produce the established scene behavior before the user changes a setting.
+- [ ] Viewer-internal HUD and contract text expose effective geometry and color modes when Shell side panes are hidden.
+- [ ] Fixed Viewer/Shell matrix, hosted dual-capture, pointer input, BinaryHost, and screenshot-quality gates remain green.
+- [ ] Fixed NIST full-query metrics, selected-point provenance, Published evidence, and Viewer/Runner `Matched` state are identical across tested display modes.
+
 ## Commercial-Parity Feature Slots
 
 | Feature | Layout home | Priority |
@@ -268,6 +367,7 @@ The implemented split is:
 | Measured/nominal signed surface comparison | Data & Layers + 3D Inspection View + Tool / Inspector + Evidence Workbench + Linked View | Fixed NIST identity-frame baseline done |
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
+| Source-aware geometry style and color map | 3D Inspection View + Data & Layers | View, ViewModel, Model, C3D Geometry Style, and local performance passed; C3D LUT and GLB/STL style checkpoints pending |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |
@@ -452,6 +552,16 @@ The implemented split is:
     - Smoke evidence must complete Balanced Preview, change only the next density to Detailed, prove the existing `59,487` samples and stride `71` remain current, and then explicitly rerun Preview to prove Detailed becomes current.
     - Current Viewer/Shell, contract, ViewModel, full density-regression, fixed matrix, and BinaryHost evidence is under `artifacts/nominal_actual_density_state_20260715`.
 
+31. Add source-aware Viewer display settings. View, ViewModel, Model, and C3D Geometry Style functional checkpoints passed.
+    - Standalone Viewer and Shell Data & Layers now reserve the initial Geometry Style and Color Map surface while preserving the existing Point Size and Render Density controls.
+    - `ViewerDisplaySettingsViewModel` now owns source capabilities, available/effective choices, selected Color Map, explicit fallback state, and render-only notification. Shell binds to that same Viewer-owned child surface.
+    - C3D Geometry Style is enabled for Points, Wireframe, Surface, and Surface + Edges. LAS/LAZ remains point-only, and imported-mesh style switching remains a separate checkpoint.
+    - Viewer-local typed source/style/color identifiers and immutable effective-settings snapshot now define the effective display-state contract. The existing text bindings and root color-render compatibility path adapt from that snapshot.
+    - The C3D SharpGL bridge consumes the immutable snapshot through a cached sampled-grid display proxy. It triangulates only complete stride-adjacent cells, leaves holes open, and does not replace source-cell measurement geometry.
+    - Deterministic Fast/Balanced/Detailed multi-frame performance evidence is now closed for the fixed local sample and recorded machine. Add C3D Grayscale/Thermal maps and imported-mesh styles as separate checkpoints.
+    - Preserve the current source-specific defaults and all Display-only invariants above.
+    - Defer range, vertical exaggeration, contours, lighting, scene colors, external textures, and smoothing until the initial slice passes current Viewer trust regressions.
+
 ## Durable Run Bundle Evidence
 
 - Before Shell Run Snapshot: `artifacts/shell_run_record_before.png`
@@ -518,6 +628,55 @@ The implemented split is:
 - Shell embedded Viewer render controls smoke: `artifacts/shell_render_controls_viewer_after.png`
 - Shell render controls contract: `artifacts/shell_render_controls_after.txt`
 - Runner comparison report: `artifacts/runner_shell_render_controls_after.txt`
+
+## Viewer Display Settings View Evidence
+
+- Current-source before captures: `artifacts/viewer_display_view_20260715/viewer_before.png`, `shell_viewer_before.png`, and `shell_before.png`.
+- Current-source after captures: `artifacts/viewer_display_view_20260715/viewer_after.png`, `shell_viewer_after.png`, and `shell_after.png`.
+- All six before/after Viewer, embedded-Viewer, and Shell frames passed their built-in pixel-quality gate on attempt 1. The standalone Viewer now scrolls its left workflow panel instead of clipping lower controls, and the Shell uses a compact two-column Display layout so Geometry Style, Color Map, Point Size, and Render Density remain visible together.
+- The final solution build passed with zero warnings and zero errors. Viewer before/after contract text is identical after excluding the runtime-only `Performance` line; Shell before/after contract text is byte-identical.
+- `artifacts/viewer_display_view_20260715/regression/matrix_smoke_summary_after.txt` records `128/128` passing fixed Viewer/Shell loader, pick, measurement, color, density, and controlled-failure checks.
+- `artifacts/viewer_display_view_20260715/binary_host` passes zero `ProjectReference`, manifest `13/13`, required outputs `12/12`, Host API commands `3/3`, recipe save, direct-EXE C3D render/pick, and screenshot quality.
+- Standalone pointer input passed. Two individually launched Shell checks retained external foreground-interference failures, so they are not hidden. A subsequent isolated three-run Shell sequence passed `3/3`; every report records routed events `3/12/3/1`, successful pick/orbit/pan/zoom, and the established byte-identical SHA-256 `2F2CBB688D8C3293C3176100CC6AE2D985BFF1A8F19DE840E77D98D72CCEA2A0`. This preserves the deterministic product gate but does not claim immunity from an unrelated foreground application taking focus between separately orchestrated commands.
+- This checkpoint changes View layout only. It adds no active geometry-style behavior, display model, OpenGL path, Preview/Publish trigger, recipe field, or Host API member.
+
+## Viewer Display Settings ViewModel Evidence
+
+- `ViewerDisplaySettingsViewModel` is now the single durable display-state owner. The old `MainWindowViewModel.selectedColorMode` field is removed; root `SelectedColorMode` and `ColorModes` remain compatibility delegates for the existing renderer while Viewer and Shell bind directly to `Display`.
+- The child exposes active source, available/effective Geometry Style and Color Map, selection enablement, explicit fallback text, `Display only`, and `RenderSettingsChanged`. Geometry Style remains read-only until the SharpGL bridge; current effective defaults are C3D `Points`, imported mesh `Surface + Edges`, and LAZ/LAS/nominal-actual query `Points`.
+- Loader facts now drive color capability: LAS/LAZ `HasRgb` controls RGB availability, and imported mesh texture/vertex-color presence selects effective `Source`; an uncolored mesh exposes `Solid`. Unsupported requests fall back to the source default with explicit contract status, including the established `Deviation requires an active result` guard.
+- `artifacts/viewer_display_viewmodel_20260715/viewmodel_verification_after.txt` passes `41/41` source transition, fallback, notification, root-delegate, and no-Preview/no-Publish checks. Existing nominal/actual ViewModel verification remains `71/71`.
+- Fresh current-source before/after standalone Viewer, embedded Viewer, and full Shell captures are under `artifacts/viewer_display_viewmodel_20260715`; all six quality reports accepted attempt 1. Visual comparison shows no layout shift. The C3D after contract adds one `DisplaySettings` evidence line; all other stable lines match the before contract except standalone runtime-only `Performance` values.
+- The final solution build passes with zero warnings/errors. The same artifact folder records fixed matrix `128/128`, BinaryHost zero `ProjectReference`, manifest `13/13`, outputs `12/12`, Host API commands `3/3`, and standalone/Shell pointer input with routed events `3/12/3/1` plus successful pick/orbit/pan/zoom.
+- This checkpoint adds no Viewer-local enum/snapshot, active geometry switch, new SharpGL draw path, recipe/result fingerprint field, or Host API member. Those remain the next Model and rendering-bridge checkpoints.
+
+## Viewer Display Settings Model Evidence
+
+- Viewer-local `ViewerDisplaySourceKind`, `ViewerGeometryStyle`, and `ViewerColorMap` identifiers plus immutable `ViewerDisplaySettingsSnapshot` now define the effective source/style/color contract. Public label lists remain a ViewModel adapter, so existing Viewer and Shell XAML did not change.
+- The old string fields `activeSource`, `selectedGeometryStyle`, and `selectedColorMap` no longer own durable state. `MainWindowViewModel.SelectedColorMode` reads the snapshot through the existing renderer compatibility label, and `RenderSettingsChanged` is the root notification bridge.
+- At the Model checkpoint, C3D screenshot contracts first recorded typed `sourceId=C3DHeightGrid`, `geometryStyleId=Points`, and `colorMapId=Height`, while retaining the human-readable labels and marking `geometryRenderBridge=Pending`. The later C3D Geometry checkpoint replaces that marker with `SharpGLC3DSampledGrid`.
+- `artifacts/viewer_display_model_20260715/display_model_verification_final.txt` passes `45/45`, including typed defaults, immutable old-versus-current snapshots, source transitions, explicit fallback, root compatibility, and proof that display changes do not request Preview or Publish. Existing nominal/actual ViewModel verification remains `71/71`.
+- The final solution build passes with zero warnings/errors. The same artifact folder records the fixed matrix at `128/128`, BinaryHost zero `ProjectReference`, manifest `13/13`, outputs `12/12`, Host API commands `3/3`, and standalone/Shell pointer input with routed events `3/12/3/1` plus successful pick/orbit/pan/zoom.
+- Fresh Viewer and Shell before/after/final screenshots pass the shared quality gate and show no layout change. This checkpoint adds no SharpGL geometry path, Core inspection contract, recipe/result fingerprint field, or Host API member.
+
+## Viewer Display Settings C3D Geometry Evidence
+
+- `C3DHeightGridRenderProxy` derives a display-only topology from the loaded sampled grid. Its deterministic verification covers a complete quad, unique edges, stride-aware adjacency, holes, duplicate cells, and invalid stride; the complete display verification passes `60/60`.
+- Balanced Points, Wireframe, Surface, and Surface + Edges captures and contracts are under `artifacts/c3d_geometry_styles_20260715`. The four image SHA-256 values are distinct, while all four runs retain one identical `PickCoordinate` and one identical `TwoPoint` contract.
+- The Balanced proxy records `33,761` points, `64,798` triangles, and `98,510` unique edges. The Detailed Surface + Edges smoke records `66,212` points, `128,516` triangles, and `194,669` unique edges. Missing grid cells are not filled.
+- Fresh standalone Viewer, embedded Viewer, and full Shell screenshots pass their quality gates on attempt 1. The Shell and standalone Surface + Edges contracts report the same measurement.
+- The final solution build passes with zero warnings/errors. The same artifact folder records nominal/actual ViewModel `71/71`, fixed matrix `128/128`, BinaryHost zero `ProjectReference`, manifest `13/13`, outputs `12/12`, Host API commands `3/3`, and Viewer/Shell pointer input with routed events `3/12/3/1` plus successful pick/orbit/pan/zoom.
+- This checkpoint changes display geometry only. It adds no Core inspection surface, Preview/Publish trigger, recipe/result fingerprint field, Host API member, implicit LAS/LAZ surface, or physical-scale claim. Its original short captures did not establish speed; the separate performance checkpoint below closes only the fixed local multi-frame gate.
+
+## Viewer Display Settings C3D Performance Evidence
+
+- `scripts/verify-c3d-geometry-performance.ps1` forces 31 SharpGL draw frames per case and verifies effective style/density, finite telemetry, accepted screenshots, static-cache readiness, edge-proxy reduction, and measurement invariance.
+- A preserved independent repeat failed Balanced Surface + Edges at `11.728 FPS`, which justified optimizing from measured evidence rather than from screenshot acceptance.
+- Wireframe retains full row/column grid edges. Surface + Edges uses every fourth source-grid line for a readable display-only overlay. Static C3D geometry uses a keyed OpenGL display list; dynamic Plane Flatness Deviation colors bypass it.
+- Two final Fast/Balanced/Detailed runs pass `24/24` cases. Minimum observed FPS is Fast `46.786`, Balanced `32.574`, and Detailed `18.352`; the largest observed mean draw time is `42.143 ms` in Detailed Surface + Edges.
+- The MVVM regression exposed by this gate is fixed: C3D result context is refreshed before selecting Deviation, and display verification passes `64` checks including that transition.
+- Current evidence under `artifacts/c3d_geometry_performance_20260715` also passes build `0/0`, nominal/actual ViewModel `71`, fixed matrix `128/128`, BinaryHost manifest `13/13`, outputs `12/12`, Host API commands `3/3`, hosted Viewer/Shell dual capture, and Viewer/Shell real pointer input.
+- Preserve `docs/OPENVISIONLAB_3D_C3D_GEOMETRY_STYLE_PERFORMANCE_20260715.md` as the method, threshold, environment, evidence, and limitation source. This remains a fixed-sample local baseline; Windows CI and arbitrary hardware/data performance are unverified.
 
 ## Recipe Save/Edit Evidence
 

@@ -60,7 +60,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string viewerStatus = "Ready: generated cube and point cloud loaded";
     private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
     private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
-    private string selectedColorMode = "Height";
+    private int displaySettingsRevision;
     private double pointSize = 2.0;
     private string selectedRenderDensity = "Balanced";
     private string renderDensitySummary = FormatRenderDensitySummary("Balanced");
@@ -72,12 +72,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string glbSampleName = "Public GLB Box";
     private string glbSampleSourcePath = @"3D\PublicSamples\glTF\Box.glb";
     private string importedMeshFormat = "GLB";
+    private bool importedMeshSourceColorAvailable;
+    private bool c3dSurfaceGeometryAvailable = true;
     private Vector3 importedMeshFitCenter = Vector3.Zero;
     private double importedMeshFitDistance = 5.2;
     private string lazSamplePointCount = "(not loaded)";
     private string lazSampleSummary = "LAZ/LAS metadata hidden";
     private string lazSampleName = "Public LAZ/LAS Point Cloud";
     private string lazSampleSourcePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
+    private bool lazSourceColorAvailable;
     private Vector3 lazFitCenter = Vector3.Zero;
     private double lazFitDistance = 220.0;
     private string selectedSelectionMode = "Point";
@@ -342,6 +345,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public MainWindowViewModel()
     {
+        Display.PropertyChanged += OnDisplayPropertyChanged;
+        Display.RenderSettingsChanged += OnDisplayRenderSettingsChanged;
         NominalActual.PropertyChanged += OnNominalActualPropertyChanged;
         NominalActual.ConfigureNextDisplaySampling(SelectedRenderDensity, NominalActualMaxDisplaySamples);
         RefreshSourceEntities();
@@ -367,11 +372,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshCommandCanExecute();
     }
 
-    public string[] ColorModes { get; } = ["Solid", "Height", "RGB", "Deviation"];
+    public IReadOnlyList<string> ColorModes => Display.AvailableColorMaps;
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
     public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
+
+    public ViewerDisplaySettingsViewModel Display { get; } = new();
 
     public NominalActualComparisonViewModel NominalActual { get; } = new();
 
@@ -583,6 +590,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OnDisplayPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ViewerDisplaySettingsViewModel.AvailableColorMaps))
+        {
+            OnPropertyChanged(nameof(ColorModes));
+        }
+
+        if ((args.PropertyName is nameof(ViewerDisplaySettingsViewModel.FallbackApplied)
+             or nameof(ViewerDisplaySettingsViewModel.FallbackSummary))
+            && Display.FallbackApplied)
+        {
+            ViewerStatus = Display.FallbackSummary;
+        }
+    }
+
+    private void OnDisplayRenderSettingsChanged(object? sender, EventArgs args)
+    {
+        var settings = Display.EffectiveSettings;
+        DisplaySettingsRevision = unchecked(DisplaySettingsRevision + 1);
+        OnPropertyChanged(nameof(SelectedColorMode));
+        OnPropertyChanged(nameof(SelectedGeometryStyle));
+        RefreshPointCloudColorLegend();
+        ViewerStatus = Display.FallbackApplied
+            ? Display.FallbackSummary
+            : $"Display: {Display.EffectiveGeometryStyle} | {ViewerDisplaySettingsViewModel.GetColorMapLabel(settings.ColorMap)}";
+    }
+
     public bool LazSampleVisible
     {
         get => lazSampleVisible;
@@ -621,26 +655,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string SelectedColorMode
     {
-        get => selectedColorMode;
-        set
-        {
-            var requestedMode = value is not null && ColorModes.Contains(value) ? value : "Height";
-            var mode = requestedMode == "Deviation" && !C3DSampleVisible && !ResultOverlayVisible
-                ? (LazSampleVisible ? "RGB" : "Solid")
-                : requestedMode;
+        get => ViewerDisplaySettingsViewModel.GetColorMapLabel(Display.EffectiveSettings.ColorMap);
+        set => Display.SelectedColorMap = value;
+    }
 
-            var changed = SetField(ref selectedColorMode, mode);
-            if (changed || mode != requestedMode)
-            {
-                ViewerStatus = mode == requestedMode
-                    ? $"Point cloud color mode: {mode}"
-                    : $"Point cloud color mode: {mode} (Deviation requires an active result)";
-                if (changed)
-                {
-                    RefreshPointCloudColorLegend();
-                }
-            }
-        }
+    public string SelectedGeometryStyle => Display.EffectiveGeometryStyle;
+
+    public int DisplaySettingsRevision
+    {
+        get => displaySettingsRevision;
+        private set => SetField(ref displaySettingsRevision, value);
     }
 
     public double PointSize
@@ -2141,7 +2165,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PickCoordinate = "(not picked)";
         SelectionSummary = $"Mesh selection: {ImportedMeshFormat} mesh loaded";
         MeasurementSummary = $"{ImportedMeshFormat} mesh loaded; measurement tools pending";
-        SelectedColorMode = "Solid";
+        SelectedColorMode = Display.AvailableColorMaps[0];
         YawDegrees = 38.0;
         PitchDegrees = 26.0;
         FitGlbCamera();
@@ -2166,7 +2190,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PickCoordinate = "(load failed)";
         SelectionSummary = summary;
         MeasurementSummary = $"{ImportedMeshFormat} load failed; see Viewer status and contract output.";
-        SelectedColorMode = "Solid";
+        SelectedColorMode = Display.AvailableColorMaps[0];
     }
 
     public void UseLazSmokeScene()
@@ -2219,7 +2243,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PickCoordinate = "(sampled points)";
         SelectionSummary = "Point selection: LAZ/LAS sampled point cloud";
         MeasurementSummary = "LAZ/LAS point decode loaded; XYZ/RGB sampled points rendered.";
-        SelectedColorMode = "RGB";
+        SelectedColorMode = Display.AvailableColorMaps.Contains("RGB", StringComparer.Ordinal)
+            ? "RGB"
+            : "Height";
         ViewerStatus = "Smoke scene: public LAZ/LAS point cloud";
     }
 
@@ -2444,6 +2470,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
         PreviewToolResult = evaluation.Result;
         ResultSummary = FormatToolResult(PreviewToolResult);
+        RefreshDisplaySettingsContext();
         SelectedColorMode = "Deviation";
         SelectedSelectionMode = "Plane Flatness";
         SelectedEntity = "C3D Plane Flatness";
@@ -2881,6 +2908,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
         PreviewToolResult = evaluation.Result;
         ResultSummary = FormatToolResult(PreviewToolResult);
+        RefreshDisplaySettingsContext();
         SelectedColorMode = "Deviation";
         SelectedSelectionMode = "Volume";
         SelectedEntity = "C3D Volume";
@@ -3148,6 +3176,34 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshSceneContracts();
     }
 
+    internal void SetImportedMeshDisplayCapabilities(bool sourceColorAvailable)
+    {
+        if (importedMeshSourceColorAvailable == sourceColorAvailable)
+        {
+            return;
+        }
+
+        importedMeshSourceColorAvailable = sourceColorAvailable;
+        if (GlbSampleVisible)
+        {
+            RefreshSceneContracts();
+        }
+    }
+
+    internal void SetC3DDisplayCapabilities(bool surfaceGeometryAvailable)
+    {
+        if (c3dSurfaceGeometryAvailable == surfaceGeometryAvailable)
+        {
+            return;
+        }
+
+        c3dSurfaceGeometryAvailable = surfaceGeometryAvailable;
+        if (C3DSampleVisible)
+        {
+            RefreshSceneContracts();
+        }
+    }
+
     public void SetGlbSampleBounds(Vector3 min, Vector3 max)
     {
         importedMeshFitCenter = (min + max) * 0.5f;
@@ -3161,6 +3217,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         LazSampleName = string.IsNullOrWhiteSpace(sourceName) ? "Public LAZ/LAS Point Cloud" : sourceName;
         RefreshSourceEntities();
         RefreshSceneContracts();
+    }
+
+    internal void SetLazDisplayCapabilities(bool sourceColorAvailable)
+    {
+        if (lazSourceColorAvailable == sourceColorAvailable)
+        {
+            return;
+        }
+
+        lazSourceColorAvailable = sourceColorAvailable;
+        if (LazSampleVisible)
+        {
+            RefreshSceneContracts();
+        }
     }
 
     public void SetLazSampleBounds(Vector3 min, Vector3 max)
@@ -3234,6 +3304,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PerformanceSummary = string.Create(
             CultureInfo.InvariantCulture,
             $"Performance: {fps:F1} fps | draw {drawMilliseconds:F2} ms | C3D points {C3DSamplePointCount}");
+    }
+
+    internal void ResetRenderPerformance()
+    {
+        ViewportFps = double.NaN;
+        ViewportDrawMilliseconds = double.NaN;
+        PerformanceSummary = "Performance: waiting for first frame";
     }
 
     public void SetLazSamplingTelemetry(ulong decodedPointCount, int sampledPointCount, int sampleStride, double loadMilliseconds)
@@ -3406,6 +3483,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshSceneContracts()
     {
+        RefreshDisplaySettingsContext();
+
         var layers = new List<EntityLayer>
         {
             new EntityLayer("layer.source.generated-cube", "Generated Unit Cube", LayerKind.Source, CubeVisible, [CubeEntityId]),
@@ -3468,6 +3547,33 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var previewLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Preview);
         SceneContractSummary =
             $"Source entities: {SourceEntities.Count} | Source layers: {sourceLayerCount} | Visible source layers: {visibleSourceLayerCount} | Preview layers: {previewLayerCount} | Published results: {ResultEntities.Count}";
+    }
+
+    private void RefreshDisplaySettingsContext()
+    {
+        if (NominalActualInput is not null && NominalActual.ActualVisible)
+        {
+            Display.ConfigureNominalActualComparison(NominalActual.PreviewResult is not null);
+        }
+        else if (LazSampleVisible)
+        {
+            Display.ConfigurePointCloud(lazSourceColorAvailable);
+        }
+        else if (GlbSampleVisible)
+        {
+            Display.ConfigureImportedMesh(importedMeshSourceColorAvailable);
+        }
+        else if (C3DSampleVisible)
+        {
+            Display.ConfigureC3DHeightGrid(
+                ResultOverlayVisible && activePreviewSourceEntityId == C3DEntityId,
+                c3dSurfaceGeometryAvailable);
+        }
+        else
+        {
+            Display.ConfigureGeneratedGeometry(
+                ResultOverlayVisible && activePreviewSourceEntityId == PointCloudEntityId);
+        }
     }
 
     private static ToolResult CreateNotRunToolResult() =>

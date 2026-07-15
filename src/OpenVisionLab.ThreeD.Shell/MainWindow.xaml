@@ -74,28 +74,56 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Display State" />
-                            <TextBlock Text="{Binding SelectedEntity, StringFormat=Active: {0}}" />
-                            <TextBlock Text="{Binding SelectedColorMode, StringFormat=Color: {0}}" />
-                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateFrameSummary}" />
-                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding SceneContractSummary}" />
-                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding TransformSummary}" />
-                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding AlignmentSummary}" />
-                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateMappingSummary}" />
+                            <Separator Margin="0,8,0,6" />
+                            <TextBlock FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="#111827"
+                                       Text="Display" />
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="Geometry Style" />
+                                    <ComboBox ItemsSource="{Binding Display.AvailableGeometryStyles}"
+                                              SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
+                                              IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}">
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="Color Map" />
+                                    <ComboBox ItemsSource="{Binding Display.AvailableColorMaps}"
+                                              SelectedItem="{Binding Display.SelectedColorMap, Mode=TwoWay}"
+                                              IsEnabled="{Binding Display.CanSelectColorMap}" />
+                                </StackPanel>
+                            </Grid>
 
-                            <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
-                            <Slider Minimum="1"
-                                    Maximum="6"
-                                    TickFrequency="0.5"
-                                    IsSnapToTickEnabled="True"
-                                    Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Margin="0,2,0,0"
-                                       Text="{Binding PointSize, StringFormat=Point size: {0:F1}px}" />
-
-                            <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Render Density" />
-                            <ComboBox ItemsSource="{Binding RenderDensityModes}"
-                                      SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}" />
+                            <Grid Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Margin="0,0,0,2"
+                                               FontSize="11"
+                                               Foreground="#6b7280"
+                                               Text="{Binding PointSize, StringFormat=Point Size ({0:F1}px)}" />
+                                    <Slider Minimum="1"
+                                            Maximum="6"
+                                            TickFrequency="0.5"
+                                            IsSnapToTickEnabled="True"
+                                            Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="Render Density" />
+                                    <ComboBox ItemsSource="{Binding RenderDensityModes}"
+                                              SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}" />
+                                </StackPanel>
+                            </Grid>
                             <TextBlock Margin="0,4,0,0"
+                                       FontSize="11"
+                                       Foreground="#6b7280"
                                        TextWrapping="Wrap"
                                        Text="{Binding RenderDensitySummary}" />
                             <StackPanel Margin="0,5,0,0"
@@ -120,6 +148,14 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
+
+                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Display State" />
+                            <TextBlock Text="{Binding SelectedEntity, StringFormat=Active: {0}}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateFrameSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding SceneContractSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding TransformSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding AlignmentSummary}" />
+                            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateMappingSummary}" />
                             <TextBlock Margin="0,4,0,0"
                                        Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Text="{Binding C3DSamplePointCount, StringFormat=Rendered C3D points: {0}}" />

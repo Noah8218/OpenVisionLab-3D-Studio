@@ -22,10 +22,12 @@ internal static class MeshDeviationGoldenVerification
             var measuredPlyPath = Path.Combine(tempDirectory, "measured.ply");
             var unsignedPlyPath = Path.Combine(tempDirectory, "unsigned.ply");
             var signedPlyPath = Path.Combine(tempDirectory, "signed.ply");
+            var wrongSignedPlyPath = Path.Combine(tempDirectory, "wrong-signed.ply");
             var changedUnsignedPlyPath = Path.Combine(tempDirectory, "changed-unsigned.ply");
             var truncatedPlyPath = Path.Combine(tempDirectory, "truncated.ply");
             var parityPassReportPath = Path.Combine(tempDirectory, "parity-pass.txt");
             var parityMismatchReportPath = Path.Combine(tempDirectory, "parity-mismatch.txt");
+            var paritySignMismatchReportPath = Path.Combine(tempDirectory, "parity-sign-mismatch.txt");
             var first = new BinaryStlTriangle(
                 Vector3.UnitZ,
                 new Vector3(0, 0, 0),
@@ -55,7 +57,8 @@ internal static class MeshDeviationGoldenVerification
                     [0.25f, 0.25f, 1.0f],
                     [0.5f, 0.25f, -2.0f],
                     [0.25f, 0.5f, 0.0f],
-                    [1.0f, -1.0f, 1.0f]
+                    [1.0f, -1.0f, 1.0f],
+                    [0.75f, 0.5f, 0.0f]
                 ]);
             WriteBinaryPly(
                 unsignedPlyPath,
@@ -64,7 +67,8 @@ internal static class MeshDeviationGoldenVerification
                     [0.25f, 0.25f, 1.0f, 1.0f],
                     [0.5f, 0.25f, -2.0f, 2.0f],
                     [0.25f, 0.5f, 0.0f, 0.0f],
-                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)]
+                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)],
+                    [0.75f, 0.5f, 0.0f, 5e-8f]
                 ]);
             WriteBinaryPly(
                 signedPlyPath,
@@ -73,7 +77,18 @@ internal static class MeshDeviationGoldenVerification
                     [0.25f, 0.25f, 1.0f, 1.0f],
                     [0.5f, 0.25f, -2.0f, -2.0f],
                     [0.25f, 0.5f, 0.0f, 0.0f],
-                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)]
+                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)],
+                    [0.75f, 0.5f, 0.0f, -5e-8f]
+                ]);
+            WriteBinaryPly(
+                wrongSignedPlyPath,
+                ["x", "y", "z", "scalar_C2M_signed_distances"],
+                [
+                    [0.25f, 0.25f, 1.0f, -1.0f],
+                    [0.5f, 0.25f, -2.0f, -2.0f],
+                    [0.25f, 0.5f, 0.0f, 0.0f],
+                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)],
+                    [0.75f, 0.5f, 0.0f, -5e-8f]
                 ]);
             WriteBinaryPly(
                 changedUnsignedPlyPath,
@@ -82,7 +97,8 @@ internal static class MeshDeviationGoldenVerification
                     [0.5f, 0.25f, 1.0f, 1.0f],
                     [0.5f, 0.25f, -2.0f, 2.0f],
                     [0.25f, 0.5f, 0.0f, 0.0f],
-                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)]
+                    [1.0f, -1.0f, 1.0f, (float)Math.Sqrt(2)],
+                    [0.75f, 0.5f, 0.0f, 5e-8f]
                 ]);
             File.Copy(measuredPlyPath, truncatedPlyPath);
             using (var stream = File.OpenWrite(truncatedPlyPath))
@@ -104,6 +120,7 @@ internal static class MeshDeviationGoldenVerification
                 Check("truncated-binary-ply-rejected", () => VerifyInvalidPly(truncatedPlyPath)),
                 Check("complete-synthetic-parity", () => VerifyCompleteParity(validPath, measuredPlyPath, unsignedPlyPath, signedPlyPath, parityPassReportPath)),
                 Check("changed-ply-coordinate-fails-parity", () => VerifyCoordinateMismatchParity(validPath, measuredPlyPath, changedUnsignedPlyPath, signedPlyPath, parityMismatchReportPath)),
+                Check("material-signed-mismatch-fails-parity", () => VerifySignedMismatchParity(validPath, measuredPlyPath, unsignedPlyPath, wrongSignedPlyPath, paritySignMismatchReportPath)),
                 Check("face-positive-signed-distance", () => VerifyFaceDistance(index, new Vector3(0.5f, 0.5f, 2), 0, 2, 2)),
                 Check("face-negative-signed-distance", () => VerifyFaceDistance(index, new Vector3(0.5f, 0.5f, -3), 0, 3, -3)),
                 Check("face-zero-distance", () => VerifyFaceDistance(index, new Vector3(0.5f, 0.5f, 0), 0, 0, 0)),
@@ -185,10 +202,10 @@ internal static class MeshDeviationGoldenVerification
         var second = reader.GetPosition(1);
         var secondChunkCount = reader.ReadChunk();
         var third = reader.GetPosition(0);
-        var passed = reader.VertexCount == 4
+        var passed = reader.VertexCount == 5
             && reader.Properties.SequenceEqual(["x", "y", "z"], StringComparer.Ordinal)
             && firstChunkCount == 2
-            && secondChunkCount == 2
+            && secondChunkCount == 3
             && first == new Vector3(0.25f, 0.25f, 1.0f)
             && second == new Vector3(0.5f, 0.25f, -2.0f)
             && third == new Vector3(0.25f, 0.5f, 0.0f)
@@ -228,9 +245,9 @@ internal static class MeshDeviationGoldenVerification
         var report = File.ReadAllText(reportPath);
         var passed = exitCode == 0
             && report.Contains("MeshDeviationParity|Pass|scope=full", StringComparison.Ordinal)
-            && report.Contains("SignedDirectCoverage|resolved=3|unresolved=1|edge=1|vertex=0", StringComparison.Ordinal)
-            && report.Contains("SignedRobustParity|Pass|resolved=4|recovered=1|signMismatches=0", StringComparison.Ordinal)
-            && report.Contains("SignedCoverage|complete=True|resolved=4|unresolved=0", StringComparison.Ordinal);
+            && report.Contains("SignedDirectCoverage|resolved=4|unresolved=1|edge=1|vertex=0", StringComparison.Ordinal)
+            && report.Contains("SignedRobustParity|Pass|resolved=5|recovered=1|signMismatches=0|recoveredSignMismatches=0|nearZeroSignEquivalent=1", StringComparison.Ordinal)
+            && report.Contains("SignedCoverage|complete=True|resolved=5|unresolved=0", StringComparison.Ordinal);
         return (passed, $"exit={exitCode},fullPass={passed}");
     }
 
@@ -252,8 +269,30 @@ internal static class MeshDeviationGoldenVerification
         var report = File.ReadAllText(reportPath);
         var passed = exitCode == 5
             && report.Contains("MeshDeviationParity|Fail|scope=full", StringComparison.Ordinal)
-            && report.Contains("Coordinates|mismatched=1|compared=4", StringComparison.Ordinal);
+            && report.Contains("Coordinates|mismatched=1|compared=5", StringComparison.Ordinal);
         return (passed, $"exit={exitCode},coordinateMismatchRejected={passed}");
+    }
+
+    private static (bool Passed, string Evidence) VerifySignedMismatchParity(
+        string nominalPath,
+        string measuredPath,
+        string unsignedPath,
+        string wrongSignedPath,
+        string reportPath)
+    {
+        var exitCode = MeshDeviationParityVerification.Run(
+            nominalPath,
+            measuredPath,
+            unsignedPath,
+            wrongSignedPath,
+            "test-unit",
+            reportPath,
+            maxPoints: null);
+        var report = File.ReadAllText(reportPath);
+        var passed = exitCode == 5
+            && report.Contains("MeshDeviationParity|Fail|scope=full", StringComparison.Ordinal)
+            && report.Contains("SignedRobustParity|Fail|resolved=5|recovered=1|signMismatches=1|recoveredSignMismatches=0|nearZeroSignEquivalent=1", StringComparison.Ordinal);
+        return (passed, $"exit={exitCode},materialSignMismatchRejected={passed}");
     }
 
     private static (bool Passed, string Evidence) VerifyFaceDistance(

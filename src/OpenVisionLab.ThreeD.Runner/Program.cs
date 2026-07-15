@@ -15,6 +15,8 @@ static int Run(string[] args)
     var meshDeviationNominalPath = ReadOption(args, "--nominal-stl");
     var meshDeviationUnsignedPath = ReadOption(args, "--cloudcompare-unsigned");
     var meshDeviationSignedPath = ReadOption(args, "--cloudcompare-signed");
+    var stanfordTransformPath = ReadOption(args, "--stanford-transform-parity");
+    var stanfordTransformReferencePath = ReadOption(args, "--transform-reference");
     var stlStreamProbeUnit = ReadOption(args, "--unit");
     var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
     var c3DMapPlyPath = ReadOption(args, "--ply");
@@ -36,6 +38,17 @@ static int Run(string[] args)
     var verifyMeshDeviation = args.Contains("--verify-mesh-deviation", StringComparer.OrdinalIgnoreCase);
     var verifyNominalActualComparison = args.Contains("--verify-nominal-actual-comparison", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
+
+    if (stanfordTransformPath is not null)
+    {
+        if (stanfordTransformReferencePath is null || reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
+            return 2;
+        }
+
+        return StanfordTransformParityVerification.Run(stanfordTransformPath, stanfordTransformReferencePath, reportPath);
+    }
 
     if (verifyNominalActualComparison)
     {
@@ -219,6 +232,7 @@ static int Run(string[] args)
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");

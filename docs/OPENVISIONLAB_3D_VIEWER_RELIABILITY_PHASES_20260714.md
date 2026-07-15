@@ -17,7 +17,7 @@ Current status:
 | Phase | Current decision | What that means |
 | --- | --- | --- |
 | Phase 1 | **Passed for the fixed supported scope locally and in current Windows CI** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, hosted dual-capture, and mandatory real WPF pointer-input gates pass. |
-| Phase 2 | **Not passed** | One fixed C3D sample and one fixed identity-frame NIST pair pass. A second distinct pair, known non-identity transform, and broader topology/sampling cases do not exist yet. |
+| Phase 2 | **Not passed; second-pair and known-transform gates passed** | Both fixed NIST physical instances now pass external/non-visual and visible Viewer/Runner evidence, and the separate Stanford published non-identity transform gate passes. Difficult-geometry controlled outcomes and the accepted registration path remain open. |
 | Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
 
 The accurate current claim is:
@@ -92,7 +92,8 @@ Passed locally on 2026-07-15 for quick C3D and the fixed full-resolution NIST no
 ### Next Work Order
 
 1. Preserve the mandatory hosted dual-capture and Viewer/Shell pointer-input Windows CI gates as Phase 1 regression coverage.
-2. Do not start Phase 2 implementation until a second genuinely distinct measured/nominal pair and an independently known non-identity transform or alignment truth are available.
+2. Audit the existing geometry/error goldens against the remaining Phase 2 controlled-outcome checklist and add only the missing cases.
+3. Keep registration acceptance blocked from product integration until the runtime/distribution prerequisites are resolved; when available, require correspondence count and fitness before RMSE and reject zero-correspondence success.
 
 ## Phase 2 - Geometric And Algorithm Reliability
 
@@ -111,15 +112,15 @@ Do not spend implementation effort fabricating these prerequisites from the exis
 ### Exit Checklist
 
 - [x] One fixed identity-frame NIST pair matches independent CloudCompare unsigned and robust-signed output within the declared tolerance.
-- [ ] A second distinct pair passes source identity, Viewer/Runner parity, and external aggregate-statistic comparison.
-- [ ] A known non-identity transform passes translation and rotation plausibility plus point-level and aggregate expected output.
+- [x] A second distinct pair passes source identity, visible Viewer/Runner parity, and external aggregate-statistic comparison. NIST Part 2 preserves `3,965,430` full-query points, separate actual/nominal/query IDs and hashes, explicit Preview/Publish, recipe save/reopen, selected-point provenance, schema `1.2`, and `ViewerRunnerComparison|Matched` evidence.
+- [x] A known non-identity transform passes translation and rotation plausibility plus point-level and aggregate expected output. The local Stanford gate covers `12` scans, `50,643` points, `36` checkpoints, full aggregate statistics, CloudCompare external transform parity at maximum difference `3.0913966692081019e-8`, and controlled tamper rejection; units and commercial use remain unavailable.
 - [ ] Duplicate vertices, non-finite normals, open surfaces, edge/vertex nearest hits, sparse/dense query sampling, and no-correspondence cases have controlled outcomes.
 - [ ] Registration acceptance records correspondence count and fitness before RMSE and rejects zero-correspondence false success.
-- [ ] Each accepted pair preserves actual/nominal/query hashes, units, frame, alignment, full-query/display-sample separation, recipe roundtrip, and Run Record identity.
+- [x] Each accepted NIST pair preserves actual/nominal/query hashes, units, frame, alignment, full-query/display-sample separation, recipe roundtrip, and Run Record identity.
 
 ### Current Assessment
 
-Phase 2 is **not passed**. The current NIST result is strong fixed-sample evidence but cannot establish arbitrary-mesh, arbitrary-sampling, or arbitrary-alignment reliability.
+Phase 2 is **not passed**. NIST Part 2 now carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and registration acceptance path remain open, so these fixed sources do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, and `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`.
 
 ## Phase 3 - Physical And Metrology Reliability
 
@@ -152,8 +153,8 @@ Phase 3 is **blocked and unverified**. Current `unitless`, `raw-height`, `model`
 | --- | --- | --- |
 | Fixed supported Viewer matrix is repeatable | Yes | State the sample matrix, build/commit identity, and evidence artifact. |
 | Fixed C3D display-frame coordinates match independent interchange | Yes | Say `display-frame`; physical scale remains unverified. |
-| Fixed NIST identity-frame deviation matches CloudCompare | Yes | State the sample, query count, tolerance, and identity-frame limitation. |
-| Any valid 3D model will produce the same result as commercial tools | No | Phase 2 has no second pair or non-identity proof. |
+| Fixed NIST Part 1 and Part 2 identity-frame deviations match CloudCompare | Yes | State the part, query count, point/aggregate tolerance, threshold-boundary differences, and identity-frame limitation. Both have fixed visible product slices. |
+| Any valid 3D model will produce the same result as commercial tools | No | Both NIST slices remain one nominal design and one XCT family. Stanford proves application of one supplied transform set, not registration recovery or arbitrary transforms. |
 | C3D dimensions are physically calibrated | No | Phase 3 mapping/calibration metadata is missing. |
 | Metrology-grade, certified, or production-ready | No | Uncertainty, calibrated artifact, repeated-scan, and licensed-tool gates are open. |
 

@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -55,6 +56,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private readonly HeightGridPoint[] generatedPointCloud = CreateGeneratedPointCloud();
     private C3DHeightGrid? c3dSample;
+    private C3DHeightGrid? c3dRenderProxySource;
+    private C3DHeightGridRenderProxy? c3dRenderProxy;
+    private ModelTransform c3dRenderPositionsTransform;
+    private Vector3[]? c3dRenderPositions;
+    private uint c3dDisplayListId;
+    private C3DDisplayListKey? c3dDisplayListKey;
     private ImportedMesh? importedMesh;
     private LazPointCloudMetadata? lazSample;
     private LazPointCloud? lazPointCloud;
@@ -75,6 +82,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private string? smokeSaveRecipePath;
     private bool smokePublishResult;
     private bool smokeNominalActualPreview;
+    private int smokeRenderFrameCount;
+    private int smokeRenderFramesCompleted;
     private int smokeExitCode;
     private readonly MainWindowViewModel viewModel = new();
     private readonly EventHandler fitAllRequestedHandler;
@@ -106,6 +115,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int pointerInputMouseWheelCount;
     private PointerInputRegressionResult? pointerInputRegressionResult;
     private string? smokePickTarget;
+    private string? smokeMeasureMode;
     private string? smokeNextRenderDensity;
     private HeightGridPoint? twoPointFirst;
     private HeightGridPoint? twoPointSecond;
@@ -140,6 +150,13 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         double TargetX,
         double TargetY,
         double TargetZ);
+
+    private readonly record struct C3DDisplayListKey(
+        C3DHeightGrid Source,
+        ModelTransform Transform,
+        ViewerGeometryStyle GeometryStyle,
+        ViewerColorMap ColorMap,
+        double PointSize);
 
     private sealed record PointerInputRegressionResult(
         bool Passed,
@@ -333,7 +350,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             or nameof(MainWindowViewModel.GlbSampleVisible)
             or nameof(MainWindowViewModel.LazSampleVisible)
             or nameof(MainWindowViewModel.MeasurementVisible)
-            or nameof(MainWindowViewModel.SelectedColorMode)
+            or nameof(MainWindowViewModel.DisplaySettingsRevision)
             or nameof(MainWindowViewModel.PointSize)
             or nameof(MainWindowViewModel.RecipePeakTolerance)
             or nameof(MainWindowViewModel.C3DModelTransform)
@@ -592,6 +609,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     public async Task<bool> CaptureConfiguredSmokeViewAsync()
     {
+        await RunConfiguredSmokeRenderFramesAsync();
+
         if (smokeContractsPath is not null)
         {
             WriteSceneContracts(smokeContractsPath);
@@ -981,6 +1000,22 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void ApplySmokeArguments(string[] args)
     {
+        var renderFramesIndex = Array.IndexOf(args, "--smoke-render-frames");
+        if (renderFramesIndex >= 0)
+        {
+            if (renderFramesIndex + 1 >= args.Length
+                || !int.TryParse(
+                    args[renderFramesIndex + 1],
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out smokeRenderFrameCount)
+                || smokeRenderFrameCount is < 16 or > 200)
+            {
+                smokeRenderFrameCount = 0;
+                SetSmokeFailure("Smoke render frames must be an integer from 16 through 200.");
+            }
+        }
+
         var densityIndex = Array.IndexOf(args, "--smoke-density");
         if (densityIndex >= 0 && densityIndex + 1 < args.Length)
         {
@@ -1105,7 +1140,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         var measureIndex = Array.IndexOf(args, "--smoke-measure");
         if (measureIndex >= 0 && measureIndex + 1 < args.Length)
         {
-            ApplySmokeMeasure(args[measureIndex + 1]);
+            smokeMeasureMode = args[measureIndex + 1];
+            ApplySmokeMeasure(smokeMeasureMode);
         }
 
         var hudIndex = Array.IndexOf(args, "--smoke-hud");
@@ -1150,6 +1186,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         }
 
         ApplyNominalActualViewModelVerification(args);
+        ApplyDisplayViewModelVerification(args);
 
         smokePublishResult = Array.IndexOf(args, "--smoke-publish-result") >= 0;
         if (smokePublishResult && smokeScreenshotPath is null && !smokeNominalActualPreview)
@@ -1181,6 +1218,29 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         }
     }
 
+    private void ApplyDisplayViewModelVerification(string[] args)
+    {
+        var verificationIndex = Array.IndexOf(args, "--verify-display-viewmodel");
+        if (verificationIndex < 0)
+        {
+            return;
+        }
+
+        if (verificationIndex + 1 >= args.Length
+            || args[verificationIndex + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = "Display-settings ViewModel verification requires a report path.";
+            return;
+        }
+
+        if (!ViewerDisplaySettingsViewModelVerification.Verify(args[verificationIndex + 1], out var summary))
+        {
+            smokeExitCode = 1;
+            viewModel.ViewerStatus = summary;
+        }
+    }
+
     private void ApplySmokeNominalActual(string[] args)
     {
         var comparisonIndex = Array.IndexOf(args, "--smoke-nominal-actual");
@@ -1202,13 +1262,14 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
         try
         {
+            var sourceIdentity = ResolveSmokeNominalActualSourceIdentity(args);
             var actual = CaptureComparisonFileIdentity(
-                "source.nist-overhang-x4-actual-part1",
-                "NIST Overhang X4 Part 1 XCT surface",
+                sourceIdentity.ActualId,
+                sourceIdentity.ActualName,
                 args[comparisonIndex + 1]);
             var query = CaptureComparisonFileIdentity(
-                "query.nist-overhang-x4-cloudcompare-vertices",
-                "NIST Overhang X4 validation vertices",
+                sourceIdentity.QueryId,
+                sourceIdentity.QueryName,
                 args[comparisonIndex + 2]);
             var nominal = CaptureComparisonFileIdentity(
                 "source.nist-overhang-x4-nominal-9x5x5",
@@ -1240,6 +1301,34 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             viewModel.ClearNominalActualComparison(exception.Message);
             SetSmokeFailure($"Nominal/actual smoke failed: {exception.Message}");
         }
+    }
+
+    private static (string ActualId, string ActualName, string QueryId, string QueryName)
+        ResolveSmokeNominalActualSourceIdentity(string[] args)
+    {
+        var datasetIndex = Array.IndexOf(args, "--smoke-nominal-actual-dataset");
+        var dataset = datasetIndex < 0
+            ? "nist-overhang-x4-part1"
+            : datasetIndex + 1 < args.Length
+                && !args[datasetIndex + 1].StartsWith("--", StringComparison.Ordinal)
+                    ? args[datasetIndex + 1]
+                    : throw new ArgumentException(
+                        "Nominal/actual smoke dataset requires nist-overhang-x4-part1 or nist-overhang-x4-part2.");
+
+        return dataset.ToLowerInvariant() switch
+        {
+            "nist-overhang-x4-part1" => (
+                "source.nist-overhang-x4-actual-part1",
+                "NIST Overhang X4 Part 1 XCT surface",
+                "query.nist-overhang-x4-cloudcompare-vertices",
+                "NIST Overhang X4 validation vertices"),
+            "nist-overhang-x4-part2" => (
+                "source.nist-overhang-x4-actual-part2",
+                "NIST Overhang X4 Part 2 XCT surface",
+                "query.nist-overhang-x4-part2-cloudcompare-vertices",
+                "NIST Overhang X4 Part 2 validation vertices"),
+            _ => throw new ArgumentException($"Unsupported nominal/actual smoke dataset: {dataset}"),
+        };
     }
 
     private static NominalActualFileIdentity CaptureComparisonFileIdentity(
@@ -1297,6 +1386,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void Viewport_OpenGLInitialized(object sender, OpenGLRoutedEventArgs args)
     {
+        c3dDisplayListId = 0;
+        c3dDisplayListKey = null;
         var gl = args.OpenGL;
         gl.ClearColor(0.08f, 0.10f, 0.13f, 1.0f);
         gl.Enable(OpenGL.GL_DEPTH_TEST);
@@ -1864,6 +1955,45 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         return false;
     }
 
+    private async Task RunConfiguredSmokeRenderFramesAsync()
+    {
+        if (smokeRenderFrameCount == 0)
+        {
+            return;
+        }
+
+        ResetDrawPerformanceTelemetry();
+        smokeRenderFramesCompleted = 0;
+        for (var frame = 0; frame < smokeRenderFrameCount; frame++)
+        {
+            await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            smokeRenderFramesCompleted++;
+        }
+
+        if (smokeMeasureMode is not null)
+        {
+            ApplySmokeMeasure(smokeMeasureMode);
+            await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+        }
+
+        if (!double.IsFinite(viewModel.ViewportFps)
+            || !double.IsFinite(viewModel.ViewportDrawMilliseconds))
+        {
+            SetSmokeFailure(
+                $"Render performance remained pending after {smokeRenderFramesCompleted} forced frames.");
+        }
+    }
+
+    private void ResetDrawPerformanceTelemetry()
+    {
+        lastFrameTimestamp = 0;
+        performanceFrameCount = 0;
+        performanceDrawCount = 0;
+        accumulatedFrameIntervalMilliseconds = 0.0;
+        accumulatedDrawMilliseconds = 0.0;
+        viewModel.ResetRenderPerformance();
+    }
+
     private static void WriteScreenshotQualityReport(string? path, IReadOnlyList<string> lines)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
@@ -1911,6 +2041,23 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             || action.Equals("deviation-color", StringComparison.OrdinalIgnoreCase))
         {
             viewModel.SelectedColorMode = "Deviation";
+        }
+        else if (action.Equals("geometry-points", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.Display.SelectedGeometryStyle = "Points";
+        }
+        else if (action.Equals("geometry-wireframe", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.Display.SelectedGeometryStyle = "Wireframe";
+        }
+        else if (action.Equals("geometry-surface", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.Display.SelectedGeometryStyle = "Surface";
+        }
+        else if (action.Equals("geometry-surface-edges", StringComparison.OrdinalIgnoreCase)
+            || action.Equals("geometry-surface-with-edges", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.Display.SelectedGeometryStyle = "Surface + Edges";
         }
         else if (action.Equals("pan", StringComparison.OrdinalIgnoreCase))
         {
@@ -4113,28 +4260,235 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void DrawC3DHeightGrid(OpenGL gl)
     {
+        var renderProxy = GetC3DRenderProxy();
+        var positions = GetC3DRenderPositions(renderProxy);
+        var geometryStyle = viewModel.Display.EffectiveSettings.GeometryStyle;
+        gl.Disable(GlTexture2D);
+
+        if (UsesDynamicC3DColor())
+        {
+            ReleaseC3DDisplayList(gl);
+            DrawC3DGeometry(gl, renderProxy, positions, geometryStyle);
+            DrawC3DFrame(gl);
+            return;
+        }
+
+        var displayListKey = new C3DDisplayListKey(
+            c3dSample!,
+            c3dRenderPositionsTransform,
+            geometryStyle,
+            viewModel.Display.EffectiveSettings.ColorMap,
+            viewModel.PointSize);
+        if (c3dDisplayListId == 0 || c3dDisplayListKey != displayListKey)
+        {
+            ReleaseC3DDisplayList(gl);
+            c3dDisplayListId = gl.GenLists(1);
+            if (c3dDisplayListId != 0)
+            {
+                gl.NewList(c3dDisplayListId, OpenGL.GL_COMPILE);
+                DrawC3DGeometry(gl, renderProxy, positions, geometryStyle);
+                gl.EndList();
+                c3dDisplayListKey = displayListKey;
+            }
+        }
+
+        if (c3dDisplayListId != 0)
+        {
+            gl.CallList(c3dDisplayListId);
+        }
+        else
+        {
+            DrawC3DGeometry(gl, renderProxy, positions, geometryStyle);
+        }
+
+        DrawC3DFrame(gl);
+    }
+
+    private void DrawC3DGeometry(
+        OpenGL gl,
+        C3DHeightGridRenderProxy renderProxy,
+        IReadOnlyList<Vector3> positions,
+        ViewerGeometryStyle geometryStyle)
+    {
+        switch (geometryStyle)
+        {
+            case ViewerGeometryStyle.Wireframe when renderProxy.HasSurface:
+                DrawC3DEdges(
+                    gl,
+                    renderProxy,
+                    positions,
+                    renderProxy.GridEdgeIndices,
+                    usePointColors: true);
+                break;
+            case ViewerGeometryStyle.Surface when renderProxy.HasSurface:
+                DrawC3DSurface(gl, renderProxy, positions, offsetForEdges: false);
+                break;
+            case ViewerGeometryStyle.SurfaceWithEdges when renderProxy.HasSurface:
+                DrawC3DSurface(gl, renderProxy, positions, offsetForEdges: true);
+                DrawC3DEdges(
+                    gl,
+                    renderProxy,
+                    positions,
+                    renderProxy.SurfaceEdgeIndices,
+                    usePointColors: false);
+                break;
+            default:
+                DrawC3DPoints(gl, renderProxy, positions);
+                break;
+        }
+    }
+
+    private bool UsesDynamicC3DColor() =>
+        viewModel.SelectedColorMode == "Deviation"
+        && viewModel.PlaneFlatnessVisible
+        && planeFlatnessEvaluation is { ReferencePlane: not null };
+
+    private void ReleaseC3DDisplayList(OpenGL gl)
+    {
+        if (c3dDisplayListId != 0)
+        {
+            gl.DeleteLists(c3dDisplayListId, 1);
+        }
+
+        c3dDisplayListId = 0;
+        c3dDisplayListKey = null;
+    }
+
+    private void DrawC3DPoints(
+        OpenGL gl,
+        C3DHeightGridRenderProxy renderProxy,
+        IReadOnlyList<Vector3> positions)
+    {
         gl.PointSize((float)viewModel.PointSize);
         gl.Begin(OpenGL.GL_POINTS);
-
-        foreach (var point in c3dSample!.Points)
+        for (var index = 0; index < renderProxy.Points.Length; index++)
         {
-            var position = TransformC3DPosition(point.Position);
-            if (viewModel.SelectedColorMode == "Deviation"
-                && viewModel.PlaneFlatnessVisible
-                && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
-            {
-                ApplyPlaneFlatnessColor(gl, position, flatness);
-            }
-            else
-            {
-                ApplyPointColor(gl, point);
-            }
+            var point = renderProxy.Points[index];
+            var position = positions[index];
+            ApplyC3DColor(gl, point, position);
             gl.Vertex(position.X, position.Y, position.Z);
         }
 
         gl.End();
         gl.PointSize(1.0f);
-        DrawC3DFrame(gl);
+    }
+
+    private void DrawC3DSurface(
+        OpenGL gl,
+        C3DHeightGridRenderProxy renderProxy,
+        IReadOnlyList<Vector3> positions,
+        bool offsetForEdges)
+    {
+        if (offsetForEdges)
+        {
+            gl.Enable(OpenGL.GL_POLYGON_OFFSET_FILL);
+            gl.PolygonOffset(1.0f, 1.0f);
+        }
+
+        gl.Begin(OpenGL.GL_TRIANGLES);
+        foreach (var index in renderProxy.TriangleIndices)
+        {
+            var point = renderProxy.Points[index];
+            var position = positions[index];
+            ApplyC3DColor(gl, point, position);
+            gl.Vertex(position.X, position.Y, position.Z);
+        }
+
+        gl.End();
+        if (offsetForEdges)
+        {
+            gl.Disable(OpenGL.GL_POLYGON_OFFSET_FILL);
+        }
+    }
+
+    private void DrawC3DEdges(
+        OpenGL gl,
+        C3DHeightGridRenderProxy renderProxy,
+        IReadOnlyList<Vector3> positions,
+        IReadOnlyList<int> edgeIndices,
+        bool usePointColors)
+    {
+        gl.LineWidth(1.0f);
+        if (!usePointColors)
+        {
+            gl.Enable(OpenGL.GL_BLEND);
+            gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.Color(0.02, 0.05, 0.08, 0.32);
+        }
+
+        gl.Begin(OpenGL.GL_LINES);
+        foreach (var index in edgeIndices)
+        {
+            var position = positions[index];
+            if (usePointColors)
+            {
+                ApplyC3DColor(gl, renderProxy.Points[index], position);
+            }
+
+            gl.Vertex(position.X, position.Y, position.Z);
+        }
+
+        gl.End();
+        if (!usePointColors)
+        {
+            gl.Disable(OpenGL.GL_BLEND);
+        }
+
+        gl.LineWidth(1.0f);
+    }
+
+    private void ApplyC3DColor(OpenGL gl, HeightGridPoint point, Vector3 position)
+    {
+        if (viewModel.SelectedColorMode == "Deviation"
+            && viewModel.PlaneFlatnessVisible
+            && planeFlatnessEvaluation is { ReferencePlane: not null } flatness)
+        {
+            ApplyPlaneFlatnessColor(gl, position, flatness);
+            return;
+        }
+
+        ApplyPointColor(gl, point);
+    }
+
+    private C3DHeightGridRenderProxy GetC3DRenderProxy()
+    {
+        var sample = c3dSample
+            ?? throw new InvalidOperationException("C3D display proxy requires a loaded sample.");
+        if (!ReferenceEquals(c3dRenderProxySource, sample) || c3dRenderProxy is null)
+        {
+            c3dRenderProxySource = sample;
+            c3dRenderProxy = C3DHeightGridRenderProxy.Create(sample);
+            c3dRenderPositions = null;
+        }
+
+        return c3dRenderProxy;
+    }
+
+    private Vector3[] GetC3DRenderPositions(C3DHeightGridRenderProxy renderProxy)
+    {
+        var transform = viewModel.C3DModelTransform;
+        if (c3dRenderPositions is null || c3dRenderPositionsTransform != transform)
+        {
+            c3dRenderPositions = new Vector3[renderProxy.Points.Length];
+            for (var index = 0; index < renderProxy.Points.Length; index++)
+            {
+                c3dRenderPositions[index] = ApplyModelTransform(
+                    renderProxy.Points[index].Position,
+                    transform);
+            }
+
+            c3dRenderPositionsTransform = transform;
+        }
+
+        return c3dRenderPositions;
+    }
+
+    private void InvalidateC3DRenderProxy()
+    {
+        c3dRenderProxySource = null;
+        c3dRenderProxy = null;
+        c3dRenderPositions = null;
+        c3dDisplayListKey = null;
     }
 
     private void DrawNominalActualDeviation(OpenGL gl)
@@ -5596,6 +5950,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     {
         if (c3dSample is null)
         {
+            InvalidateC3DRenderProxy();
+            viewModel.SetC3DDisplayCapabilities(surfaceGeometryAvailable: false);
             viewModel.C3DSamplePointCount = "(missing)";
             viewModel.C3DSampleSummary = $"Missing sample: {DefaultC3DSamplePath}";
             viewModel.ClearHeightMap();
@@ -5603,6 +5959,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             return;
         }
 
+        var renderProxy = GetC3DRenderProxy();
+        viewModel.SetC3DDisplayCapabilities(renderProxy.HasSurface);
         viewModel.C3DSamplePointCount = c3dSample.Points.Length.ToString("N0", CultureInfo.InvariantCulture);
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
@@ -5613,6 +5971,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void SetGlbSampleStatus()
     {
+        viewModel.SetImportedMeshDisplayCapabilities(
+            importedMesh is { } mesh && (mesh.HasVertexColors || mesh.HasBaseColorTexture));
+
         if (importedMesh is null)
         {
             viewModel.GlbSampleTriangleCount = "(missing)";
@@ -5636,6 +5997,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
     private void SetLazSampleStatus()
     {
+        viewModel.SetLazDisplayCapabilities(lazPointCloud?.HasRgb == true);
+
         if (lazSample is null)
         {
             viewModel.LazSamplePointCount = "(missing)";
@@ -5977,6 +6340,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private void WriteSceneContracts(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        var displaySettings = viewModel.Display.EffectiveSettings;
+        var c3dRenderProxyForContract = c3dSample is null ? null : GetC3DRenderProxy();
+        var geometryRenderBridge = displaySettings.Source == ViewerDisplaySourceKind.C3DHeightGrid
+            ? "SharpGLC3DSampledGrid"
+            : "Pending";
         var lines = new List<string>
         {
             viewModel.SceneContractSummary,
@@ -5999,6 +6367,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         lines.Add("RenderControls");
         lines.Add($"PointSize|value={viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture)}");
         lines.Add($"ColorMode|mode={CleanContractText(viewModel.SelectedColorMode)}");
+        lines.Add($"DisplaySettings|sourceId={displaySettings.Source}|activeSource={CleanContractText(viewModel.Display.ActiveSource)}|geometryStyleId={displaySettings.GeometryStyle}|geometryStyle={CleanContractText(viewModel.Display.EffectiveGeometryStyle)}|geometrySelectable={viewModel.Display.CanSelectGeometryStyle}|availableGeometry={CleanContractText(string.Join(",", viewModel.Display.AvailableGeometryStyles))}|colorMapId={displaySettings.ColorMap}|colorMap={CleanContractText(viewModel.Display.EffectiveColorMap)}|colorSelectable={viewModel.Display.CanSelectColorMap}|availableColorMaps={CleanContractText(string.Join(",", viewModel.Display.AvailableColorMaps))}|fallbackApplied={viewModel.Display.FallbackApplied}|fallback={CleanContractText(viewModel.Display.FallbackSummary)}|displayOnly={displaySettings.IsDisplayOnly}|renderBridge=ColorCompatibilitySnapshot|geometryRenderBridge={geometryRenderBridge}");
         lines.Add($"MeasurementOverlay|visible={viewModel.MeasurementVisible}");
         lines.Add($"RenderDensity|mode={viewModel.SelectedRenderDensity}|maxRenderedPoints={viewModel.C3DMaxRenderedPoints}|maxLazSampledPoints={viewModel.LazMaxSampledPoints}|maxImportedMeshTriangles={viewModel.ImportedMeshMaxRenderedTriangles}|maxNominalActualDisplaySamples={viewModel.NominalActualMaxDisplaySamples}|renderedC3DPoints={c3dSample?.Points.Length ?? 0}|sampledLazPoints={lazPointCloud?.SampledPoints.Length ?? 0}|renderedImportedMeshTriangles={GetImportedMeshRenderedTriangleCount()}|summary={viewModel.RenderDensitySummary}");
         lines.Add(c3dSample is null
@@ -6006,6 +6375,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             : string.Create(
                 CultureInfo.InvariantCulture,
                 $"C3DMap|loaded=True|displayFrame=right-handed-y-up|x=column|y=raw-height|z=row|modelUnit=unitless|rawUnit=raw-height|horizontalSpan={C3DHeightGrid.ViewerHorizontalSpan:R}|horizontalScale={c3dSample.HorizontalScale:R}|heightScale={C3DHeightGrid.ViewerHeightScale:R}|heightCenterRaw={c3dSample.Mean:R}|stride={c3dSample.PointStride}|physicalScale=Unverified"));
+        lines.Add(c3dRenderProxyForContract is null
+            ? "C3DRenderProxy|loaded=False"
+            : $"C3DRenderProxy|loaded=True|points={c3dRenderProxyForContract.Points.Length}|triangles={c3dRenderProxyForContract.TriangleCount}|edges={c3dRenderProxyForContract.EdgeCount}|gridEdges={c3dRenderProxyForContract.GridEdgeCount}|surfaceEdges={c3dRenderProxyForContract.SurfaceEdgeCount}|surfaceEdgeInterval={C3DHeightGridRenderProxy.SurfaceEdgeSampleInterval}|topology=sampled-grid-neighbors|effectiveStyle={displaySettings.GeometryStyle}|renderCache=OpenGLDisplayList|renderCacheReady={c3dDisplayListId != 0}|displayOnly=True|measurementGeometry=SourceCells");
         lines.Add($"PointCloudPerformance|loadMs={FormatContractNumber(viewModel.LazLoadMilliseconds)}|samplePercent={FormatContractNumber(viewModel.LazSamplePercent)}|sampleStride={viewModel.LazSampleStride}|summary={CleanContractText(viewModel.LazSamplingSummary)}");
         lines.Add("ImportedMesh");
         lines.Add(CreateImportedMeshContractLine());
@@ -6044,6 +6416,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         lines.Add(CreateImportedMeshSurfaceOverlayContractLine());
         lines.Add(CreateLazPickContractLine());
         lines.Add($"Performance|fps={FormatContractNumber(viewModel.ViewportFps)}|drawMs={FormatContractNumber(viewModel.ViewportDrawMilliseconds)}|summary={CleanContractText(viewModel.PerformanceSummary)}");
+        lines.Add($"PerformanceSmoke|configured={smokeRenderFrameCount > 0}|requestedFrames={smokeRenderFrameCount}|completedFrames={smokeRenderFramesCompleted}|finite={double.IsFinite(viewModel.ViewportFps) && double.IsFinite(viewModel.ViewportDrawMilliseconds)}|measurement=SharpGL.DoRender");
         lines.Add("TransformAlignment");
         lines.Add($"C3DTransform|entity={MainWindowViewModel.C3DEntityId}|tx={FormatContractNumber(viewModel.C3DModelTransform.TranslateX)}|ty={FormatContractNumber(viewModel.C3DModelTransform.TranslateY)}|tz={FormatContractNumber(viewModel.C3DModelTransform.TranslateZ)}|rx={FormatContractNumber(viewModel.C3DModelTransform.RotateXDegrees)}|ry={FormatContractNumber(viewModel.C3DModelTransform.RotateYDegrees)}|rz={FormatContractNumber(viewModel.C3DModelTransform.RotateZDegrees)}|scale={FormatContractNumber(viewModel.C3DModelTransform.Scale)}|summary={CleanContractText(viewModel.TransformSummary)}");
         lines.Add($"Alignment|summary={CleanContractText(viewModel.AlignmentSummary)}|mapping={CleanContractText(viewModel.CoordinateMappingSummary)}");
