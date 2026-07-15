@@ -149,6 +149,6 @@ Evidence is under ignored `artifacts/stanford_transform_reliability_20260715`:
 
 ## Next Gate
 
-The Phase 2 second-pair and supplied-transform gates now pass: the second physical NIST instance has external/non-visual plus visible Viewer/Runner evidence, and this separate published non-identity transform has point/aggregate execution evidence. The difficult-geometry controlled-outcome matrix and mandatory workflow definition also pass locally, but Phase 2 remains open until the first GitHub Windows run and the accepted registration path pass.
+The Phase 2 second-pair and supplied-transform gates now pass: the second physical NIST instance has external/non-visual plus visible Viewer/Runner evidence, and this separate published non-identity transform has point/aggregate execution evidence. The difficult-geometry controlled-outcome matrix and mandatory workflow gate also pass locally and in Windows CI, but Phase 2 remains open until the accepted registration path passes.
 
-Preserve the difficult-geometry workflow gate and inspect its first GitHub Windows reports after an explicit push. Keep this supplied-transform claim separate from registration recovery, and do not integrate a registration runtime until its distribution and acceptance prerequisites are resolved.
+Preserve the difficult-geometry workflow gate and its required report assertions. Keep this supplied-transform claim separate from registration recovery, and do not integrate a registration runtime until its distribution and acceptance prerequisites are resolved.

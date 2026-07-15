@@ -1,7 +1,7 @@
 # OpenVisionLab 3D Phase 2 Difficult-Geometry Goldens
 
 Date: 2026-07-15
-Status: Local synthetic controlled-outcome gate and mandatory workflow definition passed; GitHub Windows execution pending
+Status: Local and Windows-CI synthetic controlled-outcome gate passed; registration acceptance remains open
 
 ## Decision
 
@@ -9,7 +9,7 @@ The render-independent point-to-triangle and nominal/actual execution paths now 
 
 No View, ViewModel, shared Model, Viewer, recipe, or Host API behavior changed. The implementation adds cases only to the existing Runner verifiers.
 
-The current `.github/workflows/ci.yml` contains one mandatory fail-closed step that runs both verifiers, checks the exact passing headers and required case names, writes a compact summary, and leaves all reports under `artifacts/ci/phase2-difficult-geometry` for the existing `if: always()` artifact upload. Its exact PowerShell body passes locally. This is workflow-readiness evidence, not a completed GitHub Windows run.
+The current `.github/workflows/ci.yml` contains one mandatory fail-closed step that runs both verifiers, checks the exact passing headers and required case names, writes a compact summary, and leaves all reports under `artifacts/ci/phase2-difficult-geometry` for the existing `if: always()` artifact upload. Its exact PowerShell body passes locally and in GitHub Windows Actions.
 
 ## Audit Matrix
 
@@ -42,6 +42,16 @@ After changes:
 - Workflow YAML parse: pass; the mandatory gate exists once and precedes artifact upload.
 - Exact mandatory step body: pass; both reports and `summary.txt` were produced under `artifacts/ci/phase2-difficult-geometry`.
 
+Windows CI closure:
+
+- Implementation commit: `0f89450`.
+- Workflow run: `29418511898`, CI `#48`, conclusion `success`.
+- Job: `87362667234`, `Build and runner smoke`, conclusion `success`.
+- Mandatory Phase 2 step: number `14`, conclusion `success`, `2026-07-15T13:19:56Z..13:19:59Z`.
+- Artifact: `8344275224`, `openvisionlab-3d-ci-artifacts`, `3,725,380` bytes.
+- GitHub digest: `sha256:36ce274d5f1ffd09d2c4b27d1baec130f2ce2a81852291bed3cd7afb636e5021`.
+- Fresh authenticated download: byte count and SHA-256 match the API metadata; the archive contains 95 files and all 11 selected Phase 2 summary/report assertions pass.
+
 Commands:
 
 ```powershell
@@ -62,7 +72,7 @@ Expanded local pre-push regression on 2026-07-15:
 - Fixed Viewer/Shell matrix: `128/128`, failures `0`.
 - BinaryHost: zero `ProjectReference`, manifest `13/13`, required outputs `12/12`, Host API commands `3/3`, screenshot quality accepted on attempt 1.
 
-Expanded evidence root: `artifacts/phase2_ci_prepush_20260715` (`92` files, `5,863,699` bytes at capture time). This remains local pre-push evidence and does not replace the pending GitHub Windows run.
+Expanded evidence root: `artifacts/phase2_ci_prepush_20260715` (`92` files, `5,863,699` bytes at capture time). Authenticated Windows artifact inspection is under `artifacts/github_ci_29418511898` and matches the GitHub artifact identity above.
 
 ## Limits
 
@@ -70,10 +80,10 @@ Expanded evidence root: `artifacts/phase2_ci_prepush_20260715` (`92` files, `5,8
 - Open-surface signed distance follows local triangle orientation. It does not classify global solid interior/exterior.
 - Query distributions weight aggregate statistics. The sparse/dense case proves exact execution for known inputs, not sampling invariance on varying geometry.
 - Empty mesh/query rejection is not the registration zero-correspondence gate.
-- The two verifiers are mandatory in the current workflow definition, but that definition has not yet passed a GitHub-hosted Windows run.
+- The two verifiers are mandatory and passed the fixed GitHub-hosted Windows workflow.
 - Calibration, uncertainty, physical C3D mapping, and licensed metrology evidence remain unavailable.
 
 ## Next Gate
 
-1. After an explicit `PUSH` request, inspect the first GitHub Windows run and authenticate the uploaded reports before closing Windows portability.
+1. Preserve the mandatory Windows report gate and its explicit required-case assertions.
 2. Keep registration product integration blocked until runtime/distribution prerequisites are resolved. Then require correspondence count, fitness, transform plausibility, and RMSE with explicit zero-correspondence rejection.

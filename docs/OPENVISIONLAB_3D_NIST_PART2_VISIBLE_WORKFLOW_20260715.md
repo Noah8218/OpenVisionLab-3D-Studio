@@ -7,7 +7,7 @@ Status: Passed locally for the fixed Part 2 identity-frame source/query pair
 
 The second NIST physical instance now passes the existing nominal/actual product workflow in the standalone Viewer, hosted Shell, saved recipe, reopened Viewer, and headless Runner.
 
-This closes the Viewer Reliability Phase 2 second-pair checklist item. It does not close Phase 2 as a whole: the difficult-geometry matrix passes locally and has a mandatory workflow definition awaiting its first GitHub Windows run, while registration acceptance remains open. It is not arbitrary-geometry, arbitrary-alignment, calibration, uncertainty, or metrology evidence.
+This closes the Viewer Reliability Phase 2 second-pair checklist item. It does not close Phase 2 as a whole: the difficult-geometry matrix passes locally and in Windows CI, while registration acceptance remains open. It is not arbitrary-geometry, arbitrary-alignment, calibration, uncertainty, or metrology evidence.
 
 ## View -> ViewModel -> Model Review
 
@@ -134,4 +134,4 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 
 ## Remaining Phase 2 Gates
 
-Phase 2 remains open. The difficult-geometry audit now passes locally with mesh deviation `23/23` and nominal/actual execution `29/29`; see `docs/OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`. Its mandatory fail-closed workflow step passes locally and awaits its first GitHub Windows run. Registration acceptance must separately record correspondence count and fitness before RMSE and reject zero-correspondence false success in the accepted product execution path.
+Phase 2 remains open. The difficult-geometry audit passes locally and in Windows CI with mesh deviation `23/23` and nominal/actual execution `29/29`; see `docs/OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`. Registration acceptance must separately record correspondence count and fitness before RMSE and reject zero-correspondence false success in the accepted product execution path.

@@ -17,7 +17,7 @@ Current status:
 | Phase | Current decision | What that means |
 | --- | --- | --- |
 | Phase 1 | **Passed for the fixed supported scope locally and in current Windows CI** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, hosted dual-capture, and mandatory real WPF pointer-input gates pass. |
-| Phase 2 | **Not passed; difficult-geometry gate and CI definition passed locally** | Both fixed NIST physical instances, the Stanford published transform, and the synthetic difficult-geometry matrix pass. The mandatory fail-closed workflow step passes locally, but its first GitHub Windows execution and the accepted registration path remain open. |
+| Phase 2 | **Not passed; difficult-geometry gate passed locally and in Windows CI** | Both fixed NIST physical instances, the Stanford published transform, and the synthetic difficult-geometry matrix pass. Registration acceptance is the remaining open checklist item. |
 | Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
 
 The accurate current claim is:
@@ -92,7 +92,7 @@ Passed locally on 2026-07-15 for quick C3D and the fixed full-resolution NIST no
 ### Next Work Order
 
 1. Preserve the mandatory hosted dual-capture and Viewer/Shell pointer-input Windows CI gates as Phase 1 regression coverage.
-2. Preserve the mandatory difficult-geometry workflow step and, after an explicit `PUSH` request, inspect its first GitHub Windows execution and uploaded reports.
+2. Preserve the locally and Windows-CI-passed mandatory difficult-geometry workflow step and its required report assertions.
 3. Keep registration acceptance blocked from product integration until the runtime/distribution prerequisites are resolved; when available, require correspondence count and fitness before RMSE and reject zero-correspondence success.
 
 ## Phase 2 - Geometric And Algorithm Reliability
@@ -128,12 +128,13 @@ Passed locally on 2026-07-15:
 - The current-source build passes with zero warnings/errors and the fixed Viewer/Shell matrix remains `128/128`.
 - Evidence and the complete audit matrix are in `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md` and `artifacts/phase2_difficult_geometry_20260715`.
 - The current workflow runs both verifiers as one mandatory fail-closed step, validates the exact passing headers and required case names, and uploads `artifacts/ci/phase2-difficult-geometry/**`. The exact step body and workflow YAML pass locally.
+- Commit `0f89450` passed the mandatory step and every existing Windows workflow step in Actions run `29418511898`. Authenticated artifact `8344275224` is `3,725,380` bytes with digest `sha256:36ce274d5f1ffd09d2c4b27d1baec130f2ce2a81852291bed3cd7afb636e5021`; a fresh authenticated download matched that identity and passed all 11 selected Phase 2 report assertions.
 
-This gate has not yet run on GitHub-hosted Windows after being made mandatory. Registration correspondence count, fitness, transform plausibility, and RMSE acceptance remain separate.
+Registration correspondence count, fitness, transform plausibility, and RMSE acceptance remain separate.
 
 ### Current Assessment
 
-Phase 2 is **not passed**. NIST Part 2 carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and mandatory workflow definition now pass locally, while the first GitHub Windows execution and registration acceptance remain open. These fixed sources still do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`, and `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`.
+Phase 2 is **not passed**. NIST Part 2 carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and mandatory workflow gate pass locally and in Windows CI, while registration acceptance remains open. These fixed sources still do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`, and `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`.
 
 ## Phase 3 - Physical And Metrology Reliability
 
