@@ -37,6 +37,7 @@ The scalar is the existing normalized C3D `HeightScalar`. It is not a calibrated
 - Fixed Viewer/Shell matrix: `128/128` passes under `artifacts/c3d_color_maps_20260715/regression`.
 - Binary-only host: zero `ProjectReference`, manifest `13/13`, required outputs `12/12`, Host API commands `3/3`, direct C3D render/pick pass.
 - Pointer input: Shell passes `3/12/3/1` routed events with established SHA-256 `2F2CBB688D8C3293C3176100CC6AE2D985BFF1A8F19DE840E77D98D72CCEA2A0`. A standalone first attempt retained under `pointer/viewer_pointer.txt` lost foreground input before pan/zoom (`2/8/2/0`) and failed. Two immediate standalone confirmations then passed `3/12/3/1` and are byte-identical to the established Viewer SHA-256 `4D6C926DA834ED6AE017D98FEB84BCB043C1FA77AD3364A36D1B1EB842C7CF4E`. The failed attempt is retained as focus-sensitivity evidence rather than hidden.
+- Windows CI: commit `3136ebe` added a mandatory Grayscale/Thermal gate. Actions run `29409271743` passed both current-build captures, screenshot-quality reports, typed/effective contracts, `71` display checks, distinct screenshot SHA-256 values, and every existing BinaryHost/Shell/pointer/Runner/golden/map step. Artifact `8340434196` is `2,062,684` bytes with digest `sha256:a9d8c4454fac7d4f66e280f42868e7ab474c9b70a5f14bd0c35939d6378de0d4`.
 
 ## Acceptance Checklist
 
@@ -46,10 +47,10 @@ The scalar is the existing normalized C3D `HeightScalar`. It is not a calibrated
 - [x] Screenshot contracts record typed and readable effective color-map values.
 - [x] Static C3D caching and dynamic result-owned Deviation behavior are preserved.
 - [x] Fixed loading, picking, measurement, controlled-failure, and binary-host gates remain green.
-- [ ] Windows CI revalidation after the next explicit commit/push.
+- [x] Windows CI directly selects and validates both LUTs while preserving all existing gates.
 
 ## Limitations And Next Step
 
-- These maps are validated only for the fixed C3D display frame and current machine; they are not physical-height or cross-hardware color calibration claims.
+- These maps are validated for the fixed C3D display frame locally and in the current Windows workflow; they are not physical-height, calibrated-color, or cross-hardware performance claims.
 - No legend, editable display range, inversion, contouring, or LUT import is included.
 - The next display checkpoint is GLB/STL Geometry Style switching while preserving texture and vertex-color behavior. LAS/LAZ remains point-only.

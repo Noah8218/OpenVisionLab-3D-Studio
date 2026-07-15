@@ -684,8 +684,9 @@ Implement these only after the initial geometry/color slice passes its regressio
 - Viewer-local `ViewerColorMapPalette` maps the existing normalized height scalar to black-to-white Grayscale and black-to-red-to-yellow-to-white Thermal RGB. It clamps finite values to `[0, 1]` and maps non-finite input to the low endpoint.
 - SharpGL applies the effective typed color map through the existing display-list cache key. Color changes rebuild only display geometry and do not run Preview/Publish or change source-cell picking and measurement.
 - Current evidence under `artifacts/c3d_color_maps_20260715` passes display verification `71`, build `0/0`, two accepted 90-frame LUT screenshots/contracts, fixed matrix `128/128`, BinaryHost manifest `13/13`, outputs `12/12`, Host API commands `3/3`, and established Viewer/Shell pointer hashes. One retained standalone pointer attempt lost foreground input before pan/zoom; two immediate confirmations are byte-identical to the established passing Viewer report.
+- Commit `3136ebe` adds a mandatory Windows CI LUT gate. Actions run `29409271743` passes both C3D color captures, quality reports, typed/effective contracts, 71 display checks, distinct screenshot hashes, and all prior workflow steps. Artifact `8340434196` is `2,062,684` bytes with digest `sha256:a9d8c4454fac7d4f66e280f42868e7ab474c9b70a5f14bd0c35939d6378de0d4`.
 - Balanced 33,761-point telemetry records Grayscale `75.303 FPS / 5.272 ms` and Thermal `37.049 FPS / 10.438 ms` on the local machine.
-- Preserve `docs/OPENVISIONLAB_3D_C3D_COLOR_MAPS_20260715.md` as the palette, evidence, limitation, and acceptance source. Windows CI, manual ranges, legends, inversion, LUT import, and physical color calibration remain open.
+- Preserve `docs/OPENVISIONLAB_3D_C3D_COLOR_MAPS_20260715.md` as the palette, evidence, limitation, and acceptance source. Manual ranges, legends, inversion, LUT import, physical color calibration, and cross-machine performance remain open.
 
 ## Recipe Save/Edit Evidence
 
