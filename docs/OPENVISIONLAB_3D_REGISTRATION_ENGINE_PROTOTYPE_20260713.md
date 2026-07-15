@@ -223,7 +223,7 @@ Repeatable local command:
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report artifacts\registration_acceptance_20260715\registration_acceptance_golden.txt
 ```
 
-The golden passes `20/20`, including exact-threshold acceptance, `0 correspondence / RMSE 0` rejection, count-before-fitness, fitness-before-RMSE, non-rigid transforms, translation/rotation limits, non-finite values, unit mismatch, and invalid-policy guards. The Windows workflow contains a separate mandatory fail-closed report gate under `artifacts\ci\registration-acceptance`; no Windows result is claimed until a pushed Actions run passes.
+The golden passes `20/20`, including exact-threshold acceptance, `0 correspondence / RMSE 0` rejection, count-before-fitness, fitness-before-RMSE, non-rigid transforms, translation/rotation limits, non-finite values, unit mismatch, and invalid-policy guards. Commit `13f143a` passed every Windows workflow step in Actions run `29454088343`; job `87483200712` ran the separate mandatory registration gate as step 15 and succeeded. An authenticated download of artifact `8358732707` matched `3,726,847` bytes and digest `sha256:fced1dde391124d89b761336c907957d597b73dfbecbdc9d2dff62f4bf18b9f7`; its 97-entry archive contains the registration report and summary, and the report preserves the `20/20`, zero-correspondence, and non-finite-transform evidence.
 
 This closes the runtime-neutral policy prerequisite only. It does not approve Open3D distribution, map a real runtime result into the product, prove registration recovery, or establish Viewer/Runner parity.
 

@@ -136,7 +136,7 @@ Runtime-neutral registration acceptance golden:
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report artifacts\registration_acceptance_20260715\registration_acceptance_golden.txt
 ```
 
-This `20/20` local gate requires correspondence count and fitness before RMSE, rejects `0 correspondence / RMSE 0`, and checks explicit units plus rigid/translation/rotation plausibility. It does not install or approve a registration engine. The workflow contains a mandatory report gate under `artifacts\ci\registration-acceptance`; Windows success is not claimed until a pushed run passes. See `docs\OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`.
+This `20/20` local and Windows-CI gate requires correspondence count and fitness before RMSE, rejects `0 correspondence / RMSE 0`, and checks explicit units plus rigid/translation/rotation plausibility. It does not install or approve a registration engine. Commit `13f143a` passed Actions run `29454088343`; authenticated artifact `8358732707` matched `3,726,847` bytes and digest `sha256:fced1dde391124d89b761336c907957d597b73dfbecbdc9d2dff62f4bf18b9f7`. See `docs\OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`.
 
 Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
 
