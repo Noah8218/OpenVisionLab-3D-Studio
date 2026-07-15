@@ -71,6 +71,87 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
 
+      - name: Verify C3D grayscale and thermal color maps
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-color-maps'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $cases = @(
+            @{ Name = 'grayscale'; Label = 'Grayscale'; Action = 'color-grayscale' },
+            @{ Name = 'thermal'; Label = 'Thermal'; Action = 'color-thermal' }
+          )
+          $summary = New-Object System.Collections.Generic.List[string]
+          $imageHashes = New-Object System.Collections.Generic.List[string]
+          foreach ($case in $cases) {
+            $screenshot = Join-Path $artifactDir "$($case.Name).png"
+            $qualityReport = Join-Path $artifactDir "$($case.Name)-quality.txt"
+            $contract = Join-Path $artifactDir "$($case.Name)-contract.txt"
+            $dotnetArguments = @(
+              'run', '--project', 'src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj',
+              '-c', 'Debug', '--no-build', '--',
+              '--smoke-screenshot', $screenshot,
+              '--smoke-screenshot-quality-report', $qualityReport,
+              '--smoke-contracts', $contract,
+              '--smoke-c3d', 'thickness',
+              '--smoke-action', $case.Action
+            )
+            if ($case.Name -eq 'grayscale') {
+              $dotnetArguments += @(
+                '--verify-display-viewmodel',
+                (Join-Path $artifactDir 'display-viewmodel-verification.txt')
+              )
+            }
+
+            & dotnet @dotnetArguments
+            if ($LASTEXITCODE -ne 0) {
+              throw "$($case.Label) color-map smoke failed with exit code $LASTEXITCODE."
+            }
+
+            $quality = Get-Content $qualityReport -Raw
+            if ($quality -notmatch 'ViewerScreenshotResult\|accepted=True') {
+              throw "$($case.Label) screenshot quality was not accepted."
+            }
+
+            $contractText = Get-Content $contract -Raw
+            $requiredContractText = @(
+              "ColorMode|mode=$($case.Label)",
+              "colorMapId=$($case.Label)|colorMap=$($case.Label)",
+              'availableColorMaps=Solid,Grayscale,Height,Thermal',
+              'fallbackApplied=False',
+              'C3DMap|loaded=True',
+              'renderCacheReady=True'
+            )
+            foreach ($required in $requiredContractText) {
+              if (-not $contractText.Contains($required)) {
+                throw "$($case.Label) contract is missing: $required"
+              }
+            }
+
+            $hash = (Get-FileHash -LiteralPath $screenshot -Algorithm SHA256).Hash
+            $imageHashes.Add($hash)
+            $summary.Add("ColorMap|name=$($case.Label)|quality=True|contract=True|sha256=$hash")
+          }
+
+          if ($imageHashes[0] -eq $imageHashes[1]) {
+            throw 'Grayscale and Thermal screenshots are byte-identical.'
+          }
+
+          $verification = Get-Content (Join-Path $artifactDir 'display-viewmodel-verification.txt') -Raw
+          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (71 checks)')) {
+            throw 'Display-settings ViewModel verification did not pass 71 checks.'
+          }
+
+          $summary.Add('DisplayViewModel|pass=True|checks=71')
+          $summary.Add('Gate|mandatory=True|scope=C3D Grayscale and Thermal display-only color maps')
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## C3D color-map gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
       - name: Verify WPF pointer input
         shell: pwsh
         timeout-minutes: 3
