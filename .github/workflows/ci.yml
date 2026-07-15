@@ -212,6 +212,71 @@ jobs:
             throw "WPF pointer input failed. Viewer exit=$viewerExitCode pass=$viewerPassed; Shell exit=$shellExitCode pass=$shellPassed."
           }
 
+      - name: Verify Phase 2 difficult-geometry goldens
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $artifactDir = 'artifacts\ci\phase2-difficult-geometry'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $meshReport = Join-Path $artifactDir 'mesh_deviation_golden.txt'
+          $nominalActualReport = Join-Path $artifactDir 'nominal_actual_golden.txt'
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-mesh-deviation --report $meshReport
+          if ($LASTEXITCODE -ne 0) {
+            throw "Phase 2 mesh-deviation golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report $nominalActualReport
+          if ($LASTEXITCODE -ne 0) {
+            throw "Phase 2 nominal/actual golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          $mesh = Get-Content -LiteralPath $meshReport -Raw
+          $requiredMeshEvidence = @(
+            'MeshDeviationGoldenVerification|Pass|cases=23|passed=23|failed=0',
+            'openSurfaceSign=oriented-local-normal-not-solid-inside-outside',
+            'Case|stream-reader-nonfinite-normal|Pass|',
+            'Case|duplicate-vertices-deterministic-tie|Pass|',
+            'Case|open-surface-local-normal-contract|Pass|',
+            'Case|edge-sign-is-explicitly-unresolved|Pass|',
+            'Case|edge-sign-robustly-resolved|Pass|',
+            'Case|vertex-sign-is-explicitly-unresolved|Pass|',
+            'Case|vertex-sign-robustly-resolved|Pass|',
+            'Case|empty-mesh-no-correspondence-rejected|Pass|'
+          )
+          foreach ($required in $requiredMeshEvidence) {
+            if (-not $mesh.Contains($required)) {
+              throw "Mesh-deviation report is missing required evidence: $required"
+            }
+          }
+
+          $nominalActual = Get-Content -LiteralPath $nominalActualReport -Raw
+          $requiredNominalActualEvidence = @(
+            'NominalActualComparisonVerification|Pass|cases=29|passed=29|failed=0',
+            'sampling=full-query|displaySampling=independent',
+            'Case|sparse-dense-full-query-outcomes|Pass|',
+            'Case|empty-query-no-correspondence-rejected|Pass|'
+          )
+          foreach ($required in $requiredNominalActualEvidence) {
+            if (-not $nominalActual.Contains($required)) {
+              throw "Nominal/actual report is missing required evidence: $required"
+            }
+          }
+
+          $summary = @(
+            'Phase2DifficultGeometry',
+            'MeshDeviation|pass=True|cases=23|report=mesh_deviation_golden.txt',
+            'NominalActual|pass=True|cases=29|report=nominal_actual_golden.txt',
+            'Gate|mandatory=True|scope=synthetic controlled outcomes; registration acceptance excluded'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Phase 2 difficult-geometry gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 

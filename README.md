@@ -126,6 +126,10 @@ Nominal/actual execution-contract golden:
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report artifacts\nominal_actual_execution\executor_verification.txt
 ```
 
+Together these commands are the local Phase 2 difficult-geometry controlled-outcome gate: mesh deviation must pass `23/23` and nominal/actual execution must pass `29/29`. See `docs\OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md` for the audit matrix and claim limits.
+
+`.github\workflows\ci.yml` also defines this as a mandatory fail-closed gate and uploads both reports plus `summary.txt` under `artifacts\ci\phase2-difficult-geometry`. The exact step passes locally; a GitHub Windows Actions result is required before claiming Windows portability.
+
 Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
 
 ```powershell

@@ -21,6 +21,9 @@ internal static class NominalActualComparisonVerification
             var actualPath = Path.Combine(tempDirectory, "actual-source.stl");
             var nominalPath = Path.Combine(tempDirectory, "nominal.stl");
             var queryPath = Path.Combine(tempDirectory, "query.ply");
+            var sparseQueryPath = Path.Combine(tempDirectory, "sparse-query.ply");
+            var denseQueryPath = Path.Combine(tempDirectory, "dense-query.ply");
+            var emptyQueryPath = Path.Combine(tempDirectory, "empty-query.ply");
             File.WriteAllBytes(actualPath, Encoding.ASCII.GetBytes("synthetic actual source identity"));
             WriteBinaryStl(
                 nominalPath,
@@ -39,6 +42,18 @@ internal static class NominalActualComparisonVerification
                     new Vector3(0.5f, 0.5f, 0.5f),
                     new Vector3(1.0f, -1.0f, 1.0f)
                 ]);
+            WriteBinaryPly(sparseQueryPath, [new Vector3(0.5f, 0.5f, 1.0f)]);
+            WriteBinaryPly(
+                denseQueryPath,
+                [
+                    new Vector3(0.25f, 0.25f, 1.0f),
+                    new Vector3(0.5f, 0.25f, 1.0f),
+                    new Vector3(0.25f, 0.5f, 1.0f),
+                    new Vector3(0.75f, 0.25f, 1.0f),
+                    new Vector3(0.25f, 0.75f, 1.0f),
+                    new Vector3(0.5f, 0.5f, 1.0f)
+                ]);
+            WriteBinaryPly(emptyQueryPath, []);
 
             var input = new NominalActualComparisonInput(
                 "step.synthetic-surface-deviation",
@@ -165,6 +180,33 @@ internal static class NominalActualComparisonVerification
                 && detailedDisplayResult.DisplaySamples[^1].QueryPointIndex == 4
                 && detailedDisplayResult.DisplaySamples[^1].RobustSignRecovered,
                 $"fastDisplay={passResult.DisplaySamples.Count},detailedDisplay={detailedDisplayResult.DisplaySamples.Count},points={detailedDisplayResult.ComparedPointCount},fingerprint={detailedDisplayResult.Input.ExecutionFingerprint}");
+            var sparseResult = executor.ExecuteAsync(
+                input with
+                {
+                    QuerySource = CreateIdentity("query.sparse", "Sparse query", sparseQueryPath)
+                },
+                1).GetAwaiter().GetResult();
+            var denseResult = executor.ExecuteAsync(
+                input with
+                {
+                    QuerySource = CreateIdentity("query.dense", "Dense query", denseQueryPath)
+                },
+                2).GetAwaiter().GetResult();
+            Check(
+                "sparse-dense-full-query-outcomes",
+                sparseResult.ComparedPointCount == 1
+                && denseResult.ComparedPointCount == 6
+                && sparseResult.DirectSignResolvedCount == 1
+                && denseResult.DirectSignResolvedCount == 6
+                && sparseResult.RobustSignRecoveredCount == 0
+                && denseResult.RobustSignRecoveredCount == 0
+                && UniformUnitOffset(sparseResult.Signed, 1)
+                && UniformUnitOffset(denseResult.Signed, 6)
+                && sparseResult.DisplaySampleStride == 1
+                && sparseResult.DisplaySamples.Count == 1
+                && denseResult.DisplaySampleStride == 3
+                && denseResult.DisplaySamples.Count == 2,
+                $"sparse={sparseResult.ComparedPointCount}/{sparseResult.DisplaySamples.Count},dense={denseResult.ComparedPointCount}/{denseResult.DisplaySamples.Count},sparseMean={Format(sparseResult.Signed.Mean)},denseMean={Format(denseResult.Signed.Mean)}");
             Check(
                 "progress-reaches-total",
                 progress.Items.Count >= 3
@@ -253,6 +295,18 @@ internal static class NominalActualComparisonVerification
                     },
                     0).GetAwaiter().GetResult(), "PLY magic"),
                 "corrupt query header rejected by the binary PLY reader");
+            Check(
+                "empty-query-no-correspondence-rejected",
+                Throws<InvalidDataException>(() => executor.ExecuteAsync(
+                    input with
+                    {
+                        QuerySource = CreateIdentity(
+                            "query.empty",
+                            "Empty query",
+                            emptyQueryPath)
+                    },
+                    0).GetAwaiter().GetResult(), "vertex declaration must be positive"),
+                "empty validation query rejected before producing a false result");
 
             var truncatedQueryPath = Path.Combine(tempDirectory, "truncated-query.ply");
             WriteBinaryPly(truncatedQueryPath, [Vector3.Zero]);
@@ -413,6 +467,14 @@ internal static class NominalActualComparisonVerification
 
     private static bool Approximately(double actual, double expected, double tolerance = 1e-6) =>
         double.IsFinite(actual) && Math.Abs(actual - expected) <= tolerance;
+
+    private static bool UniformUnitOffset(NominalActualDeviationStatistics statistics, long expectedCount) =>
+        statistics.Count == expectedCount
+        && Approximately(statistics.Minimum, 1)
+        && Approximately(statistics.Maximum, 1)
+        && Approximately(statistics.Mean, 1)
+        && Approximately(statistics.StandardDeviationPopulation, 0)
+        && Approximately(statistics.RootMeanSquare, 1);
 
     private static string Format(double value) =>
         value.ToString("G17", CultureInfo.InvariantCulture);

@@ -19,6 +19,7 @@ internal static class MeshDeviationGoldenVerification
             var validPath = Path.Combine(tempDirectory, "two-triangles.stl");
             var corruptLengthPath = Path.Combine(tempDirectory, "corrupt-length.stl");
             var nonFinitePath = Path.Combine(tempDirectory, "non-finite.stl");
+            var nonFiniteNormalPath = Path.Combine(tempDirectory, "non-finite-normal.stl");
             var measuredPlyPath = Path.Combine(tempDirectory, "measured.ply");
             var unsignedPlyPath = Path.Combine(tempDirectory, "unsigned.ply");
             var signedPlyPath = Path.Combine(tempDirectory, "signed.ply");
@@ -50,6 +51,9 @@ internal static class MeshDeviationGoldenVerification
             WriteBinaryStl(
                 nonFinitePath,
                 first with { A = new Vector3(float.NaN, 0, 0) });
+            WriteBinaryStl(
+                nonFiniteNormalPath,
+                first with { StoredNormal = new Vector3(float.NaN, 0, 0) });
             WriteBinaryPly(
                 measuredPlyPath,
                 ["x", "y", "z"],
@@ -116,6 +120,7 @@ internal static class MeshDeviationGoldenVerification
                 Check("stream-reader-contract", () => VerifyReaderContract(validPath, first, second)),
                 Check("stream-reader-corrupt-length", () => VerifyInvalidData(corruptLengthPath, "length")),
                 Check("stream-reader-nonfinite", () => VerifyInvalidData(nonFinitePath, "non-finite")),
+                Check("stream-reader-nonfinite-normal", () => VerifyInvalidData(nonFiniteNormalPath, "non-finite")),
                 Check("ordered-binary-ply-reader", () => VerifyPlyReader(measuredPlyPath)),
                 Check("truncated-binary-ply-rejected", () => VerifyInvalidPly(truncatedPlyPath)),
                 Check("complete-synthetic-parity", () => VerifyCompleteParity(validPath, measuredPlyPath, unsignedPlyPath, signedPlyPath, parityPassReportPath)),
@@ -126,9 +131,13 @@ internal static class MeshDeviationGoldenVerification
                 Check("face-zero-distance", () => VerifyFaceDistance(index, new Vector3(0.5f, 0.5f, 0), 0, 0, 0)),
                 Check("nearest-triangle-selection", () => VerifyFaceDistance(index, new Vector3(10.25f, 0.25f, -4), 1, 4, 4)),
                 Check("bvh-split-nearest-triangle", () => VerifyFaceDistance(splitIndex, new Vector3(90.25f, 0.25f, 2), 9, 2, 2)),
+                Check("duplicate-vertices-deterministic-tie", VerifyDuplicateVerticesDeterministicTie),
+                Check("open-surface-local-normal-contract", VerifyOpenSurfaceLocalNormalContract),
                 Check("edge-sign-is-explicitly-unresolved", () => VerifyUnresolvedSign(index, new Vector3(1, -1, 1), MeshClosestFeature.Edge, Math.Sqrt(2))),
                 Check("edge-sign-robustly-resolved", () => VerifyRobustSign(index, new Vector3(1, -1, 1), MeshClosestFeature.Edge, Math.Sqrt(2), Math.Sqrt(2))),
                 Check("vertex-sign-is-explicitly-unresolved", () => VerifyUnresolvedSign(index, new Vector3(-1, -1, 1), MeshClosestFeature.Vertex, Math.Sqrt(3))),
+                Check("vertex-sign-robustly-resolved", () => VerifyRobustSign(index, new Vector3(-1, -1, 1), MeshClosestFeature.Vertex, Math.Sqrt(3), Math.Sqrt(3))),
+                Check("empty-mesh-no-correspondence-rejected", VerifyEmptyMeshRejected),
                 Check("degenerate-triangle-rejected", VerifyDegenerateTriangleRejected),
                 Check("nonfinite-query-rejected", () => VerifyNonFiniteQueryRejected(index))
             ];
@@ -143,7 +152,7 @@ internal static class MeshDeviationGoldenVerification
         var lines = new List<string>
         {
             $"MeshDeviationGoldenVerification|{status}|cases={cases.Length}|passed={passedCount}|failed={cases.Length - passedCount}",
-            "DistanceContract|closest=exact-point-to-triangle|acceleration=median-split-bvh|signedDirect=face-interior-only|signedRobust=epsilon-candidate-selection|ply=ordered-binary-little-endian|renderDensity=independent"
+            "DistanceContract|closest=exact-point-to-triangle|acceleration=median-split-bvh|signedDirect=face-interior-only|signedRobust=epsilon-candidate-selection|openSurfaceSign=oriented-local-normal-not-solid-inside-outside|duplicateTie=lowest-source-triangle|emptyMesh=no-correspondence-rejected|ply=ordered-binary-little-endian|renderDensity=independent"
         };
         lines.AddRange(cases.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{Clean(item.Evidence)}"));
 
@@ -348,6 +357,61 @@ internal static class MeshDeviationGoldenVerification
         return (
             passed,
             $"feature={result.ClosestFeature},unsigned={Format(result.UnsignedDistance)},signed={Format(result.SignedDistance)},resolved={result.SignResolved}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyDuplicateVerticesDeterministicTie()
+    {
+        var a = Vector3.Zero;
+        var b = new Vector3(2, 0, 0);
+        var c = new Vector3(0, 2, 0);
+        var index = new TriangleMeshDistanceIndex([
+            new MeshTriangle(9, a, b, c),
+            new MeshTriangle(3, a, b, c)
+        ]);
+        var result = index.FindClosest(new Vector3(0.5f, 0.5f, 1));
+        var passed = index.TriangleCount == 2
+            && result.SourceTriangleIndex == 3
+            && result.ClosestFeature == MeshClosestFeature.FaceInterior
+            && Approximately(result.UnsignedDistance, 1)
+            && result.SignedDistance is { } signed
+            && Approximately(signed, 1);
+        return (
+            passed,
+            $"triangles={index.TriangleCount},selected={result.SourceTriangleIndex},feature={result.ClosestFeature},unsigned={Format(result.UnsignedDistance)},signed={Format(result.SignedDistance)}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyOpenSurfaceLocalNormalContract()
+    {
+        var a = Vector3.Zero;
+        var b = new Vector3(2, 0, 0);
+        var c = new Vector3(0, 2, 0);
+        var point = new Vector3(0.5f, 0.5f, 1);
+        var positive = new TriangleMeshDistanceIndex([new MeshTriangle(0, a, b, c)]).FindClosest(point);
+        var negative = new TriangleMeshDistanceIndex([new MeshTriangle(0, a, c, b)]).FindClosest(point);
+        var passed = positive.ClosestFeature == MeshClosestFeature.FaceInterior
+            && negative.ClosestFeature == MeshClosestFeature.FaceInterior
+            && positive.SignedDistance is { } positiveSigned
+            && negative.SignedDistance is { } negativeSigned
+            && Approximately(positiveSigned, 1)
+            && Approximately(negativeSigned, -1);
+        return (
+            passed,
+            $"semantic=oriented-local-normal-not-solid-inside-outside,forward={Format(positive.SignedDistance)},reversed={Format(negative.SignedDistance)}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyEmptyMeshRejected()
+    {
+        try
+        {
+            _ = new TriangleMeshDistanceIndex([]);
+            return (false, "index accepted an empty mesh");
+        }
+        catch (ArgumentException exception)
+        {
+            return (
+                exception.Message.Contains("at least one triangle", StringComparison.OrdinalIgnoreCase),
+                exception.Message);
+        }
     }
 
     private static (bool Passed, string Evidence) VerifyDegenerateTriangleRejected()

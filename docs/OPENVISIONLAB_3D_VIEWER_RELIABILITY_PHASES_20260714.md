@@ -17,12 +17,12 @@ Current status:
 | Phase | Current decision | What that means |
 | --- | --- | --- |
 | Phase 1 | **Passed for the fixed supported scope locally and in current Windows CI** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, hosted dual-capture, and mandatory real WPF pointer-input gates pass. |
-| Phase 2 | **Not passed; second-pair and known-transform gates passed** | Both fixed NIST physical instances now pass external/non-visual and visible Viewer/Runner evidence, and the separate Stanford published non-identity transform gate passes. Difficult-geometry controlled outcomes and the accepted registration path remain open. |
+| Phase 2 | **Not passed; difficult-geometry gate and CI definition passed locally** | Both fixed NIST physical instances, the Stanford published transform, and the synthetic difficult-geometry matrix pass. The mandatory fail-closed workflow step passes locally, but its first GitHub Windows execution and the accepted registration path remain open. |
 | Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
 
 The accurate current claim is:
 
-> OpenVisionLab 3D has a repeatable fixed-scope engineering Viewer baseline and one independently cross-checked nominal/actual inspection slice. It is not yet a general-purpose geometric validator or a calibrated metrology system.
+> OpenVisionLab 3D has a repeatable fixed-scope engineering Viewer baseline and two independently cross-checked fixed nominal/actual inspection slices. It is not yet a general-purpose geometric validator or a calibrated metrology system.
 
 ## Phase 1 - Software And Visual Reliability
 
@@ -92,7 +92,7 @@ Passed locally on 2026-07-15 for quick C3D and the fixed full-resolution NIST no
 ### Next Work Order
 
 1. Preserve the mandatory hosted dual-capture and Viewer/Shell pointer-input Windows CI gates as Phase 1 regression coverage.
-2. Audit the existing geometry/error goldens against the remaining Phase 2 controlled-outcome checklist and add only the missing cases.
+2. Preserve the mandatory difficult-geometry workflow step and, after an explicit `PUSH` request, inspect its first GitHub Windows execution and uploaded reports.
 3. Keep registration acceptance blocked from product integration until the runtime/distribution prerequisites are resolved; when available, require correspondence count and fitness before RMSE and reject zero-correspondence success.
 
 ## Phase 2 - Geometric And Algorithm Reliability
@@ -114,13 +114,26 @@ Do not spend implementation effort fabricating these prerequisites from the exis
 - [x] One fixed identity-frame NIST pair matches independent CloudCompare unsigned and robust-signed output within the declared tolerance.
 - [x] A second distinct pair passes source identity, visible Viewer/Runner parity, and external aggregate-statistic comparison. NIST Part 2 preserves `3,965,430` full-query points, separate actual/nominal/query IDs and hashes, explicit Preview/Publish, recipe save/reopen, selected-point provenance, schema `1.2`, and `ViewerRunnerComparison|Matched` evidence.
 - [x] A known non-identity transform passes translation and rotation plausibility plus point-level and aggregate expected output. The local Stanford gate covers `12` scans, `50,643` points, `36` checkpoints, full aggregate statistics, CloudCompare external transform parity at maximum difference `3.0913966692081019e-8`, and controlled tamper rejection; units and commercial use remain unavailable.
-- [ ] Duplicate vertices, non-finite normals, open surfaces, edge/vertex nearest hits, sparse/dense query sampling, and no-correspondence cases have controlled outcomes.
+- [x] Duplicate vertices, non-finite normals, open surfaces, edge/vertex nearest hits, sparse/dense query sampling, and empty mesh/query no-data cases have local synthetic controlled outcomes. This does not replace registration zero-correspondence acceptance.
 - [ ] Registration acceptance records correspondence count and fitness before RMSE and rejects zero-correspondence false success.
 - [x] Each accepted NIST pair preserves actual/nominal/query hashes, units, frame, alignment, full-query/display-sample separation, recipe roundtrip, and Run Record identity.
 
+### Difficult-Geometry Controlled Outcomes
+
+Passed locally on 2026-07-15:
+
+- Mesh-deviation verification passes `23/23`, adding deterministic coincident-triangle tie selection, non-finite stored-normal rejection, explicit open-surface winding semantics, robust vertex recovery, and empty-mesh rejection.
+- Nominal/actual execution verification passes `29/29`, adding separate one-point and six-point full-query inputs with exact known-offset statistics plus zero-vertex query rejection.
+- Open-surface signed values are explicitly local triangle-normal results, not closed-solid inside/outside classification. Query sampling remains point-weighted rather than generally invariant.
+- The current-source build passes with zero warnings/errors and the fixed Viewer/Shell matrix remains `128/128`.
+- Evidence and the complete audit matrix are in `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md` and `artifacts/phase2_difficult_geometry_20260715`.
+- The current workflow runs both verifiers as one mandatory fail-closed step, validates the exact passing headers and required case names, and uploads `artifacts/ci/phase2-difficult-geometry/**`. The exact step body and workflow YAML pass locally.
+
+This gate has not yet run on GitHub-hosted Windows after being made mandatory. Registration correspondence count, fitness, transform plausibility, and RMSE acceptance remain separate.
+
 ### Current Assessment
 
-Phase 2 is **not passed**. NIST Part 2 now carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and registration acceptance path remain open, so these fixed sources do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, and `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`.
+Phase 2 is **not passed**. NIST Part 2 carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and mandatory workflow definition now pass locally, while the first GitHub Windows execution and registration acceptance remain open. These fixed sources still do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`, and `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`.
 
 ## Phase 3 - Physical And Metrology Reliability
 
@@ -166,6 +179,7 @@ dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.c
 dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot artifacts\viewer_reliability_phase1\pointer\shell.png --shell-screenshot-quality-report artifacts\viewer_reliability_phase1\pointer\shell_quality.txt --smoke-pointer-input-report artifacts\viewer_reliability_phase1\pointer\shell_pointer.txt
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-data-loading-matrix-smoke.ps1 -ArtifactDir artifacts\viewer_reliability_phase1\matrix -SkipBuild
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report artifacts\viewer_reliability_phase1\nominal_actual_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-mesh-deviation --report artifacts\viewer_reliability_phase2\mesh_deviation_golden.txt
 dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\viewer_reliability_phase1\viewer_selected.png --smoke-contracts artifacts\viewer_reliability_phase1\viewer_selected.txt --smoke-nominal-actual <actual.stl> <query.ply> <nominal.stl> --smoke-pick nominal-actual --smoke-publish-result
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-nist-nominal-actual-render-density.ps1 -ArtifactDir artifacts\viewer_reliability_phase1\render_density -SkipBuild
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Debug -ArtifactDirectory artifacts\viewer_reliability_phase1\binary_host -NoRestore

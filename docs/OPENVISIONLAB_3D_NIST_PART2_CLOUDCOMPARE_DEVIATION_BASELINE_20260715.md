@@ -162,5 +162,5 @@ artifacts/mesh_deviation/mesh_deviation_golden_part2_zero_sign_20260715.txt
 
 1. Preserve the passed Part 2 visible workflow separately; see `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`.
 2. Preserve the Stanford point/aggregate supplied-transform baseline separately; see `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`.
-3. Audit and close only the missing difficult-geometry controlled outcomes before reconsidering the Phase 2 decision.
+3. Preserve the locally passed difficult-geometry controlled outcomes and mandatory workflow definition; require a passing GitHub Windows run before claiming Windows portability.
 4. Keep Phase 3 blocked until calibration provenance, uncertainty assumptions, and independent metrology evidence exist.
