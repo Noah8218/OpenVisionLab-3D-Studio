@@ -130,6 +130,14 @@ Together these commands are the local Phase 2 difficult-geometry controlled-outc
 
 `.github\workflows\ci.yml` also defines this as a mandatory fail-closed gate and uploads both reports plus `summary.txt` under `artifacts\ci\phase2-difficult-geometry`. Commit `0f89450` passed the gate in Windows Actions run `29418511898`; see the dedicated Phase 2 document for the authenticated artifact identity and claim limits.
 
+Runtime-neutral registration acceptance golden:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report artifacts\registration_acceptance_20260715\registration_acceptance_golden.txt
+```
+
+This `20/20` local gate requires correspondence count and fitness before RMSE, rejects `0 correspondence / RMSE 0`, and checks explicit units plus rigid/translation/rotation plausibility. It does not install or approve a registration engine. The workflow contains a mandatory report gate under `artifacts\ci\registration-acceptance`; Windows success is not claimed until a pushed run passes. See `docs\OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`.
+
 Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
 
 ```powershell

@@ -277,6 +277,58 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
 
+      - name: Verify registration acceptance contract
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $artifactDir = 'artifacts\ci\registration-acceptance'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $reportPath = Join-Path $artifactDir 'registration_acceptance_golden.txt'
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report $reportPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "Registration acceptance golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          $report = Get-Content -LiteralPath $reportPath -Raw
+          $requiredEvidence = @(
+            'RegistrationAcceptanceGoldenVerification|Pass|cases=20|passed=20|failed=0',
+            'Contract|order=CorrespondenceCount -> Fitness -> InlierRmse -> RigidTransform -> Translation -> Rotation|transform=row-major-float64-4x4|unit=explicit|thresholds=scenario-specific',
+            'FalseSuccessGuard|zeroCorrespondences=True|rmseZeroAccepted=False|fitnessCheckedBeforeRmse=True',
+            'Case|zero-correspondence-rmse-zero-rejected|Pass|',
+            'Case|minimum-correspondence-before-fitness|Pass|',
+            'Case|fitness-before-rmse|Pass|',
+            'Case|rmse-after-guards|Pass|',
+            'Case|nonhomogeneous-transform-rejected|Pass|',
+            'Case|scaled-transform-rejected|Pass|',
+            'Case|reflected-transform-rejected|Pass|',
+            'Case|translation-limit-rejected|Pass|',
+            'Case|rotation-limit-rejected|Pass|',
+            'Case|nonfinite-transform-rejected|Pass|',
+            'Case|unit-mismatch-rejected|Pass|',
+            'Case|invalid-policy-guards-rejected|Pass|'
+          )
+          foreach ($required in $requiredEvidence) {
+            if (-not $report.Contains($required)) {
+              throw "Registration acceptance report is missing required evidence: $required"
+            }
+          }
+
+          $summary = @(
+            'RegistrationAcceptance',
+            'Golden|pass=True|cases=20|report=registration_acceptance_golden.txt',
+            'Order|correspondence-count -> fitness -> RMSE -> rigid-transform -> translation -> rotation',
+            'FalseSuccessGuard|zero-correspondence-rmse-zero=Rejected',
+            'Gate|mandatory=True|scope=runtime-neutral policy; product runtime integration excluded'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Registration acceptance gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
 

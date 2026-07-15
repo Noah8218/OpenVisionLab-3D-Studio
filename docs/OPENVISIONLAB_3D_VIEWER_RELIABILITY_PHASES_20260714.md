@@ -115,7 +115,8 @@ Do not spend implementation effort fabricating these prerequisites from the exis
 - [x] A second distinct pair passes source identity, visible Viewer/Runner parity, and external aggregate-statistic comparison. NIST Part 2 preserves `3,965,430` full-query points, separate actual/nominal/query IDs and hashes, explicit Preview/Publish, recipe save/reopen, selected-point provenance, schema `1.2`, and `ViewerRunnerComparison|Matched` evidence.
 - [x] A known non-identity transform passes translation and rotation plausibility plus point-level and aggregate expected output. The local Stanford gate covers `12` scans, `50,643` points, `36` checkpoints, full aggregate statistics, CloudCompare external transform parity at maximum difference `3.0913966692081019e-8`, and controlled tamper rejection; units and commercial use remain unavailable.
 - [x] Duplicate vertices, non-finite normals, open surfaces, edge/vertex nearest hits, sparse/dense query sampling, and empty mesh/query no-data cases have local synthetic controlled outcomes. This does not replace registration zero-correspondence acceptance.
-- [ ] Registration acceptance records correspondence count and fitness before RMSE and rejects zero-correspondence false success.
+- [x] The runtime-neutral registration policy records correspondence count and fitness before RMSE and rejects zero-correspondence false success. Its local golden passes `20/20` with explicit units, scenario thresholds, and transform plausibility decisions.
+- [ ] An approved registration runtime maps real source/target identity, correspondence count, fitness, RMSE, and transform into that policy and proves Viewer/Runner parity. Distribution and runtime approval remain blocked.
 - [x] Each accepted NIST pair preserves actual/nominal/query hashes, units, frame, alignment, full-query/display-sample separation, recipe roundtrip, and Run Record identity.
 
 ### Difficult-Geometry Controlled Outcomes
@@ -132,9 +133,19 @@ Passed locally on 2026-07-15:
 
 Registration correspondence count, fitness, transform plausibility, and RMSE acceptance remain separate.
 
+### Registration Acceptance Controlled Outcomes
+
+Passed locally on 2026-07-15:
+
+- `RegistrationAcceptanceRule` is runtime-neutral and adds no Open3D, PCD, or native dependency.
+- Acceptance order is fixed as correspondence count -> fitness -> inlier RMSE -> rigid transform -> translation -> rotation. A failed earlier criterion leaves later criteria `NotRun`.
+- The Runner golden passes `20/20`. It explicitly rejects `0 correspondence / RMSE 0`, insufficient correspondence/fitness, excessive RMSE, non-homogeneous/scaled/reflected transforms, scenario translation/rotation violations, malformed/non-finite evidence, unit mismatch, and invalid policy guards.
+- The current Windows workflow includes a mandatory fail-closed report check and artifact output under `artifacts\ci\registration-acceptance`; Windows execution is not yet claimed for this unpushed change.
+- This is a policy prerequisite, not registration recovery or product integration evidence. No real engine output reaches Viewer or Runner yet.
+
 ### Current Assessment
 
-Phase 2 is **not passed**. NIST Part 2 carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome checklist and mandatory workflow gate pass locally and in Windows CI, while registration acceptance remains open. These fixed sources still do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`, and `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`.
+Phase 2 is **not passed**. NIST Part 2 carries source/provenance, independent CloudCompare signed/unsigned C2M, exact ordered-XYZ verification, full-query OpenVisionLab parity, current Viewer/Shell UI, explicit Preview/Publish, selected-point provenance, typed recipe save/reopen, schema `1.2`, and Viewer/Runner `Matched` evidence over `3,965,430` validation vertices. The separate Stanford gate passes the published non-identity transform at point and aggregate level with zero observed Python/Runner difference and `3.0913966692081019e-8` maximum CloudCompare difference, but remains local research-only evidence with unspecified units. The difficult-geometry controlled-outcome gate passes locally and in Windows CI, and the runtime-neutral registration acceptance policy passes locally. Phase 2 remains open because no approved registration runtime maps real engine output into the policy or proves Viewer/Runner parity. These fixed sources still do not establish arbitrary-mesh, arbitrary-sampling, arbitrary-sensor, registration-recovery, or metrology reliability. See `OPENVISIONLAB_3D_NIST_PART2_CLOUDCOMPARE_DEVIATION_BASELINE_20260715.md`, `OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md`, `OPENVISIONLAB_3D_STANFORD_TRANSFORM_BASELINE_20260715.md`, `OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`, and `OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`.
 
 ## Phase 3 - Physical And Metrology Reliability
 

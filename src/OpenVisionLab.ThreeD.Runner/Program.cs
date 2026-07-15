@@ -37,6 +37,7 @@ static int Run(string[] args)
     var verifyC3DMapFidelity = args.Contains("--verify-c3d-map-fidelity", StringComparer.OrdinalIgnoreCase);
     var verifyMeshDeviation = args.Contains("--verify-mesh-deviation", StringComparer.OrdinalIgnoreCase);
     var verifyNominalActualComparison = args.Contains("--verify-nominal-actual-comparison", StringComparer.OrdinalIgnoreCase);
+    var verifyRegistrationAcceptance = args.Contains("--verify-registration-acceptance", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
     if (stanfordTransformPath is not null)
@@ -59,6 +60,17 @@ static int Run(string[] args)
         }
 
         return NominalActualComparisonVerification.Run(reportPath);
+    }
+
+    if (verifyRegistrationAcceptance)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
+            return 2;
+        }
+
+        return RegistrationAcceptanceGoldenVerification.Run(reportPath);
     }
 
     if (verifyMeshDeviation)
@@ -242,6 +254,7 @@ static int Run(string[] args)
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
         return 2;
     }
 

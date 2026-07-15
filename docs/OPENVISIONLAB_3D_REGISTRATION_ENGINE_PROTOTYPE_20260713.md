@@ -206,6 +206,27 @@ The distant-initial case is the critical controlled-failure finding. Open3D repo
 
 Local evidence is under `artifacts/dependency-candidates/open3d-cpp-0.19.0/probe/robustness_v2/`; `robustness_summary.json` records the 11-case result. These ignored artifacts characterize the candidate and do not add it to the product or release bundle.
 
+## Runtime-Neutral Acceptance Contract
+
+Implemented and verified locally on 2026-07-15 without adding Open3D, a PCD loader, or another registration dependency:
+
+- `RegistrationAcceptanceRule` accepts an explicit unit plus scenario-owned minimum correspondence count, minimum fitness, maximum inlier RMSE, maximum translation, maximum rotation, and rigid-transform tolerance.
+- Result evidence records source/target point counts, correspondence count, fitness, inlier RMSE, unit, and a row-major float64 `4 x 4` transform.
+- Evaluation is fail-closed in this order: correspondence count -> fitness -> inlier RMSE -> rigid homogeneous transform -> translation -> rotation.
+- Zero correspondences produce `NoCorrespondences`; fitness and RMSE remain `NotRun` even when the engine-reported RMSE is `0`.
+- Non-finite or malformed evidence is `Error`. Finite non-homogeneous, scaled, or reflected transforms and scenario-limit violations are `Fail` with separate decision codes.
+- Policy values are not universal defaults. A caller must provide them in the evidence unit for the specific registration scenario.
+
+Repeatable local command:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report artifacts\registration_acceptance_20260715\registration_acceptance_golden.txt
+```
+
+The golden passes `20/20`, including exact-threshold acceptance, `0 correspondence / RMSE 0` rejection, count-before-fitness, fitness-before-RMSE, non-rigid transforms, translation/rotation limits, non-finite values, unit mismatch, and invalid-policy guards. The Windows workflow contains a separate mandatory fail-closed report gate under `artifacts\ci\registration-acceptance`; no Windows result is claimed until a pushed Actions run passes.
+
+This closes the runtime-neutral policy prerequisite only. It does not approve Open3D distribution, map a real runtime result into the product, prove registration recovery, or establish Viewer/Runner parity.
+
 ## PclNET Prototype
 
 Probe location:
@@ -248,7 +269,7 @@ Current gate result:
 | Maintained Windows boundary with inspectable rigid registration | Pass for prototype | Official Open3D C++ `0.19.0`, CMake/MSVC, point-to-plane ICP |
 | Candidate point-cloud loading without count loss | Partial | All three point counts are recorded, but the hardened probe rejects `cloud_bin_2.pcd` because 771 source normals are non-finite; `0 -> 1` remains the current valid pair |
 | Deterministic candidate metrics and controlled failures | Pass for prototype | Three analytic transform cases pass 9 deterministic runs and three invalid-input checks |
-| Robustness characterization and acceptance policy | Partial | 11 cases x 3 runs are deterministic; clean, low-noise, and up-to-15%-outlier cases pass, while high-noise and partial/combined cases miss predeclared limits; a distant initial transform proves zero-correspondence RMSE `0` must be rejected explicitly |
+| Robustness characterization and acceptance policy | Partial | The 11-case prototype remains only partially accepted; the runtime-neutral product rule passes `20/20` locally and rejects zero-correspondence RMSE `0`, but no approved runtime feeds it yet |
 | Runtime, license, and host impact explicit | Partial; blocked for distribution | Same-tag recovered and independent clean builds, 873-file hash manifests, 58,520,064-byte runtime, export/dependency contract comparison, 33/33 official parity, and a schema-valid 33-component direct-evidence CycloneDX candidate pass; unresolved transitive provenance, final notices, VC/OpenMP clean-host evidence, product integration impact, and owner/legal approval remain open |
 | Viewer/Runner transform and metric parity | Not started | No product integration was added |
 | Workbench layout plus View -> ViewModel -> Model | Not started | Required only if the product workflow is approved and unblocked |
@@ -258,6 +279,7 @@ Current gate result:
 - Open3D dataset documentation: https://www.open3d.org/docs/latest/tutorial/data/index.html
 - Open3D DemoICPPointClouds API and license: https://www.open3d.org/docs/0.19.0/cpp_api/classopen3d_1_1data_1_1_demo_i_c_p_point_clouds.html
 - Open3D ICP tutorial and source ZIP: https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html
+- Open3D `RegistrationResult` metrics and transform contract: https://www.open3d.org/docs/release/python_api/open3d.t.pipelines.registration.RegistrationResult.html
 - Open3D C++ integration boundary: https://www.open3d.org/docs/latest/cpp_project.html
 - Open3D 0.19.0 release and Windows development package: https://github.com/isl-org/Open3D/releases/tag/v0.19.0
 - Open3D 0.19.0 MIT license: https://github.com/isl-org/Open3D/blob/v0.19.0/LICENSE
