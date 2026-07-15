@@ -119,7 +119,8 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     public string EffectiveColorMap => SelectedColorMap;
 
     public bool CanSelectGeometryStyle =>
-        activeSource == ViewerDisplaySourceKind.C3DHeightGrid
+        (activeSource is ViewerDisplaySourceKind.C3DHeightGrid
+            or ViewerDisplaySourceKind.ImportedTriangleMesh)
         && availableGeometryStyleIds.Count > 1;
 
     public bool CanSelectColorMap => availableColorMapIds.Count > 1;

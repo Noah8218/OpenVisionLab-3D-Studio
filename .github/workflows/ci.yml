@@ -152,6 +152,33 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
 
+      - name: Verify GLB and STL geometry styles
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\imported-mesh-geometry-styles'
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-imported-mesh-geometry-styles.ps1 -Configuration Debug -ArtifactDirectory $artifactDir -SkipBuild
+          if ($LASTEXITCODE -ne 0) {
+            throw "Imported-mesh Geometry Style verification failed with exit code $LASTEXITCODE."
+          }
+
+          $summaryPath = Join-Path $artifactDir 'summary.txt'
+          if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+            throw 'Imported-mesh Geometry Style summary was not created.'
+          }
+
+          $summary = Get-Content -LiteralPath $summaryPath -Raw
+          if (-not $summary.Contains('Imported-mesh Geometry Style verification: PASS (15/15 checks passed)')) {
+            throw 'Imported-mesh Geometry Style summary did not record 15/15 passing checks.'
+          }
+
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Imported-mesh Geometry Style gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
       - name: Verify WPF pointer input
         shell: pwsh
         timeout-minutes: 3

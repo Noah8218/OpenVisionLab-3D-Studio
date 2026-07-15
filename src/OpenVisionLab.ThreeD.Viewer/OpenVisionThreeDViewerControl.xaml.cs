@@ -4590,12 +4590,76 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     {
         var mesh = importedMesh!;
         var triangleStride = GetImportedMeshRenderTriangleStride();
+        var geometryStyle = viewModel.Display.EffectiveSettings.GeometryStyle;
         var useTexture = EnsureImportedMeshTexture(gl);
         if (useTexture)
         {
             gl.Enable(GlTexture2D);
             gl.BindTexture(GlTexture2D, importedMeshTextureId);
             gl.Color(1.0, 1.0, 1.0);
+        }
+
+        switch (geometryStyle)
+        {
+            case ViewerGeometryStyle.Points:
+                DrawImportedMeshPoints(gl, mesh, triangleStride, useTexture);
+                break;
+            case ViewerGeometryStyle.Wireframe:
+                DrawImportedMeshEdges(gl, mesh, triangleStride, useSourceColor: true, useTexture: useTexture);
+                break;
+            case ViewerGeometryStyle.Surface:
+                DrawImportedMeshSurface(gl, mesh, triangleStride, useTexture, offsetForEdges: false);
+                break;
+            default:
+                DrawImportedMeshSurface(gl, mesh, triangleStride, useTexture, offsetForEdges: true);
+                break;
+        }
+
+        if (useTexture)
+        {
+            gl.Disable(GlTexture2D);
+        }
+
+        if (geometryStyle == ViewerGeometryStyle.SurfaceWithEdges)
+        {
+            DrawImportedMeshEdges(gl, mesh, triangleStride, useSourceColor: false, useTexture: false);
+        }
+
+        DrawImportedMeshFrame(gl);
+        DrawSelectedGlbPoint(gl);
+    }
+
+    private void DrawImportedMeshPoints(
+        OpenGL gl,
+        ImportedMesh mesh,
+        int triangleStride,
+        bool useTexture)
+    {
+        gl.PointSize((float)viewModel.PointSize);
+        gl.Begin(OpenGL.GL_POINTS);
+        for (var triangle = 0; triangle < mesh.TriangleCount; triangle += triangleStride)
+        {
+            var offset = triangle * 3;
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset], useTexture);
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset + 1], useTexture);
+            DrawImportedMeshVertex(gl, mesh, mesh.Indices[offset + 2], useTexture);
+        }
+
+        gl.End();
+        gl.PointSize(1.0f);
+    }
+
+    private static void DrawImportedMeshSurface(
+        OpenGL gl,
+        ImportedMesh mesh,
+        int triangleStride,
+        bool useTexture,
+        bool offsetForEdges)
+    {
+        if (offsetForEdges)
+        {
+            gl.Enable(OpenGL.GL_POLYGON_OFFSET_FILL);
+            gl.PolygonOffset(1.0f, 1.0f);
         }
 
         gl.Begin(OpenGL.GL_TRIANGLES);
@@ -4608,31 +4672,57 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         }
 
         gl.End();
-        if (useTexture)
+        if (offsetForEdges)
         {
-            gl.Disable(GlTexture2D);
+            gl.Disable(OpenGL.GL_POLYGON_OFFSET_FILL);
+        }
+    }
+
+    private static void DrawImportedMeshEdges(
+        OpenGL gl,
+        ImportedMesh mesh,
+        int triangleStride,
+        bool useSourceColor,
+        bool useTexture)
+    {
+        gl.LineWidth(1.2f);
+        if (!useSourceColor)
+        {
+            gl.Color(1.0, 0.92, 0.78);
         }
 
-        gl.LineWidth(1.2f);
-        gl.Color(1.0, 0.92, 0.78);
         gl.Begin(OpenGL.GL_LINES);
         for (var triangle = 0; triangle < mesh.TriangleCount; triangle += triangleStride)
         {
             var offset = triangle * 3;
-            var a = mesh.Positions[mesh.Indices[offset]];
-            var b = mesh.Positions[mesh.Indices[offset + 1]];
-            var c = mesh.Positions[mesh.Indices[offset + 2]];
-            gl.Vertex(a.X, a.Y, a.Z);
-            gl.Vertex(b.X, b.Y, b.Z);
-            gl.Vertex(b.X, b.Y, b.Z);
-            gl.Vertex(c.X, c.Y, c.Z);
-            gl.Vertex(c.X, c.Y, c.Z);
-            gl.Vertex(a.X, a.Y, a.Z);
+            DrawImportedMeshEdge(gl, mesh, mesh.Indices[offset], mesh.Indices[offset + 1], useSourceColor, useTexture);
+            DrawImportedMeshEdge(gl, mesh, mesh.Indices[offset + 1], mesh.Indices[offset + 2], useSourceColor, useTexture);
+            DrawImportedMeshEdge(gl, mesh, mesh.Indices[offset + 2], mesh.Indices[offset], useSourceColor, useTexture);
         }
 
         gl.End();
-        DrawImportedMeshFrame(gl);
-        DrawSelectedGlbPoint(gl);
+        gl.LineWidth(1.0f);
+    }
+
+    private static void DrawImportedMeshEdge(
+        OpenGL gl,
+        ImportedMesh mesh,
+        int firstIndex,
+        int secondIndex,
+        bool useSourceColor,
+        bool useTexture)
+    {
+        if (useSourceColor)
+        {
+            DrawImportedMeshVertex(gl, mesh, firstIndex, useTexture);
+            DrawImportedMeshVertex(gl, mesh, secondIndex, useTexture);
+            return;
+        }
+
+        var first = mesh.Positions[firstIndex];
+        var second = mesh.Positions[secondIndex];
+        gl.Vertex(first.X, first.Y, first.Z);
+        gl.Vertex(second.X, second.Y, second.Z);
     }
 
     private static void DrawImportedMeshVertex(OpenGL gl, ImportedMesh mesh, int index, bool useTexture)
@@ -6354,9 +6444,12 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         var displaySettings = viewModel.Display.EffectiveSettings;
         var c3dRenderProxyForContract = c3dSample is null ? null : GetC3DRenderProxy();
-        var geometryRenderBridge = displaySettings.Source == ViewerDisplaySourceKind.C3DHeightGrid
-            ? "SharpGLC3DSampledGrid"
-            : "Pending";
+        var geometryRenderBridge = displaySettings.Source switch
+        {
+            ViewerDisplaySourceKind.C3DHeightGrid => "SharpGLC3DSampledGrid",
+            ViewerDisplaySourceKind.ImportedTriangleMesh => "SharpGLImportedTriangleMesh",
+            _ => "Pending"
+        };
         var lines = new List<string>
         {
             viewModel.SceneContractSummary,

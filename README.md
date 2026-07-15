@@ -97,6 +97,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-data-loading-mat
 
 Use `-ArtifactDir artifacts\matrix_custom_after` when the matrix output should be isolated from the default evidence folder.
 
+GLB/STL Geometry Style smoke:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-imported-mesh-geometry-styles.ps1
+```
+
+The fixed texture GLB, vertex-color GLB, and STL samples must each render distinct `Points`, `Wireframe`, `Surface`, and `Surface + Edges` views while preserving pick and two-point measurement contracts. This is a display-only fixed-sample gate, not a large-mesh performance or physical-accuracy claim. See `docs\OPENVISIONLAB_3D_IMPORTED_MESH_GEOMETRY_STYLES_20260715.md`.
+
 C3D Grayscale/Thermal color-map smoke:
 
 ```powershell

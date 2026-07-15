@@ -263,7 +263,7 @@ The implemented split is:
 
 ## Viewer Display Settings Contract
 
-The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style/performance and Grayscale/Thermal LUT checkpoints are complete locally. GLB/STL style switching, display range, and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
+The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style/performance, Grayscale/Thermal LUT, and GLB/STL Geometry Style checkpoints are complete locally. Display range and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
 
 ImageJ converts a regular 2D image grid into a height field. OpenVisionLab also handles arbitrary triangle meshes and unorganized point clouds, so it must not expose a mode that implies topology the source does not have. In particular, LAS/LAZ surface reconstruction is not authorized by this layout contract.
 
@@ -352,7 +352,7 @@ Implement these only after the initial geometry/color slice passes its regressio
 
 - [x] C3D switches among Points, Wireframe, Surface, and Surface + Edges without changing pick coordinates or measurement evidence.
 - [x] Two 31-frame Fast/Balanced/Detailed runs pass all 24 C3D style-density cases with the declared local thresholds and active static render cache.
-- [ ] GLB/STL switches among vertex Points, Wireframe, Surface, and Surface + Edges while preserving source texture/vertex-color behavior.
+- [x] GLB/STL switches among vertex Points, Wireframe, Surface, and Surface + Edges while preserving source texture/vertex-color behavior on the fixed BoxTextured, BoxVertexColors, and Tetrahedron samples.
 - [x] LAS/LAZ exposes only Point-compatible choices and never creates an implicit surface.
 - [ ] Source, Solid, Grayscale, Height, Thermal, and Deviation availability follows the capability matrix and unsupported choices cannot remain effective.
 - [ ] Current source-specific defaults produce the established scene behavior before the user changes a setting.
@@ -367,7 +367,7 @@ Implement these only after the initial geometry/color slice passes its regressio
 | Measured/nominal signed surface comparison | Data & Layers + 3D Inspection View + Tool / Inspector + Evidence Workbench + Linked View | Fixed NIST identity-frame baseline done |
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
-| Source-aware geometry style and color map | 3D Inspection View + Data & Layers | View, ViewModel, Model, C3D Geometry Style, and local performance passed; C3D LUT and GLB/STL style checkpoints pending |
+| Source-aware geometry style and color map | 3D Inspection View + Data & Layers | View, ViewModel, Model, C3D Geometry Style/performance, C3D LUT, and GLB/STL Geometry Style passed locally; mandatory imported-mesh workflow gate configured, Actions run pending |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |

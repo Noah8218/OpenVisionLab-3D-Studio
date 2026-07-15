@@ -136,11 +136,41 @@ internal static class ViewerDisplaySettingsViewModelVerification
             Check("point-cloud no-RGB capability", Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Height"), string.Join(",", c3dViewModel.AvailableColorMaps));
             Check("point-cloud no-RGB fallback", c3dViewModel.SelectedColorMap == "Height" && c3dViewModel.FallbackApplied, c3dViewModel.FallbackSummary);
 
-            c3dViewModel.ConfigureImportedMesh(sourceColorAvailable: false);
-            Check("mesh current geometry", c3dViewModel.SelectedGeometryStyle == "Surface + Edges", c3dViewModel.EffectiveSummary);
-            Check("mesh solid capability", Sequence(c3dViewModel.AvailableColorMaps, "Solid") && c3dViewModel.SelectedColorMap == "Solid" && !c3dViewModel.CanSelectColorMap, c3dViewModel.EffectiveSummary);
-            c3dViewModel.ConfigureImportedMesh(sourceColorAvailable: true);
-            Check("mesh source-color capability", Sequence(c3dViewModel.AvailableColorMaps, "Source") && c3dViewModel.SelectedColorMap == "Source" && !c3dViewModel.CanSelectColorMap, c3dViewModel.EffectiveSummary);
+            var meshViewModel = new ViewerDisplaySettingsViewModel();
+            var meshRenderChanges = 0;
+            meshViewModel.RenderSettingsChanged += (_, _) => meshRenderChanges++;
+            meshViewModel.ConfigureImportedMesh(sourceColorAvailable: false);
+            Check("mesh geometry choices", Sequence(meshViewModel.AvailableGeometryStyles, "Points", "Wireframe", "Surface", "Surface + Edges"), string.Join(",", meshViewModel.AvailableGeometryStyles));
+            Check("mesh geometry selectable", meshViewModel.CanSelectGeometryStyle, meshViewModel.CanSelectGeometryStyle.ToString());
+            Check("mesh current geometry", meshViewModel.SelectedGeometryStyle == "Surface + Edges", meshViewModel.EffectiveSummary);
+            Check("mesh solid capability", Sequence(meshViewModel.AvailableColorMaps, "Solid") && meshViewModel.SelectedColorMap == "Solid" && !meshViewModel.CanSelectColorMap, meshViewModel.EffectiveSummary);
+            Check(
+                "mesh typed snapshot",
+                meshViewModel.EffectiveSettings.Source == ViewerDisplaySourceKind.ImportedTriangleMesh
+                && meshViewModel.EffectiveSettings.GeometryStyle == ViewerGeometryStyle.SurfaceWithEdges
+                && meshViewModel.EffectiveSettings.ColorMap == ViewerColorMap.Solid,
+                meshViewModel.EffectiveSettings.ToString());
+
+            var meshGeometryRenderChanges = meshRenderChanges;
+            meshViewModel.SelectedGeometryStyle = "Points";
+            meshViewModel.SelectedGeometryStyle = "Wireframe";
+            meshViewModel.SelectedGeometryStyle = "Surface";
+            meshViewModel.SelectedGeometryStyle = "Surface + Edges";
+            Check(
+                "mesh geometry selections notify renderer",
+                meshViewModel.SelectedGeometryStyle == "Surface + Edges"
+                && meshRenderChanges == meshGeometryRenderChanges + 4,
+                $"style={meshViewModel.SelectedGeometryStyle}|renderChanges={meshRenderChanges}");
+            meshViewModel.SelectedGeometryStyle = "Contours";
+            Check(
+                "mesh unsupported geometry fallback",
+                meshViewModel.SelectedGeometryStyle == "Surface + Edges"
+                && meshViewModel.FallbackApplied
+                && meshRenderChanges == meshGeometryRenderChanges + 4,
+                meshViewModel.FallbackSummary);
+
+            meshViewModel.ConfigureImportedMesh(sourceColorAvailable: true);
+            Check("mesh source-color capability", Sequence(meshViewModel.AvailableColorMaps, "Source") && meshViewModel.SelectedColorMap == "Source" && !meshViewModel.CanSelectColorMap, meshViewModel.EffectiveSummary);
 
             c3dViewModel.ConfigureNominalActualComparison(deviationAvailable: true);
             Check("nominal-actual current geometry", c3dViewModel.SelectedGeometryStyle == "Points", c3dViewModel.EffectiveSummary);
@@ -311,6 +341,16 @@ internal static class ViewerDisplaySettingsViewModelVerification
             rootViewModel.UseGlbSmokeScene();
             Check("root mesh context", rootViewModel.Display.ActiveSource == "Imported triangle mesh", rootViewModel.Display.EffectiveSummary);
             Check("root mesh effective settings", rootViewModel.Display.SelectedGeometryStyle == "Surface + Edges" && rootViewModel.SelectedColorMode == "Source", rootViewModel.Display.EffectiveSummary);
+            var meshGeometryRevision = rootViewModel.DisplaySettingsRevision;
+            rootViewModel.Display.SelectedGeometryStyle = "Wireframe";
+            Check(
+                "root mesh geometry snapshot bridge",
+                rootViewModel.Display.EffectiveSettings.GeometryStyle == ViewerGeometryStyle.Wireframe
+                && rootViewModel.SelectedGeometryStyle == "Wireframe"
+                && rootViewModel.DisplaySettingsRevision == meshGeometryRevision + 1,
+                $"snapshot={rootViewModel.Display.EffectiveSettings.GeometryStyle}|bridge={rootViewModel.SelectedGeometryStyle}|revision={rootViewModel.DisplaySettingsRevision}");
+            Check("mesh display change does not preview", previewRequests == 0 && rootViewModel.NominalActual.State == nominalState, $"requests={previewRequests}|state={rootViewModel.NominalActual.State}");
+            Check("mesh display change does not publish", publishRequests == 0, publishRequests.ToString(CultureInfo.InvariantCulture));
             Check("property notifications", propertyChanges > 0, propertyChanges.ToString(CultureInfo.InvariantCulture));
 
             summary = $"Display-settings ViewModel verification: Pass ({passed} checks)";
