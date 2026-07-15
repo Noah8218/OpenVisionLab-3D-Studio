@@ -2037,6 +2037,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         {
             viewModel.SelectedColorMode = "Solid";
         }
+        else if (action.Equals("color-grayscale", StringComparison.OrdinalIgnoreCase)
+            || action.Equals("grayscale-color", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.SelectedColorMode = "Grayscale";
+        }
+        else if (action.Equals("color-thermal", StringComparison.OrdinalIgnoreCase)
+            || action.Equals("thermal-color", StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.SelectedColorMode = "Thermal";
+        }
         else if (action.Equals("color-deviation", StringComparison.OrdinalIgnoreCase)
             || action.Equals("deviation-color", StringComparison.OrdinalIgnoreCase))
         {
@@ -4932,6 +4942,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         var (r, g, b) = viewModel.SelectedColorMode switch
         {
             "Solid" => (0.62, 0.82, 1.0),
+            "Grayscale" => ViewerColorMapPalette.Grayscale(point.HeightScalar),
+            "Thermal" => ViewerColorMapPalette.Thermal(point.HeightScalar),
             "Deviation" => DeviationColor(point.DeviationScalar),
             _ => C3DPointMapPalette.Height(point.HeightScalar)
         };

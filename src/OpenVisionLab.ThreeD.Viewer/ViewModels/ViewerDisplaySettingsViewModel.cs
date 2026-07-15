@@ -20,9 +20,20 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     private static readonly IReadOnlyList<ViewerColorMap> GeneratedResultColorMaps =
         Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Height, ViewerColorMap.Deviation]);
     private static readonly IReadOnlyList<ViewerColorMap> C3DColorMaps =
-        Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Height]);
+        Array.AsReadOnly([
+            ViewerColorMap.Solid,
+            ViewerColorMap.Grayscale,
+            ViewerColorMap.Height,
+            ViewerColorMap.Thermal
+        ]);
     private static readonly IReadOnlyList<ViewerColorMap> C3DResultColorMaps =
-        Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Height, ViewerColorMap.Deviation]);
+        Array.AsReadOnly([
+            ViewerColorMap.Solid,
+            ViewerColorMap.Grayscale,
+            ViewerColorMap.Height,
+            ViewerColorMap.Thermal,
+            ViewerColorMap.Deviation
+        ]);
     private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSourceColorMaps =
         Array.AsReadOnly([ViewerColorMap.Source]);
     private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSolidColorMaps =

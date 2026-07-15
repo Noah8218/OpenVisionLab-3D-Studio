@@ -63,7 +63,10 @@ internal static class ViewerDisplaySettingsViewModelVerification
             c3dViewModel.ConfigureC3DHeightGrid(deviationAvailable: false);
             Check("C3D source", c3dViewModel.ActiveSource == "C3D height grid", c3dViewModel.ActiveSource);
             Check("C3D geometry choices", Sequence(c3dViewModel.AvailableGeometryStyles, "Points", "Wireframe", "Surface", "Surface + Edges"), string.Join(",", c3dViewModel.AvailableGeometryStyles));
-            Check("C3D color choices", Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Height"), string.Join(",", c3dViewModel.AvailableColorMaps));
+            Check(
+                "C3D color choices",
+                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal"),
+                string.Join(",", c3dViewModel.AvailableColorMaps));
             Check("C3D current default", c3dViewModel.SelectedGeometryStyle == "Points" && c3dViewModel.SelectedColorMap == "Height", c3dViewModel.EffectiveSummary);
             Check("C3D geometry selectable", c3dViewModel.CanSelectGeometryStyle, c3dViewModel.CanSelectGeometryStyle.ToString());
             Check(
@@ -90,15 +93,37 @@ internal static class ViewerDisplaySettingsViewModelVerification
             c3dViewModel.SelectedGeometryStyle = "Points";
             Check("C3D geometry reset", c3dViewModel.SelectedGeometryStyle == "Points" && c3dRenderChanges == 2, c3dViewModel.EffectiveSummary);
 
+            c3dViewModel.SelectedColorMap = "Grayscale";
+            Check(
+                "C3D grayscale selection",
+                c3dViewModel.EffectiveSettings.ColorMap == ViewerColorMap.Grayscale
+                && c3dRenderChanges == 3,
+                c3dViewModel.EffectiveSummary);
+            c3dViewModel.SelectedColorMap = "Thermal";
+            Check(
+                "C3D thermal selection",
+                c3dViewModel.EffectiveSettings.ColorMap == ViewerColorMap.Thermal
+                && c3dRenderChanges == 4,
+                c3dViewModel.EffectiveSummary);
+            c3dViewModel.SelectedColorMap = "Height";
+            Check(
+                "C3D height reset",
+                c3dViewModel.EffectiveSettings.ColorMap == ViewerColorMap.Height
+                && c3dRenderChanges == 5,
+                c3dViewModel.EffectiveSummary);
+
             c3dViewModel.SelectedColorMap = "RGB";
             Check("C3D unsupported color fallback", c3dViewModel.SelectedColorMap == "Height" && c3dViewModel.FallbackApplied, c3dViewModel.FallbackSummary);
-            Check("unchanged fallback does not render", c3dRenderChanges == 2, c3dRenderChanges.ToString(CultureInfo.InvariantCulture));
+            Check("unchanged fallback does not render", c3dRenderChanges == 5, c3dRenderChanges.ToString(CultureInfo.InvariantCulture));
 
             c3dViewModel.ConfigureC3DHeightGrid(deviationAvailable: true);
-            Check("C3D result color capability", c3dViewModel.AvailableColorMaps.Contains("Deviation", StringComparer.Ordinal), string.Join(",", c3dViewModel.AvailableColorMaps));
+            Check(
+                "C3D result color capability",
+                Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal", "Deviation"),
+                string.Join(",", c3dViewModel.AvailableColorMaps));
             c3dViewModel.SelectedColorMap = "Deviation";
             Check("C3D deviation selection", c3dViewModel.SelectedColorMap == "Deviation", c3dViewModel.EffectiveSummary);
-            Check("C3D deviation render notification", c3dRenderChanges == 3, c3dRenderChanges.ToString(CultureInfo.InvariantCulture));
+            Check("C3D deviation render notification", c3dRenderChanges == 6, c3dRenderChanges.ToString(CultureInfo.InvariantCulture));
 
             c3dViewModel.ConfigurePointCloud(sourceColorAvailable: true);
             Check("point-cloud geometry capability", Sequence(c3dViewModel.AvailableGeometryStyles, "Points"), string.Join(",", c3dViewModel.AvailableGeometryStyles));
@@ -137,6 +162,29 @@ internal static class ViewerDisplaySettingsViewModelVerification
                     "not selectable for C3D height grid",
                     StringComparison.Ordinal),
                 pointOnlyC3D.FallbackSummary);
+
+            Check(
+                "grayscale palette endpoints",
+                ColorNear(ViewerColorMapPalette.Grayscale(0.0), (0.0, 0.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Grayscale(1.0), (1.0, 1.0, 1.0)),
+                "black to white");
+            Check(
+                "grayscale palette midpoint",
+                ColorNear(ViewerColorMapPalette.Grayscale(0.5), (0.5, 0.5, 0.5)),
+                ViewerColorMapPalette.Grayscale(0.5).ToString());
+            Check(
+                "thermal palette stops",
+                ColorNear(ViewerColorMapPalette.Thermal(0.0), (0.0, 0.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Thermal(1.0 / 3.0), (1.0, 0.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Thermal(2.0 / 3.0), (1.0, 1.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Thermal(1.0), (1.0, 1.0, 1.0)),
+                "black to red to yellow to white");
+            Check(
+                "palette clamps invalid values",
+                ColorNear(ViewerColorMapPalette.Grayscale(double.NaN), (0.0, 0.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Thermal(-1.0), (0.0, 0.0, 0.0))
+                && ColorNear(ViewerColorMapPalette.Thermal(2.0), (1.0, 1.0, 1.0)),
+                "invalid and out-of-range values clamped");
 
             var renderProxy = C3DHeightGridRenderProxy.Create(
                 [GridPoint(0, 0), GridPoint(0, 1), GridPoint(1, 0), GridPoint(1, 1)],
@@ -292,6 +340,14 @@ internal static class ViewerDisplaySettingsViewModelVerification
 
     private static bool Sequence(IReadOnlyList<string> actual, params string[] expected) =>
         actual.SequenceEqual(expected, StringComparer.Ordinal);
+
+    private static bool ColorNear(
+        (double R, double G, double B) actual,
+        (double R, double G, double B) expected,
+        double tolerance = 1e-12) =>
+        Math.Abs(actual.R - expected.R) <= tolerance
+        && Math.Abs(actual.G - expected.G) <= tolerance
+        && Math.Abs(actual.B - expected.B) <= tolerance;
 
     private static HeightGridPoint GridPoint(int row, int column) =>
         new(new Vector3(column, 0.0f, row), 0.5, 0.0, 1.0f, row, column);

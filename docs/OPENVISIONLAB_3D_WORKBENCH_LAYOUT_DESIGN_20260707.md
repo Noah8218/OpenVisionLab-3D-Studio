@@ -263,7 +263,7 @@ The implemented split is:
 
 ## Viewer Display Settings Contract
 
-The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style bridge and its local multi-frame performance gate are complete. Additional C3D LUTs, GLB/STL style switching, display range, and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
+The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style/performance and Grayscale/Thermal LUT checkpoints are complete locally. GLB/STL style switching, display range, and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
 
 ImageJ converts a regular 2D image grid into a height field. OpenVisionLab also handles arbitrary triangle meshes and unorganized point clouds, so it must not expose a mode that implies topology the source does not have. In particular, LAS/LAZ surface reconstruction is not authorized by this layout contract.
 
@@ -677,6 +677,15 @@ Implement these only after the initial geometry/color slice passes its regressio
 - The MVVM regression exposed by this gate is fixed: C3D result context is refreshed before selecting Deviation, and display verification passes `64` checks including that transition.
 - Current evidence under `artifacts/c3d_geometry_performance_20260715` also passes build `0/0`, nominal/actual ViewModel `71`, fixed matrix `128/128`, BinaryHost manifest `13/13`, outputs `12/12`, Host API commands `3/3`, hosted Viewer/Shell dual capture, and Viewer/Shell real pointer input.
 - Preserve `docs/OPENVISIONLAB_3D_C3D_GEOMETRY_STYLE_PERFORMANCE_20260715.md` as the method, threshold, environment, evidence, and limitation source. This remains a fixed-sample local baseline; Windows CI and arbitrary hardware/data performance are unverified.
+
+## Viewer Display Settings C3D Color Map Evidence
+
+- The existing Viewer and Shell `Color Map` controls required no new View state. `ViewerDisplaySettingsViewModel` now exposes C3D `Solid`, `Grayscale`, `Height`, and `Thermal`, with result-owned `Deviation` appended only when available.
+- Viewer-local `ViewerColorMapPalette` maps the existing normalized height scalar to black-to-white Grayscale and black-to-red-to-yellow-to-white Thermal RGB. It clamps finite values to `[0, 1]` and maps non-finite input to the low endpoint.
+- SharpGL applies the effective typed color map through the existing display-list cache key. Color changes rebuild only display geometry and do not run Preview/Publish or change source-cell picking and measurement.
+- Current evidence under `artifacts/c3d_color_maps_20260715` passes display verification `71`, build `0/0`, two accepted 90-frame LUT screenshots/contracts, fixed matrix `128/128`, BinaryHost manifest `13/13`, outputs `12/12`, Host API commands `3/3`, and established Viewer/Shell pointer hashes. One retained standalone pointer attempt lost foreground input before pan/zoom; two immediate confirmations are byte-identical to the established passing Viewer report.
+- Balanced 33,761-point telemetry records Grayscale `75.303 FPS / 5.272 ms` and Thermal `37.049 FPS / 10.438 ms` on the local machine.
+- Preserve `docs/OPENVISIONLAB_3D_C3D_COLOR_MAPS_20260715.md` as the palette, evidence, limitation, and acceptance source. Windows CI, manual ranges, legends, inversion, LUT import, and physical color calibration remain open.
 
 ## Recipe Save/Edit Evidence
 
