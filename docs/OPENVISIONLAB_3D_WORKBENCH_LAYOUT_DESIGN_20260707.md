@@ -263,7 +263,7 @@ The implemented split is:
 
 ## Viewer Display Settings Contract
 
-The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style/performance, Grayscale/Thermal LUT, and GLB/STL Geometry Style checkpoints are complete locally. Display range and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
+The ImageJ `Interactive 3D Surface Plot` comparison exposed a concrete Viewer gap: OpenVisionLab already rendered points, imported triangle surfaces, source colors, height colors, deviation colors, axes, grids, and screenshots, but those choices were source-specific and partly hard-coded. The Viewer and Shell now share a source-aware Geometry Style and Color Map surface; the C3D Geometry Style/performance checkpoint is complete locally, while the Grayscale/Thermal LUT and GLB/STL Geometry Style checkpoints also pass mandatory Windows CI gates. Display range and scene appearance remain separate checkpoints. The reference behavior is documented at <https://imagej.net/ij/plugins/surface-plot-3d>.
 
 ImageJ converts a regular 2D image grid into a height field. OpenVisionLab also handles arbitrary triangle meshes and unorganized point clouds, so it must not expose a mode that implies topology the source does not have. In particular, LAS/LAZ surface reconstruction is not authorized by this layout contract.
 
@@ -367,7 +367,7 @@ Implement these only after the initial geometry/color slice passes its regressio
 | Measured/nominal signed surface comparison | Data & Layers + 3D Inspection View + Tool / Inspector + Evidence Workbench + Linked View | Fixed NIST identity-frame baseline done |
 | Deviation color scale / tolerance legend | 3D Inspection View | High |
 | Point size and render-density controls | 3D Inspection View or Data & Layers | Done |
-| Source-aware geometry style and color map | 3D Inspection View + Data & Layers | View, ViewModel, Model, C3D Geometry Style/performance, C3D LUT, and GLB/STL Geometry Style passed locally; mandatory imported-mesh workflow gate configured, Actions run pending |
+| Source-aware geometry style and color map | 3D Inspection View + Data & Layers | View, ViewModel, Model, C3D Geometry Style/performance passed locally; C3D LUT and GLB/STL Geometry Style also pass mandatory Windows CI gates |
 | Recipe save/edit | App / Job Bar + Tool / Inspector | Done |
 | Section/profile tool | 3D Inspection View + Linked View Strip | Done |
 | Height-map view | Linked View Strip | Done |
@@ -552,15 +552,15 @@ Implement these only after the initial geometry/color slice passes its regressio
     - Smoke evidence must complete Balanced Preview, change only the next density to Detailed, prove the existing `59,487` samples and stride `71` remain current, and then explicitly rerun Preview to prove Detailed becomes current.
     - Current Viewer/Shell, contract, ViewModel, full density-regression, fixed matrix, and BinaryHost evidence is under `artifacts/nominal_actual_density_state_20260715`.
 
-31. Add source-aware Viewer display settings. View, ViewModel, Model, and C3D Geometry Style functional checkpoints passed.
+31. Add source-aware Viewer display settings. View, ViewModel, Model, C3D Geometry Style, C3D LUT, and GLB/STL Geometry Style checkpoints passed.
     - Standalone Viewer and Shell Data & Layers now reserve the initial Geometry Style and Color Map surface while preserving the existing Point Size and Render Density controls.
     - `ViewerDisplaySettingsViewModel` now owns source capabilities, available/effective choices, selected Color Map, explicit fallback state, and render-only notification. Shell binds to that same Viewer-owned child surface.
-    - C3D Geometry Style is enabled for Points, Wireframe, Surface, and Surface + Edges. LAS/LAZ remains point-only, and imported-mesh style switching remains a separate checkpoint.
+    - C3D and imported triangle meshes enable Points, Wireframe, Surface, and Surface + Edges. LAS/LAZ remains point-only.
     - Viewer-local typed source/style/color identifiers and immutable effective-settings snapshot now define the effective display-state contract. The existing text bindings and root color-render compatibility path adapt from that snapshot.
     - The C3D SharpGL bridge consumes the immutable snapshot through a cached sampled-grid display proxy. It triangulates only complete stride-adjacent cells, leaves holes open, and does not replace source-cell measurement geometry.
-    - Deterministic Fast/Balanced/Detailed multi-frame performance evidence is now closed for the fixed local sample and recorded machine. Add C3D Grayscale/Thermal maps and imported-mesh styles as separate checkpoints.
+    - Deterministic Fast/Balanced/Detailed multi-frame performance evidence is closed for the fixed local C3D sample and recorded machine. C3D Grayscale/Thermal and imported-mesh style behavior also pass mandatory fixed-sample Windows gates.
     - Preserve the current source-specific defaults and all Display-only invariants above.
-    - Defer range, vertical exaggeration, contours, lighting, scene colors, external textures, and smoothing until the initial slice passes current Viewer trust regressions.
+    - Range, vertical exaggeration, contours, lighting, scene colors, external textures, and smoothing remain separate deferred checkpoints; do not fold them into Viewer reliability work without an approved priority.
 
 ## Durable Run Bundle Evidence
 

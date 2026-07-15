@@ -1,7 +1,7 @@
 # OpenVisionLab 3D Imported-Mesh Geometry Styles
 
 Date: 2026-07-15
-Status: Local fixed-sample checkpoint passed; mandatory Windows workflow gate configured; Actions run pending
+Status: Local and Windows-CI fixed-sample checkpoint passed
 
 ## Decision
 
@@ -55,7 +55,7 @@ Evidence root: `artifacts/imported_mesh_geometry_styles_20260715`.
 
 ## Limits
 
-- This is local fixed-sample rendering evidence, not Windows CI portability evidence until the focused verifier passes in Actions.
+- This is fixed-sample Windows rendering evidence, not a claim for arbitrary imported meshes, materials, drivers, or hardware.
 - No large-mesh style performance threshold is claimed. The existing 3DBenchy default-style stride path remains covered by the fixed matrix.
 - Points and Wireframe preserve source attributes only at emitted vertices and edges; only Surface modes show a filled texture.
 - The work does not add mesh repair, topology inference, smoothing, contours, manual color ranges, physical calibration, or metrology accuracy.
@@ -65,4 +65,6 @@ Evidence root: `artifacts/imported_mesh_geometry_styles_20260715`.
 
 `.github/workflows/ci.yml` now runs `scripts/verify-imported-mesh-geometry-styles.ps1` after the Debug build with `-SkipBuild` and writes its complete output under `artifacts/ci/imported-mesh-geometry-styles`. The step fails when the verifier exits nonzero, when `summary.txt` is missing, or when the summary does not contain `PASS (15/15 checks passed)`. The existing always-run artifact upload includes all 12 screenshots, quality reports, contracts, and the summary.
 
-The workflow configuration and exact CI command pass locally. Cross-machine closure remains pending until the changes are committed, pushed, and the resulting Windows Actions run is inspected.
+Feature commit `e8944a3` first exposed a stale CI expectation in the preceding C3D LUT step: the display verifier correctly increased from `71` to `79` checks, but the workflow still required `71`, so imported-mesh verification was skipped. Commit `c1ea4cb` updated that expectation without changing rendering behavior.
+
+Windows Actions run `29413823276` at commit `c1ea4cb` then passed the C3D LUT gate, the mandatory GLB/STL Geometry Style gate, pointer input, BinaryHost, Runner, all golden/map checks, and artifact upload. Authenticated artifact `8342304881` is `3,721,333` bytes with digest `sha256:baa41a597d4cd55894aff2d9cc8bcbe811c853e52402f51d18c084407f95866e`. A fresh authenticated download matched the digest and contained 37 imported-mesh evidence files: 12 screenshots, 12 contracts, 12 quality reports, and one `15/15` summary. The contracts preserve `SharpGLImportedTriangleMesh`, selectable typed styles, Source texture/vertex color, Solid fallback, pick, and two-point measurement evidence.
