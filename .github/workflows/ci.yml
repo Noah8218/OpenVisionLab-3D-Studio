@@ -138,11 +138,11 @@ jobs:
           }
 
           $verification = Get-Content (Join-Path $artifactDir 'display-viewmodel-verification.txt') -Raw
-          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (71 checks)')) {
-            throw 'Display-settings ViewModel verification did not pass 71 checks.'
+          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (79 checks)')) {
+            throw 'Display-settings ViewModel verification did not pass 79 checks.'
           }
 
-          $summary.Add('DisplayViewModel|pass=True|checks=71')
+          $summary.Add('DisplayViewModel|pass=True|checks=79')
           $summary.Add('Gate|mandatory=True|scope=C3D Grayscale and Thermal display-only color maps')
           $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
           if ($env:GITHUB_STEP_SUMMARY) {
