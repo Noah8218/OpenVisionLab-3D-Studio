@@ -71,8 +71,7 @@ jobs:
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
 
-      - name: Observe WPF pointer input (non-gating)
-        continue-on-error: true
+      - name: Verify WPF pointer input
         shell: pwsh
         timeout-minutes: 3
         run: |
@@ -92,16 +91,18 @@ jobs:
             'PointerInputObservation'
             "Viewer|exitCode=$viewerExitCode|report=$viewerReportExists|pass=$viewerPassed"
             "Shell|exitCode=$shellExitCode|report=$shellReportExists|pass=$shellPassed"
-            'Gate|mandatory=False|reason=Windows Actions foreground input capability under evaluation'
+            'Gate|mandatory=True|reason=Viewer and Shell foreground input passed Windows Actions observation'
           )
           $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
           if ($env:GITHUB_STEP_SUMMARY) {
-            Add-Content $env:GITHUB_STEP_SUMMARY "## WPF pointer input observation (non-gating)`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY "## WPF pointer input gate`n"
             Add-Content $env:GITHUB_STEP_SUMMARY '```text'
             Add-Content $env:GITHUB_STEP_SUMMARY $summary
             Add-Content $env:GITHUB_STEP_SUMMARY '```'
           }
-          exit 0
+          if (-not $viewerPassed -or -not $shellPassed) {
+            throw "WPF pointer input failed. Viewer exit=$viewerExitCode pass=$viewerPassed; Shell exit=$shellExitCode pass=$shellPassed."
+          }
 
       - name: Runner smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
