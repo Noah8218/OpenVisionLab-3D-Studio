@@ -1,6 +1,6 @@
 # Measured/Nominal Sample Review
 
-Updated: 2026-07-15
+Updated: 2026-07-16
 
 ## Decision
 
@@ -154,4 +154,4 @@ The full measured scan completed locally in `5.276 s` with a 25 ms sampled peak 
 
 ## Next Gate
 
-The second-pair, supplied-transform, and difficult-geometry controlled-outcome gates now pass, but Phase 2 itself does not. The synthetic matrix passes mesh deviation `23/23` and nominal/actual execution `29/29` locally and in Windows CI; see `docs/OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`. Registration acceptance remains open. Registration recovery stays separate from Stanford's supplied-transform application and is blocked from product integration until its runtime/distribution prerequisites are resolved.
+The second-pair, supplied-transform, difficult-geometry controlled-outcome, and runtime-neutral registration acceptance policy gates now pass, but Phase 2 itself does not. The synthetic matrix passes mesh deviation `23/23` and nominal/actual execution `29/29`, and the registration policy passes `20/20`, locally and in Windows CI; see `docs/OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md` and `docs/OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`. Registration recovery stays separate from Stanford's supplied-transform application. Approved runtime/result mapping and Viewer/Runner parity remain blocked until the runtime/distribution prerequisites are resolved.

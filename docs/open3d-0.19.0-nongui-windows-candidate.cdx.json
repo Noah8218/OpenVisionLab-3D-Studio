@@ -5,7 +5,7 @@
   "serialNumber": "urn:uuid:96348c7e-2d88-4c5b-a0d1-071320260001",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-07-13T09:07:51Z",
+    "timestamp": "2026-07-16T02:12:22Z",
     "component": {
       "type": "library",
       "bom-ref": "open3d:0.19.0:windows-x64-nongui-clean",
@@ -57,7 +57,7 @@
         },
         {
           "name": "openvisionlab:knownIncomplete",
-          "value": "Assimp contrib closure and exact upstream provenance/modifications for prebuilt BoringSSL, MKL, and VTK remain unresolved"
+          "value": "Assimp vendored snapshot/modification provenance, BoringSSL prebuilt binary/toolchain reproducibility, and the VTK prebuilt archive's compiler/workflow conflict and source-to-binary reproducibility remain unresolved; final oneMKL notice/legal disposition remains open"
         }
       ]
     }
@@ -70,28 +70,201 @@
       "version": "5.4.2",
       "hashes": [{ "alg": "SHA-256", "content": "03e38d123f6bf19a48658d197fd09c9a69db88c076b56a476ab2da9f5eb87dcc" }],
       "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
-      "externalReferences": [{ "type": "distribution", "url": "https://github.com/assimp/assimp/archive/refs/tags/v5.4.2.zip" }],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/assimp/assimp/tree/ddb74c2bbdee1565dda667e85f0c82a0588c8053" },
+        { "type": "distribution", "url": "https://github.com/assimp/assimp/archive/refs/tags/v5.4.2.zip" }
+      ],
       "properties": [
-        { "name": "openvisionlab:evidence", "value": "ext_assimp project reference and assimp-vc143-mt.lib final link input" },
+        { "name": "openvisionlab:evidence", "value": "ext_assimp project reference, assimp-vc143-mt.lib final link input, 232/232 Release source/object mappings, and runtime registry probe" },
         { "name": "openvisionlab:hashSubject", "value": "v5.4.2 source archive" },
         { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/assimp/LICENSE;sha256=147874443d242b4e2bae97036e26ec9d6b37f706174c1bd5ecfcc8c1294cef51" },
-        { "name": "openvisionlab:versionDiscrepancy", "value": "Archive tag is v5.4.2 while the extracted project declares 5.4.1" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Assimp contrib components actually compiled into the selected importer set are unresolved" }
+        { "name": "openvisionlab:sourceCommit", "value": "ddb74c2bbdee1565dda667e85f0c82a0588c8053" },
+        { "name": "openvisionlab:versionDiscrepancy", "value": "Archive tag is v5.4.2 while the extracted project and runtime both report 5.4.1" },
+        { "name": "openvisionlab:buildEvidence", "value": "artifacts/dependency-candidates/assimp-closure-20260716/assimp-closure.json;sources=232;objects=232;contribDirectories=11;components=12;zlibSources=15" },
+        { "name": "openvisionlab:runtimeRegistry", "value": "importers=48;exporters=22;M3D/C4D absent;two-run report sha256=99cdd8e4f88623aa00ca2d94cae1f753b7e024e3086de14848b06486eb1cc3e2" },
+        { "name": "openvisionlab:libraryEvidence", "value": "assimp-vc143-mt.lib;bytes=62312394;sha256=2e970d508f36d2675008b0ec2e25ed0fd0b7007f12c9a302cbac5f1e26aaca18;zlibstatic.lib;bytes=188148;sha256=6fd1655bcc41c0aaf8b33c252492e65ac4929db628e03ae809b27cc3023ede68" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Compiled contrib closure is resolved for the fixed clean Release build; exact upstream revisions and Assimp-side modifications for vendored snapshots remain unresolved" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:clipper:6.4.2",
+      "name": "Clipper",
+      "version": "6.4.2",
+      "hashes": [{ "alg": "SHA-256", "content": "fbb929aa50cbbcbc8588d7d692daf4e6f781400e1e621c3c47c95f59e2087c15" }],
+      "licenses": [{ "license": { "id": "BSL-1.0" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=2" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/clipper/License.txt;sha256=1bc8ddf91ba50e4186abb6b2339910e4529471ad8181b7cf2a5026c09ce09294" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:open3dgc:v5.4.2-vendored",
+      "name": "Open3DGC",
+      "version": "assimp-v5.4.2-vendored",
+      "hashes": [{ "alg": "SHA-256", "content": "bb290db0bc142ae99b6b07774091db1f07f29e820b544518c609d6559494f410" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=29" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/Open3DGC/o3dgcCommon.h;sha256=4e46f0d8edeb2781fb860d4b7261d28ffed684e5bedb45f0f7493efcec49787c" },
+        { "name": "openvisionlab:provenanceScope", "value": "Exact vendored files are fixed by hash; no independent upstream revision is claimed" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:openddlparser:0.4.0",
+      "name": "OpenDDL Parser",
+      "version": "0.4.0",
+      "hashes": [{ "alg": "SHA-256", "content": "85156d0fafb1ade930ed3e330e69841a2e68aa48bfb29f46e604fe290bc6e3f1" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=13" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/openddlparser/LICENSE;sha256=656597ef86119e4a526fb8621e0112b95051cf9d63a311b09b3a73346da00ead" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:poly2tri:v5.4.2-vendored",
+      "name": "Poly2Tri",
+      "version": "assimp-v5.4.2-vendored",
+      "hashes": [{ "alg": "SHA-256", "content": "6be0cbf33f91510fcb906186e898b3a3226c0fdd5f471789a7e0aafe4361d5e3" }],
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=12" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/poly2tri/LICENSE;sha256=a4d34b9e99a7f11d095ba330da5a4723ec00b019ae1ba42cba46ad1d89902c4e" },
+        { "name": "openvisionlab:provenanceScope", "value": "Assimp identifies custom modifications; exact upstream revision and patch record are not claimed" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:pugixml:1.13",
+      "name": "pugixml",
+      "version": "1.13",
+      "hashes": [{ "alg": "SHA-256", "content": "3b5568e97b10d2e4ebe2972c0a99cf9a64510fe10556997a788b445b0db7aaf7" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;header-only mode;usedFiles=3" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/pugixml/readme.txt;sha256=4093595a904844f34a8f48e2eff63bcfd0f41ad0adf95e90fff216b3da944861" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:rapidjson:1.1.0",
+      "name": "RapidJSON",
+      "version": "1.1.0",
+      "hashes": [{ "alg": "SHA-256", "content": "f9f5aec8c411fb5af185f0a148d1615539ca9837f3a05fa992df0cef315006fb" }],
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;include/rapidjson subset only;usedFiles=29" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/rapidjson/license.txt;sha256=a140e5d46fe734a1c78f1a3c3ef207871dd75648be71fdda8e309b23ab8b1f32" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:stb-image:2.29",
+      "name": "stb_image",
+      "version": "2.29",
+      "hashes": [{ "alg": "SHA-256", "content": "bb64489c54fc5fab837758271cb3687777ad9127ee2e9d9098994f48dbf7d0ac" }],
+      "licenses": [{ "expression": "MIT OR Unlicense" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=1" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/stb/stb_image.h;sha256=c54b15a689e6a1f32c75e2ec23afa442e3e0e37e894b73c1974d08679b20dd5c" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:minizip:1.1",
+      "name": "MiniZip",
+      "version": "1.1",
+      "hashes": [{ "alg": "SHA-256", "content": "2e24ca3bfc05768d96770aa57d73843c01c0c3abd7acd3e3643b4db4177dc19f" }],
+      "licenses": [{ "license": { "id": "Zlib" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=4;NOUNCRYPT defined;crypt.h not read" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/unzip/unzip.h;sha256=2ff9df0b1da7499adc806bc0ec098ef1c7b9d361a8fd5b08a98299a1a4e88399" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:utf8cpp:v5.4.2-vendored",
+      "name": "UTF8-CPP",
+      "version": "assimp-v5.4.2-vendored",
+      "hashes": [{ "alg": "SHA-256", "content": "29a1bcc593f7b655228ea1deb6340c41047fbe2ea7a2d20b3c888057e3770c0c" }],
+      "licenses": [{ "license": { "id": "BSL-1.0" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=4" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/utf8cpp/doc/LICENSE;sha256=c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566" },
+        { "name": "openvisionlab:provenanceScope", "value": "Exact vendored files are fixed by hash; no independent upstream revision is claimed" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:kuba-zip:0.3.0",
+      "name": "kuba--zip",
+      "version": "0.3.0",
+      "hashes": [{ "alg": "SHA-256", "content": "b643dff91dba634e8a2e44859a83208418cb88c0d39ffe6611bc911d2f054133" }],
+      "licenses": [{ "license": { "id": "Unlicense" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=2" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/zip/UNLICENSE;sha256=6a872e74952f8f332fc8eec087bf08ada61c4ef5cab5266de3a6dfb3e0ee309e" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:miniz:3.0.0-header",
+      "name": "miniz",
+      "version": "3.0.0-header",
+      "hashes": [{ "alg": "SHA-256", "content": "ccc0dd6eef59502e6d9aa1774b21ce1e2038d8448baf6d28bdf878d868a5a67c" }],
+      "licenses": [{ "expression": "MIT OR Unlicense" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking through kuba--zip;usedFiles=1" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:versionDiscrepancy", "value": "Compiled miniz.h reports 3.0.0 while the parent zip README mentions miniz API 3.0.2" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/zip/src/miniz.h;sha256=bba5c196415bda01b460d2dd8be779189bb228c2802b5b61dd20eae5c3921b06" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "assimp:zlib:1.2.13",
+      "name": "zlib",
+      "version": "1.2.13",
+      "hashes": [{ "alg": "SHA-256", "content": "2548d872937793a4eb1ced0641cad59eaad3c1ec0c6f43a271c2637989cd8b94" }],
+      "licenses": [{ "license": { "id": "Zlib" } }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Assimp bundled-zlib project and compiler dependency tracking;source/object mappings=15/15;compiler-read files=25" },
+        { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
+        { "name": "openvisionlab:licenseEvidence", "value": "contrib/zlib/LICENSE;sha256=845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243" },
+        { "name": "openvisionlab:libraryEvidence", "value": "zlibstatic.lib;bytes=188148;sha256=6fd1655bcc41c0aaf8b33c252492e65ac4929db628e03ae809b27cc3023ede68;omission produces 13 LNK2001/LNK2019 diagnostics and LNK1120" }
       ]
     },
     {
       "type": "library",
       "bom-ref": "boringssl:edfe413:open3d-win-amd64",
       "name": "BoringSSL",
-      "version": "edfe413",
+      "version": "edfe4133d28c5e39d4fce6a2554f3e2b4cafc9bd",
       "hashes": [{ "alg": "SHA-256", "content": "fd538d545990a4657ee2b22c444e0baf61edaa1609f84cdfc9217659c44988c4" }],
       "licenses": [{ "license": { "name": "OpenSSL, SSLeay, and ISC composite license" } }],
-      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/boringssl-bin/boringssl_edfe413_win_amd64.tar.gz" }],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/google/boringssl/commit/edfe4133d28c5e39d4fce6a2554f3e2b4cafc9bd" },
+        { "type": "build-system", "url": "https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/boringssl/build_boringssl.ps1" },
+        { "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/boringssl-bin/boringssl_edfe413_win_amd64.tar.gz" }
+      ],
       "properties": [
-        { "name": "openvisionlab:evidence", "value": "ext_boringssl project reference and ssl.lib/crypto.lib final link inputs" },
+        { "name": "openvisionlab:evidence", "value": "ext_boringssl project reference, ssl.lib/crypto.lib final link inputs, exact upstream commit, and Open3D v0.19.0 Windows build/package recipe" },
         { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows AMD64 prebuilt archive" },
         { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/boringssl/LICENSE;sha256=60bd7c54856bf9387221bde5ab55d516d7cea15870d0fed69406bcd1c8ec7c9d" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream commit, build recipe, and modifications for the prebuilt archive are unresolved" }
+        { "name": "openvisionlab:buildRecipeEvidence", "value": "Open3D v0.19.0 build_boringssl.ps1;sha256=f2f24801a5e69b7dd294332afbbb4270e62c71c71ab03322d82511f8561ce50e;boringssl.cmake;sha256=8555bd0e4476c8cb015fd0fdc96d356c47d8afd8962cf36c522c1ab5cc205bf2" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream commit and documented Open3D build/package recipe resolved; prebuilt archive binary/toolchain reproducibility and archive-to-source modification equivalence remain unresolved" }
       ]
     },
     {
@@ -254,10 +427,60 @@
       "licenses": [{ "license": { "name": "Intel Simplified Software License" } }],
       "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/mkl-static-2024.1/mkl_static-2024.1.0-win_amd64.zip" }],
       "properties": [
-        { "name": "openvisionlab:evidence", "value": "ext_mkl project reference and four MKL static library final link inputs" },
+        { "name": "openvisionlab:evidence", "value": "ext_mkl project reference, exact Open3D v0.19.0 mkl.cmake, three PyPI wheel inputs, 179/179 archive and installed payload hashes, and four MKL static library final link inputs" },
         { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows AMD64 prebuilt archive assembled from Intel pip packages" },
-        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/mkl/LICENSE;sha256=c2a11e99bbb46a34565a04d28280a386f90d9b1fdd5db49c29336571224f9e25" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact input wheel hashes and archive assembly reproducibility are unresolved" }
+        { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/mkl/LICENSE;bytes=15591;sha256=c2a11e99bbb46a34565a04d28280a386f90d9b1fdd5db49c29336571224f9e25" },
+        { "name": "openvisionlab:wheelLicenseEvidence", "value": "all three wheel LICENSE.txt files;bytes=4105;sha256=7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f" },
+        { "name": "openvisionlab:payloadSetSha256", "value": "20e01cb0fbf223eac87cc34ec74db24009afebe6ac3cb183feb518d7f2a758b5" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact wheel identities and RECORD integrity, the 12-file exclusion transform, archive/install payload equivalence, and two-run canonical semantic reassembly are resolved; original ZIP container metadata and final notice/legal approval remain open" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:mkl-include:2024.1.0:win-amd64",
+      "name": "mkl-include Windows wheel",
+      "version": "2024.1.0",
+      "hashes": [{ "alg": "SHA-256", "content": "99743a54abb8e2e440b097e3333fb939414f63aa06404f069a287a1cc68b9509" }],
+      "licenses": [{ "license": { "name": "Intel Simplified Software License" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://files.pythonhosted.org/packages/06/1b/f05201146f7f12bf871fa2c62096904317447846b5d23f3560a89b4bbaae/mkl_include-2024.1.0-py2.py3-none-win_amd64.whl" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Official PyPI win_amd64 wheel selected by the Open3D v0.19.0 oneMKL recipe; RECORD integrity 149/149" },
+        { "name": "openvisionlab:hashSubject", "value": "mkl_include-2024.1.0-py2.py3-none-win_amd64.whl;bytes=1259074" },
+        { "name": "openvisionlab:licenseEvidence", "value": "mkl_include-2024.1.0.dist-info/LICENSE.txt;bytes=4105;sha256=7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f" },
+        { "name": "openvisionlab:payloadContribution", "value": "145/145 wheel payload files included in the Open3D archive" },
+        { "name": "openvisionlab:declaredRequiresDist", "value": "none; Open3D recipe used --no-deps" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:mkl-devel:2024.1.0:win-amd64",
+      "name": "mkl-devel Windows wheel",
+      "version": "2024.1.0",
+      "hashes": [{ "alg": "SHA-256", "content": "7a01a43194101984f6fe02ef73ea17771675a3c56a47c435bb09a44c330ae2dc" }],
+      "licenses": [{ "license": { "name": "Intel Simplified Software License" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://files.pythonhosted.org/packages/fb/24/f3b5070f3ae2ea2cb33246a32815bbe17a2b6666ca369ec2347f5ef9d7a8/mkl_devel-2024.1.0-py2.py3-none-win_amd64.whl" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Official PyPI win_amd64 wheel selected by the Open3D v0.19.0 oneMKL recipe; RECORD integrity 32/32" },
+        { "name": "openvisionlab:hashSubject", "value": "mkl_devel-2024.1.0-py2.py3-none-win_amd64.whl;bytes=15190087" },
+        { "name": "openvisionlab:licenseEvidence", "value": "mkl_devel-2024.1.0.dist-info/LICENSE.txt;bytes=4105;sha256=7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f" },
+        { "name": "openvisionlab:payloadContribution", "value": "16/28 wheel payload files included; the 12 *_dll.lib dynamic import libraries named by the Open3D recipe are excluded" },
+        { "name": "openvisionlab:declaredRequiresDist", "value": "mkl==2024.1.0; mkl-include==2024.1.0; tbb-devel==2021.*; Open3D recipe used --no-deps" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:mkl-static:2024.1.0:win-amd64",
+      "name": "mkl-static Windows wheel",
+      "version": "2024.1.0",
+      "hashes": [{ "alg": "SHA-256", "content": "d30476fb142ea72d7030a3be8a4b30fa4f63107cf6713bf9c5947f3a3256c627" }],
+      "licenses": [{ "license": { "name": "Intel Simplified Software License" } }],
+      "externalReferences": [{ "type": "distribution", "url": "https://files.pythonhosted.org/packages/d8/f0/3b9976df82906d8f3244213b6d8beb67cda19ab5b0645eb199da3c826127/mkl_static-2024.1.0-py2.py3-none-win_amd64.whl" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "Official PyPI win_amd64 wheel selected by the Open3D v0.19.0 oneMKL recipe; RECORD integrity 22/22" },
+        { "name": "openvisionlab:hashSubject", "value": "mkl_static-2024.1.0-py2.py3-none-win_amd64.whl;bytes=220751472" },
+        { "name": "openvisionlab:licenseEvidence", "value": "mkl_static-2024.1.0.dist-info/LICENSE.txt;bytes=4105;sha256=7721633d0ddff43fae25ebfd405f8166a0ce730cbcec44f2f3ad9d5eb8ac9a6f" },
+        { "name": "openvisionlab:payloadContribution", "value": "18/18 wheel payload files included; all four observed Open3D Release link inputs originate here" },
+        { "name": "openvisionlab:declaredRequiresDist", "value": "mkl-include==2024.1.0; intel-openmp==2024.*; tbb-devel==2021.*; Open3D recipe used --no-deps" }
       ]
     },
     {
@@ -402,15 +625,25 @@
       "type": "library",
       "bom-ref": "vtk:9.1:open3d-win",
       "name": "VTK prebuilt static subset",
-      "version": "9.1",
+      "version": "9.1.0",
       "hashes": [{ "alg": "SHA-256", "content": "6ee09115d23ec18d6d01d1e4c89fa236ec69406d8ba8cc1b8ec37c4123b93caa" }],
       "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
-      "externalReferences": [{ "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/vtk/vtk_9.1_win.tar.gz" }],
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/Kitware/VTK/tree/285daeedd58eb890cb90d6e907d822eea3d2d092" },
+        { "type": "distribution", "url": "https://www.vtk.org/files/release/9.1/VTK-9.1.0.tar.gz" },
+        { "type": "distribution", "url": "https://github.com/isl-org/open3d_downloads/releases/download/vtk/vtk_9.1_win.tar.gz" }
+      ],
       "properties": [
-        { "name": "openvisionlab:evidence", "value": "ext_vtk project reference and fifteen VTK static library final link inputs" },
+        { "name": "openvisionlab:evidence", "value": "ext_vtk project reference; 14 explicit Open3D Release link inputs; installed CMake graph reaches all 16 packaged Release static libraries and seven third-party child components" },
         { "name": "openvisionlab:hashSubject", "value": "Open3D-hosted Windows prebuilt archive" },
+        { "name": "openvisionlab:sourceCommit", "value": "285daeedd58eb890cb90d6e907d822eea3d2d092" },
+        { "name": "openvisionlab:sourceArchive", "value": "VTK-9.1.0.tar.gz;bytes=47871165;sha256=8fed42f4f8f1eb8083107b68eaa9ad71da07110161a3116ad807f43e5ca5ce96" },
+        { "name": "openvisionlab:packageRecipe", "value": "Open3D commit 405622a0acdaf70432236c0fadeeaa945e4d3e3c;windows-2019;Visual Studio 16 2019;x64;dynamic CRT;Release+Debug;no patch command" },
+        { "name": "openvisionlab:payloadEvidence", "value": "vtk-provenance.json;archive/install=1156/1156;payloadSetSha256=aae498f1dea80dde26731dddf15484dd0fd4de38cafa4066455087579cf46a02" },
+        { "name": "openvisionlab:targetClosure", "value": "14 explicit Open3D VTK inputs -> 20 reachable VTK targets -> 16 static libraries + four header/interface targets; seven third-party child components" },
+        { "name": "openvisionlab:toolchainMarkerInterpretation", "value": "Legacy vtkConfigureDeprecated.h records Visual Studio 2019 MSVC 14.29.30133. _MSC_VER=1900 is emitted by VS2015-and-later STL yvals.h as an ABI-family marker, not an actual compiler-version conflict. Controlled v143 Release rebuild matches legacy Release paths, target contracts, directives, and link smoke; historical byte identity remains unresolved." },
         { "name": "openvisionlab:licenseEvidence", "value": "3rdparty/vtk/Copyright.txt;sha256=11232448be82e0ea2c2c66219c2e36389f42249894070ee10c549ff182fc08b6" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision, build recipe, modifications, and complete enabled transitive set for the prebuilt archive are unresolved" }
+        { "name": "openvisionlab:provenanceStatus", "value": "Source identity, documented no-patch recipe, archive payload, packaged licenses, and transitive target/component closure are resolved; exact historical compiler invocation and source-to-binary reproducibility remain unresolved" }
       ]
     },
     {
@@ -472,38 +705,107 @@
     },
     {
       "type": "library",
+      "bom-ref": "vtk-exprtk:bundled-with-vtk-9.1",
+      "name": "VTK ExprTk",
+      "version": "2.71",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/third-party/exprtk/-/tree/19348fd0fde5e545279ad87b7ab7d26066c1f4a1" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "VTK::exprtk header/interface target in the reachable installed-package graph" },
+        { "name": "openvisionlab:sourceCommit", "value": "19348fd0fde5e545279ad87b7ab7d26066c1f4a1" },
+        { "name": "openvisionlab:vtkImportTag", "value": "for/vtk-20210816-2.71" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkexprtk/License.txt;sha256=a6801e7760a7abf6d8908974fa52df1b6b45800c31a6968bbac33730512be118" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import tag/history, packaged license, and target-graph role are recorded" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-fmt:bundled-with-vtk-9.1",
+      "name": "VTK fmt",
+      "version": "8.0.1",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/third-party/fmt/-/tree/0b94b400970a4ef95f73970d1f720fbc8817c2f1" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "VTK::fmt static target in the reachable installed-package graph; packaged as vtkfmt-9.1 Release and Debug libraries but not named by the final Open3D link inputs" },
+        { "name": "openvisionlab:sourceCommit", "value": "0b94b400970a4ef95f73970d1f720fbc8817c2f1" },
+        { "name": "openvisionlab:vtkImportTag", "value": "for/vtk-20210817-8.0.1" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkfmt/LICENSE.rst;sha256=825c9324e70f8c839c8ba910543dd4a7daee243b86ef960594c11381a19980b8" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import tag/history, packaged license, and target-graph role are recorded" }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "vtk-kissfft:bundled-with-vtk-9.1",
       "name": "VTK kissfft",
-      "version": "bundled-with-vtk-9.1",
-      "licenses": [{ "license": { "name": "KISS FFT BSD-style license" } }],
+      "version": "2021-04-29 snapshot",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/third-party/kissfft/-/tree/3c952a293ae7b2dfd773db9eff76ceb9bff58dc6" }],
       "properties": [
         { "name": "openvisionlab:evidence", "value": "vtkkissfft-9.1.lib final link input" },
+        { "name": "openvisionlab:sourceCommit", "value": "3c952a293ae7b2dfd773db9eff76ceb9bff58dc6" },
+        { "name": "openvisionlab:vtkImportTag", "value": "for/vtk-20210429-master-g6f09c27" },
         { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkkissfft/COPYING;sha256=a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import tag/history, packaged license, and target-graph role are recorded" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-kwiml:bundled-with-vtk-9.1",
+      "name": "VTK KWIML",
+      "version": "2018-02-01 snapshot",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/utils/kwiml/-/tree/a079afc646f46b81686676bec91fb0a8e3799e4a" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "VTK::kwiml header/interface target in the reachable installed-package graph" },
+        { "name": "openvisionlab:sourceCommit", "value": "a079afc646f46b81686676bec91fb0a8e3799e4a" },
+        { "name": "openvisionlab:vtkImportTag", "value": "master at VTK import; VTK history records upstream commit a079afc6" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkkwiml/Copyright.txt;sha256=2c1b4faf0e1f1a23a56c657959eb138add74e175b8c8949275f9f54d3a376365" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import history, packaged license, and target-graph role are recorded" }
       ]
     },
     {
       "type": "library",
       "bom-ref": "vtk-pugixml:bundled-with-vtk-9.1",
       "name": "VTK pugixml",
-      "version": "bundled-with-vtk-9.1",
+      "version": "1.11.4",
       "licenses": [{ "license": { "id": "MIT" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/third-party/pugixml/-/tree/02ffda89cb14f98f9ddde60ebca64ab434b6f877" }],
       "properties": [
         { "name": "openvisionlab:evidence", "value": "vtkpugixml-9.1.lib final link input" },
+        { "name": "openvisionlab:sourceCommit", "value": "02ffda89cb14f98f9ddde60ebca64ab434b6f877" },
+        { "name": "openvisionlab:vtkImportTag", "value": "for/vtk-20210727-1.11.4" },
         { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkpugixml/LICENSE.md;sha256=ee495f34aeff0c578a99f3350a2050d4e5860d27b2004c03c384a594fa2b0a7a" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import tag/history, packaged license, and target-graph role are recorded" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "vtk-utf8cpp:bundled-with-vtk-9.1",
+      "name": "VTK utf8cpp",
+      "version": "2.3.4",
+      "licenses": [{ "license": { "id": "BSL-1.0" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/third-party/utfcpp/-/tree/925e289e86ae5465991485a3d4aaaeff94652018" }],
+      "properties": [
+        { "name": "openvisionlab:evidence", "value": "VTK::utf8 header/interface target in the reachable installed-package graph" },
+        { "name": "openvisionlab:sourceCommit", "value": "925e289e86ae5465991485a3d4aaaeff94652018" },
+        { "name": "openvisionlab:vtkImportTag", "value": "for/vtk-20181015-2.3.4" },
+        { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtkutf8/LICENSE;sha256=c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566" },
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import tag/history, packaged license, and target-graph role are recorded" }
       ]
     },
     {
       "type": "library",
       "bom-ref": "vtk-kwsys:bundled-with-vtk-9.1",
       "name": "VTK KWSys",
-      "version": "bundled-with-vtk-9.1",
+      "version": "2021-09-15 snapshot",
       "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "externalReferences": [{ "type": "vcs", "url": "https://gitlab.kitware.com/utils/kwsys/-/tree/2c4a83304e08c3e5e17d400315d6f1253f1f7bbc" }],
       "properties": [
         { "name": "openvisionlab:evidence", "value": "vtksys-9.1.lib final link input" },
+        { "name": "openvisionlab:sourceCommit", "value": "2c4a83304e08c3e5e17d400315d6f1253f1f7bbc" },
+        { "name": "openvisionlab:vtkImportTag", "value": "master at VTK import; VTK history records upstream commit 2c4a8330" },
         { "name": "openvisionlab:licenseEvidence", "value": "VTK/vtksys/Copyright.txt;sha256=7aa92ae0b86f73f81947d177639556fe7f8ea42a74762ecdf563e3daf7106a40" },
-        { "name": "openvisionlab:provenanceStatus", "value": "Exact upstream revision is unresolved because VTK is an Open3D-hosted prebuilt archive" }
+        { "name": "openvisionlab:provenanceStatus", "value": "Exact Kitware mirror revision, VTK import history, packaged license, and target-graph role are recorded" }
       ]
     },
     {
@@ -552,7 +854,19 @@
         "zlib:1.2.13:open3d-patched"
       ]
     },
-    { "ref": "assimp:5.4.2" },
+    { "ref": "assimp:5.4.2", "dependsOn": ["assimp:clipper:6.4.2", "assimp:open3dgc:v5.4.2-vendored", "assimp:openddlparser:0.4.0", "assimp:poly2tri:v5.4.2-vendored", "assimp:pugixml:1.13", "assimp:rapidjson:1.1.0", "assimp:stb-image:2.29", "assimp:minizip:1.1", "assimp:utf8cpp:v5.4.2-vendored", "assimp:kuba-zip:0.3.0", "assimp:zlib:1.2.13"] },
+    { "ref": "assimp:clipper:6.4.2" },
+    { "ref": "assimp:open3dgc:v5.4.2-vendored" },
+    { "ref": "assimp:openddlparser:0.4.0" },
+    { "ref": "assimp:poly2tri:v5.4.2-vendored" },
+    { "ref": "assimp:pugixml:1.13" },
+    { "ref": "assimp:rapidjson:1.1.0" },
+    { "ref": "assimp:stb-image:2.29" },
+    { "ref": "assimp:minizip:1.1" },
+    { "ref": "assimp:utf8cpp:v5.4.2-vendored" },
+    { "ref": "assimp:kuba-zip:0.3.0", "dependsOn": ["assimp:miniz:3.0.0-header"] },
+    { "ref": "assimp:miniz:3.0.0-header" },
+    { "ref": "assimp:zlib:1.2.13" },
     { "ref": "boringssl:edfe413:open3d-win-amd64" },
     { "ref": "cppzmq:4.7.1", "dependsOn": ["libzmq:4.3.3:static"] },
     { "ref": "curl:7.88.0", "dependsOn": ["boringssl:edfe413:open3d-win-amd64", "zlib:1.2.13:open3d-patched"] },
@@ -565,7 +879,10 @@
     { "ref": "libjpeg-turbo:2.1.5.1" },
     { "ref": "liblzf:1.5" },
     { "ref": "libpng:1.6.37", "dependsOn": ["zlib:1.2.13:open3d-patched"] },
-    { "ref": "intel-onemkl:2024.1.0:open3d-win-amd64", "dependsOn": ["onetbb:2021.12.0"] },
+    { "ref": "intel-onemkl:2024.1.0:open3d-win-amd64", "dependsOn": ["onetbb:2021.12.0", "pypi:mkl-include:2024.1.0:win-amd64", "pypi:mkl-devel:2024.1.0:win-amd64", "pypi:mkl-static:2024.1.0:win-amd64"] },
+    { "ref": "pypi:mkl-include:2024.1.0:win-amd64" },
+    { "ref": "pypi:mkl-devel:2024.1.0:win-amd64" },
+    { "ref": "pypi:mkl-static:2024.1.0:win-amd64" },
     { "ref": "msgpack-c:3.3.0" },
     { "ref": "nanoflann:1.5.0" },
     { "ref": "open3d-poissonrecon:90f3f064e275b275cff445881ecee5a7c495c9e0" },
@@ -576,13 +893,17 @@
     { "ref": "tinygltf:72f4a55edd54742bca1a71ade8ac70afca1d3f07" },
     { "ref": "tinyobjloader:2.0.0rc8" },
     { "ref": "uvatlas:may2022:open3d-sal-copy", "dependsOn": ["directx-headers:1.606.3", "directxmath:may2022"] },
-    { "ref": "vtk:9.1:open3d-win", "dependsOn": ["vtk-kissfft:bundled-with-vtk-9.1", "vtk-pugixml:bundled-with-vtk-9.1", "vtk-kwsys:bundled-with-vtk-9.1"] },
+    { "ref": "vtk:9.1:open3d-win", "dependsOn": ["vtk-exprtk:bundled-with-vtk-9.1", "vtk-fmt:bundled-with-vtk-9.1", "vtk-kissfft:bundled-with-vtk-9.1", "vtk-kwiml:bundled-with-vtk-9.1", "vtk-pugixml:bundled-with-vtk-9.1", "vtk-utf8cpp:bundled-with-vtk-9.1", "vtk-kwsys:bundled-with-vtk-9.1"] },
     { "ref": "libzmq:4.3.3:static", "dependsOn": ["wepoll:bundled-with-libzmq-4.3.3"] },
     { "ref": "zlib:1.2.13:open3d-patched" },
     { "ref": "directx-headers:1.606.3" },
     { "ref": "directxmath:may2022" },
+    { "ref": "vtk-exprtk:bundled-with-vtk-9.1" },
+    { "ref": "vtk-fmt:bundled-with-vtk-9.1" },
     { "ref": "vtk-kissfft:bundled-with-vtk-9.1" },
+    { "ref": "vtk-kwiml:bundled-with-vtk-9.1" },
     { "ref": "vtk-pugixml:bundled-with-vtk-9.1" },
+    { "ref": "vtk-utf8cpp:bundled-with-vtk-9.1" },
     { "ref": "vtk-kwsys:bundled-with-vtk-9.1" },
     { "ref": "wepoll:bundled-with-libzmq-4.3.3" }
   ]

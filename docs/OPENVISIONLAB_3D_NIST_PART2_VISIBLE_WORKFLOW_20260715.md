@@ -1,13 +1,14 @@
 # NIST Overhang X4 Part 2 Visible Workflow
 
 Date: 2026-07-15
+Updated: 2026-07-16
 Status: Passed locally for the fixed Part 2 identity-frame source/query pair
 
 ## Decision
 
 The second NIST physical instance now passes the existing nominal/actual product workflow in the standalone Viewer, hosted Shell, saved recipe, reopened Viewer, and headless Runner.
 
-This closes the Viewer Reliability Phase 2 second-pair checklist item. It does not close Phase 2 as a whole: the difficult-geometry matrix passes locally and in Windows CI, while registration acceptance remains open. It is not arbitrary-geometry, arbitrary-alignment, calibration, uncertainty, or metrology evidence.
+This closes the Viewer Reliability Phase 2 second-pair checklist item. It does not close Phase 2 as a whole: the difficult-geometry matrix and runtime-neutral registration acceptance policy pass locally and in Windows CI, while approved runtime/result mapping and Viewer/Runner registration parity remain open. It is not arbitrary-geometry, arbitrary-alignment, calibration, uncertainty, or metrology evidence.
 
 ## View -> ViewModel -> Model Review
 

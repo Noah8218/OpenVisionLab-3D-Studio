@@ -1,11 +1,12 @@
 # OpenVisionLab 3D Phase 2 Difficult-Geometry Goldens
 
 Date: 2026-07-15
-Status: Local and Windows-CI synthetic controlled-outcome gate passed; registration acceptance remains open
+Updated: 2026-07-16
+Status: Local and Windows-CI synthetic controlled-outcome and runtime-neutral registration policy gates passed; approved runtime mapping remains open
 
 ## Decision
 
-The render-independent point-to-triangle and nominal/actual execution paths now have explicit controlled outcomes for every difficult-geometry item in the Phase 2 checklist. This closes the local synthetic checklist only. Phase 2 remains open because the accepted registration path must still record correspondence count and fitness before RMSE and reject zero-correspondence false success.
+The render-independent point-to-triangle and nominal/actual execution paths now have explicit controlled outcomes for every difficult-geometry item in the Phase 2 checklist. This closes the local synthetic checklist only. The later runtime-neutral registration policy records correspondence count and fitness before RMSE and rejects zero-correspondence false success. Phase 2 remains open because no approved runtime maps real engine output into that policy or proves Viewer/Runner parity.
 
 No View, ViewModel, shared Model, Viewer, recipe, or Host API behavior changed. The implementation adds cases only to the existing Runner verifiers.
 
@@ -24,7 +25,7 @@ The current `.github/workflows/ci.yml` contains one mandatory fail-closed step t
 
 CloudCompare documents signed cloud-to-mesh distance as triangle-normal based and warns that sparse compared-mesh vertices may require explicit surface sampling. Therefore OpenVisionLab does not claim that aggregate statistics are invariant under arbitrary query density; the sparse/dense case uses a uniform known offset by construction. Reference: <https://cloudcompare.org/doc/wiki/index.php/Cloud-to-Mesh_Distance>.
 
-Open3D exposes registration correspondence data, fitness, and inlier RMSE as separate result fields. The future registration gate must evaluate them in that order instead of treating a low RMSE alone as success. Reference: <https://www.open3d.org/docs/release/python_api/open3d.t.pipelines.registration.RegistrationResult.html>.
+Open3D exposes registration correspondence data, fitness, and inlier RMSE as separate result fields. The runtime-neutral registration gate now evaluates them in that order instead of treating a low RMSE alone as success; an approved runtime adapter must preserve this contract. Reference: <https://www.open3d.org/docs/release/python_api/open3d.t.pipelines.registration.RegistrationResult.html>.
 
 ## Verification
 

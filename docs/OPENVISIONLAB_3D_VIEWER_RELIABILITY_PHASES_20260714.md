@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Viewer Reliability Phases
 
-Updated: 2026-07-15
+Updated: 2026-07-16
 
 Status: current Viewer-reliability planning and claim-control source of truth. Use this document together with `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`; this document controls the order and exit gates for Viewer trust work.
 
@@ -17,7 +17,7 @@ Current status:
 | Phase | Current decision | What that means |
 | --- | --- | --- |
 | Phase 1 | **Passed for the fixed supported scope locally and in current Windows CI** | The fixed Viewer matrix, host boundary, external interchange, deterministic full-query display-density, selected-point provenance, current-versus-next-Preview density state, hosted dual-capture, and mandatory real WPF pointer-input gates pass. |
-| Phase 2 | **Not passed; difficult-geometry gate passed locally and in Windows CI** | Both fixed NIST physical instances, the Stanford published transform, and the synthetic difficult-geometry matrix pass. Registration acceptance is the remaining open checklist item. |
+| Phase 2 | **Not passed; current policy gates passed locally and in Windows CI** | Both fixed NIST physical instances, the Stanford published transform, the synthetic difficult-geometry matrix, and the runtime-neutral registration acceptance policy pass. Approved runtime/result mapping and Viewer/Runner registration parity remain open. |
 | Phase 3 | **Blocked / unverified** | C3D physical mapping metadata, calibration provenance, uncertainty, repeated-scan evidence, and licensed metrology comparison are unavailable. |
 
 The accurate current claim is:

@@ -1,12 +1,14 @@
 # Open3D Windows Distribution Audit
 
-Checked: 2026-07-13
+Checked: 2026-07-16
 
 ## Decision
 
 Do not add the official Open3D `0.19.0` Windows development binaries to an OpenVisionLab product or Viewer release bundle.
 
-The package is valid for the current local registration prototype, but it is not distribution-ready evidence. The inspected binary package contains no license, notice, SBOM, dependency lock, CMake cache, or compile-command file. Its public CMake export identifies Eigen and the dynamic oneTBB dependency, while the monolithic `Open3D.dll` contains additional private/static components that the package does not enumerate. A same-tag local source build now provides reproducible configuration, recovered and independent clean build/install evidence, complete install hashes, and a smaller runtime. A CycloneDX `1.6` candidate now records 27 direct components plus 6 observed support/transitive components, exact archive and license hashes where available, and three Open3D-side modifications. It is intentionally incomplete because Assimp `contrib` closure and exact prebuilt BoringSSL/MKL/VTK provenance remain unresolved. The audit also still lacks a final notice bundle, Microsoft prerequisite deployment proof, clean-host evidence, product integration impact analysis, and owner/legal approval. Exact attribution and redistribution obligations therefore cannot be reconstructed reliably enough for publication.
+The package is valid for the current local registration prototype, but it is not distribution-ready evidence. The inspected binary package contains no license, notice, SBOM, dependency lock, CMake cache, or compile-command file. Its public CMake export identifies Eigen and the dynamic oneTBB dependency, while the monolithic `Open3D.dll` contains additional private/static components that the package does not enumerate. A same-tag local source build now provides reproducible configuration, recovered and independent clean build/install evidence, complete install hashes, and a smaller runtime. A CycloneDX `1.6` candidate now records 27 direct components plus 25 observed support/transitive components, exact archive and license hashes where available, and three Open3D-side modifications. Assimp's fixed-build compiled closure, fixed oneMKL wheel/payload provenance, and VTK source/recipe/payload/transitive closure are resolved. Assimp vendored snapshot deltas, BoringSSL binary/toolchain reproducibility, and a VS2019-workflow versus `_MSC_VER=1900` conflict in the prebuilt VTK archive remain unresolved. The audit also still lacks a final notice bundle, Microsoft prerequisite deployment proof, clean-host evidence, product integration impact analysis, and owner/legal approval. Exact attribution and redistribution obligations therefore cannot be reconstructed reliably enough for publication.
+
+**2026-07-16 correction:** the prior claim that the documented VS2019 workflow conflicts with `_MSC_VER=1900` is withdrawn. The legacy archive's `vtkConfigureDeprecated.h` records VS2019 MSVC `14.29.30133`, while the current VS2022 STL header intentionally emits the same marker. A current no-patch Release candidate now proves VTK package-contract compatibility, and a same-source `USE_SYSTEM_VTK=ON` Open3D build proves local registration-runtime compatibility. Neither result proves historical byte identity or distribution readiness. See `docs/OPENVISIONLAB_3D_VTK_CONTROLLED_REBUILD_20260716.md` and `docs/OPENVISIONLAB_3D_OPEN3D_VTK_CANDIDATE_RUNTIME_20260716.md`.
 
 This is an engineering compliance audit, not legal advice. Commercial distribution requires owner/legal approval after the evidence gate below passes.
 
@@ -156,9 +158,21 @@ artifacts/o3d-clean/probe-results/demo-current/pair-1-to-2-clean-controlled-fail
 
 ## Candidate SBOM Evidence
 
-`docs/open3d-0.19.0-nongui-windows-candidate.cdx.json` is a schema-valid CycloneDX `1.6` direct-evidence candidate, not a complete distribution manifest. It contains 33 component records: 27 direct components reduced from 28 external-project references and 6 observed support/transitive components. All 23 downloaded component-archive hashes match the clean build cache exactly; the root source archive, 35 unique license evidence hashes, and all 3 recorded modification hashes also match local files. Eight unresolved-provenance records deliberately keep the distribution gate open.
+`docs/open3d-0.19.0-nongui-windows-candidate.cdx.json` is a schema-valid CycloneDX `1.6` direct-evidence candidate, not a complete distribution manifest. It contains 52 component records: 27 direct components reduced from 28 external-project references and 25 observed support/transitive components. All 23 downloaded component-archive hashes and all three exact oneMKL wheel hashes match; the root source archive, 50 unique license evidence hashes, and all 3 recorded Open3D-side modification hashes also match local files. Four unresolved-provenance records deliberately keep the distribution gate open.
 
-See `docs/OPENVISIONLAB_3D_OPEN3D_SBOM_CANDIDATE_20260713.md` for scope, method, validation, and blockers. Do not generate final notices from this candidate while Assimp and prebuilt BoringSSL/MKL/VTK closure remains unresolved.
+BoringSSL is now tied to full upstream commit `edfe4133d28c5e39d4fce6a2554f3e2b4cafc9bd`. The local Open3D `v0.19.0` `build_boringssl.ps1` and `boringssl.cmake` match the official tagged files byte-for-byte with SHA-256 `f2f24801a5e69b7dd294332afbbb4270e62c71c71ab03322d82511f8561ce50e` and `8555bd0e4476c8cb015fd0fdc96d356c47d8afd8962cf36c522c1ab5cc205bf2`. The build script checks out that commit, builds Release and Debug `ssl`/`crypto`, packages the outputs, and contains no patch command. The cached 168-entry Windows AMD64 archive is `6,265,404` bytes and matches Open3D's declared SHA-256 `fd538d545990a4657ee2b22c444e0baf61edaa1609f84cdfc9217659c44988c4`. This resolves exact source and documented recipe only; the historical compiler/toolchain, independent binary reproduction, and archive-to-source modification equivalence remain unproven.
+
+The 2026-07-16 controlled-rebuild preflight confirms that the local VS2022 developer environment exposes CMake and MSVC `14.44.35207`, but the official script's Windows prerequisites `perl`, `go`, and `nasm` are absent. No substitute recipe, partial build, or system installation was attempted. `docs/OPENVISIONLAB_3D_BORINGSSL_CONTROLLED_REBUILD_PLAN_20260716.md` records the fixed inputs, approved-run prerequisite, two-run archive/topology/directive/link comparison, and nonclaims. This is a precise blocked preflight, not BoringSSL binary reproducibility evidence.
+
+Assimp official tag `v5.4.2` resolves to commit `ddb74c2bbdee1565dda667e85f0c82a0588c8053`, while the extracted project and runtime both report `5.4.1`. The fixed clean Release project, compiler dependency tracking, and object tree agree on `232/232` Assimp source/object mappings and `15/15` bundled-zlib mappings. The actual compiler-read closure has 11 `contrib` directories represented by 12 SBOM records. A two-run-identical registry probe reports 48 importers and 22 exporters; M3D and C4D are absent. Removing `zlibstatic.lib` from the probe link yields 13 zlib-related unresolved diagnostics and final `LNK1120`. This closes the compiled closure for this exact build, not independent upstream revision or modification provenance for vendored snapshots such as Poly2Tri.
+
+The official Open3D `v0.19.0` oneMKL recipe matches the audited local file byte-for-byte. Its exact `mkl-include`, `mkl-devel`, and `mkl-static` `2024.1.0` Windows wheel hashes and RECORD integrity pass. Their 191 payload files minus the recipe's 12 `*_dll.lib` exclusions match all 179 archive files and all 179 installed files; the four observed Release link inputs are present and wheel-attributed. Two normalized reassemblies are byte-identical and retain the original payload-set SHA-256. This closes fixed payload provenance, not the undocumented original ZIP container metadata or final Intel notice/legal disposition.
+
+The Open3D-hosted VTK archive now resolves to exact VTK `9.1.0` source commit `285daeedd58eb890cb90d6e907d822eea3d2d092`, the exact source archive hash, and a no-patch Open3D package recipe. All `1,156/1,156` archive files match the clean install. Fourteen explicit Open3D Release link inputs expand through the installed package graph to 20 reachable VTK targets, all 16 packaged Release static libraries, and seven exact child components; all 8 packaged license files match VTK source. The documented Windows recipe uses Visual Studio 16 2019, but all 30 C++ static libraries record `_MSC_VER=1900` and dynamic Release/Debug CRT directives. The asset predates its Open3D adoption commit and no retained Actions run resolves the contradiction, so exact historical compiler invocation and source-to-binary reproducibility remain open.
+
+The controlled 2026-07-16 Release rebuild confirms the interpretation above: the legacy `vtkConfigureDeprecated.h` carries VS2019 MSVC `14.29.30133`; a current VS2022 v143 rebuild produces all 16 legacy Release path names, 22/22 VTK import-target contracts, matching CRT/directive sets, and a passing direct link/run smoke. The candidate is `31,473,977` bytes with SHA-256 `a11a803164e4feef2ac4a223235a32c6ceed8f7a44a13c8103a9a1a0d907e09d`; it intentionally lacks the 16 Debug libraries and differs in every Release library hash. A same-source Open3D `0.19.0` Release build against that candidate now completes locally, matches all 873 clean-install paths, has the same 29 dynamic dependencies and 16,000 ordinal/name exports, and preserves DemoICP plus 33-run robustness behavior against the independent clean build. This removes marker-based toolchain conflict and Open3D runtime compatibility as blockers, but does not prove historical byte identity or full command/environment reproducibility. See `docs/OPENVISIONLAB_3D_VTK_CONTROLLED_REBUILD_20260716.md` and `docs/OPENVISIONLAB_3D_OPEN3D_VTK_CANDIDATE_RUNTIME_20260716.md`.
+
+See `docs/OPENVISIONLAB_3D_OPEN3D_SBOM_CANDIDATE_20260713.md` for scope, method, validation, and blockers. Do not generate final notices from this candidate while Assimp vendored snapshot/modification provenance, BoringSSL and VTK binary/toolchain reproducibility, and the oneMKL source-versus-wheel license-text disposition remain open.
 
 ## Microsoft Runtime
 
@@ -173,6 +187,25 @@ If the candidate is ever distributed:
 
 Microsoft recommends central VC Redistributable deployment so runtime security and servicing updates remain independent from the application package.
 
+`scripts/verify-open3d-runtime-prerequisites.ps1` now provides a research-only preflight for the separate-process candidate. It requires an explicit minimum runtime version, records the three adjacent probe files and their hashes, rejects any adjacent copy of the four x64 VC/OpenMP runtime DLLs, records the system DLL versions/hashes, checks the x64 VC runtime registry version, and returns exit code `1` with a report when evidence is missing, too old, or bundled beside the probe.
+
+Current-host command:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-open3d-runtime-prerequisites.ps1 `
+  -RuntimeDirectory artifacts\o3d-clean\probe-build\Release `
+  -MinimumRuntimeVersion 14.44.35211.0 `
+  -ReportPath artifacts\open3d-runtime-prerequisites_20260716\current-host.txt
+```
+
+The current machine passes with installed x64 runtime `14.51.36247.0`, which is newer than the recorded source-build minimum `14.44.35211.0`. A controlled empty system directory and missing registry path return exit code `1` and identify all missing prerequisites; a one-file adjacent `VCOMP140.dll` fixture also returns exit code `1` while the system evidence remains valid. This closes local preflight inventory and controlled diagnostic behavior only. It does not prove an actual clean host, installer execution, restart behavior, servicing, redistribution rights, or product integration.
+
+On 2026-07-16 the Microsoft official latest-x64 permalink resolved to a signed `vc_redist.x64.exe` version `14.51.36247.0`, size `18,731,856` bytes, SHA-256 `843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c`, and `Valid` Microsoft Corporation Authenticode signature. Ignored installer identity evidence is under `artifacts/dependency-candidates/microsoft-vc-redist-20260716`; the installer is not committed or included in a product bundle. Microsoft documents `/install`, `/quiet`, `/norestart`, and `/log` options.
+
+The isolated Windows Sandbox execution described in `docs/OPENVISIONLAB_3D_OPEN3D_CLEAN_HOST_EXECUTION_PROTOCOL_20260716.md` now passes the technical clean-host test: pre-install preflight exits `1` with `system=0/4` and no successful probe report, the exact reviewed installer exits `0` without restart, post-install preflight exits `0` with `system=4/4`, and the fixed `0 -> 1` probe JSON matches its baseline after removing only `elapsedMilliseconds`. This closes clean-host prerequisite behavior for that fixed candidate only; it does not approve redistribution or product integration.
+
+`scripts/stage-open3d-clean-host-evidence-bundle.ps1` creates the runbook's self-contained staging payload after validating the fixed candidate, input, baseline, and verifier hashes. A local smoke stages nine files with a manifest and no VC/OpenMP sidecars; a one-byte `Open3D.dll` mutation is rejected before an output directory is created. This proves staging integrity behavior only, not clean-host installation or distribution readiness.
+
 ## Distribution Gate
 
 Open3D product distribution remains blocked until all items are checked:
@@ -180,11 +213,12 @@ Open3D product distribution remains blocked until all items are checked:
 - [x] Exact Open3D source tag commit, source archive hash, and non-GUI Windows configure options are recorded; the configuration regenerates `Open3D.sln` locally.
 - [x] A recovered Release source build/install completes, its 873 installed paths, sizes, and hashes are recorded, and the source-built probe matches official output in the 33-run robustness matrix.
 - [x] An independent clean single-shot Release build completes with a preserved warning inventory and no interrupted-output recovery; its install contract and registration behavior match the recovered and official runtimes.
-- [ ] Enabled static and dynamic dependencies, versions, source URLs, licenses, modifications, and hashes are captured in SPDX or CycloneDX form. A schema-valid direct-evidence candidate exists, but unresolved Assimp and prebuilt BoringSSL/MKL/VTK provenance prevent this gate from passing.
+- [ ] Enabled static and dynamic dependencies, versions, source URLs, licenses, modifications, and hashes are captured in SPDX or CycloneDX form. A schema-valid direct-evidence candidate exists; BoringSSL exact source/documented recipe, fixed-build Assimp compiled closure, fixed oneMKL wheel/payload provenance, and VTK source/recipe/payload/transitive closure are resolved. Assimp vendored snapshot/modification provenance, BoringSSL and VTK binary/toolchain reproducibility, and final notice review still prevent this gate from passing.
+- [x] The VTK marker ambiguity is resolved: `vtkConfigureDeprecated.h` identifies the legacy VS2019 `14.29.30133` compiler and a current no-patch Release rebuild reproduces the Release package contract. A same-source `USE_SYSTEM_VTK=ON` Open3D candidate then completed a local Release install and preserved the clean build's 29 dependency, 16,000 export, DemoICP, controlled-failure, and 33-run robustness contracts. Historical byte identity, a Debug rebuild, and full historical build commands/environment remain open.
 - [ ] `THIRD-PARTY-NOTICES.txt` is generated from that exact dependency manifest, not from binary string guesses.
 - [ ] The release bundle includes Open3D MIT text, oneTBB Apache-2.0 text and applicable notices, and every enabled dependency's required attribution.
-- [ ] Microsoft VC/OpenMP prerequisite handling follows the applicable REDIST terms and passes on a clean Windows host.
-- [ ] A clean host without the prerequisite fails with a controlled diagnostic; installation followed by the same registration probe passes.
+- [ ] Microsoft VC/OpenMP prerequisite handling follows the applicable REDIST terms and passes on a clean Windows host. The fixed candidate now has technical clean-host evidence; REDIST terms review and redistribution approval remain open.
+- [x] A clean host without the prerequisite fails with a controlled diagnostic; installation followed by the same fixed `0 -> 1` registration probe passes. Windows Sandbox evidence records `system=0/4` before installation, `system=4/4` after the reviewed installer, and exact normalized probe parity.
 - [ ] Viewer DLL, Shell, Runner, installer, update, and uninstall impacts are measured independently from the existing SharpGL bundle.
 - [ ] Owner/legal approval is recorded before any public or commercial binary publication.
 
@@ -195,6 +229,24 @@ Until this gate passes, keep all Open3D binaries under ignored `artifacts/`, exc
 - Open3D `0.19.0` MIT license: https://github.com/isl-org/Open3D/blob/v0.19.0/LICENSE
 - Open3D `0.19.0` third-party inventory: https://github.com/isl-org/Open3D/tree/v0.19.0/3rdparty
 - Open3D dependency build logic: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/find_dependencies.cmake
+- Open3D `v0.19.0` BoringSSL Windows build/package script: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/boringssl/build_boringssl.ps1
+- Open3D `v0.19.0` BoringSSL archive definition: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/boringssl/boringssl.cmake
+- BoringSSL exact upstream commit: https://github.com/google/boringssl/commit/edfe4133d28c5e39d4fce6a2554f3e2b4cafc9bd
+- Assimp `v5.4.2` release: https://github.com/assimp/assimp/releases/tag/v5.4.2
+- Assimp `v5.4.2` project options: https://github.com/assimp/assimp/blob/v5.4.2/CMakeLists.txt
+- Assimp `v5.4.2` importer/contrib build wiring: https://github.com/assimp/assimp/blob/v5.4.2/code/CMakeLists.txt
+- Open3D `v0.19.0` oneMKL wheel/package recipe: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/mkl/mkl.cmake
+- PyPI `mkl-include 2024.1.0` release metadata: https://pypi.org/pypi/mkl-include/2024.1.0/json
+- PyPI `mkl-devel 2024.1.0` release metadata: https://pypi.org/pypi/mkl-devel/2024.1.0/json
+- PyPI `mkl-static 2024.1.0` release metadata: https://pypi.org/pypi/mkl-static/2024.1.0/json
+- Open3D `v0.19.0` VTK package recipe: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/vtk/vtk_build.cmake
+- Open3D VTK archive wrapper and Windows runtime selection: https://github.com/isl-org/Open3D/blob/v0.19.0/3rdparty/vtk/CMakeLists.txt
+- Open3D VTK package workflow: https://github.com/isl-org/Open3D/blob/v0.19.0/.github/workflows/vtk_packages.yml
+- Open3D VTK archive release and hashes: https://github.com/isl-org/open3d_downloads/releases/tag/vtk
+- Open3D VTK package-adoption commit: https://github.com/isl-org/Open3D/commit/405622a0acdaf70432236c0fadeeaa945e4d3e3c
+- VTK `9.1.0` release source: https://github.com/Kitware/VTK/releases/tag/v9.1.0
+- Microsoft `_MSC_VER` compiler-version guidance: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 - oneTBB `2021.12.0` Apache-2.0 license: https://github.com/uxlfoundation/oneTBB/blob/v2021.12.0/LICENSE.txt
 - Microsoft Visual Studio 2022 redistribution list: https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
 - Microsoft Visual C++ redistribution guidance: https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files?view=msvc-170
+- Microsoft latest supported Visual C++ Redistributable downloads and compatibility rules: https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170
