@@ -780,9 +780,10 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             panCamera = initialCamera;
             zoomCamera = initialCamera;
             hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
-            pointerInputRegressionActive = true;
 
             var center = Viewport.PointToScreen(new Point(viewportWidth * 0.5, viewportHeight * 0.5));
+            await EnsurePointerInputTargetAsync(hostWindow, center);
+            pointerInputRegressionActive = true;
             WindowsPointerInput.MoveTo(center);
             await Task.Delay(120);
             WindowsPointerInput.LeftDown();
@@ -801,8 +802,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
             var orbitStart = Viewport.PointToScreen(new Point(viewportWidth * 0.72, viewportHeight * 0.60));
             var orbitEnd = Viewport.PointToScreen(new Point(viewportWidth * 0.86, viewportHeight * 0.50));
-            WindowsPointerInput.MoveTo(orbitStart);
-            await Task.Delay(100);
+            await EnsurePointerInputTargetAsync(hostWindow, orbitStart);
             WindowsPointerInput.RightDown();
             rightPressed = true;
             await Task.Delay(100);
@@ -818,8 +818,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
 
             var panStart = Viewport.PointToScreen(new Point(viewportWidth * 0.82, viewportHeight * 0.70));
             var panEnd = Viewport.PointToScreen(new Point(viewportWidth * 0.70, viewportHeight * 0.62));
-            WindowsPointerInput.MoveTo(panStart);
-            await Task.Delay(100);
+            await EnsurePointerInputTargetAsync(hostWindow, panStart);
             WindowsPointerInput.MiddleDown();
             middlePressed = true;
             await Task.Delay(100);
@@ -831,8 +830,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             panCamera = CaptureCameraSnapshot();
             panPassed = IsFinite(panCamera) && TargetChanged(orbitCamera, panCamera);
 
-            WindowsPointerInput.MoveTo(center);
-            await Task.Delay(100);
+            await EnsurePointerInputTargetAsync(hostWindow, center);
             WindowsPointerInput.Wheel(120);
             await Task.Delay(180);
             zoomCamera = CaptureCameraSnapshot();
@@ -916,6 +914,36 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             pickCoordinate,
             selectionSummary,
             failure);
+    }
+
+    private async Task EnsurePointerInputTargetAsync(Window hostWindow, Point screenPoint)
+    {
+        const int maximumAttempts = 3;
+        var diagnostics = new List<string>(maximumAttempts);
+
+        for (var attempt = 1; attempt <= maximumAttempts; attempt++)
+        {
+            hostWindow.Activate();
+            hostWindow.Focus();
+            Viewport.Focus();
+            Keyboard.Focus(Viewport);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+
+            WindowsPointerInput.BringWindowToInputFront(hostWindow);
+            WindowsPointerInput.MoveTo(screenPoint);
+            await Task.Delay(120);
+            if (WindowsPointerInput.IsScreenPointOverWindow(hostWindow, screenPoint, out var diagnostic))
+            {
+                return;
+            }
+
+            diagnostics.Add($"attempt={attempt}|active={hostWindow.IsActive}|{diagnostic}");
+            await Task.Delay(120);
+        }
+
+        throw new InvalidOperationException(
+            "Viewer host is not the Windows pointer target before pointer input. "
+            + string.Join("; ", diagnostics));
     }
 
     private CameraSnapshot CaptureCameraSnapshot() => new(

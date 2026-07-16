@@ -105,12 +105,15 @@
       "name": "Open3DGC",
       "version": "assimp-v5.4.2-vendored",
       "hashes": [{ "alg": "SHA-256", "content": "bb290db0bc142ae99b6b07774091db1f07f29e820b544518c609d6559494f410" }],
-      "licenses": [{ "license": { "id": "MIT" } }],
+      "licenses": [
+        { "license": { "id": "MIT" } },
+        { "license": { "id": "BSD-2-Clause" } }
+      ],
       "properties": [
         { "name": "openvisionlab:evidence", "value": "Assimp compiler dependency tracking;usedFiles=29" },
         { "name": "openvisionlab:hashSubject", "value": "Canonical ordered set of compiler-read files recorded in assimp-closure.json" },
-        { "name": "openvisionlab:licenseEvidence", "value": "contrib/Open3DGC/o3dgcCommon.h;sha256=4e46f0d8edeb2781fb860d4b7261d28ffed684e5bedb45f0f7493efcec49787c" },
-        { "name": "openvisionlab:provenanceScope", "value": "Exact vendored files are fixed by hash; no independent upstream revision is claimed" }
+        { "name": "openvisionlab:licenseEvidence", "value": "MIT: contrib/Open3DGC/o3dgcCommon.h;sha256=4e46f0d8edeb2781fb860d4b7261d28ffed684e5bedb45f0f7493efcec49787c; BSD-2-Clause: contrib/Open3DGC/o3dgcArithmeticCodec.h;sha256=c3082225c449bce11fff8f4d8ab1b50c1f0745ea8120db3469873deb60458861 and contrib/Open3DGC/o3dgcArithmeticCodec.cpp;sha256=01fc0d7b27811e3b72f424dfb8028a3a09dffba04d3efe25ca893f25b1199579" },
+        { "name": "openvisionlab:provenanceScope", "value": "KhronosGroup/glTF mesh-compression-open3dgc snapshot 7b61d5e matches Assimp import 29/29; current v5.4.2 has 16 bounded Open3DGC deltas" }
       ]
     },
     {

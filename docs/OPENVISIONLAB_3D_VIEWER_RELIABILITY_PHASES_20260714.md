@@ -69,6 +69,8 @@ Passed locally on 2026-07-15 for the fixed NIST identity-frame slice:
 
 ### Pointer-Input Gate
 
+On 2026-07-16, a hosted Shell smoke produced a zero-event report despite an accepted screenshot. The diagnostic then proved that an apparently valid Viewer point resolved to the Chrome root, so initial target-only and z-order requests were insufficient. The final smoke-only path normalizes both HWND roots, checks the target before each click/orbit/pan/wheel sequence, temporarily attaches the Viewer UI thread to the foreground input queue to activate/focus its own host, and detaches in `finally`. The final current-source evidence passes Viewer `5/5`, Shell `5/5`, fixed Viewer/Shell matrix `128/128`, and DLL-only BinaryHost manifest/outputs/Host API `13/13`, `12/12`, `3/3`. See `docs/OPENVISIONLAB_3D_VIEWER_POINTER_TARGET_RELIABILITY_20260716.md`.
+
 Passed locally on 2026-07-15 for the standalone Viewer and the same Viewer DLL hosted in the Shell:
 
 - `--smoke-pointer-input-report` activates the visible WPF host for the smoke only, sends real Windows pointer input, and restores the original pointer position and topmost state afterward. The WPF/OpenGL code-behind remains the input bridge; existing ViewModel camera, pick, and selection properties are the acceptance state.
