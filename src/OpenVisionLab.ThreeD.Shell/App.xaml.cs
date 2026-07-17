@@ -1,4 +1,6 @@
 using System.Windows;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -27,6 +29,7 @@ public partial class App : Application
             return;
         }
 
+        LiveCharts.Configure(settings => settings.UseDefaults());
         base.OnStartup(e);
     }
 }

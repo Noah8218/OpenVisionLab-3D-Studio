@@ -29,6 +29,10 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Verify vendored Library-Noah package
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-library-noah-package.ps1 -ReportPath artifacts\ci\library-noah-package.txt
+
       - name: Restore
         run: dotnet restore OpenVisionLab.ThreeDStudio.slnx
 
@@ -40,6 +44,9 @@ jobs:
 
       - name: Build
         run: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
+
+      - name: Verify Library-Noah 3D package bridge
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-library-noah-3d --report artifacts\ci\library-noah-3d-package.txt
 
       - name: Verify binary-only Viewer host
         shell: pwsh
@@ -340,6 +347,12 @@ jobs:
 
       - name: Verify Thickness Repeatability model golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability --report artifacts\ci\thickness_repeatability_golden.txt
+
+      - name: Verify aligned point repeatability model golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability --report artifacts\ci\aligned_point_repeatability_golden.txt
+
+      - name: Verify aligned point repeatability study loading and headless execution
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability-study --report artifacts\ci\aligned_point_repeatability_study_loader.txt
 
       - name: Verify Thickness Repeatability study loading
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability-study --report artifacts\ci\thickness_repeatability_study_loader.txt

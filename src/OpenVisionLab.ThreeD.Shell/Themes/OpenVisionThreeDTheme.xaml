@@ -76,6 +76,24 @@
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
     </Style>
 
+    <Style x:Key="ThreeD.CalibrationDataGridRowStyle" TargetType="{x:Type DataGridRow}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="AlternationIndex" Value="1">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#DFF5F2" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                <Setter Property="BorderThickness" Value="0,1,0,1" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="ThreeD.CalibrationDataGridStyle" TargetType="{x:Type DataGrid}">
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="CanUserAddRows" Value="False" />
@@ -90,6 +108,8 @@
         <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
         <Setter Property="RowBackground" Value="{DynamicResource ThreeD.PanelBrush}" />
         <Setter Property="AlternatingRowBackground" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+        <Setter Property="AlternationCount" Value="2" />
+        <Setter Property="RowStyle" Value="{StaticResource ThreeD.CalibrationDataGridRowStyle}" />
         <Setter Property="IsReadOnly" Value="True" />
     </Style>
 </ResourceDictionary>

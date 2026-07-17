@@ -21,6 +21,7 @@ static int Run(string[] args)
     var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
     var c3DMapPlyPath = ReadOption(args, "--ply");
     var recipePath = ReadOption(args, "--recipe");
+    var alignedPointRepeatabilityStudyPath = ReadOption(args, "--aligned-point-repeatability-study");
     var reportPath = ReadOption(args, "--report");
     var expectedStatus = ReadOption(args, "--expect-status");
     var compareContractPath = ReadOption(args, "--compare-contract");
@@ -40,6 +41,9 @@ static int Run(string[] args)
     var verifyRegistrationAcceptance = args.Contains("--verify-registration-acceptance", StringComparer.OrdinalIgnoreCase);
     var verifyThicknessRepeatability = args.Contains("--verify-thickness-repeatability", StringComparer.OrdinalIgnoreCase);
     var verifyThicknessRepeatabilityStudy = args.Contains("--verify-thickness-repeatability-study", StringComparer.OrdinalIgnoreCase);
+    var verifyAlignedPointRepeatability = args.Contains("--verify-aligned-point-repeatability", StringComparer.OrdinalIgnoreCase);
+    var verifyAlignedPointRepeatabilityStudy = args.Contains("--verify-aligned-point-repeatability-study", StringComparer.OrdinalIgnoreCase);
+    var verifyLibraryNoahThreeD = args.Contains("--verify-library-noah-3d", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
     if (stanfordTransformPath is not null)
@@ -51,6 +55,17 @@ static int Run(string[] args)
         }
 
         return StanfordTransformParityVerification.Run(stanfordTransformPath, stanfordTransformReferencePath, reportPath);
+    }
+
+    if (alignedPointRepeatabilityStudyPath is not null)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
+            return 2;
+        }
+
+        return AlignedPointRepeatabilityStudyExecution.Run(alignedPointRepeatabilityStudyPath, reportPath);
     }
 
     if (verifyNominalActualComparison)
@@ -95,6 +110,39 @@ static int Run(string[] args)
         }
 
         return ThicknessRepeatabilityStudyLoaderVerification.Run(reportPath);
+    }
+
+    if (verifyAlignedPointRepeatability)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-aligned-point-repeatability --report <path>");
+            return 2;
+        }
+
+        return AlignedPointRepeatabilityGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyAlignedPointRepeatabilityStudy)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-aligned-point-repeatability-study --report <path>");
+            return 2;
+        }
+
+        return AlignedPointRepeatabilityStudyLoaderVerification.Run(reportPath);
+    }
+
+    if (verifyLibraryNoahThreeD)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
+            return 2;
+        }
+
+        return LibraryNoahThreeDPackageVerification.Run(reportPath);
     }
 
     if (verifyMeshDeviation)
@@ -270,6 +318,7 @@ static int Run(string[] args)
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
@@ -279,6 +328,7 @@ static int Run(string[] args)
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
         Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
+        Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
         return 2;
     }
 

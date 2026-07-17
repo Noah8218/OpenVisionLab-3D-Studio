@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows.Input;
+using LiveChartsCore.Kernel;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -32,6 +33,8 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     private readonly RelayCommand calculateCommand;
     private readonly RelayCommand validateCommand;
     private readonly RelayCommand activateCommand;
+    private readonly RelayCommand selectRepeatabilityChartPointCommand;
+    private readonly List<CalibrationRepeatabilityRunItem> repeatabilityChartRuns = [];
     private CalibrationSection selectedSection = CalibrationSection.Repeatability;
     private CalibrationRepeatabilityRunItem? selectedRepeatabilityRun;
     private LoadedThicknessRepeatabilityStudy? loadedStudy;
@@ -45,6 +48,10 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         calculateCommand = new RelayCommand(_ => CalculateRepeatability(), _ => CanCalculate);
         validateCommand = new RelayCommand(_ => { }, _ => false);
         activateCommand = new RelayCommand(_ => { }, _ => false);
+        selectRepeatabilityChartPointCommand = new RelayCommand(
+            SelectRepeatabilityChartPoint,
+            CanSelectRepeatabilityChartPoint);
+        RepeatabilityChartSeries.Add(new CalibrationRepeatabilityChartSeriesModel(RepeatabilityChartValues));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -53,11 +60,15 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> Sections => SectionNames;
     public IReadOnlyList<string> RepeatabilityMetricOptions => MetricNames;
     public ObservableCollection<CalibrationRepeatabilityRunItem> RepeatabilityRuns { get; } = [];
+    public ObservableCollection<double> RepeatabilityChartValues { get; } = [];
+    public ObservableCollection<CalibrationRepeatabilityChartSeriesModel> RepeatabilityChartSeries { get; } = [];
+    public ObservableCollection<string> RepeatabilityChartRunLabels { get; } = [];
 
     public ICommand LoadStudyCommand => loadStudyCommand;
     public ICommand CalculateCommand => calculateCommand;
     public ICommand ValidateCommand => validateCommand;
     public ICommand ActivateCommand => activateCommand;
+    public ICommand SelectRepeatabilityChartPointCommand => selectRepeatabilityChartPointCommand;
 
     public CalibrationSection SelectedSection
     {
@@ -92,6 +103,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         {
             if (SetField(ref selectedRepeatabilityRun, value))
             {
+                RebuildRepeatabilityChart();
                 OnPropertyChanged(nameof(SelectedRepeatabilityRunSummary));
             }
         }
@@ -138,7 +150,9 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     public string RepeatabilityChartState => evaluation is not null
         ? $"{evaluation.RunCount} included runs | {evaluation.Result.Status}"
         : loadedStudy is not null
-            ? $"{loadedStudy.Input.Runs!.Count} verified runs"
+            ? inputValidation?.IsReady == true
+                ? $"{loadedStudy.Input.Runs!.Count} verified runs"
+                : $"{loadedStudy.Input.Runs!.Count} runs | input invalid"
             : "No repeatability runs";
     public string HeightCalibrationState => "Not calculated";
     public string AlignmentState => "Not calculated";
@@ -231,6 +245,9 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         repeatabilityOperationStatus = "No repeatability study loaded";
         SelectedRepeatabilityRun = null;
         RepeatabilityRuns.Clear();
+        RepeatabilityChartValues.Clear();
+        repeatabilityChartRuns.Clear();
+        RepeatabilityChartRunLabels.Clear();
     }
 
     private void PopulateRunRows(string status)
@@ -257,6 +274,113 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
                 run.Unit,
                 status));
         }
+
+        RebuildRepeatabilityChart();
+    }
+
+    private void RebuildRepeatabilityChart()
+    {
+        RepeatabilityChartValues.Clear();
+        repeatabilityChartRuns.Clear();
+        RepeatabilityChartRunLabels.Clear();
+
+        foreach (var run in RepeatabilityRuns)
+        {
+            if (!double.IsFinite(run.Value))
+            {
+                continue;
+            }
+
+            RepeatabilityChartValues.Add(run.Value);
+            repeatabilityChartRuns.Add(run);
+            RepeatabilityChartRunLabels.Add(run.RunNumber.ToString(CultureInfo.InvariantCulture));
+        }
+    }
+
+    private void SelectRepeatabilityChartPoint(object? parameter)
+    {
+        if (parameter is CalibrationRepeatabilityRunItem run)
+        {
+            SelectRepeatabilityRun(run);
+            return;
+        }
+
+        if (parameter is ChartPoint chartPoint)
+        {
+            SelectRepeatabilityRun(chartPoint);
+            return;
+        }
+
+        if (parameter is not IEnumerable<ChartPoint> points)
+        {
+            return;
+        }
+
+        foreach (var candidatePoint in points)
+        {
+            if (SelectRepeatabilityRun(candidatePoint))
+            {
+                return;
+            }
+        }
+    }
+
+    private bool CanSelectRepeatabilityChartPoint(object? parameter)
+    {
+        if (parameter is CalibrationRepeatabilityRunItem run)
+        {
+            return RepeatabilityRuns.Contains(run);
+        }
+
+        if (parameter is ChartPoint chartPoint)
+        {
+            return TryGetRepeatabilityRun(chartPoint, out _);
+        }
+
+        if (parameter is IEnumerable<ChartPoint> points)
+        {
+        foreach (var candidatePoint in points)
+        {
+            if (TryGetRepeatabilityRun(candidatePoint, out _))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool SelectRepeatabilityRun(CalibrationRepeatabilityRunItem run)
+    {
+        if (!RepeatabilityRuns.Contains(run))
+        {
+            return false;
+        }
+
+        SelectedRepeatabilityRun = run;
+        return true;
+    }
+
+    private bool SelectRepeatabilityRun(ChartPoint point)
+    {
+        return TryGetRepeatabilityRun(point, out var run)
+            && SelectRepeatabilityRun(run);
+    }
+
+    private bool TryGetRepeatabilityRun(ChartPoint point, out CalibrationRepeatabilityRunItem run) =>
+        TryGetRepeatabilityRun(point.Index, out run);
+
+    private bool TryGetRepeatabilityRun(int runIndex, out CalibrationRepeatabilityRunItem run)
+    {
+        run = null!;
+        if (runIndex < 0 || runIndex >= repeatabilityChartRuns.Count)
+        {
+            return false;
+        }
+
+        run = repeatabilityChartRuns[runIndex];
+        return true;
     }
 
     private void NotifyRepeatabilityState()

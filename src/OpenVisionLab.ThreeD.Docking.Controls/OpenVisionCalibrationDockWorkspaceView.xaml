@@ -36,7 +36,7 @@
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
                     </avalonDock:LayoutPanel>
-                    <avalonDock:LayoutAnchorablePane x:Name="evidencePane" DockHeight="175">
+                    <avalonDock:LayoutAnchorablePane x:Name="evidencePane" DockHeight="115">
                         <avalonDock:LayoutAnchorable Title="Calibration Evidence"
                                                      ContentId="calibration-evidence"
                                                      CanClose="False"

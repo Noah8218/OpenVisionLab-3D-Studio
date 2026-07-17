@@ -156,6 +156,16 @@ dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.c
 
 The `13/13` loader gate rejects unknown schema properties, missing/tampered files, and duplicate path or byte-identical acquisitions. The `48/48` ViewModel gate proves that loading does not calculate, only valid input enables Calculate, explicit calculation binds aggregate results, and invalid reload clears prior results. The generated fixture is synthetic verification evidence and is never a product default.
 
+Aligned Point Repeatability Study Runner:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability --report artifacts\aligned_point_repeatability\aligned_point_repeatability_model_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability-study --report artifacts\aligned_point_repeatability\aligned_point_repeatability_study_loader_and_runner_golden.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --aligned-point-repeatability-study <study.json> --report artifacts\aligned_point_repeatability\study_run.txt
+```
+
+The model Golden passes `33/33`; the Study Loader/Runner Golden passes `20/20`. A supplied Study must carry separate raw source and correspondence-Mapping byte length/SHA-256 evidence for every run. The Loader hashes the exact Study and Mapping bytes that it parses, including UTF-8 BOM JSON; the headless report preserves those identities and each point's aligned coordinate, mean, sample standard deviation, six-sigma spread, range, and result state. It does not establish raw-source-to-Mapping derivation, physical calibration, Gauge R&R, or metrology certification. The repository does not include a real repeated aligned acquisition set, so linked 3D selection remains intentionally blocked. Use `docs\OPENVISIONLAB_3D_ALIGNED_POINT_REPEATABILITY_STUDY_INTAKE_20260717.md` to prepare a real package.
+
 Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
 
 ```powershell
