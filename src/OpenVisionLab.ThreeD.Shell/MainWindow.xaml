@@ -3,35 +3,97 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
         Title="OpenVisionLab 3D Shell"
         Width="1280"
         Height="800"
         MinWidth="960"
         MinHeight="620"
-        Background="#f3f4f6">
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </Window.Resources>
     <DockPanel LastChildFill="True">
-        <Border DockPanel.Dock="Top" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="0,0,0,1">
-            <Grid Margin="12,8">
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource ThreeD.PanelBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="12,6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="28" />
+                    <RowDefinition Height="38" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock VerticalAlignment="Center"
-                           FontWeight="SemiBold"
-                           Foreground="#111827"
-                           Text="OpenVisionLab 3D Shell" />
-                <TextBlock Grid.Column="1"
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:SymbolIcon Margin="0,0,7,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="TargetArrow24" />
+                    <TextBlock VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="OpenVisionLab 3D Studio" />
+                </StackPanel>
+                <TextBlock Grid.Column="2"
                            VerticalAlignment="Center"
-                           Foreground="#6b7280"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            Text="{Binding StatusText}" />
+
+                <Border Grid.Row="1"
+                        Padding="3"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Content="Setup"
+                                     IsEnabled="False"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     ToolTip="Setup workspace is not implemented yet" />
+                        <RadioButton x:Name="InspectModeButton"
+                                     Content="Inspect"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsInspectWorkspaceSelected, Mode=TwoWay}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="InspectModeButton" />
+                        <RadioButton x:Name="CalibrateModeButton"
+                                     Content="Calibrate"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsCalibrationWorkspaceSelected, Mode=TwoWay}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="CalibrateModeButton" />
+                        <RadioButton Content="Review"
+                                     IsEnabled="False"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     ToolTip="Review workspace is not implemented yet" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Grid.Row="1"
+                           Grid.Column="1"
+                           Margin="16,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{Binding WorkspaceSummary}" />
+
+                <TextBlock Grid.Row="1"
+                           Grid.Column="2"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="Target: Thickness / Warpage" />
             </Grid>
         </Border>
 
-        <dock:OpenVisionDockWorkspaceView x:Name="Workspace">
+        <Grid>
+        <dock:OpenVisionDockWorkspaceView x:Name="Workspace"
+                                          Visibility="{Binding IsInspectWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
             <dock:OpenVisionDockWorkspaceView.DataLayersContent>
                 <Border Background="#ffffff"
                         BorderBrush="#d1d5db"
@@ -1080,5 +1142,8 @@
                 </Border>
             </dock:OpenVisionDockWorkspaceView.LinkedViewContent>
         </dock:OpenVisionDockWorkspaceView>
+        <views:CalibrationCenterView DataContext="{Binding Calibration}"
+                                     Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </Grid>
     </DockPanel>
 </Window>

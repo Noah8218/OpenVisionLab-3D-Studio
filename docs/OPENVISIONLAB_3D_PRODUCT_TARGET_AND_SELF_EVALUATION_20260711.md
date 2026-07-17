@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Product Target And Self Evaluation
 
-Updated: 2026-07-16
+Updated: 2026-07-17
 
 Status: current product-direction source of truth. Older market reviews remain useful as history, but this document controls current priorities when they conflict.
 
@@ -31,6 +31,7 @@ Current maturity is **early inspection workbench MVP**. No repository-backed per
 - Inspection Recipe v1: **baseline passed for five independent typed C3D slices: numeric-reference-ROI plane flatness, explicit-cell point-pair dimensions, explicit two-region Gap/Flush, explicit reference/measurement-ROI Volume, and exact-row Cross-section Dimensions**.
 - Release candidate: **Viewer bundle prerelease `v0.1.0-rc.1` is published at commit `ac57687`; local, Windows CI, public archive/manifest hash, downloaded-bundle BinaryHost, and `Matched` Viewer/Runner gates pass**.
 - Current development identity: **post-RC source builds, manifests, and Run Records identify as `0.1.1-dev`; no corresponding tag or package is published**.
+- Calibration workbench: **Phase A-C View/ViewModel/Model baselines and Phase D explicit offline Study binding pass locally; the Model is `34/34`, closed-schema/source length/SHA-256/distinct-acquisition loader `13/13`, and ViewModel workflow `48/48`, with accepted loaded/not-calculated and calculated WPF captures. Run Chart and Grid/Chart/3D linked selection, profile activation, physical calibration, and metrology remain incomplete**.
 - Nominal/actual inspection: **two fixed same-design NIST physical instances pass independent CloudCompare comparison, full-query Viewer/Shell Preview and Publish, typed recipe save/reopen, headless Runner replay, schema `1.2`, and Viewer/Runner `Matched`; Stanford supplied-transform application and the local difficult-geometry synthetic matrix also pass, while registration recovery, arbitrary datasets, uncertainty, and metrology certification remain incomplete**.
 - Production integration: **intentionally out of scope**.
 
@@ -194,7 +195,8 @@ Scale: `0` absent, `1` prototype, `2` working MVP, `3` operational baseline, `4`
 | Runner and evidence parity | 2 | Headless replay, contract comparison, screenshots, result layers, Shell history/snapshot views, schema `1.2` JSON/HTML/CSV, two fixed NIST actual/nominal/query identities, and `Matched` output. | Both pairs share one nominal design and XCT family; batch and general ordered multi-step replay remain unproven. |
 | Nominal/actual comparison | 2 | Two fixed NIST identities, source-provided frame/alignment, exact point-to-triangle deviation, robust signs, zero-centred color map, tolerances, Preview/Publish, recipe roundtrip, Runner parity, supplied-transform evidence, and locally/Windows-CI-passed difficult-geometry goldens. | Registration recovery, arbitrary sensors/geometry, uncertainty, and metrology remain open. |
 | Reporting and multipiece review | 2 | Runner TXT, per-run JSON, human-readable HTML metric table, CSV metric export, and Shell artifact commands. | No PDF, database, retention/signing, multi-piece table, trends, statistics, or SPC. |
-| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness, point-pair, Gap/Flush, Volume, and Cross-section golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
+| Calibration and repeatability | 1 | Accepted Calibration Center View/ViewModel baseline, offline typed Model `34/34`, closed-schema/source-identity Study loader `13/13`, explicit Calculate result binding, ViewModel workflow `48/48`, and current WPF state captures. | Only representative-value synthetic smoke evidence is currently available; no plotted Run Chart, per-point aligned 3D repeatability evidence, active profile, physical calibration, uncertainty, or Gauge R&R. |
+| Metrology assurance | 1 | Deterministic smoke values, explicit raw/model units in selected paths, analytic plane/flatness, point-pair, Gap/Flush, Volume, Cross-section, and repeatability golden suites, plus a C3D display-frame golden/neutral-PLY roundtrip baseline. | Formal physical mapping contract, calibration provenance, uncertainty, calibrated external datasets, licensed metrology comparison, feature-fitting validation, and broader independent algorithm validation. |
 | Architecture and maintainability | 2 | Separate Viewer/Shell/Core/Data/Tools/Runner boundaries; MVVM direction; CI build. | Viewer code-behind remains large, recipe logic is tool-specific, and automated unit/integration tests are limited. |
 
 ## Gate Decision

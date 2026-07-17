@@ -11,6 +11,12 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
+public enum ShellWorkspaceMode
+{
+    Inspect,
+    Calibrate
+}
+
 public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 {
     private bool c3DSampleVisible;
@@ -34,6 +40,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string runSnapshotEvidence = "(pending)";
     private string inspectionStepSummary = "No inspection steps loaded.";
     private int selectedEvidenceTabIndex;
+    private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Inspect;
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -61,6 +68,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.runRecordPath = runRecordPath;
         this.htmlReportPath = htmlReportPath;
         this.csvReportPath = csvReportPath;
+        Calibration = new CalibrationCenterViewModel();
+        SelectWorkspaceCommand = new RelayCommand(
+            parameter => SelectedWorkspaceMode = (ShellWorkspaceMode)parameter!,
+            parameter => parameter is ShellWorkspaceMode mode
+                && Enum.IsDefined(typeof(ShellWorkspaceMode), mode));
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
@@ -75,6 +87,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     }
 
     public ICommand ApplyRoiAlignmentCommand { get; }
+    public ICommand SelectWorkspaceCommand { get; }
     public ICommand FitPlaneCommand { get; }
     public ICommand RefreshRecipeComparisonCommand { get; }
     public ICommand SaveRecipeCommand { get; }
@@ -84,6 +97,51 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenRunRecordCommand { get; }
     public ICommand OpenHtmlReportCommand { get; }
     public ICommand OpenCsvReportCommand { get; }
+    public CalibrationCenterViewModel Calibration { get; }
+
+    public ShellWorkspaceMode SelectedWorkspaceMode
+    {
+        get => selectedWorkspaceMode;
+        private set
+        {
+            if (!SetField(ref selectedWorkspaceMode, value))
+            {
+                return;
+            }
+
+            RaisePropertyChanged(nameof(IsInspectWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsCalibrationWorkspaceSelected));
+            RaisePropertyChanged(nameof(WorkspaceSummary));
+        }
+    }
+
+    public bool IsInspectWorkspaceSelected
+    {
+        get => SelectedWorkspaceMode == ShellWorkspaceMode.Inspect;
+        set
+        {
+            if (value)
+            {
+                SelectedWorkspaceMode = ShellWorkspaceMode.Inspect;
+            }
+        }
+    }
+
+    public bool IsCalibrationWorkspaceSelected
+    {
+        get => SelectedWorkspaceMode == ShellWorkspaceMode.Calibrate;
+        set
+        {
+            if (value)
+            {
+                SelectedWorkspaceMode = ShellWorkspaceMode.Calibrate;
+            }
+        }
+    }
+
+    public string WorkspaceSummary => IsCalibrationWorkspaceSelected
+        ? "Calibration workspace | Offline datasets"
+        : "Inspection workspace";
 
     public string StatusText
     {
@@ -685,6 +743,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
     }
+
+    private void RaisePropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
 public sealed class RecipeRunHistoryItem

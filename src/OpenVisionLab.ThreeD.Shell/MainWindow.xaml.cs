@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     private readonly EventHandler _saveRecipeRequestedHandler;
     private readonly EventHandler _applyRoiAlignmentRequestedHandler;
     private readonly EventHandler _fitPlaneRequestedHandler;
+    private readonly EventHandler _calibrationLoadStudyRequestedHandler;
     private readonly EventHandler<EvidenceArtifactOpenRequestEventArgs> _openEvidenceArtifactRequestedHandler;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
@@ -45,13 +47,16 @@ public partial class MainWindow : Window
         _saveRecipeRequestedHandler = (_, _) => _viewer.SaveCurrentRecipeWithDialog();
         _applyRoiAlignmentRequestedHandler = (_, _) => _viewer.ApplyRoiReferenceAlignment();
         _fitPlaneRequestedHandler = (_, _) => _viewer.FitC3DReferencePlane();
+        _calibrationLoadStudyRequestedHandler = OnCalibrationLoadStudyRequested;
         _openEvidenceArtifactRequestedHandler = OnOpenEvidenceArtifactRequested;
         _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
         _viewModel.SaveRecipeRequested += _saveRecipeRequestedHandler;
         _viewModel.ApplyRoiAlignmentRequested += _applyRoiAlignmentRequestedHandler;
         _viewModel.FitPlaneRequested += _fitPlaneRequestedHandler;
+        _viewModel.Calibration.LoadStudyRequested += _calibrationLoadStudyRequestedHandler;
         _viewModel.OpenEvidenceArtifactRequested += _openEvidenceArtifactRequestedHandler;
 
+        ConfigureCalibrationStudyFromCommandLine();
         EnableShellSmokeFromCommandLine();
     }
 
@@ -62,6 +67,7 @@ public partial class MainWindow : Window
         _viewModel.SaveRecipeRequested -= _saveRecipeRequestedHandler;
         _viewModel.ApplyRoiAlignmentRequested -= _applyRoiAlignmentRequestedHandler;
         _viewModel.FitPlaneRequested -= _fitPlaneRequestedHandler;
+        _viewModel.Calibration.LoadStudyRequested -= _calibrationLoadStudyRequestedHandler;
         _viewModel.OpenEvidenceArtifactRequested -= _openEvidenceArtifactRequestedHandler;
         Loaded -= _shellSmokeLoadedHandler;
         base.OnClosed(e);
@@ -238,6 +244,39 @@ public partial class MainWindow : Window
             "history" => 4,
             _ => 0
         };
+    }
+
+    private void ConfigureCalibrationStudyFromCommandLine()
+    {
+        var studyPath = GetCommandLineValue("--calibration-study");
+        if (studyPath is null)
+        {
+            return;
+        }
+
+        _viewModel.IsCalibrationWorkspaceSelected = true;
+        _viewModel.Calibration.SelectedSection = CalibrationSection.Repeatability;
+        if (_viewModel.Calibration.LoadStudy(studyPath)
+            && Environment.GetCommandLineArgs()
+                .Contains("--smoke-calibration-calculate", StringComparer.OrdinalIgnoreCase))
+        {
+            _viewModel.Calibration.CalculateCommand.Execute(null);
+        }
+    }
+
+    private void OnCalibrationLoadStudyRequested(object? sender, EventArgs args)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Load Thickness Repeatability Study",
+            Filter = "Thickness Repeatability Study (*.json)|*.json|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            _viewModel.Calibration.LoadStudy(dialog.FileName);
+        }
     }
 
     private void OnOpenEvidenceArtifactRequested(object? sender, EvidenceArtifactOpenRequestEventArgs args)

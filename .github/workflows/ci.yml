@@ -338,6 +338,15 @@ jobs:
       - name: Verify plane flatness golden cases
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\ci\plane_flatness_golden.txt
 
+      - name: Verify Thickness Repeatability model golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability --report artifacts\ci\thickness_repeatability_golden.txt
+
+      - name: Verify Thickness Repeatability study loading
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability-study --report artifacts\ci\thickness_repeatability_study_loader.txt
+
+      - name: Verify Calibration Center ViewModel workflow
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-calibration-viewmodel artifacts\ci\calibration_center_viewmodel.txt
+
       - name: Runner point pair dimensions smoke
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-point-pair-dimensions.recipe.json --report artifacts\ci\runner_c3d_point_pair_dimensions.txt --expect-status Pass
 

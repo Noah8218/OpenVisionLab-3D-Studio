@@ -1,0 +1,550 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.CalibrationCenterView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             Background="{DynamicResource ThreeD.AppBackgroundBrush}">
+    <DockPanel LastChildFill="True">
+        <Border DockPanel.Dock="Bottom"
+                Height="28"
+                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="1,0,1,1">
+            <Grid Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{Binding UnitFrameStatus}" />
+                <TextBlock Grid.Column="1"
+                           Margin="16,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding WorkspaceStatus}" />
+                <TextBlock Grid.Column="2"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ThreeD.WarningBrush}"
+                           Text="{Binding CalibrationStatus}" />
+            </Grid>
+        </Border>
+
+        <dock:OpenVisionCalibrationDockWorkspaceView>
+            <dock:OpenVisionCalibrationDockWorkspaceView.ExplorerContent>
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="0,1,1,0"
+                        Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                                       Text="Calibration Center" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="Sensor-neutral profile workspace" />
+
+                            <StackPanel Margin="0,10,0,0">
+                                <ui:Button HorizontalAlignment="Stretch"
+                                           AutomationProperties.AutomationId="LoadRepeatabilityStudyButton"
+                                           Content="Load Study"
+                                           Icon="{ui:SymbolIcon FolderOpen24}"
+                                           Command="{Binding LoadStudyCommand}" />
+                                <ui:Button Margin="0,6,0,0"
+                                           HorizontalAlignment="Stretch"
+                                           AutomationProperties.AutomationId="CalculateRepeatabilityButton"
+                                           Content="Calculate"
+                                           Icon="{ui:SymbolIcon ArrowSync24}"
+                                           Command="{Binding CalculateCommand}" />
+                            </StackPanel>
+
+                            <ListBox Margin="0,10,0,0"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     ItemsSource="{Binding Sections}"
+                                     SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}" />
+
+                            <Separator Margin="0,12,0,10" />
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                       Text="Active Profile" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding SelectedProfileStatus}" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding ProfileVersionStatus}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding ProfileValidityStatus}" />
+
+                            <Separator Margin="0,12,0,10" />
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                       Text="Input Sets" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding HeightTargetStatus}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding AlignmentTargetStatus}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding RepeatabilityInputStatus}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </dock:OpenVisionCalibrationDockWorkspaceView.ExplorerContent>
+
+            <dock:OpenVisionCalibrationDockWorkspaceView.WorkspaceContent>
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="0,1,0,0">
+                    <TabControl SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
+                        <TabItem Header="Overview">
+                            <Grid Margin="14">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                                           Text="Calibration Readiness" />
+                                <Grid Grid.Row="1" Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="36" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock VerticalAlignment="Center" Text="Height calibration" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding HeightCalibrationState}" />
+                                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Sensor alignment" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding AlignmentState}" />
+                                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Repeatability" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding RepeatabilityOverviewState}" />
+                                    <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Profile activation" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{Binding ProfileActivationState}" />
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Height Calibration">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="145" />
+                                </Grid.RowDefinitions>
+                                <Border Background="{DynamicResource ThreeD.ViewportBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <TextBlock Margin="12"
+                                                   HorizontalAlignment="Left"
+                                                   VerticalAlignment="Top"
+                                                   Foreground="White"
+                                                   FontWeight="SemiBold"
+                                                   Text="Height target map" />
+                                        <TextBlock HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#CBD5E1"
+                                                   Text="{Binding HeightTargetEmptyState}" />
+                                    </Grid>
+                                </Border>
+                                <DataGrid Grid.Row="1"
+                                          Margin="0,8,0,0"
+                                          Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Target step" Width="*" />
+                                        <DataGridTextColumn Header="Nominal height" Width="120" />
+                                        <DataGridTextColumn Header="Measured mean" Width="120" />
+                                        <DataGridTextColumn Header="Residual" Width="100" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Sensor Alignment">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="250" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{DynamicResource ThreeD.ViewportBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <TextBlock Margin="12"
+                                                   VerticalAlignment="Top"
+                                                   Foreground="White"
+                                                   FontWeight="SemiBold"
+                                                   Text="Alignment residual map" />
+                                        <TextBlock HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#CBD5E1"
+                                                   Text="{Binding AlignmentTargetEmptyState}" />
+                                    </Grid>
+                                </Border>
+                                <Grid Grid.Column="1" Margin="12,0,0,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}" Text="Sensor Transform" />
+                                    <DataGrid Grid.Row="1"
+                                              Margin="0,8,0,0"
+                                              Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Axis" Width="70" />
+                                            <DataGridTextColumn Header="Translation" Width="*" />
+                                            <DataGridTextColumn Header="Rotation" Width="*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Repeatability">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="1.15*" MinHeight="150" />
+                                    <RowDefinition Height="0.9*" MinHeight="145" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                                                   Text="Thickness Repeatability" />
+                                        <TextBlock Margin="0,3,0,8"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding RepeatabilitySummary}" />
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1"
+                                              Width="132"
+                                              Margin="10,0,0,8"
+                                              VerticalAlignment="Bottom"
+                                              IsEnabled="{Binding HasMultipleRepeatabilityMetrics}"
+                                              ItemsSource="{Binding RepeatabilityMetricOptions}"
+                                              SelectedItem="{Binding SelectedRepeatabilityMetric, Mode=OneWay}" />
+                                </Grid>
+
+                                <Border Grid.Row="1"
+                                        Background="{DynamicResource ThreeD.ViewportBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                        BorderThickness="1">
+                                    <Grid ClipToBounds="True">
+                                        <Grid.Background>
+                                            <DrawingBrush TileMode="Tile"
+                                                          Viewport="0,0,32,32"
+                                                          ViewportUnits="Absolute">
+                                                <DrawingBrush.Drawing>
+                                                    <GeometryDrawing>
+                                                        <GeometryDrawing.Pen>
+                                                            <Pen Brush="#374151" Thickness="0.6" />
+                                                        </GeometryDrawing.Pen>
+                                                        <GeometryDrawing.Geometry>
+                                                            <GeometryGroup>
+                                                                <LineGeometry StartPoint="0,0" EndPoint="32,0" />
+                                                                <LineGeometry StartPoint="0,0" EndPoint="0,32" />
+                                                            </GeometryGroup>
+                                                        </GeometryDrawing.Geometry>
+                                                    </GeometryDrawing>
+                                                </DrawingBrush.Drawing>
+                                            </DrawingBrush>
+                                        </Grid.Background>
+                                        <TextBlock Margin="12"
+                                                   HorizontalAlignment="Left"
+                                                   VerticalAlignment="Top"
+                                                   Foreground="White"
+                                                   FontWeight="SemiBold"
+                                                   Text="3D repeatability map" />
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock HorizontalAlignment="Center"
+                                                       Foreground="#E5E7EB"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding RepeatabilityMapState}" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="#9CA3AF"
+                                                       Text="{Binding RepeatabilityMapHint}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="12"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Bottom"
+                                                    Orientation="Horizontal">
+                                            <TextBlock FontWeight="Bold" Foreground="{DynamicResource ThreeD.AxisXBrush}" Text="X" />
+                                            <TextBlock Margin="10,0,0,0" FontWeight="Bold" Foreground="{DynamicResource ThreeD.AxisYBrush}" Text="Y" />
+                                            <TextBlock Margin="10,0,0,0" FontWeight="Bold" Foreground="{DynamicResource ThreeD.AxisZBrush}" Text="Z" />
+                                        </StackPanel>
+                                        <Border Margin="12"
+                                                Padding="8,4"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Bottom"
+                                                Background="#CC111827"
+                                                BorderBrush="#4B5563"
+                                                BorderThickness="1"
+                                                CornerRadius="3">
+                                            <TextBlock Foreground="#D1D5DB" Text="Color: standard deviation" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+
+                                <Grid Grid.Row="2" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="0.95*" MinWidth="245" />
+                                        <ColumnDefinition Width="1.05*" MinWidth="265" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Margin="0,0,4,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="28" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock VerticalAlignment="Center"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                                   Text="Values Grid" />
+                                        <DataGrid Grid.Row="1"
+                                                  ItemsSource="{Binding RepeatabilityRuns}"
+                                                  SelectedItem="{Binding SelectedRepeatabilityRun, Mode=TwoWay}"
+                                                  Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Run" Width="48" Binding="{Binding RunNumber, Mode=OneWay}" />
+                                                <DataGridTextColumn Header="Thickness" Width="*" Binding="{Binding ValueText, Mode=OneWay}" />
+                                                <DataGridTextColumn Header="Status" Width="72" Binding="{Binding Status, Mode=OneWay}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <TextBlock Grid.Row="1"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   IsHitTestVisible="False"
+                                                   Text="{Binding EmptyRepeatabilityRunsText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding RepeatabilityRuns.Count}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+
+                                    <Grid Grid.Column="1" Margin="4,0,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="28" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock VerticalAlignment="Center"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                                   Text="Run Chart" />
+                                        <Border Grid.Row="1"
+                                                Background="{DynamicResource ThreeD.PanelBrush}"
+                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                BorderThickness="1">
+                                            <Grid Margin="8">
+                                                <Border Margin="24,8,6,20"
+                                                        BorderBrush="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                        BorderThickness="1,0,0,1" />
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                           Text="{Binding RepeatabilityChartState}" />
+                                                <TextBlock Margin="24,0,0,2"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Bottom"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                           Text="Run" />
+                                                <TextBlock Margin="0,0,0,18"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                           Text="Value">
+                                                    <TextBlock.LayoutTransform>
+                                                        <RotateTransform Angle="-90" />
+                                                    </TextBlock.LayoutTransform>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="History">
+                            <Grid Margin="10">
+                                <DataGrid Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Profile" Width="*" />
+                                        <DataGridTextColumn Header="Version" Width="90" />
+                                        <DataGridTextColumn Header="State" Width="110" />
+                                        <DataGridTextColumn Header="Validated" Width="150" />
+                                        <DataGridTextColumn Header="Activated" Width="150" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           IsHitTestVisible="False"
+                                           Text="{Binding EmptyProfilesText}" />
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </dock:OpenVisionCalibrationDockWorkspaceView.WorkspaceContent>
+
+            <dock:OpenVisionCalibrationDockWorkspaceView.InspectorContent>
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1,1,0,0"
+                        Padding="12">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                                       Text="Calibration Inspector" />
+                            <Border Margin="0,10,0,2"
+                                    Padding="9,7"
+                                    Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                    BorderBrush="{DynamicResource ThreeD.WarningBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <TextBlock FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                           Text="{Binding ActiveProfileStatus}" />
+                            </Border>
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Study ID" />
+                            <TextBox IsReadOnly="True" Text="{Binding ProfileNameValue, Mode=OneWay}" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Sensor / serial" />
+                            <TextBox IsReadOnly="True" Text="{Binding SensorIdentityValue, Mode=OneWay}" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Measurement / ROI" />
+                            <TextBox IsReadOnly="True" Text="{Binding CalibrationTargetValue, Mode=OneWay}" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Declared unit / frame" />
+                            <TextBox IsReadOnly="True" Text="{Binding UnitFrameValue, Mode=OneWay}" />
+
+                            <Separator Margin="0,12,0,6" />
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                       Text="Repeatability Acceptance" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Minimum run count" />
+                            <TextBox IsReadOnly="True" Text="{Binding MinimumRunCountValue, Mode=OneWay}" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Standard deviation limit" />
+                            <TextBox IsReadOnly="True" Text="{Binding StandardDeviationLimitValue, Mode=OneWay}" />
+
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Range limit" />
+                            <TextBox IsReadOnly="True" Text="{Binding RangeLimitValue, Mode=OneWay}" />
+
+                            <Separator Margin="0,12,0,8" />
+                            <StackPanel Orientation="Horizontal">
+                                <ui:Button Width="92"
+                                           Margin="0,0,6,0"
+                                           Content="Calculate"
+                                           Icon="{ui:SymbolIcon ArrowSync24}"
+                                           Command="{Binding CalculateCommand}" />
+                                <ui:Button Width="88"
+                                           Margin="0,0,6,0"
+                                           Content="Validate"
+                                           Icon="{ui:SymbolIcon ShieldCheckmark24}"
+                                           Command="{Binding ValidateCommand}" />
+                                <ui:Button Width="88"
+                                           Content="Activate"
+                                           Icon="{ui:SymbolIcon PlayCircle24}"
+                                           Command="{Binding ActivateCommand}" />
+                            </StackPanel>
+
+                            <TextBlock Margin="0,10,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding RepeatabilityCalculationMessage}" />
+
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding ProfileLifecycleSummary}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </dock:OpenVisionCalibrationDockWorkspaceView.InspectorContent>
+
+            <dock:OpenVisionCalibrationDockWorkspaceView.EvidenceContent>
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="10,6">
+                    <TabControl>
+                        <TabItem Header="Run Log">
+                            <Grid>
+                                <DataGrid ItemsSource="{Binding RepeatabilityRuns}"
+                                          SelectedItem="{Binding SelectedRepeatabilityRun, Mode=TwoWay}"
+                                          Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Run" Width="60" Binding="{Binding RunNumber, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="Timestamp" Width="150" Binding="{Binding TimestampText, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="Source" Width="*" Binding="{Binding Source, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="Thickness" Width="110" Binding="{Binding ValueText, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="Status" Width="90" Binding="{Binding Status, Mode=OneWay}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           IsHitTestVisible="False"
+                                           Text="{Binding EmptyEvidenceText}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RepeatabilityRuns.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="Profile History">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="No profile history" />
+                            </Grid>
+                        </TabItem>
+                        <TabItem Header="Transform">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="No sensor transform" />
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </dock:OpenVisionCalibrationDockWorkspaceView.EvidenceContent>
+        </dock:OpenVisionCalibrationDockWorkspaceView>
+    </DockPanel>
+</UserControl>

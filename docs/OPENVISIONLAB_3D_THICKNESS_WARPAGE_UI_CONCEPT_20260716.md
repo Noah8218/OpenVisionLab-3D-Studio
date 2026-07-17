@@ -1,7 +1,10 @@
 # OpenVisionLab 3D Thickness / Warpage UI Concept
 
-Updated: 2026-07-16
-Status: **Proposed - owner review required before UI implementation**
+Updated: 2026-07-17
+Status: **Phase A layout and Phase B ViewModel accepted; offline Thickness Repeatability Model passes locally; real-input binding next**
+
+Calibration Center and the final application theme are specified in the Korean companion proposal:
+`OPENVISIONLAB_3D_CALIBRATION_AND_THEME_UI_CONCEPT_20260717.md`.
 
 ## 1. Purpose
 
@@ -10,6 +13,7 @@ The initial workspaces are:
 
 1. **Thickness Inspection**
 2. **Warpage Inspection** (the user's "warpage/warp" target; Korean: warpage, bend, deformation)
+3. **Calibration Center** (height calibration, sensor alignment, repeatability, profile validation)
 
 The proposal reuses the local WPF stack already proven in both repositories:
 
@@ -18,7 +22,7 @@ The proposal reuses the local WPF stack already proven in both repositories:
 - the separate `OpenVisionLab.ThreeD.Viewer` DLL for the SharpGL viewport and essential Viewer interactions;
 - strict **View -> ViewModel -> Model** implementation order.
 
-This is a design checkpoint. It does not authorize algorithm, ViewModel, or XAML implementation yet.
+The owner accepted the captured Phase A layout on 2026-07-17. The Calibration Center has a Phase B ViewModel baseline and a Phase C offline Thickness Repeatability Model that passes `34/34` independent analytic/error cases. The product UI still has no real study input or calculated values; physical calibration and metrology claims remain unauthorized.
 
 ## 2. Product Decision
 
@@ -26,13 +30,14 @@ This is a design checkpoint. It does not authorize algorithm, ViewModel, or XAML
 
 The first screen is the actual inspection workbench, not a landing page and not a generic model-viewer demo.
 
-The operator should always be able to answer five questions without opening another window:
+The operator should always be able to answer six questions without opening another window:
 
 1. What source and reference are being inspected?
 2. Which coordinate frame, unit, and calibration state are active?
 3. Which inspection step is selected and how is it configured?
 4. What does the result mean spatially in the 3D data?
 5. Is the current result a stale preview, a current preview, or a published result?
+6. Which calibration profile produced the physical unit/frame, and is that profile currently valid?
 
 ### Why this concept
 
@@ -78,7 +83,7 @@ The main structural problem is not missing panels. It is that too many details a
 ```text
 +------------------------------------------------------------------------------------------+
 | WPF-UI Title / Job Bar                                                                  |
-| [Project] [Open] [Save] | Setup  Inspect  Review | [Preview] [Publish] [Run] | Status   |
+| [Project] [Open] [Save] | Setup  Inspect  Calibrate  Review | Preview | Publish | Run  |
 +----------------------+------------------------------------------------+------------------+
 | Project Explorer     | 3D Inspection Document                         | Tool Inspector   |
 | 260 px               | minimum 55% of client area                     | 340 px           |
@@ -118,7 +123,7 @@ The job bar contains only global or explicit execution commands:
 | Group | Commands |
 | --- | --- |
 | File | New/Open Project, Open Data, Save Recipe |
-| Workflow mode | Setup, Inspect, Review segmented control |
+| Workflow mode | Setup, Inspect, Calibrate, Review segmented control |
 | Execution | Preview, Cancel, Publish, Run/Compare |
 | Layout | Reset Layout, pane visibility menu |
 | State | Dirty, Not Run, Stale, Preview Ready, Published, Pass/Fail |
@@ -339,6 +344,7 @@ The UI uses one component tree with two presets, not two separate windows.
 | --- | --- | --- | --- | --- |
 | Thickness | Thickness step | Thickness/tolerance | Height Map | Min/max and no-match locations |
 | Warpage | Warpage step | Signed deviation | Profile | Reference plane and positive/negative extrema |
+| Calibration | Calibration profile/study | Residual or repeatability map | Values + Run Chart | Profile validity and residual evidence |
 
 The user can rearrange panes. The application stores the docking layout separately from recipe data so a personal layout never changes inspection logic.
 
@@ -437,11 +443,11 @@ flowchart LR
 - [ ] Render-only changes never run or invalidate inspection calculations.
 - [ ] Result-affecting changes mark Preview stale without mutating Published evidence.
 - [ ] The bottom analysis tabs link selection and color scale to the 3D view.
-- [ ] At `1600 x 900` and `1280 x 760`, text and controls do not clip or overlap.
+- [x] At `1600 x 900` and `1280 x 760`, the current Calibration Center layout does not clip or overlap its primary work areas.
 - [ ] Keyboard focus, tooltips, and automation names exist for icon commands.
 - [ ] Standalone Viewer remains useful without Shell-only inspection panes.
-- [ ] View contains no business logic; commands are ViewModel-owned; converters are presentation-only.
-- [ ] The current Viewer fixed matrix, pointer-input gate, BinaryHost gate, and Shell screenshot gate remain green.
+- [x] View contains no business logic; Calibration commands are ViewModel-owned; converters are presentation-only.
+- [x] The current Viewer fixed matrix, BinaryHost gate, and Shell screenshot gate remain green for the Calibration ViewModel checkpoint.
 
 ## 14. Explicitly Out Of Scope
 
@@ -478,4 +484,4 @@ One WPF-UI Shell
   + explicit Preview -> Publish -> Runner evidence
 ```
 
-After owner approval, implementation should begin with **Slice 1 View-only workbench shell** and stop again for screenshot review before adding ViewModel or Model behavior.
+The owner accepted Slice 1, and the Calibration Center ViewModel plus offline Repeatability Model checkpoints pass. Continue with **explicit real-input loading and ViewModel result binding**; keep Calculate disabled and the UI empty until a valid study is loaded, and do not use synthetic golden values as product data.

@@ -13,6 +13,7 @@ This repository is under active development and is not production-ready yet.
 - Current Viewer reliability: Phase 1 is passed for the fixed supported scope locally and in the current Windows CI workflow, including Foundation, fixed NIST selected-point provenance, current-versus-next-Preview density-state clarity, hosted dual-capture, and mandatory real WPF click/orbit/pan/zoom input in standalone Viewer and hosted Shell. This is not a general geometry or metrology claim; Phase 2 geometric generalization is not passed, and Phase 3 physical/metrology reliability is blocked and unverified. See `docs\OPENVISIONLAB_3D_VIEWER_RELIABILITY_PHASES_20260714.md`.
 - Current viewer scope: camera control, C3D height-grid Points/Wireframe/Surface/Surface + Edges display with Solid/Grayscale/Height/Thermal color maps, GLB scene/node/static-instancing mesh rendering, STL/LAS/LAZ sample rendering and picking, LAZ/LAS two-point distance/height preview/publish result contracts with editable Viewer/Shell acceptance parameters, Shell active-context panes, entity visibility, measurement HUD, two-point and ROI step-height measurement, transform/alignment state, overlays, recipe-owned ROI/alignment edit controls, recipe load/save, and screenshot smoke evidence.
 - Current rule scope: C3D height deviation plus complete typed plane-flatness, explicit C3D point-pair distance/width/signed-angle, two-region signed Gap/Flush, reference-plane Volume, and exact-row Cross-section Dimensions slices, analytic golden/error verification, editable tolerances, explicit Preview/Publish, recipe save/reopen, headless Runner parity, Shell actual-step evidence, editable LAZ/LAS two-point acceptance replay, and shared Core evidence formatting.
+- Current calibration scope: the WPF-UI/AvalonDock Calibration Center explicitly loads a closed-schema offline Thickness Repeatability Study, verifies each source length/SHA-256 and distinct acquisition identity, keeps Calculate disabled until Model validation passes, and binds explicit calculation results into the Run/Evidence grids. The Model passes `34/34`, the Study loader `13/13`, and the ViewModel workflow `48/48` locally. Run Chart rendering, per-point 3D repeatability maps, profile activation, physical calibration, and metrology claims remain incomplete.
 - Current C3D trust scope: fixed-sample row/column orientation confirmed against the local reference PNG, 10/10 mapping golden cases, a full-resolution 1,653,562-point point-only PLY roundtrip with zero C# XYZ/RGB error, independent Python recalculation within `2.37e-7`, and CloudCompare 2.13.2 full-resolution interchange/C2C and point-pair parity within `1e-6` Viewer units. Physical units, calibration, and licensed metrology parity remain unverified.
 - Current measured/nominal trust scope: the ignored NIST Overhang X4 measured STL streams all 8,560,096 original triangles with matching SHA-256/bounds; all 4,223,524 ordered validation vertices match CloudCompare unsigned/robust-signed C2M within `1e-6 mm` with zero sign mismatches. Standalone Viewer and Shell complete explicit full-query Preview, Publish to an independent result entity/layer, typed recipe save/reopen, and headless Runner replay. Viewer and Runner match the expected `Fail` result with 1,233,381 points outside `[-0.3, 0.3] mm`; current executor/result verification passes 27/27 and ViewModel verification passes 71 checks. A rendered result-point pick exposes ordered query index, actual/query source IDs, signed/unsigned deviation, nearest nominal triangle, and tolerance status in Viewer and Shell. Fast/Balanced/Detailed Viewer runs render 24,992/59,487/145,639 signed display points while preserving an identical normalized measurement/published-evidence SHA-256 across all modes. Other meshes, non-identity alignment, semantic unit/frame mismatch detection, metrology certification, and redistribution approval remain open.
 - Out of early scope: industrial camera acquisition/control, PLC, robot, cloud, deployment management, production database, and full CAD editing.
@@ -137,6 +138,23 @@ dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner
 ```
 
 This `20/20` local and Windows-CI gate requires correspondence count and fitness before RMSE, rejects `0 correspondence / RMSE 0`, and checks explicit units plus rigid/translation/rotation plausibility. It does not install or approve a registration engine. Commit `13f143a` passed Actions run `29454088343`; authenticated artifact `8358732707` matched `3,726,847` bytes and digest `sha256:fced1dde391124d89b761336c907957d597b73dfbecbdc9d2dff62f4bf18b9f7`. See `docs\OPENVISIONLAB_3D_REGISTRATION_ENGINE_PROTOTYPE_20260713.md`.
+
+Offline Thickness Repeatability Model golden:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability --report artifacts\thickness_repeatability_model_20260717\thickness_repeatability_golden.txt
+```
+
+This `34/34` gate fixes per-run source identity, exact unit/frame matching, minimum run count, mean/minimum/maximum/range, `N-1` sample standard deviation, explicit `6 x s`, independent standard-deviation/range limits, large-offset numerical stability, and controlled invalid-input rejection. It is a same-setup repeatability calculation, not Gauge R&R, sensor calibration, uncertainty evidence, or a physical metrology claim. The explicit offline Study binding checkpoint below now consumes this contract.
+
+Offline Thickness Repeatability Study and Calibration Center workflow:
+
+```powershell
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability-study --report artifacts\thickness_repeatability_study_binding_20260717\model\thickness_repeatability_study_loader.txt
+dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-calibration-viewmodel artifacts\thickness_repeatability_study_binding_20260717\viewmodel\calibration_center_viewmodel_verification.txt
+```
+
+The `13/13` loader gate rejects unknown schema properties, missing/tampered files, and duplicate path or byte-identical acquisitions. The `48/48` ViewModel gate proves that loading does not calculate, only valid input enables Calculate, explicit calculation binds aggregate results, and invalid reload clears prior results. The generated fixture is synthetic verification evidence and is never a product default.
 
 Fixed NIST Viewer render-density independence. This requires the ignored local NIST inputs:
 
@@ -408,6 +426,7 @@ Current development builds identify as `0.1.1-dev`. This keeps post-RC manifests
 
 Current development snapshot:
 
+- Calibration Center Phase A-C baselines and the explicit offline Study binding gate pass locally: Model `34/34`, closed-schema/source-identity loader `13/13`, ViewModel workflow `48/48`, and accepted loaded/not-calculated plus calculated WPF captures. The mandatory CI steps are configured but have not run remotely for this uncommitted work; chart/3D linked selection and physical calibration remain open.
 - SharpGL/WPF viewer foundation.
 - Binary-only WPF Host sample and direct-EXE verification for the separately published Viewer DLL bundle.
 - Standalone viewer host and docked shell host.
@@ -472,6 +491,7 @@ Current development snapshot:
 - The project is not production-ready.
 - Current C3D parsing and viewer scale are inferred from local samples, not an official format or calibration contract. Display-frame fidelity is verified for the fixed sample; physical coordinate and metrology fidelity are not.
 - The current Thickness and Warpage sample files may be byte-identical; do not assume they represent different measurements until new evidence is available.
+- Thickness Repeatability currently accepts representative values from an explicit offline Study. It verifies source bytes and declared unit/frame consistency, but does not independently prove physical unit/frame truth. Source hashing is synchronous, and the Run Chart plus per-point 3D repeatability map are not implemented; large multi-file studies need background progress/cancellation before production use.
 - Algorithm coverage is intentionally narrow; Viewer Foundation v1 and five independent typed C3D inspection slices have passed, but there is no general multi-step executor or broad measurement coverage.
 - ROI/alignment editing is currently an MVP. `Align From ROI` applies translation. Plane flatness supports a numeric operator-configured reference ROI, but interactive ROI drawing, three-point references, plane-derived rotation, 3-2-1, best-fit, and richer guided warnings are not implemented yet.
 - Current measurements are not certified metrology results. Plane/flatness and point-pair dimensions have analytic synthetic golden coverage, but unit provenance, calibration, uncertainty, external reference datasets, automatic feature extraction, and broader independent validation are incomplete.

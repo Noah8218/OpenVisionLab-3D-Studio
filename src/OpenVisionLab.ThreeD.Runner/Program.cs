@@ -38,6 +38,8 @@ static int Run(string[] args)
     var verifyMeshDeviation = args.Contains("--verify-mesh-deviation", StringComparer.OrdinalIgnoreCase);
     var verifyNominalActualComparison = args.Contains("--verify-nominal-actual-comparison", StringComparer.OrdinalIgnoreCase);
     var verifyRegistrationAcceptance = args.Contains("--verify-registration-acceptance", StringComparer.OrdinalIgnoreCase);
+    var verifyThicknessRepeatability = args.Contains("--verify-thickness-repeatability", StringComparer.OrdinalIgnoreCase);
+    var verifyThicknessRepeatabilityStudy = args.Contains("--verify-thickness-repeatability-study", StringComparer.OrdinalIgnoreCase);
     var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
     if (stanfordTransformPath is not null)
@@ -71,6 +73,28 @@ static int Run(string[] args)
         }
 
         return RegistrationAcceptanceGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyThicknessRepeatability)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-thickness-repeatability --report <path>");
+            return 2;
+        }
+
+        return ThicknessRepeatabilityGoldenVerification.Run(reportPath);
+    }
+
+    if (verifyThicknessRepeatabilityStudy)
+    {
+        if (reportPath is null)
+        {
+            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-thickness-repeatability-study --report <path>");
+            return 2;
+        }
+
+        return ThicknessRepeatabilityStudyLoaderVerification.Run(reportPath);
     }
 
     if (verifyMeshDeviation)

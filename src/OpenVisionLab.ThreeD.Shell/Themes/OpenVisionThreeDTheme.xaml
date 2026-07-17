@@ -1,0 +1,95 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#F3F4F6" />
+    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#F9FAFB" />
+    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#D1D5DB" />
+    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#111827" />
+    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#4B5563" />
+    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#6B7280" />
+    <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#0F766E" />
+    <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#115E59" />
+    <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#15803D" />
+    <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#B45309" />
+    <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#B91C1C" />
+    <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#0369A1" />
+    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#9CA3AF" />
+    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#202124" />
+    <SolidColorBrush x:Key="ThreeD.ViewportGridBrush" Color="#4B5563" />
+    <SolidColorBrush x:Key="ThreeD.AxisXBrush" Color="#E05252" />
+    <SolidColorBrush x:Key="ThreeD.AxisYBrush" Color="#2F9D62" />
+    <SolidColorBrush x:Key="ThreeD.AxisZBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#FFF7ED" />
+    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#EFF6FF" />
+
+    <Style x:Key="ThreeD.ModeRadioButtonStyle" TargetType="{x:Type RadioButton}">
+        <Setter Property="MinWidth" Value="82" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <Border x:Name="ModeBorder"
+                            Background="Transparent"
+                            BorderBrush="Transparent"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ThreeD.PanelTitleTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+    </Style>
+
+    <Style x:Key="ThreeD.FieldLabelTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Margin" Value="0,8,0,4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+    </Style>
+
+    <Style x:Key="ThreeD.CalibrationDataGridStyle" TargetType="{x:Type DataGrid}">
+        <Setter Property="AutoGenerateColumns" Value="False" />
+        <Setter Property="CanUserAddRows" Value="False" />
+        <Setter Property="CanUserDeleteRows" Value="False" />
+        <Setter Property="CanUserReorderColumns" Value="False" />
+        <Setter Property="CanUserResizeRows" Value="False" />
+        <Setter Property="HeadersVisibility" Value="Column" />
+        <Setter Property="GridLinesVisibility" Value="Horizontal" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+        <Setter Property="RowBackground" Value="{DynamicResource ThreeD.PanelBrush}" />
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+        <Setter Property="IsReadOnly" Value="True" />
+    </Style>
+</ResourceDictionary>
