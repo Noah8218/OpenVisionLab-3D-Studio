@@ -86,3 +86,5 @@ Library-Noah working tree dirty and passes its Release build with `0` warnings a
 in the immutable vendored `Lib.ThreeD` `2.1.0` package. This is package and
 algorithm-boundary evidence only, not physical calibration, metrology, Gauge R and
 R, or a completed Viewer inspection workflow.
+
+Studio commit `c45ce78` passed Windows Actions run `29569056102` on 2026-07-17. The job's vendored-package and Studio bridge steps succeeded alongside the full Viewer/Runner suite; uploaded artifact metadata is ID `8402387241`, `3,727,932` bytes, and digest `sha256:24080e4ef536a56a5c56a5178822ecfb885c4ae71d96c145e339ded4e0045787`. GitHub's public archive endpoint requires authentication, so this local environment did not independently download or inspect that archive. Library-Noah warning-cleanup commit `c2b5860` separately passed Build run `29569055985`.
