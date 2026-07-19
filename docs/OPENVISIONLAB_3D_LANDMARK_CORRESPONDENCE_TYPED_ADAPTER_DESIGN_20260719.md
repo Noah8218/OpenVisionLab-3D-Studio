@@ -52,7 +52,10 @@ Remaining external gate:
 
 1. Provide four distinct real current `CornerAnchor` outputs and their four
    named reference XYZ values, unit, frame, provenance, revision, and a
-   explicitly chosen normalized-volume threshold.
+   explicitly chosen normalized-volume threshold. Use
+   `docs/OPENVISIONLAB_3D_FOUR_ANCHOR_TEACHING_INPUT_PACKAGE_20260720.md` as
+   the required operator input packet; it intentionally contains no invented
+   fixture values.
 2. Verify a real, non-coplanar source/reference correspondence set through the
    complete `Runner` chain. Until then, do not claim an affine result,
    calibration, metrology accuracy, or a validated production recipe.
@@ -372,20 +375,20 @@ Publish Landmark Correspondence
 6. Regression of Filter, Edge, Line Fit, Line Intersection, Teaching Recipe,
    dock layout, title views, and BinaryHost boundaries.
 
-## Owner input and approval checkpoint
+## Operator input checkpoint for real execution
 
-Implementation remains blocked until all three answers are supplied:
+The v1 implementation and `ExactlyFour` policy are approved and complete.
+Real execution remains blocked until the operator supplies the completed
+four-anchor packet:
 
-1. **Reference evidence:** provide the four named fixture/nominal landmarks,
-   XYZ values, reference frame ID, unit, provenance identifier, and revision.
-2. **Full-XYZ geometry:** confirm that those four source/reference landmarks
-   are intentionally non-coplanar. If the available physical landmarks are
-   planar, choose a separately designed constrained transform instead.
-3. **v1 policy:** approve `ExactlyFour` pairs and an explicit
-   `MinimumNormalizedTetrahedronVolume` teaching value. The value cannot be
-   inferred from the current `3D/Warpage` sample.
+1. **Reference evidence:** four named fixture/nominal landmarks, XYZ values,
+   reference frame ID, unit, provenance identifier, and revision.
+2. **Full-XYZ geometry:** confirmation that source and reference landmark sets
+   are intentionally non-coplanar. If either set is planar, choose a separately
+   designed constrained transform instead.
+3. **Threshold:** one explicit `MinimumNormalizedTetrahedronVolume` value.
+   It cannot be inferred from the current `3D/Warpage` sample.
 
-Once approved, the next implementation order is: typed Core/Data contract ->
-Tools/Runner golden rule -> Shell stale/Preview/Publish -> Tool Lab and fresh
-UI evidence. XYZ Affine implementation follows only after this artifact has
-passed those gates.
+Use `docs/OPENVISIONLAB_3D_FOUR_ANCHOR_TEACHING_INPUT_PACKAGE_20260720.md` to
+capture those inputs. Then run the real Runner parity gate. XYZ Affine remains
+a separate implementation decision after that gate passes.

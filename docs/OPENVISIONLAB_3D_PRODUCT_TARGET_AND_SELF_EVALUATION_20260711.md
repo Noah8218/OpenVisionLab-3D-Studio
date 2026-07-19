@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Product Target And Self Evaluation
 
-Updated: 2026-07-19
+Updated: 2026-07-20
 
 Status: current product-direction source of truth. Older market reviews remain useful as history, but this document controls current priorities when they conflict.
 
@@ -59,7 +59,9 @@ and dock regression after adding the ninth pane. The UI screenshot shows the
 intentionally blocked `0/4` teaching state. A real four-anchor source/reference
 fixture, source/reference provenance, and full-chain Runner replay have not
 been supplied, so XYZ Affine, Re-grid, Thickness, and Warpage execution remain
-blocked. See
+blocked. The operator handoff is now fixed in
+`docs/OPENVISIONLAB_3D_FOUR_ANCHOR_TEACHING_INPUT_PACKAGE_20260720.md`; it
+provides no fabricated coordinate or threshold. See
 `docs/OPENVISIONLAB_3D_LANDMARK_CORRESPONDENCE_TYPED_ADAPTER_DESIGN_20260719.md`.
 
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.

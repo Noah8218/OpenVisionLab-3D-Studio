@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.1",
-  "name": "C3D XYZ Affine Teaching Template",
+  "name": "C3D XYZ Affine Teaching Intake (Two-Corner Scaffold)",
   "source": {
     "id": "source.c3d.height-map",
     "name": "Ori_20240116_094430",
@@ -225,8 +225,8 @@
       "inputEntityIds": [ "derived.corner-ul.01", "derived.corner-lr.01", "reference.fixture-landmarks" ],
       "outputEntityId": "derived.correspondences.01",
       "parameters": [
-        { "name": "Minimum landmarks", "value": "Add 4 affine-independent source/reference landmarks before execution" },
-        { "name": "Reference frame", "value": "Fixture frame must be explicit" }
+        { "name": "Teaching status", "value": "Two-corner scaffold only; complete the four-anchor input package before v1 Preview" },
+        { "name": "Required v1 input", "value": "4 current Published CornerAnchor outputs plus explicit reference XYZ/frame/unit/provenance/revision/threshold" }
       ]
     },
     {
