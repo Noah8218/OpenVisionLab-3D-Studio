@@ -42,7 +42,10 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool IsFilterPreviewRunning => isFilterPreviewRunning;
     public bool IsSelectedStepPreviewRunning =>
-        IsSelectedStepFilter ? isFilterPreviewRunning : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning : IsSelectedStepLineFit && IsLineFitPreviewRunning;
+        IsSelectedStepFilter ? isFilterPreviewRunning
+            : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
+            : IsSelectedStepLineFit ? IsLineFitPreviewRunning
+            : IsSelectedStepLineIntersection && IsLineIntersectionPreviewRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => isFilterPreviewStale;
     public bool IsFilterPreviewPublished => isFilterPreviewPublished;
@@ -84,17 +87,23 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepLineFit
-        ? PreviewSelectedLineFitAsync()
+    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepLineIntersection
+        ? PreviewSelectedLineIntersectionAsync()
+        : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepLineFit
-        ? CanPreviewSelectedLineFit()
+    private bool CanPreviewSelectedStep() => IsSelectedStepLineIntersection
+        ? CanPreviewSelectedLineIntersection()
+        : IsSelectedStepLineFit ? CanPreviewSelectedLineFit()
         : IsSelectedStepHeightDifferenceEdge ? CanPreviewSelectedHeightDifferenceEdge() : CanPreviewSelectedFilter();
 
     private void PublishSelectedStep()
     {
-        if (IsSelectedStepLineFit)
+        if (IsSelectedStepLineIntersection)
+        {
+            PublishSelectedLineIntersection();
+        }
+        else if (IsSelectedStepLineFit)
         {
             PublishSelectedLineFit();
         }
@@ -108,13 +117,19 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepLineFit
+    private bool CanPublishSelectedStep() => IsSelectedStepLineIntersection
+        ? HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished
+        : IsSelectedStepLineFit
         ? HasCurrentLineFitPreview && !IsLineFitPreviewPublished
         : IsSelectedStepHeightDifferenceEdge ? HasCurrentEdgePreview && !IsEdgePreviewPublished : IsSelectedStepFilter && HasCurrentFilterPreview && !isFilterPreviewPublished;
 
     private void CancelSelectedPreview()
     {
-        if (IsSelectedStepLineFit)
+        if (IsSelectedStepLineIntersection)
+        {
+            CancelLineIntersectionPreview();
+        }
+        else if (IsSelectedStepLineFit)
         {
             CancelLineFitPreview();
         }

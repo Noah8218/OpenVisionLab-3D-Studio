@@ -24,6 +24,7 @@ internal static class RunnerApplication
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
+        var toolTeachingLineIntersectionPath = ReadOption(args, "--tool-teaching-line-intersection");
         var toolTeachingStepId = ReadOption(args, "--tool-teaching-step");
         var outputC3DPath = ReadOption(args, "--output-c3d");
         var alignedPointRepeatabilityStudyPath = ReadOption(args, "--aligned-point-repeatability-study");
@@ -40,6 +41,7 @@ internal static class RunnerApplication
         var verifyC3DFilter = args.Contains("--verify-c3d-filter", StringComparer.OrdinalIgnoreCase);
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
         var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
         var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
@@ -89,6 +91,17 @@ internal static class RunnerApplication
             return ToolRecipeLineFitRunnerExecution.Run(toolTeachingLineFitPath, toolTeachingStepId, reportPath);
         }
 
+        if (toolTeachingLineIntersectionPath is not null)
+        {
+            if (toolTeachingStepId is null || reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-line-intersection <recipe> --tool-teaching-step <id> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeLineIntersectionRunnerExecution.Run(toolTeachingLineIntersectionPath, toolTeachingStepId, reportPath);
+        }
+
         if (verifyC3DFilter)
         {
             if (reportPath is null)
@@ -120,6 +133,17 @@ internal static class RunnerApplication
             }
 
             return C3DLineFitGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DLineIntersection)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-line-intersection --report <path>");
+                return 2;
+            }
+
+            return C3DLineIntersectionGoldenVerification.Run(reportPath);
         }
 
         if (stanfordTransformPath is not null)

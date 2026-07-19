@@ -122,6 +122,26 @@ jobs:
           if (-not ((Get-Content $lineSmoke -Raw).Contains('plotPoints=135'))) { throw 'Line Fit residual-plot evidence is missing.' }
           if (-not ((Get-Content $quality -Raw).Contains('ShellScreenshotResult|accepted=True'))) { throw 'Line Fit Workbench screenshot quality was not accepted.' }
 
+      - name: Verify typed C3D Line Intersection adapter
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-line-intersection'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $golden = Join-Path $artifactDir 'golden.txt'
+          $workbench = Join-Path $artifactDir 'workbench.txt'
+          $toolLab = Join-Path $artifactDir 'tool-lab.png'
+          $quality = Join-Path $artifactDir 'tool-lab-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-line-intersection --report $golden
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Intersection Golden verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-tool-line-intersection-workbench $workbench
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Intersection Workbench verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --tool-teaching-recipe recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.corner.ul.01 --line-intersection-tool-lab-screenshot $toolLab --line-intersection-tool-lab-screenshot-quality-report $quality
+          if ($LASTEXITCODE -ne 0) { throw 'Line Intersection Tool Lab screenshot smoke failed.' }
+          if (-not ((Get-Content $golden -Raw).Contains('C3DLineIntersectionGoldenVerification|Pass|cases=9|passed=9|failed=0'))) { throw 'Line Intersection Golden report is incomplete.' }
+          if (-not ((Get-Content $workbench -Raw).Contains('Workbench and headless share exact output hash'))) { throw 'Line Intersection Workbench/headless parity evidence is missing.' }
+          if (-not ((Get-Content $quality -Raw).Contains('LineIntersectionToolLabScreenshotResult|accepted=True'))) { throw 'Line Intersection Tool Lab screenshot quality was not accepted.' }
+
       - name: Verify binary-only Viewer host
         shell: pwsh
         timeout-minutes: 5

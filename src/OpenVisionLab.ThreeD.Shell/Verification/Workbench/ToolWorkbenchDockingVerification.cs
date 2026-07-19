@@ -16,6 +16,7 @@ internal static class ToolWorkbenchDockingVerification
         "linked-view",
         "height-profile",
         "fit-diagnostics",
+        "intersection-evidence",
     ];
 
     private static readonly string[] CalibrationContentIds =
@@ -63,15 +64,15 @@ internal static class ToolWorkbenchDockingVerification
                 ViewerContent = viewerOwner,
             };
             var workbenchContracts = workbench.GetDockingPaneContracts();
-            Check("Workbench exposes seven dock panes", workbenchContracts.Count == 7, Describe(workbenchContracts));
+            Check("Workbench exposes eight dock panes", workbenchContracts.Count == 8, Describe(workbenchContracts));
             Check(
                 "Workbench left pane is Toolbox and does not host Recipe Manager",
                 HasExactIds(workbenchContracts, WorkbenchContentIds)
                 && workbenchContracts.Select(contract => contract.Title).SequenceEqual(
-                    ["Toolbox & Entities", "3D View", "Step Parameters", "Pipeline / Validation", "Session Log", "Height Profile", "Fit Diagnostics"],
+                    ["Toolbox & Entities", "3D View", "Step Parameters", "Pipeline / Validation", "Session Log", "Height Profile", "Fit Diagnostics", "Intersection Evidence"],
                     StringComparer.Ordinal),
                 Describe(workbenchContracts));
-            Check("Workbench hosts all seven dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
+            Check("Workbench hosts all eight dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));
             Check("Workbench required panes cannot close", workbenchContracts.All(contract => !contract.CanClose), Describe(workbenchContracts));
             Check("Fit Diagnostics may hide without closing", workbenchContracts.Single(contract => contract.ContentId == "fit-diagnostics").CanHide == true, Describe(workbenchContracts));
@@ -103,6 +104,8 @@ internal static class ToolWorkbenchDockingVerification
                 $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsProfilePaneSelected}");
             workbench.ActivateFitDiagnosticsPane();
             Check("Workbench Fit Diagnostics command selects docked diagnostics pane", workbench.IsBottomPaneAttached && workbench.IsFitDiagnosticsPaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsFitDiagnosticsPaneSelected}");
+            workbench.ActivateIntersectionEvidencePane();
+            Check("Workbench Intersection Evidence command selects docked evidence pane", workbench.IsBottomPaneAttached && workbench.IsIntersectionEvidencePaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsIntersectionEvidencePaneSelected}");
 
             var advancedMarker = new object();
             var advanced = new OpenVisionDockWorkspaceView
@@ -114,9 +117,10 @@ internal static class ToolWorkbenchDockingVerification
                 LinkedViewContent = advancedMarker,
                 ProfileContent = advancedMarker,
                 FitDiagnosticsContent = advancedMarker,
+                IntersectionEvidenceContent = advancedMarker,
             };
             var advancedContracts = advanced.GetDockingPaneContracts();
-            Check("Advanced exposes seven dock panes", advancedContracts.Count == 7 && HasExactIds(advancedContracts, WorkbenchContentIds), Describe(advancedContracts));
+            Check("Advanced exposes eight dock panes", advancedContracts.Count == 8 && HasExactIds(advancedContracts, WorkbenchContentIds), Describe(advancedContracts));
             Check("Advanced panes can float and remain required", advancedContracts.All(contract => contract.CanFloat && !contract.CanClose) && advancedContracts.Single(contract => contract.ContentId == "fit-diagnostics").CanHide == true, Describe(advancedContracts));
 
             var calibrationMarker = new object();

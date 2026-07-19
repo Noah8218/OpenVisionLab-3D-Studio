@@ -181,6 +181,13 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.LineFitOutliersVisible)
             or nameof(MainWindowViewModel.LineFitSegmentVisible)
             or nameof(MainWindowViewModel.LineFitSelectedResidualVisible)
+            or nameof(MainWindowViewModel.WorkbenchFirstIntersectionLine)
+            or nameof(MainWindowViewModel.WorkbenchSecondIntersectionLine)
+            or nameof(MainWindowViewModel.WorkbenchLineIntersection)
+            or nameof(MainWindowViewModel.LineIntersectionFirstLineVisible)
+            or nameof(MainWindowViewModel.LineIntersectionSecondLineVisible)
+            or nameof(MainWindowViewModel.LineIntersectionClosestConnectorVisible)
+            or nameof(MainWindowViewModel.LineIntersectionCornerAnchorVisible)
             or nameof(MainWindowViewModel.ResultEntities))
         {
             if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))

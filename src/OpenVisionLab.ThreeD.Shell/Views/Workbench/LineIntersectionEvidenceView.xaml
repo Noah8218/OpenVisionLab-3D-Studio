@@ -1,0 +1,22 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.LineIntersectionEvidenceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.AutomationId="LineIntersectionEvidenceView">
+    <Border Padding="14"
+            Background="{DynamicResource ThreeD.PanelBrush}">
+        <StackPanel>
+            <TextBlock FontWeight="SemiBold" Text="Intersection Evidence" />
+            <TextBlock Margin="0,5,0,0"
+                       FontSize="10.5"
+                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                       TextWrapping="Wrap"
+                       Text="{Binding LineIntersectionExecutionSummary}" />
+            <TextBlock Margin="0,10,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Published inputs" />
+            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionUpstreamSummary}" />
+            <TextBlock Margin="0,10,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Closest-approach result" />
+            <TextBlock FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LineIntersectionEvidenceSummary}" />
+            <TextBlock Margin="0,10,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineIntersectionOutputHashSummary}" />
+            <TextBlock Margin="0,10,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="Midpoint represents the accepted closest-pair anchor in source coordinates; it is not a calibrated physical intersection." />
+        </StackPanel>
+    </Border>
+</UserControl>

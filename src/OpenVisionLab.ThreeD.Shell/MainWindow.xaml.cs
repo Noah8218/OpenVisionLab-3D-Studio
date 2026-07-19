@@ -47,6 +47,8 @@ public partial class MainWindow : Window
     private readonly EventHandler<ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs> _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
+    private readonly EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs> _workbenchLineIntersectionDisplayRequestedHandler;
+    private readonly EventHandler _workbenchLineIntersectionDisplayClearedHandler;
     private readonly EventHandler<WorkbenchLineFitPointSelectedEventArgs> _viewerWorkbenchLineFitPointSelectedHandler;
     private readonly EventHandler<TeachingCaptureStateChangedEventArgs> _viewerTeachingCaptureStateChangedHandler;
     private readonly PropertyChangedEventHandler _viewModelPropertyChangedHandler;
@@ -54,6 +56,7 @@ public partial class MainWindow : Window
     private RecipeManagerWindow? recipeManagerWindow;
     private FilterToolLabWindow? filterToolLabWindow;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
+    private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -115,6 +118,8 @@ public partial class MainWindow : Window
         _workbenchHeightDifferenceEdgeDisplayRequestedHandler = OnWorkbenchHeightDifferenceEdgeDisplayRequested;
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
+        _workbenchLineIntersectionDisplayRequestedHandler = OnWorkbenchLineIntersectionDisplayRequested;
+        _workbenchLineIntersectionDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineIntersection();
         _viewerWorkbenchLineFitPointSelectedHandler = (_, args) => _viewModel.Workbench.SelectLineFitDiagnostic(args.InputPointIndex);
         _viewerTeachingCaptureStateChangedHandler = OnViewerTeachingCaptureStateChanged;
         _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
@@ -139,6 +144,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested += _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
+        _viewModel.Workbench.LineIntersectionDisplayRequested += _workbenchLineIntersectionDisplayRequestedHandler;
+        _viewModel.Workbench.LineIntersectionDisplayCleared += _workbenchLineIntersectionDisplayClearedHandler;
         _viewer.WorkbenchLineFitPointSelected += _viewerWorkbenchLineFitPointSelectedHandler;
         _viewer.TeachingCaptureStateChanged += _viewerTeachingCaptureStateChangedHandler;
 
@@ -187,6 +194,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested -= _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
+        _viewModel.Workbench.LineIntersectionDisplayRequested -= _workbenchLineIntersectionDisplayRequestedHandler;
+        _viewModel.Workbench.LineIntersectionDisplayCleared -= _workbenchLineIntersectionDisplayClearedHandler;
         _viewer.WorkbenchLineFitPointSelected -= _viewerWorkbenchLineFitPointSelectedHandler;
         _viewer.TeachingCaptureStateChanged -= _viewerTeachingCaptureStateChangedHandler;
         _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
@@ -216,6 +225,8 @@ public partial class MainWindow : Window
         var filterToolLabScreenshotQualityReportPath = GetCommandLineValue("--filter-tool-lab-screenshot-quality-report");
         var edgeToolLabScreenshotPath = GetCommandLineValue("--edge-tool-lab-screenshot");
         var edgeToolLabScreenshotQualityReportPath = GetCommandLineValue("--edge-tool-lab-screenshot-quality-report");
+        var lineIntersectionToolLabScreenshotPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot");
+        var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
@@ -260,6 +271,7 @@ public partial class MainWindow : Window
             || recipeManagerScreenshotPath is not null
             || filterToolLabScreenshotPath is not null
             || edgeToolLabScreenshotPath is not null
+            || lineIntersectionToolLabScreenshotPath is not null
             || _viewer.HasConfiguredSmokeScreenshot
             || teachingSelectionSmokeMode is not null
             || profilePointerSmokeReportPath is not null
@@ -295,6 +307,14 @@ public partial class MainWindow : Window
                     && !ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false))
                 {
                     _viewModel.SetViewerSmokeFailed("Edge Tool Lab smoke requires a Height Difference Edge recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (lineIntersectionToolLabScreenshotPath is not null
+                    && !ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("Line Intersection Tool Lab smoke requires a Line Intersection recipe step.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -550,6 +570,19 @@ public partial class MainWindow : Window
                             "EdgeToolLab")))
                 {
                     _viewModel.SetViewerSmokeFailed("Edge Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (lineIntersectionToolLabScreenshotPath is not null
+                    && (lineIntersectionToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            lineIntersectionToolLabWindow,
+                            lineIntersectionToolLabScreenshotPath,
+                            lineIntersectionToolLabScreenshotQualityReportPath,
+                            "LineIntersectionToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("Line Intersection Tool Lab screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -1183,6 +1216,42 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private void OpenLineIntersectionToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: true);
+    }
+
+    private bool ShowLineIntersectionToolLabWindow(bool showMissingLineIntersectionMessage)
+    {
+        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("line-intersection"))
+        {
+            if (showMissingLineIntersectionMessage)
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or add a Line Intersection step before opening Line Intersection Tool Lab.",
+                    "Line Intersection Tool Lab",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        if (lineIntersectionToolLabWindow is null)
+        {
+            lineIntersectionToolLabWindow = new LineIntersectionToolLabWindow(_viewModel.Workbench)
+            {
+                Owner = this
+            };
+            lineIntersectionToolLabWindow.Closed += (_, _) => lineIntersectionToolLabWindow = null;
+        }
+
+        lineIntersectionToolLabWindow.RefreshViews();
+        lineIntersectionToolLabWindow.Show();
+        lineIntersectionToolLabWindow.Activate();
+        return true;
+    }
+
     private void OnWorkbenchHeightDifferenceEdgeDisplayRequested(
         object? sender,
         ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs args)
@@ -1213,6 +1282,26 @@ public partial class MainWindow : Window
         _viewer.ShowWorkbenchLineFit(args.Output, args.IsPublished);
         _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
         ToolWorkbench.ActivateFitDiagnosticsPane();
+    }
+
+    private void OnWorkbenchLineIntersectionDisplayRequested(
+        object? sender,
+        ToolWorkbenchLineIntersectionDisplayRequestEventArgs args)
+    {
+        if (lineIntersectionToolLabWindow is { IsVisible: true })
+        {
+            lineIntersectionToolLabWindow.ShowLineIntersectionResult(args);
+        }
+        _viewer.ShowWorkbenchLineIntersection(args.FirstLine, args.SecondLine, args.Output, args.IsPublished);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+        if (_viewModel.IsExpertWorkspaceSelected)
+        {
+            Workspace.ActivateIntersectionEvidencePane();
+        }
+        else
+        {
+            ToolWorkbench.ActivateIntersectionEvidencePane();
+        }
     }
 
     private void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args)
@@ -1413,6 +1502,7 @@ public partial class MainWindow : Window
     private static bool IsAutomatedShellRun() => Environment.GetCommandLineArgs().Any(argument =>
         argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
 
     private void SyncWorkbenchSourceFromViewer()

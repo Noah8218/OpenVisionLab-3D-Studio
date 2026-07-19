@@ -10,6 +10,7 @@ public sealed partial class ToolWorkbenchViewModel
 {
     private CancellationTokenSource? lineFitPreviewCancellation;
     private C3DLineFeature? lineFitPreviewOutput;
+    private readonly Dictionary<string, C3DLineFeature> publishedLineFitOutputs = new(StringComparer.OrdinalIgnoreCase);
     private bool isLineFitPreviewRunning;
     private bool isLineFitPreviewStale;
     private bool isLineFitPreviewPublished;
@@ -26,6 +27,8 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsLineFitPreviewStale => isLineFitPreviewStale;
     public bool IsLineFitPreviewPublished => isLineFitPreviewPublished;
     internal C3DLineFeature? CurrentLineFitOutput => lineFitPreviewOutput;
+    internal bool TryGetPublishedLineFitOutput(string outputEntityId, out C3DLineFeature? output) =>
+        publishedLineFitOutputs.TryGetValue(outputEntityId, out output);
     public C3DLineFeaturePointDiagnostic? SelectedLineFitDiagnostic
     {
         get => selectedLineFitDiagnostic;
@@ -48,10 +51,9 @@ public sealed partial class ToolWorkbenchViewModel
         {
             var step = SelectedPipelineStep;
             if (step is null || step.InputEntityIds.Count != 1) return "Missing routed EdgePointSet";
-            if (edgePreviewOutput is null || isEdgePreviewStale) return $"{step.InputEntityIds[0]} | no current Edge Preview";
-            return string.Equals(step.InputEntityIds[0], edgePreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase)
-                ? $"{step.InputEntityIds[0]} | {(isEdgePreviewPublished ? "Published | current" : "Preview only | publish required")}"
-                : $"{step.InputEntityIds[0]} | does not match current Edge output";
+            return TryGetPublishedHeightDifferenceEdgeOutput(step.InputEntityIds[0], out var output) && output is not null
+                ? $"{step.InputEntityIds[0]} | Published | {output.ContentSha256[..12]}"
+                : $"{step.InputEntityIds[0]} | no current Published EdgePointSet";
         }
     }
     public string LineFitSelectedDiagnosticSummary => SelectedLineFitDiagnostic is null
@@ -83,8 +85,14 @@ public sealed partial class ToolWorkbenchViewModel
         AppendLog("Preview", $"3D Line Fit Preview started: {step.Id}.");
         try
         {
+            if (!TryGetPublishedHeightDifferenceEdgeOutput(step.InputEntityIds[0], out var publishedEdge) || publishedEdge is null)
+            {
+                step.State = "Waiting for upstream";
+                SetLineFitSummary("The routed EdgePointSet is not current and Published.");
+                return false;
+            }
             var evaluation = await Task.Run(
-                () => ToolRecipeLineFitExecution.Execute(CreateDocument(), step.Id, edgePreviewOutput!, lineFitPreviewCancellation.Token),
+                () => ToolRecipeLineFitExecution.Execute(CreateDocument(), step.Id, publishedEdge, lineFitPreviewCancellation.Token),
                 lineFitPreviewCancellation.Token);
             if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
             {
@@ -171,29 +179,50 @@ public sealed partial class ToolWorkbenchViewModel
     private bool CanPreviewSelectedLineFit()
     {
         if (!IsSelectedStepLineFit || !IsSourceReadyForRecipe || HasPendingStepParameterChanges
-            || isLineFitPreviewRunning || isEdgePreviewRunning || edgePreviewOutput is null || isEdgePreviewStale || !isEdgePreviewPublished
+            || isLineFitPreviewRunning || isEdgePreviewRunning
             || SelectedPipelineStep is null) return false;
-        return ToolRecipeLineFitExecution.TryPrepare(CreateDocument(), SelectedPipelineStep.Id, edgePreviewOutput, out _, out _);
+        return TryGetPublishedHeightDifferenceEdgeOutput(SelectedPipelineStep.InputEntityIds.Single(), out var publishedEdge)
+            && publishedEdge is not null
+            && ToolRecipeLineFitExecution.TryPrepare(CreateDocument(), SelectedPipelineStep.Id, publishedEdge, out _, out _);
     }
 
     private void PublishSelectedLineFit()
     {
         if (SelectedPipelineStep is not { } step || !HasCurrentLineFitPreview) return;
         isLineFitPreviewPublished = true;
+        publishedLineFitOutputs[lineFitPreviewOutput!.OutputEntityId] = lineFitPreviewOutput;
         step.State = "Published";
         SetLineFitSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {lineFitPreviewOutput!.ContentSha256} | feature extraction only, no OK/NG");
         AppendLog("Publish", $"3D Line Fit output published without re-running: {step.OutputEntityId}.");
         RaiseLineFitDisplayRequested(lineFitPreviewOutput, true);
+        RefreshLineIntersectionExecutionState();
     }
 
     private void CancelLineFitPreview() => lineFitPreviewCancellation?.Cancel();
     private void RaiseLineFitDisplayRequested(C3DLineFeature output, bool isPublished) => LineFitDisplayRequested?.Invoke(this, new ToolWorkbenchLineFitDisplayRequestEventArgs(output, isPublished));
 
-    private void MarkLineFitPreviewStaleIfNeeded()
+    private void MarkLineFitPreviewStaleIfNeeded(object? sender = null)
     {
         if (lineFitPreviewOutput is null || isLineFitPreviewRunning) return;
+        if (sender is not null)
+        {
+            var selected = SelectedPipelineStep;
+            var selectedIsLineFit = string.Equals(selected?.ToolId, "three-d-line-fit", StringComparison.Ordinal);
+            var selectedIsCurrentLineFit = selectedIsLineFit
+                && string.Equals(selected?.OutputEntityId, lineFitPreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase);
+            var isSelectedLineFitParameter = selectedIsLineFit
+                && sender is ToolWorkbenchParameterItem parameter
+                && (selected?.Parameters.Contains(parameter) ?? false);
+            if (!selectedIsCurrentLineFit
+                || (!(ReferenceEquals(sender, selected)) && !isSelectedLineFitParameter))
+            {
+                return;
+            }
+        }
         isLineFitPreviewStale = true;
         isLineFitPreviewPublished = false;
+        publishedLineFitOutputs.Clear();
+        MarkLineIntersectionPreviewStaleIfNeeded();
         LineFitResidualPlotPoints.Clear();
         var step = PipelineSteps.FirstOrDefault(item => string.Equals(item.OutputEntityId, lineFitPreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase));
         if (step is not null) step.State = "Preview stale";
@@ -205,6 +234,8 @@ public sealed partial class ToolWorkbenchViewModel
     {
         lineFitPreviewCancellation?.Cancel();
         lineFitPreviewOutput = null;
+        publishedLineFitOutputs.Clear();
+        ClearLineIntersectionPreview("Upstream LineFeature was cleared. Line Intersection Preview was cleared without execution.");
         selectedLineFitDiagnostic = null;
         LineFitResidualPlotPoints.Clear();
         isLineFitPreviewStale = false;
@@ -222,13 +253,17 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
         OnPropertyChanged(nameof(LineFitUpstreamSummary));
         OnPropertyChanged(nameof(LineFitPointDiagnostics));
-        if (SelectedPipelineStep is { } step && IsSelectedStepLineFit && lineFitPreviewOutput is null && !isLineFitPreviewRunning)
+        if (SelectedPipelineStep is { } step && IsSelectedStepLineFit
+            && (lineFitPreviewOutput is null
+                || !string.Equals(lineFitPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+                || isLineFitPreviewStale)
+            && !isLineFitPreviewRunning)
         {
-            if (edgePreviewOutput is null || isEdgePreviewStale || !isEdgePreviewPublished)
+            if (!TryGetPublishedHeightDifferenceEdgeOutput(step.InputEntityIds.Single(), out var publishedEdge) || publishedEdge is null)
             {
                 step.State = "Waiting for upstream";
             }
-            else if (ToolRecipeLineFitExecution.TryPrepare(CreateDocument(), step.Id, edgePreviewOutput, out _, out var message))
+            else if (ToolRecipeLineFitExecution.TryPrepare(CreateDocument(), step.Id, publishedEdge, out _, out var message))
             {
                 step.State = "Ready";
                 lineFitExecutionSummary = "Ready for explicit Preview. Height Difference Edge will not run implicitly.";

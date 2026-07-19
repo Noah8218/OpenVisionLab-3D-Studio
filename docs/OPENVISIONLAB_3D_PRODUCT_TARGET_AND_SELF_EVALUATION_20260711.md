@@ -26,6 +26,25 @@ Load measured 3D data and optional nominal data
 
 For the user's full-XYZ point-cloud workflow, the ordered inspection steps are intended to express `source -> filter -> height-difference edge candidates -> fitted 3D lines/planes -> intersections/correspondence evidence -> XYZ affine transform -> derived 3D map -> thickness/warpage/other measurements -> review`. This is a product direction, not a claim that the generic executor or affine solver exists today.
 
+Current typed-tool chain checkpoint on 2026-07-19: **Filter, Height Difference
+Edge, 3D Line Fit, and Line Intersection v1 are now bounded executable slices.**
+Line Intersection consumes two authored-order current Published `LineFeature`
+inputs, applies full-XYZ closest-approach/gap/acute-angle/support gates, and
+emits a source-coordinate `CornerAnchor` midpoint only as feature evidence.
+The Recipe Workbench carries typed WPG teaching, explicit Preview/Publish,
+independent Published-output tracking for two line branches, an Artifact
+Registry/Navigator node, Viewer overlay/HUD controls, a separate two-viewer
+Tool Lab, and a floatable/hideable `Intersection Evidence` dock pane. Local
+evidence passes build `0/0`, Golden plus synthetic full Runner chain `9/9`, full Workbench/Runner hash parity
+`23/23`, Line Fit regression `14/14`, Edge regression `11/11`, docking `18/18`,
+and a current-build Tool Lab screenshot-quality check. This is not a generic
+graph executor, automatic corner discovery, XYZ affine solver, calibration,
+or physical/metrology claim. See
+`docs/OPENVISIONLAB_3D_LINE_INTERSECTION_TYPED_ADAPTER_IMPLEMENTATION_20260719.md`.
+The earlier 2026-07-19 Filter, Edge, Line Fit, WPG, and Tool Lab checkpoint
+bullets below remain historical evidence; where they say Line Intersection is
+open or blocked, this current checkpoint supersedes only that statement.
+
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.

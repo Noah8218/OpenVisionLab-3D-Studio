@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, or 3D Line Fit to teach typed parameters.";
+    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 3D Line Fit, or Line Intersection to teach typed parameters.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -53,6 +53,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "filter" } step => FormatAdapterStatus(step, FilterStepProperties.MappedNames),
         { ToolId: "height-difference-edge" } step => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "three-d-line-fit" } step => FormatAdapterStatus(step, LineFitStepProperties.MappedNames),
+        { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -221,6 +222,24 @@ public sealed partial class ToolWorkbenchViewModel
                     ["EndpointPolicy"] = lineFit.EndpointPolicy.ToString()
                 };
                 break;
+            case LineIntersectionStepProperties intersection:
+                if (!intersection.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["MaximumClosestApproachDistance"] = intersection.MaximumClosestApproachDistance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MinimumAcuteAngleDegrees"] = intersection.MinimumAcuteAngleDegrees.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MaximumSupportExtension"] = intersection.MaximumSupportExtension.ToString("G17", CultureInfo.InvariantCulture),
+                    ["OutputRole"] = intersection.OutputRole,
+                    ["ClosestApproachPolicy"] = intersection.ClosestApproachPolicy.ToString(),
+                    ["ParallelPolicy"] = intersection.ParallelPolicy.ToString(),
+                    ["SupportPolicy"] = intersection.SupportPolicy.ToString()
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -253,6 +272,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkFilterPreviewStaleIfNeeded(step);
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkLineFitPreviewStaleIfNeeded();
+            MarkLineIntersectionPreviewStaleIfNeeded();
             SetDirty(true);
             RefreshRecipeState();
         }
@@ -276,6 +296,7 @@ public sealed partial class ToolWorkbenchViewModel
             "filter" => FilterStepProperties.From(step),
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "three-d-line-fit" => LineFitStepProperties.From(step),
+            "line-intersection" => LineIntersectionStepProperties.From(step),
             _ => null
         };
 
@@ -300,6 +321,7 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshFilterCommands();
         RefreshHeightDifferenceEdgeCommands();
         RefreshLineFitCommands();
+        RefreshLineIntersectionCommands();
     }
 
     private void SetParameterDraftStatus(string status)
@@ -413,7 +435,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "three-d-line-fit";
+        step.ToolId is "filter" or "height-difference-edge" or "three-d-line-fit" or "line-intersection";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -812,6 +834,122 @@ public sealed class LineFitStepProperties
         if (MinimumInlierScanlineSpan < 2)
         {
             message = "Minimum support span must be at least two grid-index intervals.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+}
+
+public enum LineIntersectionClosestApproachPolicy
+{
+    MidpointOfClosestPoints
+}
+
+public enum LineIntersectionParallelPolicy
+{
+    RejectBelowMinimumAcuteAngle
+}
+
+public enum LineIntersectionSupportPolicy
+{
+    WithinInlierProjectionExtentsWithMaximumExtension
+}
+
+[CategoryOrder("Corner rule", 0)]
+[CategoryOrder("Fixed v1 policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class LineIntersectionStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "MaximumClosestApproachDistance", "MinimumAcuteAngleDegrees", "MaximumSupportExtension",
+        "OutputRole", "ClosestApproachPolicy", "ParallelPolicy", "SupportPolicy"
+    ];
+
+    [Category("Corner rule")]
+    [DisplayName("Maximum closest gap")]
+    [Description("Inclusive full-XYZ closest-approach gap in uncalibrated source coordinates.")]
+    [PropertyOrder(0)]
+    [NumberRange(0, 1000000, 1, 6)]
+    public double MaximumClosestApproachDistance { get; set; }
+
+    [Category("Corner rule")]
+    [DisplayName("Minimum acute angle")]
+    [Description("Minimum included acute angle in degrees. Near-parallel lines are rejected.")]
+    [PropertyOrder(1)]
+    [NumberRange(0, 90, 1, 6)]
+    public double MinimumAcuteAngleDegrees { get; set; }
+
+    [Category("Corner rule")]
+    [DisplayName("Maximum support extension")]
+    [Description("Allowed source-coordinate extrapolation beyond each fitted inlier segment; zero forbids extension.")]
+    [PropertyOrder(2)]
+    [NumberRange(0, 1000000, 1, 6)]
+    public double MaximumSupportExtension { get; set; }
+
+    [Category("Corner rule")]
+    [DisplayName("Output role")]
+    [Description("Named semantic corner role, for example UpperLeftCorner. It does not change geometry.")]
+    [PropertyOrder(3)]
+    public string OutputRole { get; set; } = string.Empty;
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Closest approach")]
+    [PropertyOrder(4)]
+    [ReadOnly(true)]
+    public LineIntersectionClosestApproachPolicy ClosestApproachPolicy { get; set; }
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Parallel handling")]
+    [PropertyOrder(5)]
+    [ReadOnly(true)]
+    public LineIntersectionParallelPolicy ParallelPolicy { get; set; }
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Support handling")]
+    [PropertyOrder(6)]
+    [ReadOnly(true)]
+    public LineIntersectionSupportPolicy SupportPolicy { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [PropertyOrder(7)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static LineIntersectionStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MaximumClosestApproachDistance = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MaximumClosestApproachDistance"), NumberStyles.Float, CultureInfo.InvariantCulture, out var gap) ? gap : 0,
+        MinimumAcuteAngleDegrees = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MinimumAcuteAngleDegrees"), NumberStyles.Float, CultureInfo.InvariantCulture, out var angle) ? angle : 0,
+        MaximumSupportExtension = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MaximumSupportExtension"), NumberStyles.Float, CultureInfo.InvariantCulture, out var extension) ? extension : 0,
+        OutputRole = ToolWorkbenchViewModel.GetParameter(step, "OutputRole") ?? string.Empty,
+        ClosestApproachPolicy = LineIntersectionClosestApproachPolicy.MidpointOfClosestPoints,
+        ParallelPolicy = LineIntersectionParallelPolicy.RejectBelowMinimumAcuteAngle,
+        SupportPolicy = LineIntersectionSupportPolicy.WithinInlierProjectionExtentsWithMaximumExtension,
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(MaximumClosestApproachDistance) || MaximumClosestApproachDistance <= 0)
+        {
+            message = "Maximum closest gap must be finite and greater than zero.";
+            return false;
+        }
+        if (!double.IsFinite(MinimumAcuteAngleDegrees) || MinimumAcuteAngleDegrees <= 0 || MinimumAcuteAngleDegrees > 90)
+        {
+            message = "Minimum acute angle must be finite, greater than zero, and no greater than 90 degrees.";
+            return false;
+        }
+        if (!double.IsFinite(MaximumSupportExtension) || MaximumSupportExtension < 0)
+        {
+            message = "Maximum support extension must be finite and no less than zero.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(OutputRole) || OutputRole != OutputRole.Trim())
+        {
+            message = "Output role is required without surrounding whitespace.";
             return false;
         }
         message = string.Empty;

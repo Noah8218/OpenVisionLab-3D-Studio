@@ -24,6 +24,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Border Padding="3"
@@ -94,8 +95,18 @@
                            AutomationProperties.AutomationId="OpenEdgeToolLabButton"
                            AutomationProperties.Name="Open Height Difference Edge Tool Lab" />
 
+                <ui:Button Grid.Column="5"
+                           Margin="0,0,8,0"
+                           Padding="10,5"
+                           Content="Intersection Tool Lab"
+                           Icon="{ui:SymbolIcon Branch24}"
+                           Click="OpenLineIntersectionToolLabButton_Click"
+                           ToolTip="Open the two-LineFeature to corner-anchor comparison view"
+                           AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
+                           AutomationProperties.Name="Open Line Intersection Tool Lab" />
+
                 <RadioButton x:Name="AdvancedModeButton"
-                             Grid.Column="5"
+                             Grid.Column="6"
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
                              Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"

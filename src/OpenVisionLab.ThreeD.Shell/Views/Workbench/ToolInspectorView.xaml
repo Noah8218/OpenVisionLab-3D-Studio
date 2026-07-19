@@ -322,6 +322,24 @@
                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                             BorderThickness="1"
                             CornerRadius="3"
+                            Visibility="{Binding IsSelectedStepLineIntersection, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold" Text="Corner evidence" />
+                            <TextBlock Margin="0,4,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionExecutionSummary}" />
+                            <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Published inputs" />
+                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionUpstreamSummary}" />
+                            <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Closest-approach evidence" />
+                            <TextBlock FontSize="10.5" TextWrapping="Wrap" Text="{Binding LineIntersectionEvidenceSummary}" />
+                            <TextBlock Margin="0,4,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LineIntersectionOutputHashSummary}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,7,0,0"
+                            Padding="9"
+                            Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
                             Visibility="{Binding IsSelectedStepFilter, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold" Text="Execution evidence" />
@@ -363,6 +381,9 @@
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsSelectedStepLineFit}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelectedStepLineIntersection}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -413,6 +434,9 @@
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsSelectedStepLineFit}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelectedStepLineIntersection}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
                                 </Style.Triggers>

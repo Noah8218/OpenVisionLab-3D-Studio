@@ -83,6 +83,14 @@
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding FitDiagnosticsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="intersectionEvidenceAnchorable"
+                                                     Title="{Binding IntersectionEvidenceTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="intersection-evidence"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="True">
+                            <ContentPresenter Content="{Binding IntersectionEvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
                     </avalonDock:LayoutAnchorablePane>
                 </avalonDock:LayoutPanel>
             </avalonDock:LayoutRoot>

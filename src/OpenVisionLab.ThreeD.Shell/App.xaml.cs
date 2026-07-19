@@ -22,6 +22,7 @@ public partial class App : Application
         const string c3dHeightDistributionVerificationOption = "--verify-c3d-height-distribution";
         const string heightDifferenceEdgeWorkbenchVerificationOption = "--verify-tool-edge-workbench";
         const string lineFitWorkbenchVerificationOption = "--verify-tool-line-fit-workbench";
+        const string lineIntersectionWorkbenchVerificationOption = "--verify-tool-line-intersection-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
         var artifactNavigatorVerificationIndex = Array.FindIndex(
@@ -77,6 +78,27 @@ public partial class App : Application
         var lineFitWorkbenchVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(lineFitWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        var lineIntersectionWorkbenchVerificationIndex = Array.FindIndex(
+            e.Args,
+            argument => argument.Equals(lineIntersectionWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (lineIntersectionWorkbenchVerificationIndex >= 0)
+        {
+            if (lineIntersectionWorkbenchVerificationIndex + 1 >= e.Args.Length)
+            {
+                Console.WriteLine($"{lineIntersectionWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolLineIntersectionWorkbenchVerification.Verify(e.Args[lineIntersectionWorkbenchVerificationIndex + 1], out var detail);
+                return (Passed: passed, Summary: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Summary);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         if (lineFitWorkbenchVerificationIndex >= 0)
         {
             if (lineFitWorkbenchVerificationIndex + 1 >= e.Args.Length)

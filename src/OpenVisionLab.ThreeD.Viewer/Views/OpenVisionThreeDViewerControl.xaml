@@ -83,6 +83,21 @@
                                           IsCheckable="True"
                                           IsChecked="{Binding LineFitSelectedResidualVisible, Mode=TwoWay}" />
                             </MenuItem>
+                            <MenuItem Header="Line Intersection overlay"
+                                      AutomationProperties.Name="Line Intersection overlay display options">
+                                <MenuItem Header="First fitted line"
+                                          IsCheckable="True"
+                                          IsChecked="{Binding LineIntersectionFirstLineVisible, Mode=TwoWay}" />
+                                <MenuItem Header="Second fitted line"
+                                          IsCheckable="True"
+                                          IsChecked="{Binding LineIntersectionSecondLineVisible, Mode=TwoWay}" />
+                                <MenuItem Header="Closest-approach connector"
+                                          IsCheckable="True"
+                                          IsChecked="{Binding LineIntersectionClosestConnectorVisible, Mode=TwoWay}" />
+                                <MenuItem Header="Corner anchor midpoint"
+                                          IsCheckable="True"
+                                          IsChecked="{Binding LineIntersectionCornerAnchorVisible, Mode=TwoWay}" />
+                            </MenuItem>
                         </MenuItem>
                     </Menu>
                 </StackPanel>
@@ -755,6 +770,21 @@
                                       IsCheckable="True"
                                       IsChecked="{Binding LineFitSelectedResidualVisible, Mode=TwoWay}" />
                         </MenuItem>
+                        <MenuItem Header="Line Intersection overlay"
+                                  AutomationProperties.Name="Line Intersection overlay display options">
+                            <MenuItem Header="First fitted line"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding LineIntersectionFirstLineVisible, Mode=TwoWay}" />
+                            <MenuItem Header="Second fitted line"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding LineIntersectionSecondLineVisible, Mode=TwoWay}" />
+                            <MenuItem Header="Closest-approach connector"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding LineIntersectionClosestConnectorVisible, Mode=TwoWay}" />
+                            <MenuItem Header="Corner anchor midpoint"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding LineIntersectionCornerAnchorVisible, Mode=TwoWay}" />
+                        </MenuItem>
                     </ContextMenu>
                 </sharpgl:OpenGLControl.ContextMenu>
             </sharpgl:OpenGLControl>
@@ -944,6 +974,13 @@
                                TextWrapping="Wrap"
                                Visibility="{Binding LineFitHudVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding LineFitHudSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#f9a8d4"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding LineIntersectionHudVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding LineIntersectionHudSummary}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"

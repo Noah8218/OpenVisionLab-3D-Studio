@@ -117,8 +117,13 @@
       "inputEntityIds": [ "derived.line-ul-horizontal.01", "derived.line-ul-vertical.01" ],
       "outputEntityId": "derived.corner-ul.01",
       "parameters": [
-        { "name": "Max gap", "value": "Teach acceptance gap" },
-        { "name": "Output", "value": "Upper-left corner anchor" }
+        { "name": "MaximumClosestApproachDistance", "value": "Set explicitly" },
+        { "name": "MinimumAcuteAngleDegrees", "value": "Set explicitly" },
+        { "name": "MaximumSupportExtension", "value": "Set explicitly" },
+        { "name": "OutputRole", "value": "UpperLeftCorner" },
+        { "name": "ClosestApproachPolicy", "value": "MidpointOfClosestPoints" },
+        { "name": "ParallelPolicy", "value": "RejectBelowMinimumAcuteAngle" },
+        { "name": "SupportPolicy", "value": "WithinInlierProjectionExtentsWithMaximumExtension" }
       ]
     },
     {
@@ -203,8 +208,13 @@
       "inputEntityIds": [ "derived.line-lr-horizontal.01", "derived.line-lr-vertical.01" ],
       "outputEntityId": "derived.corner-lr.01",
       "parameters": [
-        { "name": "Max gap", "value": "Teach acceptance gap" },
-        { "name": "Output", "value": "Lower-right corner anchor" }
+        { "name": "MaximumClosestApproachDistance", "value": "Set explicitly" },
+        { "name": "MinimumAcuteAngleDegrees", "value": "Set explicitly" },
+        { "name": "MaximumSupportExtension", "value": "Set explicitly" },
+        { "name": "OutputRole", "value": "LowerRightCorner" },
+        { "name": "ClosestApproachPolicy", "value": "MidpointOfClosestPoints" },
+        { "name": "ParallelPolicy", "value": "RejectBelowMinimumAcuteAngle" },
+        { "name": "SupportPolicy", "value": "WithinInlierProjectionExtentsWithMaximumExtension" }
       ]
     },
     {

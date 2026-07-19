@@ -21,6 +21,7 @@
                                       LinkedViewTitle="Session Log"
                                       ProfileTitle="Height Profile"
                                       FitDiagnosticsTitle="Fit Diagnostics"
+                                      IntersectionEvidenceTitle="Intersection Evidence"
                                       IsBottomPaneExpanded="{Binding Workbench.IsPipelineReviewExpanded}">
         <dock:OpenVisionDockWorkspaceView.DataLayersContent>
             <workbench:ToolboxEntityExplorerView DataContext="{Binding Workbench}" />
@@ -169,5 +170,9 @@
         <dock:OpenVisionDockWorkspaceView.FitDiagnosticsContent>
             <workbench:LineFitDiagnosticsView />
         </dock:OpenVisionDockWorkspaceView.FitDiagnosticsContent>
+
+        <dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+            <workbench:LineIntersectionEvidenceView />
+        </dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
     </dock:OpenVisionDockWorkspaceView>
 </UserControl>

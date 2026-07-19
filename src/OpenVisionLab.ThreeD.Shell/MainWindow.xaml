@@ -30,7 +30,8 @@
         <shellViews:StudioHeaderView DockPanel.Dock="Top"
                                      RecipeManagerRequested="OpenRecipeManagerRequested"
                                      FilterToolLabRequested="OpenFilterToolLabRequested"
-                                     EdgeToolLabRequested="OpenEdgeToolLabRequested" />
+                                     EdgeToolLabRequested="OpenEdgeToolLabRequested"
+                                     LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested" />
 
         <Grid>
         <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"
@@ -1217,6 +1218,9 @@
             <dock:OpenVisionDockWorkspaceView.ProfileContent>
                 <workbench:HeightProfileView />
             </dock:OpenVisionDockWorkspaceView.ProfileContent>
+            <dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+                <workbench:LineIntersectionEvidenceView DataContext="{Binding Workbench}" />
+            </dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
         </dock:OpenVisionDockWorkspaceView>
         <views:CalibrationCenterView DataContext="{Binding Calibration}"
                                      Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />

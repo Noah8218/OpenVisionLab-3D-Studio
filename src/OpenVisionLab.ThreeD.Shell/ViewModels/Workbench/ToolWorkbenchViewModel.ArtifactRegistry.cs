@@ -168,44 +168,60 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         if (string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal)
-            && edgePreviewOutput is not null
-            && string.Equals(
-                edgePreviewOutput.OutputEntityId,
-                step.OutputEntityId,
-                StringComparison.OrdinalIgnoreCase))
+            && TryGetPublishedHeightDifferenceEdgeOutput(step.OutputEntityId, out var publishedEdge)
+            && publishedEdge is not null)
         {
             return new ToolWorkbenchArtifactItem(
-                edgePreviewOutput.OutputEntityId,
+                publishedEdge.OutputEntityId,
                 step.ToolName,
                 "EdgePointSet",
-                isEdgePreviewStale ? "Stale" : isEdgePreviewPublished ? "Published" : "Preview",
-                edgePreviewOutput.RootSourceEntityId,
-                edgePreviewOutput.InputEntityId,
-                edgePreviewOutput.Unit,
-                edgePreviewOutput.FrameId,
-                edgePreviewOutput.ContentSha256,
-                $"{edgePreviewOutput.Points.Count:N0} points | {edgePreviewOutput.Provenance}",
+                "Published",
+                publishedEdge.RootSourceEntityId,
+                publishedEdge.InputEntityId,
+                publishedEdge.Unit,
+                publishedEdge.FrameId,
+                publishedEdge.ContentSha256,
+                $"{publishedEdge.Points.Count:N0} points | {publishedEdge.Provenance}",
                 step,
                 "EdgePointSet");
         }
 
         if (string.Equals(step.ToolId, "three-d-line-fit", StringComparison.Ordinal)
-            && lineFitPreviewOutput is not null
-            && string.Equals(lineFitPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            && TryGetPublishedLineFitOutput(step.OutputEntityId, out var publishedLine)
+            && publishedLine is not null)
         {
             return new ToolWorkbenchArtifactItem(
-                lineFitPreviewOutput.OutputEntityId,
+                publishedLine.OutputEntityId,
                 step.ToolName,
                 "LineFeature",
-                isLineFitPreviewStale ? "Stale" : isLineFitPreviewPublished ? "Published" : "Preview",
-                lineFitPreviewOutput.RootSourceEntityId,
-                lineFitPreviewOutput.InputEdgePointSetEntityId,
-                lineFitPreviewOutput.Unit,
-                lineFitPreviewOutput.FrameId,
-                lineFitPreviewOutput.ContentSha256,
-                $"{lineFitPreviewOutput.Diagnostics.InlierCount:N0}/{lineFitPreviewOutput.Diagnostics.InputPointCount:N0} inliers | {lineFitPreviewOutput.Provenance}",
+                "Published",
+                publishedLine.RootSourceEntityId,
+                publishedLine.InputEdgePointSetEntityId,
+                publishedLine.Unit,
+                publishedLine.FrameId,
+                publishedLine.ContentSha256,
+                $"{publishedLine.Diagnostics.InlierCount:N0}/{publishedLine.Diagnostics.InputPointCount:N0} inliers | {publishedLine.Provenance}",
                 step,
                 "LineFeature");
+        }
+
+        if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal)
+            && TryGetPublishedLineIntersectionOutput(step.OutputEntityId, out var publishedIntersection)
+            && publishedIntersection is not null)
+        {
+            return new ToolWorkbenchArtifactItem(
+                publishedIntersection.OutputEntityId,
+                step.ToolName,
+                "CornerAnchor",
+                "Published",
+                publishedIntersection.RootSourceEntityId,
+                $"{publishedIntersection.FirstLineEntityId}; {publishedIntersection.SecondLineEntityId}",
+                publishedIntersection.Unit,
+                publishedIntersection.FrameId,
+                publishedIntersection.ContentSha256,
+                $"{publishedIntersection.OutputRole} | gap {publishedIntersection.ClosestApproachDistance:G6} | acute {publishedIntersection.AcuteAngleDegrees:G6} degrees",
+                step,
+                "CornerAnchor");
         }
 
         return new ToolWorkbenchArtifactItem(

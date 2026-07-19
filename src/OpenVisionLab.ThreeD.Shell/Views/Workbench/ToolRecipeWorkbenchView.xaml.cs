@@ -24,6 +24,12 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
                 DataContextProperty,
                 new Binding("DataContext.Workbench") { Source = this });
         }
+        if (DockWorkspace.IntersectionEvidenceContent is LineIntersectionEvidenceView intersectionEvidenceView)
+        {
+            intersectionEvidenceView.SetBinding(
+                DataContextProperty,
+                new Binding("DataContext.Workbench") { Source = this });
+        }
     }
 
     public object? ViewerContent
@@ -54,6 +60,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool IsFitDiagnosticsPaneSelected => DockWorkspace.IsFitDiagnosticsPaneSelected;
 
+    public void ActivateIntersectionEvidencePane() => DockWorkspace.ActivateIntersectionEvidencePane();
+
+    public bool IsIntersectionEvidencePaneSelected => DockWorkspace.IsIntersectionEvidencePaneSelected;
+
     public bool HasAllDockContentHosts =>
         DockWorkspace.DataLayersContent is not null
         && DockWorkspace.ViewerContent is not null
@@ -61,7 +71,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         && DockWorkspace.EvidenceContent is not null
         && DockWorkspace.LinkedViewContent is not null
         && DockWorkspace.ProfileContent is not null
-        && DockWorkspace.FitDiagnosticsContent is not null;
+        && DockWorkspace.FitDiagnosticsContent is not null
+        && DockWorkspace.IntersectionEvidenceContent is not null;
 
     public bool CommitPendingParameterEdit(out string message)
     {

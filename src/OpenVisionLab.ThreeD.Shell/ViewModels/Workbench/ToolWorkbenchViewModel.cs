@@ -75,7 +75,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Feature & Datum", "2-Point Line", "two-point-line", 1, "HeightField", "LineFeature", "Construct a named line from two recipe-owned point picks.", [new("Point A", "Pick during teaching"), new("Point B", "Pick during teaching")]),
             new("Feature & Datum", "3-Point Plane", "three-point-plane", 1, "HeightField", "PlaneFeature", "Construct a datum plane from three recipe-owned point picks.", [new("Point A/B/C", "Pick during teaching"), new("Degeneracy", "Reject collinear")]),
             new("Feature & Datum", "3D Line Fit", "three-d-line-fit", 1, "Published EdgePointSet", "LineFeature", "Fit one deterministic full-XYZ line to an explicit published edge-point entity.", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "Set explicitly"), new("MinimumInlierCount", "Set explicitly"), new("MinimumInlierRatio", "Set explicitly"), new("MinimumInlierScanlineSpan", "Set explicitly"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]),
-            new("Feature & Datum", "Line Intersection", "line-intersection", 2, "LineFeature + LineFeature", "CornerAnchor", "Accept a corner only when two fitted lines meet the closest-approach tolerance.", [new("Max gap", "Set during teaching"), new("Output", "Named corner")]),
+            new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
             new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 2, "CornerAnchor + Reference landmark set", "CorrespondenceSet", "Declare the source-to-reference landmark mapping needed by a later transform.", [new("Minimum landmarks", "4 affine-independent"), new("Reference frame", "Explicit")]),
             new("Transform", "XYZ Affine Transform", "xyz-affine-transform", 1, "CorrespondenceSet", "TransformedPointCloud", "Apply a full XYZ affine transform only after valid source/reference landmarks exist.", [new("Minimum landmarks", "4 affine-independent"), new("Residual", "Review before Run")]),
             new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "TransformedPointCloud", "TransformedHeightField", "Resample transformed XYZ data into an explicit inspection grid.", [new("Grid frame", "Selected transform"), new("Hole policy", "Explicit")]),
@@ -271,6 +271,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshFilterExecutionState();
             RefreshHeightDifferenceEdgeExecutionState();
             RefreshLineFitExecutionState();
+            RefreshLineIntersectionExecutionState();
             RefreshStepCommands();
             RefreshNavigatorSelection();
         }
@@ -1277,6 +1278,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshFilterExecutionState();
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshLineFitExecutionState();
+        RefreshLineIntersectionExecutionState();
         RefreshAdapterCoverage();
         OnPropertyChanged(nameof(ValidationSummary));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
@@ -1645,7 +1647,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         MarkFilterPreviewStaleIfNeeded(sender);
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
-        MarkLineFitPreviewStaleIfNeeded();
+        MarkLineFitPreviewStaleIfNeeded(sender);
+        MarkLineIntersectionPreviewStaleIfNeeded(sender);
         SetDirty(true);
         RefreshRecipeState();
     }
@@ -1696,6 +1699,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         moveSelectedStepDownCommand.RaiseCanExecuteChanged();
         RefreshFilterCommands();
         RefreshLineFitCommands();
+        RefreshLineIntersectionCommands();
     }
 
     private string CreateUniqueStepId(string toolId)

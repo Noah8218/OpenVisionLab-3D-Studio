@@ -105,6 +105,20 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Fit Diagnostics", OnFitDiagnosticsTitleChanged));
 
+    public static readonly DependencyProperty IntersectionEvidenceContentProperty =
+        DependencyProperty.Register(
+            nameof(IntersectionEvidenceContent),
+            typeof(object),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty IntersectionEvidenceTitleProperty =
+        DependencyProperty.Register(
+            nameof(IntersectionEvidenceTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Intersection Evidence", OnIntersectionEvidenceTitleChanged));
+
     public static readonly DependencyProperty IsBottomPaneExpandedProperty =
         DependencyProperty.Register(
             nameof(IsBottomPaneExpanded),
@@ -203,6 +217,18 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(FitDiagnosticsTitleProperty, value);
     }
 
+    public object? IntersectionEvidenceContent
+    {
+        get => GetValue(IntersectionEvidenceContentProperty);
+        set => SetValue(IntersectionEvidenceContentProperty, value);
+    }
+
+    public string IntersectionEvidenceTitle
+    {
+        get => (string)GetValue(IntersectionEvidenceTitleProperty);
+        set => SetValue(IntersectionEvidenceTitleProperty, value);
+    }
+
     public bool IsBottomPaneExpanded
     {
         get => (bool)GetValue(IsBottomPaneExpandedProperty);
@@ -218,6 +244,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         ToContract(linkedViewAnchorable),
         ToContract(profileAnchorable),
         ToContract(fitDiagnosticsAnchorable),
+        ToContract(intersectionEvidenceAnchorable),
     ];
 
     public void ActivateProfilePane()
@@ -241,6 +268,15 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     }
 
     public bool IsFitDiagnosticsPaneSelected => fitDiagnosticsAnchorable.IsSelected && fitDiagnosticsAnchorable.IsActive;
+
+    public void ActivateIntersectionEvidencePane()
+    {
+        if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
+        intersectionEvidenceAnchorable.IsSelected = true;
+        intersectionEvidenceAnchorable.IsActive = true;
+    }
+
+    public bool IsIntersectionEvidencePaneSelected => intersectionEvidenceAnchorable.IsSelected && intersectionEvidenceAnchorable.IsActive;
 
     public DockingFloatDockResult VerifyFirstPaneFloatDockRoundTrip()
     {
@@ -346,6 +382,14 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         }
     }
 
+    private static void OnIntersectionEvidenceTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.intersectionEvidenceAnchorable is not null)
+        {
+            view.intersectionEvidenceAnchorable.Title = args.NewValue as string ?? string.Empty;
+        }
+    }
+
     private static void OnIsBottomPaneExpandedChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
         if (owner is OpenVisionDockWorkspaceView view && view.evidencePane is not null)
@@ -363,6 +407,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         linkedViewAnchorable.Title = LinkedViewTitle;
         profileAnchorable.Title = ProfileTitle;
         fitDiagnosticsAnchorable.Title = FitDiagnosticsTitle;
+        intersectionEvidenceAnchorable.Title = IntersectionEvidenceTitle;
     }
 
     private void ApplyInitialDockSizes()

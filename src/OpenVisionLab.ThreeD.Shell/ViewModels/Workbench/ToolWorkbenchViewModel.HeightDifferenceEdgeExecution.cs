@@ -10,6 +10,7 @@ public sealed partial class ToolWorkbenchViewModel
     private static readonly string[] EdgePolarityOptions = ["Select polarity", "Rising", "Falling", "Absolute"];
     private CancellationTokenSource? edgePreviewCancellation;
     private C3DHeightDifferenceEdgePointSet? edgePreviewOutput;
+    private readonly Dictionary<string, C3DHeightDifferenceEdgePointSet> publishedEdgeOutputs = new(StringComparer.OrdinalIgnoreCase);
     private bool isEdgePreviewRunning;
     private bool isEdgePreviewStale;
     private bool isEdgePreviewPublished;
@@ -24,6 +25,8 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsEdgePreviewStale => isEdgePreviewStale;
     public bool IsEdgePreviewPublished => isEdgePreviewPublished;
     internal C3DHeightDifferenceEdgePointSet? CurrentHeightDifferenceEdgeOutput => edgePreviewOutput;
+    internal bool TryGetPublishedHeightDifferenceEdgeOutput(string outputEntityId, out C3DHeightDifferenceEdgePointSet? output) =>
+        publishedEdgeOutputs.TryGetValue(outputEntityId, out output);
     public IReadOnlyList<string> HeightDifferenceEdgeComparisonAxisOptions => EdgeAxisOptions;
     public IReadOnlyList<string> HeightDifferenceEdgePolarityOptions => EdgePolarityOptions;
 
@@ -211,6 +214,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         isEdgePreviewPublished = true;
+        publishedEdgeOutputs[edgePreviewOutput!.OutputEntityId] = edgePreviewOutput;
         step.State = "Published";
         SetEdgeSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {edgePreviewOutput!.ContentSha256} | feature extraction only, no OK/NG");
         RefreshLineFitExecutionState();
@@ -261,10 +265,13 @@ public sealed partial class ToolWorkbenchViewModel
             {
                 var selected = SelectedPipelineStep;
                 var selectedIsEdge = string.Equals(selected?.ToolId, "height-difference-edge", StringComparison.Ordinal);
+                var selectedIsCurrentEdge = selectedIsEdge
+                    && string.Equals(selected?.OutputEntityId, edgePreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase);
                 var isSelectedEdgeParameter = selectedIsEdge
                     && sender is ToolWorkbenchParameterItem parameter
                     && (selected?.Parameters.Contains(parameter) ?? false);
-                if (!(selectedIsEdge && ReferenceEquals(sender, selected)) && !isSelectedEdgeParameter)
+                if (!selectedIsCurrentEdge
+                    || (!(ReferenceEquals(sender, selected)) && !isSelectedEdgeParameter))
                 {
                     return;
                 }
@@ -287,6 +294,7 @@ public sealed partial class ToolWorkbenchViewModel
             step.State = "Preview stale";
         }
         SetEdgeSummary(summary);
+        publishedEdgeOutputs.Clear();
         MarkLineFitPreviewStaleIfNeeded();
     }
 
@@ -296,6 +304,7 @@ public sealed partial class ToolWorkbenchViewModel
         edgePreviewOutput = null;
         isEdgePreviewStale = false;
         isEdgePreviewPublished = false;
+        publishedEdgeOutputs.Clear();
         SetEdgeSummary(summary);
         ClearLineFitPreview("Upstream EdgePointSet was cleared. Line Fit Preview was cleared without execution.");
     }
@@ -312,7 +321,10 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
 
         if (SelectedPipelineStep is { } step && IsSelectedStepHeightDifferenceEdge
-            && edgePreviewOutput is null && !isEdgePreviewRunning)
+            && (edgePreviewOutput is null
+                || !string.Equals(edgePreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+                || isEdgePreviewStale)
+            && !isEdgePreviewRunning)
         {
             if (filterPreviewOutput is null || isFilterPreviewStale || !isFilterPreviewPublished)
             {

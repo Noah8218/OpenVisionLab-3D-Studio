@@ -142,6 +142,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetAppliedTeachingSelections([]);
         viewModel.ClearWorkbenchHeightDifferenceEdge();
         viewModel.ClearWorkbenchLineFit();
+        viewModel.ClearWorkbenchLineIntersection();
         RaiseTeachingCaptureStateChanged();
     }
 
@@ -159,6 +160,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         DrawWorkbenchHeightDifferenceEdge(gl);
         DrawWorkbenchLineFit(gl);
+        DrawWorkbenchLineIntersection(gl);
 
         var capture = viewModel.TeachingCaptureSnapshot;
         if (capture.IsActive)
@@ -274,6 +276,58 @@ public sealed partial class OpenVisionThreeDViewerControl
             gl.Vertex(position.X, position.Y, position.Z);
             gl.End();
         }
+    }
+
+    private void DrawWorkbenchLineIntersection(OpenGL gl)
+    {
+        var output = viewModel.WorkbenchLineIntersection;
+        var firstLine = viewModel.WorkbenchFirstIntersectionLine;
+        var secondLine = viewModel.WorkbenchSecondIntersectionLine;
+        if (firstLine is null || secondLine is null || c3dSample is null) return;
+
+        if (viewModel.LineIntersectionFirstLineVisible)
+        {
+            DrawWorkbenchLineSegment(gl, firstLine, 0.10, 0.90, 0.82);
+        }
+
+        if (viewModel.LineIntersectionSecondLineVisible)
+        {
+            DrawWorkbenchLineSegment(gl, secondLine, 0.72, 0.45, 1.00);
+        }
+
+        if (output is not null && viewModel.LineIntersectionClosestConnectorVisible)
+        {
+            var firstClosest = CreateC3DGridDisplayPosition(output.FirstClosestZ, output.FirstClosestX, output.FirstClosestY);
+            var secondClosest = CreateC3DGridDisplayPosition(output.SecondClosestZ, output.SecondClosestX, output.SecondClosestY);
+            gl.LineWidth(3.0f);
+            gl.Color(1.0, 0.74, 0.16);
+            gl.Begin(OpenGL.GL_LINES);
+            gl.Vertex(firstClosest.X, firstClosest.Y, firstClosest.Z);
+            gl.Vertex(secondClosest.X, secondClosest.Y, secondClosest.Z);
+            gl.End();
+        }
+
+        if (output is not null && viewModel.LineIntersectionCornerAnchorVisible)
+        {
+            var corner = CreateC3DGridDisplayPosition(output.CornerAnchorZ, output.CornerAnchorX, output.CornerAnchorY);
+            gl.PointSize(15.0f);
+            gl.Color(1.0, 0.20, 0.65);
+            gl.Begin(OpenGL.GL_POINTS);
+            gl.Vertex(corner.X, corner.Y, corner.Z);
+            gl.End();
+        }
+    }
+
+    private void DrawWorkbenchLineSegment(OpenGL gl, C3DLineFeature line, double red, double green, double blue)
+    {
+        var start = CreateC3DGridDisplayPosition(line.SegmentStartZ, line.SegmentStartX, line.SegmentStartY);
+        var end = CreateC3DGridDisplayPosition(line.SegmentEndZ, line.SegmentEndX, line.SegmentEndY);
+        gl.LineWidth(4.0f);
+        gl.Color(red, green, blue);
+        gl.Begin(OpenGL.GL_LINES);
+        gl.Vertex(start.X, start.Y, start.Z);
+        gl.Vertex(end.X, end.Y, end.Z);
+        gl.End();
     }
 
     private bool IsSelectionForCurrentC3DGrid(ToolRecipeSelection selection) =>

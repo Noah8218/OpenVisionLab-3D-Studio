@@ -1,0 +1,118 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.LineIntersectionToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        Title="Line Intersection Tool Lab | OpenVisionLab 3D Studio"
+        Width="1600"
+        Height="920"
+        MinWidth="1120"
+        MinHeight="700"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="LineIntersectionToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56"
+                                  ResizeBorderThickness="6"
+                                  GlassFrameThickness="0"
+                                  UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="280" />
+        </Grid.RowDefinitions>
+
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="Line Intersection Tool Lab"
+                                  StatusText="Published line inputs / corner evidence" />
+
+        <Border Grid.Row="1"
+                Margin="16,16,16,0"
+                Padding="16,12"
+                Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="PointScan24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
+                                   Text="Full-XYZ Line Intersection Tool Lab" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
+                                   Text="Two named Published LineFeature inputs are compared. The output is a closest-approach midpoint anchor, never an implied calibrated intersection." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="Preview Intersection"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}"
+                               ToolTip="Explicitly evaluate the two published fitted lines"
+                               AutomationProperties.Name="Preview Line Intersection" />
+                    <ui:Button Margin="0,0,6,0" Content="Show Inputs"
+                               Icon="{ui:SymbolIcon Branch24}"
+                               Click="ShowInputsButton_Click"
+                               ToolTip="Refresh the two exact published LineFeature overlays"
+                               AutomationProperties.Name="Show Line Intersection inputs" />
+                    <ui:Button Content="Publish Intersection"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}"
+                               ToolTip="Publish the current corner-anchor Preview without running again"
+                               AutomationProperties.Name="Publish Line Intersection output" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="Inputs | Published LineFeature A + B" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionUpstreamSummary}" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="Output | Corner Anchor Evidence" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionEvidenceSummary}" />
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionOutputHashSummary}" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Margin="16,0,16,16" Background="{DynamicResource ThreeD.PanelBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+            <workbench:ToolInspectorView />
+        </Border>
+    </Grid>
+</Window>

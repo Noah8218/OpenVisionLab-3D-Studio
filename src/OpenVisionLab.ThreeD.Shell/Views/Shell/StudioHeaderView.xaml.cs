@@ -17,6 +17,7 @@ public partial class StudioHeaderView : UserControl
     public event EventHandler? RecipeManagerRequested;
     public event EventHandler? FilterToolLabRequested;
     public event EventHandler? EdgeToolLabRequested;
+    public event EventHandler? LineIntersectionToolLabRequested;
 
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>
         RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
@@ -26,4 +27,7 @@ public partial class StudioHeaderView : UserControl
 
     private void OpenEdgeToolLabButton_Click(object sender, RoutedEventArgs args) =>
         EdgeToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenLineIntersectionToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        LineIntersectionToolLabRequested?.Invoke(this, EventArgs.Empty);
 }
