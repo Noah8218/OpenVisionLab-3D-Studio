@@ -1,7 +1,61 @@
 # OpenVisionLab 3D Landmark Correspondence Typed Adapter v1 Design
 
-Updated: 2026-07-19
-Status: **Proposed - owner approval required before implementation**
+Updated: 2026-07-20
+Status: **Implemented v1 boundary — real fixture execution remains blocked**
+
+Owner approval recorded 2026-07-19: `ExactlyFour` pairs,
+`CurrentPublishedCornerAnchor` inputs, non-degenerate source/reference
+tetrahedra, and a distinct later XYZ Affine tool were all approved. No
+fixture/nominal reference coordinates or real aligned four-anchor acquisition
+were supplied with that approval, so this implementation must remain an
+uncalibrated structural-evidence gate.
+
+## Implementation record — 2026-07-20
+
+Implemented scope:
+
+- `Core`: immutable `C3DLandmarkCorrespondenceSet` / pair contract with
+  canonical SHA-256 evidence identity;
+- `Data`: Teaching Recipe schema `1.2` descriptor persistence and strict
+  schema validation, while schema `1.0` / `1.1` recipes remain readable;
+- `Tools` and `Runner`: one exact-four, current-Published-CornerAnchor rule
+  using source/reference rank and normalized tetrahedron-volume checks;
+- `Shell`: authored rows and descriptor are Preview/Publish/stale aware;
+  changing a row, descriptor, or upstream anchor clears the displayed
+  correspondence evidence and requires a new Preview;
+- `Viewer`: four exact source anchors and their tetrahedron edges can be
+  overlaid over the immutable source C3D; no transformed surface is drawn;
+- `Tool Lab`: a single reusable custom-title window presents the source Viewer,
+  reference descriptor/coordinates, typed row table, and existing PropertyGrid
+  editor. It is paired with a floatable/hideable **Correspondence Evidence**
+  dock pane in both Workbench and Advanced layouts; and
+- Tool Lab commands are presentation-only until the operator explicitly
+  chooses Preview. Publish promotes the current evidence and never reruns it.
+
+Verification recorded from the current Debug build:
+
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Build | Pass, 0 warnings / 0 errors | `dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug -p:Platform='Any CPU'` |
+| Correspondence rule golden | Pass, `5/5` | `artifacts/verification/20260719-landmark-correspondence-v1/golden.txt` |
+| Recipe selection regression | Pass, `17/17` | `artifacts/verification/20260719-landmark-correspondence-v1/selection-contract.txt` |
+| Dock / float / hide regression | Pass after the new ninth pane is included | `artifacts/verification/20260719-landmark-correspondence-v1/docking.txt` |
+| Current Tool Lab UI | accepted screenshot quality | `artifacts/ui/20260719-landmark-correspondence-v1/after-tool-lab.png` |
+
+The closest reproducible before baseline is the current-build Line Intersection
+Tool Lab capture at
+`artifacts/ui/20260719-landmark-correspondence-v1/before-line-intersection-tool-lab.png`.
+There was no earlier Correspondence Tool Lab to capture without undoing the
+implementation, so it is a visual-family baseline, not a same-screen before.
+
+Remaining external gate:
+
+1. Provide four distinct real current `CornerAnchor` outputs and their four
+   named reference XYZ values, unit, frame, provenance, revision, and a
+   explicitly chosen normalized-volume threshold.
+2. Verify a real, non-coplanar source/reference correspondence set through the
+   complete `Runner` chain. Until then, do not claim an affine result,
+   calibration, metrology accuracy, or a validated production recipe.
 
 ## Decision to make
 

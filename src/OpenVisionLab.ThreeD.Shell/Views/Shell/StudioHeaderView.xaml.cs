@@ -18,6 +18,7 @@ public partial class StudioHeaderView : UserControl
     public event EventHandler? FilterToolLabRequested;
     public event EventHandler? EdgeToolLabRequested;
     public event EventHandler? LineIntersectionToolLabRequested;
+    public event EventHandler? LandmarkCorrespondenceToolLabRequested;
 
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>
         RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
@@ -30,4 +31,7 @@ public partial class StudioHeaderView : UserControl
 
     private void OpenLineIntersectionToolLabButton_Click(object sender, RoutedEventArgs args) =>
         LineIntersectionToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenLandmarkCorrespondenceToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        LandmarkCorrespondenceToolLabRequested?.Invoke(this, EventArgs.Empty);
 }

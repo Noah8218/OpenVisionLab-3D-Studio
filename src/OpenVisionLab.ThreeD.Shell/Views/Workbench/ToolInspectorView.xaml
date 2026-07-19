@@ -234,6 +234,29 @@
                                 <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                            Text="Reference frame ID" />
                                 <TextBox Text="{Binding CorrespondenceReferenceFrameId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Grid Margin="0,7,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="6" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Reference unit" />
+                                        <TextBox Text="{Binding CorrespondenceReferenceUnit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock FontSize="10.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Reference revision" />
+                                        <TextBox Text="{Binding CorrespondenceReferenceRevision, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                           Margin="0,7,0,0"
+                                           Text="Reference provenance" />
+                                <TextBox Text="{Binding CorrespondenceReferenceProvenance, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                           Margin="0,7,0,0"
+                                           Text="Minimum normalized tetrahedron volume" />
+                                <TextBox Text="{Binding CorrespondenceMinimumNormalizedTetrahedronVolume, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                 <WrapPanel Margin="0,7,0,0">
                                     <Button Margin="0,0,5,5"
                                             Content="{Binding CorrespondenceCommitActionText}"

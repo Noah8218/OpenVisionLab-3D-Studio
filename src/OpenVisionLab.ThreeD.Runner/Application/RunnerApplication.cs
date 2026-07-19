@@ -25,6 +25,7 @@ internal static class RunnerApplication
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
         var toolTeachingLineIntersectionPath = ReadOption(args, "--tool-teaching-line-intersection");
+        var toolTeachingLandmarkCorrespondencePath = ReadOption(args, "--tool-teaching-landmark-correspondence");
         var toolTeachingStepId = ReadOption(args, "--tool-teaching-step");
         var outputC3DPath = ReadOption(args, "--output-c3d");
         var alignedPointRepeatabilityStudyPath = ReadOption(args, "--aligned-point-repeatability-study");
@@ -42,6 +43,7 @@ internal static class RunnerApplication
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DLandmarkCorrespondence = args.Contains("--verify-c3d-landmark-correspondence", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
         var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
         var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
@@ -102,6 +104,17 @@ internal static class RunnerApplication
             return ToolRecipeLineIntersectionRunnerExecution.Run(toolTeachingLineIntersectionPath, toolTeachingStepId, reportPath);
         }
 
+        if (toolTeachingLandmarkCorrespondencePath is not null)
+        {
+            if (toolTeachingStepId is null || reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-landmark-correspondence <recipe> --tool-teaching-step <id> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeLandmarkCorrespondenceRunnerExecution.Run(toolTeachingLandmarkCorrespondencePath, toolTeachingStepId, reportPath);
+        }
+
         if (verifyC3DFilter)
         {
             if (reportPath is null)
@@ -144,6 +157,17 @@ internal static class RunnerApplication
             }
 
             return C3DLineIntersectionGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DLandmarkCorrespondence)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-landmark-correspondence --report <path>");
+                return 2;
+            }
+
+            return C3DLandmarkCorrespondenceGoldenVerification.Run(reportPath);
         }
 
         if (stanfordTransformPath is not null)

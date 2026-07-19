@@ -25,6 +25,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Border Padding="3"
@@ -105,8 +106,18 @@
                            AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
                            AutomationProperties.Name="Open Line Intersection Tool Lab" />
 
+                <ui:Button Grid.Column="6"
+                           Margin="0,0,8,0"
+                           Padding="10,5"
+                           Content="Correspondence Tool Lab"
+                           Icon="{ui:SymbolIcon TargetArrow24}"
+                           Click="OpenLandmarkCorrespondenceToolLabButton_Click"
+                           ToolTip="Open the four CornerAnchor to reference-coordinate teaching view"
+                           AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
+                           AutomationProperties.Name="Open Landmark Correspondence Tool Lab" />
+
                 <RadioButton x:Name="AdvancedModeButton"
-                             Grid.Column="6"
+                             Grid.Column="7"
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
                              Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"

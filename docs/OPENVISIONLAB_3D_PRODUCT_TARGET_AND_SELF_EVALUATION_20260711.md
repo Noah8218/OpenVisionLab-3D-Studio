@@ -45,6 +45,23 @@ The earlier 2026-07-19 Filter, Edge, Line Fit, WPG, and Tool Lab checkpoint
 bullets below remain historical evidence; where they say Line Intersection is
 open or blocked, this current checkpoint supersedes only that statement.
 
+Current Landmark Correspondence v1 checkpoint on 2026-07-20: **implemented
+as a strict structural-evidence gate, not an affine transform.** The Workbench
+now authors one schema `1.2` descriptor plus exactly four source
+`CornerAnchor` / reference-XYZ rows, accepts only current Published Line
+Intersection artifacts, requires source and reference rank `4/4` plus an
+explicit normalized tetrahedron-volume threshold, and carries immutable
+Preview/Publish/stale evidence into the Viewer, a reusable Tool Lab, a
+floatable/hideable Correspondence Evidence dock pane, and the headless Runner
+adapter. Current-source evidence passes a zero-warning/error build,
+synthetic correspondence golden `5/5`, selection-schema regression `17/17`,
+and dock regression after adding the ninth pane. The UI screenshot shows the
+intentionally blocked `0/4` teaching state. A real four-anchor source/reference
+fixture, source/reference provenance, and full-chain Runner replay have not
+been supplied, so XYZ Affine, Re-grid, Thickness, and Warpage execution remain
+blocked. See
+`docs/OPENVISIONLAB_3D_LANDMARK_CORRESPONDENCE_TYPED_ADAPTER_DESIGN_20260719.md`.
+
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.

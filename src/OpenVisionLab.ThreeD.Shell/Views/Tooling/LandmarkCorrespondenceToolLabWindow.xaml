@@ -1,0 +1,147 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.LandmarkCorrespondenceToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        Title="Landmark Correspondence Tool Lab | OpenVisionLab 3D Studio"
+        Width="1680"
+        Height="940"
+        MinWidth="1200"
+        MinHeight="720"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="LandmarkCorrespondenceToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56"
+                                  ResizeBorderThickness="6"
+                                  GlassFrameThickness="0"
+                                  UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="300" />
+        </Grid.RowDefinitions>
+
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="Landmark Correspondence Tool Lab"
+                                  StatusText="Teach 4 corner-anchor mappings / reference descriptor / no affine calculation" />
+
+        <Border Grid.Row="1"
+                Margin="16,16,16,0"
+                Padding="16,12"
+                Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="PointScan24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
+                                   Text="Full-XYZ Landmark Correspondence" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
+                                   Text="Teach exactly four current Published CornerAnchor mappings to a named reference frame. Preview only validates correspondence geometry; XYZ affine is a later explicit tool." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="Preview Correspondence"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}"
+                               ToolTip="Explicitly validate the four current Published CornerAnchors and reference tetrahedron"
+                               AutomationProperties.Name="Preview Landmark Correspondence" />
+                    <ui:Button Margin="0,0,6,0" Content="Refresh Views"
+                               Icon="{ui:SymbolIcon ArrowSync24}"
+                               Click="RefreshViewsButton_Click"
+                               ToolTip="Refresh source-anchor and reference-coordinate evidence without running a tool"
+                               AutomationProperties.Name="Refresh Landmark Correspondence views" />
+                    <ui:Button Content="Publish Correspondence"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}"
+                               ToolTip="Publish the current correspondence Preview without calculating an affine transform"
+                               AutomationProperties.Name="Publish Landmark Correspondence output" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.12*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="0.88*" />
+            </Grid.ColumnDefinitions>
+            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="Source Frame | Four Published CornerAnchor Inputs" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="Reference Frame | Coordinate Evidence" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="No nominal surface is fabricated here; this is the taught reference-coordinate set." />
+                        </StackPanel>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="14">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <UniformGrid Columns="2" Margin="0,0,0,8">
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="Reference frame" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceFrameId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Named reference coordinate frame" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="Unit" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceUnit, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate unit" /></StackPanel>
+                        </UniformGrid>
+                        <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,8">
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="Provenance" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference coordinate provenance" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="Revision" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate revision" /></StackPanel>
+                        </UniformGrid>
+                        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                            <TextBlock FontWeight="SemiBold" Text="Minimum normalized tetrahedron volume" />
+                            <TextBox Margin="0,4,0,0" Width="180" HorizontalAlignment="Left" Text="{Binding CorrespondenceMinimumNormalizedTetrahedronVolume, UpdateSourceTrigger=PropertyChanged}" ToolTip="Strictly between 0 and 1; source and reference must both exceed it" />
+                        </StackPanel>
+                        <Border Grid.Row="3" Padding="10" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock FontWeight="SemiBold" Text="Taught mappings" />
+                                <DataGrid Grid.Row="1" Margin="0,8,0,8" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding SelectedCorrespondenceRows}" HeadersVisibility="Column" MinHeight="150">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Source anchor" Binding="{Binding SourceEntityId}" Width="*" />
+                                        <DataGridTextColumn Header="Reference" Binding="{Binding ReferenceLandmarkId}" Width="*" />
+                                        <DataGridTextColumn Header="X" Binding="{Binding ReferencePosition.X, StringFormat=F4}" Width="64" />
+                                        <DataGridTextColumn Header="Y" Binding="{Binding ReferencePosition.Y, StringFormat=F4}" Width="64" />
+                                        <DataGridTextColumn Header="Z" Binding="{Binding ReferencePosition.Z, StringFormat=F4}" Width="64" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding CorrespondenceSelectionSummary}" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Margin="16,0,16,16" Background="{DynamicResource ThreeD.PanelBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+            <workbench:ToolInspectorView />
+        </Border>
+    </Grid>
+</Window>

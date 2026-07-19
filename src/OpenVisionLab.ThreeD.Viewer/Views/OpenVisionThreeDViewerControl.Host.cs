@@ -188,6 +188,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.LineIntersectionSecondLineVisible)
             or nameof(MainWindowViewModel.LineIntersectionClosestConnectorVisible)
             or nameof(MainWindowViewModel.LineIntersectionCornerAnchorVisible)
+            or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondenceAnchors)
+            or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondence)
             or nameof(MainWindowViewModel.ResultEntities))
         {
             if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))

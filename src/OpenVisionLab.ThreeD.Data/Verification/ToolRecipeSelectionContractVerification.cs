@@ -3,7 +3,7 @@ using OpenVisionLab.ThreeD.Core;
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
-/// Headless verification for the schema 1.0/1.1 selection persistence and
+/// Headless verification for the schema 1.0/1.1/1.2 selection persistence and
 /// C3D source-binding boundary. It does not invoke a Viewer or inspection tool.
 /// </summary>
 public static class ToolRecipeSelectionContractVerification
@@ -70,7 +70,7 @@ public static class ToolRecipeSelectionContractVerification
                 [rectangle],
                 rectangle.Id);
             Check(
-                "schema 1.1 routes a valid rectangle selection",
+                "schema 1.2 routes a valid rectangle selection",
                 ToolRecipeValidator.Validate(current).IsValid,
                 string.Join(" | ", ToolRecipeValidator.Validate(current).Errors));
 
@@ -78,7 +78,7 @@ public static class ToolRecipeSelectionContractVerification
             ToolRecipeDocumentStore.Save(recipePath, current);
             var reopened = ToolRecipeDocumentStore.Load(recipePath);
             Check(
-                "schema 1.1 selection survives save and reopen",
+                "schema 1.2 selection survives save and reopen",
                 reopened.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
                 && reopened.Selections is { Count: 1 } reopenedSelections
                 && reopenedSelections[0].GridRectangle == rectangle.GridRectangle
@@ -130,7 +130,7 @@ public static class ToolRecipeSelectionContractVerification
                     new ToolRecipeXyz(0, 0, 0),
                     "frame.fixture")]);
             var correspondenceValidation = ToolRecipeValidator.Validate(CreateDocument(
-                ToolRecipeDocument.CurrentSchemaVersion,
+                ToolRecipeDocument.SelectionSchemaVersion,
                 sourcePath,
                 [correspondence],
                 correspondence.Id));
@@ -151,7 +151,7 @@ public static class ToolRecipeSelectionContractVerification
                 ]
             };
             var forwardReferenceDocument = CreateDocument(
-                ToolRecipeDocument.CurrentSchemaVersion,
+                ToolRecipeDocument.SelectionSchemaVersion,
                 sourcePath,
                 [forwardCorrespondence],
                 forwardCorrespondence.Id) with
@@ -192,7 +192,7 @@ public static class ToolRecipeSelectionContractVerification
                 ]
             };
             var duplicateValidation = ToolRecipeValidator.Validate(CreateDocument(
-                ToolRecipeDocument.CurrentSchemaVersion,
+                ToolRecipeDocument.SelectionSchemaVersion,
                 sourcePath,
                 [duplicateRows],
                 duplicateRows.Id));

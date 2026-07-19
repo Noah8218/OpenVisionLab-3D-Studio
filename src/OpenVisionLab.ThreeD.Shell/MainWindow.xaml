@@ -31,7 +31,8 @@
                                      RecipeManagerRequested="OpenRecipeManagerRequested"
                                      FilterToolLabRequested="OpenFilterToolLabRequested"
                                      EdgeToolLabRequested="OpenEdgeToolLabRequested"
-                                     LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested" />
+                                     LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested"
+                                     LandmarkCorrespondenceToolLabRequested="OpenLandmarkCorrespondenceToolLabRequested" />
 
         <Grid>
         <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"
@@ -1221,6 +1222,9 @@
             <dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
                 <workbench:LineIntersectionEvidenceView DataContext="{Binding Workbench}" />
             </dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+            <dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
+                <workbench:LandmarkCorrespondenceEvidenceView DataContext="{Binding Workbench}" />
+            </dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
         </dock:OpenVisionDockWorkspaceView>
         <views:CalibrationCenterView DataContext="{Binding Calibration}"
                                      Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />

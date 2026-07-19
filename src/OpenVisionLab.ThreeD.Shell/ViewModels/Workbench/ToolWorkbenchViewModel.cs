@@ -59,6 +59,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private double correspondenceReferenceY;
     private double correspondenceReferenceZ;
     private string correspondenceReferenceFrameId = "frame.fixture";
+    private string correspondenceReferenceUnit = string.Empty;
+    private string correspondenceReferenceProvenance = string.Empty;
+    private string correspondenceReferenceRevision = string.Empty;
+    private double correspondenceMinimumNormalizedTetrahedronVolume;
 
     public ToolWorkbenchViewModel(string? recentRecipesPath = null)
     {
@@ -76,7 +80,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Feature & Datum", "3-Point Plane", "three-point-plane", 1, "HeightField", "PlaneFeature", "Construct a datum plane from three recipe-owned point picks.", [new("Point A/B/C", "Pick during teaching"), new("Degeneracy", "Reject collinear")]),
             new("Feature & Datum", "3D Line Fit", "three-d-line-fit", 1, "Published EdgePointSet", "LineFeature", "Fit one deterministic full-XYZ line to an explicit published edge-point entity.", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "Set explicitly"), new("MinimumInlierCount", "Set explicitly"), new("MinimumInlierRatio", "Set explicitly"), new("MinimumInlierScanlineSpan", "Set explicitly"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]),
             new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
-            new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 2, "CornerAnchor + Reference landmark set", "CorrespondenceSet", "Declare the source-to-reference landmark mapping needed by a later transform.", [new("Minimum landmarks", "4 affine-independent"), new("Reference frame", "Explicit")]),
+            new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 1, "Correspondence selection", "CorrespondenceSet", "Validate four named Published CornerAnchors against explicit reference coordinates before a later transform.", [new("PairCountPolicy", "ExactlyFour"), new("SourceArtifactPolicy", "CurrentPublishedCornerAnchor"), new("AffineIndependencePolicy", "RequireNonDegenerateTetrahedra")]),
             new("Transform", "XYZ Affine Transform", "xyz-affine-transform", 1, "CorrespondenceSet", "TransformedPointCloud", "Apply a full XYZ affine transform only after valid source/reference landmarks exist.", [new("Minimum landmarks", "4 affine-independent"), new("Residual", "Review before Run")]),
             new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "TransformedPointCloud", "TransformedHeightField", "Resample transformed XYZ data into an explicit inspection grid.", [new("Grid frame", "Selected transform"), new("Hole policy", "Explicit")]),
             new("Measure", "Thickness", "thickness", 1, "TransformedHeightField", "MeasurementResult", "Measure thickness from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("Tolerance", "Set during teaching")]),
@@ -272,6 +276,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshHeightDifferenceEdgeExecutionState();
             RefreshLineFitExecutionState();
             RefreshLineIntersectionExecutionState();
+            RefreshLandmarkCorrespondenceExecutionState();
             RefreshStepCommands();
             RefreshNavigatorSelection();
         }
@@ -451,6 +456,54 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
+    public string CorrespondenceReferenceUnit
+    {
+        get => correspondenceReferenceUnit;
+        set
+        {
+            if (SetField(ref correspondenceReferenceUnit, value ?? string.Empty))
+            {
+                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string CorrespondenceReferenceProvenance
+    {
+        get => correspondenceReferenceProvenance;
+        set
+        {
+            if (SetField(ref correspondenceReferenceProvenance, value ?? string.Empty))
+            {
+                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string CorrespondenceReferenceRevision
+    {
+        get => correspondenceReferenceRevision;
+        set
+        {
+            if (SetField(ref correspondenceReferenceRevision, value ?? string.Empty))
+            {
+                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public double CorrespondenceMinimumNormalizedTetrahedronVolume
+    {
+        get => correspondenceMinimumNormalizedTetrahedronVolume;
+        set
+        {
+            if (SetField(ref correspondenceMinimumNormalizedTetrahedronVolume, value))
+            {
+                addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
     public bool HasSelectedPipelineStep => SelectedPipelineStep is not null;
 
     public bool CanSaveTeachingRecipe => validation.IsValid
@@ -531,7 +584,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         null => "This step consumes the source or earlier typed entities. Selecting or editing it never starts Viewer capture.",
         { UsesViewerCapture: true } requirement => $"{requirement.Description} Capture stores geometry only; it never runs an inspection algorithm.",
-        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => "Enter named earlier source entities and explicit fixture XYZ coordinates. Fewer than four rows stays taught but non-executable.",
+        { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => "Enter four Published CornerAnchor mappings, reference frame/unit/provenance/revision, and an explicit non-planarity threshold. Editing never runs the tool.",
         var requirement => requirement.Description
     };
 
@@ -573,9 +626,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string CorrespondenceSelectionSummary => SelectedCorrespondenceRows.Count switch
     {
-        0 => "No correspondence rows. Add at least four affine-independent rows before any future XYZ affine execution.",
-        < 4 => $"{SelectedCorrespondenceRows.Count}/4 rows taught. This remains a non-executable warning.",
-        var count => $"{count} rows taught. Affine rank, residual, determinant, and execution are still not calculated."
+        0 => "No correspondence rows. Teach exactly four Published CornerAnchor/reference mappings before Preview.",
+        < 4 => $"{SelectedCorrespondenceRows.Count}/4 rows taught. Correspondence Preview remains blocked.",
+        > 4 => $"{SelectedCorrespondenceRows.Count}/4 rows taught. v1 accepts exactly four; remove the extra rows.",
+        _ when string.IsNullOrWhiteSpace(CorrespondenceReferenceUnit)
+            || string.IsNullOrWhiteSpace(CorrespondenceReferenceProvenance)
+            || string.IsNullOrWhiteSpace(CorrespondenceReferenceRevision)
+            || !double.IsFinite(CorrespondenceMinimumNormalizedTetrahedronVolume)
+            || CorrespondenceMinimumNormalizedTetrahedronVolume <= 0
+            || CorrespondenceMinimumNormalizedTetrahedronVolume >= 1
+            => "Four rows exist, but reference unit/provenance/revision and a normalized tetrahedron-volume threshold are required.",
+        _ => "Four correspondence rows and reference descriptor are taught. Preview validates only current Published anchors; no affine matrix is calculated."
     };
 
     private bool CanBeginTeachingSelectionCapture =>
@@ -590,6 +651,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         && !string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
         && !string.IsNullOrWhiteSpace(CorrespondenceReferenceLandmarkId)
         && !string.IsNullOrWhiteSpace(CorrespondenceReferenceFrameId)
+        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceUnit)
+        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceProvenance)
+        && !string.IsNullOrWhiteSpace(CorrespondenceReferenceRevision)
+        && double.IsFinite(CorrespondenceMinimumNormalizedTetrahedronVolume)
+        && CorrespondenceMinimumNormalizedTetrahedronVolume > 0
+        && CorrespondenceMinimumNormalizedTetrahedronVolume < 1
         && double.IsFinite(CorrespondenceReferenceX)
         && double.IsFinite(CorrespondenceReferenceY)
         && double.IsFinite(CorrespondenceReferenceZ);
@@ -735,8 +802,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             return;
         }
 
-        var input = PipelineSteps.LastOrDefault()?.OutputEntityId;
-        if (string.IsNullOrWhiteSpace(input))
+        var input = SelectedTool.Id == "landmark-correspondence"
+            ? string.Empty
+            : PipelineSteps.LastOrDefault()?.OutputEntityId;
+        if (SelectedTool.Id != "landmark-correspondence" && string.IsNullOrWhiteSpace(input))
         {
             input = Source.Id;
         }
@@ -744,7 +813,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var step = new ToolWorkbenchPipelineStepItem(
             CreateUniqueStepId(SelectedTool.Id),
             SelectedTool,
-            input,
+            input ?? string.Empty,
             CreateUniqueOutputId(SelectedTool.OutputContract));
         SubscribeStep(step);
         PipelineSteps.Add(step);
@@ -1051,6 +1120,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
 
         var requirement = SelectedStepSelectionRequirement!;
+        var descriptor = new ToolRecipeLandmarkCorrespondenceDescriptor(
+            CorrespondenceReferenceFrameId.Trim(),
+            CorrespondenceReferenceUnit.Trim(),
+            CorrespondenceReferenceProvenance.Trim(),
+            CorrespondenceReferenceRevision.Trim(),
+            "ExactlyFour",
+            "CurrentPublishedCornerAnchor",
+            "RequireNonDegenerateTetrahedra",
+            CorrespondenceMinimumNormalizedTetrahedronVolume);
         var selection = new ToolRecipeSelection(
             existingSelection?.Id ?? CreateSelectionId(SelectedPipelineStep, requirement),
             existingSelection?.Name ?? $"{SelectedPipelineStep.ToolName} correspondences",
@@ -1060,7 +1138,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             loadedSourceBinding,
             null,
             null,
-            rows);
+            rows,
+            descriptor);
         PersistSelectionForSelectedStep(selection);
         SelectedCorrespondenceRow = null;
         ResetCorrespondenceEditor();
@@ -1115,7 +1194,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 Selections.Add(selection);
             }
 
-            AddInputEntity(SelectedPipelineStep, selection.Id);
+            if (string.Equals(SelectedPipelineStep.ToolId, "landmark-correspondence", StringComparison.Ordinal))
+            {
+                SelectedPipelineStep.InputEntityIdsText = selection.Id;
+            }
+            else
+            {
+                AddInputEntity(SelectedPipelineStep, selection.Id);
+            }
         });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
         RefreshTeachingSelectionContext();
@@ -1279,6 +1365,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshLineFitExecutionState();
         RefreshLineIntersectionExecutionState();
+        RefreshLandmarkCorrespondenceExecutionState();
         RefreshAdapterCoverage();
         OnPropertyChanged(nameof(ValidationSummary));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
@@ -1385,8 +1472,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                     break;
                 }
 
-                AvailableCorrespondenceSourceEntityIds.Add(step.OutputEntityId);
+                if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal))
+                {
+                    AvailableCorrespondenceSourceEntityIds.Add(step.OutputEntityId);
+                }
             }
+        }
+
+        if (SelectedStepTeachingSelection?.CorrespondenceDescriptor is { } descriptor)
+        {
+            CorrespondenceReferenceFrameId = descriptor.ReferenceFrameId;
+            CorrespondenceReferenceUnit = descriptor.ReferenceUnit;
+            CorrespondenceReferenceProvenance = descriptor.ReferenceProvenance;
+            CorrespondenceReferenceRevision = descriptor.ReferenceRevision;
+            CorrespondenceMinimumNormalizedTetrahedronVolume = descriptor.MinimumNormalizedTetrahedronVolume ?? 0;
         }
 
         if (string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
@@ -1605,7 +1704,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         CorrespondenceReferenceX = 0;
         CorrespondenceReferenceY = 0;
         CorrespondenceReferenceZ = 0;
-        CorrespondenceReferenceFrameId = "frame.fixture";
     }
 
     private void SubscribeStep(ToolWorkbenchPipelineStepItem step)
@@ -1649,6 +1747,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkLineFitPreviewStaleIfNeeded(sender);
         MarkLineIntersectionPreviewStaleIfNeeded(sender);
+        MarkLandmarkCorrespondencePreviewStaleIfNeeded(sender);
         SetDirty(true);
         RefreshRecipeState();
     }
@@ -1700,6 +1799,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshFilterCommands();
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
+        RefreshLandmarkCorrespondenceCommands();
     }
 
     private string CreateUniqueStepId(string toolId)

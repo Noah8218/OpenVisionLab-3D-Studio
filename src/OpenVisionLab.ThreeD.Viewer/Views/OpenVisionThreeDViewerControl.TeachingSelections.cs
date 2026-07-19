@@ -143,6 +143,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ClearWorkbenchHeightDifferenceEdge();
         viewModel.ClearWorkbenchLineFit();
         viewModel.ClearWorkbenchLineIntersection();
+        viewModel.ClearWorkbenchLandmarkCorrespondence();
         RaiseTeachingCaptureStateChanged();
     }
 
@@ -161,6 +162,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         DrawWorkbenchHeightDifferenceEdge(gl);
         DrawWorkbenchLineFit(gl);
         DrawWorkbenchLineIntersection(gl);
+        DrawWorkbenchLandmarkCorrespondence(gl);
 
         var capture = viewModel.TeachingCaptureSnapshot;
         if (capture.IsActive)
@@ -316,6 +318,36 @@ public sealed partial class OpenVisionThreeDViewerControl
             gl.Vertex(corner.X, corner.Y, corner.Z);
             gl.End();
         }
+    }
+
+    private void DrawWorkbenchLandmarkCorrespondence(OpenGL gl)
+    {
+        var output = viewModel.WorkbenchLandmarkCorrespondence;
+        var anchors = viewModel.WorkbenchLandmarkCorrespondenceAnchors;
+        if (output is null || anchors.Count != 4 || c3dSample is null) return;
+
+        var positions = anchors
+            .Select(anchor => CreateC3DGridDisplayPosition(anchor.CornerAnchorZ, anchor.CornerAnchorX, anchor.CornerAnchorY))
+            .ToArray();
+
+        gl.LineWidth(2.5f);
+        gl.Color(viewModel.IsWorkbenchLandmarkCorrespondencePublished ? 0.18 : 1.0, 0.86, 0.76);
+        gl.Begin(OpenGL.GL_LINES);
+        foreach (var (first, second) in new[] { (0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3) })
+        {
+            gl.Vertex(positions[first].X, positions[first].Y, positions[first].Z);
+            gl.Vertex(positions[second].X, positions[second].Y, positions[second].Z);
+        }
+        gl.End();
+
+        gl.PointSize(16.0f);
+        gl.Color(1.0, 0.18, 0.62);
+        gl.Begin(OpenGL.GL_POINTS);
+        foreach (var position in positions)
+        {
+            gl.Vertex(position.X, position.Y, position.Z);
+        }
+        gl.End();
     }
 
     private void DrawWorkbenchLineSegment(OpenGL gl, C3DLineFeature line, double red, double green, double blue)

@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 3D Line Fit, or Line Intersection to teach typed parameters.";
+    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 3D Line Fit, Line Intersection, or Landmark Correspondence to teach typed parameters.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -54,6 +54,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "height-difference-edge" } step => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "three-d-line-fit" } step => FormatAdapterStatus(step, LineFitStepProperties.MappedNames),
         { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
+        { ToolId: "landmark-correspondence" } step => FormatAdapterStatus(step, LandmarkCorrespondenceStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -240,6 +241,20 @@ public sealed partial class ToolWorkbenchViewModel
                     ["SupportPolicy"] = intersection.SupportPolicy.ToString()
                 };
                 break;
+            case LandmarkCorrespondenceStepProperties correspondence:
+                if (!correspondence.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["PairCountPolicy"] = correspondence.PairCountPolicy,
+                    ["SourceArtifactPolicy"] = correspondence.SourceArtifactPolicy,
+                    ["AffineIndependencePolicy"] = correspondence.AffineIndependencePolicy
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -273,6 +288,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkLineFitPreviewStaleIfNeeded();
             MarkLineIntersectionPreviewStaleIfNeeded();
+            MarkLandmarkCorrespondencePreviewStaleIfNeeded();
             SetDirty(true);
             RefreshRecipeState();
         }
@@ -297,6 +313,7 @@ public sealed partial class ToolWorkbenchViewModel
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "three-d-line-fit" => LineFitStepProperties.From(step),
             "line-intersection" => LineIntersectionStepProperties.From(step),
+            "landmark-correspondence" => LandmarkCorrespondenceStepProperties.From(step),
             _ => null
         };
 
@@ -322,6 +339,7 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshHeightDifferenceEdgeCommands();
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
+        RefreshLandmarkCorrespondenceCommands();
     }
 
     private void SetParameterDraftStatus(string status)
@@ -952,6 +970,65 @@ public sealed class LineIntersectionStepProperties
             message = "Output role is required without surrounding whitespace.";
             return false;
         }
+        message = string.Empty;
+        return true;
+    }
+}
+
+[CategoryOrder("Correspondence policy", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class LandmarkCorrespondenceStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "PairCountPolicy", "SourceArtifactPolicy", "AffineIndependencePolicy"
+    ];
+
+    [Category("Correspondence policy")]
+    [DisplayName("Pair count")]
+    [Description("Landmark Correspondence v1 accepts exactly four authored pairs.")]
+    [PropertyOrder(0)]
+    [ReadOnly(true)]
+    public string PairCountPolicy { get; init; } = "ExactlyFour";
+
+    [Category("Correspondence policy")]
+    [DisplayName("Source artifact")]
+    [Description("Only exact current Published CornerAnchor outputs are valid inputs.")]
+    [PropertyOrder(1)]
+    [ReadOnly(true)]
+    public string SourceArtifactPolicy { get; init; } = "CurrentPublishedCornerAnchor";
+
+    [Category("Correspondence policy")]
+    [DisplayName("Affine independence")]
+    [Description("Both source and reference landmarks must form non-degenerate tetrahedra. This tool does not calculate an affine matrix.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public string AffineIndependencePolicy { get; init; } = "RequireNonDegenerateTetrahedra";
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [PropertyOrder(3)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static LandmarkCorrespondenceStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        PairCountPolicy = ToolWorkbenchViewModel.GetParameter(step, "PairCountPolicy") ?? "ExactlyFour",
+        SourceArtifactPolicy = ToolWorkbenchViewModel.GetParameter(step, "SourceArtifactPolicy") ?? "CurrentPublishedCornerAnchor",
+        AffineIndependencePolicy = ToolWorkbenchViewModel.GetParameter(step, "AffineIndependencePolicy") ?? "RequireNonDegenerateTetrahedra",
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!string.Equals(PairCountPolicy, "ExactlyFour", StringComparison.Ordinal)
+            || !string.Equals(SourceArtifactPolicy, "CurrentPublishedCornerAnchor", StringComparison.Ordinal)
+            || !string.Equals(AffineIndependencePolicy, "RequireNonDegenerateTetrahedra", StringComparison.Ordinal))
+        {
+            message = "Landmark Correspondence v1 fixed policies do not match the approved contract.";
+            return false;
+        }
+
         message = string.Empty;
         return true;
     }

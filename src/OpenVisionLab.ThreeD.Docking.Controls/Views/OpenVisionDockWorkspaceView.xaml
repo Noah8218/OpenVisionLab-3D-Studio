@@ -91,6 +91,14 @@
                                                      CanHide="True">
                             <ContentPresenter Content="{Binding IntersectionEvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="correspondenceEvidenceAnchorable"
+                                                     Title="{Binding CorrespondenceEvidenceTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="correspondence-evidence"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="True">
+                            <ContentPresenter Content="{Binding CorrespondenceEvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
                     </avalonDock:LayoutAnchorablePane>
                 </avalonDock:LayoutPanel>
             </avalonDock:LayoutRoot>

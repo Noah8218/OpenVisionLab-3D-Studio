@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs> _workbenchLineIntersectionDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineIntersectionDisplayClearedHandler;
+    private readonly EventHandler<ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs> _workbenchLandmarkCorrespondenceDisplayRequestedHandler;
+    private readonly EventHandler _workbenchLandmarkCorrespondenceDisplayClearedHandler;
     private readonly EventHandler<WorkbenchLineFitPointSelectedEventArgs> _viewerWorkbenchLineFitPointSelectedHandler;
     private readonly EventHandler<TeachingCaptureStateChangedEventArgs> _viewerTeachingCaptureStateChangedHandler;
     private readonly PropertyChangedEventHandler _viewModelPropertyChangedHandler;
@@ -57,6 +59,7 @@ public partial class MainWindow : Window
     private FilterToolLabWindow? filterToolLabWindow;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
+    private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -120,6 +123,8 @@ public partial class MainWindow : Window
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
         _workbenchLineIntersectionDisplayRequestedHandler = OnWorkbenchLineIntersectionDisplayRequested;
         _workbenchLineIntersectionDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineIntersection();
+        _workbenchLandmarkCorrespondenceDisplayRequestedHandler = OnWorkbenchLandmarkCorrespondenceDisplayRequested;
+        _workbenchLandmarkCorrespondenceDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLandmarkCorrespondence();
         _viewerWorkbenchLineFitPointSelectedHandler = (_, args) => _viewModel.Workbench.SelectLineFitDiagnostic(args.InputPointIndex);
         _viewerTeachingCaptureStateChangedHandler = OnViewerTeachingCaptureStateChanged;
         _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
@@ -146,6 +151,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested += _workbenchLineIntersectionDisplayRequestedHandler;
         _viewModel.Workbench.LineIntersectionDisplayCleared += _workbenchLineIntersectionDisplayClearedHandler;
+        _viewModel.Workbench.LandmarkCorrespondenceDisplayRequested += _workbenchLandmarkCorrespondenceDisplayRequestedHandler;
+        _viewModel.Workbench.LandmarkCorrespondenceDisplayCleared += _workbenchLandmarkCorrespondenceDisplayClearedHandler;
         _viewer.WorkbenchLineFitPointSelected += _viewerWorkbenchLineFitPointSelectedHandler;
         _viewer.TeachingCaptureStateChanged += _viewerTeachingCaptureStateChangedHandler;
 
@@ -196,6 +203,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested -= _workbenchLineIntersectionDisplayRequestedHandler;
         _viewModel.Workbench.LineIntersectionDisplayCleared -= _workbenchLineIntersectionDisplayClearedHandler;
+        _viewModel.Workbench.LandmarkCorrespondenceDisplayRequested -= _workbenchLandmarkCorrespondenceDisplayRequestedHandler;
+        _viewModel.Workbench.LandmarkCorrespondenceDisplayCleared -= _workbenchLandmarkCorrespondenceDisplayClearedHandler;
         _viewer.WorkbenchLineFitPointSelected -= _viewerWorkbenchLineFitPointSelectedHandler;
         _viewer.TeachingCaptureStateChanged -= _viewerTeachingCaptureStateChangedHandler;
         _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
@@ -227,6 +236,8 @@ public partial class MainWindow : Window
         var edgeToolLabScreenshotQualityReportPath = GetCommandLineValue("--edge-tool-lab-screenshot-quality-report");
         var lineIntersectionToolLabScreenshotPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot");
         var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
+        var landmarkCorrespondenceToolLabScreenshotPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot");
+        var landmarkCorrespondenceToolLabScreenshotQualityReportPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
@@ -272,6 +283,7 @@ public partial class MainWindow : Window
             || filterToolLabScreenshotPath is not null
             || edgeToolLabScreenshotPath is not null
             || lineIntersectionToolLabScreenshotPath is not null
+            || landmarkCorrespondenceToolLabScreenshotPath is not null
             || _viewer.HasConfiguredSmokeScreenshot
             || teachingSelectionSmokeMode is not null
             || profilePointerSmokeReportPath is not null
@@ -315,6 +327,14 @@ public partial class MainWindow : Window
                     && !ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false))
                 {
                     _viewModel.SetViewerSmokeFailed("Line Intersection Tool Lab smoke requires a Line Intersection recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (landmarkCorrespondenceToolLabScreenshotPath is not null
+                    && !ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("Landmark Correspondence Tool Lab smoke requires a Landmark Correspondence recipe step.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -583,6 +603,19 @@ public partial class MainWindow : Window
                             "LineIntersectionToolLab")))
                 {
                     _viewModel.SetViewerSmokeFailed("Line Intersection Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (landmarkCorrespondenceToolLabScreenshotPath is not null
+                    && (landmarkCorrespondenceToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            landmarkCorrespondenceToolLabWindow,
+                            landmarkCorrespondenceToolLabScreenshotPath,
+                            landmarkCorrespondenceToolLabScreenshotQualityReportPath,
+                            "LandmarkCorrespondenceToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("Landmark Correspondence Tool Lab screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -1252,6 +1285,42 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private void OpenLandmarkCorrespondenceToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: true);
+    }
+
+    private bool ShowLandmarkCorrespondenceToolLabWindow(bool showMissingCorrespondenceMessage)
+    {
+        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("landmark-correspondence"))
+        {
+            if (showMissingCorrespondenceMessage)
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or add a Landmark Correspondence step before opening Landmark Correspondence Tool Lab.",
+                    "Landmark Correspondence Tool Lab",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        if (landmarkCorrespondenceToolLabWindow is null)
+        {
+            landmarkCorrespondenceToolLabWindow = new LandmarkCorrespondenceToolLabWindow(_viewModel.Workbench)
+            {
+                Owner = this
+            };
+            landmarkCorrespondenceToolLabWindow.Closed += (_, _) => landmarkCorrespondenceToolLabWindow = null;
+        }
+
+        landmarkCorrespondenceToolLabWindow.RefreshViews();
+        landmarkCorrespondenceToolLabWindow.Show();
+        landmarkCorrespondenceToolLabWindow.Activate();
+        return true;
+    }
+
     private void OnWorkbenchHeightDifferenceEdgeDisplayRequested(
         object? sender,
         ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs args)
@@ -1301,6 +1370,26 @@ public partial class MainWindow : Window
         else
         {
             ToolWorkbench.ActivateIntersectionEvidencePane();
+        }
+    }
+
+    private void OnWorkbenchLandmarkCorrespondenceDisplayRequested(
+        object? sender,
+        ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs args)
+    {
+        if (landmarkCorrespondenceToolLabWindow is { IsVisible: true })
+        {
+            landmarkCorrespondenceToolLabWindow.ShowLandmarkCorrespondenceResult(args);
+        }
+        _viewer.ShowWorkbenchLandmarkCorrespondence(args.Anchors, args.Output, args.IsPublished);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+        if (_viewModel.IsExpertWorkspaceSelected)
+        {
+            Workspace.ActivateCorrespondenceEvidencePane();
+        }
+        else
+        {
+            ToolWorkbench.ActivateCorrespondenceEvidencePane();
         }
     }
 
@@ -1503,6 +1592,7 @@ public partial class MainWindow : Window
         argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
 
     private void SyncWorkbenchSourceFromViewer()

@@ -13,7 +13,8 @@ public sealed record ToolRecipeDocument(
     IReadOnlyList<ToolRecipeSelection>? Selections = null)
 {
     public const string LegacySchemaVersion = "1.0";
-    public const string CurrentSchemaVersion = "1.1";
+    public const string SelectionSchemaVersion = "1.1";
+    public const string CurrentSchemaVersion = "1.2";
 }
 
 public sealed record ToolRecipeSource(
@@ -53,7 +54,8 @@ public sealed record ToolRecipeSelection(
     ToolRecipeSelectionSourceBinding SourceBinding,
     ToolRecipeGridRectangle? GridRectangle,
     IReadOnlyList<ToolRecipeSelectionPoint>? Points,
-    IReadOnlyList<ToolRecipeLandmarkCorrespondence>? Rows);
+    IReadOnlyList<ToolRecipeLandmarkCorrespondence>? Rows,
+    ToolRecipeLandmarkCorrespondenceDescriptor? CorrespondenceDescriptor = null);
 
 public sealed record ToolRecipeSelectionSourceBinding(
     string Format,
@@ -84,6 +86,16 @@ public sealed record ToolRecipeLandmarkCorrespondence(
     string ReferenceLandmarkId,
     ToolRecipeXyz ReferencePosition,
     string ReferenceFrameId);
+
+public sealed record ToolRecipeLandmarkCorrespondenceDescriptor(
+    string ReferenceFrameId,
+    string ReferenceUnit,
+    string ReferenceProvenance,
+    string ReferenceRevision,
+    string PairCountPolicy,
+    string SourceArtifactPolicy,
+    string AffineIndependencePolicy,
+    double? MinimumNormalizedTetrahedronVolume);
 
 public static class ToolRecipeSelectionKinds
 {

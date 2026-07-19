@@ -22,6 +22,7 @@
                                       ProfileTitle="Height Profile"
                                       FitDiagnosticsTitle="Fit Diagnostics"
                                       IntersectionEvidenceTitle="Intersection Evidence"
+                                      CorrespondenceEvidenceTitle="Correspondence Evidence"
                                       IsBottomPaneExpanded="{Binding Workbench.IsPipelineReviewExpanded}">
         <dock:OpenVisionDockWorkspaceView.DataLayersContent>
             <workbench:ToolboxEntityExplorerView DataContext="{Binding Workbench}" />
@@ -174,5 +175,8 @@
         <dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
             <workbench:LineIntersectionEvidenceView />
         </dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+        <dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
+            <workbench:LandmarkCorrespondenceEvidenceView />
+        </dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
     </dock:OpenVisionDockWorkspaceView>
 </UserControl>

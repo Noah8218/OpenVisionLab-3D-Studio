@@ -128,6 +128,7 @@ public sealed partial class ToolWorkbenchViewModel
         {
             LineIntersectionDisplayRequested?.Invoke(this, new ToolWorkbenchLineIntersectionDisplayRequestEventArgs(first, second, lineIntersectionPreviewOutput, true));
         }
+        RefreshLandmarkCorrespondenceExecutionState();
     }
 
     private void CancelLineIntersectionPreview() => lineIntersectionPreviewCancellation?.Cancel();
@@ -157,6 +158,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (step is not null) step.State = "Preview stale";
         LineIntersectionDisplayCleared?.Invoke(this, EventArgs.Empty);
         SetLineIntersectionSummary("Input, Line Intersection parameter, route, or output changed. Preview again before Publish.");
+        RefreshLandmarkCorrespondenceExecutionState();
     }
 
     private void ClearLineIntersectionPreview(string summary)
@@ -168,6 +170,7 @@ public sealed partial class ToolWorkbenchViewModel
         isLineIntersectionPreviewPublished = false;
         LineIntersectionDisplayCleared?.Invoke(this, EventArgs.Empty);
         SetLineIntersectionSummary(summary);
+        RefreshLandmarkCorrespondenceExecutionState();
     }
 
     private void RefreshLineIntersectionExecutionState()

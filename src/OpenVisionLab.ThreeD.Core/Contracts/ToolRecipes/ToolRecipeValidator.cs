@@ -18,11 +18,15 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.LegacySchemaVersion,
             StringComparison.Ordinal);
+        var isSelectionSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.SelectionSchemaVersion,
+            StringComparison.Ordinal);
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
             StringComparison.Ordinal);
-        if (!isLegacySchema && !isCurrentSchema)
+        if (!isLegacySchema && !isSelectionSchema && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
         }
@@ -92,7 +96,7 @@ public static class ToolRecipeValidator
                 continue;
             }
 
-            ValidateSelection(selection, source, errors, warnings, correspondenceRows);
+            ValidateSelection(selection, source, isCurrentSchema, errors, warnings, correspondenceRows);
             AddIdentity(globalIds, selection.Id, "selection", errors);
             AddRoutableEntity(routableEntityIds, selection.Id);
             if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, StringComparison.Ordinal)
@@ -291,6 +295,7 @@ public static class ToolRecipeValidator
     private static void ValidateSelection(
         ToolRecipeSelection selection,
         ToolRecipeSource source,
+        bool isCurrentSchema,
         List<string> errors,
         List<string> warnings,
         List<(string SelectionId, string SelectionLabel, ToolRecipeLandmarkCorrespondence Row)> correspondenceRows)
@@ -355,7 +360,7 @@ public static class ToolRecipeValidator
 
         if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, StringComparison.Ordinal))
         {
-            ValidateCorrespondenceSet(selection, label, errors, warnings, correspondenceRows);
+            ValidateCorrespondenceSet(selection, label, isCurrentSchema, errors, warnings, correspondenceRows);
             return;
         }
 
@@ -477,6 +482,7 @@ public static class ToolRecipeValidator
     private static void ValidateCorrespondenceSet(
         ToolRecipeSelection selection,
         string label,
+        bool isCurrentSchema,
         List<string> errors,
         List<string> warnings,
         List<(string SelectionId, string SelectionLabel, ToolRecipeLandmarkCorrespondence Row)> correspondenceRows)
@@ -484,6 +490,16 @@ public static class ToolRecipeValidator
         if (selection.GridRectangle is not null || HasItems(selection.Points))
         {
             errors.Add($"{label} correspondence set cannot contain rectangle or point-set payloads.");
+        }
+
+        var descriptor = selection.CorrespondenceDescriptor;
+        if (isCurrentSchema)
+        {
+            ValidateCorrespondenceDescriptor(descriptor, label, errors);
+        }
+        else if (descriptor is not null)
+        {
+            errors.Add($"{label} correspondence descriptor requires teaching recipe schema {ToolRecipeDocument.CurrentSchemaVersion}.");
         }
 
         var rows = selection.Rows ?? [];
@@ -530,6 +546,11 @@ public static class ToolRecipeValidator
             else
             {
                 referenceFrames.Add(row.ReferenceFrameId.Trim());
+                if (descriptor is not null
+                    && !string.Equals(row.ReferenceFrameId.Trim(), descriptor.ReferenceFrameId.Trim(), StringComparison.Ordinal))
+                {
+                    errors.Add($"{rowLabel} reference frame must match the correspondence descriptor.");
+                }
             }
 
             correspondenceRows.Add((selection.Id, label, row));
@@ -540,9 +561,38 @@ public static class ToolRecipeValidator
             errors.Add($"{label} correspondence rows must use one explicit reference frame.");
         }
 
-        if (rows.Count < 4)
+        if (isCurrentSchema && rows.Count != 4)
+        {
+            errors.Add($"{label} Landmark Correspondence v1 requires exactly four rows.");
+        }
+        else if (rows.Count < 4)
         {
             warnings.Add($"{label} is taught only: at least four correspondence rows are required before XYZ affine execution.");
+        }
+    }
+
+    private static void ValidateCorrespondenceDescriptor(
+        ToolRecipeLandmarkCorrespondenceDescriptor? descriptor,
+        string label,
+        List<string> errors)
+    {
+        if (descriptor is null)
+        {
+            errors.Add($"{label} Landmark Correspondence v1 descriptor is required in schema {ToolRecipeDocument.CurrentSchemaVersion}.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(descriptor.ReferenceFrameId)) errors.Add($"{label} reference frame ID is required.");
+        if (string.IsNullOrWhiteSpace(descriptor.ReferenceUnit)) errors.Add($"{label} reference unit is required.");
+        if (string.IsNullOrWhiteSpace(descriptor.ReferenceProvenance)) errors.Add($"{label} reference provenance is required.");
+        if (string.IsNullOrWhiteSpace(descriptor.ReferenceRevision)) errors.Add($"{label} reference revision is required.");
+        if (!string.Equals(descriptor.PairCountPolicy, "ExactlyFour", StringComparison.Ordinal)) errors.Add($"{label} PairCountPolicy must be ExactlyFour.");
+        if (!string.Equals(descriptor.SourceArtifactPolicy, "CurrentPublishedCornerAnchor", StringComparison.Ordinal)) errors.Add($"{label} SourceArtifactPolicy must be CurrentPublishedCornerAnchor.");
+        if (!string.Equals(descriptor.AffineIndependencePolicy, "RequireNonDegenerateTetrahedra", StringComparison.Ordinal)) errors.Add($"{label} AffineIndependencePolicy must be RequireNonDegenerateTetrahedra.");
+        if (descriptor.MinimumNormalizedTetrahedronVolume is not { } minimum
+            || !double.IsFinite(minimum) || minimum <= 0d || minimum >= 1d)
+        {
+            errors.Add($"{label} MinimumNormalizedTetrahedronVolume must be finite, greater than zero, and less than one.");
         }
     }
 
