@@ -62,6 +62,19 @@ public static class CameraMath
         return right * (float)(-delta.X * worldPerPixel) + up * (float)(delta.Y * worldPerPixel);
     }
 
+    public static Vector2 ProjectWorldDirectionToScreen(
+        Vector3 worldDirection,
+        Vector3 eye,
+        Vector3 target)
+    {
+        var forward = Vector3.Normalize(target - eye);
+        var right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
+        var up = Vector3.Normalize(Vector3.Cross(right, forward));
+        return new Vector2(
+            Vector3.Dot(worldDirection, right),
+            -Vector3.Dot(worldDirection, up));
+    }
+
     public static bool IntersectUnitCube(Vector3 origin, Vector3 direction, float halfSize, out float distance)
     {
         distance = 0;

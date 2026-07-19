@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Map Fidelity Validation
 
-Updated: 2026-07-14
+Updated: 2026-07-18
 
 ## Decision
 
@@ -15,6 +15,28 @@ The current C3D map is verified in the OpenVisionLab **viewer display frame**. I
 | Can an external tool re-save be checked numerically? | Pass for Open3D sampled and CloudCompare full-resolution point-cloud re-saves, not metrology. | CloudCompare 2.13.2 preserved all `1,653,562` ordered vertices and RGB with maximum component drift `5e-7` at the internal `1e-6` tolerance. Its own C2C result has mean `4.91657e-7` and standard deviation `1.49337e-7` Viewer units. Open3D 0.19.0 preserved `66,212` sampled vertices and RGB within the external ASCII `1e-5` tolerance. |
 | Are the X/Y/Z values calibrated physical coordinates? | Unverified. | The C3D layout and scale are inferred; pixel pitch, height scale/offset, units, axis convention, and calibration provenance are unavailable. |
 | Does the Viewer match ZEISS/PolyWorks measurement results? | Not tested. | No licensed commercial metrology application or calibrated reference dataset is available in the workspace. |
+
+## 2026-07-18 External Review Export Revalidation
+
+The current `0.1.1-dev` source was rebuilt with zero warnings/errors and the actual Thickness sample was exported again for the user's external 3D-viewer review:
+
+- Source: `3D/Thickness/Ori_20240116_094414.C3D`, SHA-256 `79C02761F9B711C0F8980D4376B9FCE25E00D425E6CA85DA4D4349ECF5F0299C`.
+- Existing paired picture: `3D/Thickness/Ori_20240116_094414.png`, `1301 x 1967` RGB8, SHA-256 `97C8CAE2D39746398BEDE57FC66FD552AC95910287FA48C9B13968E4175A31A8`.
+- External-viewer file: `artifacts/c3d-thickness-review-20260718/Ori_20240116_094414.compatibility-mesh.ply`, ASCII PLY 1.0, 66,212 exact sampled Viewer vertices, 128,516 visualization-only faces, SHA-256 `99508A158025D2769A96C7B6DE6A923C628AA42111FE04BE11098EF0F413D49C`.
+- .NET export/readback: Pass with identical point/face counts, maximum XYZ error `0`, and RGB channel error `0`.
+- Independent Python standard-library recalculation: Pass with maximum XYZ error `2.34313965e-7` under the `1e-6` Viewer-unit tolerance and RGB channel error `0`; the fixed two-cell derived metrics also pass.
+- The new PLY is byte-identical to the previously externally rendered compatibility PLY. The PNG and C3D hashes are unchanged, so the established `1301 x 1967` unflipped-orientation evidence remains applicable to these exact bytes.
+
+The PNG is a human-readable height-color reference, not a lossless substitute for raw C3D values. The PLY faces exist only to make model viewers that reject point-only PLY display the sampled surface; inspection or physical measurement must not use those faces.
+
+```text
+Status: Complete
+Scope: Current-source Thickness C3D export for external visual review and current .NET/Python display-frame roundtrip verification.
+Acceptance criteria: supported external format -> pass (PLY); source identity -> pass; point/color roundtrip -> pass; paired picture identity/dimensions -> pass.
+Verification: solution build 0 warnings/0 errors; .NET max XYZ/RGB 0/0; independent Python max XYZ 2.34313965e-7 and RGB 0.
+Evidence: artifacts/c3d-thickness-review-20260718 and the exact paired PNG under 3D/Thickness.
+Boundary / next dependency: viewer normalization is unitless; C3D physical scale, calibration, writer/sensor provenance, and metrology remain unverified.
+```
 
 ## 2026-07-14 Prerequisite Reaudit
 

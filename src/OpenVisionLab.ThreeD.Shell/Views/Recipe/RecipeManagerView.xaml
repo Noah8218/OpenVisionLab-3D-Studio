@@ -1,0 +1,105 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Recipe.RecipeManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             MinWidth="360"
+             AutomationProperties.AutomationId="RecipeManagerView">
+    <Border Padding="16"
+            Background="{DynamicResource ThreeD.PanelBrush}"
+            TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBox Margin="0,10,0,0"
+                         AutomationProperties.Name="Teaching recipe name"
+                         Text="{Binding RecipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <WrapPanel Margin="0,8,0,0">
+                    <ui:Button Margin="0,0,5,5"
+                               Content="New"
+                               Icon="{ui:SymbolIcon DocumentAdd24}"
+                               Command="{Binding NewTeachingRecipeCommand}"
+                               AutomationProperties.Name="New teaching recipe" />
+                    <ui:Button Margin="0,0,5,5"
+                               Content="Open..."
+                               Icon="{ui:SymbolIcon FolderOpen24}"
+                               Command="{Binding OpenTeachingRecipeCommand}"
+                               AutomationProperties.Name="Open teaching recipe" />
+                    <ui:Button Margin="0,0,5,5"
+                               Content="Save"
+                               Icon="{ui:SymbolIcon DocumentCheckmark24}"
+                               Command="{Binding SaveTeachingRecipeCommand}"
+                               AutomationProperties.Name="Save teaching recipe" />
+                    <ui:Button Margin="0,0,5,5"
+                               Content="Save As..."
+                               Icon="{ui:SymbolIcon SaveCopy24}"
+                               Command="{Binding SaveTeachingRecipeAsCommand}"
+                               AutomationProperties.Name="Save teaching recipe as" />
+                </WrapPanel>
+
+                <Border Margin="0,4,0,0"
+                        Padding="10"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <StackPanel>
+                        <TextBlock FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding RecipeStateSummary}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding RecipeSchemaVersion, StringFormat=Schema {0}}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding RecipePathSummary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding RecipePathSummary}" />
+                        <Separator Margin="0,8" />
+                        <TextBlock FontSize="10.5"
+                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                   Text="{Binding SourceReadinessSummary}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="10.5"
+                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                   Text="{Binding RecipeAdapterCoverageSummary}" />
+                    </StackPanel>
+                </Border>
+
+                <Expander Margin="0,10,0,0"
+                          Header="Recent recipes"
+                          IsExpanded="True">
+                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding RecentRecipes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button HorizontalContentAlignment="Left"
+                                            Command="{Binding DataContext.OpenRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="{Binding Path}"
+                                            AutomationProperties.Name="Open recent 3D recipe">
+                                        <StackPanel>
+                                            <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Availability}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="1"
+                                            Margin="4,0,0,0"
+                                            Content="Remove"
+                                            Command="{Binding DataContext.RemoveRecentTeachingRecipeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="Remove recent recipe entry" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

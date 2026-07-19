@@ -34,9 +34,11 @@ No Studio project may point at the Library-Noah checkout.
 - `OpenVisionLab.ThreeD.Runner`: verifies the package assembly identity plus pass,
   tolerance failure, invalid ROI, missing metadata, analytic plane, and insufficient
   sample behaviors.
-- View/ViewModel: intentionally unchanged in this slice. A Viewer overlay or a
-  thickness/warpage workbench action requires a separately evidenced scalar meaning,
-  calibrated unit, frame, and source-to-grid mapping.
+- View/ViewModel: the bounded Thickness and local raw-height Warpage task slices
+  consume this bridge through typed recipes and explicit Preview/Publish commands.
+  The Warpage source is user-designated and declares `raw-height` plus its display
+  frame; it does not establish a calibrated unit, physical frame, datum, or
+  source-to-grid metrology mapping.
 
 ## Guardrails
 
@@ -46,8 +48,8 @@ No Studio project may point at the Library-Noah checkout.
 - A package `Fail` remains a measurement result. Invalid input, ROI, or insufficient
   data becomes a Studio `Error` and is not presented as a tolerance failure.
 - This bridge does not convert a C3D display height into physical thickness or
-  calibrated warpage. It also does not create a Viewer overlay from an unverified
-  scalar map.
+  calibrated Warpage. The local Viewer overlay represents an explicit raw-height
+  best-fit residual result only; it is not a calibrated scalar-map or GD&T claim.
 - Do not publish a new package from an uncommitted Library-Noah working tree.
 
 ## Update Checklist

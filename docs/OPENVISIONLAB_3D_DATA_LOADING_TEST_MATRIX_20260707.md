@@ -28,7 +28,7 @@ For UI-facing additions, keep the implementation order explicit: View first for 
 | Sample | Type | Current coverage | Current evidence command/artifact | Gap before algorithms |
 | --- | --- | --- | --- | --- |
 | `3D/Thickness/Ori_20240116_094414.C3D` | Inferred C3D height grid | Inventory, import, render, pick, two-point, ROI step, transform, C3D height-deviation rule, Runner replay. | `artifacts/matrix_c3d_thickness_after.png`, `artifacts/matrix_c3d_thickness_after.txt` | Needs official C3D format confirmation or another non-identical C3D sample before treating Thickness/Warpage as separate real cases. |
-| `3D/Warpage/Ori_20240116_094430.C3D` | Inferred C3D height grid | Inventory only; currently byte-identical to Thickness. | `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md` | Needs a non-identical Warpage sample before rule or UI behavior can be distinguished. |
+| `3D/Warpage/Ori_20240116_094430.C3D` | Inferred C3D height grid | Inventory, import, local raw-height Warpage teach/preview/publish, best-fit ROI overlay, typed recipe save/reopen, and Runner replay. The bytes remain identical to Thickness. | `artifacts/c3d_warpage_20260717/final_ui_saved_warpage.recipe.json`, `artifacts/c3d_warpage_20260717/final_ui_saved_runner.txt` | Needs distinct acquisition provenance, scalar meaning, unit/frame, datum/reference, and calibration evidence before any separate physical Warpage claim. |
 | `3D/PublicSamples/glTF/Box.glb` | GLB mesh | Inventory, import, render, mesh bounds, triangle/vertex contract. | `artifacts/matrix_glb_box_after.png`, `artifacts/matrix_glb_box_after.txt` | Minimal baseline only; non-box mesh UX is now tracked by `Avocado.glb`. |
 | `3D/PublicSamples/glTF/BoxVertexColors.glb` | GLB mesh with `COLOR_0` | Inventory, import, render, vertex-color contract. | `artifacts/matrix_glb_vertex_color_after.png`, `artifacts/matrix_glb_vertex_color_after.txt` | Needs larger colored mesh to test color-mode and picking readability. |
 | `3D/PublicSamples/glTF/BoxTextured.glb` | GLB mesh with `TEXCOORD_0` and embedded PNG texture | Inventory, import, render, UV/texture upload contract. | `artifacts/matrix_glb_textured_after.png`, `artifacts/matrix_glb_textured_after.txt` | Needs external texture and larger texture cases before calling material support broad. |
@@ -182,7 +182,7 @@ The refreshed text artifacts should include these signals:
 ## Known Limits
 
 - C3D parsing is still inferred from the two local files.
-- Thickness and Warpage are currently byte-identical, so they cannot prove separate inspection behavior yet.
+- Thickness and Warpage are currently byte-identical. The declared local Warpage recipe proves a distinct workflow contract only; it does not prove a separate acquisition, independent inspection behavior, or a physical measurement meaning.
 - GLB support is intentionally minimal: mesh geometry, vertex colors, UVs, embedded texture smoke evidence, scene/node traversal, and static expansion for simple `EXT_mesh_gpu_instancing`. It is not full glTF material, skinning, animation, morph-target, or broad extension coverage.
 - Large imported meshes now have first-pass render sampling, bounds-fit first-load camera framing, compact HUD details in smoke captures, and O(n) smoke measurement. This is not a full VBO/LOD renderer yet; contracts must keep recording source triangle count, rendered triangle count, render stride, camera distance, and HUD details state.
 - LAS/LAZ support is currently proven on one compressed LAZ sample and one small uncompressed LAS sample. It is not broad point-cloud format coverage.

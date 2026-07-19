@@ -1,0 +1,37 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wpg="clr-namespace:System.Windows.Controls.WpfPropertyGrid;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
+             AutomationProperties.AutomationId="RecipeStepPropertyGridHost">
+    <UserControl.Resources>
+        <!-- These keys are local to this host. The package never changes App resources. -->
+        <SolidColorBrush x:Key="Ovl3D.Wpg.SurfaceBrush" Color="#FFF3F4F6" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.PanelBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.RowHoverBrush" Color="#FFEFF6FF" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.NameColumnBrush" Color="#FFF9FAFB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.NameColumnHoverBrush" Color="#FFDFF5F2" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.LineBrush" Color="#FFD1D5DB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.HeaderBrush" Color="#FFDFF5F2" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.TextBrush" Color="#FF111827" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.MutedTextBrush" Color="#FF6B7280" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.AccentBrush" Color="#FF0F766E" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorBorderBrush" Color="#FFD1D5DB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorFocusBrush" Color="#FF2563EB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorBackgroundBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorPanelBrush" Color="#FFF9FAFB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorReadOnlyBrush" Color="#FFF3F4F6" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorTextBrush" Color="#FF111827" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorMutedBrush" Color="#FF6B7280" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorHoverBrush" Color="#FFEFF6FF" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorSelectedBrush" Color="#FFDFF5F2" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderTrackBrush" Color="#FFD1D5DB" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderFillBrush" Color="#FF0F766E" />
+        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderThumbBrush" Color="#FFFFFFFF" />
+    </UserControl.Resources>
+    <wpg:PropertyGrid x:Name="InnerGrid"
+                      AutomationProperties.Name="Selected step parameters"
+                      EditorColumnMinWidth="120"
+                      PropertyFilterVisibility="Visible"
+                      PropertyNameColumnWidth="132"
+                      ShowReadOnlyProperties="True" />
+</UserControl>

@@ -67,12 +67,12 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "C3D color choices",
                 Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Grayscale", "Height", "Thermal"),
                 string.Join(",", c3dViewModel.AvailableColorMaps));
-            Check("C3D current default", c3dViewModel.SelectedGeometryStyle == "Points" && c3dViewModel.SelectedColorMap == "Height", c3dViewModel.EffectiveSummary);
+            Check("C3D current default", c3dViewModel.SelectedGeometryStyle == "Wireframe" && c3dViewModel.SelectedColorMap == "Height", c3dViewModel.EffectiveSummary);
             Check("C3D geometry selectable", c3dViewModel.CanSelectGeometryStyle, c3dViewModel.CanSelectGeometryStyle.ToString());
             Check(
                 "C3D typed snapshot",
                 c3dViewModel.EffectiveSettings.Source == ViewerDisplaySourceKind.C3DHeightGrid
-                && c3dViewModel.EffectiveSettings.GeometryStyle == ViewerGeometryStyle.Points
+                && c3dViewModel.EffectiveSettings.GeometryStyle == ViewerGeometryStyle.Wireframe
                 && c3dViewModel.EffectiveSettings.ColorMap == ViewerColorMap.Height,
                 c3dViewModel.EffectiveSettings.ToString());
 
@@ -353,6 +353,40 @@ internal static class ViewerDisplaySettingsViewModelVerification
             Check("mesh display change does not publish", publishRequests == 0, publishRequests.ToString(CultureInfo.InvariantCulture));
             Check("property notifications", propertyChanges > 0, propertyChanges.ToString(CultureInfo.InvariantCulture));
 
+            var origin = Vector3.Zero;
+            var frontEye = CameraMath.OrbitCameraPosition(origin, 0.0, 0.0, 5.0);
+            var frontX = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitX, frontEye, origin);
+            var frontY = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitY, frontEye, origin);
+            var frontZ = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitZ, frontEye, origin);
+            Check(
+                "orientation triad front camera",
+                VectorNear(frontX, new Vector2(1.0f, 0.0f))
+                && VectorNear(frontY, new Vector2(0.0f, -1.0f))
+                && VectorNear(frontZ, Vector2.Zero),
+                $"X={frontX}|Y={frontY}|Z={frontZ}");
+
+            var sideEye = CameraMath.OrbitCameraPosition(origin, 90.0, 0.0, 5.0);
+            var sideX = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitX, sideEye, origin);
+            var sideY = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitY, sideEye, origin);
+            var sideZ = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitZ, sideEye, origin);
+            Check(
+                "orientation triad side camera",
+                VectorNear(sideX, Vector2.Zero)
+                && VectorNear(sideY, new Vector2(0.0f, -1.0f))
+                && VectorNear(sideZ, new Vector2(-1.0f, 0.0f)),
+                $"X={sideX}|Y={sideY}|Z={sideZ}");
+
+            var pitchedEye = CameraMath.OrbitCameraPosition(origin, 0.0, 45.0, 5.0);
+            var pitchedX = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitX, pitchedEye, origin);
+            var pitchedY = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitY, pitchedEye, origin);
+            var pitchedZ = CameraMath.ProjectWorldDirectionToScreen(Vector3.UnitZ, pitchedEye, origin);
+            Check(
+                "orientation triad pitched camera",
+                VectorNear(pitchedX, new Vector2(1.0f, 0.0f))
+                && VectorNear(pitchedY, new Vector2(0.0f, -0.70710677f))
+                && VectorNear(pitchedZ, new Vector2(0.0f, 0.70710677f)),
+                $"X={pitchedX}|Y={pitchedY}|Z={pitchedZ}");
+
             summary = $"Display-settings ViewModel verification: Pass ({passed} checks)";
             lines.Add(summary);
             WriteReport(reportPath, lines);
@@ -388,6 +422,9 @@ internal static class ViewerDisplaySettingsViewModelVerification
         Math.Abs(actual.R - expected.R) <= tolerance
         && Math.Abs(actual.G - expected.G) <= tolerance
         && Math.Abs(actual.B - expected.B) <= tolerance;
+
+    private static bool VectorNear(Vector2 actual, Vector2 expected, float tolerance = 0.00001f) =>
+        Vector2.Distance(actual, expected) <= tolerance;
 
     private static HeightGridPoint GridPoint(int row, int column) =>
         new(new Vector3(column, 0.0f, row), 0.5, 0.0, 1.0f, row, column);

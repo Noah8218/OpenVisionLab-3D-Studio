@@ -1,0 +1,138 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.RecipePipelineReviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.AutomationId="RecipePipelineReview">
+    <Border Background="{DynamicResource ThreeD.PanelBrush}"
+            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="Recipe Pipeline / Teach Review" />
+                    <TextBlock Margin="0,2,0,0"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               FontSize="10"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding ValidationSummary}" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center">
+                    <Button Margin="0,0,4,0" Content="Validate" Command="{Binding ValidateTeachingRecipeCommand}" />
+                    <Button Margin="0,0,4,0" Content="Up" Command="{Binding MoveSelectedStepUpCommand}" />
+                    <Button Margin="0,0,4,0" Content="Down" Command="{Binding MoveSelectedStepDownCommand}" />
+                    <Button Content="Remove" Command="{Binding RemoveSelectedStepCommand}" />
+                </WrapPanel>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,8,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Margin="5,0,5,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="145" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="190" />
+                        <ColumnDefinition Width="120" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="#" />
+                    <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Tool" />
+                    <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Inputs" />
+                    <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Typed output" />
+                    <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="State" />
+                </Grid>
+                <ListBox Grid.Row="1"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ItemsSource="{Binding PipelineSteps}"
+                         SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,3"
+                                    Padding="6,4"
+                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="145" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding Order}" />
+                                    <TextBlock Grid.Column="1" FontSize="10.5" FontWeight="SemiBold" Text="{Binding ToolName}" />
+                                    <TextBlock Grid.Column="2"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               FontSize="10.5"
+                                               Text="{Binding InputSummary}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3"
+                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                               FontSize="10.5"
+                                               Text="{Binding OutputEntityId}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="4"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               FontSize="10"
+                                               Text="{Binding State}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <TextBlock Grid.Row="1"
+                           IsHitTestVisible="False"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding PipelineEmptyHint}"
+                           TextWrapping="Wrap" />
+            </Grid>
+
+            <ItemsControl Grid.Row="2" Margin="0,6,0,0" ItemsSource="{Binding ValidationMessages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Margin="0,1,0,0"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                   FontSize="10.5"
+                                   Text="{Binding Message, StringFormat=• {0}}"
+                                   TextWrapping="Wrap" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+</UserControl>

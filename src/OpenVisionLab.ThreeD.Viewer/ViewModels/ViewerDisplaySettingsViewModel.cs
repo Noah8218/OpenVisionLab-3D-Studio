@@ -160,7 +160,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             ViewerDisplaySourceKind.C3DHeightGrid,
             surfaceGeometryAvailable ? SurfaceGeometryStyles : PointGeometryStyles,
             deviationAvailable ? C3DResultColorMaps : C3DColorMaps,
-            ViewerGeometryStyle.Points,
+            surfaceGeometryAvailable ? ViewerGeometryStyle.Wireframe : ViewerGeometryStyle.Points,
             ViewerColorMap.Height);
 
     internal void ConfigureImportedMesh(bool sourceColorAvailable) =>

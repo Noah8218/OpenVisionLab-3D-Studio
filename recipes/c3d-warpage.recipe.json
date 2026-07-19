@@ -1,0 +1,30 @@
+{
+  "recipeType": "c3d-warpage",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-warpage",
+    "name": "C3D Warpage Sample",
+    "path": "../3D/Warpage/Ori_20240116_094430.C3D",
+    "unit": "raw-height"
+  },
+  "step": {
+    "id": "step.c3d-warpage",
+    "sourceEntityId": "source.c3d-warpage",
+    "referenceId": "reference.c3d-warpage-best-fit-roi",
+    "referenceMode": "BestFitInspectionRoi",
+    "roi": {
+      "row": 900,
+      "column": 570,
+      "rowCount": 160,
+      "columnCount": 160
+    },
+    "acceptance": {
+      "maximumPeakToValley": 10000.0,
+      "maximumRms": null
+    },
+    "unit": "raw-height",
+    "frameId": "frame.c3d-grid-index",
+    "minimumValidSamples": 3,
+    "enabled": true
+  }
+}

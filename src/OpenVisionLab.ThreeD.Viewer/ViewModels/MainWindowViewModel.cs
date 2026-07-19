@@ -11,7 +11,7 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
-public sealed class MainWindowViewModel : INotifyPropertyChanged
+public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 {
     public const string CubeEntityId = "source.generated-cube";
     public const string PointCloudEntityId = "source.generated-point-cloud";
@@ -20,6 +20,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public const string LazEntityId = "source.public-laz-manuscript";
     public const string SyntheticResultEntityId = "result.synthetic-height-deviation";
     public const string C3DHeightDeviationResultEntityId = "result.c3d-height-deviation";
+    public const string C3DThicknessResultEntityId = "result.c3d-thickness";
     public const string C3DPlaneFlatnessResultEntityId = "result.c3d-plane-flatness";
     public const string C3DPointPairDimensionsResultEntityId = "result.c3d-point-pair-dimensions";
     public const string C3DGapFlushResultEntityId = "result.c3d-gap-flush";
@@ -29,6 +30,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private const string PlaneFlatnessStepId = "step.c3d-plane-flatness";
     private const string PlaneFlatnessReferenceId = "reference.roi-plane";
     private const int PlaneFlatnessMaxSampledPoints = 140000;
+    private const string ThicknessStepId = "step.c3d-thickness";
+    private const string ThicknessRoiReferenceId = "reference.c3d-thickness-roi";
+    private const string ThicknessDefaultFrameId = "frame.c3d-grid-index";
+    public const string ThicknessRoiSelectionMode = "Thickness ROI Teach";
+    public const string ProfileSelectionMode = "Profile";
     private const string PointPairDimensionsStepId = "step.c3d-point-pair-dimensions";
     private const string PointPairFirstReferenceId = "reference.point-a";
     private const string PointPairSecondReferenceId = "reference.point-b";
@@ -109,6 +115,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int recipeRoiMaxSampledPoints = 55000;
     private ToolResult previewToolResult = CreateNotRunToolResult();
     private ToolResult? c3dHeightDeviationPreview;
+    private ToolResult? c3dThicknessPreview;
+    private bool c3dThicknessPreviewActive;
+    private bool thicknessConfigured;
+    private string thicknessStepId = ThicknessStepId;
+    private string thicknessSourceEntityId = C3DEntityId;
+    private string thicknessRoiReferenceId = ThicknessRoiReferenceId;
+    private int thicknessRoiRow = 900;
+    private int thicknessRoiColumn = 570;
+    private int thicknessRoiRowCount = 160;
+    private int thicknessRoiColumnCount = 160;
+    private double thicknessMinimum = -100.0;
+    private double thicknessMaximum = 2500.0;
+    private int thicknessMinimumValidSamples = 1;
+    private string thicknessUnit = "raw-height";
+    private string thicknessFrameId = ThicknessDefaultFrameId;
+    private bool thicknessVisible;
+    private string thicknessSummary = "Thickness: teach one C3D ROI, then run Preview.";
+    private string thicknessDetails = "Declared scalar raw-height only; calibration is not inferred.";
+    private double thicknessMean = double.NaN;
+    private double thicknessMinimumMeasured = double.NaN;
+    private double thicknessMaximumMeasured = double.NaN;
+    private double thicknessRange = double.NaN;
+    private int thicknessValidSampleCount;
+    private int thicknessBelowLowerLimitCount;
+    private int thicknessAboveUpperLimitCount;
     private ToolResult? c3dPlaneFlatnessPreview;
     private bool c3dPlaneFlatnessPreviewActive;
     private bool planeFlatnessConfigured;
@@ -314,6 +345,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private double cameraTargetZ;
     private readonly RelayCommand applyRoiAlignmentCommand;
     private readonly RelayCommand fitPlaneCommand;
+    private readonly RelayCommand teachThicknessRoiCommand;
+    private readonly RelayCommand previewThicknessCommand;
     private readonly RelayCommand previewPlaneFlatnessCommand;
     private readonly RelayCommand previewPointPairDimensionsCommand;
     private readonly RelayCommand previewGapFlushCommand;
@@ -326,10 +359,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly RelayCommand resetCommand;
     private readonly RelayCommand saveRecipeCommand;
     private readonly RelayCommand screenshotCommand;
+    private readonly RelayCommand profileCommand;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? ApplyRoiAlignmentRequested;
     public event EventHandler? FitPlaneRequested;
+    public event EventHandler? PreviewThicknessRequested;
     public event EventHandler? PreviewPlaneFlatnessRequested;
     public event EventHandler? PreviewPointPairDimensionsRequested;
     public event EventHandler? PreviewGapFlushRequested;
@@ -341,6 +376,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? ResetRequested;
     public event EventHandler? SaveRecipeRequested;
     public event EventHandler? ScreenshotRequested;
+    public event EventHandler? ProfileViewRequested;
     public event EventHandler? PublishPreviewResultRequested;
 
     public MainWindowViewModel()
@@ -356,6 +392,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         openRecipeCommand = new RelayCommand(_ => OpenRecipeRequested?.Invoke(this, EventArgs.Empty));
         applyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         fitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        teachThicknessRoiCommand = new RelayCommand(_ => BeginThicknessRoiTeaching(), _ => C3DSampleVisible);
+        previewThicknessCommand = new RelayCommand(_ => PreviewThicknessRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible && ThicknessConfigured);
+        teachWarpageRoiCommand = new RelayCommand(_ => BeginWarpageRoiTeaching(), _ => C3DSampleVisible);
+        previewWarpageCommand = new RelayCommand(_ => PreviewWarpageRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible && WarpageConfigured);
         previewPlaneFlatnessCommand = new RelayCommand(_ => PreviewPlaneFlatnessRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         previewPointPairDimensionsCommand = new RelayCommand(
             _ => PreviewPointPairDimensionsRequested?.Invoke(this, EventArgs.Empty),
@@ -366,6 +406,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
         saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
+        profileCommand = new RelayCommand(
+            _ =>
+            {
+                SelectedSelectionMode = ProfileSelectionMode;
+                ProfileViewRequested?.Invoke(this, EventArgs.Empty);
+            },
+            _ => C3DSampleVisible);
 
         RefreshRecipeParameterSummary();
         RefreshSceneContracts();
@@ -376,7 +423,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
 
-    public string[] SelectionModes { get; } = ["Point", "Two Point Measure", "Plane Distance", "Plane Flatness", "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
+    public string[] SelectionModes { get; } = ["Point", ProfileSelectionMode, "Two Point Measure", "Plane Distance", "Plane Flatness", ThicknessRoiSelectionMode, WarpageRoiSelectionMode, "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
 
     public ViewerDisplaySettingsViewModel Display { get; } = new();
 
@@ -399,6 +446,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string CoordinateFrameSummary { get; } = "Right-handed | Y-up height | X red | Y green | Z blue";
     public ICommand ApplyRoiAlignmentCommand => applyRoiAlignmentCommand;
     public ICommand FitPlaneCommand => fitPlaneCommand;
+    public ICommand TeachThicknessRoiCommand => teachThicknessRoiCommand;
+    public ICommand PreviewThicknessCommand => previewThicknessCommand;
     public ICommand PreviewPlaneFlatnessCommand => previewPlaneFlatnessCommand;
     public ICommand PreviewPointPairDimensionsCommand => previewPointPairDimensionsCommand;
     public ICommand PreviewGapFlushCommand => previewGapFlushCommand;
@@ -411,6 +460,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ResetCommand => resetCommand;
     public ICommand SaveRecipeCommand => saveRecipeCommand;
     public ICommand ScreenshotCommand => screenshotCommand;
+    public ICommand ProfileCommand => profileCommand;
 
     public bool HudDetailsVisible
     {
@@ -520,6 +570,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     RefreshSceneContracts();
                 }
 
+                RefreshC3DHeightDistributionLegend();
                 RefreshCommandCanExecute();
             }
         }
@@ -612,6 +663,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedColorMode));
         OnPropertyChanged(nameof(SelectedGeometryStyle));
         RefreshPointCloudColorLegend();
+        RefreshC3DHeightDistributionLegend();
         ViewerStatus = Display.FallbackApplied
             ? Display.FallbackSummary
             : $"Display: {Display.EffectiveGeometryStyle} | {ViewerDisplaySettingsViewModel.GetColorMapLabel(settings.ColorMap)}";
@@ -820,6 +872,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     "Two Point Measure" => TwoPointMeasurementSummary,
                     "Plane Distance" => PlaneReferenceMeasurementDetails,
                     "Plane Flatness" => PlaneFlatnessDetails,
+                    ThicknessRoiSelectionMode => ThicknessDetails,
+                    WarpageRoiSelectionMode => WarpageDetails,
                     "ROI Step Compare" => RoiStepMeasurementDetails,
                     "Gap / Flush" => GapFlushDetails,
                     "Volume" => VolumeDetails,
@@ -1226,6 +1280,118 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref pointPairAngleDegrees, value);
     }
 
+    public bool ThicknessConfigured
+    {
+        get => thicknessConfigured;
+        private set => SetField(ref thicknessConfigured, value);
+    }
+
+    public int ThicknessRoiRow
+    {
+        get => thicknessRoiRow;
+        set => SetThicknessParameter(ref thicknessRoiRow, Math.Max(0, value), nameof(ThicknessRoiRow), "Thickness ROI changed; run Preview Thickness again");
+    }
+
+    public int ThicknessRoiColumn
+    {
+        get => thicknessRoiColumn;
+        set => SetThicknessParameter(ref thicknessRoiColumn, Math.Max(0, value), nameof(ThicknessRoiColumn), "Thickness ROI changed; run Preview Thickness again");
+    }
+
+    public int ThicknessRoiRowCount
+    {
+        get => thicknessRoiRowCount;
+        set => SetThicknessParameter(ref thicknessRoiRowCount, Math.Max(1, value), nameof(ThicknessRoiRowCount), "Thickness ROI size changed; run Preview Thickness again");
+    }
+
+    public int ThicknessRoiColumnCount
+    {
+        get => thicknessRoiColumnCount;
+        set => SetThicknessParameter(ref thicknessRoiColumnCount, Math.Max(1, value), nameof(ThicknessRoiColumnCount), "Thickness ROI size changed; run Preview Thickness again");
+    }
+
+    public double ThicknessMinimum
+    {
+        get => thicknessMinimum;
+        set => SetThicknessParameter(ref thicknessMinimum, CoerceFinite(value, thicknessMinimum), nameof(ThicknessMinimum), "Thickness lower limit changed; run Preview Thickness again");
+    }
+
+    public double ThicknessMaximum
+    {
+        get => thicknessMaximum;
+        set => SetThicknessParameter(ref thicknessMaximum, CoerceFinite(value, thicknessMaximum), nameof(ThicknessMaximum), "Thickness upper limit changed; run Preview Thickness again");
+    }
+
+    public int ThicknessMinimumValidSamples
+    {
+        get => thicknessMinimumValidSamples;
+        set => SetThicknessParameter(ref thicknessMinimumValidSamples, Math.Max(1, value), nameof(ThicknessMinimumValidSamples), "Thickness minimum sample count changed; run Preview Thickness again");
+    }
+
+    public string ThicknessUnit => thicknessUnit;
+
+    public string ThicknessFrameId => thicknessFrameId;
+
+    public bool ThicknessVisible
+    {
+        get => thicknessVisible;
+        private set => SetField(ref thicknessVisible, value);
+    }
+
+    public string ThicknessSummary
+    {
+        get => thicknessSummary;
+        private set => SetField(ref thicknessSummary, value);
+    }
+
+    public string ThicknessDetails
+    {
+        get => thicknessDetails;
+        private set => SetField(ref thicknessDetails, value);
+    }
+
+    public double ThicknessMean
+    {
+        get => thicknessMean;
+        private set => SetField(ref thicknessMean, value);
+    }
+
+    public double ThicknessMinimumMeasured
+    {
+        get => thicknessMinimumMeasured;
+        private set => SetField(ref thicknessMinimumMeasured, value);
+    }
+
+    public double ThicknessMaximumMeasured
+    {
+        get => thicknessMaximumMeasured;
+        private set => SetField(ref thicknessMaximumMeasured, value);
+    }
+
+    public double ThicknessRange
+    {
+        get => thicknessRange;
+        private set => SetField(ref thicknessRange, value);
+    }
+
+    public int ThicknessValidSampleCount
+    {
+        get => thicknessValidSampleCount;
+        private set => SetField(ref thicknessValidSampleCount, value);
+    }
+
+    public int ThicknessBelowLowerLimitCount
+    {
+        get => thicknessBelowLowerLimitCount;
+        private set => SetField(ref thicknessBelowLowerLimitCount, value);
+    }
+
+    public int ThicknessAboveUpperLimitCount
+    {
+        get => thicknessAboveUpperLimitCount;
+        private set => SetField(ref thicknessAboveUpperLimitCount, value);
+    }
+
     public bool GapFlushConfigured
     {
         get => gapFlushConfigured;
@@ -1427,11 +1593,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         applyRoiAlignmentCommand.RaiseCanExecuteChanged();
         fitPlaneCommand.RaiseCanExecuteChanged();
+        teachThicknessRoiCommand.RaiseCanExecuteChanged();
+        previewThicknessCommand.RaiseCanExecuteChanged();
+        teachWarpageRoiCommand.RaiseCanExecuteChanged();
+        previewWarpageCommand.RaiseCanExecuteChanged();
         previewPlaneFlatnessCommand.RaiseCanExecuteChanged();
         previewPointPairDimensionsCommand.RaiseCanExecuteChanged();
         previewGapFlushCommand.RaiseCanExecuteChanged();
         previewVolumeCommand.RaiseCanExecuteChanged();
         previewCrossSectionCommand.RaiseCanExecuteChanged();
+        profileCommand.RaiseCanExecuteChanged();
         publishResultCommand.RaiseCanExecuteChanged();
     }
 
@@ -1987,2190 +2158,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => lazSampleStride;
         private set => SetField(ref lazSampleStride, value);
-    }
-
-    public void FitAll()
-    {
-        if (C3DSampleVisible)
-        {
-            SetCameraTarget(0.0, 0.0, 0.0);
-            CameraDistance = 13.2;
-        }
-        else if (PointCloudVisible && CubeVisible)
-        {
-            SetCameraTarget(2.05, -0.25, 0.0);
-            CameraDistance = 9.2;
-        }
-        else if (PointCloudVisible)
-        {
-            SetCameraTarget(3.2, -0.70, 0.0);
-            CameraDistance = 7.2;
-        }
-        else if (GlbSampleVisible)
-        {
-            FitGlbCamera();
-        }
-        else if (LazSampleVisible)
-        {
-            FitLazCamera();
-        }
-        else
-        {
-            SetCameraTarget(0.0, 0.0, 0.0);
-            CameraDistance = 5.2;
-        }
-
-        ViewerStatus = "Fit all visible entities";
-        UpdateCameraStatus();
-    }
-
-    public void FitSelection()
-    {
-        if (SelectedEntity == "C3D Height Grid" && C3DSampleVisible)
-        {
-            SetCameraTarget(0.0, 0.0, 0.0);
-            CameraDistance = 13.2;
-            ViewerStatus = "Fit selected C3D height grid";
-        }
-        else if (SelectedEntity == "Generated Point Cloud" && PointCloudVisible)
-        {
-            SetCameraTarget(3.2, -0.70, 0.0);
-            CameraDistance = 7.2;
-            ViewerStatus = "Fit selected point cloud";
-        }
-        else if ((SelectedEntity == "Public GLB Mesh" || SelectedEntity == $"{ImportedMeshFormat} Mesh") && GlbSampleVisible)
-        {
-            FitGlbCamera();
-            ViewerStatus = $"Fit selected {ImportedMeshFormat} mesh";
-        }
-        else if ((SelectedEntity == "Public LAZ/LAS Metadata" || SelectedEntity == "Public LAZ/LAS Point Cloud") && LazSampleVisible)
-        {
-            FitLazCamera();
-            ViewerStatus = "Fit selected LAZ bounds";
-        }
-        else
-        {
-            SetCameraTarget(0.0, 0.0, 0.0);
-            CameraDistance = 5.2;
-            ViewerStatus = "Fit selected cube";
-        }
-
-        UpdateCameraStatus();
-    }
-
-    public void Reset()
-    {
-        YawDegrees = 38.0;
-        PitchDegrees = 24.0;
-        CameraDistance = 9.2;
-        SetCameraTarget(2.05, -0.25, 0.0);
-        SelectedEntity = "Generated Unit Cube";
-        PickCoordinate = "(none)";
-        ViewerStatus = "Camera reset";
-        UpdateCameraStatus();
-    }
-
-    public void UsePointCloudSmokeScene()
-    {
-        HudDetailsVisible = true;
-        ClearC3DLinkedViews();
-        CubeVisible = false;
-        MeasurementVisible = false;
-        ResultOverlayVisible = false;
-        C3DSampleVisible = false;
-        GlbSampleVisible = false;
-        LazSampleVisible = false;
-        PointCloudVisible = true;
-        SelectedColorMode = "Height";
-        SelectedEntity = "Generated Point Cloud";
-        PickCoordinate = "(none)";
-        CameraDistance = 7.2;
-        SetCameraTarget(3.2, -0.70, 0.0);
-        ViewerStatus = "Smoke scene: generated point cloud";
-        UpdateCameraStatus();
-    }
-
-    public void UseSelectionSmokeScene(string mode)
-    {
-        var keepCurrentC3DScene = (mode == "Section Plane" || mode == "ROI Step Compare" || mode == "Gap / Flush" || mode == "Cross-section Dimensions") && C3DSampleVisible;
-        if (!keepCurrentC3DScene)
-        {
-            UsePointCloudSmokeScene();
-        }
-
-        SelectionOverlayVisible = true;
-        SelectedSelectionMode = mode;
-        SelectedEntity = mode switch
-        {
-            "Box ROI" => "Box ROI",
-            "ROI Step Compare" => "ROI Step Compare",
-            "Gap / Flush" => "C3D Gap / Flush",
-            "Cross-section Dimensions" => "C3D Cross-section Dimensions",
-            "Section Plane" => "Section Plane",
-            _ => "Generated Point Cloud"
-        };
-        SelectionSummary = mode switch
-        {
-            "Section Plane" when SectionProfileVisible => SectionProfileSummary,
-            "Section Plane" => "Section plane: profile not loaded",
-            "Two Point Measure" => TwoPointMeasurementSummary,
-            "Plane Distance" => PlaneReferenceMeasurementDetails,
-            "ROI Step Compare" => RoiStepMeasurementDetails,
-            "Gap / Flush" => GapFlushDetails,
-            "Cross-section Dimensions" => CrossSectionDetails,
-            "Box ROI" => "Box ROI: viewer state only",
-            _ => "Point selection: generated point cloud peak"
-        };
-        ViewerStatus = $"Smoke scene: {mode}";
-    }
-
-    public void UseC3DSmokeScene()
-    {
-        HudDetailsVisible = true;
-        CubeVisible = false;
-        PointCloudVisible = false;
-        GlbSampleVisible = false;
-        LazSampleVisible = false;
-        C3DSampleVisible = true;
-        MeasurementVisible = false;
-        SelectionOverlayVisible = false;
-        ResultOverlayVisible = false;
-        SelectedEntity = "C3D Height Grid";
-        PickCoordinate = "(none)";
-        MeasurementSummary = "C3D sample loaded; no measurement tool published";
-        SelectionSummary = "Selection overlay hidden";
-        SelectedColorMode = "Height";
-        YawDegrees = 34.0;
-        PitchDegrees = 52.0;
-        CameraDistance = 13.2;
-        SetCameraTarget(0.0, 0.0, 0.0);
-        ViewerStatus = "Smoke scene: C3D height grid";
-        UpdateCameraStatus();
-    }
-
-    public void UseGlbSmokeScene()
-    {
-        HudDetailsVisible = false;
-        var meshLabel = ImportedMeshDisplayName();
-        ClearC3DLinkedViews();
-        CubeVisible = false;
-        PointCloudVisible = false;
-        C3DSampleVisible = false;
-        LazSampleVisible = false;
-        GlbSampleVisible = true;
-        MeasurementVisible = false;
-        SelectionOverlayVisible = false;
-        ResultOverlayVisible = false;
-        SelectedEntity = meshLabel;
-        PickCoordinate = "(not picked)";
-        SelectionSummary = $"Mesh selection: {ImportedMeshFormat} mesh loaded";
-        MeasurementSummary = $"{ImportedMeshFormat} mesh loaded; measurement tools pending";
-        SelectedColorMode = Display.AvailableColorMaps[0];
-        YawDegrees = 38.0;
-        PitchDegrees = 26.0;
-        FitGlbCamera();
-        ViewerStatus = $"Smoke scene: {ImportedMeshFormat} mesh";
-        UpdateCameraStatus();
-    }
-
-    public void UseGlbFailureScene(string summary)
-    {
-        HudDetailsVisible = true;
-        var meshLabel = ImportedMeshDisplayName();
-        ClearC3DLinkedViews();
-        CubeVisible = false;
-        PointCloudVisible = false;
-        C3DSampleVisible = false;
-        LazSampleVisible = false;
-        GlbSampleVisible = true;
-        MeasurementVisible = false;
-        SelectionOverlayVisible = false;
-        ResultOverlayVisible = false;
-        SelectedEntity = meshLabel;
-        PickCoordinate = "(load failed)";
-        SelectionSummary = summary;
-        MeasurementSummary = $"{ImportedMeshFormat} load failed; see Viewer status and contract output.";
-        SelectedColorMode = Display.AvailableColorMaps[0];
-    }
-
-    public void UseLazSmokeScene()
-    {
-        HudDetailsVisible = false;
-        ClearC3DLinkedViews();
-        CubeVisible = false;
-        PointCloudVisible = false;
-        C3DSampleVisible = false;
-        GlbSampleVisible = false;
-        LazSampleVisible = true;
-        MeasurementVisible = false;
-        SelectionOverlayVisible = false;
-        ResultOverlayVisible = false;
-        SelectedEntity = "Public LAZ/LAS Metadata";
-        PickCoordinate = "(metadata only)";
-        SelectionSummary = "Point selection: LAZ/LAS metadata loaded";
-        MeasurementSummary = "LAZ header loaded; compressed point records not decoded yet";
-        SelectedColorMode = "Solid";
-        YawDegrees = 34.0;
-        PitchDegrees = 34.0;
-        FitLazCamera();
-        ViewerStatus = "Smoke scene: public LAZ/LAS metadata";
-        UpdateCameraStatus();
-    }
-
-    public void UseLazFailureScene(string summary)
-    {
-        HudDetailsVisible = true;
-        ClearC3DLinkedViews();
-        CubeVisible = false;
-        PointCloudVisible = false;
-        C3DSampleVisible = false;
-        GlbSampleVisible = false;
-        LazSampleVisible = true;
-        MeasurementVisible = false;
-        SelectionOverlayVisible = false;
-        ResultOverlayVisible = false;
-        SelectedEntity = "Public LAZ/LAS Point Cloud";
-        PickCoordinate = "(load failed)";
-        SelectionSummary = summary;
-        MeasurementSummary = "LAZ/LAS load failed; see Viewer status and contract output.";
-        SelectedColorMode = "Solid";
-    }
-
-    public void UseLazPointSmokeScene()
-    {
-        UseLazSmokeScene();
-        SelectedEntity = "Public LAZ/LAS Point Cloud";
-        PickCoordinate = "(sampled points)";
-        SelectionSummary = "Point selection: LAZ/LAS sampled point cloud";
-        MeasurementSummary = "LAZ/LAS point decode loaded; XYZ/RGB sampled points rendered.";
-        SelectedColorMode = Display.AvailableColorMaps.Contains("RGB", StringComparer.Ordinal)
-            ? "RGB"
-            : "Height";
-        ViewerStatus = "Smoke scene: public LAZ/LAS point cloud";
-    }
-
-    private void ClearC3DLinkedViews()
-    {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
-        ClearHeightMap();
-        ClearSectionProfile();
-    }
-
-    public void UseResultSmokeScene()
-    {
-        UsePointCloudSmokeScene();
-        MeasurementVisible = true;
-        SelectionOverlayVisible = true;
-        ResultOverlayVisible = true;
-        SelectedSelectionMode = "Box ROI";
-        SelectedEntity = "Result Overlay";
-        PickCoordinate = "(viewer-only sample)";
-        ViewerStatus = "Smoke scene: result overlay";
-    }
-
-    public void SetTwoPointMeasurementStart(Vector3 point, float rawValue) =>
-        SetTwoPointMeasurementStart(point, rawValue, "raw-height");
-
-    public void SetTwoPointMeasurementStart(Vector3 point, float heightValue, string heightUnit)
-    {
-        TwoPointMeasurementVisible = true;
-        TwoPointDistance = double.NaN;
-        TwoPointDeltaX = double.NaN;
-        TwoPointDeltaY = double.NaN;
-        TwoPointDeltaZ = double.NaN;
-        TwoPointRawHeightDelta = double.NaN;
-        var valueLabel = heightUnit == "raw-height"
-            ? $"raw {heightValue:F3}"
-            : $"height {heightValue:F3} {heightUnit}";
-        TwoPointMeasurementSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"P1: {FormatVector(point)} | {valueLabel}");
-        TwoPointMeasurementDetails = "Pick P2 to measure distance and height delta.";
-        SelectionSummary = TwoPointMeasurementSummary;
-        MeasurementSummary = TwoPointMeasurementDetails;
-        ViewerStatus = "Two-point P1 set";
-    }
-
-    public void SetTwoPointMeasurement(Vector3 first, float firstRaw, Vector3 second, float secondRaw) =>
-        SetTwoPointMeasurement(first, firstRaw, second, secondRaw, "raw-height");
-
-    public void SetTwoPointMeasurement(Vector3 first, float firstHeight, Vector3 second, float secondHeight, string heightUnit)
-    {
-        var delta = second - first;
-        var distance = delta.Length();
-        var heightDelta = secondHeight - firstHeight;
-        var heightDeltaLabel = heightUnit == "raw-height"
-            ? $"height delta {heightDelta:F3} raw-height"
-            : $"height delta {heightDelta:F3} {heightUnit}";
-
-        TwoPointMeasurementVisible = true;
-        TwoPointDistance = distance;
-        TwoPointDeltaX = delta.X;
-        TwoPointDeltaY = delta.Y;
-        TwoPointDeltaZ = delta.Z;
-        TwoPointRawHeightDelta = heightDelta;
-        TwoPointMeasurementSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"P1 {FormatVector(first)} -> P2 {FormatVector(second)}");
-        TwoPointMeasurementDetails = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Distance {distance:F3} model | dX {delta.X:F3}, dY {delta.Y:F3}, dZ {delta.Z:F3} | {heightDeltaLabel}");
-        SelectionSummary = TwoPointMeasurementDetails;
-        MeasurementSummary = TwoPointMeasurementDetails;
-        LazTwoPointAcceptanceSummary = "LAZ/LAS acceptance: pending";
-        ViewerStatus = "Two-point measurement updated";
-    }
-
-    public void SetLazTwoPointMeasurementPreview(Vector3 first, Vector3 second, double heightDelta, string heightUnit)
-    {
-        activePreviewLayerId = "layer.preview.laz-two-point-measurement";
-        activePreviewLayerName = "Preview: LAZ/LAS Two Point Measurement";
-        activePreviewSourceEntityId = LazEntityId;
-        activeResultEntityId = LazTwoPointResultEntityId;
-        activeResultEntityName = "Published LAZ/LAS Two Point Measurement";
-        lazTwoPointPreviewFirst = first;
-        lazTwoPointPreviewSecond = second;
-        lazTwoPointPreviewHeightUnit = string.IsNullOrWhiteSpace(heightUnit) ? "source-z-units" : heightUnit;
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        RefreshLazTwoPointAcceptanceState();
-        ViewerStatus = "LAZ/LAS two-point result preview ready";
-    }
-
-    public void ClearTwoPointMeasurement()
-    {
-        TwoPointMeasurementVisible = false;
-        TwoPointDistance = double.NaN;
-        TwoPointDeltaX = double.NaN;
-        TwoPointDeltaY = double.NaN;
-        TwoPointDeltaZ = double.NaN;
-        TwoPointRawHeightDelta = double.NaN;
-        TwoPointMeasurementSummary = "Two-point: pick P1 and P2 on the C3D height grid.";
-        TwoPointMeasurementDetails = "Distance and height delta: pending";
-        lazTwoPointPreviewFirst = null;
-        lazTwoPointPreviewSecond = null;
-        LazTwoPointAcceptanceSummary = "LAZ/LAS acceptance: pending";
-        if (SelectedSelectionMode == "Two Point Measure")
-        {
-            SelectionSummary = TwoPointMeasurementSummary;
-        }
-    }
-
-    public void SetPlaneReferenceMeasurement(HeightFieldPlaneFitResult result, string referenceName)
-    {
-        PlaneReferenceMeasurementVisible = true;
-        PlaneReferenceSignedDistance = result.TargetSignedDistance;
-        PlaneReferenceAbsoluteDistance = result.TargetAbsoluteDistance;
-        PlaneReferenceY = result.TargetProjection.Y;
-        PlaneReferenceTargetY = result.Target.Y;
-        PlaneReferenceRawHeightDelta = result.TargetRawHeightDelta;
-        PlaneReferenceNormalX = result.Normal.X;
-        PlaneReferenceNormalY = result.Normal.Y;
-        PlaneReferenceNormalZ = result.Normal.Z;
-        PlaneReferenceFitRms = result.RootMeanSquareDistance;
-        PlaneReferenceSampleCount = result.SampleCount;
-        PlaneReferenceMeasurementSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Fitted plane: {referenceName} | {result.SampleCount:N0} samples | normal {FormatVector(result.Normal)}");
-        PlaneReferenceMeasurementDetails = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Orthogonal distance {result.TargetSignedDistance:F3} model | abs {result.TargetAbsoluteDistance:F3} | RMS {result.RootMeanSquareDistance:F3} | target {FormatVector(result.Target)} | raw residual {result.TargetRawHeightDelta:F3} raw-height");
-        SelectionSummary = PlaneReferenceMeasurementDetails;
-        MeasurementSummary = PlaneReferenceMeasurementDetails;
-        ViewerStatus = "Fitted C3D reference plane updated";
-    }
-
-    public void ClearPlaneReferenceMeasurement()
-    {
-        PlaneReferenceMeasurementVisible = false;
-        PlaneReferenceSignedDistance = double.NaN;
-        PlaneReferenceAbsoluteDistance = double.NaN;
-        PlaneReferenceY = double.NaN;
-        PlaneReferenceTargetY = double.NaN;
-        PlaneReferenceRawHeightDelta = double.NaN;
-        PlaneReferenceNormalX = double.NaN;
-        PlaneReferenceNormalY = double.NaN;
-        PlaneReferenceNormalZ = double.NaN;
-        PlaneReferenceFitRms = double.NaN;
-        PlaneReferenceSampleCount = 0;
-        PlaneReferenceMeasurementSummary = "Plane reference: pending";
-        PlaneReferenceMeasurementDetails = "Distance to reference plane: pending";
-    }
-
-    public HeightDeviationRecipePlaneFlatness CreatePlaneFlatnessRecipeStep() =>
-        new(
-            planeFlatnessStepId,
-            planeFlatnessSourceEntityId,
-            planeFlatnessReferenceId,
-            new HeightDeviationRecipeRoiRegion(
-                PlaneFlatnessReferenceCenterX,
-                PlaneFlatnessReferenceCenterZ,
-                PlaneFlatnessReferenceHalfWidth,
-            PlaneFlatnessReferenceHalfDepth),
-            PlaneFlatnessTolerance,
-            planeFlatnessUnit,
-            planeFlatnessMaxSampledPoints,
-            planeFlatnessEnabled);
-
-    public void SetPlaneFlatnessRecipeStep(HeightDeviationRecipePlaneFlatness step)
-    {
-        planeFlatnessStepId = step.Id;
-        planeFlatnessSourceEntityId = step.SourceEntityId;
-        planeFlatnessReferenceId = step.ReferenceId;
-        SetField(ref planeFlatnessUnit, step.Unit, nameof(PlaneFlatnessUnit));
-        planeFlatnessMaxSampledPoints = step.MaxSampledPoints;
-        planeFlatnessEnabled = step.Enabled;
-        SetField(ref planeFlatnessReferenceCenterX, step.ReferenceRegion.CenterX, nameof(PlaneFlatnessReferenceCenterX));
-        SetField(ref planeFlatnessReferenceCenterZ, step.ReferenceRegion.CenterZ, nameof(PlaneFlatnessReferenceCenterZ));
-        SetField(ref planeFlatnessReferenceHalfWidth, step.ReferenceRegion.HalfWidth, nameof(PlaneFlatnessReferenceHalfWidth));
-        SetField(ref planeFlatnessReferenceHalfDepth, step.ReferenceRegion.HalfDepth, nameof(PlaneFlatnessReferenceHalfDepth));
-        SetField(ref planeFlatnessTolerance, step.Tolerance, nameof(PlaneFlatnessTolerance));
-        PlaneFlatnessConfigured = true;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetPlaneFlatnessPreview(PlaneFlatnessEvaluation evaluation)
-    {
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
-        PlaneFlatnessConfigured = true;
-        planeFlatnessEnabled = true;
-        c3dPlaneFlatnessPreview = evaluation.Result;
-        c3dPlaneFlatnessPreviewActive = true;
-        PlaneFlatnessVisible = true;
-        PlaneFlatnessValue = evaluation.Flatness;
-        PlaneFlatnessMinimumDeviation = evaluation.MinimumSignedDistance;
-        PlaneFlatnessMaximumDeviation = evaluation.MaximumSignedDistance;
-        PlaneFlatnessRms = evaluation.RootMeanSquareDistance;
-        PlaneFlatnessReferenceSampleCount = evaluation.ReferenceSampleCount;
-        PlaneFlatnessMeasurementSampleCount = evaluation.MeasurementSampleCount;
-
-        PlaneFlatnessSummary = evaluation.ReferencePlane is null
-            ? $"Flatness: {evaluation.Result.Status} | {evaluation.Result.Message}"
-            : string.Create(
-                CultureInfo.InvariantCulture,
-                $"Flatness: {evaluation.Result.Status} | {evaluation.Flatness:F3} / {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}");
-        PlaneFlatnessDetails = evaluation.ReferencePlane is null
-            ? "Reference ROI did not produce a valid fitted plane."
-            : string.Create(
-                CultureInfo.InvariantCulture,
-                $"Signed min {evaluation.MinimumSignedDistance:F3}, max {evaluation.MaximumSignedDistance:F3}, RMS {evaluation.RootMeanSquareDistance:F3} {PlaneFlatnessUnit} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
-
-        activePreviewLayerId = "layer.preview.c3d-plane-flatness";
-        activePreviewLayerName = "Preview: C3D Plane Flatness";
-        activePreviewSourceEntityId = C3DEntityId;
-        activeResultEntityId = C3DPlaneFlatnessResultEntityId;
-        activeResultEntityName = "Published C3D Plane Flatness";
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        RefreshDisplaySettingsContext();
-        SelectedColorMode = "Deviation";
-        SelectedSelectionMode = "Plane Flatness";
-        SelectedEntity = "C3D Plane Flatness";
-        SelectionSummary = PlaneFlatnessDetails;
-        MeasurementSummary = PlaneFlatnessDetails;
-        ViewerStatus = "C3D plane flatness preview updated";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-        RefreshSceneContracts();
-    }
-
-    public void ClearPlaneFlatnessPreview()
-    {
-        c3dPlaneFlatnessPreview = null;
-        c3dPlaneFlatnessPreviewActive = false;
-        PlaneFlatnessVisible = false;
-        PlaneFlatnessValue = double.NaN;
-        PlaneFlatnessMinimumDeviation = double.NaN;
-        PlaneFlatnessMaximumDeviation = double.NaN;
-        PlaneFlatnessRms = double.NaN;
-        PlaneFlatnessReferenceSampleCount = 0;
-        PlaneFlatnessMeasurementSampleCount = 0;
-        PlaneFlatnessSummary = "Flatness: preview not run";
-        PlaneFlatnessDetails = "Reference ROI and signed surface deviation: pending";
-    }
-
-    public void ClearPlaneFlatnessRecipeStep()
-    {
-        ClearPlaneFlatnessPreview();
-        planeFlatnessStepId = PlaneFlatnessStepId;
-        planeFlatnessSourceEntityId = C3DEntityId;
-        planeFlatnessReferenceId = PlaneFlatnessReferenceId;
-        planeFlatnessUnit = "model";
-        planeFlatnessMaxSampledPoints = PlaneFlatnessMaxSampledPoints;
-        planeFlatnessEnabled = true;
-        OnPropertyChanged(nameof(PlaneFlatnessUnit));
-        PlaneFlatnessConfigured = false;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void InvalidatePlaneFlatnessPreview(string reason)
-    {
-        if (!c3dPlaneFlatnessPreviewActive)
-        {
-            return;
-        }
-
-        ClearPlaneFlatnessPreview();
-        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        ResetActivePreviewIdentity();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        ViewerStatus = reason;
-        RefreshSceneContracts();
-    }
-
-    public C3DPointPairDimensionsStep? CreatePointPairDimensionsRecipeStep()
-    {
-        if (pointPairFirstReference is null || pointPairSecondReference is null)
-        {
-            return null;
-        }
-
-        return new C3DPointPairDimensionsStep(
-            pointPairDimensionsStepId,
-            pointPairDimensionsSourceEntityId,
-            pointPairFirstReference,
-            pointPairSecondReference,
-            new C3DPointPairDimensionsAcceptance(
-                PointPairExpectedDistance,
-                PointPairDistanceTolerance,
-                PointPairExpectedWidth,
-                PointPairWidthTolerance,
-                PointPairExpectedAngleDegrees,
-                PointPairAngleToleranceDegrees),
-            pointPairDimensionsUnit,
-            pointPairDimensionsEnabled);
-    }
-
-    public void SetPointPairFirstReference(C3DGridPointReference reference)
-    {
-        pointPairFirstReference = reference;
-        pointPairSecondReference = null;
-        PointPairDimensionsConfigured = true;
-        InvalidatePointPairDimensionsPreview("Point pair selection changed; select P2 and run Preview Dimensions again");
-        OnPropertyChanged(nameof(HasPointPairReferences));
-        RefreshCommandCanExecute();
-    }
-
-    public void SetPointPairFirstReference(int row, int column) =>
-        SetPointPairFirstReference(new C3DGridPointReference(PointPairFirstReferenceId, row, column));
-
-    public void SetPointPairReferences(C3DGridPointReference first, C3DGridPointReference second)
-    {
-        pointPairFirstReference = first;
-        pointPairSecondReference = second;
-        PointPairDimensionsConfigured = true;
-        InvalidatePointPairDimensionsPreview("Point pair selection changed; run Preview Dimensions again");
-        OnPropertyChanged(nameof(HasPointPairReferences));
-        RefreshCommandCanExecute();
-    }
-
-    public void SetPointPairReferences(int firstRow, int firstColumn, int secondRow, int secondColumn) =>
-        SetPointPairReferences(
-            new C3DGridPointReference(PointPairFirstReferenceId, firstRow, firstColumn),
-            new C3DGridPointReference(PointPairSecondReferenceId, secondRow, secondColumn));
-
-    public void SetPointPairDimensionsRecipeStep(C3DPointPairDimensionsStep step)
-    {
-        pointPairDimensionsStepId = step.Id;
-        pointPairDimensionsSourceEntityId = step.SourceEntityId;
-        pointPairFirstReference = step.First;
-        pointPairSecondReference = step.Second;
-        pointPairDimensionsUnit = step.Unit;
-        pointPairDimensionsEnabled = step.Enabled;
-        SetField(ref pointPairExpectedDistance, step.Acceptance.ExpectedDistance, nameof(PointPairExpectedDistance));
-        SetField(ref pointPairDistanceTolerance, step.Acceptance.DistanceTolerance, nameof(PointPairDistanceTolerance));
-        SetField(ref pointPairExpectedWidth, step.Acceptance.ExpectedWidth, nameof(PointPairExpectedWidth));
-        SetField(ref pointPairWidthTolerance, step.Acceptance.WidthTolerance, nameof(PointPairWidthTolerance));
-        SetField(ref pointPairExpectedAngleDegrees, step.Acceptance.ExpectedElevationAngleDegrees, nameof(PointPairExpectedAngleDegrees));
-        SetField(ref pointPairAngleToleranceDegrees, step.Acceptance.ElevationAngleToleranceDegrees, nameof(PointPairAngleToleranceDegrees));
-        OnPropertyChanged(nameof(PointPairDimensionsUnit));
-        OnPropertyChanged(nameof(HasPointPairReferences));
-        PointPairDimensionsConfigured = true;
-        RefreshCommandCanExecute();
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetPointPairDimensionsPreview(PointPairDimensionsEvaluation evaluation)
-    {
-        ClearPlaneFlatnessPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
-        PointPairDimensionsConfigured = true;
-        pointPairDimensionsEnabled = true;
-        c3dPointPairDimensionsPreview = evaluation.Result;
-        c3dPointPairDimensionsPreviewActive = true;
-        PointPairDimensionsVisible = true;
-        PointPairDistance = evaluation.Distance;
-        PointPairWidth = evaluation.PlanarWidth;
-        PointPairAngleDegrees = evaluation.ElevationAngleDegrees;
-        PointPairDimensionsSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Point pair: {evaluation.Result.Status} | D {evaluation.Distance:F3}, W {evaluation.PlanarWidth:F3} {PointPairDimensionsUnit}, A {evaluation.ElevationAngleDegrees:F3} deg");
-        var referenceSummary = pointPairFirstReference is not null && pointPairSecondReference is not null
-            ? $"Refs {pointPairFirstReference.Id} ({pointPairFirstReference.Row},{pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row},{pointPairSecondReference.Column}) | "
-            : string.Empty;
-        PointPairDimensionsDetails = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{referenceSummary}Expected D {PointPairExpectedDistance:F3} +/- {PointPairDistanceTolerance:F3}, W {PointPairExpectedWidth:F3} +/- {PointPairWidthTolerance:F3} {PointPairDimensionsUnit} | A {PointPairExpectedAngleDegrees:F3} +/- {PointPairAngleToleranceDegrees:F3} deg");
-
-        activePreviewLayerId = "layer.preview.c3d-point-pair-dimensions";
-        activePreviewLayerName = "Preview: C3D Point Pair Dimensions";
-        activePreviewSourceEntityId = C3DEntityId;
-        activeResultEntityId = C3DPointPairDimensionsResultEntityId;
-        activeResultEntityName = "Published C3D Point Pair Dimensions";
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        SelectedColorMode = "Height";
-        SelectedSelectionMode = "Two Point Measure";
-        SelectedEntity = "C3D Point Pair Dimensions";
-        SelectionSummary = PointPairDimensionsDetails;
-        MeasurementSummary = PointPairDimensionsDetails;
-        ViewerStatus = "C3D point pair dimensions preview updated";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-        RefreshSceneContracts();
-    }
-
-    public void ClearPointPairDimensionsPreview()
-    {
-        c3dPointPairDimensionsPreview = null;
-        c3dPointPairDimensionsPreviewActive = false;
-        PointPairDimensionsVisible = false;
-        PointPairDistance = double.NaN;
-        PointPairWidth = double.NaN;
-        PointPairAngleDegrees = double.NaN;
-        PointPairDimensionsSummary = "Point pair dimensions: preview not run";
-        PointPairDimensionsDetails = "Select two C3D points and run Preview Dimensions.";
-    }
-
-    public void ClearPointPairDimensionsRecipeStep()
-    {
-        ClearPointPairDimensionsPreview();
-        pointPairDimensionsStepId = PointPairDimensionsStepId;
-        pointPairDimensionsSourceEntityId = C3DEntityId;
-        pointPairDimensionsUnit = "model";
-        pointPairDimensionsEnabled = true;
-        pointPairFirstReference = null;
-        pointPairSecondReference = null;
-        SetField(ref pointPairExpectedDistance, 5.0, nameof(PointPairExpectedDistance));
-        SetField(ref pointPairDistanceTolerance, 0.5, nameof(PointPairDistanceTolerance));
-        SetField(ref pointPairExpectedWidth, 5.0, nameof(PointPairExpectedWidth));
-        SetField(ref pointPairWidthTolerance, 0.5, nameof(PointPairWidthTolerance));
-        SetField(ref pointPairExpectedAngleDegrees, 0.0, nameof(PointPairExpectedAngleDegrees));
-        SetField(ref pointPairAngleToleranceDegrees, 5.0, nameof(PointPairAngleToleranceDegrees));
-        OnPropertyChanged(nameof(PointPairDimensionsUnit));
-        OnPropertyChanged(nameof(HasPointPairReferences));
-        PointPairDimensionsConfigured = false;
-        RefreshCommandCanExecute();
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void InvalidatePointPairDimensionsPreview(string reason)
-    {
-        if (!c3dPointPairDimensionsPreviewActive)
-        {
-            return;
-        }
-
-        ClearPointPairDimensionsPreview();
-        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        ResetActivePreviewIdentity();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        ViewerStatus = reason;
-        RefreshSceneContracts();
-    }
-
-    public C3DGapFlushStep CreateGapFlushRecipeStep() =>
-        new(
-            gapFlushStepId,
-            gapFlushSourceEntityId,
-            gapFlushLeftReferenceId,
-            gapFlushRightReferenceId,
-            new HeightDeviationRecipeRoiRegion(
-                RecipeRoiLeftCenterX,
-                RecipeRoiLeftCenterZ,
-                RecipeRoiLeftHalfWidth,
-                RecipeRoiLeftHalfDepth),
-            new HeightDeviationRecipeRoiRegion(
-                RecipeRoiRightCenterX,
-                RecipeRoiRightCenterZ,
-                RecipeRoiRightHalfWidth,
-                RecipeRoiRightHalfDepth),
-            new C3DGapFlushAcceptance(
-                GapFlushExpectedGap,
-                GapFlushGapTolerance,
-                GapFlushExpectedFlush,
-                GapFlushFlushTolerance),
-            gapFlushGapUnit,
-            gapFlushFlushUnit,
-            gapFlushMaxSampledPoints,
-            gapFlushEnabled);
-
-    public void SetGapFlushRecipeStep(C3DGapFlushStep step)
-    {
-        gapFlushStepId = step.Id;
-        gapFlushSourceEntityId = step.SourceEntityId;
-        gapFlushLeftReferenceId = step.LeftReferenceId;
-        gapFlushRightReferenceId = step.RightReferenceId;
-        gapFlushGapUnit = step.GapUnit;
-        gapFlushFlushUnit = step.FlushUnit;
-        gapFlushMaxSampledPoints = step.MaxSampledPoints;
-        gapFlushEnabled = step.Enabled;
-        SetField(ref gapFlushExpectedGap, step.Acceptance.ExpectedGap, nameof(GapFlushExpectedGap));
-        SetField(ref gapFlushGapTolerance, step.Acceptance.GapTolerance, nameof(GapFlushGapTolerance));
-        SetField(ref gapFlushExpectedFlush, step.Acceptance.ExpectedFlush, nameof(GapFlushExpectedFlush));
-        SetField(ref gapFlushFlushTolerance, step.Acceptance.FlushTolerance, nameof(GapFlushFlushTolerance));
-        SetRecipeRoiStepEdit(
-            "GapFlush",
-            step.LeftRegion.CenterX,
-            step.LeftRegion.CenterZ,
-            step.LeftRegion.HalfWidth,
-            step.LeftRegion.HalfDepth,
-            step.RightRegion.CenterX,
-            step.RightRegion.CenterZ,
-            step.RightRegion.HalfWidth,
-            step.RightRegion.HalfDepth,
-            step.MaxSampledPoints);
-        OnPropertyChanged(nameof(GapFlushGapUnit));
-        OnPropertyChanged(nameof(GapFlushFlushUnit));
-        GapFlushConfigured = true;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetGapFlushPreview(GapFlushEvaluation evaluation)
-    {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearVolumePreview();
-        ClearCrossSectionPreview();
-        GapFlushConfigured = true;
-        gapFlushEnabled = true;
-        c3dGapFlushPreview = evaluation.Result;
-        c3dGapFlushPreviewActive = true;
-        GapFlushVisible = true;
-        GapFlushGap = evaluation.SignedGap;
-        GapFlushFlush = evaluation.SignedFlush;
-        GapFlushModelFlush = evaluation.ModelFlush;
-        GapFlushLeftPointCount = evaluation.LeftPointCount;
-        GapFlushRightPointCount = evaluation.RightPointCount;
-        GapFlushSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Gap / Flush: {evaluation.Result.Status} | gap {evaluation.SignedGap:F3} {GapFlushGapUnit}, flush {evaluation.SignedFlush:F3} {GapFlushFlushUnit}");
-        GapFlushDetails = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Signed left-right ROI edges | L {evaluation.LeftPointCount:N0}, R {evaluation.RightPointCount:N0} points | model dY {evaluation.ModelFlush:F3} | expected gap {GapFlushExpectedGap:F3} +/- {GapFlushGapTolerance:F3}, flush {GapFlushExpectedFlush:F3} +/- {GapFlushFlushTolerance:F3}");
-
-        activePreviewLayerId = "layer.preview.c3d-gap-flush";
-        activePreviewLayerName = "Preview: C3D Gap / Flush";
-        activePreviewSourceEntityId = C3DEntityId;
-        activeResultEntityId = C3DGapFlushResultEntityId;
-        activeResultEntityName = "Published C3D Gap / Flush";
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        SelectedColorMode = "Height";
-        SelectedSelectionMode = "Gap / Flush";
-        SelectedEntity = "C3D Gap / Flush";
-        SelectionSummary = GapFlushDetails;
-        MeasurementSummary = GapFlushDetails;
-        ViewerStatus = "C3D Gap / Flush preview updated";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-        RefreshSceneContracts();
-    }
-
-    public void ClearGapFlushPreview()
-    {
-        c3dGapFlushPreview = null;
-        c3dGapFlushPreviewActive = false;
-        GapFlushVisible = false;
-        GapFlushGap = double.NaN;
-        GapFlushFlush = double.NaN;
-        GapFlushModelFlush = double.NaN;
-        GapFlushLeftPointCount = 0;
-        GapFlushRightPointCount = 0;
-        GapFlushSummary = "Gap / Flush: preview not run";
-        GapFlushDetails = "Two recipe-owned C3D regions are required.";
-    }
-
-    public void ClearGapFlushRecipeStep()
-    {
-        ClearGapFlushPreview();
-        gapFlushStepId = GapFlushStepId;
-        gapFlushSourceEntityId = C3DEntityId;
-        gapFlushLeftReferenceId = GapFlushLeftReferenceId;
-        gapFlushRightReferenceId = GapFlushRightReferenceId;
-        gapFlushGapUnit = "model";
-        gapFlushFlushUnit = "raw-height";
-        gapFlushMaxSampledPoints = GapFlushMaxSampledPoints;
-        gapFlushEnabled = true;
-        SetField(ref gapFlushExpectedGap, 1.322, nameof(GapFlushExpectedGap));
-        SetField(ref gapFlushGapTolerance, 0.100, nameof(GapFlushGapTolerance));
-        SetField(ref gapFlushExpectedFlush, 243.5, nameof(GapFlushExpectedFlush));
-        SetField(ref gapFlushFlushTolerance, 5.0, nameof(GapFlushFlushTolerance));
-        GapFlushConfigured = false;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void InvalidateGapFlushPreview(string reason)
-    {
-        if (!c3dGapFlushPreviewActive)
-        {
-            return;
-        }
-
-        ClearGapFlushPreview();
-        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        ResetActivePreviewIdentity();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        ViewerStatus = reason;
-        RefreshSceneContracts();
-    }
-
-    public HeightDeviationRecipeVolume CreateVolumeRecipeStep() =>
-        new(
-            volumeStepId,
-            C3DEntityId,
-            volumeReferenceId,
-            volumeMeasurementId,
-            new HeightDeviationRecipeRoiRegion(PlaneFlatnessReferenceCenterX, PlaneFlatnessReferenceCenterZ, PlaneFlatnessReferenceHalfWidth, PlaneFlatnessReferenceHalfDepth),
-            new HeightDeviationRecipeRoiRegion(RecipeRoiLeftCenterX, RecipeRoiLeftCenterZ, RecipeRoiLeftHalfWidth, RecipeRoiLeftHalfDepth),
-            VolumeExpectedNet,
-            VolumeTolerance,
-            volumeUnit,
-            volumeMaxSampledPoints,
-            volumeEnabled);
-
-    public void SetVolumeRecipeStep(HeightDeviationRecipeVolume step)
-    {
-        volumeStepId = step.Id;
-        volumeReferenceId = step.ReferenceId;
-        volumeMeasurementId = step.MeasurementId;
-        volumeUnit = step.Unit;
-        volumeMaxSampledPoints = step.MaxSampledPoints;
-        volumeEnabled = step.Enabled;
-        SetField(ref planeFlatnessReferenceCenterX, step.ReferenceRegion.CenterX, nameof(PlaneFlatnessReferenceCenterX));
-        SetField(ref planeFlatnessReferenceCenterZ, step.ReferenceRegion.CenterZ, nameof(PlaneFlatnessReferenceCenterZ));
-        SetField(ref planeFlatnessReferenceHalfWidth, step.ReferenceRegion.HalfWidth, nameof(PlaneFlatnessReferenceHalfWidth));
-        SetField(ref planeFlatnessReferenceHalfDepth, step.ReferenceRegion.HalfDepth, nameof(PlaneFlatnessReferenceHalfDepth));
-        SetField(ref recipeRoiLeftCenterX, step.MeasurementRegion.CenterX, nameof(RecipeRoiLeftCenterX));
-        SetField(ref recipeRoiLeftCenterZ, step.MeasurementRegion.CenterZ, nameof(RecipeRoiLeftCenterZ));
-        SetField(ref recipeRoiLeftHalfWidth, step.MeasurementRegion.HalfWidth, nameof(RecipeRoiLeftHalfWidth));
-        SetField(ref recipeRoiLeftHalfDepth, step.MeasurementRegion.HalfDepth, nameof(RecipeRoiLeftHalfDepth));
-        SetField(ref volumeExpectedNet, step.ExpectedNetVolume, nameof(VolumeExpectedNet));
-        SetField(ref volumeTolerance, step.Tolerance, nameof(VolumeTolerance));
-        OnPropertyChanged(nameof(VolumeUnit));
-        VolumeConfigured = true;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetVolumePreview(VolumeEvaluation evaluation)
-    {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearCrossSectionPreview();
-        VolumeConfigured = true;
-        c3dVolumePreview = evaluation.Result;
-        c3dVolumePreviewActive = true;
-        VolumeVisible = true;
-        VolumeAbove = evaluation.AboveVolume;
-        VolumeBelow = evaluation.BelowVolume;
-        VolumeNet = evaluation.NetVolume;
-        VolumeReferenceSampleCount = evaluation.ReferenceSampleCount;
-        VolumeMeasurementSampleCount = evaluation.MeasurementSampleCount;
-        VolumeSummary = string.Create(CultureInfo.InvariantCulture, $"Volume: {evaluation.Result.Status} | net {evaluation.NetVolume:F3} {VolumeUnit}");
-        VolumeDetails = string.Create(CultureInfo.InvariantCulture, $"Above {evaluation.AboveVolume:F3}, below {evaluation.BelowVolume:F3} {VolumeUnit} | expected {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} | reference {evaluation.ReferenceSampleCount:N0}, measured {evaluation.MeasurementSampleCount:N0}");
-        activePreviewLayerId = "layer.preview.c3d-volume";
-        activePreviewLayerName = "Preview: C3D Volume";
-        activePreviewSourceEntityId = C3DEntityId;
-        activeResultEntityId = C3DVolumeResultEntityId;
-        activeResultEntityName = "Published C3D Volume";
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        RefreshDisplaySettingsContext();
-        SelectedColorMode = "Deviation";
-        SelectedSelectionMode = "Volume";
-        SelectedEntity = "C3D Volume";
-        SelectionSummary = VolumeDetails;
-        MeasurementSummary = VolumeDetails;
-        ViewerStatus = "C3D Volume preview updated";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-        RefreshSceneContracts();
-    }
-
-    public void ClearVolumePreview()
-    {
-        c3dVolumePreview = null;
-        c3dVolumePreviewActive = false;
-        VolumeVisible = false;
-        VolumeAbove = double.NaN;
-        VolumeBelow = double.NaN;
-        VolumeNet = double.NaN;
-        VolumeReferenceSampleCount = 0;
-        VolumeMeasurementSampleCount = 0;
-        VolumeSummary = "Volume: preview not run";
-        VolumeDetails = "Reference ROI plane and measurement ROI are required.";
-    }
-
-    public void ClearVolumeRecipeStep()
-    {
-        ClearVolumePreview();
-        volumeStepId = VolumeStepId;
-        volumeReferenceId = VolumeReferenceId;
-        volumeMeasurementId = VolumeMeasurementId;
-        volumeUnit = "model^3";
-        volumeMaxSampledPoints = VolumeMaxSampledPoints;
-        volumeEnabled = true;
-        SetField(ref volumeExpectedNet, 0.0, nameof(VolumeExpectedNet));
-        SetField(ref volumeTolerance, 1.0, nameof(VolumeTolerance));
-        VolumeConfigured = false;
-    }
-
-    public void InvalidateVolumePreview(string reason)
-    {
-        if (!c3dVolumePreviewActive) return;
-        ClearVolumePreview();
-        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        ResetActivePreviewIdentity();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        ViewerStatus = reason;
-        RefreshSceneContracts();
-    }
-
-    public HeightDeviationRecipeCrossSection CreateCrossSectionRecipeStep() =>
-        new(
-            crossSectionStepId,
-            C3DEntityId,
-            crossSectionReferenceId,
-            CrossSectionRow,
-            CrossSectionStartColumn,
-            CrossSectionEndColumn,
-            CrossSectionExpectedWidth,
-            CrossSectionWidthTolerance,
-            CrossSectionExpectedHeightRange,
-            CrossSectionHeightTolerance,
-            crossSectionWidthUnit,
-            crossSectionHeightUnit,
-            crossSectionEnabled);
-
-    public void SetCrossSectionRecipeStep(HeightDeviationRecipeCrossSection step)
-    {
-        crossSectionStepId = step.Id;
-        crossSectionReferenceId = step.ReferenceId;
-        crossSectionWidthUnit = step.WidthUnit;
-        crossSectionHeightUnit = step.HeightUnit;
-        crossSectionEnabled = step.Enabled;
-        SetField(ref crossSectionRow, step.Row, nameof(CrossSectionRow));
-        SetField(ref crossSectionStartColumn, step.StartColumn, nameof(CrossSectionStartColumn));
-        SetField(ref crossSectionEndColumn, step.EndColumn, nameof(CrossSectionEndColumn));
-        SetField(ref crossSectionExpectedWidth, step.ExpectedWidth, nameof(CrossSectionExpectedWidth));
-        SetField(ref crossSectionWidthTolerance, step.WidthTolerance, nameof(CrossSectionWidthTolerance));
-        SetField(ref crossSectionExpectedHeightRange, step.ExpectedHeightRange, nameof(CrossSectionExpectedHeightRange));
-        SetField(ref crossSectionHeightTolerance, step.HeightTolerance, nameof(CrossSectionHeightTolerance));
-        OnPropertyChanged(nameof(CrossSectionWidthUnit));
-        OnPropertyChanged(nameof(CrossSectionHeightUnit));
-        CrossSectionConfigured = true;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetCrossSectionPreview(CrossSectionEvaluation evaluation)
-    {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        ClearGapFlushPreview();
-        ClearVolumePreview();
-        CrossSectionConfigured = true;
-        c3dCrossSectionPreview = evaluation.Result;
-        c3dCrossSectionPreviewActive = true;
-        CrossSectionVisible = true;
-        CrossSectionWidth = evaluation.Width;
-        CrossSectionHeightRange = evaluation.HeightRange;
-        CrossSectionRawMinimum = evaluation.RawMinimum;
-        CrossSectionRawMaximum = evaluation.RawMaximum;
-        CrossSectionValidSampleCount = evaluation.ValidSampleCount;
-        CrossSectionSummary = string.Create(CultureInfo.InvariantCulture, $"Cross-section: {evaluation.Result.Status} | width {evaluation.Width:F3} {CrossSectionWidthUnit}, height {evaluation.HeightRange:F3} {CrossSectionHeightUnit}");
-        CrossSectionDetails = string.Create(CultureInfo.InvariantCulture, $"Row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn} | valid {evaluation.ValidSampleCount:N0} | raw {evaluation.RawMinimum:F3}..{evaluation.RawMaximum:F3}");
-        activePreviewLayerId = "layer.preview.c3d-cross-section-dimensions";
-        activePreviewLayerName = "Preview: C3D Cross-section Dimensions";
-        activePreviewSourceEntityId = C3DEntityId;
-        activeResultEntityId = C3DCrossSectionResultEntityId;
-        activeResultEntityName = "Published C3D Cross-section Dimensions";
-        SetField(ref resultOverlayVisible, true, nameof(ResultOverlayVisible));
-        PreviewToolResult = evaluation.Result;
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        SelectedColorMode = "Height";
-        SelectedSelectionMode = "Cross-section Dimensions";
-        SelectedEntity = "C3D Cross-section Dimensions";
-        SelectionSummary = CrossSectionDetails;
-        MeasurementSummary = CrossSectionDetails;
-        ViewerStatus = "C3D Cross-section Dimensions preview updated";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-        RefreshSceneContracts();
-    }
-
-    public void ClearCrossSectionPreview()
-    {
-        c3dCrossSectionPreview = null;
-        c3dCrossSectionPreviewActive = false;
-        CrossSectionVisible = false;
-        CrossSectionWidth = double.NaN;
-        CrossSectionHeightRange = double.NaN;
-        CrossSectionRawMinimum = double.NaN;
-        CrossSectionRawMaximum = double.NaN;
-        CrossSectionValidSampleCount = 0;
-        CrossSectionSummary = "Cross-section: preview not run";
-        CrossSectionDetails = "An exact C3D row and inclusive column range are required.";
-    }
-
-    public void ClearCrossSectionRecipeStep()
-    {
-        ClearCrossSectionPreview();
-        crossSectionStepId = CrossSectionStepId;
-        crossSectionReferenceId = CrossSectionReferenceId;
-        crossSectionWidthUnit = "model";
-        crossSectionHeightUnit = "raw-height";
-        crossSectionEnabled = true;
-        SetField(ref crossSectionRow, 983, nameof(CrossSectionRow));
-        SetField(ref crossSectionStartColumn, 200, nameof(CrossSectionStartColumn));
-        SetField(ref crossSectionEndColumn, 1100, nameof(CrossSectionEndColumn));
-        SetField(ref crossSectionExpectedWidth, 4.247, nameof(CrossSectionExpectedWidth));
-        SetField(ref crossSectionWidthTolerance, 0.010, nameof(CrossSectionWidthTolerance));
-        SetField(ref crossSectionExpectedHeightRange, 1708.232, nameof(CrossSectionExpectedHeightRange));
-        SetField(ref crossSectionHeightTolerance, 0.010, nameof(CrossSectionHeightTolerance));
-        CrossSectionConfigured = false;
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void InvalidateCrossSectionPreview(string reason)
-    {
-        if (!c3dCrossSectionPreviewActive) return;
-        ClearCrossSectionPreview();
-        SetField(ref resultOverlayVisible, false, nameof(ResultOverlayVisible));
-        ResetActivePreviewIdentity();
-        PreviewToolResult = CreateNotRunToolResult();
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        ViewerStatus = reason;
-        RefreshSceneContracts();
-    }
-
-    public void SetRoiStepSelectionPending(string summary, string details, string selectionMode)
-    {
-        RoiStepMeasurementVisible = true;
-        RoiStepSelectionMode = selectionMode;
-        RoiStepLeftPointCount = 0;
-        RoiStepRightPointCount = 0;
-        RoiStepLeftRawMean = double.NaN;
-        RoiStepRightRawMean = double.NaN;
-        RoiStepRawHeightDelta = double.NaN;
-        RoiStepModelHeightDelta = double.NaN;
-        RoiStepMeasurementSummary = summary;
-        RoiStepMeasurementDetails = details;
-        RoiStepEditSummary = "ROI edit: click right ROI center to finish comparison.";
-        SelectionSummary = details;
-        MeasurementSummary = details;
-        ViewerStatus = "ROI step left ROI set";
-    }
-
-    public void SetRoiStepMeasurement(int leftPointCount, double leftRawMean, double leftModelMeanY, int rightPointCount, double rightRawMean, double rightModelMeanY, string selectionMode)
-    {
-        var rawDelta = rightRawMean - leftRawMean;
-        var modelDelta = rightModelMeanY - leftModelMeanY;
-
-        RoiStepMeasurementVisible = true;
-        RoiStepSelectionMode = selectionMode;
-        RoiStepLeftPointCount = leftPointCount;
-        RoiStepRightPointCount = rightPointCount;
-        RoiStepLeftRawMean = leftRawMean;
-        RoiStepRightRawMean = rightRawMean;
-        RoiStepRawHeightDelta = rawDelta;
-        RoiStepModelHeightDelta = modelDelta;
-        RoiStepMeasurementSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"ROI step: L {leftPointCount:N0} pts vs R {rightPointCount:N0} pts");
-        RoiStepMeasurementDetails = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Mean raw L {leftRawMean:F3}, R {rightRawMean:F3} | step {rawDelta:F3} raw-height | model dY {modelDelta:F3}");
-        RoiStepEditSummary = selectionMode == "Interactive"
-            ? "ROI edit: interactive L/R centers selected; click again to start a new pair."
-            : "ROI edit: auto regions; click left ROI then right ROI.";
-        SelectionSummary = RoiStepMeasurementDetails;
-        MeasurementSummary = RoiStepMeasurementDetails;
-        ViewerStatus = "ROI step comparison updated";
-    }
-
-    public void ClearRoiStepMeasurement(string details = "Left/right ROI height delta: pending")
-    {
-        RoiStepMeasurementVisible = false;
-        RoiStepLeftPointCount = 0;
-        RoiStepRightPointCount = 0;
-        RoiStepLeftRawMean = double.NaN;
-        RoiStepRightRawMean = double.NaN;
-        RoiStepRawHeightDelta = double.NaN;
-        RoiStepModelHeightDelta = double.NaN;
-        RoiStepMeasurementSummary = "ROI step: compare two C3D regions.";
-        RoiStepMeasurementDetails = details;
-        RoiStepEditSummary = "ROI edit: auto regions; click left ROI then right ROI.";
-        RoiStepSelectionMode = "Auto";
-        if (SelectedSelectionMode == "ROI Step Compare")
-        {
-            SelectionSummary = RoiStepMeasurementDetails;
-        }
-    }
-
-    public void SetC3DAlignment(ModelTransform transform, string alignmentName, string referenceName)
-    {
-        if (transform != C3DModelTransform)
-        {
-            InvalidatePointPairDimensionsPreview("Alignment changed; run Preview Dimensions again");
-            InvalidateGapFlushPreview("Alignment changed; run Preview Gap / Flush again");
-            InvalidateVolumePreview("Alignment changed; run Preview Volume again");
-            InvalidateCrossSectionPreview("Alignment changed; run Preview Cross-section again");
-        }
-
-        C3DModelTransform = transform;
-        RefreshSourceEntities();
-        TransformSummary = $"Transform: {FormatModelTransform(transform)}";
-        AlignmentSummary = $"Alignment: {alignmentName} | reference {referenceName}";
-        CoordinateMappingSummary = ModelTransformIsIdentity(transform)
-            ? "Mapping: source = aligned | raw-height retained"
-            : "Mapping: source -> aligned display coordinates | raw-height retained";
-        ViewerStatus = $"Alignment state: {alignmentName}";
-        RefreshSceneContracts();
-        NotifyRecipeTransformProperties();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetGlbSampleSource(string sourcePath, string sourceName, string format = "GLB")
-    {
-        ImportedMeshFormat = string.IsNullOrWhiteSpace(format) ? "GLB" : format.Trim().ToUpperInvariant();
-        GlbSampleSourcePath = sourcePath;
-        GlbSampleName = string.IsNullOrWhiteSpace(sourceName) ? ImportedMeshDisplayName() : sourceName;
-        OnPropertyChanged(nameof(ImportedMeshLayerLabel));
-        RefreshSourceEntities();
-        RefreshSceneContracts();
-    }
-
-    internal void SetImportedMeshDisplayCapabilities(bool sourceColorAvailable)
-    {
-        if (importedMeshSourceColorAvailable == sourceColorAvailable)
-        {
-            return;
-        }
-
-        importedMeshSourceColorAvailable = sourceColorAvailable;
-        if (GlbSampleVisible)
-        {
-            RefreshSceneContracts();
-        }
-    }
-
-    internal void SetC3DDisplayCapabilities(bool surfaceGeometryAvailable)
-    {
-        if (c3dSurfaceGeometryAvailable == surfaceGeometryAvailable)
-        {
-            return;
-        }
-
-        c3dSurfaceGeometryAvailable = surfaceGeometryAvailable;
-        if (C3DSampleVisible)
-        {
-            RefreshSceneContracts();
-        }
-    }
-
-    public void SetGlbSampleBounds(Vector3 min, Vector3 max)
-    {
-        importedMeshFitCenter = (min + max) * 0.5f;
-        var radius = Math.Max(0.001, Vector3.Distance(min, max) * 0.5);
-        importedMeshFitDistance = Math.Clamp(radius / Math.Tan(Math.PI / 8.0) * 1.7, 0.35, 12000.0);
-    }
-
-    public void SetLazSampleSource(string sourcePath, string sourceName)
-    {
-        LazSampleSourcePath = sourcePath;
-        LazSampleName = string.IsNullOrWhiteSpace(sourceName) ? "Public LAZ/LAS Point Cloud" : sourceName;
-        RefreshSourceEntities();
-        RefreshSceneContracts();
-    }
-
-    internal void SetLazDisplayCapabilities(bool sourceColorAvailable)
-    {
-        if (lazSourceColorAvailable == sourceColorAvailable)
-        {
-            return;
-        }
-
-        lazSourceColorAvailable = sourceColorAvailable;
-        if (LazSampleVisible)
-        {
-            RefreshSceneContracts();
-        }
-    }
-
-    public void SetLazSampleBounds(Vector3 min, Vector3 max)
-    {
-        lazFitCenter = (min + max) * 0.5f;
-        var radius = Math.Max(1.0, Vector3.Distance(min, max) * 0.5);
-        lazFitDistance = Math.Clamp(radius / Math.Tan(Math.PI / 8.0) * 1.35, 80.0, 12000.0);
-    }
-
-    public void SetLazHeightRange(double minimum, double maximum, string unit)
-    {
-        lazHeightMinimum = CoerceFinite(minimum, double.NaN);
-        lazHeightMaximum = CoerceFinite(maximum, double.NaN);
-        lazHeightUnit = string.IsNullOrWhiteSpace(unit) ? "source-z" : unit;
-        PointCloudColorLegendTitle = "Point Cloud Height Scale";
-        PointCloudColorLegendLow = double.IsFinite(lazHeightMinimum)
-            ? string.Create(CultureInfo.InvariantCulture, $"Low: {lazHeightMinimum:F3} {lazHeightUnit}")
-            : "Low: not loaded";
-        PointCloudColorLegendHigh = double.IsFinite(lazHeightMaximum)
-            ? string.Create(CultureInfo.InvariantCulture, $"High: {lazHeightMaximum:F3} {lazHeightUnit}")
-            : "High: not loaded";
-        PointCloudColorLegendScale = "Scale: source Z min to max";
-        RefreshPointCloudColorLegend();
-    }
-
-    public void SetRecipeRoiStepEdit(
-        string mode,
-        double leftCenterX,
-        double leftCenterZ,
-        double leftHalfWidth,
-        double leftHalfDepth,
-        double rightCenterX,
-        double rightCenterZ,
-        double rightHalfWidth,
-        double rightHalfDepth,
-        int maxSampledPoints)
-    {
-        InvalidateGapFlushPreview("ROI parameters changed; run Preview Gap / Flush again");
-        RecipeRoiMode = mode;
-        SetField(ref recipeRoiLeftCenterX, CoerceFinite(leftCenterX, recipeRoiLeftCenterX), nameof(RecipeRoiLeftCenterX));
-        SetField(ref recipeRoiLeftCenterZ, CoerceFinite(leftCenterZ, recipeRoiLeftCenterZ), nameof(RecipeRoiLeftCenterZ));
-        SetField(ref recipeRoiLeftHalfWidth, Math.Max(0.0001, CoerceFinite(leftHalfWidth, recipeRoiLeftHalfWidth)), nameof(RecipeRoiLeftHalfWidth));
-        SetField(ref recipeRoiLeftHalfDepth, Math.Max(0.0001, CoerceFinite(leftHalfDepth, recipeRoiLeftHalfDepth)), nameof(RecipeRoiLeftHalfDepth));
-        SetField(ref recipeRoiRightCenterX, CoerceFinite(rightCenterX, recipeRoiRightCenterX), nameof(RecipeRoiRightCenterX));
-        SetField(ref recipeRoiRightCenterZ, CoerceFinite(rightCenterZ, recipeRoiRightCenterZ), nameof(RecipeRoiRightCenterZ));
-        SetField(ref recipeRoiRightHalfWidth, Math.Max(0.0001, CoerceFinite(rightHalfWidth, recipeRoiRightHalfWidth)), nameof(RecipeRoiRightHalfWidth));
-        SetField(ref recipeRoiRightHalfDepth, Math.Max(0.0001, CoerceFinite(rightHalfDepth, recipeRoiRightHalfDepth)), nameof(RecipeRoiRightHalfDepth));
-        RecipeRoiMaxSampledPoints = maxSampledPoints;
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetAlignmentWorkflowSummary(string summary)
-    {
-        AlignmentWorkflowSummary = string.IsNullOrWhiteSpace(summary) ? "ROI alignment: not applied" : summary;
-    }
-
-    public void SetRecipeValidationSummary(string summary)
-    {
-        RecipeValidationSummary = string.IsNullOrWhiteSpace(summary) || summary == "Validation: OK" ? string.Empty : summary;
-    }
-
-    private void SetRecipeTransform(ModelTransform transform)
-    {
-        SetC3DAlignment(transform, "Manual recipe alignment", RecipeSourceName);
-    }
-
-    public void SetRenderPerformance(double fps, double drawMilliseconds)
-    {
-        ViewportFps = fps;
-        ViewportDrawMilliseconds = drawMilliseconds;
-        PerformanceSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Performance: {fps:F1} fps | draw {drawMilliseconds:F2} ms | C3D points {C3DSamplePointCount}");
-    }
-
-    internal void ResetRenderPerformance()
-    {
-        ViewportFps = double.NaN;
-        ViewportDrawMilliseconds = double.NaN;
-        PerformanceSummary = "Performance: waiting for first frame";
-    }
-
-    public void SetLazSamplingTelemetry(ulong decodedPointCount, int sampledPointCount, int sampleStride, double loadMilliseconds)
-    {
-        var percent = decodedPointCount > 0
-            ? sampledPointCount / (double)decodedPointCount * 100.0
-            : 0.0;
-        LazLoadMilliseconds = CoerceFinite(loadMilliseconds, double.NaN);
-        LazSamplePercent = percent;
-        LazSampleStride = Math.Max(0, sampleStride);
-        LazSamplingSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"LAZ/LAS sampling: load {LazLoadMilliseconds:F0} ms | sampled {sampledPointCount:N0}/{decodedPointCount:N0} ({percent:F2}%) | stride {LazSampleStride} | density {SelectedRenderDensity}");
-    }
-
-    public void ClearLazSamplingTelemetry(string summary = "LAZ/LAS sampling: not loaded")
-    {
-        LazLoadMilliseconds = double.NaN;
-        LazSamplePercent = double.NaN;
-        LazSampleStride = 0;
-        LazSamplingSummary = string.IsNullOrWhiteSpace(summary) ? "LAZ/LAS sampling: not loaded" : summary;
-    }
-
-    public void UseC3DHeightDeviationRuleSmokeScene()
-    {
-        UseC3DSmokeScene();
-        MeasurementVisible = false;
-        MeasurementSummary = "C3D rule preview uses raw height statistics.";
-        ResultOverlayVisible = true;
-        SelectedColorMode = "Deviation";
-        SelectedEntity = "C3D Height Deviation Rule";
-        PickCoordinate = "(sample-backed rule)";
-        ViewerStatus = "Smoke scene: C3D height deviation rule";
-    }
-
-    public void SetC3DHeightDeviationPreview(ToolResult result)
-    {
-        ClearPlaneFlatnessPreview();
-        ClearPointPairDimensionsPreview();
-        c3dHeightDeviationPreview = result;
-        if (ResultOverlayVisible && C3DSampleVisible)
-        {
-            ApplyActivePreviewResult();
-        }
-    }
-
-    public bool PublishPreviewResult()
-    {
-        if (PreviewToolResult.Status == ResultStatus.NotRun)
-        {
-            ViewerStatus = "No preview result to publish";
-            return false;
-        }
-
-        var resultEntity = CreatePublishedResultEntity(PreviewToolResult);
-        ResultEntities = [resultEntity];
-        PublishedResultSummary = FormatPublishedResult(resultEntity);
-        ViewerStatus = $"Result published: {resultEntity.Name}";
-        RefreshSceneContracts();
-        return true;
-    }
-
-    public void ConfigureNominalActualComparison(NominalActualComparisonInput input)
-    {
-        ArgumentNullException.ThrowIfNull(input);
-        NominalActualInput = input;
-        RefreshSourceEntities();
-        NominalActual.ApplyInputValidation(
-            FormatNominalActualSource("Actual", input.ActualSource),
-            FormatNominalActualSource("Nominal", input.NominalSource),
-            FormatNominalActualSource("Validation query", input.QuerySource),
-            $"Frame: {input.FrameId} | Units: {input.Unit}",
-            $"Alignment: {input.AlignmentId}",
-            input.Unit,
-            input.SourceFingerprint);
-        NominalActual.ActualVisible = true;
-        NominalActual.NominalVisible = false;
-        SelectedEntity = "Nominal / Actual Surface Deviation";
-        MeasurementSummary = "Inputs validated; explicit Preview requested.";
-        RefreshSceneContracts();
-    }
-
-    public void ClearNominalActualComparison(string validationIssue)
-    {
-        NominalActualInput = null;
-        RefreshSourceEntities();
-        NominalActual.ApplyInputValidation(
-            "Actual: not loaded",
-            "Nominal: not loaded",
-            "Validation query: not loaded",
-            "Frame: not set | Units: not set",
-            "Alignment: not set",
-            "(not set)",
-            "(none)",
-            validationIssue);
-        RefreshSceneContracts();
-    }
-
-    public bool PublishNominalActualComparison(NominalActualComparisonResult result)
-    {
-        ArgumentNullException.ThrowIfNull(result);
-        if (NominalActualInput is null
-            || NominalActual.PreviewResult is null
-            || !result.Input.ExecutionFingerprint.Equals(
-                NominalActual.CompletedPreviewFingerprint,
-                StringComparison.Ordinal)
-            || !result.Input.SourceFingerprint.Equals(
-                NominalActualInput.SourceFingerprint,
-                StringComparison.Ordinal))
-        {
-            ViewerStatus = "Nominal/actual Publish rejected: Preview evidence is stale or missing";
-            return false;
-        }
-
-        var resultEntity = NominalActualComparisonContract.CreateResultEntity(result);
-        ResultEntities = [resultEntity];
-        PublishedResultSummary = FormatPublishedResult(resultEntity);
-        ViewerStatus = $"Result published: {resultEntity.Name}";
-        RefreshSceneContracts();
-        return true;
-    }
-
-    public void Pan(double deltaX, double deltaY, double deltaZ)
-    {
-        CameraTargetX += deltaX;
-        CameraTargetY += deltaY;
-        CameraTargetZ += deltaZ;
-        ViewerStatus = "Camera panned";
-        UpdateCameraStatus();
-    }
-
-    public void ZoomCamera(double zoomScale)
-    {
-        var minimumDistance = GlbSampleVisible
-            ? Math.Max(0.05, importedMeshFitDistance * 0.02)
-            : 2.4;
-        var maximumDistance = GlbSampleVisible
-            ? Math.Max(20.0, importedMeshFitDistance * 2.5)
-            : LazSampleVisible
-                ? Math.Max(20.0, lazFitDistance * 2.5)
-                : 20.0;
-        CameraDistance = Math.Clamp(CameraDistance * zoomScale, minimumDistance, maximumDistance);
-        UpdateCameraStatus();
-    }
-
-    public void UpdateCameraStatus()
-    {
-        var modelUnit = NominalActual.InputsReady ? NominalActual.Unit : "unitless";
-        BottomStatus = $"Model units: {modelUnit} | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
-    }
-
-    private void SetCameraTarget(double x, double y, double z)
-    {
-        CameraTargetX = x;
-        CameraTargetY = y;
-        CameraTargetZ = z;
-    }
-
-    private void FitGlbCamera()
-    {
-        SetCameraTarget(importedMeshFitCenter.X, importedMeshFitCenter.Y, importedMeshFitCenter.Z);
-        CameraDistance = importedMeshFitDistance;
-    }
-
-    private void FitLazCamera()
-    {
-        SetCameraTarget(lazFitCenter.X, lazFitCenter.Y, lazFitCenter.Z);
-        CameraDistance = lazFitDistance;
-    }
-
-    private void RefreshSceneContracts()
-    {
-        RefreshDisplaySettingsContext();
-
-        var layers = new List<EntityLayer>
-        {
-            new EntityLayer("layer.source.generated-cube", "Generated Unit Cube", LayerKind.Source, CubeVisible, [CubeEntityId]),
-            new EntityLayer("layer.source.generated-point-cloud", "Generated Point Cloud", LayerKind.Source, PointCloudVisible, [PointCloudEntityId]),
-            new EntityLayer("layer.source.c3d-thickness", "C3D Thickness Sample", LayerKind.Source, C3DSampleVisible, [C3DEntityId]),
-            new EntityLayer("layer.source.imported-mesh", GlbSampleName, LayerKind.Source, GlbSampleVisible, [GlbEntityId]),
-            new EntityLayer("layer.source.public-laz-manuscript", "Public LAZ/LAS Point Cloud", LayerKind.Source, LazSampleVisible, [LazEntityId])
-        };
-
-        if (NominalActualInput is { } comparisonInput)
-        {
-            layers.Add(new EntityLayer(
-                "layer.source.nominal-actual-measured",
-                "Nominal / Actual Measured Source",
-                LayerKind.Source,
-                NominalActual.ActualVisible,
-                [comparisonInput.ActualSource.Id, comparisonInput.QuerySource.Id]));
-            layers.Add(new EntityLayer(
-                "layer.source.nominal-actual-nominal",
-                "Nominal / Actual Nominal Source",
-                LayerKind.Source,
-                NominalActual.NominalVisible,
-                [comparisonInput.NominalSource.Id]));
-            if (NominalActual.PreviewResult is not null)
-            {
-                layers.Add(new EntityLayer(
-                    "layer.preview.nominal-actual-surface-deviation",
-                    "Preview: Nominal / Actual Surface Deviation",
-                    LayerKind.Preview,
-                    NominalActual.ActualVisible,
-                    [comparisonInput.ActualSource.Id, comparisonInput.QuerySource.Id]));
-            }
-        }
-
-        if (PreviewToolResult.Status != ResultStatus.NotRun)
-        {
-            layers.Add(new EntityLayer(
-                activePreviewLayerId,
-                activePreviewLayerName,
-                LayerKind.Preview,
-                ResultOverlayVisible,
-                [activePreviewSourceEntityId]));
-        }
-
-        if (ResultEntities.Count > 0)
-        {
-            var resultLayer = CreatePublishedResultLayer(ResultEntities);
-            layers.Add(new EntityLayer(
-                resultLayer.Id,
-                resultLayer.Name,
-                LayerKind.Result,
-                true,
-                ResultEntities.Select(entity => entity.Id).ToArray()));
-        }
-
-        EntityLayers = layers;
-
-        var sourceLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Source);
-        var visibleSourceLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Source && layer.IsVisible);
-        var previewLayerCount = EntityLayers.Count(layer => layer.Kind == LayerKind.Preview);
-        SceneContractSummary =
-            $"Source entities: {SourceEntities.Count} | Source layers: {sourceLayerCount} | Visible source layers: {visibleSourceLayerCount} | Preview layers: {previewLayerCount} | Published results: {ResultEntities.Count}";
-    }
-
-    private void RefreshDisplaySettingsContext()
-    {
-        if (NominalActualInput is not null && NominalActual.ActualVisible)
-        {
-            Display.ConfigureNominalActualComparison(NominalActual.PreviewResult is not null);
-        }
-        else if (LazSampleVisible)
-        {
-            Display.ConfigurePointCloud(lazSourceColorAvailable);
-        }
-        else if (GlbSampleVisible)
-        {
-            Display.ConfigureImportedMesh(importedMeshSourceColorAvailable);
-        }
-        else if (C3DSampleVisible)
-        {
-            Display.ConfigureC3DHeightGrid(
-                ResultOverlayVisible && activePreviewSourceEntityId == C3DEntityId,
-                c3dSurfaceGeometryAvailable);
-        }
-        else
-        {
-            Display.ConfigureGeneratedGeometry(
-                ResultOverlayVisible && activePreviewSourceEntityId == PointCloudEntityId);
-        }
-    }
-
-    private static ToolResult CreateNotRunToolResult() =>
-        new(
-            "Synthetic Height Deviation Preview",
-            ResultStatus.NotRun,
-            "No preview result is active.",
-            TimeSpan.Zero,
-            [],
-            []);
-
-    private static ToolResult CreateSyntheticHeightDeviationPreview() =>
-        new(
-            "Synthetic Height Deviation Preview",
-            ResultStatus.Warning,
-            "Preview only; source geometry is unchanged and no result is published.",
-            TimeSpan.Zero,
-            [
-                new Metric("Synthetic peak deviation", MetricKind.Deviation, 0.42, "unitless", ResultStatus.Warning),
-                new Metric("Preview overlay count", MetricKind.Count, 3, "count", ResultStatus.Warning)
-            ],
-            [
-                new Overlay("overlay.synthetic-pass-band", OverlayKind.Box, "PASS tolerance band", ResultStatus.Pass, PointCloudEntityId),
-                new Overlay("overlay.synthetic-profile", OverlayKind.Polyline, "Preview profile line", ResultStatus.Warning, PointCloudEntityId),
-                new Overlay("overlay.synthetic-fail-markers", OverlayKind.Marker, "FAIL marker cluster", ResultStatus.Fail, PointCloudEntityId)
-            ]);
-
-    private void RefreshLazTwoPointAcceptanceState()
-    {
-        if (activeResultEntityId != LazTwoPointResultEntityId
-            || !TwoPointMeasurementVisible
-            || !double.IsFinite(TwoPointDistance)
-            || !double.IsFinite(TwoPointRawHeightDelta))
-        {
-            return;
-        }
-
-        var distanceStatus = Math.Abs(TwoPointDistance - LazTwoPointExpectedDistance) <= LazTwoPointDistanceTolerance
-            ? ResultStatus.Pass
-            : ResultStatus.Fail;
-        var heightStatus = Math.Abs(TwoPointRawHeightDelta - LazTwoPointExpectedHeightDelta) <= LazTwoPointHeightDeltaTolerance
-            ? ResultStatus.Pass
-            : ResultStatus.Fail;
-        var status = distanceStatus == ResultStatus.Pass && heightStatus == ResultStatus.Pass
-            ? ResultStatus.Pass
-            : ResultStatus.Fail;
-
-        LazTwoPointAcceptanceSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"LAZ/LAS acceptance: {status} | distance {TwoPointDistance:F3} vs {LazTwoPointExpectedDistance:F3} +/- {LazTwoPointDistanceTolerance:F3} model | height delta {TwoPointRawHeightDelta:F3} vs {LazTwoPointExpectedHeightDelta:F3} +/- {LazTwoPointHeightDeltaTolerance:F3} {lazTwoPointPreviewHeightUnit}");
-
-        if (lazTwoPointPreviewFirst is { } first && lazTwoPointPreviewSecond is { } second)
-        {
-            PreviewToolResult = CreateLazTwoPointMeasurementPreview(
-                first,
-                second,
-                TwoPointRawHeightDelta,
-                lazTwoPointPreviewHeightUnit,
-                distanceStatus,
-                heightStatus,
-                status);
-            ResultSummary = FormatToolResult(PreviewToolResult);
-        }
-
-        RefreshSceneContracts();
-    }
-
-    private ToolResult CreateLazTwoPointMeasurementPreview(
-        Vector3 first,
-        Vector3 second,
-        double heightDelta,
-        string heightUnit,
-        ResultStatus distanceStatus,
-        ResultStatus heightStatus,
-        ResultStatus status)
-    {
-        var delta = second - first;
-        var distance = delta.Length();
-
-        return new ToolResult(
-            "LAZ/LAS Two Point Measurement",
-            status,
-            status == ResultStatus.Pass
-                ? "Preview within configured tolerance; source point cloud is unchanged and no result is published."
-                : "Preview exceeds configured tolerance; source point cloud is unchanged and no result is published.",
-            TimeSpan.Zero,
-            [
-                new Metric("Distance", MetricKind.Length, distance, "model", distanceStatus),
-                new Metric("Delta X", MetricKind.Length, delta.X, "model", ResultStatus.Pass),
-                new Metric("Delta Y", MetricKind.Length, delta.Y, "model", ResultStatus.Pass),
-                new Metric("Delta Z", MetricKind.Length, delta.Z, "model", ResultStatus.Pass),
-                new Metric("Source Z height delta", MetricKind.Length, heightDelta, heightUnit, heightStatus)
-            ],
-            [
-                new Overlay("overlay.laz-two-point-line", OverlayKind.Polyline, "LAZ/LAS two-point distance line", distanceStatus, LazEntityId),
-                new Overlay("overlay.laz-two-point-height-marker", OverlayKind.Marker, "LAZ/LAS source-Z height delta marker", heightStatus, LazEntityId)
-            ]);
-    }
-
-    private ResultEntity CreatePublishedResultEntity(ToolResult result) =>
-        new(
-            activeResultEntityId,
-            activeResultEntityName,
-            activePreviewSourceEntityId,
-            result.Status,
-            "Published from preview; source geometry remains unchanged.",
-            result.Metrics,
-            result.Overlays);
-
-    private static (string Id, string Name) CreatePublishedResultLayer(IReadOnlyList<ResultEntity> results)
-    {
-        var firstResult = results[0];
-        return firstResult.Id switch
-        {
-            NominalActualComparisonContract.ResultEntityId =>
-                (NominalActualComparisonContract.ResultLayerId, NominalActualComparisonContract.ResultLayerName),
-            C3DHeightDeviationResultEntityId => ("layer.result.c3d-height-deviation", "Published C3D Height Deviation"),
-            C3DPlaneFlatnessResultEntityId => ("layer.result.c3d-plane-flatness", "Published C3D Plane Flatness"),
-            C3DPointPairDimensionsResultEntityId => ("layer.result.c3d-point-pair-dimensions", "Published C3D Point Pair Dimensions"),
-            LazTwoPointResultEntityId => ("layer.result.laz-two-point-measurement", "Published LAZ/LAS Two Point Measurement"),
-            SyntheticResultEntityId => ("layer.result.synthetic-height-deviation", "Published Synthetic Height Deviation"),
-            _ => ($"layer.{firstResult.Id}", firstResult.Name)
-        };
-    }
-
-    private string ImportedMeshDisplayName() =>
-        ImportedMeshFormat == "GLB" ? "Public GLB Mesh" : $"{ImportedMeshFormat} Mesh";
-
-    private void ApplyActivePreviewResult()
-    {
-        if (C3DSampleVisible && c3dPointPairDimensionsPreviewActive && c3dPointPairDimensionsPreview is not null)
-        {
-            activePreviewLayerId = "layer.preview.c3d-point-pair-dimensions";
-            activePreviewLayerName = "Preview: C3D Point Pair Dimensions";
-            activePreviewSourceEntityId = C3DEntityId;
-            activeResultEntityId = C3DPointPairDimensionsResultEntityId;
-            activeResultEntityName = "Published C3D Point Pair Dimensions";
-            PreviewToolResult = c3dPointPairDimensionsPreview;
-        }
-        else if (C3DSampleVisible && c3dPlaneFlatnessPreviewActive && c3dPlaneFlatnessPreview is not null)
-        {
-            activePreviewLayerId = "layer.preview.c3d-plane-flatness";
-            activePreviewLayerName = "Preview: C3D Plane Flatness";
-            activePreviewSourceEntityId = C3DEntityId;
-            activeResultEntityId = C3DPlaneFlatnessResultEntityId;
-            activeResultEntityName = "Published C3D Plane Flatness";
-            PreviewToolResult = c3dPlaneFlatnessPreview;
-        }
-        else if (C3DSampleVisible && c3dHeightDeviationPreview is not null)
-        {
-            activePreviewLayerId = "layer.preview.c3d-height-deviation";
-            activePreviewLayerName = "Preview: C3D Height Deviation Rule";
-            activePreviewSourceEntityId = C3DEntityId;
-            activeResultEntityId = C3DHeightDeviationResultEntityId;
-            activeResultEntityName = "Published C3D Height Deviation";
-            PreviewToolResult = c3dHeightDeviationPreview;
-        }
-        else
-        {
-            ResetActivePreviewIdentity();
-            PreviewToolResult = CreateSyntheticHeightDeviationPreview();
-        }
-
-        ResultSummary = FormatToolResult(PreviewToolResult);
-        RefreshSceneContracts();
-    }
-
-    private void ResetActivePreviewIdentity()
-    {
-        activePreviewLayerId = "layer.preview.synthetic-height-deviation";
-        activePreviewLayerName = "Preview: Synthetic Height Deviation";
-        activePreviewSourceEntityId = PointCloudEntityId;
-        activeResultEntityId = SyntheticResultEntityId;
-        activeResultEntityName = "Published Synthetic Height Deviation";
-    }
-
-    private void RefreshDeviationLegend(ToolResult result)
-    {
-        if (activePreviewSourceEntityId != C3DEntityId || result.Status == ResultStatus.NotRun)
-        {
-            HideDeviationLegend();
-            return;
-        }
-
-        var flatness = result.Metrics.FirstOrDefault(metric => metric.Name == "Flatness");
-        var peak = flatness ?? result.Metrics.FirstOrDefault(metric => metric.Name == "Peak absolute deviation");
-        var tolerance = result.Metrics.FirstOrDefault(metric => metric.Name == (flatness is null ? "Peak tolerance" : "Flatness tolerance"));
-        if (peak is null || tolerance is null)
-        {
-            HideDeviationLegend();
-            return;
-        }
-
-        var unit = peak?.Unit ?? tolerance?.Unit ?? "raw-height";
-        var statusText = result.Status switch
-        {
-            ResultStatus.Pass => "Status: Pass | within tolerance",
-            ResultStatus.Fail => "Status: Fail | above tolerance",
-            ResultStatus.Warning => "Status: Warning | review tolerance",
-            ResultStatus.Error => "Status: Error | invalid result",
-            _ => $"Status: {result.Status}"
-        };
-
-        DeviationLegendStatus = statusText;
-        DeviationLegendPeak = peak is null
-            ? "Peak: none"
-            : string.Create(CultureInfo.InvariantCulture, $"{(flatness is null ? "Peak" : "Flatness")}: {peak.Value:F3} {unit}");
-        DeviationLegendTolerance = tolerance is null
-            ? "Tolerance: none"
-            : string.Create(CultureInfo.InvariantCulture, $"Tolerance: +/- {tolerance.Value:F3} {unit}");
-        DeviationLegendScale = flatness is null
-            ? "Scale: 0 = mean, 1 = peak deviation"
-            : "Scale: signed deviation to ROI reference plane";
-        DeviationLegendLowLabel = flatness is null ? "Mean" : "Negative";
-        DeviationLegendMiddleLabel = flatness is null ? "Tolerance" : "Zero";
-        DeviationLegendHighLabel = flatness is null ? "Peak" : "Positive";
-        DeviationLegendVisible = true;
-    }
-
-    private void HideDeviationLegend()
-    {
-        DeviationLegendVisible = false;
-        DeviationLegendStatus = "Status: inactive";
-        DeviationLegendPeak = "Peak: none";
-        DeviationLegendTolerance = "Tolerance: none";
-        DeviationLegendScale = "Scale: mean to peak deviation";
-        DeviationLegendLowLabel = "Mean";
-        DeviationLegendMiddleLabel = "Tolerance";
-        DeviationLegendHighLabel = "Peak";
-    }
-
-    private void RefreshPointCloudColorLegend()
-    {
-        PointCloudColorLegendVisible = LazSampleVisible
-            && SelectedColorMode == "Height"
-            && double.IsFinite(lazHeightMinimum)
-            && double.IsFinite(lazHeightMaximum)
-            && lazHeightMaximum > lazHeightMinimum;
-    }
-
-    private static string FormatToolResult(ToolResult result)
-    {
-        if (result.Status == ResultStatus.NotRun)
-        {
-            return "Result overlay hidden";
-        }
-
-        var metric = result.Metrics.FirstOrDefault(metric => metric.Status is not null) ?? result.Metrics.First();
-        return $"Preview: {result.ToolName}: {result.Status}\n{result.Message}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nOverlays: {result.Overlays.Count}";
-    }
-
-    private static string FormatPublishedResult(ResultEntity result)
-    {
-        var metric = result.Metrics.First();
-        return $"{result.Name}: {result.Status}\nSource: {result.SourceEntityId}\nMetric: {metric.Name} = {metric.Value:F3} {metric.Unit}\nLayer: published result";
-    }
-
-    public void SetRecipeLoaded(string recipePath, string sourceName, string sourcePath, string unit, double peakTolerance)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSourceName = sourceName;
-        RecipeSourcePath = sourcePath;
-        RecipeSourceUnit = unit;
-        RecipePeakTolerance = peakTolerance;
-        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
-        RefreshRecipeSummary();
-    }
-
-    public void SetNominalActualRecipeLoaded(string recipePath)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
-        RefreshNominalActualRecipeSummary();
-    }
-
-    public void SetNominalActualRecipeSaved(string recipePath)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSaveSummary = $"Recipe saved: {Path.GetFullPath(recipePath)}";
-        RefreshNominalActualRecipeSummary();
-    }
-
-    public void SetLazRecipeLoaded(string recipePath, string sourceName, string sourcePath)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Recipe: {Path.GetFileName(recipePath)}\nSource: {sourceName}\nLAZ/LAS acceptance: editable");
-        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
-        SetLazSampleSource(sourcePath, sourceName);
-    }
-
-    public void SetPointPairRecipeLoaded(string recipePath, string sourceName, string sourcePath, string sourceUnit)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSourceName = sourceName;
-        RecipeSourcePath = sourcePath;
-        RecipeSourceUnit = sourceUnit;
-        RecipeSaveSummary = $"Recipe loaded: {Path.GetFileName(recipePath)}";
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    public void SetRecipeSaved(string recipePath)
-    {
-        SetField(ref recipeFileName, Path.GetFileName(recipePath), nameof(RecipeSummary));
-        RecipeSaveSummary = $"Recipe saved: {Path.GetFullPath(recipePath)}";
-        RefreshRecipeSummary();
-    }
-
-    public void SetSectionProfile(string sourceName, int rowIndex, int sampleCount, double min, double max, double mean, string pathData)
-    {
-        SectionProfileVisible = sampleCount > 1;
-        SectionProfileSampleCount = sampleCount;
-        SectionProfileSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Profile: {sourceName} section | row {rowIndex} | samples {sampleCount}");
-        SectionProfileRange = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
-        SectionProfilePathData = string.IsNullOrWhiteSpace(pathData) ? "M 0,30 L 240,30" : pathData;
-
-        if (SelectedSelectionMode == "Section Plane")
-        {
-            SelectionSummary = SectionProfileSummary;
-        }
-    }
-
-    public void SetHeightMap(ImageSource imageSource, int sourceWidth, int sourceHeight, int renderedPoints, double min, double max, double mean, int pixelWidth, int pixelHeight)
-    {
-        HeightMapVisible = true;
-        HeightMapImageSource = imageSource;
-        HeightMapPixelWidth = pixelWidth;
-        HeightMapPixelHeight = pixelHeight;
-        HeightMapSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Height map: {sourceWidth} x {sourceHeight} C3D | rendered {renderedPoints:N0} points");
-        HeightMapRange = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Range: min {min:F3}, max {max:F3}, mean {mean:F3} raw-height");
-    }
-
-    public void ClearHeightMap()
-    {
-        HeightMapVisible = false;
-        HeightMapImageSource = null;
-        HeightMapPixelWidth = 0;
-        HeightMapPixelHeight = 0;
-        HeightMapSummary = "Height map: not loaded";
-        HeightMapRange = "Range: not loaded";
-    }
-
-    public void ClearSectionProfile()
-    {
-        SectionProfileVisible = false;
-        SectionProfileSampleCount = 0;
-        SectionProfileSummary = "Profile: not loaded";
-        SectionProfileRange = "Range: not loaded";
-        SectionProfilePathData = "M 0,30 L 240,30";
-
-        if (SelectedSelectionMode == "Section Plane")
-        {
-            SelectionSummary = "Section plane: profile not loaded";
-        }
-    }
-
-    private static string FormatRenderDensitySummary(string mode) => mode switch
-    {
-        "Fast" => "Fast: up to 25,000 C3D points / 25,000 LAZ/LAS points / 25,000 mesh triangles",
-        "Detailed" => "Detailed: up to 140,000 C3D points / 150,000 LAZ/LAS points / 180,000 mesh triangles",
-        _ => "Balanced: up to 55,000 C3D points / 50,000 LAZ/LAS points / 60,000 mesh triangles"
-    };
-
-    private static IReadOnlyList<SourceEntity> CreateSourceEntities(
-        ModelTransform c3DTransform,
-        string glbName,
-        string glbSourcePath,
-        string lazName,
-        string lazSourcePath) =>
-    [
-        new SourceEntity(CubeEntityId, "Generated Unit Cube", EntityKind.Mesh, "unitless", null, ModelTransform.Identity),
-        new SourceEntity(PointCloudEntityId, "Generated Point Cloud", EntityKind.PointCloud, "unitless", null, ModelTransform.Identity),
-        new SourceEntity(C3DEntityId, "C3D Thickness Sample", EntityKind.HeightGrid, "raw-height", @"3D\Thickness\Ori_20240116_094414.C3D", c3DTransform),
-        new SourceEntity(GlbEntityId, glbName, EntityKind.Mesh, "unitless", glbSourcePath, ModelTransform.Identity),
-        new SourceEntity(LazEntityId, lazName, EntityKind.PointCloud, "source-units", lazSourcePath, ModelTransform.Identity)
-    ];
-
-    private void RefreshSourceEntities()
-    {
-        var entities = CreateSourceEntities(
-            C3DModelTransform,
-            GlbSampleName,
-            GlbSampleSourcePath,
-            LazSampleName,
-            LazSampleSourcePath).ToList();
-        if (NominalActualInput is { } input)
-        {
-            entities.Add(new SourceEntity(
-                input.ActualSource.Id,
-                input.ActualSource.Name,
-                EntityKind.Mesh,
-                input.Unit,
-                input.ActualSource.Path,
-                ModelTransform.Identity));
-            entities.Add(new SourceEntity(
-                input.NominalSource.Id,
-                input.NominalSource.Name,
-                EntityKind.Mesh,
-                input.Unit,
-                input.NominalSource.Path,
-                ModelTransform.Identity));
-            entities.Add(new SourceEntity(
-                input.QuerySource.Id,
-                input.QuerySource.Name,
-                EntityKind.PointCloud,
-                input.Unit,
-                input.QuerySource.Path,
-                ModelTransform.Identity));
-        }
-
-        SourceEntities = entities;
-    }
-
-    private void RefreshNominalActualRecipeSummary()
-    {
-        if (NominalActualInput is not { } input)
-        {
-            return;
-        }
-
-        RecipeSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:G6}, {NominalActual.UpperTolerance:G6}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}");
-    }
-
-    private static string FormatNominalActualSource(
-        string role,
-        NominalActualFileIdentity identity) =>
-        $"{role}: {Path.GetFileName(identity.Path)} | {identity.Id} | sha256 {identity.Sha256[..8]}";
-
-    private static string FormatModelTransform(ModelTransform transform) =>
-        string.Create(
-            CultureInfo.InvariantCulture,
-            $"T({transform.TranslateX:F3}, {transform.TranslateY:F3}, {transform.TranslateZ:F3}) | R({transform.RotateXDegrees:F1}, {transform.RotateYDegrees:F1}, {transform.RotateZDegrees:F1}) | S {transform.Scale:F3}");
-
-    private static bool ModelTransformIsIdentity(ModelTransform transform) =>
-        transform.TranslateX == 0.0
-        && transform.TranslateY == 0.0
-        && transform.TranslateZ == 0.0
-        && transform.RotateXDegrees == 0.0
-        && transform.RotateYDegrees == 0.0
-        && transform.RotateZDegrees == 0.0
-        && transform.Scale == 1.0;
-
-    private void RefreshRecipeSummary()
-    {
-        var flatnessLine = PlaneFlatnessConfigured
-            ? string.Create(CultureInfo.InvariantCulture, $"\nFlatness tolerance: {PlaneFlatnessTolerance:F3} {PlaneFlatnessUnit}")
-            : string.Empty;
-        var pointPairLine = PointPairDimensionsConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nDimensions expected: D {PointPairExpectedDistance:F3}, W {PointPairExpectedWidth:F3} {PointPairDimensionsUnit}, A {PointPairExpectedAngleDegrees:F3} deg")
-            : string.Empty;
-        var gapFlushLine = GapFlushConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nGap / Flush expected: {GapFlushExpectedGap:F3} {GapFlushGapUnit}, {GapFlushExpectedFlush:F3} {GapFlushFlushUnit}")
-            : string.Empty;
-        var volumeLine = VolumeConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nVolume expected net: {VolumeExpectedNet:F3} +/- {VolumeTolerance:F3} {VolumeUnit}")
-            : string.Empty;
-        var crossSectionLine = CrossSectionConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nCross-section expected: width {CrossSectionExpectedWidth:F3} {CrossSectionWidthUnit}, height {CrossSectionExpectedHeightRange:F3} {CrossSectionHeightUnit}")
-            : string.Empty;
-        RecipeSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}");
-    }
-
-    private void RefreshRecipeParameterSummary()
-    {
-        var flatnessLine = PlaneFlatnessConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nReference ROI ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}) half ({PlaneFlatnessReferenceHalfWidth:F3}, {PlaneFlatnessReferenceHalfDepth:F3})")
-            : string.Empty;
-        var pointPairLine = pointPairFirstReference is not null && pointPairSecondReference is not null
-            ? $"\nPoint pair {pointPairFirstReference.Id} ({pointPairFirstReference.Row}, {pointPairFirstReference.Column}) -> {pointPairSecondReference.Id} ({pointPairSecondReference.Row}, {pointPairSecondReference.Column})"
-            : string.Empty;
-        var volumeLine = VolumeConfigured
-            ? string.Create(
-                CultureInfo.InvariantCulture,
-                $"\nVolume reference ({PlaneFlatnessReferenceCenterX:F3}, {PlaneFlatnessReferenceCenterZ:F3}); measurement ({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3})")
-            : string.Empty;
-        var crossSectionLine = CrossSectionConfigured
-            ? $"\nCross-section row {CrossSectionRow}, columns {CrossSectionStartColumn}..{CrossSectionEndColumn}"
-            : string.Empty;
-        RecipeParameterSummary = string.Create(
-            CultureInfo.InvariantCulture,
-            $"Transform T({RecipeTransformTranslateX:F3}, {RecipeTransformTranslateY:F3}, {RecipeTransformTranslateZ:F3}) R({RecipeTransformRotateXDegrees:F1}, {RecipeTransformRotateYDegrees:F1}, {RecipeTransformRotateZDegrees:F1}) S {RecipeTransformScale:F3}\nROI {RecipeRoiMode}: L({RecipeRoiLeftCenterX:F3}, {RecipeRoiLeftCenterZ:F3}) R({RecipeRoiRightCenterX:F3}, {RecipeRoiRightCenterZ:F3}){flatnessLine}{pointPairLine}{volumeLine}{crossSectionLine}");
-    }
-
-    private void SetPlaneFlatnessParameter(ref double storage, double value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName))
-        {
-            return;
-        }
-
-        PlaneFlatnessConfigured = true;
-        InvalidatePlaneFlatnessPreview("Flatness parameters changed; run Preview Flatness again");
-        InvalidateVolumePreview("Reference ROI changed; run Preview Volume again");
-
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void SetPointPairParameter(ref double storage, double value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName))
-        {
-            return;
-        }
-
-        PointPairDimensionsConfigured = true;
-        InvalidatePointPairDimensionsPreview("Dimension parameters changed; run Preview Dimensions again");
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void SetGapFlushParameter(ref double storage, double value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName))
-        {
-            return;
-        }
-
-        GapFlushConfigured = true;
-        InvalidateGapFlushPreview("Gap / Flush parameters changed; run Preview Gap / Flush again");
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void SetVolumeParameter(ref double storage, double value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName)) return;
-        VolumeConfigured = true;
-        InvalidateVolumePreview("Volume parameters changed; run Preview Volume again");
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void SetCrossSectionParameter(ref int storage, int value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName)) return;
-        CrossSectionConfigured = true;
-        InvalidateCrossSectionPreview("Cross-section selectors changed; run Preview Cross-section again");
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void SetCrossSectionParameter(ref double storage, double value, string propertyName)
-    {
-        if (!SetField(ref storage, value, propertyName)) return;
-        CrossSectionConfigured = true;
-        InvalidateCrossSectionPreview("Cross-section acceptance changed; run Preview Cross-section again");
-        RefreshRecipeSummary();
-        RefreshRecipeParameterSummary();
-    }
-
-    private void OnRecipeRoiChanged()
-    {
-        InvalidateGapFlushPreview("ROI parameters changed; run Preview Gap / Flush again");
-        InvalidateVolumePreview("Measurement ROI changed; run Preview Volume again");
-        RefreshRecipeParameterSummary();
-    }
-
-    private static string FormatVector(Vector3 point) =>
-        string.Create(CultureInfo.InvariantCulture, $"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
-
-    private static double CoerceFinite(double value, double fallback) =>
-        double.IsFinite(value) ? value : fallback;
-
-    private void NotifyRecipeTransformProperties()
-    {
-        OnPropertyChanged(nameof(RecipeTransformTranslateX));
-        OnPropertyChanged(nameof(RecipeTransformTranslateY));
-        OnPropertyChanged(nameof(RecipeTransformTranslateZ));
-        OnPropertyChanged(nameof(RecipeTransformRotateXDegrees));
-        OnPropertyChanged(nameof(RecipeTransformRotateYDegrees));
-        OnPropertyChanged(nameof(RecipeTransformRotateZDegrees));
-        OnPropertyChanged(nameof(RecipeTransformScale));
     }
 
     private void OnPropertyChanged(string propertyName)

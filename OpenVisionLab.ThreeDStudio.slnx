@@ -1,12 +1,13 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Docking.Controls/OpenVisionLab.ThreeD.Docking.Controls.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj" />
-    <Project Path="src/OpenVisionLab.ThreeDStudio/OpenVisionLab.ThreeDStudio.csproj" />
-  </Folder>
+  <Project Path="src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Docking.Controls/OpenVisionLab.ThreeD.Docking.Controls.csproj" />
+  <Project Path="src/OpenVisionLab.Logging/OpenVisionLab.Logging.csproj" />
+  <Project Path="src/OpenVisionLab.Logging.Controls/OpenVisionLab.Logging.Controls.csproj" />
+  <Project Path="src/OpenVisionLab.Localization/OpenVisionLab.Localization.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj" />
+  <Project Path="src/OpenVisionLab.ThreeDStudio/OpenVisionLab.ThreeDStudio.csproj" />
 </Solution>

@@ -1,7 +1,9 @@
 # OpenVisionLab 3D Thickness / Warpage UI Concept
 
-Updated: 2026-07-17
-Status: **Phase A layout and Phase B ViewModel accepted; offline Thickness Repeatability Model passes locally; real-input binding next**
+Updated: 2026-07-18
+Status: **specialized Thickness/Warpage and Calibration reference; no longer the default product-entry architecture**
+
+> The 2026-07-18 approved default is the composable Tool Recipe Workbench in `OPENVISIONLAB_3D_TOOL_RECIPE_WORKBENCH_REFACTOR_PLAN_20260718.md`. This document remains the reference for specialized Thickness, Warpage, and Calibration screens; it must not be read as limiting the product to those two measurements.
 
 Calibration Center and the final application theme are specified in the Korean companion proposal:
 `OPENVISIONLAB_3D_CALIBRATION_AND_THEME_UI_CONCEPT_20260717.md`.
@@ -268,6 +270,12 @@ Current result
 ### Meaning boundary
 
 The first Warpage tool measures signed surface deformation relative to an explicit reference. It is not marketed as certified GD&T flatness and it does not perform ZEISS-style virtual clamping.
+
+The current local C3D file named Warpage is not authorized as this input: its
+C3D and PNG bytes are identical to the Thickness candidate and no independent
+source meaning or reference contract exists. Preserve this design as a future
+target, not an implementation instruction, until the intake in
+`docs/OPENVISIONLAB_3D_WARPAGE_INPUT_PREFLIGHT_20260717.md` is satisfied.
 
 Initial reference modes:
 

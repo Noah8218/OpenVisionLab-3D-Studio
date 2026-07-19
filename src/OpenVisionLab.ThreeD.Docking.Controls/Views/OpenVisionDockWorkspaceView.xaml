@@ -1,0 +1,91 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Docking.Controls.OpenVisionDockWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:avalonDock="https://github.com/Dirkster99/AvalonDock"
+             xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls">
+    <Grid>
+        <avalonDock:DockingManager x:Name="workspaceDockingManager"
+                                   Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                                   Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
+                                   BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
+                                   BorderThickness="1">
+            <avalonDock:LayoutRoot>
+                <avalonDock:LayoutPanel x:Name="workspaceRootPanel"
+                                        Orientation="Vertical">
+                    <avalonDock:LayoutPanel x:Name="workbenchPane"
+                                        Orientation="Horizontal"
+                                        DockHeight="2.35*">
+                        <avalonDock:LayoutAnchorablePane x:Name="dataLayersPane"
+                                                          DockWidth="0.82*">
+                            <avalonDock:LayoutAnchorable x:Name="dataLayersAnchorable"
+                                                         Title="{Binding DataLayersTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                         ContentId="data-layers"
+                                                         CanClose="False"
+                                                         CanFloat="True"
+                                                         CanHide="False">
+                                <ContentPresenter Content="{Binding DataLayersContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                        <avalonDock:LayoutAnchorablePane x:Name="primaryPane"
+                                                          DockWidth="2.45*">
+                            <avalonDock:LayoutAnchorable x:Name="viewerAnchorable"
+                                                         Title="{Binding ViewerTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                         ContentId="three-d-viewer"
+                                                         CanClose="False"
+                                                         CanFloat="True"
+                                                         CanHide="False">
+                                <ContentPresenter Content="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                        <avalonDock:LayoutAnchorablePane x:Name="toolInspectorPane"
+                                                         DockWidth="1.05*">
+                            <avalonDock:LayoutAnchorable x:Name="toolInspectorAnchorable"
+                                                         Title="{Binding ToolInspectorTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                         ContentId="tool-inspector"
+                                                         CanClose="False"
+                                                         CanFloat="True"
+                                                         CanHide="False">
+                                <ContentPresenter Content="{Binding ToolInspectorContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
+                    </avalonDock:LayoutPanel>
+                    <avalonDock:LayoutAnchorablePane x:Name="evidencePane"
+                                                      DockHeight="1*">
+                            <avalonDock:LayoutAnchorable x:Name="evidenceAnchorable"
+                                                         Title="{Binding EvidenceTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                         ContentId="evidence-workbench"
+                                                         CanClose="False"
+                                                         CanFloat="True"
+                                                         CanHide="False">
+                            <ContentPresenter Content="{Binding EvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="linkedViewAnchorable"
+                                                     Title="{Binding LinkedViewTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="linked-view"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="False">
+                            <ContentPresenter Content="{Binding LinkedViewContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="profileAnchorable"
+                                                     Title="{Binding ProfileTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="height-profile"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="False">
+                            <ContentPresenter Content="{Binding ProfileContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="fitDiagnosticsAnchorable"
+                                                     Title="{Binding FitDiagnosticsTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="fit-diagnostics"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="True">
+                            <ContentPresenter Content="{Binding FitDiagnosticsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                    </avalonDock:LayoutAnchorablePane>
+                </avalonDock:LayoutPanel>
+            </avalonDock:LayoutRoot>
+        </avalonDock:DockingManager>
+    </Grid>
+</UserControl>

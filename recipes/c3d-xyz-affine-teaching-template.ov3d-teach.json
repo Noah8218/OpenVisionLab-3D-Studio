@@ -1,0 +1,283 @@
+{
+  "schemaVersion": "1.1",
+  "name": "C3D XYZ Affine Teaching Template",
+  "source": {
+    "id": "source.c3d.height-map",
+    "name": "Ori_20240116_094430",
+    "format": "C3D",
+    "unit": "raw-height",
+    "frameId": "frame.c3d-grid-index",
+    "path": "..\\3D\\Warpage\\Ori_20240116_094430.C3D",
+    "byteLength": 10236276,
+    "contentSha256": "79C02761F9B711C0F8980D4376B9FCE25E00D425E6CA85DA4D4349ECF5F0299C",
+    "gridWidth": 1301,
+    "gridHeight": 1967
+  },
+  "references": [
+    {
+      "id": "reference.fixture-landmarks",
+      "name": "Fixture/reference landmark set",
+      "kind": "Reference landmark set"
+    }
+  ],
+  "steps": [
+    {
+      "id": "step.filter.01",
+      "toolId": "filter",
+      "toolName": "Filter",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "source.c3d.height-map" ],
+      "outputEntityId": "derived.filtered-height.01",
+      "parameters": [
+        { "name": "Method", "value": "Median" },
+        { "name": "KernelSize", "value": "3" },
+        { "name": "MissingValuePolicy", "value": "PreserveMask" },
+        { "name": "BoundaryPolicy", "value": "AvailableNeighbors" }
+      ]
+    },
+    {
+      "id": "step.edge.ul.horizontal.01",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.filtered-height.01" ],
+      "outputEntityId": "derived.edgepoints-ul-horizontal.01",
+      "parameters": [
+        { "name": "ComparisonAxis", "value": "Set explicitly" },
+        { "name": "Polarity", "value": "Set explicitly" },
+        { "name": "MinimumDelta", "value": "Set explicitly" },
+        { "name": "CandidatePolicy", "value": "StrongestPerScanline" },
+        { "name": "PointPolicy", "value": "PairMidpoint" },
+        { "name": "MissingValuePolicy", "value": "SkipPair" },
+        { "name": "BoundaryPolicy", "value": "WithinSelection" }
+      ]
+    },
+    {
+      "id": "step.line.ul.horizontal.01",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.edgepoints-ul-horizontal.01" ],
+      "outputEntityId": "derived.line-ul-horizontal.01",
+      "parameters": [
+        { "name": "FitMethod", "value": "DeterministicConsensusOrthogonalTls" },
+        { "name": "MaximumOrthogonalResidual", "value": "Set explicitly" },
+        { "name": "MinimumInlierCount", "value": "Set explicitly" },
+        { "name": "MinimumInlierRatio", "value": "Set explicitly" },
+        { "name": "MinimumInlierScanlineSpan", "value": "Set explicitly" },
+        { "name": "HypothesisPolicy", "value": "Sha256PairSchedule" },
+        { "name": "MaximumHypotheses", "value": "256" },
+        { "name": "RefinementPolicy", "value": "OrthogonalTlsUntilStable10" },
+        { "name": "DirectionPolicy", "value": "PositiveScanlineAxis" },
+        { "name": "EndpointPolicy", "value": "InlierProjectionExtents" }
+      ]
+    },
+    {
+      "id": "step.edge.ul.vertical.01",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.filtered-height.01" ],
+      "outputEntityId": "derived.edgepoints-ul-vertical.01",
+      "parameters": [
+        { "name": "ComparisonAxis", "value": "Set explicitly" },
+        { "name": "Polarity", "value": "Set explicitly" },
+        { "name": "MinimumDelta", "value": "Set explicitly" },
+        { "name": "CandidatePolicy", "value": "StrongestPerScanline" },
+        { "name": "PointPolicy", "value": "PairMidpoint" },
+        { "name": "MissingValuePolicy", "value": "SkipPair" },
+        { "name": "BoundaryPolicy", "value": "WithinSelection" }
+      ]
+    },
+    {
+      "id": "step.line.ul.vertical.01",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.edgepoints-ul-vertical.01" ],
+      "outputEntityId": "derived.line-ul-vertical.01",
+      "parameters": [
+        { "name": "FitMethod", "value": "DeterministicConsensusOrthogonalTls" },
+        { "name": "MaximumOrthogonalResidual", "value": "Set explicitly" },
+        { "name": "MinimumInlierCount", "value": "Set explicitly" },
+        { "name": "MinimumInlierRatio", "value": "Set explicitly" },
+        { "name": "MinimumInlierScanlineSpan", "value": "Set explicitly" },
+        { "name": "HypothesisPolicy", "value": "Sha256PairSchedule" },
+        { "name": "MaximumHypotheses", "value": "256" },
+        { "name": "RefinementPolicy", "value": "OrthogonalTlsUntilStable10" },
+        { "name": "DirectionPolicy", "value": "PositiveScanlineAxis" },
+        { "name": "EndpointPolicy", "value": "InlierProjectionExtents" }
+      ]
+    },
+    {
+      "id": "step.corner.ul.01",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [ "derived.line-ul-horizontal.01", "derived.line-ul-vertical.01" ],
+      "outputEntityId": "derived.corner-ul.01",
+      "parameters": [
+        { "name": "Max gap", "value": "Teach acceptance gap" },
+        { "name": "Output", "value": "Upper-left corner anchor" }
+      ]
+    },
+    {
+      "id": "step.edge.lr.horizontal.01",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.filtered-height.01" ],
+      "outputEntityId": "derived.edgepoints-lr-horizontal.01",
+      "parameters": [
+        { "name": "ComparisonAxis", "value": "Set explicitly" },
+        { "name": "Polarity", "value": "Set explicitly" },
+        { "name": "MinimumDelta", "value": "Set explicitly" },
+        { "name": "CandidatePolicy", "value": "StrongestPerScanline" },
+        { "name": "PointPolicy", "value": "PairMidpoint" },
+        { "name": "MissingValuePolicy", "value": "SkipPair" },
+        { "name": "BoundaryPolicy", "value": "WithinSelection" }
+      ]
+    },
+    {
+      "id": "step.line.lr.horizontal.01",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.edgepoints-lr-horizontal.01" ],
+      "outputEntityId": "derived.line-lr-horizontal.01",
+      "parameters": [
+        { "name": "FitMethod", "value": "DeterministicConsensusOrthogonalTls" },
+        { "name": "MaximumOrthogonalResidual", "value": "Set explicitly" },
+        { "name": "MinimumInlierCount", "value": "Set explicitly" },
+        { "name": "MinimumInlierRatio", "value": "Set explicitly" },
+        { "name": "MinimumInlierScanlineSpan", "value": "Set explicitly" },
+        { "name": "HypothesisPolicy", "value": "Sha256PairSchedule" },
+        { "name": "MaximumHypotheses", "value": "256" },
+        { "name": "RefinementPolicy", "value": "OrthogonalTlsUntilStable10" },
+        { "name": "DirectionPolicy", "value": "PositiveScanlineAxis" },
+        { "name": "EndpointPolicy", "value": "InlierProjectionExtents" }
+      ]
+    },
+    {
+      "id": "step.edge.lr.vertical.01",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.filtered-height.01" ],
+      "outputEntityId": "derived.edgepoints-lr-vertical.01",
+      "parameters": [
+        { "name": "ComparisonAxis", "value": "Set explicitly" },
+        { "name": "Polarity", "value": "Set explicitly" },
+        { "name": "MinimumDelta", "value": "Set explicitly" },
+        { "name": "CandidatePolicy", "value": "StrongestPerScanline" },
+        { "name": "PointPolicy", "value": "PairMidpoint" },
+        { "name": "MissingValuePolicy", "value": "SkipPair" },
+        { "name": "BoundaryPolicy", "value": "WithinSelection" }
+      ]
+    },
+    {
+      "id": "step.line.lr.vertical.01",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.edgepoints-lr-vertical.01" ],
+      "outputEntityId": "derived.line-lr-vertical.01",
+      "parameters": [
+        { "name": "FitMethod", "value": "DeterministicConsensusOrthogonalTls" },
+        { "name": "MaximumOrthogonalResidual", "value": "Set explicitly" },
+        { "name": "MinimumInlierCount", "value": "Set explicitly" },
+        { "name": "MinimumInlierRatio", "value": "Set explicitly" },
+        { "name": "MinimumInlierScanlineSpan", "value": "Set explicitly" },
+        { "name": "HypothesisPolicy", "value": "Sha256PairSchedule" },
+        { "name": "MaximumHypotheses", "value": "256" },
+        { "name": "RefinementPolicy", "value": "OrthogonalTlsUntilStable10" },
+        { "name": "DirectionPolicy", "value": "PositiveScanlineAxis" },
+        { "name": "EndpointPolicy", "value": "InlierProjectionExtents" }
+      ]
+    },
+    {
+      "id": "step.corner.lr.01",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [ "derived.line-lr-horizontal.01", "derived.line-lr-vertical.01" ],
+      "outputEntityId": "derived.corner-lr.01",
+      "parameters": [
+        { "name": "Max gap", "value": "Teach acceptance gap" },
+        { "name": "Output", "value": "Lower-right corner anchor" }
+      ]
+    },
+    {
+      "id": "step.landmark-correspondence.01",
+      "toolId": "landmark-correspondence",
+      "toolName": "Landmark Correspondence",
+      "minimumInputCount": 2,
+      "inputEntityIds": [ "derived.corner-ul.01", "derived.corner-lr.01", "reference.fixture-landmarks" ],
+      "outputEntityId": "derived.correspondences.01",
+      "parameters": [
+        { "name": "Minimum landmarks", "value": "Add 4 affine-independent source/reference landmarks before execution" },
+        { "name": "Reference frame", "value": "Fixture frame must be explicit" }
+      ]
+    },
+    {
+      "id": "step.xyz-affine.01",
+      "toolId": "xyz-affine-transform",
+      "toolName": "XYZ Affine Transform",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.correspondences.01" ],
+      "outputEntityId": "derived.transformed-point-cloud.01",
+      "parameters": [
+        { "name": "Minimum landmarks", "value": "4 affine-independent" },
+        { "name": "Residual", "value": "Review before Run" }
+      ]
+    },
+    {
+      "id": "step.regrid.01",
+      "toolId": "re-grid-height-map",
+      "toolName": "Re-grid Height Map",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.transformed-point-cloud.01" ],
+      "outputEntityId": "derived.transformed-height-field.01",
+      "parameters": [
+        { "name": "Grid frame", "value": "Selected transform" },
+        { "name": "Hole policy", "value": "Teach explicitly" }
+      ]
+    },
+    {
+      "id": "step.thickness.01",
+      "toolId": "thickness",
+      "toolName": "Thickness",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.transformed-height-field.01" ],
+      "outputEntityId": "derived.thickness.01",
+      "parameters": [
+        { "name": "ROI", "value": "Recipe-owned measurement ROI" },
+        { "name": "Tolerance", "value": "Teach acceptance limits" }
+      ]
+    },
+    {
+      "id": "step.warpage.01",
+      "toolId": "warpage",
+      "toolName": "Warpage",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.transformed-height-field.01" ],
+      "outputEntityId": "derived.warpage.01",
+      "parameters": [
+        { "name": "ROI", "value": "Recipe-owned measurement ROI" },
+        { "name": "P2V limit", "value": "Teach acceptance limit" }
+      ]
+    },
+    {
+      "id": "step.review.01",
+      "toolId": "overlay-control-review",
+      "toolName": "Overlay / Control Review",
+      "minimumInputCount": 1,
+      "inputEntityIds": [ "derived.warpage.01" ],
+      "outputEntityId": "derived.review.01",
+      "parameters": [
+        { "name": "Overlay", "value": "Selected results" },
+        { "name": "Publish", "value": "Explicit after future execution adapter" }
+      ]
+    }
+  ]
+}

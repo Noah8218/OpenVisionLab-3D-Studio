@@ -4,96 +4,41 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
-        Title="OpenVisionLab 3D Shell"
-        Width="1280"
-        Height="800"
-        MinWidth="960"
-        MinHeight="620"
+        xmlns:shellViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        xmlns:workspace="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workspace"
+        Title="OpenVisionLab 3D Studio"
+        Width="1920"
+        Height="1080"
+        MinWidth="1180"
+        MinHeight="720"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56"
+                                  ResizeBorderThickness="6"
+                                  GlassFrameThickness="0"
+                                  UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </Window.Resources>
     <DockPanel LastChildFill="True">
-        <Border DockPanel.Dock="Top"
-                Background="{DynamicResource ThreeD.PanelBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="0,0,0,1">
-            <Grid Margin="12,6">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="28" />
-                    <RowDefinition Height="38" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:SymbolIcon Margin="0,0,7,0"
-                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Symbol="TargetArrow24" />
-                    <TextBlock VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="OpenVisionLab 3D Studio" />
-                </StackPanel>
-                <TextBlock Grid.Column="2"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                           Text="{Binding StatusText}" />
-
-                <Border Grid.Row="1"
-                        Padding="3"
-                        VerticalAlignment="Center"
-                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton Content="Setup"
-                                     IsEnabled="False"
-                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                                     ToolTip="Setup workspace is not implemented yet" />
-                        <RadioButton x:Name="InspectModeButton"
-                                     Content="Inspect"
-                                     GroupName="WorkspaceMode"
-                                     IsChecked="{Binding IsInspectWorkspaceSelected, Mode=TwoWay}"
-                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                                     AutomationProperties.AutomationId="InspectModeButton" />
-                        <RadioButton x:Name="CalibrateModeButton"
-                                     Content="Calibrate"
-                                     GroupName="WorkspaceMode"
-                                     IsChecked="{Binding IsCalibrationWorkspaceSelected, Mode=TwoWay}"
-                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                                     AutomationProperties.AutomationId="CalibrateModeButton" />
-                        <RadioButton Content="Review"
-                                     IsEnabled="False"
-                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                                     ToolTip="Review workspace is not implemented yet" />
-                    </StackPanel>
-                </Border>
-
-                <TextBlock Grid.Row="1"
-                           Grid.Column="1"
-                           Margin="16,0"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="{Binding WorkspaceSummary}" />
-
-                <TextBlock Grid.Row="1"
-                           Grid.Column="2"
-                           VerticalAlignment="Center"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="Target: Thickness / Warpage" />
-            </Grid>
-        </Border>
+        <shellViews:StudioHeaderView DockPanel.Dock="Top"
+                                     RecipeManagerRequested="OpenRecipeManagerRequested"
+                                     FilterToolLabRequested="OpenFilterToolLabRequested"
+                                     EdgeToolLabRequested="OpenEdgeToolLabRequested" />
 
         <Grid>
+        <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"
+                                           Visibility="{Binding IsWorkbenchWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <workspace:ThicknessTaskWorkspaceView x:Name="TaskWorkspace"
+                                               Visibility="{Binding IsTaskWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
         <dock:OpenVisionDockWorkspaceView x:Name="Workspace"
-                                          Visibility="{Binding IsInspectWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                                          Visibility="{Binding IsExpertWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
             <dock:OpenVisionDockWorkspaceView.DataLayersContent>
                 <Border Background="#ffffff"
                         BorderBrush="#d1d5db"
@@ -106,6 +51,43 @@
                                        FontWeight="SemiBold"
                                        Foreground="#111827"
                                        Text="Data &amp; Layers" />
+
+                            <StackPanel Margin="0,12,0,0"
+                                        Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Foreground="#6b7280" Text="Active Thickness Result" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ThicknessSummary}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ThicknessDetails}" />
+                                <Grid Margin="0,6,0,0"
+                                      Visibility="{Binding ThicknessVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Foreground="#6b7280" Text="Mean" />
+                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="1" Foreground="#6b7280" Text="Minimum" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="2" Foreground="#6b7280" Text="Maximum" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="3" Foreground="#6b7280" Text="Range" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
+                                    <TextBlock Grid.Row="4" Foreground="#6b7280" Text="Valid samples" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
+                                </Grid>
+                            </StackPanel>
 
                             <StackPanel Margin="0,12,0,0"
                                         DataContext="{Binding NominalActual}">
@@ -268,7 +250,8 @@
                                        Text="Tool / Inspector" />
 
                             <StackPanel Margin="0,12,0,0"
-                                        DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
+                                        DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
+                                        Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                                 <TextBlock Foreground="#6b7280" Text="Surface Deviation" />
                                 <TextBlock Margin="0,4,0,0"
                                            FontWeight="SemiBold"
@@ -318,7 +301,7 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="Active Tool" />
+                            <TextBlock Margin="0,0,0,4" Foreground="#6b7280" Text="Active Tool" />
                             <StackPanel DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                 <TextBlock FontWeight="SemiBold" Text="{Binding SelectedEntity}" />
                                 <TextBlock Margin="0,4,0,0"
@@ -335,6 +318,58 @@
                                         Content="Fit C3D Plane"
                                         Command="{Binding DataContext.FitPlaneCommand, ElementName=ShellWindow}" />
                                 <StackPanel Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <TextBlock Margin="0,12,0,4"
+                                               FontWeight="SemiBold"
+                                               Text="Thickness ROI Teaching" />
+                                    <WrapPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                                            <TextBox Text="{Binding ThicknessRoiRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Column" />
+                                            <TextBox Text="{Binding ThicknessRoiColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Rows" />
+                                            <TextBox Text="{Binding ThicknessRoiRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                        <StackPanel Width="58" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Columns" />
+                                            <TextBox Text="{Binding ThicknessRoiColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <StackPanel Width="82" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Lower" />
+                                            <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="82" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Upper" />
+                                            <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                                        </StackPanel>
+                                        <StackPanel Width="82" Margin="0,0,0,6">
+                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="Min Samples" />
+                                            <TextBox Text="{Binding ThicknessMinimumValidSamples, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,0"
+                                                Content="Teach Thickness ROI"
+                                                Command="{Binding TeachThicknessRoiCommand}" />
+                                        <Button Margin="0,0,6,0"
+                                                Content="Preview Thickness"
+                                                Command="{Binding PreviewThicknessCommand}" />
+                                        <Button Content="Publish Result"
+                                                Command="{Binding PublishResultCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,6,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding ThicknessSummary}" />
+                                    <TextBlock Margin="0,3,0,0"
+                                               Foreground="#6b7280"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding ThicknessDetails}" />
                                     <TextBlock Margin="0,12,0,4"
                                                FontWeight="SemiBold"
                                                Text="Point Pair Dimensions" />
@@ -741,10 +776,48 @@
 
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <StackPanel>
-                                            <StackPanel Margin="0,0,0,12">
+                                            <StackPanel Margin="0,0,0,12"
+                                                        Visibility="{Binding ViewerContent.ViewModel.NominalActual.InputsReady, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                                                 <TextBlock Foreground="#6b7280"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding ViewerContent.ViewModel.NominalActual.EvidenceSummary, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, FallbackValue='No comparison evidence.', TargetNullValue='No comparison evidence.'}" />
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,0,12"
+                                                        DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
+                                                        Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Foreground="#6b7280" Text="C3D Thickness Evidence" />
+                                                <TextBlock Margin="0,4,0,0"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding ThicknessSummary}" />
+                                                <TextBlock Margin="0,3,0,0"
+                                                           Foreground="#6b7280"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding ThicknessDetails}" />
+                                                <Grid Margin="0,6,0,0"
+                                                      Visibility="{Binding ThicknessVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock Foreground="#6b7280" Text="Mean" />
+                                                    <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="1" Foreground="#6b7280" Text="Minimum" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="2" Foreground="#6b7280" Text="Maximum" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="3" Foreground="#6b7280" Text="Range" />
+                                                    <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
+                                                    <TextBlock Grid.Row="4" Foreground="#6b7280" Text="Valid samples" />
+                                                    <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
+                                                </Grid>
                                             </StackPanel>
                                             <TextBlock Foreground="#6b7280" Text="Latest Result" />
                                             <TextBlock Margin="0,4,0,0"
@@ -1141,6 +1214,9 @@
                     </ScrollViewer>
                 </Border>
             </dock:OpenVisionDockWorkspaceView.LinkedViewContent>
+            <dock:OpenVisionDockWorkspaceView.ProfileContent>
+                <workbench:HeightProfileView />
+            </dock:OpenVisionDockWorkspaceView.ProfileContent>
         </dock:OpenVisionDockWorkspaceView>
         <views:CalibrationCenterView DataContext="{Binding Calibration}"
                                      Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />

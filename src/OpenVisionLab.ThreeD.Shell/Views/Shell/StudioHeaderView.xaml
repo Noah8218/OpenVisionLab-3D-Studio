@@ -1,0 +1,113 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Shell.StudioHeaderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell">
+    <DockPanel LastChildFill="True">
+        <shell:StudioTitleBarView DockPanel.Dock="Top"
+                                  TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="3D inspection recipe workbench"
+                                  RecipeText="{Binding Workbench.RecipeName}"
+                                  SourceContextText="{Binding Workbench.SourceContextSummary}"
+                                  AlignmentStatusText="{Binding Workbench.AlignmentStatusSummary}"
+                                  RecipeStateText="{Binding Workbench.RecipeStateSummary}"
+                                  IsRecipeContextVisible="{Binding IsWorkbenchWorkspaceSelected}"
+                                  StatusText="{Binding StatusText}" />
+        <Border Background="{DynamicResource ThreeD.CommandBarBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="16,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Padding="3"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="WorkbenchModeButton"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsWorkbenchWorkspaceSelected, Mode=TwoWay}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="WorkbenchModeButton"
+                                     AutomationProperties.Name="Teach workspace">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="WrenchScrewdriver24" />
+                                <TextBlock Text="Teach" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="CalibrateModeButton"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsCalibrationWorkspaceSelected, Mode=TwoWay}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="CalibrateModeButton"
+                                     AutomationProperties.Name="Calibration workspace">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="TargetArrow24" />
+                                <TextBlock Text="Calibrate" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Grid.Column="1"
+                           Margin="16,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{Binding WorkspaceSummary}" />
+
+                <ui:Button Grid.Column="2"
+                           Margin="0,0,8,0"
+                           Padding="10,5"
+                           Content="Recipe Manager"
+                           Icon="{ui:SymbolIcon DocumentBulletList24}"
+                           Click="OpenRecipeManagerButton_Click"
+                           ToolTip="Open the separate recipe lifecycle window"
+                           AutomationProperties.AutomationId="OpenRecipeManagerButton"
+                           AutomationProperties.Name="Open Recipe Manager" />
+
+                <ui:Button Grid.Column="3"
+                           Margin="0,0,8,0"
+                           Padding="10,5"
+                           Content="Filter Tool Lab"
+                           Icon="{ui:SymbolIcon DataFunnel24}"
+                           Click="OpenFilterToolLabButton_Click"
+                           ToolTip="Open the Filter input/output 3D comparison view"
+                           AutomationProperties.AutomationId="OpenFilterToolLabButton"
+                           AutomationProperties.Name="Open Filter Tool Lab" />
+
+                <ui:Button Grid.Column="4"
+                           Margin="0,0,8,0"
+                           Padding="10,5"
+                           Content="Edge Tool Lab"
+                           Icon="{ui:SymbolIcon PointScan24}"
+                           Click="OpenEdgeToolLabButton_Click"
+                           ToolTip="Open the FilteredHeightField and EdgePointSet comparison view"
+                           AutomationProperties.AutomationId="OpenEdgeToolLabButton"
+                           AutomationProperties.Name="Open Height Difference Edge Tool Lab" />
+
+                <RadioButton x:Name="AdvancedModeButton"
+                             Grid.Column="5"
+                             GroupName="WorkspaceMode"
+                             IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
+                             Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                             ToolTip="Open the existing diagnostic dock layout"
+                             AutomationProperties.AutomationId="AdvancedModeButton"
+                             AutomationProperties.Name="Advanced layout">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="SettingsCogMultiple24" />
+                        <TextBlock Text="Advanced layout" />
+                    </StackPanel>
+                </RadioButton>
+            </Grid>
+        </Border>
+    </DockPanel>
+</UserControl>

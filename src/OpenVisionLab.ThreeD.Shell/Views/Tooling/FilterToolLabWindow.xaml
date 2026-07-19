@@ -1,0 +1,143 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.FilterToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        Title="Filter Tool Lab | OpenVisionLab 3D Studio"
+        Width="1600"
+        Height="920"
+        MinWidth="1120"
+        MinHeight="700"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="FilterToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56"
+                                  ResizeBorderThickness="6"
+                                  GlassFrameThickness="0"
+                                  UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="280" />
+        </Grid.RowDefinitions>
+
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="Filter Tool Lab"
+                                  StatusText="Input / Preview comparison" />
+
+        <Border Grid.Row="1"
+                Margin="16,16,16,0"
+                Padding="16,12"
+                Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24"
+                                   Height="24"
+                                   Margin="0,0,9,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="DataFunnel24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
+                                   Text="Filter Tool Lab" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
+                                   Text="Input and Preview output are separate 3D views. Preview does not change the recipe until Publish is chosen." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0"
+                               Content="Preview Filter"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}"
+                               ToolTip="Explicitly create a temporary Filter Preview"
+                               AutomationProperties.Name="Preview Filter" />
+                    <ui:Button Margin="0,0,6,0"
+                               Content="Show Source"
+                               Icon="{ui:SymbolIcon DataBarVertical24}"
+                               Command="{Binding ShowFilterSourceCommand}"
+                               ToolTip="Restore the input view without changing the Preview artifact"
+                               AutomationProperties.Name="Show Filter source" />
+                    <ui:Button Content="Publish Output"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}"
+                               ToolTip="Publish the current Preview without running again"
+                               AutomationProperties.Name="Publish Filter output" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border Padding="1"
+                    Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Padding="10,6"
+                            Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataBarVertical24" />
+                            <TextBlock FontWeight="SemiBold" Text="Input | Source C3D" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2"
+                    Padding="1"
+                    Background="{DynamicResource ThreeD.PanelBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Border Padding="10,6"
+                            Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
+                                <TextBlock FontWeight="SemiBold" Text="Output | Filter Preview" />
+                            </StackPanel>
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding CurrentFilterPreviewOutputSummary}" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3"
+                Margin="16,0,16,16"
+                Background="{DynamicResource ThreeD.PanelBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="1">
+            <workbench:ToolInspectorView />
+        </Border>
+    </Grid>
+</Window>

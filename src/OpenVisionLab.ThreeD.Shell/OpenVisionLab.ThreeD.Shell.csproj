@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
+    <PackageReference Include="OpenVisionLab.WpfPropertyGrid.ThreeD" Version="[1.0.0-ovl3d.1]" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 
@@ -21,6 +22,14 @@
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Tools\OpenVisionLab.ThreeD.Tools.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Logging\OpenVisionLab.Logging.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Logging.Controls\OpenVisionLab.Logging.Controls.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\OpenVisionLab.Logging\log4net.config"
+          Link="log4net.config"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
