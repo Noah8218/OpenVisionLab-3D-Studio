@@ -33,6 +33,20 @@ display and smoke evidence. The gate, scorecard, delivery order, and evidence
 requirements are fixed in
 `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
 
+Current P3 Tool-Lab review checkpoint on 2026-07-20: **the existing Filter,
+Height Difference Edge, Line Intersection, and Landmark Correspondence Tool
+Labs share an OpenVisionLab-owned input -> parameters -> output/evidence
+presentation rhythm.** The shared lower review header retains the one staged
+parameter editor and current state while the upper output/evidence headers
+make execution/hash information visible without scrolling. Korean/English
+command labels are localized; technical IDs and contracts stay stable. This
+is UI-only: Preview/Publish remain explicit, source geometry stays immutable,
+and no Tool Lab, graph editor, solver, calibration, or metrology capability is
+added. Current-source evidence passes build `0/0`, Tool Recipe Teaching
+`18/18`, Workbench docking `20/20`, and four Korean plus one English Tool Lab
+screenshot-quality captures. P4 owner scoring remains required before the
+`80/100` UI gate or algorithm work can be considered open.
+
 For the user's full-XYZ point-cloud workflow, the ordered inspection steps are intended to express `source -> filter -> height-difference edge candidates -> fitted 3D lines/planes -> intersections/correspondence evidence -> XYZ affine transform -> derived 3D map -> thickness/warpage/other measurements -> review`. This is a product direction, not a claim that the generic executor or affine solver exists today.
 
 Current typed-tool chain checkpoint on 2026-07-19: **Filter, Height Difference

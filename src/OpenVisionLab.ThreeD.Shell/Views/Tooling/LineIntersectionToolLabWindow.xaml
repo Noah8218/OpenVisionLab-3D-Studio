@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         Title="Line Intersection Tool Lab | OpenVisionLab 3D Studio"
         Width="1600"
         Height="920"
@@ -56,17 +56,17 @@
                     </StackPanel>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0" Content="Preview Intersection"
+                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
                                ToolTip="Explicitly evaluate the two published fitted lines"
                                AutomationProperties.Name="Preview Line Intersection" />
-                    <ui:Button Margin="0,0,6,0" Content="Show Inputs"
+                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon Branch24}"
                                Click="ShowInputsButton_Click"
                                ToolTip="Refresh the two exact published LineFeature overlays"
                                AutomationProperties.Name="Show Line Intersection inputs" />
-                    <ui:Button Content="Publish Intersection"
+                    <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
                                ToolTip="Publish the current corner-anchor Preview without running again"
@@ -87,7 +87,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="Inputs | Published LineFeature A + B" /></StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Inputs}" /><TextBlock FontWeight="SemiBold" Text=" | Published LineFeature A + B" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionUpstreamSummary}" />
                         </StackPanel>
                     </Border>
@@ -100,7 +100,8 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="Output | Corner Anchor Evidence" /></StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text=" | Corner Anchor Evidence" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionExecutionSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionEvidenceSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionOutputHashSummary}" />
                         </StackPanel>
@@ -110,9 +111,6 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Margin="16,0,16,16" Background="{DynamicResource ThreeD.PanelBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-            <workbench:ToolInspectorView />
-        </Border>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </Window>

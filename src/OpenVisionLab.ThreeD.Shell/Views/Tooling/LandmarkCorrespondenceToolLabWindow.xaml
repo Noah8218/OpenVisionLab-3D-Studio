@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         Title="Landmark Correspondence Tool Lab | OpenVisionLab 3D Studio"
         Width="1680"
         Height="940"
@@ -56,17 +56,17 @@
                     </StackPanel>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <ui:Button Margin="0,0,6,0" Content="Preview Correspondence"
+                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
                                ToolTip="Explicitly validate the four current Published CornerAnchors and reference tetrahedron"
                                AutomationProperties.Name="Preview Landmark Correspondence" />
-                    <ui:Button Margin="0,0,6,0" Content="Refresh Views"
+                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon ArrowSync24}"
                                Click="RefreshViewsButton_Click"
                                ToolTip="Refresh source-anchor and reference-coordinate evidence without running a tool"
                                AutomationProperties.Name="Refresh Landmark Correspondence views" />
-                    <ui:Button Content="Publish Correspondence"
+                    <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
                                ToolTip="Publish the current correspondence Preview without calculating an affine transform"
@@ -87,7 +87,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="Source Frame | Four Published CornerAnchor Inputs" /></StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" /><TextBlock FontWeight="SemiBold" Text=" | Source Frame / Four Published CornerAnchor Inputs" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
                         </StackPanel>
                     </Border>
@@ -100,7 +100,10 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="Reference Frame | Coordinate Evidence" /></StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text=" | Reference-coordinate evidence" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceExecutionSummary}" />
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceEvidenceSummary}" />
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceOutputHashSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="No nominal surface is fabricated here; this is the taught reference-coordinate set." />
                         </StackPanel>
                     </Border>
@@ -139,9 +142,6 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Margin="16,0,16,16" Background="{DynamicResource ThreeD.PanelBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
-            <workbench:ToolInspectorView />
-        </Border>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </Window>

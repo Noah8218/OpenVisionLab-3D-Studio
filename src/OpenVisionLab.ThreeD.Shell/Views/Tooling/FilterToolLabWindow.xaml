@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         Title="Filter Tool Lab | OpenVisionLab 3D Studio"
         Width="1600"
         Height="920"
@@ -59,18 +59,18 @@
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ui:Button Margin="0,0,6,0"
-                               Content="Preview Filter"
+                               Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
                                ToolTip="Explicitly create a temporary Filter Preview"
                                AutomationProperties.Name="Preview Filter" />
                     <ui:Button Margin="0,0,6,0"
-                               Content="Show Source"
+                               Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon DataBarVertical24}"
                                Command="{Binding ShowFilterSourceCommand}"
                                ToolTip="Restore the input view without changing the Preview artifact"
                                AutomationProperties.Name="Show Filter source" />
-                    <ui:Button Content="Publish Output"
+                    <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
                                ToolTip="Publish the current Preview without running again"
@@ -98,7 +98,10 @@
                             Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataBarVertical24" />
-                            <TextBlock FontWeight="SemiBold" Text="Input | Source C3D" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" />
+                                <TextBlock FontWeight="SemiBold" Text=" | Source C3D" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
@@ -119,12 +122,21 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
-                                <TextBlock FontWeight="SemiBold" Text="Output | Filter Preview" />
+                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" />
+                                <TextBlock FontWeight="SemiBold" Text=" | Filter Preview" />
                             </StackPanel>
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="10"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{Binding CurrentFilterPreviewOutputSummary}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding FilterExecutionSummary}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding FilterOutputHashSummary}" />
                         </StackPanel>
                     </Border>
                     <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
@@ -132,12 +144,6 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3"
-                Margin="16,0,16,16"
-                Background="{DynamicResource ThreeD.PanelBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="1">
-            <workbench:ToolInspectorView />
-        </Border>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </Window>

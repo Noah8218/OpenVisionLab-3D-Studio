@@ -97,6 +97,22 @@ window. P2 route/entry scope is
 complete; next is P3 Tool Lab input/parameters/output/evidence consistency.
 Do not introduce a writable graph editor or new algorithm work.
 
+**Current P3 Tool-Lab review checkpoint (2026-07-20):** the four existing
+Tool Labs now share the same input -> parameters -> output/evidence reading
+order. A shared `ToolLabReviewView` labels the lower staged-parameter and
+execution-evidence surface, carries the current state badge, and keeps the
+existing `ToolInspectorView` as the one parameter editor. Filter now exposes
+execution/hash state in its output header; Line Intersection exposes its
+execution state there; Landmark Correspondence exposes execution, structural
+evidence, and hash state beside reference-coordinate evidence. The common
+Preview / Show input / Publish labels are Korean/English aware while existing
+commands, tooltips, and automation names are preserved. Current build is
+`0/0`; Tool Recipe Teaching is `18/18`; Workbench docking is `20/20`; Korean
+smokes for all four Tool Labs and an English Filter smoke passed screenshot
+quality. P3 is complete for existing Tool Labs. Next is P4: capture/review
+the scorecard with the owner and decide whether the `80/100` UI gate is
+accepted. Do not add algorithms before that decision.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

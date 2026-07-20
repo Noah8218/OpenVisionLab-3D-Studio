@@ -23,7 +23,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ColumnTypedOutput), nameof(ColumnState), nameof(Preview), nameof(Run), nameof(Publish), nameof(Cancel),
         nameof(SelectedPaletteItem), nameof(Input), nameof(Output), nameof(ParameterAdapter), nameof(Inputs),
         nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
-        nameof(OpenSelectedToolLab)
+        nameof(OpenSelectedToolLab), nameof(ToolLabReview), nameof(ToolLabReviewDetail),
+        nameof(ShowInput)
     ];
 
     public static ThreeDLocalization Shared { get; } = new();
@@ -86,6 +87,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ToolboxSequenceHint => T("ThreeD.Workbench.ToolboxSequenceHint", "\uB808\uC2DC\uD53C\uB97C \uC21C\uC11C\uB300\uB85C \uAD6C\uC131\uD558\uC138\uC694: \uC900\uBE44, \uD53C\uCC98, \uAD6C\uC131, \uC815\uB82C, \uCE21\uC815, \uAC80\uD1A0.", "Build the recipe in order: prepare, feature, construct, align, measure, then review.");
     public string SelectedRoute => T("ThreeD.Workbench.SelectedRoute", "\uC120\uD0DD\uB41C \uAC80\uC0AC \uACBD\uB85C", "Selected inspection route");
     public string OpenSelectedToolLab => T("ThreeD.Command.OpenSelectedToolLab", "\uC120\uD0DD \uB3C4\uAD6C \uB7A9 \uC5F4\uAE30", "Open selected Tool Lab");
+    public string ToolLabReview => T("ThreeD.ToolLab.Review", "\uD30C\uB77C\uBBF8\uD130 \uBC0F \uC2E4\uD589 \uADFC\uAC70", "Parameters & execution evidence");
+    public string ToolLabReviewDetail => T("ThreeD.ToolLab.ReviewDetail", "\uD30C\uB77C\uBBF8\uD130\uB294 \uB808\uC2DC\uD53C \uCD08\uC548\uC5D0\uB9CC \uC801\uC6A9\uB429\uB2C8\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uAC8C\uC2DC\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uC218\uD589\uD569\uB2C8\uB2E4.", "Edits stay in the recipe draft. Preview and Publish remain explicit.");
+    public string ShowInput => T("ThreeD.Command.ShowInput", "\uC785\uB825 \uBCF4\uAE30", "Show input");
 
     private static string T(string key, string korean, string english)
     {

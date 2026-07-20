@@ -323,3 +323,53 @@ Boundary: this completes the selected-route and direct-entry slice. It does
 not make a writable graph editor, add a Tool Lab for every tool, or implement
 new inspection algorithms. The next UI delivery priority is P3: consistent
 input/parameters/output/evidence review inside the existing Tool Lab windows.
+
+## P3 Tool-Lab and review polish - 2026-07-20
+
+Status: Complete (existing Tool Lab presentation only)
+
+Filter, Height Difference Edge, Line Intersection, and Landmark
+Correspondence now share one three-stage reading order: the upper comparison
+shows the routed input and output/evidence, the shared lower review surface
+shows staged parameters, and execution evidence stays explicit beside the
+current output. The shared `ToolLabReviewView` supplies the lower
+`Parameters & execution evidence` header, current state badge, and the
+explicit draft/Preview/Publish boundary. It reuses the existing
+`ToolInspectorView`, so it does not create a second parameter editor or a new
+execution path. The docked review panes already received the same compact
+heading/status-card density in the completed P1 slice; P3 preserves that
+normal-density review surface and verifies docking again rather than creating
+another parallel evidence view.
+
+The command row is now consistent across the four windows: localized
+`Preview`, `Show input`, and `Publish` labels retain their existing commands,
+tooltips, and automation names. Filter now exposes its execution/hash summary
+in its output header; Line Intersection exposes its current execution summary;
+Landmark Correspondence exposes current execution, structural evidence, and
+output-hash state alongside its reference-coordinate evidence. This is a
+presentation improvement only: no Tool Lab opens, previews, publishes, or
+edits a recipe automatically.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Every existing Tool Lab has the same input / parameter / output-evidence sequence | Current Korean Filter, Edge, Line Intersection, and Landmark Correspondence captures show the common lower review header/state plus their native input and output/evidence surfaces. |
+| Result evidence is visible before scrolling through parameter details | Filter, Line Intersection, and Landmark Correspondence now place their current execution/result/hash information in the upper output/evidence header; Edge retains its existing equivalent summary. |
+| Korean and English labels remain intentional and readable | The shared command and review labels are Korean in the current Korean captures and English in the current English Filter capture; technical contract names remain stable identifiers. |
+| Existing lifecycle and dock contracts remain intact | Current build passed Tool Recipe Teaching `18/18` and Workbench docking `20/20`; four Tool Lab smoke captures passed screenshot quality on their first attempt. |
+
+Fresh current-build captures:
+
+- Before Filter, Edge, Line Intersection, Landmark Correspondence: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/before-*.png`
+- After Korean Filter: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/after-filter.png`
+- After Korean Edge: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/after-edge.png`
+- After Korean Line Intersection: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/after-intersection.png`
+- After Korean Landmark Correspondence: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/after-correspondence.png`
+- After English Filter: `artifacts/ui/20260720-workbench-p3-tool-lab-rhythm/after-filter-en.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p3-tool-lab-rhythm/`.
+
+Boundary: this completes P3 for the four existing Tool Labs. It does not add
+a Tool Lab for every future tool, a writable graph editor, linked cameras, a
+new inspection algorithm, physical calibration, or metrology evidence. P4 is
+the owner scorecard review and `80/100` acceptance decision.

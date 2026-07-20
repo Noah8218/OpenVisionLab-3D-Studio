@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
         Title="Height Difference Edge Tool Lab | OpenVisionLab 3D Studio"
         Width="1600"
         Height="920"
@@ -59,18 +59,18 @@
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                     <ui:Button Margin="0,0,6,0"
-                               Content="Preview Edge"
+                               Content="{Binding Localization.Preview}"
                                Icon="{ui:SymbolIcon Eye24}"
                                Command="{Binding PreviewSelectedStepCommand}"
                                ToolTip="Explicitly create an EdgePointSet from the published Filter output"
                                AutomationProperties.Name="Preview Height Difference Edge" />
                     <ui:Button Margin="0,0,6,0"
-                               Content="Show Filter Input"
+                               Content="{Binding Localization.ShowInput}"
                                Icon="{ui:SymbolIcon DataFunnel24}"
                                Click="ShowFilterInputButton_Click"
                                ToolTip="Refresh the exact published FilteredHeightField input view"
                                AutomationProperties.Name="Show FilteredHeightField input" />
-                    <ui:Button Content="Publish Edge"
+                    <ui:Button Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding PublishSelectedStepCommand}"
                                ToolTip="Publish the current EdgePointSet Preview without running again"
@@ -99,7 +99,8 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DataFunnel24" />
-                                <TextBlock FontWeight="SemiBold" Text="Input | Published FilteredHeightField" />
+                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" />
+                                <TextBlock FontWeight="SemiBold" Text=" | Published FilteredHeightField" />
                             </StackPanel>
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="10"
@@ -125,7 +126,8 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" />
-                                <TextBlock FontWeight="SemiBold" Text="Output | EdgePointSet Overlay" />
+                                <TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" />
+                                <TextBlock FontWeight="SemiBold" Text=" | EdgePointSet Overlay" />
                             </StackPanel>
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="10"
@@ -142,12 +144,6 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3"
-                Margin="16,0,16,16"
-                Background="{DynamicResource ThreeD.PanelBrush}"
-                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="1">
-            <workbench:ToolInspectorView />
-        </Border>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
     </Grid>
 </Window>
