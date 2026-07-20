@@ -57,7 +57,7 @@ internal static class ToolRecipeTeachingVerification
                 && workbench.Tools.Any(tool => tool.Name == "Height Difference Edge")
                 && workbench.Tools.Any(tool => tool.Name == "3D Line Fit")
                 && workbench.Tools.Any(tool => tool.Name == "Line Intersection")
-                && workbench.Tools.Any(tool => tool.Name == "XYZ Affine Transform")
+                && workbench.Tools.Any(tool => tool.Name == "XYZ Affine Solve")
                 && workbench.Tools.Any(tool => tool.Name == "Re-grid Height Map")
                 && workbench.Tools.Any(tool => tool.Name == "Thickness")
                 && workbench.Tools.Any(tool => tool.Name == "Warpage"),
@@ -105,7 +105,7 @@ internal static class ToolRecipeTeachingVerification
 
             var correspondence = AddTool(workbench, "Landmark Correspondence");
             correspondence.InputEntityIdsText = $"{corner.OutputEntityId}; reference.fixture-landmarks";
-            var affine = AddTool(workbench, "XYZ Affine Transform");
+            var affine = AddTool(workbench, "XYZ Affine Solve");
             affine.InputEntityIdsText = correspondence.OutputEntityId;
             var regrid = AddTool(workbench, "Re-grid Height Map");
             regrid.InputEntityIdsText = affine.OutputEntityId;
@@ -128,9 +128,12 @@ internal static class ToolRecipeTeachingVerification
                 workbench.CanSaveTeachingRecipe && workbench.PipelineSteps.Count == 11,
                 workbench.ValidationSummary);
             Check(
-                "affine is warned rather than executed",
-                workbench.ValidationMessages.Any(message => message.Level == "Warning" && message.Message.Contains("four affine-independent", StringComparison.OrdinalIgnoreCase)),
-                string.Join(" | ", workbench.ValidationMessages.Select(message => message.Message)));
+                "affine solve keeps its exact numerical contract without implicit execution",
+                affine.ToolId == "xyz-affine-solve"
+                && affine.Parameters.Single(parameter => parameter.Name == "SolvePolicy").Value == "ExactFourPartialPivot"
+                && affine.Parameters.Any(parameter => parameter.Name == "MaximumConditionEstimate")
+                && affine.Parameters.Any(parameter => parameter.Name == "ArithmeticResidualWarning"),
+                string.Join(" | ", affine.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}")));
 
             var saved = workbench.TrySaveTeachingRecipe(recipePath, out var saveMessage);
             Check("save teaching JSON", saved && File.Exists(recipePath), saveMessage);

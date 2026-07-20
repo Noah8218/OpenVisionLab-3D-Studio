@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 3D Line Fit, Line Intersection, or Landmark Correspondence to teach typed parameters.";
+    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -55,6 +55,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "three-d-line-fit" } step => FormatAdapterStatus(step, LineFitStepProperties.MappedNames),
         { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
         { ToolId: "landmark-correspondence" } step => FormatAdapterStatus(step, LandmarkCorrespondenceStepProperties.MappedNames),
+        { ToolId: "xyz-affine-solve" } step => FormatAdapterStatus(step, XYZAffineSolveStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -255,6 +256,20 @@ public sealed partial class ToolWorkbenchViewModel
                     ["AffineIndependencePolicy"] = correspondence.AffineIndependencePolicy
                 };
                 break;
+            case XYZAffineSolveStepProperties affine:
+                if (!affine.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["SolvePolicy"] = affine.SolvePolicy,
+                    ["MaximumConditionEstimate"] = affine.MaximumConditionEstimate.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ArithmeticResidualWarning"] = affine.ArithmeticResidualWarning.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -289,6 +304,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkLineFitPreviewStaleIfNeeded();
             MarkLineIntersectionPreviewStaleIfNeeded();
             MarkLandmarkCorrespondencePreviewStaleIfNeeded();
+            MarkAffineSolvePreviewStaleIfNeeded();
             SetDirty(true);
             RefreshRecipeState();
         }
@@ -314,6 +330,7 @@ public sealed partial class ToolWorkbenchViewModel
             "three-d-line-fit" => LineFitStepProperties.From(step),
             "line-intersection" => LineIntersectionStepProperties.From(step),
             "landmark-correspondence" => LandmarkCorrespondenceStepProperties.From(step),
+            "xyz-affine-solve" => XYZAffineSolveStepProperties.From(step),
             _ => null
         };
 
@@ -340,6 +357,7 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
         RefreshLandmarkCorrespondenceCommands();
+        RefreshAffineSolveCommands();
     }
 
     private void SetParameterDraftStatus(string status)
@@ -453,7 +471,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "three-d-line-fit" or "line-intersection";
+        step.ToolId is "filter" or "height-difference-edge" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -1029,6 +1047,73 @@ public sealed class LandmarkCorrespondenceStepProperties
             return false;
         }
 
+        message = string.Empty;
+        return true;
+    }
+}
+
+[CategoryOrder("Solve policy", 0)]
+[CategoryOrder("Numerical review", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class XYZAffineSolveStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "SolvePolicy", "MaximumConditionEstimate", "ArithmeticResidualWarning"
+    ];
+
+    [Category("Solve policy")]
+    [DisplayName("Solve policy")]
+    [Description("A1 uses exactly four published affine-independent pairs with scaled partial pivoting. Least squares and automatic matching are excluded.")]
+    [PropertyOrder(0)]
+    [ReadOnly(true)]
+    public string SolvePolicy { get; init; } = "ExactFourPartialPivot";
+
+    [Category("Numerical review")]
+    [DisplayName("Maximum condition estimate")]
+    [Description("Reject the source augmented matrix when its infinity-norm condition estimate exceeds this explicit finite limit.")]
+    [PropertyOrder(1)]
+    [NumberRange(1, 1000000000000, 1, 6)]
+    public double MaximumConditionEstimate { get; set; } = 1000000;
+
+    [Category("Numerical review")]
+    [DisplayName("Arithmetic residual warning")]
+    [Description("Residual review threshold in reference-coordinate units. Exceeding it remains solve evidence, not an inspection OK/NG result.")]
+    [PropertyOrder(2)]
+    [NumberRange(0, 1000000, 0.000001, 9)]
+    public double ArithmeticResidualWarning { get; set; } = 0.001;
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [PropertyOrder(3)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static XYZAffineSolveStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        SolvePolicy = ToolWorkbenchViewModel.GetParameter(step, "SolvePolicy") ?? "ExactFourPartialPivot",
+        MaximumConditionEstimate = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MaximumConditionEstimate"), NumberStyles.Float, CultureInfo.InvariantCulture, out var maximum) ? maximum : 1000000,
+        ArithmeticResidualWarning = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "ArithmeticResidualWarning"), NumberStyles.Float, CultureInfo.InvariantCulture, out var warning) ? warning : 0.001,
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!string.Equals(SolvePolicy, "ExactFourPartialPivot", StringComparison.Ordinal))
+        {
+            message = "XYZ Affine Solve v1 requires SolvePolicy ExactFourPartialPivot.";
+            return false;
+        }
+        if (!double.IsFinite(MaximumConditionEstimate) || MaximumConditionEstimate <= 0)
+        {
+            message = "Maximum condition estimate must be a finite positive number.";
+            return false;
+        }
+        if (!double.IsFinite(ArithmeticResidualWarning) || ArithmeticResidualWarning < 0)
+        {
+            message = "Arithmetic residual warning must be a finite non-negative number.";
+            return false;
+        }
         message = string.Empty;
         return true;
     }

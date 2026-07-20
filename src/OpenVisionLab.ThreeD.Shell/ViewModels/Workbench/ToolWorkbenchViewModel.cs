@@ -83,7 +83,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Feature & Datum", "3D Line Fit", "three-d-line-fit", 1, "Published EdgePointSet", "LineFeature", "Fit one deterministic full-XYZ line to an explicit published edge-point entity.", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "Set explicitly"), new("MinimumInlierCount", "Set explicitly"), new("MinimumInlierRatio", "Set explicitly"), new("MinimumInlierScanlineSpan", "Set explicitly"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]),
             new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
             new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 1, "Correspondence selection", "CorrespondenceSet", "Validate four named Published CornerAnchors against explicit reference coordinates before a later transform.", [new("PairCountPolicy", "ExactlyFour"), new("SourceArtifactPolicy", "CurrentPublishedCornerAnchor"), new("AffineIndependencePolicy", "RequireNonDegenerateTetrahedra")]),
-            new("Transform", "XYZ Affine Transform", "xyz-affine-transform", 1, "CorrespondenceSet", "TransformedPointCloud", "Apply a full XYZ affine transform only after valid source/reference landmarks exist.", [new("Minimum landmarks", "4 affine-independent"), new("Residual", "Review before Run")]),
+            new("Transform", "XYZ Affine Solve", "xyz-affine-solve", 1, "Published CorrespondenceSet", "AffineTransform3D", "Solve one full XYZ source-to-reference matrix from exactly four published correspondence pairs. It does not move C3D points.", [new("SolvePolicy", "ExactFourPartialPivot"), new("MaximumConditionEstimate", "1000000"), new("ArithmeticResidualWarning", "0.001")]),
             new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "TransformedPointCloud", "TransformedHeightField", "Resample transformed XYZ data into an explicit inspection grid.", [new("Grid frame", "Selected transform"), new("Hole policy", "Explicit")]),
             new("Measure", "Thickness", "thickness", 1, "TransformedHeightField", "MeasurementResult", "Measure thickness from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("Tolerance", "Set during teaching")]),
             new("Measure", "Warpage", "warpage", 1, "TransformedHeightField", "MeasurementResult", "Measure warpage from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("P2V limit", "Set during teaching")]),
@@ -295,6 +295,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshLineFitExecutionState();
             RefreshLineIntersectionExecutionState();
             RefreshLandmarkCorrespondenceExecutionState();
+            RefreshXYZAffineSolveExecutionState();
             RefreshStepCommands();
             RefreshNavigatorSelection();
         }
@@ -577,9 +578,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         : $"{Source.Format} | {Source.Unit} | {Source.FrameId}";
 
     public string AlignmentStatusSummary => PipelineSteps.Any(step =>
-        string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
-        ? "Alignment taught, not calculated"
-        : "Alignment not taught";
+        string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase))
+        ? (PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase) && string.Equals(step.State, "Published", StringComparison.OrdinalIgnoreCase))
+            ? "Affine solve published; point application is not implemented"
+            : "Affine solve taught, not calculated")
+        : PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
+            ? "Legacy affine scaffold taught, not calculated"
+            : "Alignment not taught";
 
     public ToolWorkbenchTeachingSelectionRequirement? SelectedStepSelectionRequirement =>
         CreateSelectionRequirement(SelectedPipelineStep);
@@ -1395,6 +1400,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshLineFitExecutionState();
         RefreshLineIntersectionExecutionState();
         RefreshLandmarkCorrespondenceExecutionState();
+        RefreshXYZAffineSolveExecutionState();
         RefreshAdapterCoverage();
         OnPropertyChanged(nameof(ValidationSummary));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
@@ -1784,6 +1790,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkLineFitPreviewStaleIfNeeded(sender);
         MarkLineIntersectionPreviewStaleIfNeeded(sender);
         MarkLandmarkCorrespondencePreviewStaleIfNeeded(sender);
+        MarkAffineSolvePreviewStaleIfNeeded(sender);
+        if (ReferenceEquals(sender, SelectedPipelineStep))
+        {
+            OnPropertyChanged(nameof(SelectedPipelineStepTitle));
+            OnPropertyChanged(nameof(SelectedRouteInputIds));
+            OnPropertyChanged(nameof(SelectedRouteOutputId));
+            OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
+        }
         SetDirty(true);
         RefreshRecipeState();
     }

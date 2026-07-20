@@ -62,6 +62,7 @@ public partial class MainWindow : Window
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
+    private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -249,6 +250,8 @@ public partial class MainWindow : Window
         var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
         var landmarkCorrespondenceToolLabScreenshotPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot");
         var landmarkCorrespondenceToolLabScreenshotQualityReportPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot-quality-report");
+        var xyzAffineSolveToolLabScreenshotPath = GetCommandLineValue("--xyz-affine-solve-tool-lab-screenshot");
+        var xyzAffineSolveToolLabScreenshotQualityReportPath = GetCommandLineValue("--xyz-affine-solve-tool-lab-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
@@ -295,6 +298,7 @@ public partial class MainWindow : Window
             || edgeToolLabScreenshotPath is not null
             || lineIntersectionToolLabScreenshotPath is not null
             || landmarkCorrespondenceToolLabScreenshotPath is not null
+            || xyzAffineSolveToolLabScreenshotPath is not null
             || _viewer.HasConfiguredSmokeScreenshot
             || teachingSelectionSmokeMode is not null
             || profilePointerSmokeReportPath is not null
@@ -390,6 +394,39 @@ public partial class MainWindow : Window
                         || !ReferenceEquals(firstLandmarkCorrespondenceToolLabWindow, landmarkCorrespondenceToolLabWindow)))
                 {
                     _viewModel.SetViewerSmokeFailed("Landmark Correspondence Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (xyzAffineSolveToolLabScreenshotPath is not null
+                    && !EnsureToolLabStepSelected("xyz-affine-solve", preserveSelectedStep: false))
+                {
+                    _viewModel.Workbench.SelectedTool = _viewModel.Workbench.Tools.Single(tool => tool.Id == "xyz-affine-solve");
+                    _viewModel.Workbench.AddSelectedToolCommand.Execute(null);
+                    if (_viewModel.Workbench.SelectedPipelineStep is not { } affineStep)
+                    {
+                        _viewModel.SetViewerSmokeFailed("XYZ Affine Solve smoke could not author its isolated waiting step.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    affineStep.InputEntityIdsText = "derived.correspondences.01";
+                }
+
+                if (xyzAffineSolveToolLabScreenshotPath is not null
+                    && !ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Solve Tool Lab smoke requires an XYZ Affine Solve recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstXYZAffineSolveToolLabWindow = xyzAffineSolveToolLabWindow;
+                if (xyzAffineSolveToolLabScreenshotPath is not null
+                    && (firstXYZAffineSolveToolLabWindow is null
+                        || !ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: false)
+                        || !ReferenceEquals(firstXYZAffineSolveToolLabWindow, xyzAffineSolveToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Solve Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -675,7 +712,24 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (xyzAffineSolveToolLabScreenshotPath is not null
+                    && (xyzAffineSolveToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(xyzAffineSolveToolLabWindow),
+                            xyzAffineSolveToolLabScreenshotPath,
+                            xyzAffineSolveToolLabScreenshotQualityReportPath,
+                            "XYZAffineSolveToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Solve Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 await Task.Delay(100);
+                if (xyzAffineSolveToolLabScreenshotPath is not null && xyzAffineSolveToolLabWindow is { IsVisible: true })
+                {
+                    xyzAffineSolveToolLabWindow.Close();
+                }
                 Application.Current.Shutdown(
                     nominalActualReady ? _viewer.SmokeExitCode : 1);
             };
@@ -699,6 +753,9 @@ public partial class MainWindow : Window
                 break;
             case LandmarkCorrespondenceToolLabWindow correspondence:
                 correspondence.RefreshViews();
+                break;
+            case XYZAffineSolveToolLabWindow affine:
+                affine.RefreshViews();
                 break;
         }
 
@@ -1351,6 +1408,9 @@ public partial class MainWindow : Window
             case "landmark-correspondence":
                 ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false, preserveSelectedStep: true);
                 break;
+            case "xyz-affine-solve":
+                ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: false, preserveSelectedStep: true);
+                break;
         }
     }
 
@@ -1519,6 +1579,47 @@ public partial class MainWindow : Window
         landmarkCorrespondenceToolLabWindow.RefreshViews();
         landmarkCorrespondenceToolLabWindow.Show();
         landmarkCorrespondenceToolLabWindow.Activate();
+        return true;
+    }
+
+    private void OpenXYZAffineSolveToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: true);
+    }
+
+    private bool ShowXYZAffineSolveToolLabWindow(bool showMissingAffineSolveMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("xyz-affine-solve", preserveSelectedStep))
+        {
+            if (showMissingAffineSolveMessage)
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or add an XYZ Affine Solve step before opening XYZ Affine Solve Tool Lab.",
+                    "XYZ Affine Solve Tool Lab",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (xyzAffineSolveToolLabWindow is null)
+        {
+            xyzAffineSolveToolLabWindow = new XYZAffineSolveToolLabWindow(_viewModel.Workbench, step)
+            {
+                Owner = this
+            };
+            xyzAffineSolveToolLabWindow.Closed += (_, _) => xyzAffineSolveToolLabWindow = null;
+        }
+        else
+        {
+            xyzAffineSolveToolLabWindow.SetLabStep(step);
+        }
+
+        xyzAffineSolveToolLabWindow.RefreshViews();
+        xyzAffineSolveToolLabWindow.Show();
+        xyzAffineSolveToolLabWindow.Activate();
         return true;
     }
 
@@ -1794,6 +1895,7 @@ public partial class MainWindow : Window
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
 
     private void SyncWorkbenchSourceFromViewer()

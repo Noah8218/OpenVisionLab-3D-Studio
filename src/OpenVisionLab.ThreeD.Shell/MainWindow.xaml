@@ -32,7 +32,8 @@
                                      FilterToolLabRequested="OpenFilterToolLabRequested"
                                      EdgeToolLabRequested="OpenEdgeToolLabRequested"
                                      LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested"
-                                     LandmarkCorrespondenceToolLabRequested="OpenLandmarkCorrespondenceToolLabRequested" />
+                                     LandmarkCorrespondenceToolLabRequested="OpenLandmarkCorrespondenceToolLabRequested"
+                                     XYZAffineSolveToolLabRequested="OpenXYZAffineSolveToolLabRequested" />
 
         <Grid>
         <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"

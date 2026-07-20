@@ -46,7 +46,8 @@ public sealed partial class ToolWorkbenchViewModel
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
             : IsSelectedStepLineFit ? IsLineFitPreviewRunning
             : IsSelectedStepLineIntersection ? IsLineIntersectionPreviewRunning
-            : IsSelectedStepLandmarkCorrespondence && IsLandmarkCorrespondencePreviewRunning;
+            : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
+            : IsSelectedStepXYZAffineSolve && IsAffineSolvePreviewRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => isFilterPreviewStale;
     public bool IsFilterPreviewPublished => isFilterPreviewPublished;
@@ -88,14 +89,18 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepLandmarkCorrespondence
+    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepXYZAffineSolve
+        ? PreviewSelectedXYZAffineSolveAsync()
+        : IsSelectedStepLandmarkCorrespondence
         ? PreviewSelectedLandmarkCorrespondenceAsync()
         : IsSelectedStepLineIntersection
         ? PreviewSelectedLineIntersectionAsync()
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepLandmarkCorrespondence
+    private bool CanPreviewSelectedStep() => IsSelectedStepXYZAffineSolve
+        ? CanPreviewSelectedXYZAffineSolve()
+        : IsSelectedStepLandmarkCorrespondence
         ? CanPreviewSelectedLandmarkCorrespondence()
         : IsSelectedStepLineIntersection
         ? CanPreviewSelectedLineIntersection()
@@ -104,7 +109,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void PublishSelectedStep()
     {
-        if (IsSelectedStepLandmarkCorrespondence)
+        if (IsSelectedStepXYZAffineSolve)
+        {
+            PublishSelectedXYZAffineSolve();
+        }
+        else if (IsSelectedStepLandmarkCorrespondence)
         {
             PublishSelectedLandmarkCorrespondence();
         }
@@ -126,7 +135,9 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepLandmarkCorrespondence
+    private bool CanPublishSelectedStep() => IsSelectedStepXYZAffineSolve
+        ? HasCurrentAffineSolvePreview && !IsAffineSolvePreviewPublished
+        : IsSelectedStepLandmarkCorrespondence
         ? HasCurrentLandmarkCorrespondencePreview && !IsLandmarkCorrespondencePreviewPublished
         : IsSelectedStepLineIntersection
         ? HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished
@@ -136,7 +147,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void CancelSelectedPreview()
     {
-        if (IsSelectedStepLandmarkCorrespondence)
+        if (IsSelectedStepXYZAffineSolve)
+        {
+            CancelXYZAffineSolvePreview();
+        }
+        else if (IsSelectedStepLandmarkCorrespondence)
         {
             CancelLandmarkCorrespondencePreview();
         }

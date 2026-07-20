@@ -198,6 +198,11 @@ public static class ToolRecipeValidator
             {
                 warnings.Add($"{label} XYZ Affine is taught only: execution needs four affine-independent source/reference landmarks or a fixture-constrained contract.");
             }
+
+            if (string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateXYZAffineSolveStep(step, inputs, label, errors);
+            }
         }
 
         foreach (var (selectionId, selectionLabel, row) in correspondenceRows)
@@ -223,6 +228,44 @@ public static class ToolRecipeValidator
         }
 
         return new ToolRecipeValidationResult(errors, warnings);
+    }
+
+    private static void ValidateXYZAffineSolveStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 1)
+        {
+            errors.Add($"{label} XYZ Affine Solve v1 requires exactly one CorrespondenceSet input.");
+        }
+        var parameters = step.Parameters ?? [];
+        var expected = new HashSet<string>(
+            ["SolvePolicy", "MaximumConditionEstimate", "ArithmeticResidualWarning"],
+            StringComparer.Ordinal);
+        if (parameters.Count != expected.Count || expected.Any(name => parameters.Count(parameter => parameter.Name == name) != 1))
+        {
+            errors.Add($"{label} XYZ Affine Solve v1 requires SolvePolicy, MaximumConditionEstimate, and ArithmeticResidualWarning exactly once.");
+            return;
+        }
+        var solvePolicy = parameters.Single(parameter => parameter.Name == "SolvePolicy").Value;
+        var maximumText = parameters.Single(parameter => parameter.Name == "MaximumConditionEstimate").Value;
+        var warningText = parameters.Single(parameter => parameter.Name == "ArithmeticResidualWarning").Value;
+        if (!string.Equals(solvePolicy, "ExactFourPartialPivot", StringComparison.Ordinal))
+        {
+            errors.Add($"{label} XYZ Affine Solve v1 requires SolvePolicy ExactFourPartialPivot.");
+        }
+        if (!double.TryParse(maximumText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var maximum)
+            || !double.IsFinite(maximum) || maximum <= 0d)
+        {
+            errors.Add($"{label} XYZ Affine Solve maximum condition estimate must be a finite positive invariant number.");
+        }
+        if (!double.TryParse(warningText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var warning)
+            || !double.IsFinite(warning) || warning < 0d)
+        {
+            errors.Add($"{label} XYZ Affine Solve arithmetic residual warning must be a finite non-negative invariant number.");
+        }
     }
 
     private static void ValidateFilterStep(

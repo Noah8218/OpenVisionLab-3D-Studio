@@ -44,6 +44,7 @@ internal static class RunnerApplication
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLandmarkCorrespondence = args.Contains("--verify-c3d-landmark-correspondence", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
         var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
         var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
@@ -168,6 +169,17 @@ internal static class RunnerApplication
             }
 
             return C3DLandmarkCorrespondenceGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DAffineSolve)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-affine-solve --report <path>");
+                return 2;
+            }
+
+            return C3DAffineSolveGoldenVerification.Run(reportPath);
         }
 
         if (stanfordTransformPath is not null)

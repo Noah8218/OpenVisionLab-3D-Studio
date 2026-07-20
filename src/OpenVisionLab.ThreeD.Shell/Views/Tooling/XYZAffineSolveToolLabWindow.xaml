@@ -1,0 +1,96 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.XYZAffineSolveToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
+        xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
+        Title="XYZ Affine Solve Tool Lab | OpenVisionLab 3D Studio"
+        Width="1680" Height="940" MinWidth="1200" MinHeight="720"
+        WindowStyle="None" ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="XYZAffineSolveToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="300" />
+        </Grid.RowDefinitions>
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="XYZ Affine Solve Tool Lab"
+                                  StatusText="Published CorrespondenceSet → AffineTransform3D / matrix evidence only" />
+        <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
+                Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="ArrowSync24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="Full-XYZ Affine Solve" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="Solve exactly four current Published source/reference pairs with scaled partial pivoting. A1 does not apply the matrix, transform C3D points, or create a height map." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="Preview matrix" Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="Explicitly calculate one temporary affine matrix from the routed Published CorrespondenceSet" AutomationProperties.Name="Preview XYZ Affine Solve" />
+                    <ui:Button Margin="0,0,6,0" Content="Refresh input" Icon="{ui:SymbolIcon ArrowSync24}"
+                               Click="RefreshViewsButton_Click" ToolTip="Refresh the source viewer without solving" AutomationProperties.Name="Refresh XYZ Affine Solve input" />
+                    <ui:Button Content="Publish matrix" Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the current matrix Preview without recalculation or point-cloud application" AutomationProperties.Name="Publish XYZ Affine Solve output" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1.12*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="0.88*" /></Grid.ColumnDefinitions>
+            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" /><TextBlock FontWeight="SemiBold" Text="Input | source-frame landmark evidence" /></StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding AffineSolveUpstreamSummary}" />
+                        </StackPanel>
+                    </Border>
+                    <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="14" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="Output | AffineTransform3D evidence" /></StackPanel>
+                        <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineSolveExecutionSummary}" />
+                        <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineSolveEvidenceSummary}" />
+                        <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding AffineSolveOutputHashSummary}" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                        <TextBlock FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" Text="{Binding AffineSolveMatrixSummary}" />
+                    </Border>
+                    <Border Grid.Row="2" Padding="10" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="180" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Typed numerical parameters" />
+                                <TextBlock Grid.Column="1" FontSize="10" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="{Binding SelectedStepAdapterStatus}" />
+                            </Grid>
+                            <propertyGrid:RecipeStepPropertyGridHost x:Name="AffineStepPropertyGrid" Grid.Row="1" Margin="0,7,0,0" SelectedObject="{Binding SelectedStepPropertyDraft}" PropertyValueChanged="OnPropertyGridValueChanged" />
+                            <TextBlock Grid.Row="2" Margin="0,7,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding StepParameterEditStatus}" />
+                            <WrapPanel Grid.Row="3" Margin="0,7,0,0" HorizontalAlignment="Right">
+                                <Button Margin="0,0,5,0" Content="Discard" IsEnabled="{Binding HasPendingStepParameterChanges}" Click="OnDiscardParametersClick" AutomationProperties.Name="Discard XYZ Affine Solve parameter changes" />
+                                <Button Content="Apply parameters" IsEnabled="{Binding HasPendingStepParameterChanges}" Click="OnApplyParametersClick" AutomationProperties.Name="Apply XYZ Affine Solve parameters without preview" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
+    </Grid>
+</Window>

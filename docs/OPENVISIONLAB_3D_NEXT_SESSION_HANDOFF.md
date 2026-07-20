@@ -23,6 +23,33 @@ either accepts the UI gate or explicitly reopens code implementation.
 Preserve the existing exactly-four non-coplanar `CorrespondenceSet` boundary,
 separate Solve from Apply, and never silently fall back to planar XY.
 
+## A1 XYZ Affine Solve implementation authorization - 2026-07-21
+
+The owner explicitly approved A1 implementation after the full-XYZ design
+review. This is the explicit reopening required by the prior UI-gate note, but
+only for `Published CorrespondenceSet -> AffineTransform3D`. Preserve exact
+four, scaled partial-pivot solving, taught condition/residual limits, explicit
+Preview/Discard/Publish, current/stale identity, and Runner evidence. Do not
+start A2 Apply, re-grid, Thickness, Warpage, physical calibration, or
+metrology work under this approval.
+
+## A1 XYZ Affine Solve implementation checkpoint - 2026-07-21
+
+A1 is complete for deterministic code and synthetic evidence. Core owns the
+immutable source-to-reference `AffineTransform3D` / residual contracts, Tools
+owns the exact-four scaled-partial-pivot solve and condition gate, Runner owns
+the `4/4` golden, and the Shell owns typed WPG, explicit Preview/Discard/
+Publish state, stale handling, and a single reusable XYZ Affine Solve Tool Lab.
+The current-source Debug build is `0/0`; A1 golden is `4/4`; teaching is
+`18/18`; Recipe Manager/WPG is `18/18`; docking is `25/25`; Artifact Navigator
+is `24/24`; current `1920 x 1080`, `1280 x 760`, and Tool Lab screenshots are
+accepted. The real four-anchor package is still absent, so actual fixture
+Preview/Publish and headless recipe replay remain a prerequisite, not a
+simulated claim. Read
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_SOLVE_IMPLEMENTATION_20260721.md` before
+working on affine code. A2 Apply, A3 Re-grid, and A4 measurements remain
+blocked pending that evidence and later approval.
+
 **Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
 complete locally. The existing Flow Map now projects input/output port state
 from the typed Artifact Registry: ready/current, declared-upstream waiting,

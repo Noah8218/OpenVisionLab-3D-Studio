@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls.WpfPropertyGrid;
@@ -115,7 +116,23 @@ internal static class RecipeManagerWpgVerification
                 && !workbench.HasCurrentEdgePreview,
                 edgeMessage);
 
-            var unsupported = AddTool(workbench, "xyz-affine-transform");
+            var affine = AddTool(workbench, "xyz-affine-solve");
+            affine.InputEntityIdsText = edge.OutputEntityId;
+            var affineDraft = (XYZAffineSolveStepProperties)workbench.SelectedStepPropertyDraft!;
+            affineDraft.MaximumConditionEstimate = 500000;
+            affineDraft.ArithmeticResidualWarning = 0.0025;
+            workbench.MarkSelectedStepParameterDraftDirty();
+            var affineApplied = workbench.TryApplySelectedStepParameterDraft(out var affineMessage);
+            Check(
+                "XYZ Affine Solve maps typed numerical limits without execution",
+                affineApplied
+                && affine.Parameters.Single(parameter => parameter.Name == "SolvePolicy").Value == "ExactFourPartialPivot"
+                && MatchesInvariantNumber(affine.Parameters.Single(parameter => parameter.Name == "MaximumConditionEstimate").Value, 500000)
+                && MatchesInvariantNumber(affine.Parameters.Single(parameter => parameter.Name == "ArithmeticResidualWarning").Value, 0.0025)
+                && !workbench.HasCurrentAffineSolvePreview,
+                affineMessage);
+
+            var unsupported = AddTool(workbench, "overlay-control-review");
             var unsupportedValue = unsupported.Parameters[0].Value;
             Check(
                 "unsupported step stays visible and read-only",
@@ -134,7 +151,8 @@ internal static class RecipeManagerWpgVerification
             var opened = reopened.TryOpenTeachingRecipe(recipePath, out var openMessage);
             var reopenedFilter = reopened.PipelineSteps.Single(step => step.ToolId == "filter");
             var reopenedEdge = reopened.PipelineSteps.Single(step => step.ToolId == "height-difference-edge");
-            var reopenedUnsupported = reopened.PipelineSteps.Single(step => step.ToolId == "xyz-affine-transform");
+            var reopenedAffine = reopened.PipelineSteps.Single(step => step.ToolId == "xyz-affine-solve");
+            var reopenedUnsupported = reopened.PipelineSteps.Single(step => step.ToolId == "overlay-control-review");
             Check(
                 "save and reopen preserve typed and unknown parameters",
                 opened
@@ -142,6 +160,8 @@ internal static class RecipeManagerWpgVerification
                 && reopenedFilter.Parameters.Single(parameter => parameter.Name == "FuturePolicy").Value == "RetainMe"
                 && reopenedEdge.Parameters.Single(parameter => parameter.Name == "MinimumDelta").Value == "2.5"
                 && reopenedEdge.Parameters.Single(parameter => parameter.Name == "FutureTiePolicy").Value == "Stable"
+                && MatchesInvariantNumber(reopenedAffine.Parameters.Single(parameter => parameter.Name == "MaximumConditionEstimate").Value, 500000)
+                && MatchesInvariantNumber(reopenedAffine.Parameters.Single(parameter => parameter.Name == "ArithmeticResidualWarning").Value, 0.0025)
                 && reopenedUnsupported.Parameters[0].Value == unsupportedValue,
                 openMessage);
             Check(
@@ -222,6 +242,7 @@ internal static class RecipeManagerWpgVerification
         }
         catch (Exception exception)
         {
+            total++;
             lines.Add($"FAIL | unhandled exception | {exception}");
         }
         finally
@@ -252,6 +273,10 @@ internal static class RecipeManagerWpgVerification
         return workbench.SelectedPipelineStep
             ?? throw new InvalidOperationException($"Tool '{toolId}' was not added.");
     }
+
+    private static bool MatchesInvariantNumber(string text, double expected) =>
+        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var actual)
+        && Math.Abs(actual - expected) <= 1e-12;
 
     [CategoryOrder("Probe", 0)]
     private sealed class WpgProbeProperties

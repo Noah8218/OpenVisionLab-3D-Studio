@@ -191,6 +191,30 @@ blocked. The operator handoff is now fixed in
 provides no fabricated coordinate or threshold. See
 `docs/OPENVISIONLAB_3D_LANDMARK_CORRESPONDENCE_TYPED_ADAPTER_DESIGN_20260719.md`.
 
+Current A1 full-XYZ Affine Solve authorization on 2026-07-21: **the owner
+explicitly reopened implementation only for current Published
+`CorrespondenceSet -> AffineTransform3D`.** The slice keeps exactly four
+affine-independent pairs, a deterministic source-to-reference double solve,
+taught condition and arithmetic-residual boundaries, and explicit
+Preview/Discard/Publish evidence. Applying a transform, re-grid, Thickness,
+Warpage, physical calibration, and metrology remain separate unimplemented
+gates. See `docs/OPENVISIONLAB_3D_XYZ_AFFINE_TOOL_DESIGN_20260720.md`.
+
+Current A1 full-XYZ Affine Solve implementation checkpoint on 2026-07-21:
+**deterministic solve-only code is complete, not a physical result.** The typed
+tool consumes exactly four current Published correspondence pairs and creates
+an immutable `AffineTransform3D` with source/reference provenance,
+condition/determinant/residual evidence, and a canonical hash. Its WPG and
+Tool Lab retain explicit Preview/Discard/Publish and never fabricate a
+transformed surface. Current evidence passes Debug build `0/0`, Runner golden
+`4/4`, teaching `18/18`, Recipe Manager/WPG `18/18`, docking `25/25`, Artifact
+Navigator `24/24`, and accepted 1920/1280 Workbench plus Tool Lab captures.
+The real four-anchor fixture has not been supplied, so actual fixture
+Preview/Publish/headless replay remains open; applying points, re-grid,
+Thickness, Warpage, calibration, and metrology remain separate blocked
+decisions. See
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_SOLVE_IMPLEMENTATION_20260721.md`.
+
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.

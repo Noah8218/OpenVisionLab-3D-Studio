@@ -2,8 +2,12 @@
 
 Updated: 2026-07-20
 
-Status: Owner-authorized design. This document adds no affine solver,
-transformed point cloud, re-grid implementation, or physical claim.
+Status: A1 is implemented with deterministic synthetic evidence on 2026-07-21.
+The owner approved only current Published `CorrespondenceSet` to immutable
+`AffineTransform3D`. See
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_SOLVE_IMPLEMENTATION_20260721.md` for the
+current implementation and evidence boundary. A2 application, re-grid,
+Thickness, Warpage, physical calibration, and metrology remain out of scope.
 
 ## Product decision
 

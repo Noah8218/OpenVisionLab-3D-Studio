@@ -43,13 +43,13 @@ internal static class CalibrationCenterViewModelVerification
             Check(
                 "workbench catalog",
                 shell.Workbench.Tools.Any(tool => tool.Name == "Filter")
-                && shell.Workbench.Tools.Any(tool => tool.Name == "XYZ Affine Transform")
+                && shell.Workbench.Tools.Any(tool => tool.Name == "XYZ Affine Solve")
                 && shell.Workbench.Tools.Any(tool => tool.Name == "Re-grid Height Map"),
                 string.Join(',', shell.Workbench.Tools.Select(tool => tool.Name)));
-            shell.Workbench.SelectedTool = shell.Workbench.Tools.Single(tool => tool.Name == "XYZ Affine Transform");
+            shell.Workbench.SelectedTool = shell.Workbench.Tools.Single(tool => tool.Name == "XYZ Affine Solve");
             Check(
                 "workbench selection",
-                shell.Workbench.SelectedToolTitle == "Transform / XYZ Affine Transform"
+                shell.Workbench.SelectedToolTitle == "Transform / XYZ Affine Solve"
                 && shell.Workbench.RunLog.Count >= 3,
                 shell.Workbench.SelectedToolTitle);
             Check(
