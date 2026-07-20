@@ -278,6 +278,48 @@ Verification reports are under
 `artifacts/verification/20260720-workbench-p2-localization/`.
 
 Boundary: this is the bilingual foundation for P2, not complete translation of
-every tool parameter, result string, evidence pane, or dialog. P2 still needs
-the tree-first route/Tool Lab entry scan review; P3 and P4 remain required
-before algorithm work resumes.
+every tool parameter, result string, evidence pane, or dialog. The P2
+tree-first route/Tool Lab entry completion is recorded immediately below; P3
+and P4 remain required before algorithm work resumes.
+
+## P2 selected-route and Tool Lab entry slice - 2026-07-20
+
+Status: Complete (selected-step route and existing Tool Lab entry only)
+
+The left Toolbox now presents one compact `Selected inspection route` card for
+the current pipeline step. It keeps the current step name/state and the exact
+authored `Input -> Output` entity route together before the larger Recipe
+Navigator tree. When the selected tool already has an existing focused Tool
+Lab (Filter, Height Difference Edge, Line Intersection, or Landmark
+Correspondence), the card exposes one direct open command. It only opens the
+existing single-instance comparison window; it does not add/edit a step,
+Preview, Publish, Run, or alter source data.
+
+The Header Tool Labs menu retains its prior fallback behavior. In contrast, a
+direct selected-route command preserves the exact selected step when multiple
+steps use the same tool, so its parameter and evidence context does not jump
+to an earlier duplicate.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Selected route is readable before expanding the tree | Current Korean Filter captures show `Step 01: Filter`, Ready state, source input, and filtered-height output together above Recipe Navigator. |
+| Existing focused Tool Lab is reachable from its selected route | Tool Recipe Teaching verification checks the selected Filter input/output, available command, requested tool ID, and preserved selected step. The P2 UI Automation report finds `OpenSelectedToolLabButton`, invokes it, and finds `Filter Tool Lab | OpenVisionLab 3D Studio`; the current Filter Tool Lab smoke also captures its actual single-instance comparison window. |
+| Lifecycle and docking contracts remain unchanged | Current build passed Tool Recipe Teaching `18/18` and Workbench docking `20/20`; the direct command only routes an open-window request. |
+| Two reference sizes remain usable | Fresh current-build Korean `1920 x 1080` and `1280 x 760` captures passed Shell screenshot quality on first attempt. |
+
+Fresh current-build captures:
+
+- Before Filter 1920: `artifacts/ui/20260720-workbench-p2-route-entry/before-filter-1920.png`
+- Before Filter 1280: `artifacts/ui/20260720-workbench-p2-route-entry/before-filter-1280.png`
+- After Filter 1920: `artifacts/ui/20260720-workbench-p2-route-entry/after-filter-1920.png`
+- After Filter 1280: `artifacts/ui/20260720-workbench-p2-route-entry/after-filter-1280.png`
+- Filter Tool Lab 1280: `artifacts/ui/20260720-workbench-p2-route-entry/filter-tool-lab-1280.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p2-route-entry/`, including
+`selected-tool-lab-ui-automation.txt`.
+
+Boundary: this completes the selected-route and direct-entry slice. It does
+not make a writable graph editor, add a Tool Lab for every tool, or implement
+new inspection algorithms. The next UI delivery priority is P3: consistent
+input/parameters/output/evidence review inside the existing Tool Lab windows.

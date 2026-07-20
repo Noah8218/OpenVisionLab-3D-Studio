@@ -32,6 +32,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly RelayCommand useExistingTeachingSelectionCommand;
     private readonly RelayCommand addOrUpdateCorrespondenceRowCommand;
     private readonly RelayCommand removeSelectedCorrespondenceRowCommand;
+    private readonly RelayCommand openSelectedToolLabCommand;
     private ToolWorkbenchToolItem? selectedTool;
     private ToolWorkbenchPipelineStepItem? selectedPipelineStep;
     private ToolWorkbenchReferenceItem? selectedReference;
@@ -146,6 +147,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         AddOrUpdateCorrespondenceRowCommand = addOrUpdateCorrespondenceRowCommand;
         RemoveSelectedCorrespondenceRowCommand = removeSelectedCorrespondenceRowCommand;
         SelectNavigatorItemCommand = new RelayCommand(parameter => SelectNavigatorItem(parameter as ToolWorkbenchNavigatorItem));
+        openSelectedToolLabCommand = new RelayCommand(_ => RequestSelectedToolLab(), _ => IsSelectedToolLabAvailable);
+        OpenSelectedToolLabCommand = openSelectedToolLabCommand;
         ValidateTeachingRecipeCommand = new RelayCommand(_ => ValidateTeachingRecipe());
         SaveTeachingRecipeCommand = new RelayCommand(_ => SaveTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
         SaveTeachingRecipeAsCommand = new RelayCommand(_ => SaveTeachingRecipeAsRequested?.Invoke(this, EventArgs.Empty));
@@ -170,6 +173,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? CancelTeachingSelectionCaptureRequested;
     public event EventHandler? ApplyTeachingSelectionCaptureRequested;
     public event EventHandler? AppliedTeachingSelectionsChanged;
+    public event EventHandler<ToolWorkbenchToolLabRequestEventArgs>? ToolLabRequested;
 
     public ObservableCollection<ToolWorkbenchToolItem> Tools { get; }
 
@@ -214,6 +218,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ICommand AddOrUpdateCorrespondenceRowCommand { get; }
     public ICommand RemoveSelectedCorrespondenceRowCommand { get; }
     public ICommand SelectNavigatorItemCommand { get; }
+    public ICommand OpenSelectedToolLabCommand { get; }
     public ICommand ValidateTeachingRecipeCommand { get; }
     public ICommand SaveTeachingRecipeCommand { get; }
     public ICommand SaveTeachingRecipeAsCommand { get; }
@@ -272,6 +277,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasSelectedPipelineStep));
             OnPropertyChanged(nameof(SelectedPipelineStepTitle));
             OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
+            OnPropertyChanged(nameof(SelectedRouteInputIds));
+            OnPropertyChanged(nameof(SelectedRouteOutputId));
+            OnPropertyChanged(nameof(IsSelectedToolLabAvailable));
+            openSelectedToolLabCommand.RaiseCanExecuteChanged();
             RefreshSelectedStepPropertyDraft();
             RefreshTeachingSelectionContext();
             RefreshFilterExecutionState();

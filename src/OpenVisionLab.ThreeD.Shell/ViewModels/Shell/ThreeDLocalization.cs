@@ -22,7 +22,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(MoveDown), nameof(Remove), nameof(ColumnNumber), nameof(ColumnTool), nameof(ColumnInputs),
         nameof(ColumnTypedOutput), nameof(ColumnState), nameof(Preview), nameof(Run), nameof(Publish), nameof(Cancel),
         nameof(SelectedPaletteItem), nameof(Input), nameof(Output), nameof(ParameterAdapter), nameof(Inputs),
-        nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint)
+        nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
+        nameof(OpenSelectedToolLab)
     ];
 
     public static ThreeDLocalization Shared { get; } = new();
@@ -83,6 +84,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ExpectedData => T("ThreeD.Label.ExpectedData", "\uAE30\uB300 \uB370\uC774\uD130", "Expected data");
     public string InputEntities => T("ThreeD.Label.InputEntities", "\uC785\uB825 \uC5D4\uD2F0\uD2F0(\uC138\uBBF8\uCF5C\uB860\uC73C\uB85C \uAD6C\uBD84)", "Input entities (separate with ;)");
     public string ToolboxSequenceHint => T("ThreeD.Workbench.ToolboxSequenceHint", "\uB808\uC2DC\uD53C\uB97C \uC21C\uC11C\uB300\uB85C \uAD6C\uC131\uD558\uC138\uC694: \uC900\uBE44, \uD53C\uCC98, \uAD6C\uC131, \uC815\uB82C, \uCE21\uC815, \uAC80\uD1A0.", "Build the recipe in order: prepare, feature, construct, align, measure, then review.");
+    public string SelectedRoute => T("ThreeD.Workbench.SelectedRoute", "\uC120\uD0DD\uB41C \uAC80\uC0AC \uACBD\uB85C", "Selected inspection route");
+    public string OpenSelectedToolLab => T("ThreeD.Command.OpenSelectedToolLab", "\uC120\uD0DD \uB3C4\uAD6C \uB7A9 \uC5F4\uAE30", "Open selected Tool Lab");
 
     private static string T(string key, string korean, string english)
     {

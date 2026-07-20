@@ -74,6 +74,17 @@ internal static class ToolRecipeTeachingVerification
                 && workbench.PreviewSelectedStepCommand.CanExecute(null)
                 && !workbench.PublishSelectedStepCommand.CanExecute(null),
                 $"state={filter.State}; preview={workbench.PreviewSelectedStepCommand.CanExecute(null)}; publish={workbench.PublishSelectedStepCommand.CanExecute(null)}");
+            string? requestedToolLabId = null;
+            workbench.ToolLabRequested += (_, args) => requestedToolLabId = args.ToolId;
+            Check(
+                "selected Filter exposes its routed input/output and focused Tool Lab",
+                workbench.SelectedRouteInputIds == workbench.Source.Id
+                && workbench.SelectedRouteOutputId == filter.OutputEntityId
+                && workbench.IsSelectedToolLabAvailable
+                && workbench.OpenSelectedToolLabCommand.CanExecute(null),
+                $"input={workbench.SelectedRouteInputIds}; output={workbench.SelectedRouteOutputId}; available={workbench.IsSelectedToolLabAvailable}");
+            workbench.OpenSelectedToolLabCommand.Execute(null);
+            Check("focused Tool Lab request preserves selected Filter", requestedToolLabId == "filter" && ReferenceEquals(workbench.SelectedPipelineStep, filter), requestedToolLabId ?? "(none)");
 
             var edge = AddTool(workbench, "Height Difference Edge");
             edge.InputEntityIdsText = filter.OutputEntityId;

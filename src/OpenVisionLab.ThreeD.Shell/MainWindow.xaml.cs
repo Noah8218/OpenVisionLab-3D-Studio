@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private readonly EventHandler _workbenchCancelTeachingCaptureRequestedHandler;
     private readonly EventHandler _workbenchApplyTeachingCaptureRequestedHandler;
     private readonly EventHandler _workbenchAppliedTeachingSelectionsChangedHandler;
+    private readonly EventHandler<ToolWorkbenchToolLabRequestEventArgs> _workbenchToolLabRequestedHandler;
     private readonly EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs> _workbenchFilterDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs> _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
@@ -118,6 +119,7 @@ public partial class MainWindow : Window
         _workbenchCancelTeachingCaptureRequestedHandler = OnWorkbenchCancelTeachingCaptureRequested;
         _workbenchApplyTeachingCaptureRequestedHandler = OnWorkbenchApplyTeachingCaptureRequested;
         _workbenchAppliedTeachingSelectionsChangedHandler = (_, _) => SyncAppliedTeachingSelections();
+        _workbenchToolLabRequestedHandler = OnWorkbenchToolLabRequested;
         _workbenchFilterDisplayRequestedHandler = OnWorkbenchFilterDisplayRequested;
         _workbenchHeightDifferenceEdgeDisplayRequestedHandler = OnWorkbenchHeightDifferenceEdgeDisplayRequested;
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
@@ -146,6 +148,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.CancelTeachingSelectionCaptureRequested += _workbenchCancelTeachingCaptureRequestedHandler;
         _viewModel.Workbench.ApplyTeachingSelectionCaptureRequested += _workbenchApplyTeachingCaptureRequestedHandler;
         _viewModel.Workbench.AppliedTeachingSelectionsChanged += _workbenchAppliedTeachingSelectionsChangedHandler;
+        _viewModel.Workbench.ToolLabRequested += _workbenchToolLabRequestedHandler;
         _viewModel.Workbench.FilterDisplayRequested += _workbenchFilterDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested += _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
@@ -199,6 +202,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.CancelTeachingSelectionCaptureRequested -= _workbenchCancelTeachingCaptureRequestedHandler;
         _viewModel.Workbench.ApplyTeachingSelectionCaptureRequested -= _workbenchApplyTeachingCaptureRequestedHandler;
         _viewModel.Workbench.AppliedTeachingSelectionsChanged -= _workbenchAppliedTeachingSelectionsChangedHandler;
+        _viewModel.Workbench.ToolLabRequested -= _workbenchToolLabRequestedHandler;
         _viewModel.Workbench.FilterDisplayRequested -= _workbenchFilterDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested -= _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
@@ -1226,9 +1230,33 @@ public partial class MainWindow : Window
         ShowFilterToolLabWindow(showMissingFilterMessage: true);
     }
 
-    private bool ShowFilterToolLabWindow(bool showMissingFilterMessage)
+    private void OnWorkbenchToolLabRequested(object? sender, ToolWorkbenchToolLabRequestEventArgs args)
     {
-        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("filter"))
+        switch (args.ToolId)
+        {
+            case "filter":
+                ShowFilterToolLabWindow(showMissingFilterMessage: false, preserveSelectedStep: true);
+                break;
+            case "height-difference-edge":
+                ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false, preserveSelectedStep: true);
+                break;
+            case "line-intersection":
+                ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false, preserveSelectedStep: true);
+                break;
+            case "landmark-correspondence":
+                ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false, preserveSelectedStep: true);
+                break;
+        }
+    }
+
+    private bool EnsureToolLabStepSelected(string toolId, bool preserveSelectedStep) =>
+        (preserveSelectedStep
+            && string.Equals(_viewModel.Workbench.SelectedPipelineStep?.ToolId, toolId, StringComparison.Ordinal))
+        || _viewModel.Workbench.SelectFirstPipelineStepForTool(toolId);
+
+    private bool ShowFilterToolLabWindow(bool showMissingFilterMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("filter", preserveSelectedStep))
         {
             if (showMissingFilterMessage)
             {
@@ -1262,9 +1290,9 @@ public partial class MainWindow : Window
         ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: true);
     }
 
-    private bool ShowHeightDifferenceEdgeToolLabWindow(bool showMissingEdgeMessage)
+    private bool ShowHeightDifferenceEdgeToolLabWindow(bool showMissingEdgeMessage, bool preserveSelectedStep = false)
     {
-        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("height-difference-edge"))
+        if (!EnsureToolLabStepSelected("height-difference-edge", preserveSelectedStep))
         {
             if (showMissingEdgeMessage)
             {
@@ -1298,9 +1326,9 @@ public partial class MainWindow : Window
         ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: true);
     }
 
-    private bool ShowLineIntersectionToolLabWindow(bool showMissingLineIntersectionMessage)
+    private bool ShowLineIntersectionToolLabWindow(bool showMissingLineIntersectionMessage, bool preserveSelectedStep = false)
     {
-        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("line-intersection"))
+        if (!EnsureToolLabStepSelected("line-intersection", preserveSelectedStep))
         {
             if (showMissingLineIntersectionMessage)
             {
@@ -1334,9 +1362,9 @@ public partial class MainWindow : Window
         ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: true);
     }
 
-    private bool ShowLandmarkCorrespondenceToolLabWindow(bool showMissingCorrespondenceMessage)
+    private bool ShowLandmarkCorrespondenceToolLabWindow(bool showMissingCorrespondenceMessage, bool preserveSelectedStep = false)
     {
-        if (!_viewModel.Workbench.SelectFirstPipelineStepForTool("landmark-correspondence"))
+        if (!EnsureToolLabStepSelected("landmark-correspondence", preserveSelectedStep))
         {
             if (showMissingCorrespondenceMessage)
             {

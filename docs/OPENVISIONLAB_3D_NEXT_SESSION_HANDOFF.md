@@ -79,10 +79,23 @@ existing localization service persistence behavior. Current-build Korean and
 English captures pass Shell quality at both `1920 x 1080` and `1280 x 760`.
 Build is `0/0`, Workbench docking is `20/20`, and Tool Recipe Teaching is
 `16/16`. Deep tool parameters, result/evidence strings, IDs, contracts, and
-recipe content are intentionally not translated in this slice. P2 is not
-complete: next review tree-first route selection and Tool Lab entry scanability
-without introducing a writable graph editor. See
+recipe content are intentionally not translated in this slice. The later P2
+checkpoint below completes tree-first route selection and Tool Lab entry
+scanability without introducing a writable graph editor. See
 `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
+**Current P2 selected-route checkpoint (2026-07-20):** Toolbox now shows a
+compact selected-step route card above Recipe Navigator: step name/state plus
+the exact authored `Input -> Output` IDs. Filter, Height Difference Edge, Line
+Intersection, and Landmark Correspondence expose a direct selected-step Tool
+Lab command. It opens only the existing single-instance comparison window and
+preserves the selected duplicate step; the Header menu remains the first-step
+fallback. Current Korean `1920 x 1080` and `1280 x 760` captures pass Shell
+quality; build is `0/0`, Tool Recipe Teaching is `18/18`, Workbench docking is
+`20/20`, and the Filter Tool Lab smoke captures its single-instance comparison
+window. P2 route/entry scope is
+complete; next is P3 Tool Lab input/parameters/output/evidence consistency.
+Do not introduce a writable graph editor or new algorithm work.
 
 ## Current Task Workspace UI Direction
 

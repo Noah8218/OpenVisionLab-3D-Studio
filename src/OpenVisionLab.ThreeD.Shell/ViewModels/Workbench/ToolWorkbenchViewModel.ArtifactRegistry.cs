@@ -25,6 +25,14 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
+    public string SelectedRouteInputIds => SelectedPipelineStep is null
+        ? string.Empty
+        : string.Join("; ", SelectedPipelineStep.InputEntityIds);
+
+    public string SelectedRouteOutputId => SelectedPipelineStep?.OutputEntityId ?? string.Empty;
+
+    public bool IsSelectedToolLabAvailable => HasToolLab(SelectedPipelineStep?.ToolId);
+
     public string ArtifactRegistrySummary => ArtifactRegistry.Count == 0
         ? "No typed artifacts are registered."
         : $"{ArtifactRegistry.Count} typed entities | {ArtifactRegistry.Count(item => item.HasContentHash)} with current output identity";
@@ -269,6 +277,19 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshNavigatorSelection();
     }
 
+    private void RequestSelectedToolLab()
+    {
+        if (SelectedPipelineStep is { } step && HasToolLab(step.ToolId))
+        {
+            ToolLabRequested?.Invoke(this, new ToolWorkbenchToolLabRequestEventArgs(step.ToolId));
+        }
+    }
+
+    private static bool HasToolLab(string? toolId) => toolId is "filter"
+        or "height-difference-edge"
+        or "line-intersection"
+        or "landmark-correspondence";
+
     private void RefreshNavigatorSelection()
     {
         if (SelectedPipelineStep is not null
@@ -377,4 +398,9 @@ public sealed class ToolWorkbenchNavigatorItem : System.ComponentModel.INotifyPr
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsExpanded)));
         }
     }
+}
+
+public sealed class ToolWorkbenchToolLabRequestEventArgs(string toolId) : EventArgs
+{
+    public string ToolId { get; } = toolId;
 }
