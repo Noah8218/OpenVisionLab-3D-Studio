@@ -2,6 +2,26 @@
 
 Updated: 2026-07-19
 
+## Priority override - 2026-07-20
+
+The owner paused new algorithm development until the UI/UX gate reaches at
+least `80/100` accepted points. Work only on UI hierarchy, visual consistency,
+docking/window behavior, tool navigation, feedback/accessibility, and
+current-build UI evidence until the owner explicitly reopens algorithm work.
+Preserve every explicit Preview/Publish/Run and source-immutability boundary.
+See `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
+**Current UI checkpoint (2026-07-20):** P0 selected-step context is complete
+locally. The Viewer header now presents the selected step, routed Input/Output,
+typed-adapter state, and current action guidance in one display-only strip;
+the empty state directs the operator to the Toolbox. The Artifact Registry now
+keeps Edge Preview and Stale output identity visible rather than reducing it to
+Declared. Current evidence passes build `0/0`, docking `19/19`, teaching
+`16/16`, Edge Workbench `11/11`, Artifact Navigator `9/9`, and current-build
+1920x1080 empty/selected-state captures. The global `80/100` gate is not
+scored or complete. Next: P1 visual consistency and the 1280x760 clipping
+review; do not resume new algorithm work.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

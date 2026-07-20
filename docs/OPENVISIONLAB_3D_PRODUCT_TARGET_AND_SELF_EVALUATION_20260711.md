@@ -24,6 +24,15 @@ Load measured 3D data and optional nominal data
   -> review a durable run record and report
 ```
 
+## UI/UX Delivery Priority - 2026-07-20
+
+The owner has paused new algorithm development until the UI/UX completion gate
+reaches at least `80/100` accepted points. UI work must preserve existing
+explicit Preview/Publish/Run behavior and may use current algorithms only as
+display and smoke evidence. The gate, scorecard, delivery order, and evidence
+requirements are fixed in
+`docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
 For the user's full-XYZ point-cloud workflow, the ordered inspection steps are intended to express `source -> filter -> height-difference edge candidates -> fitted 3D lines/planes -> intersections/correspondence evidence -> XYZ affine transform -> derived 3D map -> thickness/warpage/other measurements -> review`. This is a product direction, not a claim that the generic executor or affine solver exists today.
 
 Current typed-tool chain checkpoint on 2026-07-19: **Filter, Height Difference

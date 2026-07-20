@@ -168,20 +168,20 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         if (string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal)
-            && TryGetPublishedHeightDifferenceEdgeOutput(step.OutputEntityId, out var publishedEdge)
-            && publishedEdge is not null)
+            && edgePreviewOutput is not null
+            && string.Equals(edgePreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
-                publishedEdge.OutputEntityId,
+                edgePreviewOutput.OutputEntityId,
                 step.ToolName,
                 "EdgePointSet",
-                "Published",
-                publishedEdge.RootSourceEntityId,
-                publishedEdge.InputEntityId,
-                publishedEdge.Unit,
-                publishedEdge.FrameId,
-                publishedEdge.ContentSha256,
-                $"{publishedEdge.Points.Count:N0} points | {publishedEdge.Provenance}",
+                isEdgePreviewStale ? "Stale" : isEdgePreviewPublished ? "Published" : "Preview",
+                edgePreviewOutput.RootSourceEntityId,
+                edgePreviewOutput.InputEntityId,
+                edgePreviewOutput.Unit,
+                edgePreviewOutput.FrameId,
+                edgePreviewOutput.ContentSha256,
+                $"{edgePreviewOutput.Points.Count:N0} points | {edgePreviewOutput.Provenance}",
                 step,
                 "EdgePointSet");
         }

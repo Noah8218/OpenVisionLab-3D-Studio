@@ -109,7 +109,12 @@ internal static class ToolArtifactNavigatorVerification
             filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");
             Check("Filter Publish updates only artifact state", filterArtifact.State == "Published" && filterArtifact.HasContentHash, filterArtifact.Detail);
 
-            workbench.SelectNavigatorItemCommand.Execute(edgeStepNode);
+            // Publishing rebuilds the read-only navigator projection. Resolve the live
+            // node as the WPF tree does, rather than interacting with a removed item.
+            var currentEdgeStepNode = workbench.NavigatorRoots
+                .Single(item => item.NodeKind == "Pipeline")
+                .Children.Single(item => item.PipelineStep?.ToolId == "height-difference-edge");
+            workbench.SelectNavigatorItemCommand.Execute(currentEdgeStepNode);
             var edgePreviewed = workbench.PreviewSelectedHeightDifferenceEdgeAsync().GetAwaiter().GetResult();
             var edgeArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.edgepoints.01");
             Check(
