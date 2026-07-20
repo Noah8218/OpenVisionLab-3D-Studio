@@ -23,9 +23,6 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <Border Padding="3"
@@ -64,6 +61,7 @@
                            Margin="16,0"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           TextTrimming="CharacterEllipsis"
                            Text="{Binding WorkspaceSummary}" />
 
                 <ui:Button Grid.Column="2"
@@ -76,48 +74,62 @@
                            AutomationProperties.AutomationId="OpenRecipeManagerButton"
                            AutomationProperties.Name="Open Recipe Manager" />
 
-                <ui:Button Grid.Column="3"
+                <ui:Button x:Name="ToolLabsMenuButton"
+                           Grid.Column="3"
                            Margin="0,0,8,0"
                            Padding="10,5"
-                           Content="Filter Tool Lab"
-                           Icon="{ui:SymbolIcon DataFunnel24}"
-                           Click="OpenFilterToolLabButton_Click"
-                           ToolTip="Open the Filter input/output 3D comparison view"
-                           AutomationProperties.AutomationId="OpenFilterToolLabButton"
-                           AutomationProperties.Name="Open Filter Tool Lab" />
-
-                <ui:Button Grid.Column="4"
-                           Margin="0,0,8,0"
-                           Padding="10,5"
-                           Content="Edge Tool Lab"
-                           Icon="{ui:SymbolIcon PointScan24}"
-                           Click="OpenEdgeToolLabButton_Click"
-                           ToolTip="Open the FilteredHeightField and EdgePointSet comparison view"
-                           AutomationProperties.AutomationId="OpenEdgeToolLabButton"
-                           AutomationProperties.Name="Open Height Difference Edge Tool Lab" />
-
-                <ui:Button Grid.Column="5"
-                           Margin="0,0,8,0"
-                           Padding="10,5"
-                           Content="Intersection Tool Lab"
-                           Icon="{ui:SymbolIcon Branch24}"
-                           Click="OpenLineIntersectionToolLabButton_Click"
-                           ToolTip="Open the two-LineFeature to corner-anchor comparison view"
-                           AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
-                           AutomationProperties.Name="Open Line Intersection Tool Lab" />
-
-                <ui:Button Grid.Column="6"
-                           Margin="0,0,8,0"
-                           Padding="10,5"
-                           Content="Correspondence Tool Lab"
-                           Icon="{ui:SymbolIcon TargetArrow24}"
-                           Click="OpenLandmarkCorrespondenceToolLabButton_Click"
-                           ToolTip="Open the four CornerAnchor to reference-coordinate teaching view"
-                           AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
-                           AutomationProperties.Name="Open Landmark Correspondence Tool Lab" />
+                           Content="Tool Labs"
+                           Icon="{ui:SymbolIcon WrenchScrewdriver24}"
+                           Click="OpenToolLabsMenuButton_Click"
+                           ToolTip="Open an existing tool's focused input, output, and evidence view"
+                           AutomationProperties.AutomationId="ToolLabsMenu"
+                           AutomationProperties.Name="Open Tool Labs menu">
+                    <ui:Button.ContextMenu>
+                        <ContextMenu Placement="Bottom"
+                                     Background="{DynamicResource ThreeD.PanelBrush}"
+                                     Foreground="{DynamicResource ThreeD.TextBrush}">
+                            <MenuItem Header="Filter"
+                                      Click="OpenFilterToolLabButton_Click"
+                                      ToolTip="Open the Filter input/output 3D comparison view"
+                                      AutomationProperties.AutomationId="OpenFilterToolLabButton"
+                                      AutomationProperties.Name="Open Filter Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="DataFunnel24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Height Difference Edge"
+                                      Click="OpenEdgeToolLabButton_Click"
+                                      ToolTip="Open the FilteredHeightField and EdgePointSet comparison view"
+                                      AutomationProperties.AutomationId="OpenEdgeToolLabButton"
+                                      AutomationProperties.Name="Open Height Difference Edge Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="PointScan24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Line Intersection"
+                                      Click="OpenLineIntersectionToolLabButton_Click"
+                                      ToolTip="Open the two-LineFeature to corner-anchor comparison view"
+                                      AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
+                                      AutomationProperties.Name="Open Line Intersection Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="Branch24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Landmark Correspondence"
+                                      Click="OpenLandmarkCorrespondenceToolLabButton_Click"
+                                      ToolTip="Open the four CornerAnchor to reference-coordinate teaching view"
+                                      AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
+                                      AutomationProperties.Name="Open Landmark Correspondence Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="TargetArrow24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </ui:Button.ContextMenu>
+                </ui:Button>
 
                 <RadioButton x:Name="AdvancedModeButton"
-                             Grid.Column="7"
+                             Grid.Column="4"
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
                              Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"

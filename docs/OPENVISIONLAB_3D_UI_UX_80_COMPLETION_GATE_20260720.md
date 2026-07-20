@@ -106,3 +106,31 @@ Verification reports are under
 
 Boundary: this completes one P0 slice, not the global `80/100` UI/UX gate.
 No new inspection algorithm was added.
+
+## P1 first-slice evidence - 2026-07-20
+
+Status: Complete (Workbench header density only)
+
+The primary header keeps Recipe Manager visible, groups the four existing
+Tool Lab windows under one icon-and-text `Tool Labs` command, and preserves
+Advanced layout as a separate explicit choice. This removes the compact-width
+competition between secondary Tool Lab shortcuts and the active Workbench
+context. The grouped menu retains text, icons, tooltips, and automation names
+for every Tool Lab; it does not create, edit, Preview, Publish, or Run a
+recipe merely by opening the menu.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Header commands do not overlap at the two review sizes | Fresh `before` and `after` captures at `1280 x 760` and `1920 x 1080` show a separate Recipe Manager, Tool Labs, and Advanced layout command. |
+| Existing Tool Lab navigation remains usable | Current UI Automation invoked `ToolLabsMenu`, selected `OpenFilterToolLabButton`, and found `Filter Tool Lab | OpenVisionLab 3D Studio`. |
+| No algorithm or recipe lifecycle behavior changed | The change is header composition and a ContextMenu opener only; Preview/Publish/Run bindings are unchanged. |
+
+Fresh current-build captures:
+
+- Before 1280: `artifacts/ui/20260720-workbench-p1-1280/before-workbench-selected-filter-1280.png`
+- After 1280: `artifacts/ui/20260720-workbench-p1-1280/after-workbench-selected-filter-1280.png`
+- Before 1920: `artifacts/ui/20260720-workbench-p1-1280/before-workbench-selected-filter-1920.png`
+- After 1920: `artifacts/ui/20260720-workbench-p1-1280/after-workbench-selected-filter-1920.png`
+
+Boundary: this verifies the Workbench header density at the two reference
+sizes. It does not accept the whole visual-system or `80/100` UI/UX gate.

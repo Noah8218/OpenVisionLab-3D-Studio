@@ -115,7 +115,7 @@ internal static class RecipeManagerWpgVerification
                 && !workbench.HasCurrentEdgePreview,
                 edgeMessage);
 
-            var unsupported = AddTool(workbench, "three-d-line-fit");
+            var unsupported = AddTool(workbench, "xyz-affine-transform");
             var unsupportedValue = unsupported.Parameters[0].Value;
             Check(
                 "unsupported step stays visible and read-only",
@@ -134,7 +134,7 @@ internal static class RecipeManagerWpgVerification
             var opened = reopened.TryOpenTeachingRecipe(recipePath, out var openMessage);
             var reopenedFilter = reopened.PipelineSteps.Single(step => step.ToolId == "filter");
             var reopenedEdge = reopened.PipelineSteps.Single(step => step.ToolId == "height-difference-edge");
-            var reopenedUnsupported = reopened.PipelineSteps.Single(step => step.ToolId == "three-d-line-fit");
+            var reopenedUnsupported = reopened.PipelineSteps.Single(step => step.ToolId == "xyz-affine-transform");
             Check(
                 "save and reopen preserve typed and unknown parameters",
                 opened

@@ -23,6 +23,15 @@ public partial class StudioHeaderView : UserControl
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>
         RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
 
+    private void OpenToolLabsMenuButton_Click(object sender, RoutedEventArgs args)
+    {
+        if (ToolLabsMenuButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = ToolLabsMenuButton;
+            menu.IsOpen = true;
+        }
+    }
+
     private void OpenFilterToolLabButton_Click(object sender, RoutedEventArgs args) =>
         FilterToolLabRequested?.Invoke(this, EventArgs.Empty);
 

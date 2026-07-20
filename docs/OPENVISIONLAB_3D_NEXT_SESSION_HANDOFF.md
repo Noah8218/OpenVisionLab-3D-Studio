@@ -22,6 +22,15 @@ Declared. Current evidence passes build `0/0`, docking `19/19`, teaching
 scored or complete. Next: P1 visual consistency and the 1280x760 clipping
 review; do not resume new algorithm work.
 
+**Current P1 UI checkpoint (2026-07-20):** the first visual-consistency slice
+is complete locally. Recipe Manager remains a direct header command; four
+secondary Tool Lab commands are now grouped under one text-and-icon Tool Labs
+button, preventing header command overlap at both `1280 x 760` and
+`1920 x 1080`. Current UI Automation finds the menu, invokes Filter, and
+opens the single Filter Tool Lab window. The P1 slice is intentionally narrow:
+panel density, state surfaces, Tool Lab consistency, and full 80/100 scoring
+remain open. See `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.
