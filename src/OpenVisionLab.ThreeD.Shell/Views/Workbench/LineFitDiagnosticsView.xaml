@@ -16,8 +16,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Fit Diagnostics / Orthogonal residual" />
-                <TextBlock Margin="0,2,0,0" FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point." />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Fit Diagnostics / Orthogonal residual" />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Residuals are full-XYZ source-coordinate values. Select a marker or row to link the 3D point." />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Ellipse Width="9" Height="9" Fill="{DynamicResource ThreeD.AccentBrush}" />

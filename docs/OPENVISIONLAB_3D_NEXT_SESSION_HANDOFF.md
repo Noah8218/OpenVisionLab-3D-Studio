@@ -51,9 +51,23 @@ the empty state correctly directs the operator to Toolbox's `Add inspection
 step` route. Current-build captures cover empty `1920 x 1080`, unsupported XYZ
 Affine `1920 x 1080`, and unsupported XYZ Affine `1280 x 760`; build `0/0`,
 docking `19/19`, teaching `16/16`, Recipe Manager/WPG `17/17`, and Artifact
-Navigator `9/9` pass. P1 still needs the broader default-control/density
-review; P2 tree-first navigation and Tool Lab review remain next. No algorithm
-development is authorized until the 80/100 UI gate is formally accepted.
+Navigator `9/9` pass. The following dock-panel checkpoint supersedes the
+remaining default-control/density note. P2 tree-first navigation and Tool Lab
+review remain next. No algorithm development is authorized until the 80/100
+UI gate is formally accepted.
+
+**Current P1 dock-panel checkpoint (2026-07-20):** the requested remaining
+dock-panel consistency slice is complete locally. Pipeline, Session Log,
+Height Profile, Fit Diagnostics, Intersection Evidence, and Correspondence
+Evidence now share compact heading/caption/status-card density; evidence panes
+explicitly state their read-only boundary, and globally styled read-only fields
+no longer resemble editable inputs. Session Log now has the same selectable
+dock API as the other lower panes. Fresh current-build `1920 x 1080` and
+`1280 x 760` Pipeline captures plus focused Session/Profile/Intersection/
+Correspondence `1280 x 760` captures are accepted. Build `0/0`, docking
+`20/20`, and Tool Recipe Teaching `16/16` pass. This completes the requested
+P1 dock-panel slice, not the global UI gate. Next: P2 tree-first navigation,
+then P3 Tool Lab review and P4 owner scoring; do not resume algorithm work.
 
 ## Current Task Workspace UI Direction
 

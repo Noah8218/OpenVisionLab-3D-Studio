@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.HeightProfileView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              MinHeight="150"
              Background="{DynamicResource ThreeD.PanelBrush}"
              AutomationProperties.AutomationId="HeightProfileView">
@@ -17,16 +18,21 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock FontSize="13"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                            Text="P1–P2 Height Profile" />
-                <TextBlock Margin="0,2,0,0"
-                           FontSize="10.5"
-                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
                            Text="Drag either endpoint in the 3D View; the sampled height trace updates immediately." />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Margin="0,0,10,0"
+                        Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
+                        ToolTip="The trace reflects two explicit endpoints in the 3D View."
+                        AutomationProperties.Name="Viewer-linked height profile">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="Link24" />
+                        <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Viewer-linked" />
+                    </StackPanel>
+                </Border>
                 <Ellipse Width="9" Height="9" Fill="#33e6ff" />
                 <TextBlock Margin="4,0,10,0" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="P1" />
                 <Ellipse Width="9" Height="9" Fill="#ff7338" />

@@ -1,40 +1,125 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.RunLogView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:logView="clr-namespace:OpenVisionLab.Logging.Controls.View;assembly=OpenVisionLab.Logging.Controls"
              AutomationProperties.AutomationId="WorkbenchRunLog">
-    <TabControl>
+    <TabControl Background="{DynamicResource ThreeD.PanelBrush}">
         <TabItem Header="Application Log">
-            <logView:LogPanelView />
+            <Grid Margin="12,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Application Log" />
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Read-only application diagnostics. This panel does not start Preview or Run." />
+                    </StackPanel>
+                    <Border Grid.Column="1"
+                            Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
+                            ToolTip="Application diagnostics are read-only in the workbench."
+                            AutomationProperties.Name="Read-only application diagnostics">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />
+                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Read-only" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Border Grid.Row="1"
+                        Margin="0,8,0,0"
+                        Padding="4"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <logView:LogPanelView />
+                </Border>
+            </Grid>
         </TabItem>
         <TabItem Header="Workbench Session">
-            <ListBox Margin="8"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     ItemsSource="{Binding RunLog}"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="0,0,0,3"
-                                Padding="6,4"
-                                Background="#f9fafb"
-                                BorderBrush="#e5e7eb"
-                                BorderThickness="1">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="64" />
-                                    <ColumnDefinition Width="74" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Foreground="#6b7280" Text="{Binding Time}" />
-                                <TextBlock Grid.Column="1" Foreground="#0f766e" Text="{Binding Category}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Message}" TextWrapping="Wrap" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <Grid Margin="12,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Workbench Session" />
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Ordered teaching, Preview, Publish, and validation activity for this recipe session." />
+                    </StackPanel>
+                    <Border Grid.Column="1"
+                            Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
+                            ToolTip="Session entries are generated by explicit workbench actions."
+                            AutomationProperties.Name="Session activity is read-only">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="History24" />
+                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Activity" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Grid Grid.Row="1" Margin="0,8,0,0">
+                    <Border Padding="4"
+                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <ListBox Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemsSource="{Binding RunLog}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,3"
+                                            Padding="6,4"
+                                            Background="{DynamicResource ThreeD.ControlBrush}"
+                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="3">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="64" />
+                                                <ColumnDefinition Width="74" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Time}" />
+                                            <TextBlock Grid.Column="1" Foreground="{DynamicResource ThreeD.AccentBrush}" Text="{Binding Category}" />
+                                            <TextBlock Grid.Column="2"
+                                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                                       Text="{Binding Message}"
+                                                       TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <TextBlock IsHitTestVisible="False"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Text="No session events yet. Load a source or use an explicit teaching action to begin.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource ThreeD.DockPanelCaptionTextStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RunLog.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Grid>
         </TabItem>
     </TabControl>
 </UserControl>

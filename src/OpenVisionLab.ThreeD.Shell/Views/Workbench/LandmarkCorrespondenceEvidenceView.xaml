@@ -1,17 +1,50 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.LandmarkCorrespondenceEvidenceView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              AutomationProperties.AutomationId="LandmarkCorrespondenceEvidenceView">
-    <Border Padding="14" Background="{DynamicResource ThreeD.PanelBrush}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Grid Margin="12,8" Background="{DynamicResource ThreeD.PanelBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock FontWeight="SemiBold" Text="Landmark Correspondence Evidence" />
-                <TextBlock Margin="0,6,0,0" FontSize="10.5" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
-                <TextBlock Margin="0,10,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Current correspondence state" />
-                <TextBlock FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceEvidenceSummary}" />
-                <TextBlock Margin="0,8,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceOutputHashSummary}" />
-                <TextBlock Margin="0,10,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="Exactly four current Published CornerAnchors and four explicit reference coordinates must form non-degenerate tetrahedra. This evidence does not calculate an affine matrix or claim calibration, metrology, or OK/NG." />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Landmark Correspondence Evidence" />
+                <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Published CornerAnchor inputs and explicit reference-coordinate correspondence." />
             </StackPanel>
-        </ScrollViewer>
-    </Border>
+            <Border Grid.Column="1"
+                    Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
+                    ToolTip="This pane reports evidence only; it never calculates the affine transform."
+                    AutomationProperties.Name="Read-only landmark correspondence evidence">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Symbol="Document24" />
+                    <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Read-only" />
+                </StackPanel>
+            </Border>
+        </Grid>
+        <Border Grid.Row="1"
+                Margin="0,8,0,6"
+                Padding="10,8"
+                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="1"
+                CornerRadius="3">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Published inputs" />
+                    <TextBlock Margin="0,2,0,0" FontSize="10.5" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
+                    <TextBlock Margin="0,8,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Current correspondence state" />
+                    <TextBlock Margin="0,2,0,0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceEvidenceSummary}" />
+                    <TextBlock Margin="0,8,0,0" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding LandmarkCorrespondenceOutputHashSummary}" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+        <TextBlock Grid.Row="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="Exactly four current Published CornerAnchors and four explicit reference coordinates must form non-degenerate tetrahedra. This evidence does not calculate an affine matrix or claim calibration, metrology, or OK/NG." />
+    </Grid>
 </UserControl>

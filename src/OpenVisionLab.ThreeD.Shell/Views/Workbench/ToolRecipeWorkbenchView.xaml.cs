@@ -58,6 +58,10 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool IsBottomPaneAttached => DockWorkspace.IsBottomPaneAttached;
 
+    public void ActivateSessionLogPane() => DockWorkspace.ActivateLinkedViewPane();
+
+    public bool IsSessionLogPaneSelected => DockWorkspace.IsLinkedViewPaneSelected;
+
     public void ActivateProfilePane() => DockWorkspace.ActivateProfilePane();
 
     public bool IsProfilePaneSelected => DockWorkspace.IsProfilePaneSelected;

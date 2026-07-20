@@ -103,6 +103,11 @@ internal static class ToolWorkbenchDockingVerification
                 "Workbench Profile command selects docked height-profile pane",
                 workbench.IsBottomPaneAttached && workbench.IsProfilePaneSelected,
                 $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsProfilePaneSelected}");
+            workbench.ActivateSessionLogPane();
+            Check(
+                "Workbench Session Log command selects docked session pane",
+                workbench.IsBottomPaneAttached && workbench.IsSessionLogPaneSelected,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsSessionLogPaneSelected}");
             workbench.ActivateFitDiagnosticsPane();
             Check("Workbench Fit Diagnostics command selects docked diagnostics pane", workbench.IsBottomPaneAttached && workbench.IsFitDiagnosticsPaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsFitDiagnosticsPaneSelected}");
             workbench.ActivateIntersectionEvidencePane();

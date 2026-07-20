@@ -158,6 +158,7 @@ public partial class MainWindow : Window
 
         ConfigureCalibrationStudyFromCommandLine();
         ConfigureToolTeachingRecipeFromCommandLine();
+        ConfigureWorkbenchBottomPaneFromCommandLine();
         SyncAppliedTeachingSelections();
         Loaded += EnsureWorkbenchViewerSourceConsistency;
         EnableShellSmokeFromCommandLine();
@@ -996,6 +997,28 @@ public partial class MainWindow : Window
             && Enum.IsDefined(typeof(ShellInspectionTask), task))
         {
             _viewModel.SelectInspectionTask(task);
+        }
+    }
+
+    private void ConfigureWorkbenchBottomPaneFromCommandLine()
+    {
+        switch (GetCommandLineValue("--workbench-bottom-pane")?.Trim().ToLowerInvariant())
+        {
+            case "session" or "session-log":
+                ToolWorkbench.ActivateSessionLogPane();
+                break;
+            case "profile" or "height-profile":
+                ToolWorkbench.ActivateProfilePane();
+                break;
+            case "fit" or "fit-diagnostics":
+                ToolWorkbench.ActivateFitDiagnosticsPane();
+                break;
+            case "intersection" or "intersection-evidence":
+                ToolWorkbench.ActivateIntersectionEvidencePane();
+                break;
+            case "correspondence" or "correspondence-evidence":
+                ToolWorkbench.ActivateCorrespondenceEvidencePane();
+                break;
         }
     }
 

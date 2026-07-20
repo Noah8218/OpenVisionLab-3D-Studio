@@ -20,11 +20,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock FontSize="14"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                    <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                                Text="Recipe Pipeline / Teach Review" />
-                    <TextBlock Margin="0,2,0,0"
+                    <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                FontSize="10"
                                TextTrimming="CharacterEllipsis"

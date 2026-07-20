@@ -140,6 +140,28 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Shared presentation for the docked workbench evidence panes. -->
+    <Style x:Key="ThreeD.DockPanelTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+    </Style>
+
+    <Style x:Key="ThreeD.DockPanelCaptionTextStyle" TargetType="TextBlock">
+        <Setter Property="Margin" Value="0,2,0,0" />
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="ThreeD.DockPanelStatusCardStyle" TargetType="Border">
+        <Setter Property="Padding" Value="7,4" />
+        <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+
     <Style x:Key="ThreeD.ModeRadioButtonStyle" TargetType="{x:Type RadioButton}">
         <Setter Property="MinWidth" Value="82" />
         <Setter Property="Height" Value="32" />
@@ -238,6 +260,16 @@
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsReadOnly" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="{x:Type ComboBox}">
@@ -245,6 +277,12 @@
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="{x:Type ListBoxItem}">

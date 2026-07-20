@@ -261,6 +261,19 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(IsBottomPaneExpandedProperty, value);
     }
 
+    public void ActivateLinkedViewPane()
+    {
+        if (!IsBottomPaneExpanded)
+        {
+            IsBottomPaneExpanded = true;
+        }
+
+        linkedViewAnchorable.IsSelected = true;
+        linkedViewAnchorable.IsActive = true;
+    }
+
+    public bool IsLinkedViewPaneSelected => linkedViewAnchorable.IsSelected && linkedViewAnchorable.IsActive;
+
     public IReadOnlyList<DockingPaneContract> GetDockingPaneContracts() =>
     [
         ToContract(dataLayersAnchorable),

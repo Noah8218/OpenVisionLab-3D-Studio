@@ -203,3 +203,39 @@ Verification reports are under
 Boundary: this completes one P1 feedback slice. It does not score the global
 UI/UX gate or add algorithm execution, editable graph behavior, physical
 calibration, or metrology claims.
+
+## P1 dock-panel consistency slice - 2026-07-20
+
+Status: Complete (docked-panel controls, labels, density, and read-only state)
+
+The lower Workbench panes now use one compact title/caption/status-card rhythm.
+Pipeline, Session Log, Height Profile, Fit Diagnostics, Intersection Evidence,
+and Landmark Correspondence Evidence retain their existing content and actions,
+but distinguish view-only evidence from actionable teaching controls. Read-only
+text fields now use the disabled surface rather than appearing editable. The
+Session Log can be selected through the same dock API as Profile and the
+evidence panes; the command-line smoke selector is capture-only and has no
+normal interactive behavior.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Lower dock panels have a consistent readable structure | Current captures show a common compact heading, explanation, status card, and bordered content region for Session Log, Height Profile, Intersection Evidence, and Correspondence Evidence. |
+| View-only data does not look like a write surface | Read-only evidence cards label the boundary in text, icon, tooltip, and Automation name. The XYZ Affine parameter fields use the disabled/read-only surface in the `1920 x 1080` capture. |
+| Two reference sizes remain usable | Current Pipeline captures at `1920 x 1080` and `1280 x 760`, plus five focused `1280 x 760` pane captures, show no meaningful clipping or overlap. |
+| Dock behavior remains intact | Current build passed Workbench docking `20/20`, including Float/Dock preservation and explicit selection of Session Log, Profile, Fit Diagnostics, Intersection Evidence, and Correspondence Evidence. Tool Recipe Teaching passed `16/16`. |
+
+Fresh current-build captures:
+
+- Before 1920: `artifacts/ui/20260720-workbench-p1-dock-density/before-1920.png`
+- Before 1280: `artifacts/ui/20260720-workbench-p1-dock-density/before-1280.png`
+- After Pipeline 1920: `artifacts/ui/20260720-workbench-p1-dock-density/after-pipeline-1920.png`
+- After Pipeline 1280: `artifacts/ui/20260720-workbench-p1-dock-density/after-pipeline-1280.png`
+- After Session, Profile, Intersection, and Correspondence 1280: `artifacts/ui/20260720-workbench-p1-dock-density/after-*-1280.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p1-dock-density/`.
+
+Boundary: this completes the requested dock-panel P1 slice. The global
+`80/100` UI/UX gate remains unscored; P2 tree-first recipe/tool navigation,
+P3 Tool Lab review, and P4 owner acceptance are still required before new
+algorithm work resumes.
