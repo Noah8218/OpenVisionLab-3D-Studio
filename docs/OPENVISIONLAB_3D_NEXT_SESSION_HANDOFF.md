@@ -11,6 +11,18 @@ current-build UI evidence until the owner explicitly reopens algorithm work.
 Preserve every explicit Preview/Publish/Run and source-immutability boundary.
 See `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
 
+## Full-XYZ affine design authorization - 2026-07-20
+
+The owner explicitly reopened algorithm work for a design-first full-XYZ
+affine phase. Read
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_TOOL_DESIGN_20260720.md` before touching
+the affine scaffold. This is documentation and contract design only: the UI
+gate is still not formally accepted, and no solver, transformed point cloud,
+re-grid, Thickness, or Warpage code may start until the owner approves A1 and
+either accepts the UI gate or explicitly reopens code implementation.
+Preserve the existing exactly-four non-coplanar `CorrespondenceSet` boundary,
+separate Solve from Apply, and never silently fall back to planar XY.
+
 **Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
 complete locally. The existing Flow Map now projects input/output port state
 from the typed Artifact Registry: ready/current, declared-upstream waiting,

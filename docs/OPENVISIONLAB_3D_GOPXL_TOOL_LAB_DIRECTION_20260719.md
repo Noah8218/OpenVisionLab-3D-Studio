@@ -114,6 +114,12 @@ No View code-behind may implement algorithm calculation, persistence, validation
 
 ## Next decision gates
 
+Owner update on 2026-07-20: full-XYZ affine design is now authorized in
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_TOOL_DESIGN_20260720.md`. This permits a
+design/contract gate only. It does not turn the Flow Map into an editor, does
+not accept the UI gate, and does not authorize affine/re-grid/measurement code
+until the owner approves the A1 design decisions.
+
 1. G1/G2/G3/G4/G5/G6/G7 are complete: use the tree, read-only Flow Map with port state, selected-tool I/P/O summary, explicit Output Compare, Displayed Outputs manager, compact Problems surface, compatible-next-tool scan, and explicit candidate add as one bounded read-first workflow.
 2. Next UI priority is an owner UI/UX acceptance re-review against the complete G1-G7 chain workflow. Continue to fix only a concrete hierarchy, visual, accessibility, or compact-layout issue found by that review.
 3. Only after the UI gate is formally accepted may a new algorithm implementation gate be defined.

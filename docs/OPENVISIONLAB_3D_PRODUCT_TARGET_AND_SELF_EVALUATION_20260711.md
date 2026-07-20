@@ -33,6 +33,19 @@ display and smoke evidence. The gate, scorecard, delivery order, and evidence
 requirements are fixed in
 `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
 
+## Full-XYZ affine design authorization - 2026-07-20
+
+The owner explicitly authorized the next algorithm phase to begin with design.
+This overrides the UI pause only for the documented full-XYZ affine design;
+it does not accept the UI gate, start solver code, or weaken any explicit
+Preview/Publish/source-immutability boundary. The authoritative design is
+`docs/OPENVISIONLAB_3D_XYZ_AFFINE_TOOL_DESIGN_20260720.md`: it separates
+Affine Solve from Apply and later Re-grid, requires the existing exactly-four
+non-coplanar correspondence evidence, and forbids silent planar fallback,
+least squares, automatic matching, calibration, and metrology claims in v1.
+Implementation requires owner approval of that design plus formal UI-gate
+acceptance or a later explicit owner authorization to start code.
+
 Current P3 Tool-Lab review checkpoint on 2026-07-20: **the existing Filter,
 Height Difference Edge, Line Intersection, and Landmark Correspondence Tool
 Labs share an OpenVisionLab-owned input -> parameters -> output/evidence
