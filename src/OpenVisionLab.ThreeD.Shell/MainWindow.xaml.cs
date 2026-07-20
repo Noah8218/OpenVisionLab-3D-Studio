@@ -321,10 +321,32 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                var firstFilterToolLabWindow = filterToolLabWindow;
+                if (filterToolLabScreenshotPath is not null
+                    && (firstFilterToolLabWindow is null
+                        || !ShowFilterToolLabWindow(showMissingFilterMessage: false)
+                        || !ReferenceEquals(firstFilterToolLabWindow, filterToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Filter Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (edgeToolLabScreenshotPath is not null
                     && !ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false))
                 {
                     _viewModel.SetViewerSmokeFailed("Edge Tool Lab smoke requires a Height Difference Edge recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstEdgeToolLabWindow = heightDifferenceEdgeToolLabWindow;
+                if (edgeToolLabScreenshotPath is not null
+                    && (firstEdgeToolLabWindow is null
+                        || !ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false)
+                        || !ReferenceEquals(firstEdgeToolLabWindow, heightDifferenceEdgeToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Edge Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -337,10 +359,32 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                var firstLineIntersectionToolLabWindow = lineIntersectionToolLabWindow;
+                if (lineIntersectionToolLabScreenshotPath is not null
+                    && (firstLineIntersectionToolLabWindow is null
+                        || !ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false)
+                        || !ReferenceEquals(firstLineIntersectionToolLabWindow, lineIntersectionToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Line Intersection Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (landmarkCorrespondenceToolLabScreenshotPath is not null
                     && !ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false))
                 {
                     _viewModel.SetViewerSmokeFailed("Landmark Correspondence Tool Lab smoke requires a Landmark Correspondence recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstLandmarkCorrespondenceToolLabWindow = landmarkCorrespondenceToolLabWindow;
+                if (landmarkCorrespondenceToolLabScreenshotPath is not null
+                    && (firstLandmarkCorrespondenceToolLabWindow is null
+                        || !ShowLandmarkCorrespondenceToolLabWindow(showMissingCorrespondenceMessage: false)
+                        || !ReferenceEquals(firstLandmarkCorrespondenceToolLabWindow, landmarkCorrespondenceToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Landmark Correspondence Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -577,7 +621,7 @@ public partial class MainWindow : Window
                 if (filterToolLabScreenshotPath is not null
                     && (filterToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
-                            filterToolLabWindow,
+                            RefreshToolLabForCapture(filterToolLabWindow),
                             filterToolLabScreenshotPath,
                             filterToolLabScreenshotQualityReportPath,
                             "FilterToolLab")))
@@ -590,7 +634,7 @@ public partial class MainWindow : Window
                 if (edgeToolLabScreenshotPath is not null
                     && (heightDifferenceEdgeToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
-                            heightDifferenceEdgeToolLabWindow,
+                            RefreshToolLabForCapture(heightDifferenceEdgeToolLabWindow),
                             edgeToolLabScreenshotPath,
                             edgeToolLabScreenshotQualityReportPath,
                             "EdgeToolLab")))
@@ -603,7 +647,7 @@ public partial class MainWindow : Window
                 if (lineIntersectionToolLabScreenshotPath is not null
                     && (lineIntersectionToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
-                            lineIntersectionToolLabWindow,
+                            RefreshToolLabForCapture(lineIntersectionToolLabWindow),
                             lineIntersectionToolLabScreenshotPath,
                             lineIntersectionToolLabScreenshotQualityReportPath,
                             "LineIntersectionToolLab")))
@@ -616,7 +660,7 @@ public partial class MainWindow : Window
                 if (landmarkCorrespondenceToolLabScreenshotPath is not null
                     && (landmarkCorrespondenceToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
-                            landmarkCorrespondenceToolLabWindow,
+                            RefreshToolLabForCapture(landmarkCorrespondenceToolLabWindow),
                             landmarkCorrespondenceToolLabScreenshotPath,
                             landmarkCorrespondenceToolLabScreenshotQualityReportPath,
                             "LandmarkCorrespondenceToolLab")))
@@ -633,6 +677,27 @@ public partial class MainWindow : Window
 
             Loaded += _shellSmokeLoadedHandler;
         }
+    }
+
+    private static Window RefreshToolLabForCapture(Window window)
+    {
+        switch (window)
+        {
+            case FilterToolLabWindow filter:
+                filter.RefreshViews();
+                break;
+            case HeightDifferenceEdgeToolLabWindow edge:
+                edge.RefreshViews();
+                break;
+            case LineIntersectionToolLabWindow intersection:
+                intersection.RefreshViews();
+                break;
+            case LandmarkCorrespondenceToolLabWindow correspondence:
+                correspondence.RefreshViews();
+                break;
+        }
+
+        return window;
     }
 
     private async Task<bool> RunToolTeachingSelectionSmokeAsync(string modeValue, string? reportPath)
@@ -1270,13 +1335,19 @@ public partial class MainWindow : Window
             return false;
         }
 
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+
         if (filterToolLabWindow is null)
         {
-            filterToolLabWindow = new FilterToolLabWindow(_viewModel.Workbench)
+            filterToolLabWindow = new FilterToolLabWindow(_viewModel.Workbench, step)
             {
                 Owner = this
             };
             filterToolLabWindow.Closed += (_, _) => filterToolLabWindow = null;
+        }
+        else
+        {
+            filterToolLabWindow.SetLabStep(step);
         }
 
         filterToolLabWindow.RefreshViews();
@@ -1306,13 +1377,19 @@ public partial class MainWindow : Window
             return false;
         }
 
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+
         if (heightDifferenceEdgeToolLabWindow is null)
         {
-            heightDifferenceEdgeToolLabWindow = new HeightDifferenceEdgeToolLabWindow(_viewModel.Workbench)
+            heightDifferenceEdgeToolLabWindow = new HeightDifferenceEdgeToolLabWindow(_viewModel.Workbench, step)
             {
                 Owner = this
             };
             heightDifferenceEdgeToolLabWindow.Closed += (_, _) => heightDifferenceEdgeToolLabWindow = null;
+        }
+        else
+        {
+            heightDifferenceEdgeToolLabWindow.SetLabStep(step);
         }
 
         heightDifferenceEdgeToolLabWindow.RefreshViews();
@@ -1342,13 +1419,19 @@ public partial class MainWindow : Window
             return false;
         }
 
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+
         if (lineIntersectionToolLabWindow is null)
         {
-            lineIntersectionToolLabWindow = new LineIntersectionToolLabWindow(_viewModel.Workbench)
+            lineIntersectionToolLabWindow = new LineIntersectionToolLabWindow(_viewModel.Workbench, step)
             {
                 Owner = this
             };
             lineIntersectionToolLabWindow.Closed += (_, _) => lineIntersectionToolLabWindow = null;
+        }
+        else
+        {
+            lineIntersectionToolLabWindow.SetLabStep(step);
         }
 
         lineIntersectionToolLabWindow.RefreshViews();
@@ -1378,13 +1461,19 @@ public partial class MainWindow : Window
             return false;
         }
 
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+
         if (landmarkCorrespondenceToolLabWindow is null)
         {
-            landmarkCorrespondenceToolLabWindow = new LandmarkCorrespondenceToolLabWindow(_viewModel.Workbench)
+            landmarkCorrespondenceToolLabWindow = new LandmarkCorrespondenceToolLabWindow(_viewModel.Workbench, step)
             {
                 Owner = this
             };
             landmarkCorrespondenceToolLabWindow.Closed += (_, _) => landmarkCorrespondenceToolLabWindow = null;
+        }
+        else
+        {
+            landmarkCorrespondenceToolLabWindow.SetLabStep(step);
         }
 
         landmarkCorrespondenceToolLabWindow.RefreshViews();

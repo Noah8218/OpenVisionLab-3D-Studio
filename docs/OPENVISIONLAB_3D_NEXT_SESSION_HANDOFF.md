@@ -113,6 +113,23 @@ quality. P3 is complete for existing Tool Labs. Next is P4: capture/review
 the scorecard with the owner and decide whether the `80/100` UI gate is
 accepted. Do not add algorithms before that decision.
 
+**Current P4 provisional UI-acceptance checkpoint (2026-07-20):** latest
+current-build review evidence is recorded in
+`docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md` and
+`artifacts/ui/20260720-workbench-p4-acceptance/`. During review, opening
+several Tool Labs exposed that their shared lower inspector could display the
+last opened Tool Lab's selected step. Each Tool Lab now retains its own exact
+recipe-step ID and restores it on activation; current before/after captures
+show Filter Step 01, Edge Step 02, Line Intersection Step 06, and Landmark
+Correspondence Step 12 in their respective windows. Build is `0/0`, Tool
+Recipe Teaching is `18/18`, Workbench docking is `20/20`, Recipe Manager/WPG
+is `17/17`, and all fresh review screenshot-quality reports accept on attempt
+one. The evidence-based provisional score is `89/100`, but it is **not owner
+accepted**: wait for an explicit accept/revise decision before updating the
+product target or starting new algorithm work. The remaining deductions are
+manual first-time operator, assistive-technology/keyboard, and high-DPI or
+real-hardware visual review; they are not failing automated checks.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

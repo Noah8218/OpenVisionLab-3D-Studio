@@ -373,3 +373,50 @@ Boundary: this completes P3 for the four existing Tool Labs. It does not add
 a Tool Lab for every future tool, a writable graph editor, linked cameras, a
 new inspection algorithm, physical calibration, or metrology evidence. P4 is
 the owner scorecard review and `80/100` acceptance decision.
+
+## P4 provisional acceptance review - 2026-07-20
+
+Status: Awaiting owner acceptance
+
+This review uses the current Debug build after the Tool Lab context correction.
+Each single-instance Tool Lab now remembers its exact recipe step and restores
+that step when the window becomes active. This prevents a Filter, Edge, or
+Line Intersection Tool Lab from editing or showing the last Tool Lab's
+parameters after several comparison windows are open. The smoke capture also
+refreshes the window's own context before taking its screenshot.
+
+The points below are an evidence-based provisional score, not an owner
+acceptance. It exceeds the `80/100` threshold, but no new algorithm work is
+authorized until the owner explicitly accepts the scorecard.
+
+| Area | Available | Provisional points | Current evidence and remaining deduction |
+| --- | ---: | ---: | --- |
+| Workbench information hierarchy | 20 | 18 | Korean and English `1920 x 1080` Workbench captures show recipe/source, selected route, typed state, next explicit action, Viewer, and Pipeline together. Two points remain for a first-time-operator observation rather than a smoke capture. |
+| Visual system and 1920 layout | 20 | 17 | Current `1920 x 1080` Korean/English and `1280 x 760` Korean captures preserve the navy/light/teal system without meaningful overlap. Three points remain because deep typed-parameter/evidence strings are intentionally still mixed technical English and no separate high-DPI review was run. |
+| Docking and window behavior | 15 | 15 | Workbench docking verification passes `20/20`; current Recipe Manager and all four Tool Labs use their custom title views and each focused window remains single-instance. |
+| Recipe and tool workflow | 20 | 18 | Tree-first source/route/output presentation, active-lab step restoration, Tool Lab input/parameters/output-evidence sequence, and explicit Preview/Publish are visible. Tool Recipe Teaching passes `18/18`. Two points remain for a later owner usability pass across a real multi-step taught recipe. |
+| Feedback and accessibility | 15 | 12 | Current Ready, pending/upstream-blocked, read-only, adapter, warning, and disabled states carry visible text, color, icons, tooltips, and automation names. Three points remain because no manual assistive-technology or keyboard-only operator session was performed. |
+| Evidence and visual polish | 10 | 9 | Fresh current-build captures cover Workbench, Recipe Manager, four Tool Labs, and three docked comparison panes; all screenshot-quality reports accept on attempt 1. One point remains for manual real-hardware/high-DPI visual review. |
+| **Total** | **100** | **89** | **Owner decision required** |
+
+Fresh current-build review artifacts:
+
+- Workbench: `artifacts/ui/20260720-workbench-p4-acceptance/workbench-filter-1920-ko.png`, `workbench-filter-1920-en.png`, and `workbench-filter-1280-ko.png`.
+- Recipe Manager: `artifacts/ui/20260720-workbench-p4-acceptance/recipe-manager-ko.png`.
+- Tool Labs before the context correction: `artifacts/ui/20260720-workbench-p4-acceptance/filter-tool-lab-ko.png`, `height-difference-edge-tool-lab-ko.png`, `line-intersection-tool-lab-ko.png`, and `landmark-correspondence-tool-lab-ko.png`.
+- Tool Labs after the correction: `artifacts/ui/20260720-workbench-p4-acceptance/after-refresh-filter-tool-lab-ko.png`, `after-refresh-height-difference-edge-tool-lab-ko.png`, `after-refresh-line-intersection-tool-lab-ko.png`, and `after-refresh-landmark-correspondence-tool-lab-ko.png`.
+- Docked comparison panes: `artifacts/ui/20260720-workbench-p4-acceptance/workbench-profile-1280-ko.png`, `workbench-intersection-1280-ko.png`, and `workbench-correspondence-1280-ko.png`.
+- Screenshot-quality reports and command-verification reports: `artifacts/verification/20260720-workbench-p4-acceptance/`.
+
+Current verification:
+
+- `dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug -p:Platform="Any CPU" --no-restore -v:q`: `0` warnings, `0` errors.
+- Tool Recipe Teaching: `18/18` passed.
+- Workbench docking: `20/20` passed.
+- Recipe Manager/WPG: `17/17` passed.
+- Eleven current-shell/window screenshot-quality reports: accepted on attempt `1`.
+
+Owner decision required: accept or revise the provisional `89/100` score. If
+accepted, update the product-target checkpoint to record the UI gate as
+complete and only then select the next algorithm slice. If revised below `80`,
+keep algorithm work paused and use the deducted rows as the next UI scope.

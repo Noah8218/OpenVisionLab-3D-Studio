@@ -10,19 +10,43 @@ public partial class HeightDifferenceEdgeToolLabWindow : Window
     private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
+    private string labStepId = string.Empty;
 
-    public HeightDifferenceEdgeToolLabWindow(ToolWorkbenchViewModel workbench)
+    public HeightDifferenceEdgeToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
     {
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
+        SetLabStep(step);
         InitializeComponent();
         DataContext = workbench;
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
         Loaded += (_, _) => RefreshViews();
+        Activated += (_, _) => ActivateLabStep();
+    }
+
+    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        if (!string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Edge Tool Lab requires a Height Difference Edge step.", nameof(step));
+        }
+
+        labStepId = step.Id;
+        ActivateLabStep();
+    }
+
+    public void ActivateLabStep()
+    {
+        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
+        {
+            workbench.SelectPipelineStep(labStepId);
+        }
     }
 
     public void RefreshViews()
     {
+        ActivateLabStep();
         if (!workbench.IsFilterPreviewPublished
             || string.IsNullOrWhiteSpace(workbench.CurrentFilterPreviewPath)
             || !File.Exists(workbench.CurrentFilterPreviewPath))

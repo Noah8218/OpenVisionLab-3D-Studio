@@ -10,19 +10,43 @@ public partial class FilterToolLabWindow : Window
     private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
+    private string labStepId = string.Empty;
 
-    public FilterToolLabWindow(ToolWorkbenchViewModel workbench)
+    public FilterToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
     {
         this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
+        SetLabStep(step);
         InitializeComponent();
         DataContext = workbench;
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
         Loaded += (_, _) => RefreshViews();
+        Activated += (_, _) => ActivateLabStep();
+    }
+
+    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        if (!string.Equals(step.ToolId, "filter", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Filter Tool Lab requires a Filter step.", nameof(step));
+        }
+
+        labStepId = step.Id;
+        ActivateLabStep();
+    }
+
+    public void ActivateLabStep()
+    {
+        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
+        {
+            workbench.SelectPipelineStep(labStepId);
+        }
     }
 
     public void RefreshViews()
     {
+        ActivateLabStep();
         if (File.Exists(workbench.Source.Path))
         {
             inputViewer.LoadC3DSource(workbench.Source.Path);
