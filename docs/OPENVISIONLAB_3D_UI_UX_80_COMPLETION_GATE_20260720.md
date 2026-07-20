@@ -134,3 +134,37 @@ Fresh current-build captures:
 
 Boundary: this verifies the Workbench header density at the two reference
 sizes. It does not accept the whole visual-system or `80/100` UI/UX gate.
+
+## P1 state-surface slice evidence - 2026-07-20
+
+Status: Complete (Recipe Pipeline state presentation only)
+
+The Pipeline Review keeps the existing workflow state values and command
+rules, but presents every current state with one visible text label, color,
+familiar icon, tooltip, and automation name. Neutral `Taught / pending` stays
+gray with a clock. `Ready` and `Preview ready` use the teal/eye-or-check
+treatment, `Published` uses green/check, and blocked/correction/stale states
+use amber warning or refresh treatment. `Error` uses the existing red/error
+treatment. No Preview, Publish, Run, recipe save, parameter, or tool adapter
+binding changed.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Operator can distinguish current Pipeline states without reading a muted text column | Current-build Preview and Published captures show `Preview ready`, `Published`, and `Taught / pending` as compact text-and-icon badges. The XAML state map also explicitly covers `Waiting for upstream`, `Preview stale`, `Taught / needs correction`, `Taught incomplete`, and `Error`. |
+| Status remains accessible when color is unavailable | Each badge preserves the bound state text, provides a `Pipeline step state` tooltip, and exposes the same name through WPF Automation. |
+| The two reference widths preserve the review table | The current `1280 x 760` Preview capture shows the status badges without horizontal overlap or truncation of the visible state labels. |
+| Existing Docking, teaching, recipe-manager, and output-state behavior remains intact | Current build passed docking `19/19`, Tool Recipe Teaching `16/16`, Recipe Manager/WPG `17/17`, and Artifact Navigator `9/9`, including Preview/Published/Stale output-state transitions. |
+
+Fresh current-build captures:
+
+- Before, 1920: `artifacts/ui/20260720-workbench-p1-state-badges/before-workbench-filter-1920.png`
+- After, Preview 1920: `artifacts/ui/20260720-workbench-p1-state-badges/after-workbench-filter-preview-1920.png`
+- After, Published 1920: `artifacts/ui/20260720-workbench-p1-state-badges/after-workbench-filter-published-1920.png`
+- After, Preview 1280: `artifacts/ui/20260720-workbench-p1-state-badges/after-workbench-filter-preview-1280.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p1-state-badges/`.
+
+Boundary: this completes the Pipeline state surface only. It does not accept
+the remaining P1 visual-system work or the global `80/100` UI/UX gate, and it
+does not add an inspection algorithm.

@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next Session Handoff
 
-Updated: 2026-07-19
+Updated: 2026-07-20
 
 ## Priority override - 2026-07-20
 
@@ -30,6 +30,17 @@ button, preventing header command overlap at both `1280 x 760` and
 opens the single Filter Tool Lab window. The P1 slice is intentionally narrow:
 panel density, state surfaces, Tool Lab consistency, and full 80/100 scoring
 remain open. See `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
+**Current P1 Pipeline-state checkpoint (2026-07-20):** the Recipe Pipeline
+review now presents the existing state contract as compact text-and-icon
+badges: neutral pending, teal Ready/Preview, green Published, amber
+blocked/correction/stale, and red Error. Every badge retains state text, a
+tooltip, and an automation name; no recipe or execution rule changed. Fresh
+current-build Preview/Published `1920 x 1080` and Preview `1280 x 760`
+captures are accepted, and build `0/0`, docking `19/19`, teaching `16/16`, and
+Recipe Manager/WPG `17/17`, and Artifact Navigator `9/9` pass. The full UI gate remains unscored and open:
+next is the remaining P1 surface/disabled/empty-state consistency across the
+Toolbox and Step Parameters panes, then P2 navigation and Tool Lab review.
 
 ## Current Task Workspace UI Direction
 

@@ -31,6 +31,9 @@
     <SolidColorBrush x:Key="ThreeD.AxisZBrush" Color="#3B82F6" />
     <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#FFF6E8" />
     <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#E4F3F2" />
+    <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#EAF7EE" />
+    <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#FCEEEE" />
+    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#EDF1F4" />
 
     <Style x:Key="ThreeD.ModeRadioButtonStyle" TargetType="{x:Type RadioButton}">
         <Setter Property="MinWidth" Value="82" />
