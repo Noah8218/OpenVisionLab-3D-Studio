@@ -63,6 +63,34 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Evidence Workbench", OnEvidenceTitleChanged));
 
+    public static readonly DependencyProperty OutputCompareContentProperty =
+        DependencyProperty.Register(
+            nameof(OutputCompareContent),
+            typeof(object),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty OutputCompareTitleProperty =
+        DependencyProperty.Register(
+            nameof(OutputCompareTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Output Compare", OnOutputCompareTitleChanged));
+
+    public static readonly DependencyProperty DisplayedOutputsContentProperty =
+        DependencyProperty.Register(
+            nameof(DisplayedOutputsContent),
+            typeof(object),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty DisplayedOutputsTitleProperty =
+        DependencyProperty.Register(
+            nameof(DisplayedOutputsTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Displayed Outputs", OnDisplayedOutputsTitleChanged));
+
     public static readonly DependencyProperty LinkedViewContentProperty =
         DependencyProperty.Register(
             nameof(LinkedViewContent),
@@ -195,6 +223,30 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(EvidenceTitleProperty, value);
     }
 
+    public object? OutputCompareContent
+    {
+        get => GetValue(OutputCompareContentProperty);
+        set => SetValue(OutputCompareContentProperty, value);
+    }
+
+    public string OutputCompareTitle
+    {
+        get => (string)GetValue(OutputCompareTitleProperty);
+        set => SetValue(OutputCompareTitleProperty, value);
+    }
+
+    public object? DisplayedOutputsContent
+    {
+        get => GetValue(DisplayedOutputsContentProperty);
+        set => SetValue(DisplayedOutputsContentProperty, value);
+    }
+
+    public string DisplayedOutputsTitle
+    {
+        get => (string)GetValue(DisplayedOutputsTitleProperty);
+        set => SetValue(DisplayedOutputsTitleProperty, value);
+    }
+
     public object? LinkedViewContent
     {
         get => GetValue(LinkedViewContentProperty);
@@ -280,12 +332,41 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         ToContract(viewerAnchorable),
         ToContract(toolInspectorAnchorable),
         ToContract(evidenceAnchorable),
+        ToContract(outputCompareAnchorable),
+        ToContract(displayedOutputsAnchorable),
         ToContract(linkedViewAnchorable),
         ToContract(profileAnchorable),
         ToContract(fitDiagnosticsAnchorable),
         ToContract(intersectionEvidenceAnchorable),
         ToContract(correspondenceEvidenceAnchorable),
     ];
+
+    public void ActivateEvidencePane()
+    {
+        if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
+        evidenceAnchorable.IsSelected = true;
+        evidenceAnchorable.IsActive = true;
+    }
+
+    public bool IsEvidencePaneSelected => evidenceAnchorable.IsSelected && evidenceAnchorable.IsActive;
+
+    public void ActivateOutputComparePane()
+    {
+        if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
+        outputCompareAnchorable.IsSelected = true;
+        outputCompareAnchorable.IsActive = true;
+    }
+
+    public bool IsOutputComparePaneSelected => outputCompareAnchorable.IsSelected && outputCompareAnchorable.IsActive;
+
+    public void ActivateDisplayedOutputsPane()
+    {
+        if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
+        displayedOutputsAnchorable.IsSelected = true;
+        displayedOutputsAnchorable.IsActive = true;
+    }
+
+    public bool IsDisplayedOutputsPaneSelected => displayedOutputsAnchorable.IsSelected && displayedOutputsAnchorable.IsActive;
 
     public void ActivateProfilePane()
     {
@@ -407,6 +488,22 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         }
     }
 
+    private static void OnOutputCompareTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.outputCompareAnchorable is not null)
+        {
+            view.outputCompareAnchorable.Title = args.NewValue as string ?? string.Empty;
+        }
+    }
+
+    private static void OnDisplayedOutputsTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.displayedOutputsAnchorable is not null)
+        {
+            view.displayedOutputsAnchorable.Title = args.NewValue as string ?? string.Empty;
+        }
+    }
+
     private static void OnLinkedViewTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
         if (owner is OpenVisionDockWorkspaceView view && view.linkedViewAnchorable is not null)
@@ -461,6 +558,8 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         viewerAnchorable.Title = ViewerTitle;
         toolInspectorAnchorable.Title = ToolInspectorTitle;
         evidenceAnchorable.Title = EvidenceTitle;
+        outputCompareAnchorable.Title = OutputCompareTitle;
+        displayedOutputsAnchorable.Title = DisplayedOutputsTitle;
         linkedViewAnchorable.Title = LinkedViewTitle;
         profileAnchorable.Title = ProfileTitle;
         fitDiagnosticsAnchorable.Title = FitDiagnosticsTitle;

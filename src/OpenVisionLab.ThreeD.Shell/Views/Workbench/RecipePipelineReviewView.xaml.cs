@@ -8,4 +8,8 @@ public partial class RecipePipelineReviewView : UserControl
     {
         InitializeComponent();
     }
+
+    public void ActivateFlowMap() => ReviewTabs.SelectedIndex = 1;
+
+    public bool IsFlowMapSelected => ReviewTabs.SelectedIndex == 1;
 }

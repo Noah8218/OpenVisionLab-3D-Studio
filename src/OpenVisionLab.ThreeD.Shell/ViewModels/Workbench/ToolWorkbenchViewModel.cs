@@ -155,6 +155,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OpenTeachingRecipeCommand = new RelayCommand(_ => OpenTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
         LoadC3DSourceCommand = new RelayCommand(_ => LoadC3DSourceRequested?.Invoke(this, EventArgs.Empty));
         InitializeFilterExecution();
+        InitializeDisplayedOutputs();
+        Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
         InitializeLineFitDiagnostics();
 
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
@@ -675,6 +677,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public string PipelineEmptyHint => PipelineSteps.Count == 0
         ? "No taught tools yet. Select a Toolbox item and add it to this recipe."
         : string.Empty;
+
+    public bool IsPipelineEmpty => PipelineSteps.Count == 0;
 
     public string AvailableInputEntitiesSummary => string.Join(
         ", ",
@@ -1382,6 +1386,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
         OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
         OnPropertyChanged(nameof(PipelineEmptyHint));
+        OnPropertyChanged(nameof(IsPipelineEmpty));
         OnPropertyChanged(nameof(RecipeStateSummary));
         OnPropertyChanged(nameof(SourceContextSummary));
         OnPropertyChanged(nameof(AlignmentStatusSummary));

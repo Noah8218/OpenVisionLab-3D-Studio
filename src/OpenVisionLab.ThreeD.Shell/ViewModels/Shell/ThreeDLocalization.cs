@@ -16,12 +16,21 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(OpenAdvancedToolTip), nameof(Filter), nameof(HeightDifferenceEdge), nameof(LineIntersection),
         nameof(LandmarkCorrespondence), nameof(ToolboxAndEntities), nameof(Viewer), nameof(StepParameters),
         nameof(PipelineValidation), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
-        nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(NavigatorHint), nameof(RecipeSource),
+        nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
+        nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
+        nameof(DisplayedOutputs), nameof(DisplayedOutputsTitle), nameof(DisplayedOutputsDetail),
+        nameof(DisplayedOutputsNoViewerSelection), nameof(CurrentViewerDisplay), nameof(DisplayedInViewer),
+        nameof(ShowInViewer), nameof(PinToCompare), nameof(FocusStep), nameof(DisplayedOutputsSummaryFormat),
+        nameof(DisplayableC3DData), nameof(EvidenceOnlyOutput), nameof(NoCurrentDisplayableOutput), nameof(PinnedSlotsFormat),
+        nameof(FlowMapDetail), nameof(FlowMapReadOnly), nameof(FlowMapInput), nameof(FlowMapOutput),
+        nameof(FlowMapEmptyHint), nameof(NavigatorHint), nameof(RecipeSource),
         nameof(RecipeNavigator), nameof(AddInspectionStep), nameof(StepProperties), nameof(NoRecipeStepSelected),
         nameof(NoRecipeStepSelectedDetail), nameof(RecipePipelineTeachReview), nameof(Validate), nameof(MoveUp),
         nameof(MoveDown), nameof(Remove), nameof(ColumnNumber), nameof(ColumnTool), nameof(ColumnInputs),
         nameof(ColumnTypedOutput), nameof(ColumnState), nameof(Preview), nameof(Run), nameof(Publish), nameof(Cancel),
         nameof(SelectedPaletteItem), nameof(Input), nameof(Output), nameof(ParameterAdapter), nameof(Inputs),
+        nameof(InputParameterOutputSummary), nameof(TypedParameters), nameof(StepPropertiesEditDetail),
+        nameof(Discard), nameof(ApplyParameters), nameof(Produces), nameof(OutputEntity),
         nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
         nameof(OpenSelectedToolLab), nameof(ToolLabReview), nameof(ToolLabReviewDetail),
         nameof(ShowInput)
@@ -56,6 +65,32 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FitDiagnostics => T("ThreeD.Workbench.FitDiagnostics", "\uD53C\uD305 \uC9C4\uB2E8", "Fit Diagnostics");
     public string IntersectionEvidence => T("ThreeD.Workbench.IntersectionEvidence", "\uAD50\uCC28\uC810 \uC99D\uAC70", "Intersection Evidence");
     public string CorrespondenceEvidence => T("ThreeD.Workbench.CorrespondenceEvidence", "\uB300\uC751 \uC99D\uAC70", "Correspondence Evidence");
+    public string OutputCompare => T("ThreeD.Workbench.OutputCompare", "\uCD9C\uB825 \uBE44\uAD50", "Output Compare");
+    public string OutputCompareTitle => T("ThreeD.Workbench.OutputCompareTitle", "\uD604\uC7AC \uC0B0\uCD9C\uBB3C \uBE44\uAD50", "Compare current outputs");
+    public string OutputCompareDetail => T("ThreeD.Workbench.OutputCompareDetail", "\uC2E4\uC81C\uB85C \uB85C\uB4DC\uB41C \uC18C\uC2A4\uC640 \uC0B0\uCD9C\uBB3C\uB9CC \uB3C4\uD0B9 \uBE44\uAD50 \uC2AC\uB86F\uC5D0 \uACE0\uC815\uD569\uB2C8\uB2E4. \uC120\uD0DD\uC740 \uB808\uC2DC\uD53C\uB97C \uC218\uC815\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Pin only currently loaded sources or outputs to docked compare slots. Selection never edits or executes the recipe.");
+    public string OutputCompareNoSelection => T("ThreeD.Workbench.OutputCompareNoSelection", "\uACE0\uC815\uB41C \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No output pinned");
+    public string OutputComparePinnedOutput => T("ThreeD.Workbench.OutputComparePinnedOutput", "\uACE0\uC815 \uC0B0\uCD9C\uBB3C", "Pinned output");
+    public string DisplayedOutputs => T("ThreeD.Workbench.DisplayedOutputs", "\uD45C\uC2DC \uC0B0\uCD9C\uBB3C", "Displayed Outputs");
+    public string DisplayedOutputsTitle => T("ThreeD.Workbench.DisplayedOutputsTitle", "\uC0B0\uCD9C\uBB3C \uD45C\uC2DC \uAD00\uB9AC", "Displayed Outputs / Overlay Manager");
+    public string DisplayedOutputsDetail => T("ThreeD.Workbench.DisplayedOutputsDetail", "\uC2E4\uC81C C3D \uC0B0\uCD9C\uBB3C\uB9CC 3D \uBDF0\uC5D0 \uD45C\uC2DC\uD558\uAC70\uB098 \uBE44\uAD50\uC5D0 \uACE0\uC815\uD569\uB2C8\uB2E4. \uD53C\uCC98 \uC0B0\uCD9C\uBB3C\uC740 \uAC00\uC9DC \uD45C\uBA74 \uC5C6\uC774 \uC99D\uAC70\uB85C\uB9CC \uBCF4\uC5EC\uC90D\uB2C8\uB2E4.", "Show or pin only existing C3D artifacts. Feature outputs stay evidence-only; no synthetic surface is created.");
+    public string DisplayedOutputsNoViewerSelection => T("ThreeD.Workbench.DisplayedOutputsNoViewerSelection", "\uC0B0\uCD9C\uBB3C \uAD00\uB9AC\uC790\uC5D0\uC11C \uC120\uD0DD\uB41C 3D \uD45C\uC2DC \uC5C6\uC74C", "No 3D display selected by Output Manager");
+    public string CurrentViewerDisplay => T("ThreeD.Workbench.CurrentViewerDisplay", "\uD604\uC7AC 3D \uBDF0 \uD45C\uC2DC", "Current 3D Viewer display");
+    public string DisplayedInViewer => T("ThreeD.Workbench.DisplayedInViewer", "\uBDF0\uC5B4\uC5D0 \uD45C\uC2DC\uB428", "Displayed in Viewer");
+    public string ShowInViewer => T("ThreeD.Command.ShowInViewer", "3D \uBDF0\uC5D0 \uD45C\uC2DC", "Show in 3D View");
+    public string PinToCompare => T("ThreeD.Command.PinToCompare", "\uBE44\uAD50\uC5D0 \uACE0\uC815", "Pin to Compare");
+    public string FocusStep => T("ThreeD.Command.FocusStep", "\uB2E8\uACC4 \uD3EC\uCEE4\uC2A4", "Focus Step");
+    public string DisplayedOutputsSummaryFormat => T("ThreeD.Workbench.DisplayedOutputsSummaryFormat", "\uD45C\uC2DC \uAC00\uB2A5 {0} | \uC99D\uAC70 \uC804\uC6A9 {1}", "{0} renderable | {1} evidence-only");
+    public string DisplayableC3DData => T("ThreeD.Workbench.DisplayableC3DData", "C3D \uBDF0\uC5B4 \uB370\uC774\uD130 \uC0AC\uC6A9 \uAC00\uB2A5", "C3D viewer data available");
+    public string EvidenceOnlyOutput => T("ThreeD.Workbench.EvidenceOnlyOutput", "\uC99D\uAC70 \uC804\uC6A9: \uAC00\uC9DC 3D \uD45C\uBA74\uC744 \uB9CC\uB4E4\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", "Evidence only; no synthetic 3D surface is created");
+    public string NoCurrentDisplayableOutput => T("ThreeD.Workbench.NoCurrentDisplayableOutput", "\uD604\uC7AC \uD45C\uC2DC \uAC00\uB2A5\uD55C \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No current displayable output");
+    public string PinnedSlotsFormat => T("ThreeD.Workbench.PinnedSlotsFormat", "\uBE44\uAD50 \uC2AC\uB86F {0}\uC5D0 \uACE0\uC815", "Pinned to comparison slot {0}");
+    public string FlowMap => T("ThreeD.Workbench.FlowMap", "\uD750\uB984 \uB9F5", "Flow Map");
+    public string FlowMapTitle => T("ThreeD.Workbench.FlowMapTitle", "\uC785\uB825 \u2192 \uB3C4\uAD6C \u2192 \uC815\uC2DD \uCD9C\uB825", "Input → Tool → Typed output");
+    public string FlowMapDetail => T("ThreeD.Workbench.FlowMapDetail", "\uD2B8\uB9AC \uC120\uD0DD\uACFC \uB3D9\uAE30\uD654\uB41C \uC77D\uAE30 \uC804\uC6A9 \uB370\uC774\uD130 \uACBD\uB85C\uC785\uB2C8\uB2E4. \uC5F0\uACB0\uC744 \uC218\uC815\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only data routes synchronized with the tree. It does not edit connections or run a tool.");
+    public string FlowMapReadOnly => T("ThreeD.Workbench.FlowMapReadOnly", "\uC77D\uAE30 \uC804\uC6A9 \u2022 \uC5F0\uACB0 \uC218\uC815 \uC5C6\uC74C", "Read-only • no connection edits");
+    public string FlowMapInput => T("ThreeD.Workbench.FlowMapInput", "\uC785\uB825 \uD3EC\uD2B8", "Input port");
+    public string FlowMapOutput => T("ThreeD.Workbench.FlowMapOutput", "\uCD9C\uB825 \uD3EC\uD2B8", "Output port");
+    public string FlowMapEmptyHint => T("ThreeD.Workbench.FlowMapEmptyHint", "\uD2F0\uCE6D\uB41C \uB3C4\uAD6C \uB2E8\uACC4\uAC00 \uC5C6\uC5B4 \uD750\uB984\uC744 \uD45C\uC2DC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", "No taught tool steps are available to map.");
     public string NavigatorHint => T("ThreeD.Workbench.NavigatorHint", "\uB808\uC2DC\uD53C \uD0D0\uC0C9\uAE30\uB294 \uC77D\uAE30 \uC6B0\uC120\uC785\uB2C8\uB2E4. \uD30C\uC774\uD504\uB77C\uC778 \uB178\uB4DC\uB97C \uC120\uD0DD\uD574 \uD574\uB2F9 \uB2E8\uACC4 \uD30C\uB77C\uBBF8\uD130\uB97C \uD655\uC778\uD558\uACE0, \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uAC8C\uC2DC\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uC2E4\uD589\uD558\uC138\uC694.", "Recipe Navigator is read-first. Select a pipeline node to focus its typed Step Parameters; Preview and Publish remain explicit.");
     public string RecipeSource => T("ThreeD.Workbench.RecipeSource", "\uB808\uC2DC\uD53C \uC18C\uC2A4", "Recipe source");
     public string RecipeNavigator => T("ThreeD.Workbench.RecipeNavigator", "\uB808\uC2DC\uD53C \uD0D0\uC0C9\uAE30", "Recipe Navigator");
@@ -82,6 +117,13 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string Output => T("ThreeD.Label.Output", "\uCD9C\uB825", "Output");
     public string ParameterAdapter => T("ThreeD.Label.ParameterAdapter", "\uD30C\uB77C\uBBF8\uD130 \uC5B4\uB311\uD130", "Parameter adapter");
     public string Inputs => T("ThreeD.Label.Inputs", "\uC785\uB825", "Inputs");
+    public string InputParameterOutputSummary => T("ThreeD.Label.InputParameterOutputSummary", "\uC785\uB825 \u2192 \uD30C\uB77C\uBBF8\uD130 \u2192 \uCD9C\uB825", "Inputs → Parameters → Output");
+    public string TypedParameters => T("ThreeD.Label.TypedParameters", "\uC815\uC2DD \uD30C\uB77C\uBBF8\uD130", "Typed parameters");
+    public string StepPropertiesEditDetail => T("ThreeD.Workbench.StepPropertiesEditDetail", "\uD3B8\uC9D1\uC740 \uC791\uC131\uB41C \uB808\uC2DC\uD53C\uB9CC \uBC14\uAFC9\uB2C8\uB2E4. \uC9C0\uC6D0\uB41C \uC815\uC2DD \uB2E8\uACC4\uB294 \uBBF8\uB9AC\uBCF4\uAE30\uB85C \uBA85\uC2DC\uC801\uC73C\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4.", "Editing changes only the authored recipe. Use Preview explicitly to execute a supported typed step.");
+    public string Discard => T("ThreeD.Command.Discard", "\uBC84\uB9AC\uAE30", "Discard");
+    public string ApplyParameters => T("ThreeD.Command.ApplyParameters", "\uD30C\uB77C\uBBF8\uD130 \uC801\uC6A9", "Apply parameters");
+    public string Produces => T("ThreeD.Label.Produces", "\uC0B0\uCD9C \uC815\uC2DD", "Produces");
+    public string OutputEntity => T("ThreeD.Label.OutputEntity", "\uCD9C\uB825 \uC5D4\uD2F0\uD2F0", "Output entity");
     public string ExpectedData => T("ThreeD.Label.ExpectedData", "\uAE30\uB300 \uB370\uC774\uD130", "Expected data");
     public string InputEntities => T("ThreeD.Label.InputEntities", "\uC785\uB825 \uC5D4\uD2F0\uD2F0(\uC138\uBBF8\uCF5C\uB860\uC73C\uB85C \uAD6C\uBD84)", "Input entities (separate with ;)");
     public string ToolboxSequenceHint => T("ThreeD.Workbench.ToolboxSequenceHint", "\uB808\uC2DC\uD53C\uB97C \uC21C\uC11C\uB300\uB85C \uAD6C\uC131\uD558\uC138\uC694: \uC900\uBE44, \uD53C\uCC98, \uAD6C\uC131, \uC815\uB82C, \uCE21\uC815, \uAC80\uD1A0.", "Build the recipe in order: prepare, feature, construct, align, measure, then review.");

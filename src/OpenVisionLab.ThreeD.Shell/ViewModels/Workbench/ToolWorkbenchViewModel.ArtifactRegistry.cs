@@ -132,6 +132,8 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         RefreshNavigatorSelection();
+        RebuildOutputCompareCandidates();
+        RebuildDisplayedOutputs();
         OnPropertyChanged(nameof(ArtifactRegistrySummary));
     }
 

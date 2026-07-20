@@ -47,6 +47,45 @@ added. Current-source evidence passes build `0/0`, Tool Recipe Teaching
 screenshot-quality captures. P4 owner scoring remains required before the
 `80/100` UI gate or algorithm work can be considered open.
 
+Current GoPxL chain-readability checkpoint on 2026-07-20: the owner's review
+reopened the provisional `89/100` UI score because it was too narrow: it did
+not adequately evaluate whether an operator can see the `INPUT -> TOOL ->
+OUTPUT` route for a multi-tool inspection recipe. The score is historical,
+not accepted, and the UI gate remains closed. G1 provides a bilingual,
+read-only Flow Map inside Pipeline / Validation. G2 provides a floatable/
+hideable `Output Compare` dock whose explicit A/B/C pins render only a
+verified source or the current Filter Preview C3D; non-surface feature
+artifacts remain evidence, not fabricated surfaces. G3 provides a compact,
+read-only selected-tool `Inputs -> Parameters -> Output` summary above the
+existing single WPG parameter editor. All three surfaces are read-only with
+respect to the recipe except for the pre-existing authored editors and
+Apply/Discard boundary. Current source passes build `0/0`, Artifact Navigator
+`11/11`, Workbench docking `22/22`, Tool Recipe Teaching `18/18`, and Korean
+`1920 x 1080` / `1280 x 760` plus English `1920 x 1080`
+screenshot-quality capture. The following G4 checkpoint supersedes that
+historical next-decision statement; a writable graph, generic executor,
+sensor/PLC/HMI, affine solver, calibration, and metrology scope remain out of
+bounds. See
+`docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md` and
+`docs/OPENVISIONLAB_3D_GOPXL_TOOL_LAB_DIRECTION_20260719.md`.
+
+Current GoPxL chain-readability G4 checkpoint on 2026-07-20: the lower
+Workbench now adds a floatable/hideable `Displayed Outputs / Overlay Manager`
+beside the existing Flow Map, Output Compare, and selected-tool I/P/O summary.
+It reads the existing Artifact Registry and permits only a verified source or
+current non-stale Filter C3D to be shown in the main Viewer or pinned to the
+first empty A/B/C compare slot. `EdgePointSet`, lines, corners, stale, and
+declared output remain evidence-only or unavailable; no synthetic C3D surface
+is created. Show/pin/focus actions neither execute a tool nor alter routes,
+parameters, or recipe persistence. Current-source evidence passes build `0/0`,
+Tool Recipe Teaching `18/18`, Workbench docking `24/24`, Artifact Navigator
+`14/14`, and screenshot-quality at Korean `1920 x 1080` / `1280 x 720` plus
+English `1920 x 1080`. Evidence is
+`artifacts/ui/20260720-displayed-outputs-g4/`. The UI gate remains unaccepted;
+next UI scope is G5 port diagnostics / Problems followed by G6 compatible Tool
+Catalog scanning. A writable graph, generic executor, camera/PLC/HMI, affine
+solver, calibration, and metrology remain out of scope.
+
 For the user's full-XYZ point-cloud workflow, the ordered inspection steps are intended to express `source -> filter -> height-difference edge candidates -> fitted 3D lines/planes -> intersections/correspondence evidence -> XYZ affine transform -> derived 3D map -> thickness/warpage/other measurements -> review`. This is a product direction, not a claim that the generic executor or affine solver exists today.
 
 Current typed-tool chain checkpoint on 2026-07-19: **Filter, Height Difference

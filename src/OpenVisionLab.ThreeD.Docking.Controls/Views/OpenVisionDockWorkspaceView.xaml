@@ -51,13 +51,29 @@
                     </avalonDock:LayoutPanel>
                     <avalonDock:LayoutAnchorablePane x:Name="evidencePane"
                                                       DockHeight="1*">
-                            <avalonDock:LayoutAnchorable x:Name="evidenceAnchorable"
+                        <avalonDock:LayoutAnchorable x:Name="evidenceAnchorable"
                                                          Title="{Binding EvidenceTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
                                                          ContentId="evidence-workbench"
                                                          CanClose="False"
                                                          CanFloat="True"
                                                          CanHide="False">
                             <ContentPresenter Content="{Binding EvidenceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="outputCompareAnchorable"
+                                                     Title="{Binding OutputCompareTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="output-compare"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="True">
+                            <ContentPresenter Content="{Binding OutputCompareContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                        </avalonDock:LayoutAnchorable>
+                        <avalonDock:LayoutAnchorable x:Name="displayedOutputsAnchorable"
+                                                     Title="{Binding DisplayedOutputsTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                     ContentId="displayed-outputs"
+                                                     CanClose="False"
+                                                     CanFloat="True"
+                                                     CanHide="True">
+                            <ContentPresenter Content="{Binding DisplayedOutputsContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
                         </avalonDock:LayoutAnchorable>
                         <avalonDock:LayoutAnchorable x:Name="linkedViewAnchorable"
                                                      Title="{Binding LinkedViewTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"

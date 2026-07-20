@@ -74,6 +74,32 @@ internal static class ToolArtifactNavigatorVerification
                 && workbench.ArtifactRegistry.Single(item => item.Id == "derived.edgepoints.01").State == "Declared",
                 workbench.ArtifactRegistrySummary);
 
+            workbench.CompareSlotAArtifactId = source.EntityId;
+            Check(
+                "Output Compare exposes only the ready source before Preview",
+                workbench.GetCompareCandidate(source.EntityId) is { IsSource: true, C3DPath: var sourceComparePath }
+                && File.Exists(sourceComparePath)
+                && workbench.GetCompareCandidate("derived.filtered.01") is null
+                && workbench.CompareSlotASummary.Contains(source.EntityId, StringComparison.Ordinal),
+                $"candidates={string.Join(',', workbench.CompareCandidates.Select(item => item.Id))};slotA={workbench.CompareSlotASummary}");
+
+            var displayRequests = 0;
+            workbench.ViewerArtifactDisplayRequested += (_, request) =>
+            {
+                displayRequests++;
+                request.WasDisplayed = File.Exists(request.C3DPath);
+            };
+            var displayedSource = workbench.DisplayedOutputs.Single(item => item.Id == source.EntityId);
+            workbench.ShowDisplayedOutputInViewerCommand.Execute(displayedSource);
+            Check(
+                "Displayed Outputs shows only an existing C3D source without execution",
+                displayRequests == 1
+                && displayedSource.IsRenderableInViewer
+                && displayedSource.IsShownInViewer
+                && !workbench.HasCurrentFilterPreview
+                && !workbench.HasCurrentEdgePreview,
+                $"requests={displayRequests};summary={workbench.CurrentViewerOutputSummary}");
+
             var pipelineRoot = workbench.NavigatorRoots.Single(item => item.NodeKind == "Pipeline");
             Check(
                 "navigator preserves ordered input-output tree",
@@ -105,6 +131,29 @@ internal static class ToolArtifactNavigatorVerification
                 && filterArtifact.HasContentHash,
                 $"state={filterArtifact.State};hash={filterArtifact.ContentSha256};input={filterArtifact.InputEntityIds}");
 
+            workbench.CompareSlotBArtifactId = filterArtifact.Id;
+            Check(
+                "Output Compare accepts current C3D source and Filter output without routing or running Edge",
+                workbench.GetCompareCandidate(source.EntityId) is { IsSource: true, C3DPath: var sourcePathForCompare }
+                && File.Exists(sourcePathForCompare)
+                && workbench.GetCompareCandidate(filterArtifact.Id) is { IsSource: false, State: "Preview", C3DPath: var filterPathForCompare }
+                && File.Exists(filterPathForCompare)
+                && workbench.GetCompareCandidate("derived.edgepoints.01") is null
+                && !workbench.HasCurrentEdgePreview
+                && workbench.CompareSlotASummary.Contains(source.EntityId, StringComparison.Ordinal)
+                && workbench.CompareSlotBSummary.Contains(filterArtifact.Id, StringComparison.Ordinal),
+                $"candidates={string.Join(',', workbench.CompareCandidates.Select(item => item.Id))};slotA={workbench.CompareSlotASummary};slotB={workbench.CompareSlotBSummary}");
+
+            workbench.CompareSlotBArtifactId = string.Empty;
+            var displayedFilter = workbench.DisplayedOutputs.Single(item => item.Id == filterArtifact.Id);
+            workbench.PinDisplayedOutputToCompareCommand.Execute(displayedFilter);
+            Check(
+                "Displayed Outputs pins an existing Filter C3D to Compare without routing or execution",
+                string.Equals(workbench.CompareSlotBArtifactId, filterArtifact.Id, StringComparison.Ordinal)
+                && displayedFilter.IsPinnedToCompare
+                && !workbench.HasCurrentEdgePreview,
+                $"slotB={workbench.CompareSlotBArtifactId};pins={displayedFilter.ComparePins}");
+
             workbench.PublishSelectedStepCommand.Execute(null);
             filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");
             Check("Filter Publish updates only artifact state", filterArtifact.State == "Published" && filterArtifact.HasContentHash, filterArtifact.Detail);
@@ -127,11 +176,22 @@ internal static class ToolArtifactNavigatorVerification
                 && edgeArtifact.HasContentHash,
                 $"state={edgeArtifact.State};hash={edgeArtifact.ContentSha256};input={edgeArtifact.InputEntityIds}");
 
+            var displayedEdge = workbench.DisplayedOutputs.Single(item => item.Id == edgeArtifact.Id);
+            workbench.FocusDisplayedOutputStepCommand.Execute(displayedEdge);
+            Check(
+                "Displayed Outputs keeps feature output evidence-only and focuses its authored step",
+                displayedEdge.IsEvidenceOnly
+                && !displayedEdge.CanShowInViewer
+                && !displayedEdge.CanPinToCompare
+                && workbench.SelectedPipelineStep?.ToolId == "height-difference-edge",
+                $"availability={displayedEdge.Availability};selected={workbench.SelectedPipelineStepTitle}");
+
             workbench.HeightDifferenceEdgeMinimumDelta = "20";
             edgeArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.edgepoints.01");
             Check(
                 "parameter edits retain identity but mark output stale",
-                edgeArtifact.State == "Stale" && edgeArtifact.HasContentHash && workbench.IsEdgePreviewStale,
+                edgeArtifact.State == "Stale" && edgeArtifact.HasContentHash && workbench.IsEdgePreviewStale
+                && workbench.DisplayedOutputs.Single(item => item.Id == edgeArtifact.Id).HasNoCurrentOutput,
                 $"state={edgeArtifact.State};hash={edgeArtifact.ContentSha256}");
         }
         catch (Exception exception)

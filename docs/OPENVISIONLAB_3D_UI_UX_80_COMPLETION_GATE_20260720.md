@@ -376,7 +376,7 @@ the owner scorecard review and `80/100` acceptance decision.
 
 ## P4 provisional acceptance review - 2026-07-20
 
-Status: Awaiting owner acceptance
+Status: Owner review reopened — the `89/100` score below is historical and is not an acceptance candidate until the GoPxL chain-readability gaps are re-reviewed.
 
 This review uses the current Debug build after the Tool Lab context correction.
 Each single-instance Tool Lab now remembers its exact recipe step and restores
@@ -420,3 +420,162 @@ Owner decision required: accept or revise the provisional `89/100` score. If
 accepted, update the product-target checkpoint to record the UI gate as
 complete and only then select the next algorithm slice. If revised below `80`,
 keep algorithm work paused and use the deducted rows as the next UI scope.
+
+## GoPxL chain-readability reassessment and G1 Flow Map - 2026-07-20
+
+Status: Complete for G1; the global UI/UX gate remains **not accepted**.
+
+The owner correctly identified that the earlier `89/100` table evaluated
+tree-first navigation, Tool Labs, docking, and styling, but did not give
+enough weight to the readability of a multi-tool data chain. It therefore
+cannot be used as a UI-gate acceptance score. The functional reference was
+checked again against the official [LMI GoPxL Tools](https://am.lmi3d.com/manuals/gopxl/gopxl-1.2/LMILaserLineProfiler/Content/Inspect_toolRelated/Inspect_Tools.htm)
+and [Working with Tool Chains](https://am.lmi3d.com/manuals/gopxl/gopxl-1.2/LMILaserLineProfiler/Content/ToolsDiagram/Working_with_Tool_Chains_in_the_Tools_Diagram.htm)
+guidance: GoPxL makes the current tool's Inputs, Parameters, Outputs, typed
+ports, and displayable results easy to inspect together. OpenVisionLab adopts
+that operating principle, not GoPxL's visual design.
+
+| Area | Current OpenVisionLab evidence | Decision |
+| --- | --- | --- |
+| Tool catalog and route selection | Toolbox, selected-route card, and Recipe Navigator already expose typed tools and authored IDs. | Keep tree-first; later add compatible-next-tool scanning, never silent auto-routing. |
+| Data-chain readability | The Pipeline table lists rows but did not show each row as a connected input-to-output route. | G1 added a read-only Flow Map synchronized with the same selected step. |
+| Tool configuration | Typed WPG parameters and Tool Labs exist. | G3 complete: selected Step Parameters begins with a read-only Inputs / Parameters / Output summary; retain one WPG editor. |
+| Displayed outputs and comparison | A shared Output Compare dock pins real source/Filter Preview C3D artifacts into independent A/B/C viewers. | G2 complete; owner must now score the combined route/configuration workflow. |
+| Graph editing and industrial scope | No generic typed-port graph executor, undo model, or hardware-control boundary exists. | Deliberately deferred; no free drag-to-connect, camera, PLC, HMI, or production control. |
+
+G1 scope: the existing docked Pipeline / Validation evidence pane now provides
+a bilingual `Flow Map` tab. Each authored row renders the existing `Input
+contract + entity IDs -> Tool -> Output contract + entity ID + state` route.
+Both the tree/table and the Flow Map bind to `SelectedPipelineStep`, so
+selection is shared. The new `--workbench-bottom-pane flow-map` smoke option
+opens that tab and retains the existing dock behavior. It only displays the
+recipe draft: it cannot edit a connection, create a step, change a parameter,
+or run Preview/Publish.
+
+Acceptance criteria and current evidence:
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Existing typed routes are visible as input-to-tool-to-output cards | Current `1920 x 1080` Korean capture shows Filter and Height Difference Edge cards with existing contract/entity IDs and state. |
+| Flow Map is read-first and selection-synchronized | It reuses `PipelineSteps` / `SelectedPipelineStep`; docking verification explicitly activates the Flow Map without a model mutation. |
+| The two reference heights remain legible | Final Korean `1920 x 1080` and `1280 x 760` captures show the selected Flow Map. The compact `1280` dock displays the first complete route and retains vertical scrolling for the remaining chain. |
+| Korean and English labels are intentional | Final Korean and English `1920 x 1080` captures show translated Flow Map labels while technical contracts/IDs remain stable. |
+| Existing teaching and docking behavior remains intact | Build is `0` warnings / `0` errors; Tool Recipe Teaching `18/18`; Workbench docking `21/21`. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-gopxl-flow-map-g1/before-workbench-current-1920-ko.png`.
+- After Korean: `artifacts/ui/20260720-gopxl-flow-map-g1/after-flow-map-1920-ko-final.png` and `after-flow-map-1280-ko-final.png`.
+- After English: `artifacts/ui/20260720-gopxl-flow-map-g1/after-flow-map-1920-en-final.png`.
+- Verification: `artifacts/ui/20260720-gopxl-flow-map-g1/workbench-docking.report.txt` and `tool-recipe-teaching.report.txt`.
+
+Boundary: G1 is a route map, not a free-form topology editor. It intentionally
+does not draw editable branch wires or fabricate result data.
+
+## G2 Displayed Outputs / Compare - 2026-07-20
+
+Status: Complete for G2; the global UI/UX gate remains **not accepted**.
+
+The new `Output Compare` dock is a floatable, hideable lower Workbench pane
+with explicit A/B/C session pins. Its candidate list is derived from the
+existing Artifact Registry but intentionally renders only artifacts that have
+real C3D data: the verified source and the current non-stale Filter Preview.
+The `—` item clears a slot. An Edge, line, intersection, or declared-only
+artifact is not shown as a fabricated C3D surface.
+
+The card labels show display name, contract, state, and stable entity ID. Each
+occupied card hosts its own compact viewer; the card strip has a fixed
+three-card width with horizontal access at `1280 x 760`, and the entire pane
+can be floated for a larger comparison. A registry rebuild after Preview keeps
+the explicit source pin rather than allowing WPF list refresh to clear it.
+Selecting, clearing, docking, or floating a comparison slot never changes the
+recipe, reroutes an input, or executes Preview/Publish.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Only real, current displayable C3D artifacts can be pinned | Artifact Navigator `11/11` proves source plus Filter Preview candidates are present, while downstream `EdgePointSet` is excluded. |
+| Explicit A/B pin survives Filter Preview candidate rebuild | The same `11/11` check confirms the source pin and Filter Preview pin remain resolved after the registry is rebuilt. |
+| Compare is a normal dockable Workspace view | Workbench docking is `22/22`, including Output Compare activation; the pane allows Float and Hide but cannot close. |
+| Korean/English and compact layout are readable | Current-build Korean `1920 x 1080` / `1280 x 760` and English `1920 x 1080` screenshot-quality reports all accepted on attempt one. |
+| Existing recipe behavior remains unchanged | Current build has `0` warnings / `0` errors; the compare view reads session state only. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-output-compare-g2/before-workbench-1920-ko.png`.
+- After Korean: `artifacts/ui/20260720-output-compare-g2/after-output-compare-1920-ko.png` and `after-output-compare-1280-ko.png`.
+- After English: `artifacts/ui/20260720-output-compare-g2/after-output-compare-1920-en.png`.
+- Verification: `artifacts/verification/20260720-output-compare-g2-artifact-navigator.txt` and `20260720-output-compare-g2-docking.txt`.
+
+Boundary / next dependency: G2 is a bounded real-artifact compare surface,
+not a generic result router or linked-camera subsystem. G3 completes the
+selected-tool summary below without adding a second parameter editor or
+starting an algorithm.
+
+## G3 Selected-tool Inputs / Parameters / Outputs - 2026-07-20
+
+Status: Complete for G3; the global UI/UX gate remains **not accepted**.
+
+The selected Step Parameters pane now starts with a compact, read-only
+`Inputs -> Parameters -> Output` summary. It places the existing input
+contract/entity ID, typed adapter state, and output contract/entity ID in one
+scan path immediately above the existing WPG. Existing input/output text-box
+editors remain their current controls, and the WPG remains the single staged
+parameter editor with the existing Apply/Discard boundary.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Selected tool configuration is readable without expanding Input or Output sections | The summary card shows the authored Filter input and output IDs, contracts, and typed adapter status together. |
+| Parameter editing has one source of truth | The summary is read-only; only the existing `RecipeStepPropertyGridHost` edits a typed draft. |
+| Korean/English labels and compact width remain readable | Current-build Korean `1920 x 1080` / `1280 x 760` and English `1920 x 1080` captures show the localized summary labels while technical IDs remain stable. |
+| Existing recipe and dock behavior remains unchanged | Build is `0` warnings / `0` errors; Tool Recipe Teaching `18/18`; Workbench docking `22/22`; Artifact Navigator `11/11`. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-input-parameter-output-g3/before-tool-inspector-1920-ko.png`.
+- After Korean: `artifacts/ui/20260720-input-parameter-output-g3/after-tool-inspector-1920-ko.png` and `after-tool-inspector-1280-ko.png`.
+- After English: `artifacts/ui/20260720-input-parameter-output-g3/after-tool-inspector-1920-en.png`.
+- Verification: `artifacts/ui/20260720-input-parameter-output-g3/tool-recipe-teaching.report.txt`, `workbench-docking.report.txt`, and `artifact-navigator.report.txt`.
+
+Boundary / next decision: G3 changes information hierarchy and localized text
+only. It does not add a tool, algorithm, graph editor, generic executor,
+camera/PLC/HMI, affine execution, calibration, or metrology claim.
+
+## G4 Displayed Outputs / Overlay Manager - 2026-07-20
+
+Status: Complete for G4; the global UI/UX gate remains **not accepted**.
+
+The new `Displayed Outputs / Overlay Manager` is a floatable/hideable lower
+Workbench dock that sits between the existing recipe navigation and independent
+Output Compare viewers. It derives every row from the read-only typed Artifact
+Registry. Only an actual verified C3D source or a current non-stale Filter C3D
+can use `Show in 3D View` or `Pin to Compare`; the Viewer reports a successful
+display before the row is marked as current. Pinning fills the first empty A,
+B, or C slot and remains session-only.
+
+Feature artifacts with current identity are explicitly marked evidence-only
+and expose only `Focus Step`. Declared or stale artifacts are visibly
+unavailable. This prevents an `EdgePointSet`, fitted line, or corner from
+looking like a complete transformed C3D surface. The manager contains no new
+tool execution, parameter editor, route editor, persistence path, or generic
+overlay renderer.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Only real C3D artifacts can enter the main Viewer or comparison pins | Artifact Navigator `14/14` covers source display request, Filter pinning, and excludes current `EdgePointSet` from both paths. |
+| Feature output is honest about its display boundary | The same verification checks evidence-only Edge output with `Focus Step`; stale output becomes unavailable without losing identity. |
+| Manager actions preserve authored workflow boundaries | The display/pin checks confirm no Filter/Edge execution; Tool Recipe Teaching remains `18/18`. |
+| Output manager is a normal dockable view | Workbench docking is `24/24`; `displayed-outputs` activates, its dock contract permits Float/Hide, and it cannot close. |
+| Bilingual operator layouts remain usable | Current screenshots pass Korean `1920 x 1080` / `1280 x 720` and English `1920 x 1080` quality checks on first attempt. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-displayed-outputs-g4/before-displayed-outputs-1920-ko.png`.
+- After Korean: `artifacts/ui/20260720-displayed-outputs-g4/after-displayed-outputs-1920-ko.png` and `after-displayed-outputs-1280-ko.png`.
+- After English: `artifacts/ui/20260720-displayed-outputs-g4/after-displayed-outputs-1920-en.png`.
+- Verification: `artifacts/ui/20260720-displayed-outputs-g4/tool-recipe-teaching.report.txt`, `workbench-docking.report.txt`, and `artifact-navigator.report.txt`.
+
+Boundary / next priority: G4 completes a bounded display-management surface,
+not a generic graph, automatic routing system, arbitrary-overlay renderer, or
+algorithm executor. G5 is port-level Flow Map diagnostics and a compact
+Problems surface; G6 is compatible Tool Catalog scanning. The `80/100` UI/UX
+gate is still not owner accepted.

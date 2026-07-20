@@ -62,6 +62,26 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool IsSessionLogPaneSelected => DockWorkspace.IsLinkedViewPaneSelected;
 
+    public void ActivateFlowMap()
+    {
+        DockWorkspace.ActivateEvidencePane();
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        {
+            review.ActivateFlowMap();
+        }
+    }
+
+    public bool IsFlowMapSelected => DockWorkspace.IsEvidencePaneSelected
+                                     && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsFlowMapSelected: true };
+
+    public void ActivateOutputComparePane() => DockWorkspace.ActivateOutputComparePane();
+
+    public bool IsOutputComparePaneSelected => DockWorkspace.IsOutputComparePaneSelected;
+
+    public void ActivateDisplayedOutputsPane() => DockWorkspace.ActivateDisplayedOutputsPane();
+
+    public bool IsDisplayedOutputsPaneSelected => DockWorkspace.IsDisplayedOutputsPaneSelected;
+
     public void ActivateProfilePane() => DockWorkspace.ActivateProfilePane();
 
     public bool IsProfilePaneSelected => DockWorkspace.IsProfilePaneSelected;
@@ -83,6 +103,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         && DockWorkspace.ViewerContent is not null
         && DockWorkspace.ToolInspectorContent is not null
         && DockWorkspace.EvidenceContent is not null
+        && DockWorkspace.OutputCompareContent is not null
+        && DockWorkspace.DisplayedOutputsContent is not null
         && DockWorkspace.LinkedViewContent is not null
         && DockWorkspace.ProfileContent is not null
         && DockWorkspace.FitDiagnosticsContent is not null

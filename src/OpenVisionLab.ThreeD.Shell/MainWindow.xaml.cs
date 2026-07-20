@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private readonly EventHandler _workbenchAppliedTeachingSelectionsChangedHandler;
     private readonly EventHandler<ToolWorkbenchToolLabRequestEventArgs> _workbenchToolLabRequestedHandler;
     private readonly EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs> _workbenchFilterDisplayRequestedHandler;
+    private readonly EventHandler<ToolWorkbenchArtifactDisplayRequestEventArgs> _workbenchArtifactDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs> _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
@@ -121,6 +122,7 @@ public partial class MainWindow : Window
         _workbenchAppliedTeachingSelectionsChangedHandler = (_, _) => SyncAppliedTeachingSelections();
         _workbenchToolLabRequestedHandler = OnWorkbenchToolLabRequested;
         _workbenchFilterDisplayRequestedHandler = OnWorkbenchFilterDisplayRequested;
+        _workbenchArtifactDisplayRequestedHandler = OnWorkbenchArtifactDisplayRequested;
         _workbenchHeightDifferenceEdgeDisplayRequestedHandler = OnWorkbenchHeightDifferenceEdgeDisplayRequested;
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
@@ -150,6 +152,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.AppliedTeachingSelectionsChanged += _workbenchAppliedTeachingSelectionsChangedHandler;
         _viewModel.Workbench.ToolLabRequested += _workbenchToolLabRequestedHandler;
         _viewModel.Workbench.FilterDisplayRequested += _workbenchFilterDisplayRequestedHandler;
+        _viewModel.Workbench.ViewerArtifactDisplayRequested += _workbenchArtifactDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested += _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
@@ -162,6 +165,7 @@ public partial class MainWindow : Window
 
         ConfigureCalibrationStudyFromCommandLine();
         ConfigureToolTeachingRecipeFromCommandLine();
+        ConfigureOutputCompareFromCommandLine();
         ConfigureWorkbenchBottomPaneFromCommandLine();
         SyncAppliedTeachingSelections();
         Loaded += EnsureWorkbenchViewerSourceConsistency;
@@ -204,6 +208,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.AppliedTeachingSelectionsChanged -= _workbenchAppliedTeachingSelectionsChangedHandler;
         _viewModel.Workbench.ToolLabRequested -= _workbenchToolLabRequestedHandler;
         _viewModel.Workbench.FilterDisplayRequested -= _workbenchFilterDisplayRequestedHandler;
+        _viewModel.Workbench.ViewerArtifactDisplayRequested -= _workbenchArtifactDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested -= _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
@@ -1094,6 +1099,15 @@ public partial class MainWindow : Window
     {
         switch (GetCommandLineValue("--workbench-bottom-pane")?.Trim().ToLowerInvariant())
         {
+            case "flow" or "flow-map":
+                ToolWorkbench.ActivateFlowMap();
+                break;
+            case "compare" or "output-compare":
+                ToolWorkbench.ActivateOutputComparePane();
+                break;
+            case "outputs" or "displayed-outputs":
+                ToolWorkbench.ActivateDisplayedOutputsPane();
+                break;
             case "session" or "session-log":
                 ToolWorkbench.ActivateSessionLogPane();
                 break;
@@ -1110,6 +1124,13 @@ public partial class MainWindow : Window
                 ToolWorkbench.ActivateCorrespondenceEvidencePane();
                 break;
         }
+    }
+
+    private void ConfigureOutputCompareFromCommandLine()
+    {
+        _viewModel.Workbench.CompareSlotAArtifactId = GetCommandLineValue("--workbench-compare-slot-a") ?? string.Empty;
+        _viewModel.Workbench.CompareSlotBArtifactId = GetCommandLineValue("--workbench-compare-slot-b") ?? string.Empty;
+        _viewModel.Workbench.CompareSlotCArtifactId = GetCommandLineValue("--workbench-compare-slot-c") ?? string.Empty;
     }
 
     private void LoadSelectedInspectionTask()
@@ -1260,6 +1281,22 @@ public partial class MainWindow : Window
             ? $"Source | {Path.GetFileName(args.C3DPath)}"
             : $"Filter Preview | {hashLabel}";
         if (_viewer.ShowC3DWorkbenchResult(args.C3DPath, label))
+        {
+            _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+            SyncAppliedTeachingSelections();
+            return;
+        }
+
+        OVLog.Write(LogCategory.UI, LogLevel.Error, _viewer.HostState.ViewerStatus);
+    }
+
+    private void OnWorkbenchArtifactDisplayRequested(
+        object? sender,
+        ToolWorkbenchArtifactDisplayRequestEventArgs args)
+    {
+        var label = $"{args.DisplayName} | {args.Contract} | {args.State}";
+        args.WasDisplayed = _viewer.ShowC3DWorkbenchResult(args.C3DPath, label);
+        if (args.WasDisplayed)
         {
             _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
             SyncAppliedTeachingSelections();

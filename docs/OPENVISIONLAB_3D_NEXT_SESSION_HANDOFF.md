@@ -130,6 +130,78 @@ product target or starting new algorithm work. The remaining deductions are
 manual first-time operator, assistive-technology/keyboard, and high-DPI or
 real-hardware visual review; they are not failing automated checks.
 
+**Current GoPxL chain-readability / G1-G3 checkpoint (2026-07-20):** the owner
+reopened the provisional `89/100` UI score because the prior review did not
+adequately assess multi-tool `INPUT -> TOOL -> OUTPUT` readability. Treat that
+score as historical and **not accepted**; do not start new algorithm work.
+The existing Pipeline / Validation dock now has a bilingual, read-only `Flow
+Map` tab. It renders every existing authored row as its input contract/entity
+IDs, tool, output contract/entity ID, and state, and it shares selection with
+the tree/table. The map cannot edit a connection, create a step, change a
+parameter, Preview, or Publish. Current evidence passes build `0/0`, Tool
+Recipe Teaching `18/18`, Workbench docking `21/21` (including map activation),
+and Korean `1920 x 1080` / `1280 x 760` plus English `1920 x 1080`
+screenshot-quality capture. Evidence:
+`artifacts/ui/20260720-gopxl-flow-map-g1/`; direction:
+`docs/OPENVISIONLAB_3D_GOPXL_TOOL_LAB_DIRECTION_20260719.md`.
+
+G2 is also complete: `Output Compare` is a floatable/hideable Workbench dock
+with explicit session-only A/B/C pins. It shows only a verified C3D source or
+the current non-stale Filter Preview as independent compact viewers; Edge,
+line, intersection, and declared-only artifacts are not fabricated as C3D
+surfaces. Pin selection neither reroutes the recipe nor executes a tool, and
+the source pin is retained when Preview rebuilds the Artifact Registry.
+Current evidence: build `0/0`, Artifact Navigator `11/11`, Workbench docking
+`22/22`, and screenshot-quality accepted for Korean `1920 x 1080` / `1280 x
+760` plus English `1920 x 1080`. Evidence:
+`artifacts/ui/20260720-output-compare-g2/` and
+`artifacts/verification/20260720-output-compare-g2-*.txt`.
+
+G3 is also complete: the selected Step Parameters pane starts with a compact,
+read-only `Inputs -> Parameters -> Output` summary that shows current input
+contract/entity ID, typed-adapter state, and output contract/entity ID without
+requiring the Input or Output Expander to be opened. The existing WPG remains
+the single staged parameter editor; existing authored input/output editors and
+Apply/Discard behavior are unchanged. Korean/English labels are localized,
+while technical contracts and IDs stay stable. Current evidence: build `0/0`,
+Tool Recipe Teaching `18/18`, Workbench docking `22/22`, Artifact Navigator
+`11/11`, and screenshot-quality accepted on attempt one for Korean `1920 x
+1080` / `1280 x 760` plus English `1920 x 1080`. Evidence:
+`artifacts/ui/20260720-input-parameter-output-g3/`. Its following next-decision
+statement is superseded by the G4 closure below. Do not add free graph editing,
+a generic executor, camera/PLC/HMI, affine execution, calibration, or
+metrology claims; do not resume algorithm work until the `80/100` UI gate is
+explicitly accepted.
+
+**Current GoPxL chain-readability / G4 checkpoint (2026-07-20):** the
+Workbench now also has a floatable/hideable `Displayed Outputs / Overlay
+Manager` dock. It projects the existing typed Artifact Registry and permits
+only a verified source or current non-stale Filter C3D to be explicitly shown
+in the main Viewer or pinned to the first empty A/B/C Output Compare slot.
+The View boundary confirms successful C3D display before the manager marks a
+row current. Feature outputs such as `EdgePointSet`, lines, and corners are
+evidence-only and only focus their authored step; stale/declared output is
+unavailable. No synthetic surface, execution, route mutation, parameter edit,
+or recipe persistence was added. Current-source evidence: build `0/0`, Tool
+Recipe Teaching `18/18`, Workbench docking `24/24`, Artifact Navigator
+`14/14`, and screenshot-quality accepted on the first attempt for Korean
+`1920 x 1080` / `1280 x 720` and English `1920 x 1080`.
+Evidence: `artifacts/ui/20260720-displayed-outputs-g4/`.
+
+Status: Complete
+Scope: G4 UI-only real-artifact display manager.
+Acceptance criteria: verified source/current Filter C3D only for Viewer/Compare;
+feature output evidence-only; no recipe execution/routing/persistence change;
+dock activation works and its contract permits float/hide; Korean/English
+screen evidence accepted.
+Verification: build `0/0`; teaching `18/18`; docking `24/24`; Artifact
+Navigator `14/14`; three accepted screenshot-quality reports.
+Evidence: `artifacts/ui/20260720-displayed-outputs-g4/`.
+Boundary / next dependency: G5 Flow Map port diagnostics plus compact Problems
+surface, then G6 compatible Tool Catalog scanning. Do not add free graph
+editing, generic execution, camera/PLC/HMI, affine execution, calibration, or
+metrology claims; the UI `80/100` gate remains unaccepted.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

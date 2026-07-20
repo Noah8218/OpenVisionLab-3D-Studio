@@ -18,6 +18,8 @@
                                       ViewerTitle="{Binding Localization.Viewer}"
                                       ToolInspectorTitle="{Binding Localization.StepParameters}"
                                       EvidenceTitle="{Binding Localization.PipelineValidation}"
+                                      OutputCompareTitle="{Binding Localization.OutputCompare}"
+                                      DisplayedOutputsTitle="{Binding Localization.DisplayedOutputs}"
                                       LinkedViewTitle="{Binding Localization.SessionLog}"
                                       ProfileTitle="{Binding Localization.HeightProfile}"
                                       FitDiagnosticsTitle="{Binding Localization.FitDiagnostics}"
@@ -247,10 +249,17 @@
         </dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
 
         <dock:OpenVisionDockWorkspaceView.EvidenceContent>
-            <Grid AutomationProperties.AutomationId="WorkbenchBottomPanel">
-                <workbench:RecipePipelineReviewView DataContext="{Binding Workbench}" />
-            </Grid>
+            <workbench:RecipePipelineReviewView DataContext="{Binding Workbench}"
+                                                AutomationProperties.AutomationId="WorkbenchBottomPanel" />
         </dock:OpenVisionDockWorkspaceView.EvidenceContent>
+
+        <dock:OpenVisionDockWorkspaceView.OutputCompareContent>
+            <workbench:OutputCompareView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.OutputCompareContent>
+
+        <dock:OpenVisionDockWorkspaceView.DisplayedOutputsContent>
+            <workbench:DisplayedOutputsView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.DisplayedOutputsContent>
 
         <dock:OpenVisionDockWorkspaceView.LinkedViewContent>
             <workbench:RunLogView DataContext="{Binding Workbench}" />
