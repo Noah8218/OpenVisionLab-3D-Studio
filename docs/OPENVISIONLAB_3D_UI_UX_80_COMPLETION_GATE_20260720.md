@@ -168,3 +168,38 @@ Verification reports are under
 Boundary: this completes the Pipeline state surface only. It does not accept
 the remaining P1 visual-system work or the global `80/100` UI/UX gate, and it
 does not add an inspection algorithm.
+
+## P1 Toolbox and Step Parameters feedback slice - 2026-07-20
+
+Status: Complete (source readiness and parameter-adapter presentation only)
+
+The theme now owns the shared Pipeline workflow-state badge instead of keeping
+it private to the review table. Toolbox uses the existing source readiness
+contract to present a green verified-source or amber blocked-source card.
+Step Parameters uses the same state badge for the selected step and presents
+the existing typed-adapter status as a teal ready or amber preserved/read-only
+card. The empty inspector now directs the operator to Toolbox's `Add
+inspection step` route, rather than incorrectly implying that Recipe Manager
+is the creation surface.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Empty workbench has a visible source and next-action state | The current-build empty capture shows the verified recipe-source card, the explicit `No recipe step selected` context, and the Toolbox route in Step Parameters. |
+| Unsupported authored step exposes its non-execution boundary | The XYZ Affine capture shows `Taught / pending` plus the amber `Partially supported - parameters are preserved read-only` adapter card. |
+| State treatment is consistent across review and inspector panes | The shared theme owns the same badge colors, icons, text, tooltips, and automation names used by Recipe Pipeline and Step Parameters. |
+| Reference sizes and existing behavior remain intact | Current `1920 x 1080` empty/unsupported captures and `1280 x 760` unsupported capture are accepted. Current build passed docking `19/19`, Tool Recipe Teaching `16/16`, Recipe Manager/WPG `17/17`, and Artifact Navigator `9/9`. |
+
+Fresh current-build captures:
+
+- Before, empty 1920: `artifacts/ui/20260720-workbench-p1-pane-feedback/before-empty-1920.png`
+- Before, unsupported 1920: `artifacts/ui/20260720-workbench-p1-pane-feedback/before-unsupported-affine-1920.png`
+- After, empty 1920: `artifacts/ui/20260720-workbench-p1-pane-feedback/after-empty-1920.png`
+- After, unsupported 1920: `artifacts/ui/20260720-workbench-p1-pane-feedback/after-unsupported-affine-1920.png`
+- After, unsupported 1280: `artifacts/ui/20260720-workbench-p1-pane-feedback/after-unsupported-affine-1280.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p1-pane-feedback/`.
+
+Boundary: this completes one P1 feedback slice. It does not score the global
+UI/UX gate or add algorithm execution, editable graph behavior, physical
+calibration, or metrology claims.

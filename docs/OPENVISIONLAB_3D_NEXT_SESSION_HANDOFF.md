@@ -42,6 +42,19 @@ Recipe Manager/WPG `17/17`, and Artifact Navigator `9/9` pass. The full UI gate 
 next is the remaining P1 surface/disabled/empty-state consistency across the
 Toolbox and Step Parameters panes, then P2 navigation and Tool Lab review.
 
+**Current P1 Toolbox/Step Parameters checkpoint (2026-07-20):** that
+remaining feedback slice is complete locally. Toolbox now shows the existing
+source-readiness contract as a green verified-source or amber blocked-source
+card. Step Parameters shares the Pipeline's themed state badge and shows the
+existing typed-adapter status as teal ready or amber preserved/read-only;
+the empty state correctly directs the operator to Toolbox's `Add inspection
+step` route. Current-build captures cover empty `1920 x 1080`, unsupported XYZ
+Affine `1920 x 1080`, and unsupported XYZ Affine `1280 x 760`; build `0/0`,
+docking `19/19`, teaching `16/16`, Recipe Manager/WPG `17/17`, and Artifact
+Navigator `9/9` pass. P1 still needs the broader default-control/density
+review; P2 tree-first navigation and Tool Lab review remain next. No algorithm
+development is authorized until the 80/100 UI gate is formally accepted.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

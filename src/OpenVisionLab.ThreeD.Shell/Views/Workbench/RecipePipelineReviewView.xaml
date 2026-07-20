@@ -3,111 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              AutomationProperties.AutomationId="RecipePipelineReview">
-    <UserControl.Resources>
-        <Style x:Key="PipelineStateBadgeStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="9" />
-            <Setter Property="Padding" Value="6,2" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding State}" Value="Ready">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview running">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview ready">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Published">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview stale">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Waiting for upstream">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught / needs correction">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught incomplete">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Error">
-                    <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="PipelineStateIconStyle" TargetType="ui:SymbolIcon">
-            <Setter Property="Symbol" Value="Clock24" />
-            <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding State}" Value="Ready">
-                    <Setter Property="Symbol" Value="CheckmarkCircle24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview running">
-                    <Setter Property="Symbol" Value="ArrowClockwise24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview ready">
-                    <Setter Property="Symbol" Value="Eye24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Published">
-                    <Setter Property="Symbol" Value="CheckmarkCircle24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview stale">
-                    <Setter Property="Symbol" Value="ArrowClockwise24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Waiting for upstream">
-                    <Setter Property="Symbol" Value="Warning24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught / needs correction">
-                    <Setter Property="Symbol" Value="Warning24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught incomplete">
-                    <Setter Property="Symbol" Value="Warning24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Error">
-                    <Setter Property="Symbol" Value="ErrorCircle24" />
-                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="PipelineStateTextStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding State}" Value="Ready"><Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview running"><Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview ready"><Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Published"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Preview stale"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Waiting for upstream"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught / needs correction"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Taught incomplete"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
-                <DataTrigger Binding="{Binding State}" Value="Error"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
-            </Style.Triggers>
-        </Style>
-    </UserControl.Resources>
     <Border Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,1,0,0"
@@ -211,18 +106,18 @@
                                                TextTrimming="CharacterEllipsis" />
                                     <Border Grid.Column="4"
                                             HorizontalAlignment="Right"
-                                            Style="{StaticResource PipelineStateBadgeStyle}"
+                                            Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
                                             ToolTip="{Binding State, StringFormat=Pipeline step state: {0}}"
                                             AutomationProperties.Name="{Binding State, StringFormat=Pipeline step state: {0}}">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14"
                                                            Height="14"
                                                            Margin="0,0,4,0"
-                                                           Style="{StaticResource PipelineStateIconStyle}" />
+                                                           Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
                                             <TextBlock MaxWidth="122"
                                                        FontSize="9.5"
                                                        FontWeight="SemiBold"
-                                                       Style="{StaticResource PipelineStateTextStyle}"
+                                                       Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
                                                        Text="{Binding State}"
                                                        TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
