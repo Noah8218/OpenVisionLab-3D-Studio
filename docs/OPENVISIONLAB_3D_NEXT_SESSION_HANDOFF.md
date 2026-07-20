@@ -11,6 +11,68 @@ current-build UI evidence until the owner explicitly reopens algorithm work.
 Preserve every explicit Preview/Publish/Run and source-immutability boundary.
 See `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
 
+**Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
+complete locally. The existing Flow Map now projects input/output port state
+from the typed Artifact Registry: ready/current, declared-upstream waiting,
+stale, and unresolved. Its compact bilingual Problems tab stays in the
+Pipeline / Validation dock and combines route checks with the existing
+validation messages. Focus Step only selects the authored step; it does not
+edit a route or parameter, save, Preview, Run, or Publish. Current source
+passes build 0/0, Tool Recipe Teaching 18/18, Workbench docking 25/25, and
+Artifact Navigator 18/18. The verification explicitly covers declared
+upstream detection, non-executing focus, clearing after explicit Filter
+Preview, and stale output reporting. Korean 1920 x 1080 / 1280 x 760,
+English 1920 x 1080, and a Korean Flow Map port-state capture all passed
+screenshot quality on attempt one. Evidence:
+artifacts/ui/20260720-flow-problems-g5/. Its completed G6 compatible Tool
+Catalog follow-up is recorded below. Keep algorithm work paused until the
+owner accepts the UI gate; do not add writable graph editing, automatic
+routing, generic execution, camera/PLC/HMI, affine execution, calibration,
+or metrology claims.
+
+**Current GoPxL chain-readability / G6 checkpoint (2026-07-20):** G6 is
+complete locally. Toolbox now has a compact Korean/English `Compatible next
+tools` scan that reads only the current typed Artifact Registry. A ready C3D
+source proposes Filter, ROI / Crop, 2-Point Line, and 3-Point Plane; a current
+grid selection plus Published Filter output proposes Height Difference Edge;
+and a Published EdgePointSet proposes 3D Line Fit. Each card shows its input
+contract and candidate entity IDs. Selecting a card changes only the existing
+Toolbox selection: it cannot add/reorder a pipeline step, write a route, edit
+or save, Preview, Run, or Publish. Current source passes build 0/0, Tool
+Recipe Teaching 18/18, Workbench docking 25/25, and Artifact Navigator 22/22.
+The Artifact verification covers withholding Edge before a Published Filter,
+exposing it after explicit Publish plus a current grid selection, and both
+selection paths remaining non-mutating/non-executing. Fresh Korean 1920 x
+1080 / 1280 x 760 and English 1920 x 1080 captures passed screenshot quality
+on attempt one. Evidence: artifacts/ui/20260720-compatible-tool-catalog-g6/.
+The UI 80/100 gate remains owner-unaccepted. Next: owner UI/UX acceptance
+re-review; only fix a concrete issue found in that review. Do not start
+algorithms or add automatic routing, editable graph execution, camera/PLC/HMI,
+affine execution, calibration, or metrology claims.
+
+**Current GoPxL chain-readability / G7 checkpoint (2026-07-20):** G7 is
+complete locally. The compact compatible catalog now keeps a visible candidate
+row with a separate explicit `Add` action and one read-only nearest-missing-
+input explanation at `1280 x 760`; remaining candidates use internal scroll.
+Selection remains G6 read-only: it changes only Toolbox selection. Only the
+separate `Add` action creates one ordinary taught step using the exact candidate
+IDs displayed in that row, without Preview, Run, or Publish. The Step
+Parameters title and state badge are on separate rows to prevent English
+truncation. Current source passes build `0/0`, Tool Recipe Teaching `18/18`,
+Workbench docking `25/25`, and Artifact Navigator `24/24`; Korean `1920 x
+1080` / `1280 x 760` and English `1920 x 1080` screenshots pass quality on
+attempt one. Evidence: `artifacts/ui/20260720-responsive-catalog-g7/`.
+The `80/100` UI gate remains owner-unaccepted. Next is the manual owner
+acceptance review for keyboard-only, high-DPI, and first-time-operator use;
+do not start algorithms, automatic routing, editable graph execution,
+camera/PLC/HMI, affine execution, calibration, or metrology claims.
+Use `docs/OPENVISIONLAB_3D_OWNER_UI_ACCEPTANCE_PROTOCOL_20260720.md` as the
+required checklist and decision record. The current host is at `100%` display
+scaling, so a real `150%` result is not yet recorded.
+`scripts/verify-workbench-keyboard-readiness.ps1` is the current-build
+keyboard UI Automation prerequisite at the host's actual scale and currently
+passes `5/5` at `100%`; it is not a `150%` or first-time-operator result.
+
 **Current UI checkpoint (2026-07-20):** P0 selected-step context is complete
 locally. The Viewer header now presents the selected step, routed Input/Output,
 typed-adapter state, and current action guidance in one display-only strip;

@@ -74,6 +74,18 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool IsFlowMapSelected => DockWorkspace.IsEvidencePaneSelected
                                      && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsFlowMapSelected: true };
 
+    public void ActivateProblems()
+    {
+        DockWorkspace.ActivateEvidencePane();
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        {
+            review.ActivateProblems();
+        }
+    }
+
+    public bool IsProblemsSelected => DockWorkspace.IsEvidencePaneSelected
+                                      && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsProblemsSelected: true };
+
     public void ActivateOutputComparePane() => DockWorkspace.ActivateOutputComparePane();
 
     public bool IsOutputComparePaneSelected => DockWorkspace.IsOutputComparePaneSelected;

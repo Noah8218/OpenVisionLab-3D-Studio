@@ -23,8 +23,19 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ShowInViewer), nameof(PinToCompare), nameof(FocusStep), nameof(DisplayedOutputsSummaryFormat),
         nameof(DisplayableC3DData), nameof(EvidenceOnlyOutput), nameof(NoCurrentDisplayableOutput), nameof(PinnedSlotsFormat),
         nameof(FlowMapDetail), nameof(FlowMapReadOnly), nameof(FlowMapInput), nameof(FlowMapOutput),
-        nameof(FlowMapEmptyHint), nameof(NavigatorHint), nameof(RecipeSource),
-        nameof(RecipeNavigator), nameof(AddInspectionStep), nameof(StepProperties), nameof(NoRecipeStepSelected),
+        nameof(FlowMapPortState), nameof(FlowMapEmptyHint), nameof(Problems), nameof(ProblemsTitle),
+        nameof(ProblemsDetail), nameof(ProblemsSummaryFormat), nameof(ProblemsRouteChecks),
+        nameof(ProblemsValidationMessages), nameof(ProblemsEmptyHint), nameof(FlowPortReady),
+        nameof(FlowPortWaitingForUpstream), nameof(FlowPortStale), nameof(FlowPortUnresolved),
+        nameof(FlowPortDeclared), nameof(FlowPortCurrent), nameof(FlowPortNoInputDetail),
+        nameof(FlowPortUnresolvedDetailFormat), nameof(FlowPortWaitingDetailFormat),
+        nameof(FlowPortStaleDetailFormat), nameof(FlowPortDeclaredDetailFormat),
+        nameof(FlowPortCurrentDetailFormat), nameof(NavigatorHint), nameof(RecipeSource),
+        nameof(RecipeNavigator), nameof(CompatibleToolCatalogTitle), nameof(CompatibleToolCatalogDetail),
+        nameof(CompatibleToolCatalogSummaryFormat), nameof(CompatibleToolCatalogEmpty), nameof(SelectCompatibleTool),
+        nameof(AddCompatibleTool), nameof(AddCompatibleToolToolTip), nameof(CompatibleToolBlockerLabel),
+        nameof(CompatibleToolBlockerDetailFormat),
+        nameof(AddInspectionStep), nameof(StepProperties), nameof(NoRecipeStepSelected),
         nameof(NoRecipeStepSelectedDetail), nameof(RecipePipelineTeachReview), nameof(Validate), nameof(MoveUp),
         nameof(MoveDown), nameof(Remove), nameof(ColumnNumber), nameof(ColumnTool), nameof(ColumnInputs),
         nameof(ColumnTypedOutput), nameof(ColumnState), nameof(Preview), nameof(Run), nameof(Publish), nameof(Cancel),
@@ -94,6 +105,15 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string NavigatorHint => T("ThreeD.Workbench.NavigatorHint", "\uB808\uC2DC\uD53C \uD0D0\uC0C9\uAE30\uB294 \uC77D\uAE30 \uC6B0\uC120\uC785\uB2C8\uB2E4. \uD30C\uC774\uD504\uB77C\uC778 \uB178\uB4DC\uB97C \uC120\uD0DD\uD574 \uD574\uB2F9 \uB2E8\uACC4 \uD30C\uB77C\uBBF8\uD130\uB97C \uD655\uC778\uD558\uACE0, \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uAC8C\uC2DC\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uC2E4\uD589\uD558\uC138\uC694.", "Recipe Navigator is read-first. Select a pipeline node to focus its typed Step Parameters; Preview and Publish remain explicit.");
     public string RecipeSource => T("ThreeD.Workbench.RecipeSource", "\uB808\uC2DC\uD53C \uC18C\uC2A4", "Recipe source");
     public string RecipeNavigator => T("ThreeD.Workbench.RecipeNavigator", "\uB808\uC2DC\uD53C \uD0D0\uC0C9\uAE30", "Recipe Navigator");
+    public string CompatibleToolCatalogTitle => T("ThreeD.Workbench.CompatibleToolCatalogTitle", "\uD638\uD658 \uB2E4\uC74C \uB3C4\uAD6C", "Compatible next tools");
+    public string CompatibleToolCatalogDetail => T("ThreeD.Workbench.CompatibleToolCatalogDetail", "\uD604\uC7AC \uC785\uB825\uB9CC \uD655\uC778\uD569\uB2C8\uB2E4. \uB3C4\uAD6C \uC120\uD0DD\uC740 \uB2E8\uACC4\u00B7\uC5F0\uACB0\u00B7\uC2E4\uD589\uC744 \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Checks current inputs only. Selecting never adds, connects, or runs.");
+    public string CompatibleToolCatalogSummaryFormat => T("ThreeD.Workbench.CompatibleToolCatalogSummaryFormat", "\uD638\uD658 \uB3C4\uAD6C {0}\uAC1C", "{0} compatible");
+    public string CompatibleToolCatalogEmpty => T("ThreeD.Workbench.CompatibleToolCatalogEmpty", "\uB2E4\uC74C \uB3C4\uAD6C \uCD94\uCC9C\uC744 \uC704\uD55C \uD604\uC7AC \uC785\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No current inputs are available for a next-tool suggestion.");
+    public string SelectCompatibleTool => T("ThreeD.Command.SelectCompatibleTool", "\uD234\uBC15\uC2A4\uC5D0\uC11C \uC120\uD0DD", "Select in Toolbox");
+    public string AddCompatibleTool => T("ThreeD.Command.AddCompatibleTool", "\uCD94\uAC00", "Add");
+    public string AddCompatibleToolToolTip => T("ThreeD.Command.AddCompatibleToolToolTip", "\uD45C\uC2DC\uB41C \uC785\uB825\uC73C\uB85C \uAC80\uC0AC \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uCD94\uAC00\uD569\uB2C8\uB2E4. \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Explicitly add a step with the displayed inputs. It does not run.");
+    public string CompatibleToolBlockerLabel => T("ThreeD.Workbench.CompatibleToolBlockerLabel", "\uB2E4\uC74C \uBBF8\uCDA9\uC871 \uC785\uB825", "Next missing input");
+    public string CompatibleToolBlockerDetailFormat => T("ThreeD.Workbench.CompatibleToolBlockerDetailFormat", "{0}: {1} \uD544\uC694", "{0}: requires {1}");
     public string AddInspectionStep => T("ThreeD.Workbench.AddInspectionStep", "\uAC80\uC0AC \uB2E8\uACC4 \uCD94\uAC00", "Add inspection step");
     public string StepProperties => T("ThreeD.Workbench.StepProperties", "\uB2E8\uACC4 \uC18D\uC131", "Step properties");
     public string NoRecipeStepSelected => T("ThreeD.Workbench.NoRecipeStepSelected", "\uC120\uD0DD\uB41C \uB808\uC2DC\uD53C \uB2E8\uACC4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4", "No recipe step selected");
@@ -132,6 +152,27 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ToolLabReview => T("ThreeD.ToolLab.Review", "\uD30C\uB77C\uBBF8\uD130 \uBC0F \uC2E4\uD589 \uADFC\uAC70", "Parameters & execution evidence");
     public string ToolLabReviewDetail => T("ThreeD.ToolLab.ReviewDetail", "\uD30C\uB77C\uBBF8\uD130\uB294 \uB808\uC2DC\uD53C \uCD08\uC548\uC5D0\uB9CC \uC801\uC6A9\uB429\uB2C8\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uAC8C\uC2DC\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uC218\uD589\uD569\uB2C8\uB2E4.", "Edits stay in the recipe draft. Preview and Publish remain explicit.");
     public string ShowInput => T("ThreeD.Command.ShowInput", "\uC785\uB825 \uBCF4\uAE30", "Show input");
+
+    public string FlowMapPortState => T("ThreeD.Workbench.FlowMapPortState", "\uD3EC\uD2B8 \uC0C1\uD0DC", "Port state");
+    public string Problems => T("ThreeD.Workbench.Problems", "\uBB38\uC81C", "Problems");
+    public string ProblemsTitle => T("ThreeD.Workbench.ProblemsTitle", "\uACBD\uB85C \uBB38\uC81C", "Route problems");
+    public string ProblemsDetail => T("ThreeD.Workbench.ProblemsDetail", "\uD3EC\uD2B8 \uC0C1\uD0DC\uC640 \uAE30\uC874 \uAC80\uC99D \uBA54\uC2DC\uC9C0\uB9CC \uC77D\uC5B4 \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uB2E8\uACC4 \uD3EC\uCEE4\uC2A4\uB294 \uAC00\uB2A5\uD558\uC9C0\uB9CC \uC5F0\uACB0 \uC218\uC815\uC774\uB098 \uC2E4\uD589\uC740 \uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read only the port state and existing validation messages. Focus a step, but do not edit a connection or run it.");
+    public string ProblemsSummaryFormat => T("ThreeD.Workbench.ProblemsSummaryFormat", "\uACBD\uB85C \uC810\uAC80 {0}\uAC1C | \uAC80\uC99D \uBA54\uC2DC\uC9C0 {1}\uAC1C", "{0} route checks | {1} validation messages");
+    public string ProblemsRouteChecks => T("ThreeD.Workbench.ProblemsRouteChecks", "\uACBD\uB85C \uC810\uAC80", "Route checks");
+    public string ProblemsValidationMessages => T("ThreeD.Workbench.ProblemsValidationMessages", "\uB808\uC2DC\uD53C \uAC80\uC99D \uBA54\uC2DC\uC9C0", "Recipe validation messages");
+    public string ProblemsEmptyHint => T("ThreeD.Workbench.ProblemsEmptyHint", "\uD3EC\uD2B8 \uACBD\uB85C \uBB38\uC81C\uC640 \uAC80\uC99D \uBA54\uC2DC\uC9C0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.", "No route problems or validation messages.");
+    public string FlowPortReady => T("ThreeD.Workbench.FlowPortReady", "\uC900\uBE44\uB428", "Ready");
+    public string FlowPortWaitingForUpstream => T("ThreeD.Workbench.FlowPortWaitingForUpstream", "\uC0C1\uC704 \uC0B0\uCD9C\uBB3C \uB300\uAE30", "Waiting for upstream");
+    public string FlowPortStale => T("ThreeD.Workbench.FlowPortStale", "\uC7AC\uC0DD\uC131 \uD544\uC694", "Stale");
+    public string FlowPortUnresolved => T("ThreeD.Workbench.FlowPortUnresolved", "\uC785\uB825 \uBBF8\uD574\uACB0", "Unresolved input");
+    public string FlowPortDeclared => T("ThreeD.Workbench.FlowPortDeclared", "\uC120\uC5B8\uB428", "Declared");
+    public string FlowPortCurrent => T("ThreeD.Workbench.FlowPortCurrent", "\uD604\uC7AC \uC0B0\uCD9C\uBB3C", "Current output");
+    public string FlowPortNoInputDetail => T("ThreeD.Workbench.FlowPortNoInputDetail", "\uC785\uB825 \uC5D4\uD2F0\uD2F0 ID\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Specify an input entity ID.");
+    public string FlowPortUnresolvedDetailFormat => T("ThreeD.Workbench.FlowPortUnresolvedDetailFormat", "\uC785\uB825 '{0}'\uC744(\uB97C) \uB808\uC2DC\uD53C \uC544\uD2F0\uD329\uD2B8\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.", "Input '{0}' is not present in the recipe artifacts.");
+    public string FlowPortWaitingDetailFormat => T("ThreeD.Workbench.FlowPortWaitingDetailFormat", "\uC0C1\uC704 '{0}'\uC740(\uB294) \uC120\uC5B8\uB9CC \uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C Preview/Publish\uD558\uC138\uC694.", "Upstream '{0}' is declared only. Preview or Publish its step explicitly.");
+    public string FlowPortStaleDetailFormat => T("ThreeD.Workbench.FlowPortStaleDetailFormat", "\uC0C1\uC704 '{0}'\uC774(\uAC00) \uC624\uB798\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uB2E4\uC2DC Preview/Publish\uD558\uC138\uC694.", "Upstream '{0}' is stale. Preview or Publish its step explicitly again.");
+    public string FlowPortDeclaredDetailFormat => T("ThreeD.Workbench.FlowPortDeclaredDetailFormat", "\uC815\uC2DD \uCD9C\uB825 '{0}'\uC774(\uAC00) \uC120\uC5B8\uB418\uC5C8\uC9C0\uB9CC \uD604\uC7AC Preview/Published \uC99D\uAC70\uB294 \uC5C6\uC2B5\uB2C8\uB2E4.", "Typed output '{0}' is declared, but has no current Preview or Published evidence.");
+    public string FlowPortCurrentDetailFormat => T("ThreeD.Workbench.FlowPortCurrentDetailFormat", "\uC815\uC2DD \uCD9C\uB825 '{0}'\uC774(\uAC00) \uD604\uC7AC \uC0C1\uD0DC\uC785\uB2C8\uB2E4.", "Typed output '{0}' is current.");
 
     private static string T(string key, string korean, string english)
     {

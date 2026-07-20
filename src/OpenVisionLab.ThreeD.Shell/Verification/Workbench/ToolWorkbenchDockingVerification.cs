@@ -119,6 +119,11 @@ internal static class ToolWorkbenchDockingVerification
                 "Workbench Flow Map command selects the read-only map in the docked Pipeline pane",
                 workbench.IsBottomPaneAttached && workbench.IsFlowMapSelected,
                 $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsFlowMapSelected}");
+            workbench.ActivateProblems();
+            Check(
+                "Workbench Problems command selects the read-only port diagnostics in the docked Pipeline pane",
+                workbench.IsBottomPaneAttached && workbench.IsProblemsSelected,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsProblemsSelected}");
             workbench.ActivateOutputComparePane();
             Check(
                 "Workbench Output Compare command selects the floatable output compare pane",

@@ -1102,6 +1102,9 @@ public partial class MainWindow : Window
             case "flow" or "flow-map":
                 ToolWorkbench.ActivateFlowMap();
                 break;
+            case "problems" or "flow-problems":
+                ToolWorkbench.ActivateProblems();
+                break;
             case "compare" or "output-compare":
                 ToolWorkbench.ActivateOutputComparePane();
                 break;

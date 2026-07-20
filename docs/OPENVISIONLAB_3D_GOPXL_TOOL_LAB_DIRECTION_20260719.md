@@ -1,7 +1,7 @@
 # OpenVisionLab 3D GoPxL-Informed Tool Lab Direction
 
 Updated: 2026-07-20
-Status: Approved product direction; G1 Flow Map, G2 Output Compare, G3 selected-tool I/P/O summary, and G4 Displayed Outputs / Overlay Manager complete and verified locally; global UI/UX acceptance remains open
+Status: Approved product direction; G1 Flow Map, G2 Output Compare, G3 selected-tool I/P/O summary, G4 Displayed Outputs / Overlay Manager, G5 Flow Map port diagnostics / Problems, G6 compatible Tool Catalog scanning, and G7 responsive explicit-add continuity complete and verified locally; global UI/UX acceptance remains open
 
 ## Why this document exists
 
@@ -114,9 +114,9 @@ No View code-behind may implement algorithm calculation, persistence, validation
 
 ## Next decision gates
 
-1. G1/G2/G3/G4 are complete: use the tree, read-only Flow Map, selected-tool I/P/O summary, explicit Output Compare, and real-artifact Displayed Outputs manager as one bounded read-first workflow.
-2. Next UI priority is G5: add port-level route diagnostics and a compact Problems surface to the existing Flow Map; do not create editable wires or automatic routing.
-3. Then complete G6 compatible Tool Catalog scanning. Only after the UI gate is formally accepted may a new algorithm implementation gate be defined.
+1. G1/G2/G3/G4/G5/G6/G7 are complete: use the tree, read-only Flow Map with port state, selected-tool I/P/O summary, explicit Output Compare, Displayed Outputs manager, compact Problems surface, compatible-next-tool scan, and explicit candidate add as one bounded read-first workflow.
+2. Next UI priority is an owner UI/UX acceptance re-review against the complete G1-G7 chain workflow. Continue to fix only a concrete hierarchy, visual, accessibility, or compact-layout issue found by that review.
+3. Only after the UI gate is formally accepted may a new algorithm implementation gate be defined.
 
 ## 2026-07-20 GoPxL chain-readability reassessment and G1 closure
 
@@ -230,6 +230,133 @@ Boundary / next dependency: G4 is not an overlay renderer for arbitrary
 features, a linked-camera system, generic result browser, writable graph, or
 algorithm executor. Next is G5 port diagnostics / Problems, then G6 compatible
 Tool Catalog scanning; the UI `80/100` gate is still not accepted.
+
+## 2026-07-20 G5 Flow Map port diagnostics and Problems closure
+
+Status: Complete
+
+G5 extends the existing read-only Flow Map; it does not create a second graph
+model. Each input and output port now derives its state only from the existing
+typed Artifact Registry:
+
+- current source/selection, Preview, and Published artifact -> ready/current;
+- declared upstream artifact -> waiting for upstream;
+- stale artifact -> stale; and
+- absent or unrecognized artifact -> unresolved input.
+
+The new bilingual Problems tab remains inside the existing Pipeline /
+Validation dock. It lists only route states that need operator attention plus
+the pre-existing recipe validation messages. Focus Step is the sole action:
+it selects the existing authored step, without editing any route, changing a
+parameter, saving a recipe, or invoking Preview, Run, or Publish. At
+1280 x 760, the header is intentionally compact so the first route problem
+and its Focus action remain visible without scrolling.
+
+Scope: UI-only port-state projection and read-only Problems navigation.
+Acceptance criteria: Flow Map ports visibly distinguish ready/current,
+declared-upstream, stale, and unresolved states; Problems focuses an authored
+step without side effects; Korean/English labels and compact layouts are
+legible; existing teaching/docking behavior remains stable.
+Verification: current-source build 0 warnings / 0 errors; Tool Recipe
+Teaching 18/18; Workbench docking 25/25; Artifact Navigator 18/18.
+The Artifact Navigator cases prove declared-upstream detection, Focus Step
+without tool execution/routing, clearing the issue after explicit Filter
+Preview, and stale typed-output reporting.
+Evidence: artifacts/ui/20260720-flow-problems-g5/, including current
+Korean 1920 x 1080 / 1280 x 760, English 1920 x 1080, and Flow Map
+port-state captures.
+Boundary / next dependency: G5 is not editable wiring, automatic routing,
+generic graph execution, hardware control, affine execution, calibration, or
+metrology. G6 compatible Tool Catalog scanning is completed below; the 80/100
+UI gate is still not owner accepted.
+
+## 2026-07-20 G6 compatible Tool Catalog scanning closure
+
+Status: Complete
+
+The Toolbox now has a compact bilingual `Compatible next tools` catalog. It
+scans the existing read-only Artifact Registry only and proposes tools whose
+declared input contract already has the required current identity:
+
+- a ready C3D source proposes Filter, ROI / Crop, 2-Point Line, and 3-Point
+  Plane;
+- a current source-bound grid selection plus a Published
+  `FilteredHeightField` proposes Height Difference Edge; and
+- a Published `EdgePointSet` proposes 3D Line Fit.
+
+The card shows the input contract and concrete candidate entity IDs. Selecting
+a card changes only the existing Toolbox selection; it does not add a recipe
+step, write an entity ID, route a port, edit parameters, save, Preview, Run,
+or Publish. The full Tool catalog remains available for teaching decisions
+that are not currently compatible.
+
+Acceptance evidence:
+
+- Artifact Navigator `22/22` proves source-compatible proposals, excludes
+  Height Difference Edge before its required Published Filter output exists,
+  exposes it after explicit Filter Publish plus a current grid selection, and
+  proves both source and published-input selections leave pipeline count and
+  execution state unchanged.
+- Tool Recipe Teaching remains `18/18`; Workbench docking remains `25/25`.
+- Current-build screenshot quality passed on first attempt at Korean
+  `1920 x 1080`, Korean `1280 x 760`, and English `1920 x 1080`.
+
+Evidence: before
+`artifacts/ui/20260720-compatible-tool-catalog-g6/before-compatible-tools-1920-ko.png`;
+after `after-compatible-tools-1920-ko.png`,
+`after-compatible-tools-1280-ko.png`, and
+`after-compatible-tools-1920-en.png` in the same folder; verification reports
+are also in that folder.
+
+Boundary / next dependency: G6 is a recommendation and Toolbox-selection
+surface, not automatic wiring, an editable graph, a generic executor,
+camera/PLC/HMI, affine execution, calibration, or metrology. The next
+decision is owner UI/UX acceptance re-review; the `80/100` gate remains
+owner-unaccepted.
+
+## 2026-07-20 G7 responsive compatible catalog / explicit-add continuity closure
+
+Status: Complete
+
+The compact catalog now keeps one compatible candidate row, its separate
+explicit `Add` button, and one read-only closest missing-input reason in the
+same `1280 x 760` visible area. Remaining compatible candidates stay
+available through the catalog's internal scroll rather than pushing the
+primary teaching action below the fold. The closest missing input is shown as
+an explanation only: before the Filter and grid selection are both ready it
+names Height Difference Edge and its `Published FilteredHeightField +
+GridRectangle` contract; after those inputs exist it names 3D Line Fit and
+its `Published EdgePointSet` contract.
+
+G6 remains unchanged: selecting a compatible row changes only Toolbox
+selection. G7 adds a distinct, user-clicked `Add` command. It creates one
+ordinary taught step with exactly the candidate IDs displayed in that row; it
+does not auto-route another step and never calls Preview, Run, or Publish.
+The Step Parameters title and its state badge now occupy separate responsive
+rows, avoiding English title truncation.
+
+Acceptance evidence:
+
+- Artifact Navigator `24/24` proves the closest missing typed-input message,
+  selection-only behavior, and explicit source-bound compatible add without
+  changing Filter or Edge execution state.
+- Tool Recipe Teaching remains `18/18`; Workbench docking remains `25/25`;
+  current build is `0` warnings / `0` errors.
+- Fresh screenshot-quality captures passed on first attempt at Korean
+  `1920 x 1080`, Korean `1280 x 760`, and English `1920 x 1080`.
+
+Evidence: before
+`artifacts/ui/20260720-responsive-catalog-g7/before-responsive-catalog-1280-ko.png`;
+after `after-responsive-catalog-1920-ko.png`,
+`after-responsive-catalog-1280-ko.png`, and
+`after-responsive-catalog-1920-en.png` in the same folder, plus the three
+verification reports.
+
+Boundary / next decision: G7 is a compact authoring affordance, not automatic
+routing, a writable graph, generic execution, a new algorithm, camera/PLC/HMI,
+affine execution, calibration, or metrology. The global UI gate remains
+owner-unaccepted; the remaining evidence is a manual owner keyboard, high-DPI,
+and first-time-operator acceptance review.
 
 ## P1 local completion evidence
 

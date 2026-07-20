@@ -86,6 +86,58 @@ next UI scope is G5 port diagnostics / Problems followed by G6 compatible Tool
 Catalog scanning. A writable graph, generic executor, camera/PLC/HMI, affine
 solver, calibration, and metrology remain out of scope.
 
+Current GoPxL chain-readability G5 checkpoint on 2026-07-20: the existing
+read-only Flow Map now exposes actual input/output port state from the typed
+Artifact Registry: ready/current, declared-upstream waiting, stale, and
+unresolved. The new compact bilingual Problems tab remains in the same
+Pipeline / Validation dock. It aggregates only route issues plus existing
+recipe validation messages; Focus Step selects the authored step but cannot
+edit a route, parameter, or persistence state and cannot Preview, Run, or
+Publish. Current-source evidence passes build 0/0, Tool Recipe Teaching
+18/18, Workbench docking 25/25, Artifact Navigator 18/18, and first-attempt
+screenshot quality at Korean 1920 x 1080 / 1280 x 760 plus English 1920 x
+1080. The compact capture retains the first route problem and Focus action
+without scrolling. Evidence is artifacts/ui/20260720-flow-problems-g5/.
+G5 is UI-only; its completed G6 compatible Tool Catalog follow-up is recorded
+in the next checkpoint. The UI gate remains unaccepted, and a writable graph,
+generic executor, camera/PLC/HMI, affine solver, calibration, and metrology
+remain out of scope.
+
+Current GoPxL chain-readability G6 checkpoint on 2026-07-20: Toolbox now has
+a compact bilingual compatible-next-tool scan derived only from the existing
+typed Artifact Registry. A ready C3D source proposes Filter, ROI / Crop,
+2-Point Line, and 3-Point Plane; a current grid selection plus Published
+FilteredHeightField proposes Height Difference Edge; and a Published
+EdgePointSet proposes 3D Line Fit. Cards show the declared input contract and
+the exact candidate IDs. Selecting a card only changes the existing Toolbox
+selection: it cannot add/reorder a step, write a route, edit/save a recipe,
+or Preview/Run/Publish. Current-source evidence passes build 0/0, Tool Recipe
+Teaching 18/18, Workbench docking 25/25, Artifact Navigator 22/22, and
+first-attempt screenshot quality at Korean 1920 x 1080 / 1280 x 760 plus
+English 1920 x 1080. Evidence is
+artifacts/ui/20260720-compatible-tool-catalog-g6/. The UI gate remains
+owner-unaccepted; the next decision is an owner UI/UX acceptance re-review.
+A writable graph, automatic routing, generic executor, camera/PLC/HMI,
+affine solver, calibration, and metrology remain out of scope.
+
+Current GoPxL chain-readability G7 checkpoint on 2026-07-20: the compact
+compatible catalog now exposes a separate explicit `Add` action beside its
+visible candidate and one read-only nearest-missing-input explanation. The
+remaining candidates are internally scrollable so `1280 x 760` retains both
+the next authoring action and why the next typed tool is unavailable. Selecting
+the candidate still only changes Toolbox selection; the new `Add` command adds
+one ordinary taught step with exactly the visible candidate IDs and never
+Preview/Run/Publishes. Step title and state now use responsive separate rows.
+Current-source evidence passes build `0/0`, Tool Recipe Teaching `18/18`,
+Workbench docking `25/25`, Artifact Navigator `24/24`, and first-attempt
+screenshot quality at Korean `1920 x 1080` / `1280 x 760` plus English
+`1920 x 1080`. Evidence is
+`artifacts/ui/20260720-responsive-catalog-g7/`. This closes the two concrete
+compact-layout deductions from the self-evaluation, but does not accept the
+UI gate; keyboard-only, high-DPI, and first-time-operator owner review remain
+required. No algorithm, automatic routing, generic executor, camera/PLC/HMI,
+affine solver, calibration, or metrology capability was added.
+
 For the user's full-XYZ point-cloud workflow, the ordered inspection steps are intended to express `source -> filter -> height-difference edge candidates -> fitted 3D lines/planes -> intersections/correspondence evidence -> XYZ affine transform -> derived 3D map -> thickness/warpage/other measurements -> review`. This is a product direction, not a claim that the generic executor or affine solver exists today.
 
 Current typed-tool chain checkpoint on 2026-07-19: **Filter, Height Difference

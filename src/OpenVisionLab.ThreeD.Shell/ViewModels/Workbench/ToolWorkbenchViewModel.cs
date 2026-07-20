@@ -157,6 +157,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializeFilterExecution();
         InitializeDisplayedOutputs();
         Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
+        InitializeFlowDiagnostics();
+        Localization.PropertyChanged += OnFlowDiagnosticsLocalizationChanged;
+        InitializeCompatibleToolCatalog();
+        Localization.PropertyChanged += OnCompatibleToolCatalogLocalizationChanged;
         InitializeLineFitDiagnostics();
 
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
@@ -242,6 +246,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedToolTitle));
             OnPropertyChanged(nameof(SelectedToolHint));
             addSelectedToolCommand.RaiseCanExecuteChanged();
+            RebuildCompatibleToolCatalog();
 
             if (value is not null)
             {
@@ -812,29 +817,38 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void AddSelectedTool()
     {
-        if (SelectedTool is null)
+        AddToolToRecipe(SelectedTool, explicitInputIds: null);
+    }
+
+    private void AddToolToRecipe(ToolWorkbenchToolItem? tool, string? explicitInputIds)
+    {
+        if (tool is null)
         {
             return;
         }
 
-        var input = SelectedTool.Id == "landmark-correspondence"
-            ? string.Empty
-            : PipelineSteps.LastOrDefault()?.OutputEntityId;
-        if (SelectedTool.Id != "landmark-correspondence" && string.IsNullOrWhiteSpace(input))
+        var input = explicitInputIds;
+        if (input is null)
         {
-            input = Source.Id;
+            input = tool.Id == "landmark-correspondence"
+                ? string.Empty
+                : PipelineSteps.LastOrDefault()?.OutputEntityId;
+            if (tool.Id != "landmark-correspondence" && string.IsNullOrWhiteSpace(input))
+            {
+                input = Source.Id;
+            }
         }
 
         var step = new ToolWorkbenchPipelineStepItem(
-            CreateUniqueStepId(SelectedTool.Id),
-            SelectedTool,
+            CreateUniqueStepId(tool.Id),
+            tool,
             input ?? string.Empty,
-            CreateUniqueOutputId(SelectedTool.OutputContract));
+            CreateUniqueOutputId(tool.OutputContract));
         SubscribeStep(step);
         PipelineSteps.Add(step);
         SelectedPipelineStep = step;
         RefreshAuthoredRecipeState();
-        AppendLog("Teach", $"Added taught step: {SelectedTool.Name}.");
+        AppendLog("Teach", $"Added taught step: {tool.Name}.");
     }
 
     private void RemoveSelectedStep()
@@ -1742,7 +1756,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void OnRecipePartChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(ToolWorkbenchPipelineStepItem.State))
+        if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.State)
+            or nameof(ToolWorkbenchPipelineStepItem.InputPortState)
+            or nameof(ToolWorkbenchPipelineStepItem.InputPortDetail)
+            or nameof(ToolWorkbenchPipelineStepItem.InputPortHasIssue)
+            or nameof(ToolWorkbenchPipelineStepItem.OutputPortState)
+            or nameof(ToolWorkbenchPipelineStepItem.OutputPortDetail)
+            or nameof(ToolWorkbenchPipelineStepItem.OutputPortHasIssue))
         {
             return;
         }
@@ -1992,6 +2012,12 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     private string outputEntityId;
     private string order = "00";
     private string state = "Taught / pending";
+    private string inputPortState = string.Empty;
+    private string inputPortDetail = string.Empty;
+    private bool inputPortHasIssue;
+    private string outputPortState = string.Empty;
+    private string outputPortDetail = string.Empty;
+    private bool outputPortHasIssue;
 
     public ToolWorkbenchPipelineStepItem(string id, ToolWorkbenchToolItem tool, string inputEntityIdsText, string outputEntityId, IReadOnlyList<ToolRecipeParameter>? parameters = null)
     {
@@ -2034,8 +2060,38 @@ public sealed class ToolWorkbenchPipelineStepItem : INotifyPropertyChanged
     public string InputSummary => string.IsNullOrWhiteSpace(InputEntityIdsText) ? "(set input entity IDs)" : InputEntityIdsText;
     public string OutputEntityId { get => outputEntityId; set => SetField(ref outputEntityId, value ?? string.Empty); }
     public string State { get => state; internal set => SetField(ref state, value); }
+    public string InputPortState => inputPortState;
+    public string InputPortDetail => inputPortDetail;
+    public bool InputPortHasIssue => inputPortHasIssue;
+    public string OutputPortState => outputPortState;
+    public string OutputPortDetail => outputPortDetail;
+    public bool OutputPortHasIssue => outputPortHasIssue;
+
+    internal void UpdateFlowPortPresentation(
+        string newInputPortState,
+        string newInputPortDetail,
+        bool newInputPortHasIssue,
+        string newOutputPortState,
+        string newOutputPortDetail,
+        bool newOutputPortHasIssue)
+    {
+        SetField(ref inputPortState, newInputPortState, nameof(InputPortState));
+        SetField(ref inputPortDetail, newInputPortDetail, nameof(InputPortDetail));
+        SetField(ref inputPortHasIssue, newInputPortHasIssue, nameof(InputPortHasIssue));
+        SetField(ref outputPortState, newOutputPortState, nameof(OutputPortState));
+        SetField(ref outputPortDetail, newOutputPortDetail, nameof(OutputPortDetail));
+        SetField(ref outputPortHasIssue, newOutputPortHasIssue, nameof(OutputPortHasIssue));
+    }
 
     private bool SetField(ref string field, string value, [CallerMemberName] string? propertyName = null)
+    {
+        if (field == value) return false;
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
+
+    private bool SetField(ref bool field, bool value, [CallerMemberName] string? propertyName = null)
     {
         if (field == value) return false;
         field = value;

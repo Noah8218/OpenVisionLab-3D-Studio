@@ -134,6 +134,8 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshNavigatorSelection();
         RebuildOutputCompareCandidates();
         RebuildDisplayedOutputs();
+        RebuildFlowPortDiagnostics();
+        RebuildCompatibleToolCatalog();
         OnPropertyChanged(nameof(ArtifactRegistrySummary));
     }
 

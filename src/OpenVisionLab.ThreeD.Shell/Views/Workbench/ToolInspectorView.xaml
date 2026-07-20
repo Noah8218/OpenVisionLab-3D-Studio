@@ -74,14 +74,20 @@
                     <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                Text="{Binding Localization.StepProperties}" />
                     <Grid Margin="0,3,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock FontWeight="SemiBold"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Text="{Binding SelectedPipelineStepTitle}" />
-                        <Border Grid.Column="1"
+                                   Text="{Binding SelectedPipelineStepTitle}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding SelectedPipelineStepTitle}"
+                                   AutomationProperties.Name="{Binding SelectedPipelineStepTitle}" />
+                        <Border Grid.Row="1"
+                                Margin="0,3,0,0"
+                                HorizontalAlignment="Left"
                                 DataContext="{Binding SelectedPipelineStep}"
                                 Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
                                 ToolTip="{Binding State, StringFormat=Pipeline step state: {0}}"

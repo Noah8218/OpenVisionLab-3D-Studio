@@ -579,3 +579,119 @@ not a generic graph, automatic routing system, arbitrary-overlay renderer, or
 algorithm executor. G5 is port-level Flow Map diagnostics and a compact
 Problems surface; G6 is compatible Tool Catalog scanning. The `80/100` UI/UX
 gate is still not owner accepted.
+
+## G5 Flow Map port diagnostics and Problems - 2026-07-20
+
+Status: Complete for G5; the global UI/UX gate remains **not accepted**.
+
+The Flow Map now labels the actual state of each authored input and output
+port from the existing Artifact Registry rather than inferring a new execution
+state. It shows ready/current, waiting for declared upstream output, stale,
+or unresolved input. The compact bilingual Problems tab remains in the same
+Pipeline / Validation dock and lists only route checks needing attention plus
+the existing recipe validation messages. Its only action, `Focus Step`,
+changes the selected authored step; it cannot alter a route, edit a parameter,
+save, Preview, Run, or Publish.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Port state is visible without inventing a graph runtime | Current Flow Map capture shows Filter source input as ready, its declared output, and Edge's declared upstream input as waiting. |
+| Problems directs the operator without executing a tool | Artifact Navigator `18/18` proves declared-upstream detection, Focus Step without Filter/Edge execution, clearing after explicit Filter Preview, and stale-output reporting. |
+| Problems remains readable at the compact baseline | Current Korean `1280 x 760` capture shows the first problem and its Focus Step button without scrolling. |
+| Bilingual controls are intentional | Korean `1920 x 1080` / `1280 x 760` and English `1920 x 1080` captures show localized Flow Map/Problems text while contracts and entity IDs stay stable. |
+| Existing workflow remains intact | Current-source build is `0 warnings / 0 errors`; Tool Recipe Teaching `18/18`; Workbench docking `25/25`; Artifact Navigator `18/18`. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-flow-problems-g5/before-flow-map-1920-ko.png`.
+- Problems after: `after-problems-1920-ko.png`, `after-problems-1280-ko.png`, and `after-problems-1920-en.png` in `artifacts/ui/20260720-flow-problems-g5/`.
+- Flow Map port-state after: `artifacts/ui/20260720-flow-problems-g5/after-flow-map-ports-1920-ko.png`.
+- Verification: `tool-recipe-teaching.report.txt`, `workbench-docking.report.txt`, and `artifact-navigator.report.txt` in the same evidence folder.
+
+Boundary / next priority: G5 is a read-only status/navigation surface, not
+editable wiring, auto-routing, a generic executor, camera/PLC/HMI control,
+affine execution, calibration, or metrology. G6 compatible Tool Catalog
+scanning is completed below. The `80/100` UI/UX gate remains owner-unaccepted.
+
+## G6 compatible Tool Catalog scanning - 2026-07-20
+
+Status: Complete for G6; the global UI/UX gate remains **not accepted**.
+
+Toolbox now provides a compact bilingual `Compatible next tools` scan above
+the Recipe Navigator. It reads only current source/selection/artifact state:
+ready source inputs propose Filter, ROI / Crop, 2-Point Line, and 3-Point
+Plane; a current grid selection plus Published Filter output proposes Height
+Difference Edge; and a Published EdgePointSet proposes 3D Line Fit. Each card
+shows the declared input contract and the concrete current entity IDs.
+
+The card is deliberately a selection surface. Selecting it only changes the
+existing Toolbox item; it cannot add or reorder a pipeline row, write a route,
+edit a parameter, save, Preview, Run, or Publish. The ordinary full catalog
+remains the explicit authoring entry point.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Recommendations reflect typed current identity rather than a free-form graph guess | Artifact Navigator `22/22` covers ready-source proposals, withholding Edge before its Filter is Published, and exposing Edge after explicit Publish plus a current grid selection. |
+| Selecting a recommendation does not mutate or execute the recipe | The same `22/22` check verifies source and Edge recommendation selection preserve pipeline IDs and leave Filter/Edge execution unchanged. |
+| 1920, compact, Korean, and English layouts remain readable | Fresh Korean `1920 x 1080` / `1280 x 760` and English `1920 x 1080` captures pass screenshot quality on attempt one. |
+| Existing teaching and docking boundaries stay intact | Current-source build is `0 warnings / 0 errors`; Tool Recipe Teaching is `18/18`; Workbench docking is `25/25`. |
+
+Evidence:
+
+- Before: `artifacts/ui/20260720-compatible-tool-catalog-g6/before-compatible-tools-1920-ko.png`.
+- After Korean: `after-compatible-tools-1920-ko.png` and `after-compatible-tools-1280-ko.png` in that folder.
+- After English: `after-compatible-tools-1920-en.png` in that folder.
+- Verification: `tool-recipe-teaching.report.txt`, `workbench-docking.report.txt`, and `artifact-navigator.report.txt` in that folder.
+
+Boundary / next decision: G6 is compatible-tool discovery only; it is not
+automatic routing, editable wiring, a generic executor, a new algorithm,
+camera/PLC/HMI control, affine execution, calibration, or metrology. Re-run
+the owner UI/UX acceptance review before selecting a post-gate priority.
+
+## G7 responsive compatible catalog / explicit-add continuity - 2026-07-20
+
+Status: Complete for G7; the global UI/UX gate remains **not accepted**.
+
+The owner self-evaluation found two linked compact-layout issues: at
+`1280 x 760` the compatible list could push the teaching action below the
+fold, and the closest unavailable next tool had no visible reason. G7 keeps
+one candidate row with its explicit `Add` action in the default visible area,
+uses internal scrolling for the remaining candidates, and shows one concise
+read-only `Next missing input` explanation directly below it. The selected
+step title and its state badge also use separate rows so English names do not
+compete for the same width.
+
+The original G6 selection contract is preserved. Clicking a candidate row only
+changes Toolbox selection. Clicking its distinct `Add` button adds exactly one
+authored step with the candidate IDs visibly listed in the row. It does not
+silently change another route and does not Preview, Run, or Publish.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Compact view preserves the explicit next action and its reason | Fresh Korean `1280 x 760` capture visibly retains Filter `Add` and `Next missing input` together. |
+| Candidate add uses the displayed typed source and does not execute | Artifact Navigator `24/24` adds a source-bound 2-Point Line and proves Filter/Edge execution state is unchanged. |
+| G6 selection-only behavior remains intact | The same verification preserves the prior non-mutating source and published-Edge selection checks. |
+| Korean/English title and catalog layout remain readable | Fresh Korean `1920 x 1080` / `1280 x 760` and English `1920 x 1080` captures pass screenshot quality on attempt one. |
+| Existing workbench boundaries remain intact | Current-source build is `0 warnings / 0 errors`; Tool Recipe Teaching is `18/18`; Workbench docking is `25/25`. |
+
+Evidence:
+
+- Before Korean compact baseline: `artifacts/ui/20260720-responsive-catalog-g7/before-responsive-catalog-1280-ko.png`.
+- After Korean: `after-responsive-catalog-1920-ko.png` and `after-responsive-catalog-1280-ko.png` in that folder.
+- After English: `after-responsive-catalog-1920-en.png` in that folder.
+- Verification: `tool-recipe-teaching-report.txt`, `workbench-docking-report.txt`, and `artifact-navigator-report.txt` in that folder.
+
+Boundary / next decision: this completes only the two concrete self-evaluation
+layout issues. It does not accept the global `80/100` UI gate and does not
+replace a manual keyboard-only, high-DPI, or first-time-operator review. No
+algorithm, writable graph, automatic routing, camera/PLC/HMI, affine solver,
+calibration, or metrology capability was added.
+
+The owner-run acceptance steps and decision record are fixed in
+`docs/OPENVISIONLAB_3D_OWNER_UI_ACCEPTANCE_PROTOCOL_20260720.md`. The current
+host reports `100%` display scaling, so this repository has not claimed a
+`150%` high-DPI result. `scripts/verify-workbench-keyboard-readiness.ps1`
+provides a current-build UI Automation check for keyboard candidate selection
+and explicit candidate add at the host's actual scale. Its current `100%`
+result passes `5/5`; it does not replace the `150%` or first-time-operator
+manual gate.
