@@ -6,7 +6,7 @@
     <DockPanel LastChildFill="True">
         <shell:StudioTitleBarView DockPanel.Dock="Top"
                                   TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="3D inspection recipe workbench"
+                                  SubtitleText="{Binding Localization.StudioSubtitle}"
                                   RecipeText="{Binding Workbench.RecipeName}"
                                   SourceContextText="{Binding Workbench.SourceContextSummary}"
                                   AlignmentStatusText="{Binding Workbench.AlignmentStatusSummary}"
@@ -20,6 +20,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -40,7 +41,7 @@
                                      AutomationProperties.Name="Teach workspace">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="WrenchScrewdriver24" />
-                                <TextBlock Text="Teach" />
+                                <TextBlock Text="{Binding Localization.Teach}" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="CalibrateModeButton"
@@ -51,7 +52,7 @@
                                      AutomationProperties.Name="Calibration workspace">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="TargetArrow24" />
-                                <TextBlock Text="Calibrate" />
+                                <TextBlock Text="{Binding Localization.Calibrate}" />
                             </StackPanel>
                         </RadioButton>
                     </StackPanel>
@@ -67,10 +68,10 @@
                 <ui:Button Grid.Column="2"
                            Margin="0,0,8,0"
                            Padding="10,5"
-                           Content="Recipe Manager"
+                           Content="{Binding Localization.RecipeManager}"
                            Icon="{ui:SymbolIcon DocumentBulletList24}"
                            Click="OpenRecipeManagerButton_Click"
-                           ToolTip="Open the separate recipe lifecycle window"
+                           ToolTip="{Binding Localization.OpenRecipeManagerToolTip}"
                            AutomationProperties.AutomationId="OpenRecipeManagerButton"
                            AutomationProperties.Name="Open Recipe Manager" />
 
@@ -78,17 +79,17 @@
                            Grid.Column="3"
                            Margin="0,0,8,0"
                            Padding="10,5"
-                           Content="Tool Labs"
+                           Content="{Binding Localization.ToolLabs}"
                            Icon="{ui:SymbolIcon WrenchScrewdriver24}"
                            Click="OpenToolLabsMenuButton_Click"
-                           ToolTip="Open an existing tool's focused input, output, and evidence view"
+                           ToolTip="{Binding Localization.OpenToolLabsToolTip}"
                            AutomationProperties.AutomationId="ToolLabsMenu"
                            AutomationProperties.Name="Open Tool Labs menu">
                     <ui:Button.ContextMenu>
                         <ContextMenu Placement="Bottom"
                                      Background="{DynamicResource ThreeD.PanelBrush}"
                                      Foreground="{DynamicResource ThreeD.TextBrush}">
-                            <MenuItem Header="Filter"
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.Filter, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenFilterToolLabButton_Click"
                                       ToolTip="Open the Filter input/output 3D comparison view"
                                       AutomationProperties.AutomationId="OpenFilterToolLabButton"
@@ -97,7 +98,7 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="DataFunnel24" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="Height Difference Edge"
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.HeightDifferenceEdge, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenEdgeToolLabButton_Click"
                                       ToolTip="Open the FilteredHeightField and EdgePointSet comparison view"
                                       AutomationProperties.AutomationId="OpenEdgeToolLabButton"
@@ -106,7 +107,7 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="PointScan24" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="Line Intersection"
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LineIntersection, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenLineIntersectionToolLabButton_Click"
                                       ToolTip="Open the two-LineFeature to corner-anchor comparison view"
                                       AutomationProperties.AutomationId="OpenLineIntersectionToolLabButton"
@@ -115,7 +116,7 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="Branch24" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="Landmark Correspondence"
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LandmarkCorrespondence, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenLandmarkCorrespondenceToolLabButton_Click"
                                       ToolTip="Open the four CornerAnchor to reference-coordinate teaching view"
                                       AutomationProperties.AutomationId="OpenLandmarkCorrespondenceToolLabButton"
@@ -133,14 +134,25 @@
                              GroupName="WorkspaceMode"
                              IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
                              Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                             ToolTip="Open the existing diagnostic dock layout"
+                             ToolTip="{Binding Localization.OpenAdvancedToolTip}"
                              AutomationProperties.AutomationId="AdvancedModeButton"
                              AutomationProperties.Name="Advanced layout">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="SettingsCogMultiple24" />
-                        <TextBlock Text="Advanced layout" />
+                        <TextBlock Text="{Binding Localization.AdvancedLayout}" />
                     </StackPanel>
                 </RadioButton>
+
+                <ComboBox Grid.Column="5"
+                          Width="106"
+                          Margin="10,0,0,0"
+                          VerticalAlignment="Center"
+                          ItemsSource="{Binding LanguageOptions}"
+                          SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}"
+                          DisplayMemberPath="DisplayName"
+                          ToolTip="{Binding Localization.Language}"
+                          AutomationProperties.AutomationId="StudioLanguageSelector"
+                          AutomationProperties.Name="Select Korean or English" />
             </Grid>
         </Border>
     </DockPanel>

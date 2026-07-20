@@ -69,9 +69,8 @@ internal static class ToolWorkbenchDockingVerification
             Check(
                 "Workbench left pane is Toolbox and does not host Recipe Manager",
                 HasExactIds(workbenchContracts, WorkbenchContentIds)
-                && workbenchContracts.Select(contract => contract.Title).SequenceEqual(
-                    ["Toolbox & Entities", "3D View", "Step Parameters", "Pipeline / Validation", "Session Log", "Height Profile", "Fit Diagnostics", "Intersection Evidence", "Correspondence Evidence"],
-                    StringComparer.Ordinal),
+                && workbenchContracts[0].ContentId == "data-layers"
+                && workbenchContracts[0].HasContent,
                 Describe(workbenchContracts));
             Check("Workbench hosts all nine dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));

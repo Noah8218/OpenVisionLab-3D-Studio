@@ -53,6 +53,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private int selectedEvidenceTabIndex;
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
+    private readonly IReadOnlyList<OpenVisionLanguageOption> languageOptions;
+    private OpenVisionLanguageOption? selectedLanguageOption;
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -82,6 +84,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.runRecordPath = runRecordPath;
         this.htmlReportPath = htmlReportPath;
         this.csvReportPath = csvReportPath;
+        languageOptions = OpenVisionLanguageService.GetLanguageOptions();
+        selectedLanguageOption = languageOptions.FirstOrDefault(option => option.Language == OpenVisionLanguageService.CurrentLanguage)
+            ?? languageOptions[0];
         Workbench = new ToolWorkbenchViewModel();
         Calibration = new CalibrationCenterViewModel();
         SelectWorkspaceCommand = new RelayCommand(
@@ -116,6 +121,22 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenCsvReportCommand { get; }
     public ToolWorkbenchViewModel Workbench { get; }
     public CalibrationCenterViewModel Calibration { get; }
+    public ThreeDLocalization Localization => ThreeDLocalization.Shared;
+    public IReadOnlyList<OpenVisionLanguageOption> LanguageOptions => languageOptions;
+
+    public OpenVisionLanguageOption? SelectedLanguageOption
+    {
+        get => selectedLanguageOption;
+        set
+        {
+            if (value is null || !SetField(ref selectedLanguageOption, value))
+            {
+                return;
+            }
+
+            OpenVisionLanguageService.SetLanguage(value.Language);
+        }
+    }
 
     public ShellWorkspaceMode SelectedWorkspaceMode
     {

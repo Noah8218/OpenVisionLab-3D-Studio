@@ -24,6 +24,7 @@
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
     <ProjectReference Include="..\OpenVisionLab.Logging\OpenVisionLab.Logging.csproj" />
     <ProjectReference Include="..\OpenVisionLab.Logging.Controls\OpenVisionLab.Logging.Controls.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Localization\OpenVisionLab.Localization.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -21,7 +21,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
-                               Text="Recipe Pipeline / Teach Review" />
+                               Text="{Binding Localization.RecipePipelineTeachReview}" />
                     <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                FontSize="10"
@@ -31,10 +31,10 @@
                 <WrapPanel Grid.Column="1"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center">
-                    <Button Margin="0,0,4,0" Content="Validate" Command="{Binding ValidateTeachingRecipeCommand}" />
-                    <Button Margin="0,0,4,0" Content="Up" Command="{Binding MoveSelectedStepUpCommand}" />
-                    <Button Margin="0,0,4,0" Content="Down" Command="{Binding MoveSelectedStepDownCommand}" />
-                    <Button Content="Remove" Command="{Binding RemoveSelectedStepCommand}" />
+                    <Button Margin="0,0,4,0" Content="{Binding Localization.Validate}" Command="{Binding ValidateTeachingRecipeCommand}" />
+                    <Button Margin="0,0,4,0" Content="{Binding Localization.MoveUp}" Command="{Binding MoveSelectedStepUpCommand}" />
+                    <Button Margin="0,0,4,0" Content="{Binding Localization.MoveDown}" Command="{Binding MoveSelectedStepDownCommand}" />
+                    <Button Content="{Binding Localization.Remove}" Command="{Binding RemoveSelectedStepCommand}" />
                 </WrapPanel>
             </Grid>
 
@@ -51,11 +51,11 @@
                         <ColumnDefinition Width="190" />
                         <ColumnDefinition Width="160" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="#" />
-                    <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Tool" />
-                    <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Inputs" />
-                    <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Typed output" />
-                    <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="State" />
+                    <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
+                    <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
+                    <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnInputs}" />
+                    <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTypedOutput}" />
+                    <TextBlock Grid.Column="4" HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
                 </Grid>
                 <ListBox Grid.Row="1"
                          Background="Transparent"

@@ -239,3 +239,45 @@ Boundary: this completes the requested dock-panel P1 slice. The global
 `80/100` UI/UX gate remains unscored; P2 tree-first recipe/tool navigation,
 P3 Tool Lab review, and P4 owner acceptance are still required before new
 algorithm work resumes.
+
+## P2 bilingual navigation foundation - 2026-07-20
+
+Status: Complete (Korean/English authoring-surface slice only)
+
+The 3D Shell now takes a direct reference to the existing
+`OpenVisionLab.Localization` service used by the 2D product. The Header has a
+Korean/English selector. The service persists an operator-selected language
+through its existing `CONFIG/language.txt` behavior; the current-build capture
+argument `--ui-language ko|en` deliberately does not persist a smoke choice.
+
+The translated authoring surface is limited to the product subtitle, workspace
+commands, Tool Labs menu, dock titles, Recipe Navigator, source card, empty
+Step Parameters guidance, selected-step labels, and Recipe Pipeline headings
+and commands. Tool IDs, user-authored recipe content, typed contracts, and
+currently English-only deep parameter values remain unchanged so routes and
+recipe compatibility do not change. The dock verifier now validates stable
+pane IDs and content rather than locale-specific caption text.
+
+| Acceptance criterion | Evidence |
+| --- | --- |
+| Korean and English are visibly distinct at the two reference sizes | Current-build captures show the selector plus translated header, tree, Step Parameters, dock titles, and Pipeline controls at `1920 x 1080` and `1280 x 760`. |
+| Existing 2D localization pattern is reused instead of a new language subsystem | `OpenVisionLab.ThreeD.Shell` directly references `OpenVisionLab.Localization`; `ThreeDLocalization` refreshes view bindings from its existing `LanguageChanged` event. |
+| Locale does not weaken docking or teaching contracts | Current build passed Workbench docking `20/20` and Tool Recipe Teaching `16/16`. The structural docking contract is intentionally locale-neutral. |
+| Capture quality and responsive review passed | All four current-build captures passed the Shell screenshot-quality report on first attempt. |
+
+Fresh current-build captures:
+
+- Before English 1920: `artifacts/ui/20260720-workbench-p2-localization/before-english-1920.png`
+- Before English 1280: `artifacts/ui/20260720-workbench-p2-localization/before-english-1280.png`
+- After Korean 1920: `artifacts/ui/20260720-workbench-p2-localization/after-korean-1920.png`
+- After Korean 1280: `artifacts/ui/20260720-workbench-p2-localization/after-korean-1280.png`
+- After English 1920: `artifacts/ui/20260720-workbench-p2-localization/after-english-1920.png`
+- After English 1280: `artifacts/ui/20260720-workbench-p2-localization/after-english-1280.png`
+
+Verification reports are under
+`artifacts/verification/20260720-workbench-p2-localization/`.
+
+Boundary: this is the bilingual foundation for P2, not complete translation of
+every tool parameter, result string, evidence pane, or dialog. P2 still needs
+the tree-first route/Tool Lab entry scan review; P3 and P4 remain required
+before algorithm work resumes.

@@ -7,6 +7,7 @@ using System.Windows.Input;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -173,6 +174,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ObservableCollection<ToolWorkbenchToolItem> Tools { get; }
 
     public ToolWorkbenchSourceItem Source { get; }
+    public ThreeDLocalization Localization => ThreeDLocalization.Shared;
 
     public ObservableCollection<ToolWorkbenchReferenceItem> References { get; } = [];
 

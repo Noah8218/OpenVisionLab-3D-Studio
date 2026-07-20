@@ -37,17 +37,17 @@
                                                Symbol="FlowchartCircle24" />
                                 <TextBlock FontWeight="SemiBold"
                                            Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           Text="Select a recipe step" />
+                                           Text="{Binding Localization.NoRecipeStepSelected}" />
                             </StackPanel>
                             <TextBlock Margin="0,4,0,0"
                                        FontSize="10.5"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                        TextWrapping="Wrap"
-                                       Text="Use Add inspection step in Toolbox. Selecting a catalog item alone does not create or edit a recipe step." />
+                                       Text="{Binding Localization.NoRecipeStepSelectedDetail}" />
                         </StackPanel>
                     </Border>
                     <Expander Margin="0,10,0,0"
-                              Header="Selected palette item"
+                              Header="{Binding Localization.SelectedPaletteItem}"
                               IsExpanded="False">
                         <StackPanel Margin="0,6,0,0">
                             <TextBlock FontWeight="SemiBold"
@@ -59,11 +59,11 @@
                                        TextWrapping="Wrap"
                                        Text="{Binding SelectedTool.Description}" />
                             <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                       Text="Input" />
+                                       Text="{Binding Localization.Input}" />
                             <TextBlock FontWeight="SemiBold"
                                        Text="{Binding SelectedTool.InputContract}" />
                             <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                       Text="Output" />
+                                       Text="{Binding Localization.Output}" />
                             <TextBlock FontWeight="SemiBold"
                                        Text="{Binding SelectedTool.OutputContract}" />
                         </StackPanel>
@@ -72,7 +72,7 @@
 
                 <StackPanel Visibility="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}">
                     <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                               Text="Step properties" />
+                               Text="{Binding Localization.StepProperties}" />
                     <Grid Margin="0,3,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -143,7 +143,7 @@
                             <StackPanel>
                                 <TextBlock FontSize="10"
                                            FontWeight="SemiBold"
-                                           Text="Parameter adapter" />
+                                           Text="{Binding Localization.ParameterAdapter}" />
                                 <TextBlock Margin="0,1,0,0"
                                            FontSize="10"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -154,7 +154,7 @@
                     </Border>
 
                     <Expander Margin="0,10,0,0"
-                              Header="Inputs">
+                              Header="{Binding Localization.Inputs}">
                         <Expander.Style>
                             <Style TargetType="Expander">
                                 <Setter Property="IsExpanded" Value="True" />
@@ -171,11 +171,11 @@
                         <StackPanel Margin="0,6,0,0">
                             <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
                                        Margin="0,0,0,4"
-                                       Text="Expected data" />
+                                       Text="{Binding Localization.ExpectedData}" />
                             <TextBlock FontWeight="SemiBold"
                                        Text="{Binding SelectedPipelineStep.InputContract}" />
                             <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                       Text="Input entities (separate with ;)" />
+                                       Text="{Binding Localization.InputEntities}" />
                             <TextBox Text="{Binding SelectedPipelineStep.InputEntityIdsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,3,0,0"
                                        FontSize="10"

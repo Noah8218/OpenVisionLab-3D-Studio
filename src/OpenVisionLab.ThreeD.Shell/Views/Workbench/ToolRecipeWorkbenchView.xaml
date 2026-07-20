@@ -14,15 +14,15 @@
     </UserControl.InputBindings>
 
     <dock:OpenVisionDockWorkspaceView x:Name="DockWorkspace"
-                                      DataLayersTitle="Toolbox &amp; Entities"
-                                      ViewerTitle="3D View"
-                                      ToolInspectorTitle="Step Parameters"
-                                      EvidenceTitle="Pipeline / Validation"
-                                      LinkedViewTitle="Session Log"
-                                      ProfileTitle="Height Profile"
-                                      FitDiagnosticsTitle="Fit Diagnostics"
-                                      IntersectionEvidenceTitle="Intersection Evidence"
-                                      CorrespondenceEvidenceTitle="Correspondence Evidence"
+                                      DataLayersTitle="{Binding Localization.ToolboxAndEntities}"
+                                      ViewerTitle="{Binding Localization.Viewer}"
+                                      ToolInspectorTitle="{Binding Localization.StepParameters}"
+                                      EvidenceTitle="{Binding Localization.PipelineValidation}"
+                                      LinkedViewTitle="{Binding Localization.SessionLog}"
+                                      ProfileTitle="{Binding Localization.HeightProfile}"
+                                      FitDiagnosticsTitle="{Binding Localization.FitDiagnostics}"
+                                      IntersectionEvidenceTitle="{Binding Localization.IntersectionEvidence}"
+                                      CorrespondenceEvidenceTitle="{Binding Localization.CorrespondenceEvidence}"
                                       IsBottomPaneExpanded="{Binding Workbench.IsPipelineReviewExpanded}">
         <dock:OpenVisionDockWorkspaceView.DataLayersContent>
             <workbench:ToolboxEntityExplorerView DataContext="{Binding Workbench}" />
@@ -64,33 +64,33 @@
                                     <TextBlock FontSize="10.5"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                               Text="Teach" />
+                                               Text="{Binding Localization.Teach}" />
                                 </StackPanel>
                             </Border>
                             <TextBlock Margin="6,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.DisabledBrush}" Text="→" />
                             <ui:Button Padding="8,3"
-                                       Content="Preview"
+                                       Content="{Binding Localization.Preview}"
                                        Icon="{ui:SymbolIcon Eye24}"
                                        Command="{Binding Workbench.PreviewSelectedStepCommand}"
                                        ToolTip="Execute only the selected typed step"
                                        AutomationProperties.Name="Preview selected inspection step" />
                             <TextBlock Margin="6,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.DisabledBrush}" Text="→" />
                             <ui:Button Padding="8,3"
-                                       Content="Run"
+                                       Content="{Binding Localization.Run}"
                                        Icon="{ui:SymbolIcon PlayCircle24}"
                                        Command="{Binding Workbench.RunTeachingRecipeCommand}"
                                        ToolTip="Enabled only when every taught step has a typed adapter"
                                        AutomationProperties.Name="Run complete teaching recipe" />
                             <TextBlock Margin="6,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.DisabledBrush}" Text="→" />
                             <ui:Button Padding="8,3"
-                                       Content="Publish"
+                                       Content="{Binding Localization.Publish}"
                                        Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                        Command="{Binding Workbench.PublishSelectedStepCommand}"
                                        ToolTip="Publish the current non-stale Preview without re-running"
                                        AutomationProperties.Name="Publish selected inspection output" />
                             <ui:Button Margin="5,0,0,0"
                                        Padding="8,3"
-                                       Content="Cancel"
+                                       Content="{Binding Localization.Cancel}"
                                        Icon="{ui:SymbolIcon ArrowUndo24}"
                                        Command="{Binding Workbench.CancelSelectedPreviewCommand}"
                                        Visibility="{Binding Workbench.IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -164,11 +164,11 @@
                                     <TextBlock FontSize="11"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource ThreeD.TextBrush}"
-                                               Text="No recipe step selected" />
+                                               Text="{Binding Localization.NoRecipeStepSelected}" />
                                     <TextBlock Margin="0,3,0,0"
                                                FontSize="10"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                               Text="Next: choose Add inspection step in Toolbox &amp; Entities." />
+                                               Text="{Binding Localization.NoRecipeStepSelectedDetail}" />
                                 </StackPanel>
                                 <Border Grid.Column="1"
                                         Margin="12,0,0,0"

@@ -69,6 +69,21 @@ Correspondence `1280 x 760` captures are accepted. Build `0/0`, docking
 P1 dock-panel slice, not the global UI gate. Next: P2 tree-first navigation,
 then P3 Tool Lab review and P4 owner scoring; do not resume algorithm work.
 
+**Current P2 bilingual-navigation checkpoint (2026-07-20):** the 3D Shell now
+directly uses the existing `OpenVisionLab.Localization` service from the 2D
+product. A Header Korean/English selector drives translated workspace commands,
+Tool Labs menu, dock titles, Recipe Navigator, source/empty-state guidance,
+Step Parameters labels, and Recipe Pipeline controls. `--ui-language ko|en`
+is capture-only and does not persist a smoke choice; normal selection keeps the
+existing localization service persistence behavior. Current-build Korean and
+English captures pass Shell quality at both `1920 x 1080` and `1280 x 760`.
+Build is `0/0`, Workbench docking is `20/20`, and Tool Recipe Teaching is
+`16/16`. Deep tool parameters, result/evidence strings, IDs, contracts, and
+recipe content are intentionally not translated in this slice. P2 is not
+complete: next review tree-first route selection and Tool Lab entry scanability
+without introducing a writable graph editor. See
+`docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
+
 ## Current Task Workspace UI Direction
 
 Commercial 3D-inspection tools distinguish a controlled authoring workbench from an unrestricted expert layout. The Shell now defaults to the bounded docked Tool Workbench; the denser Advanced/Expert layout remains opt-in.

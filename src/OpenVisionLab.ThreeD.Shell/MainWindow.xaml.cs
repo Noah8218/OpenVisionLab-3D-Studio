@@ -65,6 +65,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         OpenVisionLanguageService.Load();
+        ApplyCommandLineLanguage();
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio starting.");
         InitializeComponent();
         _viewModel = new ShellMainWindowViewModel(
@@ -904,6 +905,26 @@ public partial class MainWindow : Window
         var args = Environment.GetCommandLineArgs();
         var index = Array.IndexOf(args, name);
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
+
+    private static void ApplyCommandLineLanguage()
+    {
+        var requestedLanguage = GetCommandLineValue("--ui-language")?.Trim();
+        if (requestedLanguage is null)
+        {
+            return;
+        }
+
+        if (requestedLanguage.Equals("ko", StringComparison.OrdinalIgnoreCase)
+            || requestedLanguage.Equals("korean", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+        }
+        else if (requestedLanguage.Equals("en", StringComparison.OrdinalIgnoreCase)
+                 || requestedLanguage.Equals("english", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+        }
     }
 
     private static int GetEvidenceTabIndex(string? tabName)
