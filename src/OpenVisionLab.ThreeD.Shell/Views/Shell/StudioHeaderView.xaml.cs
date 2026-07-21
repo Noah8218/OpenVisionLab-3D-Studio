@@ -23,6 +23,8 @@ public partial class StudioHeaderView : UserControl
     public event EventHandler? LineIntersectionToolLabRequested;
     public event EventHandler? LandmarkCorrespondenceToolLabRequested;
     public event EventHandler? XYZAffineSolveToolLabRequested;
+    public event EventHandler? XYZAffineApplyToolLabRequested;
+    public event EventHandler? RegridHeightMapToolLabRequested;
 
     private void OpenRecipeManagerButton_Click(object sender, RoutedEventArgs args) =>
         RecipeManagerRequested?.Invoke(this, EventArgs.Empty);
@@ -59,4 +61,10 @@ public partial class StudioHeaderView : UserControl
 
     private void OpenXYZAffineSolveToolLabButton_Click(object sender, RoutedEventArgs args) =>
         XYZAffineSolveToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenXYZAffineApplyToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        XYZAffineApplyToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenRegridHeightMapToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        RegridHeightMapToolLabRequested?.Invoke(this, EventArgs.Empty);
 }

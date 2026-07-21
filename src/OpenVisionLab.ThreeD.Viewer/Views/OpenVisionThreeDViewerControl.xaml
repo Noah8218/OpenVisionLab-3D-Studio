@@ -1102,6 +1102,20 @@
                                TextWrapping="Wrap"
                                Visibility="{Binding LineIntersectionHudVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                Text="{Binding LineIntersectionHudSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#5eead4"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding AffineApplyHudVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding AffineApplyHudSummary}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#a7f3d0"
+                               TextWrapping="Wrap"
+                               Visibility="{Binding RegridHeightFieldHudVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                               Text="{Binding RegridHeightFieldHudSummary}" />
                     <TextBlock Margin="0,8,0,0"
                                FontSize="11"
                                Foreground="#d1d5db"

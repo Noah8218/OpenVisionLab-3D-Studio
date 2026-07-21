@@ -51,6 +51,8 @@ internal static class RunnerApplication
         var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLandmarkCorrespondence = args.Contains("--verify-c3d-landmark-correspondence", StringComparer.OrdinalIgnoreCase);
         var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DAffineApply = args.Contains("--verify-c3d-affine-apply", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRegridHeightField = args.Contains("--verify-c3d-regrid-height-field", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
         var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
         var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
@@ -252,6 +254,28 @@ internal static class RunnerApplication
             }
 
             return C3DAffineSolveGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DAffineApply)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-affine-apply --report <path>");
+                return 2;
+            }
+
+            return C3DAffineApplyGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRegridHeightField)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-regrid-height-field --report <path>");
+                return 2;
+            }
+
+            return C3DRegridHeightFieldGoldenVerification.Run(reportPath);
         }
 
         if (stanfordTransformPath is not null)

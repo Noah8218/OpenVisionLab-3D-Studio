@@ -15,7 +15,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(AdvancedLayout), nameof(Language), nameof(OpenRecipeManagerToolTip), nameof(OpenToolLabsToolTip),
         nameof(OpenAdvancedToolTip), nameof(Filter), nameof(HeightDifferenceEdge), nameof(TwoPointLine),
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
-        nameof(XYZAffineSolve), nameof(ToolboxAndEntities), nameof(Viewer), nameof(StepParameters),
+        nameof(XYZAffineSolve), nameof(XYZAffineApply), nameof(ToolboxAndEntities), nameof(Viewer), nameof(StepParameters),
         nameof(PipelineValidation), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
         nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
         nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
@@ -72,6 +72,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string LineIntersection => T("ThreeD.Tool.LineIntersection", "\uB77C\uC778 \uAD50\uCC28\uC810", "Line Intersection");
     public string LandmarkCorrespondence => T("ThreeD.Tool.LandmarkCorrespondence", "\uB79C\uB4DC\uB9C8\uD06C \uB300\uC751", "Landmark Correspondence");
     public string XYZAffineSolve => T("ThreeD.Tool.XYZAffineSolve", "XYZ \uC5B4\uD30C\uC778 \uACC4\uC0B0", "XYZ Affine Solve");
+    public string XYZAffineApply => T("ThreeD.Tool.XYZAffineApply", "XYZ \uC5B4\uD30C\uC778 \uC801\uC6A9", "Apply XYZ Affine");
+    public string RegridHeightMap => T("ThreeD.Tool.RegridHeightMap", "\uB192\uC774 \uB9F5 \uC7AC\uACA9\uC790\uD654", "Re-grid Height Map");
     public string ToolboxAndEntities => T("ThreeD.Workbench.ToolboxAndEntities", "\uD234\uBC15\uC2A4 \uBC0F \uC5D4\uD2F0\uD2F0", "Toolbox & Entities");
     public string Viewer => T("ThreeD.Workbench.Viewer", "3D \uBDF0", "3D View");
     public string StepParameters => T("ThreeD.Workbench.StepParameters", "\uB2E8\uACC4 \uD30C\uB77C\uBBF8\uD130", "Step Parameters");

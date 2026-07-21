@@ -2,6 +2,68 @@
 
 Updated: 2026-07-21
 
+## Current A3 Re-grid Height Field implementation checkpoint - 2026-07-21
+
+**Implemented for deterministic synthetic software evidence; not validated on
+real A1/A2 data.** The owner approved all eight A3 decisions. The route is
+exactly `current Published TransformedPointCloud + recipe-owned explicit
+ReferenceGridProfile -> TransformedHeightField`. A3 does not rewrite C3D or
+infer an output plane. It owns an explicit right-handed U/V/H basis, outer
+corner origin, pitches, dimensions, frame/unit/provenance, half-open bounds,
+cell-centre assignment, deterministic collision winner with winner planar
+distance, preserved holes, and explicit Publish coverage gate. V1 rejects
+out-of-bounds samples and has no interpolation, fill, average, smoothing,
+mesh, calibration, Thickness, or Warpage behavior.
+
+Library-Noah `Lib.ThreeD` `2.7.1` at commit
+`8811ca260caf3a6640933624106df23146427d53` owns the pure projection/binning
+math. Studio vendors SHA-256
+`3A873D926764CCC6781413DA62DD7D2F6FDF050058BCEE231279C1C77CEC69DA`, owns
+the immutable contracts, strict one-input adapter, PropertyGrid profile,
+Preview/Publish/stale lifecycle, Artifact Registry, Runner golden, dedicated
+single-instance custom-title Tool Lab, and line-based Viewer field. Library
+Release smoke is `33/33`; full Studio Debug build is `0 warning / 0 error`;
+A3 Runner golden is `4/4`; A2 regression is `4/4`; and package/Noah bridge
+verification pass from the current Debug Runner output. The synthetic
+coverage, package evidence, and remaining scope are recorded in
+`docs/OPENVISIONLAB_3D_REGRID_HEIGHT_FIELD_DESIGN_20260721.md`.
+
+Current Shell Tool Lab screenshot automation was attempted but this graphical
+host returned without writing a capture artifact. Treat current visual quality
+as unverified until rerun in an interactive WPF desktop session. The real
+four-anchor A1/A2 data and trusted mapping-profile provenance remain absent,
+so real A3 validation is also unverified.
+
+## Current A2 Full-XYZ Affine Apply implementation checkpoint - 2026-07-21
+
+**Complete for deterministic local software evidence.** The owner approved
+all seven A2 decisions. The implemented route is exactly `verified raw
+SourceC3D + current Published AffineTransform3D -> TransformedPointCloud`.
+Every finite raw `(column, raw-height, row)` source point is transformed once
+in full double XYZ; zero/non-finite samples remain absent. The result is an
+immutable, ordered in-memory cloud with source/A1 frame/unit/hash lineage and
+a canonical hash. It never writes or mutates C3D, re-grids, interpolates,
+triangulates, measures, calibrates, or claims physical scale.
+
+Library-Noah `Lib.ThreeD` `2.6.1` at committed source
+`b3060175c34956001662383adfe57e14abbdd92a` owns the pure point loop. Studio
+uses the vendored package only; it owns C3D identity, strict two-input route,
+explicit Preview/Discard/Publish/stale state, Artifact Registry, Runner
+adapter, and a single-instance custom-title dual-viewer `Apply XYZ Affine Tool
+Lab`. The output uses source-grid adjacency only when transformed data exists;
+it does not invent faces or a re-gridded surface.
+
+Current evidence: Any CPU Shell build `0/0`; A2 Runner Golden `4/4`; A1
+regression `4/4`; exact vendored package verification; and a first-attempt
+current-build Tool Lab capture at
+`artifacts/current/a2-affine-apply-tool-lab-after.png`. The capture correctly
+shows the raw source and disabled A2 controls while no current Published A1
+matrix exists. Do not describe that as transformed-cloud visual proof. A real
+four-anchor source/reference package, source unit/frame/alignment provenance,
+and trusted Published A1 matrix are still required for actual A2
+Preview/Publish, line-cloud visual evidence, and headless replay. A3 re-grid
+remains separately unimplemented and requires its own owner-approved contract.
+
 ## Current owner UI acceptance-review packet - 2026-07-21
 
 The automated/current-source portion of P4 was refreshed after G1-G7, the

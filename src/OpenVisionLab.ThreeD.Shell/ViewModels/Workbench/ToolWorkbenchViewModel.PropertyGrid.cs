@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 2-Point Line, 3-Point Plane, Datum Plane Raw-Height Deviation, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
+    private string stepParameterEditStatus = "Select a typed tool to teach parameters. Apply XYZ Affine has a fixed no-parameter A2 contract.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -59,6 +59,8 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
         { ToolId: "landmark-correspondence" } step => FormatAdapterStatus(step, LandmarkCorrespondenceStepProperties.MappedNames),
         { ToolId: "xyz-affine-solve" } step => FormatAdapterStatus(step, XYZAffineSolveStepProperties.MappedNames),
+        { ToolId: "xyz-affine-apply" } step => FormatAdapterStatus(step, XYZAffineApplyStepProperties.MappedNames),
+        { ToolId: "re-grid-height-map" } step => FormatAdapterStatus(step, RegridHeightMapStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -315,6 +317,18 @@ public sealed partial class ToolWorkbenchViewModel
                     ["ArithmeticResidualWarning"] = affine.ArithmeticResidualWarning.ToString("G17", CultureInfo.InvariantCulture)
                 };
                 break;
+            case XYZAffineApplyStepProperties:
+                values = new Dictionary<string, string>(StringComparer.Ordinal);
+                break;
+            case RegridHeightMapStepProperties regrid:
+                if (!regrid.TryCreateProfile(out var profile, out message) || profile is null)
+                {
+                    SetParameterDraftStatus(string.IsNullOrWhiteSpace(message) ? "Reference-grid profile could not be created." : message);
+                    return false;
+                }
+
+                values = profile.ToRecipeParameters().ToDictionary(parameter => parameter.Name, parameter => parameter.Value, StringComparer.Ordinal);
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -322,6 +336,17 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         var changed = false;
+        if (step.ToolId == "re-grid-height-map")
+        {
+            for (var index = step.Parameters.Count - 1; index >= 0; index--)
+            {
+                if (!values.ContainsKey(step.Parameters[index].Name))
+                {
+                    step.Parameters.RemoveAt(index);
+                    changed = true;
+                }
+            }
+        }
         foreach (var pair in values)
         {
             var parameter = step.Parameters.FirstOrDefault(item =>
@@ -382,6 +407,8 @@ public sealed partial class ToolWorkbenchViewModel
             "line-intersection" => LineIntersectionStepProperties.From(step),
             "landmark-correspondence" => LandmarkCorrespondenceStepProperties.From(step),
             "xyz-affine-solve" => XYZAffineSolveStepProperties.From(step),
+            "xyz-affine-apply" => XYZAffineApplyStepProperties.From(step),
+            "re-grid-height-map" => RegridHeightMapStepProperties.From(step),
             _ => null
         };
 
@@ -525,7 +552,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -1366,6 +1393,108 @@ public sealed class XYZAffineSolveStepProperties
         message = string.Empty;
         return true;
     }
+}
+
+[CategoryOrder("A2 contract", 0)]
+public sealed class XYZAffineApplyStepProperties
+{
+    internal static readonly HashSet<string> MappedNames = [];
+
+    [Category("A2 contract")]
+    [DisplayName("Execution policy")]
+    [Description("Apply XYZ Affine v1 has no authored numerical parameters. It verifies the recipe-bound raw C3D and current Published AffineTransform3D, then transforms each finite point once.")]
+    [PropertyOrder(0)]
+    [ReadOnly(true)]
+    public string ExecutionPolicy { get; init; } = "Raw source + Published A1";
+
+    [Category("A2 contract")]
+    [DisplayName("Excluded operations")]
+    [PropertyOrder(1)]
+    [ReadOnly(true)]
+    public string ExcludedOperations { get; init; } = "No re-grid / no measurement";
+
+    internal static XYZAffineApplyStepProperties From(ToolWorkbenchPipelineStepItem step) => new();
+}
+
+[CategoryOrder("A3 reference grid", 0)]
+[CategoryOrder("A3 publish policy", 1)]
+public sealed class RegridHeightMapStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "ReferenceFrameId", "ReferenceUnit", "ReferenceProvenance", "ReferenceRevision",
+        "OriginX", "OriginY", "OriginZ", "UAxisX", "UAxisY", "UAxisZ", "VAxisX", "VAxisY", "VAxisZ", "HAxisX", "HAxisY", "HAxisZ",
+        "PitchU", "PitchV", "RowCount", "ColumnCount", "MinimumCoverageRatio",
+        "CellAssignment", "CollisionPolicy", "OutOfBoundsPolicy", "HolePolicy"
+    ];
+
+    [Category("A3 reference grid")] [DisplayName("Reference frame ID")] [PropertyOrder(0)] public string ReferenceFrameId { get; set; } = "frame.reference";
+    [Category("A3 reference grid")] [DisplayName("Reference unit")] [PropertyOrder(1)] public string ReferenceUnit { get; set; } = "unitless";
+    [Category("A3 reference grid")] [DisplayName("Reference provenance")] [PropertyOrder(2)] public string ReferenceProvenance { get; set; } = "Authored reference grid";
+    [Category("A3 reference grid")] [DisplayName("Reference revision")] [PropertyOrder(3)] public string ReferenceRevision { get; set; } = "R1";
+    [Category("A3 reference grid")] [DisplayName("Origin X")] [PropertyOrder(4)] public double OriginX { get; set; }
+    [Category("A3 reference grid")] [DisplayName("Origin Y")] [PropertyOrder(5)] public double OriginY { get; set; }
+    [Category("A3 reference grid")] [DisplayName("Origin Z")] [PropertyOrder(6)] public double OriginZ { get; set; }
+    [Category("A3 reference grid")] [DisplayName("U axis X")] [PropertyOrder(7)] public double UAxisX { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("U axis Y")] [PropertyOrder(8)] public double UAxisY { get; set; }
+    [Category("A3 reference grid")] [DisplayName("U axis Z")] [PropertyOrder(9)] public double UAxisZ { get; set; }
+    [Category("A3 reference grid")] [DisplayName("V axis X")] [PropertyOrder(10)] public double VAxisX { get; set; }
+    [Category("A3 reference grid")] [DisplayName("V axis Y")] [PropertyOrder(11)] public double VAxisY { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("V axis Z")] [PropertyOrder(12)] public double VAxisZ { get; set; }
+    [Category("A3 reference grid")] [DisplayName("Height axis X")] [PropertyOrder(13)] public double HAxisX { get; set; }
+    [Category("A3 reference grid")] [DisplayName("Height axis Y")] [PropertyOrder(14)] public double HAxisY { get; set; }
+    [Category("A3 reference grid")] [DisplayName("Height axis Z")] [PropertyOrder(15)] public double HAxisZ { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("U pitch")] [Description("Positive reference-frame spacing along U.")] [PropertyOrder(16)] public double PitchU { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("V pitch")] [Description("Positive reference-frame spacing along V.")] [PropertyOrder(17)] public double PitchV { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("Rows")] [PropertyOrder(18)] public int RowCount { get; set; } = 1;
+    [Category("A3 reference grid")] [DisplayName("Columns")] [PropertyOrder(19)] public int ColumnCount { get; set; } = 1;
+    [Category("A3 publish policy")] [DisplayName("Minimum coverage ratio")] [Description("Preview may complete below this ratio, but Publish remains disabled.")] [PropertyOrder(20)] [NumberRange(0, 1, 0.01)] public double MinimumCoverageRatio { get; set; } = 1;
+    [Category("A3 publish policy")] [DisplayName("Cell assignment")] [PropertyOrder(21)] [ReadOnly(true)] public string CellAssignment { get; } = C3DReferenceGridProfile.CellAssignment;
+    [Category("A3 publish policy")] [DisplayName("Collision policy")] [PropertyOrder(22)] [ReadOnly(true)] public string CollisionPolicy { get; } = C3DReferenceGridProfile.CollisionPolicy;
+    [Category("A3 publish policy")] [DisplayName("Out-of-bounds policy")] [PropertyOrder(23)] [ReadOnly(true)] public string OutOfBoundsPolicy { get; } = C3DReferenceGridProfile.OutOfBoundsPolicy;
+    [Category("A3 publish policy")] [DisplayName("Missing-cell policy")] [PropertyOrder(24)] [ReadOnly(true)] public string HolePolicy { get; } = C3DReferenceGridProfile.HolePolicy;
+
+    internal static RegridHeightMapStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ReferenceFrameId = ToolWorkbenchViewModel.GetParameter(step, "ReferenceFrameId") ?? "frame.reference",
+        ReferenceUnit = ToolWorkbenchViewModel.GetParameter(step, "ReferenceUnit") ?? "unitless",
+        ReferenceProvenance = ToolWorkbenchViewModel.GetParameter(step, "ReferenceProvenance") ?? "Authored reference grid",
+        ReferenceRevision = ToolWorkbenchViewModel.GetParameter(step, "ReferenceRevision") ?? "R1",
+        OriginX = Double(step, "OriginX", 0), OriginY = Double(step, "OriginY", 0), OriginZ = Double(step, "OriginZ", 0),
+        UAxisX = Double(step, "UAxisX", 1), UAxisY = Double(step, "UAxisY", 0), UAxisZ = Double(step, "UAxisZ", 0),
+        VAxisX = Double(step, "VAxisX", 0), VAxisY = Double(step, "VAxisY", 1), VAxisZ = Double(step, "VAxisZ", 0),
+        HAxisX = Double(step, "HAxisX", 0), HAxisY = Double(step, "HAxisY", 0), HAxisZ = Double(step, "HAxisZ", 1),
+        PitchU = Double(step, "PitchU", 1), PitchV = Double(step, "PitchV", 1),
+        RowCount = Integer(step, "RowCount", 1), ColumnCount = Integer(step, "ColumnCount", 1),
+        MinimumCoverageRatio = Double(step, "MinimumCoverageRatio", 1)
+    };
+
+    internal bool TryCreateProfile(out C3DReferenceGridProfile? profile, out string message)
+    {
+        profile = null;
+        try
+        {
+            profile = C3DReferenceGridProfile.Create(
+                ReferenceFrameId, ReferenceUnit, ReferenceProvenance, ReferenceRevision,
+                new C3DReferenceGridVector(OriginX, OriginY, OriginZ),
+                new C3DReferenceGridVector(UAxisX, UAxisY, UAxisZ),
+                new C3DReferenceGridVector(VAxisX, VAxisY, VAxisZ),
+                new C3DReferenceGridVector(HAxisX, HAxisY, HAxisZ),
+                PitchU, PitchV, RowCount, ColumnCount, MinimumCoverageRatio);
+            message = string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or OverflowException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    private static double Double(ToolWorkbenchPipelineStepItem step, string name, double fallback) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+    private static int Integer(ToolWorkbenchPipelineStepItem step, string name, int fallback) =>
+        int.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 }
 
 public sealed class ToolWorkbenchRecipePathRequestEventArgs(string path) : EventArgs

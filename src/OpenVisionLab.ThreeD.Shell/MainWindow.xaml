@@ -36,7 +36,9 @@
                                      DatumPlaneDeviationToolLabRequested="OpenDatumPlaneDeviationToolLabRequested"
                                      LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested"
                                      LandmarkCorrespondenceToolLabRequested="OpenLandmarkCorrespondenceToolLabRequested"
-                                     XYZAffineSolveToolLabRequested="OpenXYZAffineSolveToolLabRequested" />
+                                     XYZAffineSolveToolLabRequested="OpenXYZAffineSolveToolLabRequested"
+                                     XYZAffineApplyToolLabRequested="OpenXYZAffineApplyToolLabRequested"
+                                     RegridHeightMapToolLabRequested="OpenRegridHeightMapToolLabRequested" />
 
         <Grid>
         <workbench:ToolRecipeWorkbenchView x:Name="ToolWorkbench"

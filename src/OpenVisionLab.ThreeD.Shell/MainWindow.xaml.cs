@@ -72,6 +72,8 @@ public partial class MainWindow : Window
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
     private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
+    private XYZAffineApplyToolLabWindow? xyzAffineApplyToolLabWindow;
+    private RegridHeightMapToolLabWindow? regridHeightMapToolLabWindow;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -285,6 +287,10 @@ public partial class MainWindow : Window
         var landmarkCorrespondenceToolLabScreenshotQualityReportPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot-quality-report");
         var xyzAffineSolveToolLabScreenshotPath = GetCommandLineValue("--xyz-affine-solve-tool-lab-screenshot");
         var xyzAffineSolveToolLabScreenshotQualityReportPath = GetCommandLineValue("--xyz-affine-solve-tool-lab-screenshot-quality-report");
+        var xyzAffineApplyToolLabScreenshotPath = GetCommandLineValue("--xyz-affine-apply-tool-lab-screenshot");
+        var xyzAffineApplyToolLabScreenshotQualityReportPath = GetCommandLineValue("--xyz-affine-apply-tool-lab-screenshot-quality-report");
+        var regridHeightMapToolLabScreenshotPath = GetCommandLineValue("--regrid-height-map-tool-lab-screenshot");
+        var regridHeightMapToolLabScreenshotQualityReportPath = GetCommandLineValue("--regrid-height-map-tool-lab-screenshot-quality-report");
         var smokeSaveRecipePath = GetCommandLineValue("--smoke-save-recipe");
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
@@ -347,6 +353,8 @@ public partial class MainWindow : Window
             || lineIntersectionToolLabScreenshotPath is not null
             || landmarkCorrespondenceToolLabScreenshotPath is not null
             || xyzAffineSolveToolLabScreenshotPath is not null
+            || xyzAffineApplyToolLabScreenshotPath is not null
+            || regridHeightMapToolLabScreenshotPath is not null
             || _viewer.HasConfiguredSmokeScreenshot
             || teachingSelectionSmokeMode is not null
             || profilePointerSmokeReportPath is not null
@@ -535,6 +543,72 @@ public partial class MainWindow : Window
                         || !ReferenceEquals(firstXYZAffineSolveToolLabWindow, xyzAffineSolveToolLabWindow)))
                 {
                     _viewModel.SetViewerSmokeFailed("XYZ Affine Solve Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (xyzAffineApplyToolLabScreenshotPath is not null
+                    && !EnsureToolLabStepSelected("xyz-affine-apply", preserveSelectedStep: false))
+                {
+                    _viewModel.Workbench.SelectedTool = _viewModel.Workbench.Tools.Single(tool => tool.Id == "xyz-affine-apply");
+                    _viewModel.Workbench.AddSelectedToolCommand.Execute(null);
+                    if (_viewModel.Workbench.SelectedPipelineStep is not { } affineApplyStep)
+                    {
+                        _viewModel.SetViewerSmokeFailed("XYZ Affine Apply smoke could not author its isolated waiting step.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    affineApplyStep.InputEntityIdsText = "source.c3d.height-map;derived.affine-transform.01";
+                }
+
+                if (xyzAffineApplyToolLabScreenshotPath is not null
+                    && !ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Apply Tool Lab smoke requires an Apply XYZ Affine recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstXYZAffineApplyToolLabWindow = xyzAffineApplyToolLabWindow;
+                if (xyzAffineApplyToolLabScreenshotPath is not null
+                    && (firstXYZAffineApplyToolLabWindow is null
+                        || !ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: false)
+                        || !ReferenceEquals(firstXYZAffineApplyToolLabWindow, xyzAffineApplyToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Apply Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (regridHeightMapToolLabScreenshotPath is not null
+                    && !EnsureToolLabStepSelected("re-grid-height-map", preserveSelectedStep: false))
+                {
+                    _viewModel.Workbench.SelectedTool = _viewModel.Workbench.Tools.Single(tool => tool.Id == "re-grid-height-map");
+                    _viewModel.Workbench.AddSelectedToolCommand.Execute(null);
+                    if (_viewModel.Workbench.SelectedPipelineStep is not { } regridStep)
+                    {
+                        _viewModel.SetViewerSmokeFailed("Re-grid Height Map smoke could not author its isolated waiting step.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    regridStep.InputEntityIdsText = "derived.affine-point-cloud.01";
+                }
+
+                if (regridHeightMapToolLabScreenshotPath is not null
+                    && !ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("Re-grid Height Map Tool Lab smoke requires a Re-grid Height Map recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstRegridHeightMapToolLabWindow = regridHeightMapToolLabWindow;
+                if (regridHeightMapToolLabScreenshotPath is not null
+                    && (firstRegridHeightMapToolLabWindow is null
+                        || !ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: false)
+                        || !ReferenceEquals(firstRegridHeightMapToolLabWindow, regridHeightMapToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Re-grid Height Map Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -952,10 +1026,44 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (xyzAffineApplyToolLabScreenshotPath is not null
+                    && (xyzAffineApplyToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(xyzAffineApplyToolLabWindow),
+                            xyzAffineApplyToolLabScreenshotPath,
+                            xyzAffineApplyToolLabScreenshotQualityReportPath,
+                            "XYZAffineApplyToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("XYZ Affine Apply Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (regridHeightMapToolLabScreenshotPath is not null
+                    && (regridHeightMapToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(regridHeightMapToolLabWindow),
+                            regridHeightMapToolLabScreenshotPath,
+                            regridHeightMapToolLabScreenshotQualityReportPath,
+                            "RegridHeightMapToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("Re-grid Height Map Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 await Task.Delay(100);
                 if (xyzAffineSolveToolLabScreenshotPath is not null && xyzAffineSolveToolLabWindow is { IsVisible: true })
                 {
                     xyzAffineSolveToolLabWindow.Close();
+                }
+                if (xyzAffineApplyToolLabScreenshotPath is not null && xyzAffineApplyToolLabWindow is { IsVisible: true })
+                {
+                    xyzAffineApplyToolLabWindow.Close();
+                }
+                if (regridHeightMapToolLabScreenshotPath is not null && regridHeightMapToolLabWindow is { IsVisible: true })
+                {
+                    regridHeightMapToolLabWindow.Close();
                 }
                 if (datumPlaneDeviationToolLabScreenshotPath is not null && datumPlaneDeviationToolLabWindow is { IsVisible: true })
                 {
@@ -996,6 +1104,12 @@ public partial class MainWindow : Window
                 break;
             case XYZAffineSolveToolLabWindow affine:
                 affine.RefreshViews();
+                break;
+            case XYZAffineApplyToolLabWindow apply:
+                apply.RefreshViews();
+                break;
+            case RegridHeightMapToolLabWindow regrid:
+                regrid.RefreshViews();
                 break;
         }
 
@@ -1660,6 +1774,12 @@ public partial class MainWindow : Window
             case "xyz-affine-solve":
                 ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: false, preserveSelectedStep: true);
                 break;
+            case "xyz-affine-apply":
+                ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: false, preserveSelectedStep: true);
+                break;
+            case "re-grid-height-map":
+                ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: false, preserveSelectedStep: true);
+                break;
         }
     }
 
@@ -1935,6 +2055,16 @@ public partial class MainWindow : Window
         ShowXYZAffineSolveToolLabWindow(showMissingAffineSolveMessage: true);
     }
 
+    private void OpenXYZAffineApplyToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowXYZAffineApplyToolLabWindow(showMissingAffineApplyMessage: true);
+    }
+
+    private void OpenRegridHeightMapToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowRegridHeightMapToolLabWindow(showMissingRegridMessage: true);
+    }
+
     private bool ShowXYZAffineSolveToolLabWindow(bool showMissingAffineSolveMessage, bool preserveSelectedStep = false)
     {
         if (!EnsureToolLabStepSelected("xyz-affine-solve", preserveSelectedStep))
@@ -1968,6 +2098,78 @@ public partial class MainWindow : Window
         xyzAffineSolveToolLabWindow.RefreshViews();
         xyzAffineSolveToolLabWindow.Show();
         xyzAffineSolveToolLabWindow.Activate();
+        return true;
+    }
+
+    private bool ShowXYZAffineApplyToolLabWindow(bool showMissingAffineApplyMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("xyz-affine-apply", preserveSelectedStep))
+        {
+            if (showMissingAffineApplyMessage)
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or add an Apply XYZ Affine step before opening Apply XYZ Affine Tool Lab.",
+                    "Apply XYZ Affine Tool Lab",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (xyzAffineApplyToolLabWindow is null)
+        {
+            xyzAffineApplyToolLabWindow = new XYZAffineApplyToolLabWindow(_viewModel.Workbench, step)
+            {
+                Owner = this
+            };
+            xyzAffineApplyToolLabWindow.Closed += (_, _) => xyzAffineApplyToolLabWindow = null;
+        }
+        else
+        {
+            xyzAffineApplyToolLabWindow.SetLabStep(step);
+        }
+
+        xyzAffineApplyToolLabWindow.RefreshViews();
+        xyzAffineApplyToolLabWindow.Show();
+        xyzAffineApplyToolLabWindow.Activate();
+        return true;
+    }
+
+    private bool ShowRegridHeightMapToolLabWindow(bool showMissingRegridMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("re-grid-height-map", preserveSelectedStep))
+        {
+            if (showMissingRegridMessage)
+            {
+                MessageBox.Show(
+                    this,
+                    "Open or add a Re-grid Height Map step before opening Re-grid Height Map Tool Lab.",
+                    "Re-grid Height Map Tool Lab",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (regridHeightMapToolLabWindow is null)
+        {
+            regridHeightMapToolLabWindow = new RegridHeightMapToolLabWindow(_viewModel.Workbench, step)
+            {
+                Owner = this
+            };
+            regridHeightMapToolLabWindow.Closed += (_, _) => regridHeightMapToolLabWindow = null;
+        }
+        else
+        {
+            regridHeightMapToolLabWindow.SetLabStep(step);
+        }
+
+        regridHeightMapToolLabWindow.RefreshViews();
+        regridHeightMapToolLabWindow.Show();
+        regridHeightMapToolLabWindow.Activate();
         return true;
     }
 
@@ -2283,6 +2485,8 @@ public partial class MainWindow : Window
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--xyz-affine-apply-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--regrid-height-map-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
 
     private void SyncWorkbenchSourceFromViewer()

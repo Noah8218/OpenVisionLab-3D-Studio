@@ -129,6 +129,7 @@ public sealed partial class ToolWorkbenchViewModel
             LandmarkCorrespondenceDisplayRequested?.Invoke(this, new ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs(anchors, landmarkCorrespondencePreviewOutput, true));
         }
         RefreshXYZAffineSolveExecutionState();
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private void CancelLandmarkCorrespondencePreview() => landmarkCorrespondencePreviewCancellation?.Cancel();
@@ -144,6 +145,7 @@ public sealed partial class ToolWorkbenchViewModel
         LandmarkCorrespondenceDisplayCleared?.Invoke(this, EventArgs.Empty);
         SetLandmarkCorrespondenceSummary("Recipe, correspondence row, descriptor, or published CornerAnchor changed. Preview again before Publish.");
         MarkAffineSolvePreviewStaleIfNeeded();
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private void ClearLandmarkCorrespondencePreview(string summary)
@@ -156,6 +158,7 @@ public sealed partial class ToolWorkbenchViewModel
         LandmarkCorrespondenceDisplayCleared?.Invoke(this, EventArgs.Empty);
         SetLandmarkCorrespondenceSummary(summary);
         ClearXYZAffineSolvePreview("Published CorrespondenceSet was cleared. XYZ Affine Solve Preview was cleared without execution.");
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private void RefreshLandmarkCorrespondenceExecutionState()
@@ -189,6 +192,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(LandmarkCorrespondenceEvidenceSummary));
         RefreshLandmarkCorrespondenceCommands();
         RefreshXYZAffineSolveExecutionState();
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private bool TryGetSelectedLandmarkCorrespondenceSelection(out ToolRecipeSelection selection)

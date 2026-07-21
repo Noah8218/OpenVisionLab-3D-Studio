@@ -85,7 +85,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
             new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 1, "Correspondence selection", "CorrespondenceSet", "Validate four named Published CornerAnchors against explicit reference coordinates before a later transform.", [new("PairCountPolicy", "ExactlyFour"), new("SourceArtifactPolicy", "CurrentPublishedCornerAnchor"), new("AffineIndependencePolicy", "RequireNonDegenerateTetrahedra")]),
             new("Transform", "XYZ Affine Solve", "xyz-affine-solve", 1, "Published CorrespondenceSet", "AffineTransform3D", "Solve one full XYZ source-to-reference matrix from exactly four published correspondence pairs. It does not move C3D points.", [new("SolvePolicy", "ExactFourPartialPivot"), new("MaximumConditionEstimate", "1000000"), new("ArithmeticResidualWarning", "0.001")]),
-            new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "TransformedPointCloud", "TransformedHeightField", "Resample transformed XYZ data into an explicit inspection grid.", [new("Grid frame", "Selected transform"), new("Hole policy", "Explicit")]),
+            new("Transform", "Apply XYZ Affine", "xyz-affine-apply", 2, "Verified raw C3D + Published AffineTransform3D", "TransformedPointCloud", "Transform each finite raw source-grid point once in full XYZ while preserving its row/column locator. It does not re-grid, interpolate, triangulate, or measure.", []),
+            new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "Published TransformedPointCloud", "TransformedHeightField", "Project a published full-XYZ cloud into one explicit right-handed reference grid. Missing cells remain missing; Preview rejects out-of-bounds points and Publish requires authored coverage.", CreateDefaultRegridParameters()),
             new("Measure", "Thickness", "thickness", 1, "TransformedHeightField", "MeasurementResult", "Measure thickness from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("Tolerance", "Set during teaching")]),
             new("Measure", "Warpage", "warpage", 1, "TransformedHeightField", "MeasurementResult", "Measure warpage from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("P2V limit", "Set during teaching")]),
             new("Review", "Overlay / Control Review", "overlay-control-review", 1, "MeasurementResult", "ReviewOverlay", "Group overlays, controls, acceptance, and run evidence without changing the source.", [new("Overlay", "Selected results"), new("Publish", "Explicit")])
@@ -300,6 +301,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshLineIntersectionExecutionState();
             RefreshLandmarkCorrespondenceExecutionState();
             RefreshXYZAffineSolveExecutionState();
+            RefreshXYZAffineApplyExecutionState();
+            RefreshRegridHeightFieldExecutionState();
             RefreshStepCommands();
             RefreshNavigatorSelection();
         }
@@ -582,9 +585,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         : $"{Source.Format} | {Source.Unit} | {Source.FrameId}";
 
     public string AlignmentStatusSummary => PipelineSteps.Any(step =>
-        string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase))
+        string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase))
+        ? (PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase) && string.Equals(step.State, "Published", StringComparison.OrdinalIgnoreCase))
+            ? "Affine point cloud published; A3 re-grid is not implemented"
+            : "Affine apply taught, not calculated")
+        : PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase))
         ? (PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase) && string.Equals(step.State, "Published", StringComparison.OrdinalIgnoreCase))
-            ? "Affine solve published; point application is not implemented"
+            ? "Affine solve published; apply point cloud is not calculated"
             : "Affine solve taught, not calculated")
         : PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
             ? "Legacy affine scaffold taught, not calculated"
@@ -1410,6 +1417,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshLineIntersectionExecutionState();
         RefreshLandmarkCorrespondenceExecutionState();
         RefreshXYZAffineSolveExecutionState();
+        RefreshXYZAffineApplyExecutionState();
+        RefreshRegridHeightFieldExecutionState();
         RefreshAdapterCoverage();
         OnPropertyChanged(nameof(ValidationSummary));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
@@ -1915,6 +1924,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void AppendLog(string category, string message) =>
         RunLog.Insert(0, new ToolWorkbenchLogItem(DateTime.Now.ToString("HH:mm:ss"), category, message));
+
+    private static IReadOnlyList<ToolWorkbenchParameterSeed> CreateDefaultRegridParameters() =>
+        C3DReferenceGridProfile.Create(
+            "frame.reference", "unitless", "Authored reference grid", "R1",
+            new C3DReferenceGridVector(0, 0, 0),
+            new C3DReferenceGridVector(1, 0, 0),
+            new C3DReferenceGridVector(0, 1, 0),
+            new C3DReferenceGridVector(0, 0, 1),
+            1, 1, 1, 1, 1)
+        .ToRecipeParameters()
+        .Select(parameter => new ToolWorkbenchParameterSeed(parameter.Name, parameter.Value))
+        .ToArray();
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

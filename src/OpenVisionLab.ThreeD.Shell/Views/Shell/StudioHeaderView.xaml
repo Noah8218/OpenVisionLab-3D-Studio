@@ -163,6 +163,24 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="ArrowSync24" />
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineApply, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      Click="OpenXYZAffineApplyToolLabButton_Click"
+                                      ToolTip="Open the raw-C3D to TransformedPointCloud comparison view"
+                                      AutomationProperties.AutomationId="OpenXYZAffineApplyToolLabButton"
+                                      AutomationProperties.Name="Open Apply XYZ Affine Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="ArrowSync24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.RegridHeightMap, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      Click="OpenRegridHeightMapToolLabButton_Click"
+                                      ToolTip="Open the Published A2 cloud to explicit A3 reference-grid comparison view"
+                                      AutomationProperties.AutomationId="OpenRegridHeightMapToolLabButton"
+                                      AutomationProperties.Name="Open Re-grid Height Map Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="ArrowSync24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                         </ContextMenu>
                     </ui:Button.ContextMenu>
                 </ui:Button>

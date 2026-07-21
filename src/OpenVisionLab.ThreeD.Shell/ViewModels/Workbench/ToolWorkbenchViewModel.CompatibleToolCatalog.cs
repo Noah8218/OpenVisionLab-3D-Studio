@@ -63,6 +63,12 @@ public sealed partial class ToolWorkbenchViewModel
         var publishedPlane = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "PlaneFeature", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedAffine = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "AffineTransform3D", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedTransformed = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "TransformedPointCloud", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
 
         AddCompatibleTool("three-d-line-fit", publishedEdge is null ? [] : [publishedEdge]);
         AddCompatibleTool("height-difference-edge", publishedFilter is not null && gridSelection is not null
@@ -75,6 +81,10 @@ public sealed partial class ToolWorkbenchViewModel
         AddCompatibleTool("datum-plane-raw-height-deviation", source is not null && publishedPlane is not null && gridSelection is not null
             ? [source, publishedPlane, gridSelection]
             : []);
+        AddCompatibleTool("xyz-affine-apply", source is not null && publishedAffine is not null
+            ? [source, publishedAffine]
+            : []);
+        AddCompatibleTool("re-grid-height-map", publishedTransformed is null ? [] : [publishedTransformed]);
 
         SetCompatibleToolBlocker(source, gridSelection, publishedFilter, publishedEdge);
 

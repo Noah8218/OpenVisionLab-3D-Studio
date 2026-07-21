@@ -203,6 +203,16 @@ public static class ToolRecipeValidator
             {
                 ValidateXYZAffineSolveStep(step, inputs, label, errors);
             }
+
+            if (string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateXYZAffineApplyStep(step, inputs, source, label, errors);
+            }
+
+            if (string.Equals(step.ToolId, "re-grid-height-map", StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateRegridHeightMapStep(step, inputs, label, errors);
+            }
         }
 
         foreach (var (selectionId, selectionLabel, row) in correspondenceRows)
@@ -265,6 +275,53 @@ public static class ToolRecipeValidator
             || !double.IsFinite(warning) || warning < 0d)
         {
             errors.Add($"{label} XYZ Affine Solve arithmetic residual warning must be a finite non-negative invariant number.");
+        }
+    }
+
+    private static void ValidateXYZAffineApplyStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 2 || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"{label} Apply XYZ Affine v1 requires the recipe raw C3D source first and one AffineTransform3D second.");
+        }
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal))
+        {
+            errors.Add($"{label} Apply XYZ Affine v1 requires a C3D raw-height source.");
+        }
+        if (source.ByteLength is null || source.ContentSha256 is null
+            || source.GridWidth is null || source.GridHeight is null)
+        {
+            errors.Add($"{label} Apply XYZ Affine v1 requires source byte length, SHA-256, width, and height identity.");
+        }
+        if ((step.Parameters ?? []).Count != 0)
+        {
+            errors.Add($"{label} Apply XYZ Affine v1 has no authored parameters.");
+        }
+    }
+
+    private static void ValidateRegridHeightMapStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 1)
+        {
+            errors.Add($"{label} Re-grid Height Map v1 requires exactly one Published TransformedPointCloud input.");
+        }
+        try
+        {
+            _ = C3DReferenceGridProfile.FromRecipeParameters(step.Parameters ?? []);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or InvalidOperationException or OverflowException)
+        {
+            errors.Add($"{label} Re-grid Height Map v1 ReferenceGridProfile is invalid: {exception.Message}");
         }
     }
 

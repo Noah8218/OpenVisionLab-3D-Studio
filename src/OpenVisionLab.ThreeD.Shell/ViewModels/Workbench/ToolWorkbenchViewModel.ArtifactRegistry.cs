@@ -293,6 +293,63 @@ public sealed partial class ToolWorkbenchViewModel
                 "CornerAnchor");
         }
 
+        if (string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.Ordinal)
+            && TryGetPublishedAffineSolveOutput(step.OutputEntityId, out var publishedAffine)
+            && publishedAffine is not null)
+        {
+            return new ToolWorkbenchArtifactItem(
+                publishedAffine.OutputEntityId,
+                step.ToolName,
+                "AffineTransform3D",
+                "Published",
+                publishedAffine.RootSourceEntityId,
+                publishedAffine.CorrespondenceEntityId,
+                publishedAffine.ReferenceUnit,
+                publishedAffine.ReferenceFrameId,
+                publishedAffine.ContentSha256,
+                $"condition {publishedAffine.ConditionEstimate:G6} | max residual {publishedAffine.ArithmeticMaximumResidual:G6} | matrix evidence only",
+                step,
+                "AffineTransform3D");
+        }
+
+        if (string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.Ordinal)
+            && affineApplyPreviewOutput is not null
+            && string.Equals(affineApplyPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                affineApplyPreviewOutput.OutputEntityId,
+                step.ToolName,
+                "TransformedPointCloud",
+                isAffineApplyPreviewStale ? "Stale" : isAffineApplyPreviewPublished ? "Published" : "Preview",
+                affineApplyPreviewOutput.RootSourceEntityId,
+                affineApplyPreviewOutput.AffineTransformEntityId,
+                affineApplyPreviewOutput.ReferenceUnit,
+                affineApplyPreviewOutput.ReferenceFrameId,
+                affineApplyPreviewOutput.ContentSha256,
+                $"{affineApplyPreviewOutput.FinitePointCount:N0} finite transformed points | {affineApplyPreviewOutput.MissingPointCount:N0} missing source cells | A3 re-grid excluded",
+                step,
+                "TransformedPointCloud");
+        }
+
+        if (string.Equals(step.ToolId, "re-grid-height-map", StringComparison.Ordinal)
+            && regridHeightFieldPreviewOutput is not null
+            && string.Equals(regridHeightFieldPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                regridHeightFieldPreviewOutput.OutputEntityId,
+                step.ToolName,
+                "TransformedHeightField",
+                isRegridHeightFieldPreviewStale ? "Stale" : isRegridHeightFieldPreviewPublished ? "Published" : "Preview",
+                regridHeightFieldPreviewOutput.RootSourceEntityId,
+                regridHeightFieldPreviewOutput.AffineTransformEntityId,
+                regridHeightFieldPreviewOutput.ReferenceUnit,
+                regridHeightFieldPreviewOutput.ReferenceFrameId,
+                regridHeightFieldPreviewOutput.ContentSha256,
+                $"{regridHeightFieldPreviewOutput.PopulatedCellCount:N0}/{regridHeightFieldPreviewOutput.Cells.Count:N0} populated | coverage {regridHeightFieldPreviewOutput.CoverageRatio:P2} | missing {regridHeightFieldPreviewOutput.MissingCellCount:N0} | collisions {regridHeightFieldPreviewOutput.CollisionCount:N0}",
+                step,
+                "TransformedHeightField");
+        }
+
         return new ToolWorkbenchArtifactItem(
             step.OutputEntityId,
             step.ToolName,
@@ -352,7 +409,9 @@ public sealed partial class ToolWorkbenchViewModel
         or "three-point-plane"
         or "datum-plane-raw-height-deviation"
         or "line-intersection"
-        or "landmark-correspondence";
+        or "landmark-correspondence"
+        or "xyz-affine-solve"
+        or "xyz-affine-apply";
 
     private void RefreshNavigatorSelection()
     {

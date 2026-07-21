@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Product Target And Self Evaluation
 
-Updated: 2026-07-20
+Updated: 2026-07-21
 
 Status: current product-direction source of truth. Older market reviews remain useful as history, but this document controls current priorities when they conflict.
 
@@ -298,6 +298,47 @@ claim a physical datum. Thickness and Warpage C3D still have the same
 `79C027...F0299C` SHA-256, so the actual-C3D exercise is not a second
 acquisition or metrology validation. See
 `docs/OPENVISIONLAB_3D_DATUM_PLANE_DEVIATION_TYPED_ADAPTER_DESIGN_20260721.md`.
+
+Current A2 Full-XYZ Affine Apply implementation checkpoint on 2026-07-21:
+**complete for deterministic local software evidence, not a physical result.**
+The owner accepted the separate A1 solve / A2 apply / A3 re-grid path. A2 now
+requires exactly the verified raw source plus a current Published matching
+`AffineTransform3D`, transforms every finite `(column, raw-height, row)` point
+once in double XYZ, and returns an immutable ordered `TransformedPointCloud`.
+Library-Noah `Lib.ThreeD` `2.6.1` at commit
+`b3060175c34956001662383adfe57e14abbdd92a` owns only the source-neutral point
+loop; Studio owns C3D identity, strict typed routing, explicit
+Preview/Discard/Publish/stale state, Artifact Registry, Runner adapter, and a
+single-instance dual-viewer A2 Tool Lab. Current evidence passes Any CPU Shell
+build `0/0`, A2 Runner Golden `4/4`, A1 regression `4/4`, and exact vendored
+package verification; a current-build `1600 x 960` Tool Lab waiting-state
+capture also passed quality. The captured UI deliberately has no transformed
+cloud because the real four-anchor package and Published A1 matrix are absent.
+Actual A2 UI Preview/Publish, line-cloud visual evidence, and headless replay
+remain unverified. No C3D mutation, re-grid, interpolation, triangle
+generation, Thickness, Warpage, calibration, or physical claim is included.
+See `docs/OPENVISIONLAB_3D_XYZ_AFFINE_APPLY_DESIGN_20260721.md`.
+
+Current A3 Re-grid Height Field implementation checkpoint on 2026-07-21:
+**complete for deterministic synthetic software evidence, not a physical
+result.** A3 consumes only a current Published `TransformedPointCloud` and a
+recipe-owned explicit reference grid profile. Its `Lib.ThreeD 2.7.1` core owns
+right-handed U/V/H validation, bounded half-open projection, deterministic
+cell-centre collision choice with source row/column and planar-distance
+evidence, preserved holes, coverage, and canonical field construction. Studio
+owns immutable profile/field contracts, exact one-input route, typed WPF
+PropertyGrid, Preview/Publish/stale lifecycle, Artifact Registry, Runner
+golden, custom-title A3 Tool Lab, and a line-grid Viewer surface. The package
+is pinned to Library-Noah `8811ca260caf3a6640933624106df23146427d53`; Library
+smoke passes `33/33`, current Studio Debug build passes `0/0`, package and
+Noah bridge verification pass, A3 Runner golden passes `4/4`, and A2
+regression passes `4/4`. A3 neither infers a frame from A1/A2 nor rewrites C3D, interpolates,
+fills, averages, smooths, triangulates, calibrates, or measures Thickness or
+Warpage. Current automated Shell visual capture did not produce an artifact in
+this host, so UI quality remains unverified. A real A1/A2 chain and trusted
+mapping-profile provenance also remain unverified rather than being replaced
+with inferred physical values. See
+`docs/OPENVISIONLAB_3D_REGRID_HEIGHT_FIELD_DESIGN_20260721.md`.
 
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 

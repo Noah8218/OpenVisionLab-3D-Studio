@@ -194,6 +194,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.LineIntersectionCornerAnchorVisible)
             or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondenceAnchors)
             or nameof(MainWindowViewModel.WorkbenchLandmarkCorrespondence)
+            or nameof(MainWindowViewModel.WorkbenchAffineApply)
+            or nameof(MainWindowViewModel.IsWorkbenchAffineApplyPublished)
+            or nameof(MainWindowViewModel.WorkbenchRegridHeightField)
+            or nameof(MainWindowViewModel.IsWorkbenchRegridHeightFieldPublished)
             or nameof(MainWindowViewModel.ResultEntities))
         {
             if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))

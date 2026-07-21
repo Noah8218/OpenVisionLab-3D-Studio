@@ -50,7 +50,9 @@ public sealed partial class ToolWorkbenchViewModel
             : IsSelectedStepLineFit ? IsLineFitPreviewRunning
             : IsSelectedStepLineIntersection ? IsLineIntersectionPreviewRunning
             : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
-            : IsSelectedStepXYZAffineSolve && IsAffineSolvePreviewRunning;
+            : IsSelectedStepXYZAffineSolve ? IsAffineSolvePreviewRunning
+            : IsSelectedStepXYZAffineApply ? IsAffineApplyPreviewRunning
+            : IsSelectedStepRegridHeightField && IsRegridHeightFieldPreviewRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => isFilterPreviewStale;
     public bool IsFilterPreviewPublished => isFilterPreviewPublished;
@@ -92,7 +94,11 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepXYZAffineSolve
+    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepRegridHeightField
+        ? PreviewSelectedRegridHeightFieldAsync()
+        : IsSelectedStepXYZAffineApply
+        ? PreviewSelectedXYZAffineApplyAsync()
+        : IsSelectedStepXYZAffineSolve
         ? PreviewSelectedXYZAffineSolveAsync()
         : IsSelectedStepDatumPlaneDeviation
         ? PreviewSelectedDatumPlaneDeviationAsync()
@@ -105,7 +111,11 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepXYZAffineSolve
+    private bool CanPreviewSelectedStep() => IsSelectedStepRegridHeightField
+        ? CanPreviewSelectedRegridHeightField()
+        : IsSelectedStepXYZAffineApply
+        ? CanPreviewSelectedXYZAffineApply()
+        : IsSelectedStepXYZAffineSolve
         ? CanPreviewSelectedXYZAffineSolve()
         : IsSelectedStepDatumPlaneDeviation
         ? CanPreviewSelectedDatumPlaneDeviation()
@@ -120,7 +130,15 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void PublishSelectedStep()
     {
-        if (IsSelectedStepXYZAffineSolve)
+        if (IsSelectedStepRegridHeightField)
+        {
+            PublishSelectedRegridHeightField();
+        }
+        else if (IsSelectedStepXYZAffineApply)
+        {
+            PublishSelectedXYZAffineApply();
+        }
+        else if (IsSelectedStepXYZAffineSolve)
         {
             PublishSelectedXYZAffineSolve();
         }
@@ -158,7 +176,11 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepXYZAffineSolve
+    private bool CanPublishSelectedStep() => IsSelectedStepRegridHeightField
+        ? HasCurrentRegridHeightFieldPreview && !IsRegridHeightFieldPreviewPublished && regridHeightFieldPreviewOutput!.MeetsMinimumCoverage
+        : IsSelectedStepXYZAffineApply
+        ? HasCurrentAffineApplyPreview && !IsAffineApplyPreviewPublished
+        : IsSelectedStepXYZAffineSolve
         ? HasCurrentAffineSolvePreview && !IsAffineSolvePreviewPublished
         : IsSelectedStepDatumPlaneDeviation
         ? HasCurrentDatumPlaneDeviationPreview && !IsDatumPlaneDeviationPreviewPublished
@@ -176,7 +198,15 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void CancelSelectedPreview()
     {
-        if (IsSelectedStepXYZAffineSolve)
+        if (IsSelectedStepRegridHeightField)
+        {
+            CancelRegridHeightFieldPreview();
+        }
+        else if (IsSelectedStepXYZAffineApply)
+        {
+            CancelXYZAffineApplyPreview();
+        }
+        else if (IsSelectedStepXYZAffineSolve)
         {
             CancelXYZAffineSolvePreview();
         }

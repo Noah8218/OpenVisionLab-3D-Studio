@@ -1,0 +1,88 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.RegridHeightMapToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
+        xmlns:propertyGrid="clr-namespace:OpenVisionLab.ThreeD.Shell.PropertyGrid"
+        Title="Re-grid Height Map Tool Lab | OpenVisionLab 3D Studio"
+        Width="1760" Height="980" MinWidth="1280" MinHeight="760"
+        WindowStyle="None" ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="RegridHeightMapToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="260" />
+        </Grid.RowDefinitions>
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
+                                  SubtitleText="Re-grid Height Map Tool Lab"
+                                  StatusText="A2 Cloud | A3 Grid" />
+        <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12"
+                Background="{DynamicResource ThreeD.PanelHeaderBrush}"
+                BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="ArrowSync24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="A3 | Re-grid Published XYZ cloud into an explicit U/V/H field" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="Compare the Published A2 line cloud with a deterministic reference grid. No interpolation, smoothing, mesh creation, C3D write, physical calibration, or measurement is implied." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="Preview grid" Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding PreviewSelectedStepCommand}" ToolTip="Project the current Published A2 cloud into the authored ReferenceGridProfile" AutomationProperties.Name="Preview Re-grid Height Map" />
+                    <ui:Button Margin="0,0,6,0" Content="Refresh views" Icon="{ui:SymbolIcon ArrowSync24}"
+                               Click="RefreshViewsButton_Click" ToolTip="Reload both tool viewers without calculation" AutomationProperties.Name="Refresh Re-grid Height Map views" />
+                    <ui:Button Content="Publish grid" Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the exact Preview only when its authored coverage gate passes" AutomationProperties.Name="Publish Re-grid Height Map output" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="330" /></Grid.ColumnDefinitions>
+            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel>
+                        <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="Input | Published A2 line cloud" /></StackPanel>
+                        <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="A3 accepts one current Published TransformedPointCloud only." />
+                    </StackPanel></Border>
+                    <ContentControl x:Name="SourceViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel>
+                        <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="ArrowSync24" /><TextBlock FontWeight="SemiBold" Text="Output | A3 reference-grid line field" /></StackPanel>
+                        <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="Line-based grid display. Missing cells remain absent; Preview rejects points outside authored bounds." />
+                    </StackPanel></Border>
+                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="4" Padding="14" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="DocumentCheckmark24" /><TextBlock FontWeight="SemiBold" Text="A3 evidence" /></StackPanel>
+                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding RegridHeightFieldUpstreamSummary}" />
+                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding RegridHeightFieldExecutionSummary}" />
+                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding RegridHeightFieldEvidenceSummary}" />
+                        <TextBlock Margin="0,5,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap" Text="{Binding RegridHeightFieldOutputHashSummary}" />
+                    </StackPanel>
+                    <Border Grid.Row="1" Margin="0,12,0,12" Padding="10" Background="{DynamicResource ThreeD.InfoSurfaceBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1"><StackPanel>
+                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Fixed deterministic policy" />
+                        <TextBlock Margin="0,5,0,0" FontSize="10" TextWrapping="Wrap" Text="Planar nearest cell center; equal-distance tie breaks by source row/column; upper U/V bounds reject Preview; holes stay missing; coverage gates Publish." />
+                    </StackPanel></Border>
+                    <propertyGrid:RecipeStepPropertyGridHost x:Name="RegridStepPropertyGrid" Grid.Row="2" SelectedObject="{Binding SelectedStepPropertyDraft}" PropertyValueChanged="OnPropertyGridValueChanged" />
+                </Grid>
+            </Border>
+        </Grid>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
+    </Grid>
+</Window>

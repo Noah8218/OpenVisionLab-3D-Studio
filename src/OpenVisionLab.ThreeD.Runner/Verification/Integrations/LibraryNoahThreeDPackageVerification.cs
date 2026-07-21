@@ -49,8 +49,8 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
             && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.5.1"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "986f04346af6fea1d627e7a8fa5a56f6f9c0117a";
+            && LibraryNoahHeightMapInspection.PackageVersion == "2.7.1"
+            && LibraryNoahHeightMapInspection.PackageSourceCommit == "8811ca260caf3a6640933624106df23146427d53";
         return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
     }
 

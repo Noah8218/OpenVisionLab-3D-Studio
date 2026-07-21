@@ -148,34 +148,43 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ClearWorkbenchLineFit();
         viewModel.ClearWorkbenchLineIntersection();
         viewModel.ClearWorkbenchLandmarkCorrespondence();
+        viewModel.ClearWorkbenchAffineApply();
+        ClearAffineApplyRenderData();
+        ClearWorkbenchRegridHeightField();
         RaiseTeachingCaptureStateChanged();
     }
 
     private void DrawTeachingSelectionOverlays(OpenGL gl)
     {
-        if (!viewModel.C3DSampleVisible || c3dSample is null)
+        if (c3dSample is null)
         {
             return;
         }
 
-        foreach (var selection in viewModel.AppliedTeachingSelections.Where(IsSelectionForCurrentC3DGrid))
+        if (viewModel.C3DSampleVisible)
         {
-            DrawTeachingSelection(gl, selection, 0.10, 0.90, 0.88);
+            foreach (var selection in viewModel.AppliedTeachingSelections.Where(IsSelectionForCurrentC3DGrid))
+            {
+                DrawTeachingSelection(gl, selection, 0.10, 0.90, 0.88);
+            }
+
+            DrawWorkbenchHeightDifferenceEdge(gl);
+            DrawWorkbenchTwoPointLine(gl);
+            DrawWorkbenchThreePointPlane(gl);
+            DrawWorkbenchDatumPlaneDeviation(gl);
+            DrawWorkbenchLineFit(gl);
+            DrawWorkbenchLineIntersection(gl);
+            DrawWorkbenchLandmarkCorrespondence(gl);
+
+            var capture = viewModel.TeachingCaptureSnapshot;
+            if (capture.IsActive)
+            {
+                DrawTeachingCaptureCandidate(gl, capture, 1.00, 0.82, 0.12);
+            }
         }
 
-        DrawWorkbenchHeightDifferenceEdge(gl);
-        DrawWorkbenchTwoPointLine(gl);
-        DrawWorkbenchThreePointPlane(gl);
-        DrawWorkbenchDatumPlaneDeviation(gl);
-        DrawWorkbenchLineFit(gl);
-        DrawWorkbenchLineIntersection(gl);
-        DrawWorkbenchLandmarkCorrespondence(gl);
-
-        var capture = viewModel.TeachingCaptureSnapshot;
-        if (capture.IsActive)
-        {
-            DrawTeachingCaptureCandidate(gl, capture, 1.00, 0.82, 0.12);
-        }
+        DrawWorkbenchAffineApply(gl);
+        DrawWorkbenchRegridHeightField(gl);
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);

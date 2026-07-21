@@ -103,6 +103,7 @@ public sealed partial class ToolWorkbenchViewModel
         step.State = "Published";
         SetAffineSolveSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {affineSolvePreviewOutput.ContentSha256} | solve evidence only; no C3D point was moved.");
         AppendLog("Publish", $"XYZ Affine Solve output published without re-running: {step.OutputEntityId}.");
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private void CancelXYZAffineSolvePreview() => affineSolvePreviewCancellation?.Cancel();
@@ -123,6 +124,7 @@ public sealed partial class ToolWorkbenchViewModel
         publishedAffineSolveOutputs.Clear();
         var step = PipelineSteps.FirstOrDefault(item => string.Equals(item.OutputEntityId, affineSolvePreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase));
         if (step is not null) step.State = "Preview stale";
+        ClearXYZAffineApplyPreview("Published AffineTransform3D changed. Apply XYZ Affine Preview was cleared without execution.");
         SetAffineSolveSummary("Correspondence identity, route, or affine parameter changed. Preview again before Publish.");
     }
 
@@ -133,6 +135,7 @@ public sealed partial class ToolWorkbenchViewModel
         publishedAffineSolveOutputs.Clear();
         isAffineSolvePreviewStale = false;
         isAffineSolvePreviewPublished = false;
+        ClearXYZAffineApplyPreview("Published AffineTransform3D was cleared. Apply XYZ Affine Preview was cleared without execution.");
         SetAffineSolveSummary(summary);
     }
 
@@ -168,6 +171,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(AffineSolveEvidenceSummary));
         OnPropertyChanged(nameof(AffineSolveMatrixSummary));
         RefreshAffineSolveCommands();
+        RefreshXYZAffineApplyExecutionState();
     }
 
     private bool TryGetCurrentAffineSolveInput(out C3DLandmarkCorrespondenceSet correspondence)
