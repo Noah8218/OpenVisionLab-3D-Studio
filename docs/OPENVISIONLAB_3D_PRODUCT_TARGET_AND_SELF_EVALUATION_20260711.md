@@ -33,6 +33,18 @@ display and smoke evidence. The gate, scorecard, delivery order, and evidence
 requirements are fixed in
 `docs/OPENVISIONLAB_3D_UI_UX_80_COMPLETION_GATE_20260720.md`.
 
+## UI/UX owner acceptance update - 2026-07-21
+
+The owner accepted the current local UI/UX gate at the evidence-based
+`85/100` score in
+`docs/OPENVISIONLAB_3D_OWNER_UI_ACCEPTANCE_REVIEW_20260721.md`. This clears
+the UI-priority hold for selecting the next bounded product task. The deferred
+150% DPI, first-time-operator, keyboard-only operator, and assistive reviews
+remain unverified rather than inferred as passing evidence. The small compact
+Viewer-header status-pressure issue remains optional P1 polish, not a gate
+block. This decision does not expand the product into hardware control,
+physical calibration, or metrology claims.
+
 ## Full-XYZ affine design authorization - 2026-07-20
 
 The owner explicitly authorized the next algorithm phase to begin with design.
@@ -268,6 +280,24 @@ does not fit an ROI plane, detect a feature, produce an acceptance result,
 apply an affine transform, re-grid, measure Thickness or Warpage, prove a
 physical datum, or make calibration/metrology claims. See
 `docs/OPENVISIONLAB_3D_THREE_POINT_PLANE_TYPED_ADAPTER_DESIGN_20260721.md`.
+
+Current Datum Plane Raw-Height Deviation implementation checkpoint on
+2026-07-21: **the owner-approved narrow `raw C3D + Published PlaneFeature +
+GridRectangle -> DatumPlaneDeviationResult` slice is complete for local
+software evidence.** The Studio adapter delegates residual/P2V/RMS numerical
+work to Library-Noah `DatumPlaneRawHeightDeviationInspectionTool` from
+vendored `Lib.ThreeD` `2.5.1` at commit
+`986f04346af6fea1d627e7a8fa5a56f6f9c0117a`; Studio retains only strict
+source/plane/ROI lineage, typed WPG, explicit Preview/Publish/stale state,
+Viewer evidence, and Runner replay. Current source passes full Debug build
+`0/0`, package verification `7/7`, Datum Golden/Runner `5/5`, Datum Workbench
+`12/12`, and first-attempt current-build Tool Lab screenshot-quality evidence.
+The result is a named raw-height residual only: it does not reuse
+`PlaneFlatnessRule`, refit a plane, mutate the C3D, re-grid, apply affine, or
+claim a physical datum. Thickness and Warpage C3D still have the same
+`79C027...F0299C` SHA-256, so the actual-C3D exercise is not a second
+acquisition or metrology validation. See
+`docs/OPENVISIONLAB_3D_DATUM_PLANE_DEVIATION_TYPED_ADAPTER_DESIGN_20260721.md`.
 
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 

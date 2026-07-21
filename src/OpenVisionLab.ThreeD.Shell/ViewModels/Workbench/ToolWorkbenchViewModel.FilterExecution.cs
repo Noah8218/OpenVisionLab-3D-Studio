@@ -46,6 +46,7 @@ public sealed partial class ToolWorkbenchViewModel
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
             : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
             : IsSelectedStepThreePointPlane ? IsThreePointPlanePreviewRunning
+            : IsSelectedStepDatumPlaneDeviation ? IsDatumPlaneDeviationPreviewRunning
             : IsSelectedStepLineFit ? IsLineFitPreviewRunning
             : IsSelectedStepLineIntersection ? IsLineIntersectionPreviewRunning
             : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
@@ -93,6 +94,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepXYZAffineSolve
         ? PreviewSelectedXYZAffineSolveAsync()
+        : IsSelectedStepDatumPlaneDeviation
+        ? PreviewSelectedDatumPlaneDeviationAsync()
         : IsSelectedStepLandmarkCorrespondence
         ? PreviewSelectedLandmarkCorrespondenceAsync()
         : IsSelectedStepLineIntersection
@@ -104,6 +107,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanPreviewSelectedStep() => IsSelectedStepXYZAffineSolve
         ? CanPreviewSelectedXYZAffineSolve()
+        : IsSelectedStepDatumPlaneDeviation
+        ? CanPreviewSelectedDatumPlaneDeviation()
         : IsSelectedStepLandmarkCorrespondence
         ? CanPreviewSelectedLandmarkCorrespondence()
         : IsSelectedStepLineIntersection
@@ -118,6 +123,10 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepXYZAffineSolve)
         {
             PublishSelectedXYZAffineSolve();
+        }
+        else if (IsSelectedStepDatumPlaneDeviation)
+        {
+            PublishSelectedDatumPlaneDeviation();
         }
         else if (IsSelectedStepLandmarkCorrespondence)
         {
@@ -151,6 +160,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanPublishSelectedStep() => IsSelectedStepXYZAffineSolve
         ? HasCurrentAffineSolvePreview && !IsAffineSolvePreviewPublished
+        : IsSelectedStepDatumPlaneDeviation
+        ? HasCurrentDatumPlaneDeviationPreview && !IsDatumPlaneDeviationPreviewPublished
         : IsSelectedStepLandmarkCorrespondence
         ? HasCurrentLandmarkCorrespondencePreview && !IsLandmarkCorrespondencePreviewPublished
         : IsSelectedStepLineIntersection
@@ -168,6 +179,10 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepXYZAffineSolve)
         {
             CancelXYZAffineSolvePreview();
+        }
+        else if (IsSelectedStepDatumPlaneDeviation)
+        {
+            CancelDatumPlaneDeviationPreview();
         }
         else if (IsSelectedStepLandmarkCorrespondence)
         {

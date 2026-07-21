@@ -137,6 +137,7 @@ public sealed partial class ToolWorkbenchViewModel
             isThreePointPlanePreviewPublished = false;
         }
         affectedStep.State = "Preview stale";
+        MarkDatumPlaneDeviationPreviewStaleIfNeeded(upstreamPlaneOutputId: affectedOutputId);
         ThreePointPlaneDisplayCleared?.Invoke(this, EventArgs.Empty);
         SetThreePointPlaneSummary("Input, ordered picks, 3-Point Plane parameters, route, or output changed. Preview again before Publish.");
     }
@@ -150,6 +151,7 @@ public sealed partial class ToolWorkbenchViewModel
         isThreePointPlanePreviewStale = false;
         isThreePointPlanePreviewPublished = false;
         ThreePointPlaneDisplayCleared?.Invoke(this, EventArgs.Empty);
+        ClearDatumPlaneDeviationPreview("Published 3-Point Plane source cleared. Datum-plane residual preview is unavailable until a new plane is Published.");
         SetThreePointPlaneSummary(summary);
     }
 

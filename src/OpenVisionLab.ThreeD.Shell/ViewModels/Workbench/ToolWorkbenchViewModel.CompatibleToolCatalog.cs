@@ -60,6 +60,9 @@ public sealed partial class ToolWorkbenchViewModel
         var publishedEdge = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "EdgePointSet", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedPlane = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "PlaneFeature", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
 
         AddCompatibleTool("three-d-line-fit", publishedEdge is null ? [] : [publishedEdge]);
         AddCompatibleTool("height-difference-edge", publishedFilter is not null && gridSelection is not null
@@ -69,6 +72,9 @@ public sealed partial class ToolWorkbenchViewModel
         AddCompatibleTool("roi-crop", source is null ? [] : [source]);
         AddCompatibleTool("two-point-line", source is null ? [] : [source]);
         AddCompatibleTool("three-point-plane", source is null ? [] : [source]);
+        AddCompatibleTool("datum-plane-raw-height-deviation", source is not null && publishedPlane is not null && gridSelection is not null
+            ? [source, publishedPlane, gridSelection]
+            : []);
 
         SetCompatibleToolBlocker(source, gridSelection, publishedFilter, publishedEdge);
 

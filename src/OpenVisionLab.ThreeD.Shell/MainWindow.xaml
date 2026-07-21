@@ -31,6 +31,9 @@
                                      RecipeManagerRequested="OpenRecipeManagerRequested"
                                      FilterToolLabRequested="OpenFilterToolLabRequested"
                                      EdgeToolLabRequested="OpenEdgeToolLabRequested"
+                                     TwoPointLineToolLabRequested="OpenTwoPointLineToolLabRequested"
+                                     ThreePointPlaneToolLabRequested="OpenThreePointPlaneToolLabRequested"
+                                     DatumPlaneDeviationToolLabRequested="OpenDatumPlaneDeviationToolLabRequested"
                                      LineIntersectionToolLabRequested="OpenLineIntersectionToolLabRequested"
                                      LandmarkCorrespondenceToolLabRequested="OpenLandmarkCorrespondenceToolLabRequested"
                                      XYZAffineSolveToolLabRequested="OpenXYZAffineSolveToolLabRequested" />

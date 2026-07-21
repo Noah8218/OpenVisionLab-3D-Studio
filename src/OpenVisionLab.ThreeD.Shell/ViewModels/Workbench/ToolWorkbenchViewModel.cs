@@ -80,6 +80,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Feature & Datum", "Height Difference Edge", "height-difference-edge", 1, "Published FilteredHeightField + GridRectangle", "EdgePointSet", "Extract one deterministic adjacent-height candidate per scanline in an explicit search band.", [new("ComparisonAxis", "AcrossColumns"), new("Polarity", "Rising"), new("MinimumDelta", "Set explicitly"), new("CandidatePolicy", "StrongestPerScanline"), new("PointPolicy", "PairMidpoint"), new("MissingValuePolicy", "SkipPair"), new("BoundaryPolicy", "WithinSelection")]),
             new("Feature & Datum", "2-Point Line", "two-point-line", 1, "Raw C3D HeightField + PointSet(2)", "LineFeature", "Construct a named ordered full-XYZ segment from two recipe-owned C3D grid picks.", [new("OutputRole", "Set explicitly"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
             new("Feature & Datum", "3-Point Plane", "three-point-plane", 2, "Raw C3D HeightField + PointSet(3)", "PlaneFeature", "Construct a named ordered full-XYZ datum plane from three recipe-owned C3D grid picks.", [new("OutputRole", "Set explicitly"), new("ConstructionPolicy", "OrderedPointsDefineOrientedPlane")]),
+            new("Measure", "Datum Plane Raw-Height Deviation", "datum-plane-raw-height-deviation", 2, "Raw C3D HeightField + Published PlaneFeature + GridRectangle", "DatumPlaneDeviationResult", "Measure raw-height residual P2V against one published manual datum plane without changing or re-gridding the source C3D.", [new("MaximumPeakToValleyRawHeight", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ResidualPolicy", "RawHeightMinusDatumPlanePredictedRawHeight"), new("MinimumValidSampleCount", "3"), new("MinimumAbsoluteNormalY", "0.1")]),
             new("Feature & Datum", "3D Line Fit", "three-d-line-fit", 1, "Published EdgePointSet", "LineFeature", "Fit one deterministic full-XYZ line to an explicit published edge-point entity.", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "Set explicitly"), new("MinimumInlierCount", "Set explicitly"), new("MinimumInlierRatio", "Set explicitly"), new("MinimumInlierScanlineSpan", "Set explicitly"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]),
             new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
             new("Feature & Datum", "Landmark Correspondence", "landmark-correspondence", 1, "Correspondence selection", "CorrespondenceSet", "Validate four named Published CornerAnchors against explicit reference coordinates before a later transform.", [new("PairCountPolicy", "ExactlyFour"), new("SourceArtifactPolicy", "CurrentPublishedCornerAnchor"), new("AffineIndependencePolicy", "RequireNonDegenerateTetrahedra")]),
@@ -294,6 +295,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshHeightDifferenceEdgeExecutionState();
             RefreshTwoPointLineExecutionState();
             RefreshThreePointPlaneExecutionState();
+            RefreshDatumPlaneDeviationExecutionState();
             RefreshLineFitExecutionState();
             RefreshLineIntersectionExecutionState();
             RefreshLandmarkCorrespondenceExecutionState();
@@ -1403,6 +1405,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshTwoPointLineExecutionState();
         RefreshThreePointPlaneExecutionState();
+        RefreshDatumPlaneDeviationExecutionState();
         RefreshLineFitExecutionState();
         RefreshLineIntersectionExecutionState();
         RefreshLandmarkCorrespondenceExecutionState();
@@ -1687,6 +1690,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         "warpage" => new("Warpage measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the measurement ROI."),
         "two-point-line" => new("Line points", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct C3D grid cells."),
         "three-point-plane" => new("Plane points", ToolRecipeSelectionKinds.PointSet, 3, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
+        "datum-plane-raw-height-deviation" => new("Datum measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
         "landmark-correspondence" => new("Landmark correspondences", ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, 0, false, "Enter explicit source entities and fixture coordinates."),
         _ => null
     };
@@ -1795,6 +1799,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkThreePointPlanePreviewStaleIfNeeded(sender);
+        MarkDatumPlaneDeviationPreviewStaleIfNeeded(sender);
         MarkLineFitPreviewStaleIfNeeded(sender);
         MarkLineIntersectionPreviewStaleIfNeeded(sender);
         MarkLandmarkCorrespondencePreviewStaleIfNeeded(sender);

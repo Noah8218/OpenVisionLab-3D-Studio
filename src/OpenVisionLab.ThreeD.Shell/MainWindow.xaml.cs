@@ -51,6 +51,8 @@ public partial class MainWindow : Window
     private readonly EventHandler _workbenchTwoPointLineDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchThreePointPlaneDisplayRequestEventArgs> _workbenchThreePointPlaneDisplayRequestedHandler;
     private readonly EventHandler _workbenchThreePointPlaneDisplayClearedHandler;
+    private readonly EventHandler<ToolWorkbenchDatumPlaneDeviationDisplayRequestEventArgs> _workbenchDatumPlaneDeviationDisplayRequestedHandler;
+    private readonly EventHandler _workbenchDatumPlaneDeviationDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs> _workbenchLineIntersectionDisplayRequestedHandler;
@@ -66,6 +68,7 @@ public partial class MainWindow : Window
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
     private TwoPointLineToolLabWindow? twoPointLineToolLabWindow;
     private ThreePointPlaneToolLabWindow? threePointPlaneToolLabWindow;
+    private DatumPlaneDeviationToolLabWindow? datumPlaneDeviationToolLabWindow;
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
     private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
@@ -135,6 +138,8 @@ public partial class MainWindow : Window
         _workbenchTwoPointLineDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchTwoPointLine();
         _workbenchThreePointPlaneDisplayRequestedHandler = OnWorkbenchThreePointPlaneDisplayRequested;
         _workbenchThreePointPlaneDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchThreePointPlane();
+        _workbenchDatumPlaneDeviationDisplayRequestedHandler = OnWorkbenchDatumPlaneDeviationDisplayRequested;
+        _workbenchDatumPlaneDeviationDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchDatumPlaneDeviation();
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
         _workbenchLineIntersectionDisplayRequestedHandler = OnWorkbenchLineIntersectionDisplayRequested;
@@ -169,6 +174,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.TwoPointLineDisplayCleared += _workbenchTwoPointLineDisplayClearedHandler;
         _viewModel.Workbench.ThreePointPlaneDisplayRequested += _workbenchThreePointPlaneDisplayRequestedHandler;
         _viewModel.Workbench.ThreePointPlaneDisplayCleared += _workbenchThreePointPlaneDisplayClearedHandler;
+        _viewModel.Workbench.DatumPlaneDeviationDisplayRequested += _workbenchDatumPlaneDeviationDisplayRequestedHandler;
+        _viewModel.Workbench.DatumPlaneDeviationDisplayCleared += _workbenchDatumPlaneDeviationDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested += _workbenchLineIntersectionDisplayRequestedHandler;
@@ -229,6 +236,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.TwoPointLineDisplayCleared -= _workbenchTwoPointLineDisplayClearedHandler;
         _viewModel.Workbench.ThreePointPlaneDisplayRequested -= _workbenchThreePointPlaneDisplayRequestedHandler;
         _viewModel.Workbench.ThreePointPlaneDisplayCleared -= _workbenchThreePointPlaneDisplayClearedHandler;
+        _viewModel.Workbench.DatumPlaneDeviationDisplayRequested -= _workbenchDatumPlaneDeviationDisplayRequestedHandler;
+        _viewModel.Workbench.DatumPlaneDeviationDisplayCleared -= _workbenchDatumPlaneDeviationDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested -= _workbenchLineIntersectionDisplayRequestedHandler;
@@ -268,6 +277,8 @@ public partial class MainWindow : Window
         var twoPointLineToolLabScreenshotQualityReportPath = GetCommandLineValue("--two-point-line-tool-lab-screenshot-quality-report");
         var threePointPlaneToolLabScreenshotPath = GetCommandLineValue("--three-point-plane-tool-lab-screenshot");
         var threePointPlaneToolLabScreenshotQualityReportPath = GetCommandLineValue("--three-point-plane-tool-lab-screenshot-quality-report");
+        var datumPlaneDeviationToolLabScreenshotPath = GetCommandLineValue("--datum-plane-deviation-tool-lab-screenshot");
+        var datumPlaneDeviationToolLabScreenshotQualityReportPath = GetCommandLineValue("--datum-plane-deviation-tool-lab-screenshot-quality-report");
         var lineIntersectionToolLabScreenshotPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot");
         var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
         var landmarkCorrespondenceToolLabScreenshotPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot");
@@ -289,6 +300,10 @@ public partial class MainWindow : Window
             .Contains("--smoke-tool-three-point-plane-publish", StringComparer.OrdinalIgnoreCase);
         var threePointPlanePreviewSmoke = threePointPlanePublishSmoke || Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-three-point-plane-preview", StringComparer.OrdinalIgnoreCase);
+        var datumPlaneDeviationPublishSmoke = Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-datum-plane-deviation-publish", StringComparer.OrdinalIgnoreCase);
+        var datumPlaneDeviationPreviewSmoke = datumPlaneDeviationPublishSmoke || Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-datum-plane-deviation-preview", StringComparer.OrdinalIgnoreCase);
         var filterPreviewSmoke = filterPublishSmoke || Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-filter-preview", StringComparer.OrdinalIgnoreCase);
         var edgePublishSmoke = Environment.GetCommandLineArgs()
@@ -302,7 +317,7 @@ public partial class MainWindow : Window
         var edgeStepId = GetCommandLineValue("--tool-teaching-step");
         var edgeSmokeReportPath = GetCommandLineValue("--smoke-tool-edge-report");
         var lineFitSmokeReportPath = GetCommandLineValue("--smoke-tool-line-fit-report");
-        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke || threePointPlanePreviewSmoke)
+        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke || threePointPlanePreviewSmoke || datumPlaneDeviationPreviewSmoke)
         {
             Width = 1280;
             Height = 760;
@@ -328,6 +343,7 @@ public partial class MainWindow : Window
             || edgeToolLabScreenshotPath is not null
             || twoPointLineToolLabScreenshotPath is not null
             || threePointPlaneToolLabScreenshotPath is not null
+            || datumPlaneDeviationToolLabScreenshotPath is not null
             || lineIntersectionToolLabScreenshotPath is not null
             || landmarkCorrespondenceToolLabScreenshotPath is not null
             || xyzAffineSolveToolLabScreenshotPath is not null
@@ -338,7 +354,8 @@ public partial class MainWindow : Window
             || edgePreviewSmoke
             || lineFitPreviewSmoke
             || twoPointLinePreviewSmoke
-            || threePointPlanePreviewSmoke)
+            || threePointPlanePreviewSmoke
+            || datumPlaneDeviationPreviewSmoke)
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
@@ -417,6 +434,25 @@ public partial class MainWindow : Window
                         || !ReferenceEquals(firstThreePointPlaneToolLabWindow, threePointPlaneToolLabWindow)))
                 {
                     _viewModel.SetViewerSmokeFailed("3-Point Plane Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (datumPlaneDeviationToolLabScreenshotPath is not null
+                    && !ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("Datum Plane Deviation Tool Lab smoke requires a Datum Plane Raw-Height Deviation recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstDatumPlaneDeviationToolLabWindow = datumPlaneDeviationToolLabWindow;
+                if (datumPlaneDeviationToolLabScreenshotPath is not null
+                    && (firstDatumPlaneDeviationToolLabWindow is null
+                        || !ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: false)
+                        || !ReferenceEquals(firstDatumPlaneDeviationToolLabWindow, datumPlaneDeviationToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("Datum Plane Deviation Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -567,6 +603,44 @@ public partial class MainWindow : Window
                     if (!_viewModel.Workbench.IsThreePointPlanePreviewPublished)
                     {
                         _viewModel.SetViewerSmokeFailed("3-Point Plane Publish did not accept the current Preview output.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (datumPlaneDeviationPreviewSmoke)
+                {
+                    var datumStep = _viewModel.Workbench.PipelineSteps.SingleOrDefault(step =>
+                        string.Equals(step.ToolId, "datum-plane-raw-height-deviation", StringComparison.Ordinal));
+                    var planeStep = datumStep is null ? null : _viewModel.Workbench.PipelineSteps.SingleOrDefault(step =>
+                        string.Equals(step.ToolId, "three-point-plane", StringComparison.Ordinal)
+                        && string.Equals(step.OutputEntityId, datumStep.InputEntityIds.ElementAtOrDefault(1), StringComparison.OrdinalIgnoreCase));
+                    if (datumStep is null || planeStep is null
+                        || !_viewModel.Workbench.SelectPipelineStep(planeStep.Id)
+                        || !await _viewModel.Workbench.PreviewSelectedThreePointPlaneAsync())
+                    {
+                        _viewModel.SetViewerSmokeFailed("Datum Plane Deviation smoke could not create its explicit Published 3-Point Plane prerequisite.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
+                    if (!_viewModel.Workbench.IsThreePointPlanePreviewPublished
+                        || !_viewModel.Workbench.SelectPipelineStep(datumStep.Id)
+                        || !await _viewModel.Workbench.PreviewSelectedDatumPlaneDeviationAsync())
+                    {
+                        _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.DatumPlaneDeviationExecutionSummary);
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (datumPlaneDeviationPublishSmoke)
+                {
+                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
+                    if (!_viewModel.Workbench.IsDatumPlaneDeviationPreviewPublished)
+                    {
+                        _viewModel.SetViewerSmokeFailed("Datum Plane Deviation Publish did not accept the current Preview output.");
                         Application.Current.Shutdown(1);
                         return;
                     }
@@ -826,6 +900,19 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (datumPlaneDeviationToolLabScreenshotPath is not null
+                    && (datumPlaneDeviationToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(datumPlaneDeviationToolLabWindow),
+                            datumPlaneDeviationToolLabScreenshotPath,
+                            datumPlaneDeviationToolLabScreenshotQualityReportPath,
+                            "DatumPlaneDeviationToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("Datum Plane Deviation Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (lineIntersectionToolLabScreenshotPath is not null
                     && (lineIntersectionToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
@@ -870,6 +957,10 @@ public partial class MainWindow : Window
                 {
                     xyzAffineSolveToolLabWindow.Close();
                 }
+                if (datumPlaneDeviationToolLabScreenshotPath is not null && datumPlaneDeviationToolLabWindow is { IsVisible: true })
+                {
+                    datumPlaneDeviationToolLabWindow.Close();
+                }
                 Application.Current.Shutdown(
                     nominalActualReady ? _viewer.SmokeExitCode : 1);
             };
@@ -893,6 +984,9 @@ public partial class MainWindow : Window
                 break;
             case ThreePointPlaneToolLabWindow threePointPlane:
                 threePointPlane.RefreshViews();
+                break;
+            case DatumPlaneDeviationToolLabWindow datumPlaneDeviation:
+                datumPlaneDeviation.RefreshViews();
                 break;
             case LineIntersectionToolLabWindow intersection:
                 intersection.RefreshViews();
@@ -1554,6 +1648,9 @@ public partial class MainWindow : Window
             case "three-point-plane":
                 ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: false, preserveSelectedStep: true);
                 break;
+            case "datum-plane-raw-height-deviation":
+                ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: false, preserveSelectedStep: true);
+                break;
             case "line-intersection":
                 ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false, preserveSelectedStep: true);
                 break;
@@ -1655,6 +1752,21 @@ public partial class MainWindow : Window
         ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: true);
     }
 
+    private void OpenTwoPointLineToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: true);
+    }
+
+    private void OpenThreePointPlaneToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: true);
+    }
+
+    private void OpenDatumPlaneDeviationToolLabRequested(object? sender, EventArgs args)
+    {
+        ShowDatumPlaneDeviationToolLabWindow(showMissingDatumDeviationMessage: true);
+    }
+
     private bool ShowTwoPointLineToolLabWindow(bool showMissingTwoPointLineMessage, bool preserveSelectedStep = false)
     {
         if (!EnsureToolLabStepSelected("two-point-line", preserveSelectedStep))
@@ -1708,6 +1820,34 @@ public partial class MainWindow : Window
         threePointPlaneToolLabWindow.RefreshViews();
         threePointPlaneToolLabWindow.Show();
         threePointPlaneToolLabWindow.Activate();
+        return true;
+    }
+
+    private bool ShowDatumPlaneDeviationToolLabWindow(bool showMissingDatumDeviationMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("datum-plane-raw-height-deviation", preserveSelectedStep))
+        {
+            if (showMissingDatumDeviationMessage)
+            {
+                MessageBox.Show(this, "Add a Datum Plane Raw-Height Deviation step before opening its Tool Lab.", "Datum Plane Deviation Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (datumPlaneDeviationToolLabWindow is null)
+        {
+            datumPlaneDeviationToolLabWindow = new DatumPlaneDeviationToolLabWindow(_viewModel.Workbench, step) { Owner = this };
+            datumPlaneDeviationToolLabWindow.Closed += (_, _) => datumPlaneDeviationToolLabWindow = null;
+        }
+        else
+        {
+            datumPlaneDeviationToolLabWindow.SetLabStep(step);
+        }
+
+        datumPlaneDeviationToolLabWindow.RefreshViews();
+        datumPlaneDeviationToolLabWindow.Show();
+        datumPlaneDeviationToolLabWindow.Activate();
         return true;
     }
 
@@ -1884,6 +2024,18 @@ public partial class MainWindow : Window
             threePointPlaneToolLabWindow.ShowThreePointPlaneResult(args);
         }
         _viewer.ShowWorkbenchThreePointPlane(args.Output, args.IsPublished);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+    }
+
+    private void OnWorkbenchDatumPlaneDeviationDisplayRequested(
+        object? sender,
+        ToolWorkbenchDatumPlaneDeviationDisplayRequestEventArgs args)
+    {
+        if (datumPlaneDeviationToolLabWindow is { IsVisible: true })
+        {
+            datumPlaneDeviationToolLabWindow.ShowDatumPlaneDeviationResult(args);
+        }
+        _viewer.ShowWorkbenchDatumPlaneDeviation(args.Plane, args.MeasurementSelection, args.Output, args.IsPublished);
         _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
     }
 
@@ -2127,6 +2279,7 @@ public partial class MainWindow : Window
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--two-point-line-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--three-point-plane-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--datum-plane-deviation-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)

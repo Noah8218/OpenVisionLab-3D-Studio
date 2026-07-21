@@ -2,14 +2,86 @@
 
 Updated: 2026-07-21
 
+## Current owner UI acceptance-review packet - 2026-07-21
+
+The automated/current-source portion of P4 was refreshed after G1-G7, the
+current Tool Labs, and the Viewer Geometry selector refinement. Build is
+`0/0`; Tool Recipe Teaching is `18/18`; Docking is `25/25`; Artifact Navigator
+is `24/24`; and current-host keyboard automation is `5/5`. Fresh Korean
+`1920 x 1080` / `1280 x 760`, English `1920 x 1080`, Recipe Manager, 3-Point
+Plane Tool Lab, and Datum Tool Lab captures all passed quality on attempt one
+in `artifacts/ui/20260721-owner-ui-acceptance-review/`.
+
+The owner accepted the evidence-based `85/100` UI/UX gate on 2026-07-21. The
+deferred owner keyboard-only, real 150% DPI, first-time-operator, and
+assistive reviews remain unverified rather than treated as passing evidence.
+The current `1280 x 760` capture also records one concrete small UI issue: the
+long Viewer status crowds the independent `R-drag: Pan` hint. Keep any follow-
+up to intentional status ellipsis plus tooltip/accessibility text; do not
+change Viewer behavior. Read
+`docs/OPENVISIONLAB_3D_OWNER_UI_ACCEPTANCE_REVIEW_20260721.md` before the next
+priority.
+
+## Current Viewer Toolbar and Tool Labs navigation checkpoint - 2026-07-21
+
+**Complete for the scoped UI change.** The repeated viewer `Geometry` selector
+now uses a Viewer-local compact ComboBox template: a white selected-value
+surface, explicit chevron, focused/hovered teal outline, and a matching
+dropdown item state. It does not alter the Shell-wide ComboBox style, so
+Recipe Manager, WPG, Calibration, and other form controls retain their
+existing theme contract.
+
+The title-bar `Tool Labs` menu now exposes every existing focused Tool Lab in
+the authored workflow order: Filter, Height Difference Edge, 2-Point Line,
+3-Point Plane, Datum Plane Deviation, Line Intersection, Landmark
+Correspondence, and XYZ Affine Solve. The three newly exposed paths reuse the
+existing single-instance windows and `Show...ToolLabWindow` missing-step
+messages; they do not create a recipe step, execute Preview, or Publish. New
+labels follow the existing Korean/English `ThreeDLocalization` surface.
+
+Current-source evidence: Debug solution build `0 warnings / 0 errors`; 2-Point
+Line Workbench `16/16`; 3-Point Plane Workbench `11/11`; Datum Plane
+Deviation Workbench `12/12`; and accepted before/after current-build Tool Lab
+captures in `artifacts/ui/20260721-viewer-toolbar-tool-labs/`. This remains a
+visual/navigation completion only. It does not close the owner UI/UX 80-point
+acceptance gate or make a metrology, calibration, or production-readiness
+claim.
+
+## Current Datum Plane Raw-Height Deviation implementation checkpoint - 2026-07-21
+
+The owner-approved PlaneFeature consumer is **Complete for deterministic local
+software evidence**: `raw C3D + Published PlaneFeature + GridRectangle ->
+DatumPlaneDeviationResult`. It is a strict typed `3-Point Plane -> Datum
+Deviation` chain, not a generic executor. Library-Noah commit
+`986f04346af6fea1d627e7a8fa5a56f6f9c0117a` owns the source-neutral residual,
+P2V, RMS, sample-count, limit, and normal-Y mathematics in vendored
+`Lib.ThreeD` `2.5.1`; Studio owns C3D/recipe lineage, WPG, explicit
+Preview/Publish/stale lifecycle, Viewer overlay, Tool Lab, and Runner replay.
+
+Current-source evidence: full Debug solution build `0 warnings / 0 errors`;
+Noah package verification `7/7`; Datum Golden/Runner `5/5`; Datum Workbench
+`12/12`; and first-attempt current-build Tool Lab screenshots at
+`artifacts/ui/20260721-datum-plane-deviation/`. The fixture uses the named
+Thickness C3D and produces local `P2V=3388.17573928833 raw-height`, not an
+engineering-unit tolerance or production acceptance result.
+
+Do not refit the plane, mutate C3D, apply affine, re-grid, connect this result
+to Thickness/Warpage, or make calibration/metrology claims under this slice.
+Thickness and Warpage remain byte-identical (`10,236,276` bytes; SHA-256
+`79C02761F9B711C0F8980D4376B9FCE25E00D425E6CA85DA4D4349ECF5F0299C`). A
+distinct acquired source with source unit/frame/alignment provenance and an
+independent expected datum/ROI/result is required before physical validation.
+Read `docs/OPENVISIONLAB_3D_DATUM_PLANE_DEVIATION_TYPED_ADAPTER_DESIGN_20260721.md`
+before selecting the next algorithm task.
+
 ## Current 3-Point Plane checkpoint - 2026-07-21
 
 The owner-approved 3-Point Plane v1 slice is **Complete** for deterministic
 local software evidence. Studio takes only the recipe-bound raw C3D source and
 one ordered `PointSet(3)`, resolves current finite cells, and delegates the
-full-XYZ support triangle, oriented normal, and plane offset to vendored
-`Lib.ThreeD` 2.4.0 `ThreePointPlaneTool` from Library-Noah commit
-`f62345c137b0c0d5e8b671c92f448e0c87f3e88a`. `C3DThreePointPlaneFeature`
+full-XYZ support triangle, oriented normal, and plane offset to the current
+vendored `Lib.ThreeD` 2.5.1 `ThreePointPlaneTool` (introduced by Library-Noah
+commit `f62345c137b0c0d5e8b671c92f448e0c87f3e88a`). `C3DThreePointPlaneFeature`
 retains Studio source/selection identity, the fixed authored-order policy, and
 the canonical hash.
 
@@ -25,9 +97,8 @@ Thickness-C3D Tool Lab screenshot-quality capture at
 
 This does **not** prove a best-fit plane, physical datum, feature detection,
 inspection OK/NG, affine application, re-grid, Thickness, Warpage, calibration,
-or metrology. There is deliberately no immediate Plane consumer. The next
-algorithm decision must be separately approved after examining real consumer
-requirements and available fixture evidence; do not infer one from this slice.
+or metrology. Its first approved raw-height consumer is the Datum Deviation
+slice above; do not infer any broader PlaneFeature consumer from this slice.
 
 ## Current 2-Point Line checkpoint - 2026-07-21
 
@@ -128,9 +199,10 @@ recipe/source identity, explicit lifecycle, Viewer, and Runner evidence;
 `Library-Noah` owns pure reusable 3D algorithms. Thickness/Warpage already
 use that boundary, while Studio currently owns Filter, Edge, Line Fit, and
 Correspondence structural validation. The current completed migration is Noah
-`Lib.ThreeD` 2.4.0: it contains the exact-four affine solve, 2-Point Line,
-3-Point Plane, and Line Intersection geometry. Studio A1, lines, and the
-manual datum plane are packaged-Noah adapters. Do not use a
+`Lib.ThreeD` 2.5.1: it contains the exact-four affine solve, 2-Point Line,
+3-Point Plane, Line Intersection geometry, and Datum Plane Raw-Height
+Deviation. Studio A1, lines, manual datum plane, and datum-deviation result
+are packaged-Noah adapters. Do not use a
 cross-repository ProjectReference, duplicate numerical math in Studio, or
 claim that every legacy algorithm has already moved. Preserve A1 fixture
 unverified status and block A2/re-grid/measurement work. Read

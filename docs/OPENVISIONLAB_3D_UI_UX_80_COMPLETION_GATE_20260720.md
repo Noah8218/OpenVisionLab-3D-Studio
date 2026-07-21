@@ -695,3 +695,20 @@ provides a current-build UI Automation check for keyboard candidate selection
 and explicit candidate add at the host's actual scale. Its current `100%`
 result passes `5/5`; it does not replace the `150%` or first-time-operator
 manual gate.
+
+## Owner acceptance decision - 2026-07-21
+
+Status: **Accepted for the current local UI/UX delivery gate.**
+
+After the current-source refresh, the owner accepted the evidence-based
+`85/100` review recorded in
+`docs/OPENVISIONLAB_3D_OWNER_UI_ACCEPTANCE_REVIEW_20260721.md`. This satisfies
+the product decision that the UI/UX gate has at least 80 accepted points and
+removes the UI-priority hold on selecting the next bounded product task.
+
+The decision does not claim that the deferred owner keyboard-only, actual
+150% DPI, first-time-operator, or assistive-technology reviews passed; those
+remain explicitly unverified evidence. It also does not authorize a generic
+executor, automatic routing, camera/PLC/HMI control, physical calibration, or
+metrology claims. The recorded compact Viewer-header status-pressure issue is
+an optional P1 polish follow-up, not a gate failure.

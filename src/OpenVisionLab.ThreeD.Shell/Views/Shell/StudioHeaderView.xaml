@@ -107,6 +107,34 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="PointScan24" />
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <Separator />
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.TwoPointLine, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      Click="OpenTwoPointLineToolLabButton_Click"
+                                      ToolTip="Open the ordered two-point LineFeature construction view"
+                                      AutomationProperties.AutomationId="OpenTwoPointLineToolLabButton"
+                                      AutomationProperties.Name="Open 2-Point Line Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="Branch24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.ThreePointPlane, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      Click="OpenThreePointPlaneToolLabButton_Click"
+                                      ToolTip="Open the ordered three-point PlaneFeature construction view"
+                                      AutomationProperties.AutomationId="OpenThreePointPlaneToolLabButton"
+                                      AutomationProperties.Name="Open 3-Point Plane Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="Branch24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.DatumPlaneDeviation, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      Click="OpenDatumPlaneDeviationToolLabButton_Click"
+                                      ToolTip="Open the raw-height deviation evidence view against a taught datum plane"
+                                      AutomationProperties.AutomationId="OpenDatumPlaneDeviationToolLabButton"
+                                      AutomationProperties.Name="Open Datum Plane Deviation Tool Lab">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="DataHistogram24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LineIntersection, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenLineIntersectionToolLabButton_Click"
                                       ToolTip="Open the two-LineFeature to corner-anchor comparison view"
@@ -116,6 +144,7 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="Branch24" />
                                 </MenuItem.Icon>
                             </MenuItem>
+                            <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.LandmarkCorrespondence, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenLandmarkCorrespondenceToolLabButton_Click"
                                       ToolTip="Open the four CornerAnchor to reference-coordinate teaching view"
@@ -125,7 +154,7 @@
                                     <ui:SymbolIcon Width="16" Height="16" Symbol="TargetArrow24" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <MenuItem Header="XYZ Affine Solve"
+                            <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.XYZAffineSolve, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenXYZAffineSolveToolLabButton_Click"
                                       ToolTip="Open the Published CorrespondenceSet to AffineTransform3D matrix-evidence view"
                                       AutomationProperties.AutomationId="OpenXYZAffineSolveToolLabButton"

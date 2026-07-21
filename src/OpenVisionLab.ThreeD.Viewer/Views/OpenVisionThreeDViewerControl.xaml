@@ -6,6 +6,123 @@
              Background="#f3f4f6">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="ViewerToolbarComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Foreground" Value="#1f2937" />
+            <Setter Property="Background" Value="#ffffff" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#e6fffb" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#ccfbf1" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ViewerToolbarComboBoxStyle" TargetType="{x:Type ComboBox}">
+            <Setter Property="Width" Value="152" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="10,0,8,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#1f2937" />
+            <Setter Property="Background" Value="#ffffff" />
+            <Setter Property="BorderBrush" Value="#94a3b8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ViewerToolbarComboBoxItemStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid SnapsToDevicePixels="True">
+                            <ToggleButton x:Name="ToggleButton"
+                                          Padding="{TemplateBinding Padding}"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="2">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="28" />
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                                  VerticalAlignment="Center"
+                                                                  HorizontalAlignment="Left"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  RecognizesAccessKey="True" />
+                                                <Border Grid.Column="1"
+                                                        BorderBrush="#cbd5e1"
+                                                        BorderThickness="1,0,0,0">
+                                                    <Path Width="8"
+                                                          Height="5"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Data="M 0,0 L 4,4 L 8,0"
+                                                          Stroke="#475569"
+                                                          StrokeThickness="1.5" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Slide">
+                                <Border MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                        Margin="0,3,0,0"
+                                        Background="#ffffff"
+                                        BorderBrush="#94a3b8"
+                                        BorderThickness="1"
+                                        CornerRadius="2">
+                                    <ScrollViewer Margin="2"
+                                                  CanContentScroll="True"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#f8fafc" />
+                    <Setter Property="BorderBrush" Value="#0f766e" />
+                </Trigger>
+                <Trigger Property="IsDropDownOpen" Value="True">
+                    <Setter Property="Background" Value="#f0fdfa" />
+                    <Setter Property="BorderBrush" Value="#0f766e" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#94a3b8" />
+                    <Setter Property="Background" Value="#f1f5f9" />
+                    <Setter Property="BorderBrush" Value="#cbd5e1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <DockPanel LastChildFill="True">
@@ -20,12 +137,16 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock VerticalAlignment="Center"
                                Margin="0,0,6,0"
+                               FontSize="12"
+                               FontWeight="SemiBold"
                                Foreground="#6b7280"
                                Text="Geometry" />
-                    <ComboBox Width="150"
+                    <ComboBox Style="{StaticResource ViewerToolbarComboBoxStyle}"
                               ItemsSource="{Binding Display.AvailableGeometryStyles}"
                               SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
-                              IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}" />
+                              IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}"
+                              ToolTip="Select viewer geometry"
+                              AutomationProperties.Name="Select viewer geometry style" />
                     <CheckBox Margin="12,0,0,0"
                               VerticalAlignment="Center"
                               Content="HUD Details"

@@ -144,6 +144,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.ClearWorkbenchHeightDifferenceEdge();
         viewModel.ClearWorkbenchTwoPointLine();
         viewModel.ClearWorkbenchThreePointPlane();
+        viewModel.ClearWorkbenchDatumPlaneDeviation();
         viewModel.ClearWorkbenchLineFit();
         viewModel.ClearWorkbenchLineIntersection();
         viewModel.ClearWorkbenchLandmarkCorrespondence();
@@ -165,6 +166,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         DrawWorkbenchHeightDifferenceEdge(gl);
         DrawWorkbenchTwoPointLine(gl);
         DrawWorkbenchThreePointPlane(gl);
+        DrawWorkbenchDatumPlaneDeviation(gl);
         DrawWorkbenchLineFit(gl);
         DrawWorkbenchLineIntersection(gl);
         DrawWorkbenchLandmarkCorrespondence(gl);
@@ -364,6 +366,70 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(second.X, second.Y, second.Z);
         gl.Vertex(third.X, third.Y, third.Z);
         gl.End();
+    }
+
+    private void DrawWorkbenchDatumPlaneDeviation(OpenGL gl)
+    {
+        var plane = viewModel.WorkbenchDatumPlane;
+        var selection = viewModel.WorkbenchDatumPlaneMeasurementSelection;
+        var output = viewModel.WorkbenchDatumPlaneDeviation;
+        if (plane is null || selection?.GridRectangle is not { } rectangle || output is null || c3dSample is null
+            || rectangle.Row < 0 || rectangle.Column < 0
+            || rectangle.Row > c3dSample.Height - rectangle.RowCount
+            || rectangle.Column > c3dSample.Width - rectangle.ColumnCount)
+        {
+            return;
+        }
+
+        var anchor = CreateC3DGridDisplayPosition(plane.AnchorZ, plane.AnchorX, plane.AnchorY);
+        var second = CreateC3DGridDisplayPosition(plane.SecondZ, plane.SecondX, plane.SecondY);
+        var third = CreateC3DGridDisplayPosition(plane.ThirdZ, plane.ThirdX, plane.ThirdY);
+        gl.Enable(OpenGL.GL_BLEND);
+        gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.Color(0.08, 0.78, 0.92, 0.24);
+        gl.Begin(OpenGL.GL_TRIANGLES);
+        gl.Vertex(anchor.X, anchor.Y, anchor.Z);
+        gl.Vertex(second.X, second.Y, second.Z);
+        gl.Vertex(third.X, third.Y, third.Z);
+        gl.End();
+        gl.Disable(OpenGL.GL_BLEND);
+
+        DrawTeachingGridRectangle(gl, rectangle, 1.0, viewModel.IsWorkbenchDatumPlaneDeviationPublished ? 0.78 : 0.48, 0.12);
+        var residualScale = Math.Max(Math.Max(Math.Abs(output.MinimumRawHeightResidual), Math.Abs(output.MaximumRawHeightResidual)), 1e-12d);
+        gl.PointSize(6.0f);
+        gl.Begin(OpenGL.GL_POINTS);
+        foreach (var sample in output.OverlaySamples)
+        {
+            var ratio = Math.Clamp(sample.Residual / residualScale, -1d, 1d);
+            var red = ratio > 0d ? 0.35 + (0.65 * ratio) : 0.10;
+            var blue = ratio < 0d ? 0.35 + (0.65 * -ratio) : 0.10;
+            var green = 0.90 - (0.65 * Math.Abs(ratio));
+            gl.Color(red, green, blue);
+            var position = CreateC3DGridDisplayPosition(sample.Row, sample.Column, sample.RawHeight);
+            gl.Vertex(position.X, position.Y, position.Z);
+        }
+        gl.End();
+
+        var minimumSample = output.OverlaySamples.FirstOrDefault(sample => sample.Row == output.MinimumResidualRow && sample.Column == output.MinimumResidualColumn);
+        var maximumSample = output.OverlaySamples.FirstOrDefault(sample => sample.Row == output.MaximumResidualRow && sample.Column == output.MaximumResidualColumn);
+        if (minimumSample is not null || maximumSample is not null)
+        {
+            gl.PointSize(13.0f);
+            gl.Begin(OpenGL.GL_POINTS);
+            if (minimumSample is not null)
+            {
+                var minimum = CreateC3DGridDisplayPosition(minimumSample.Row, minimumSample.Column, minimumSample.RawHeight);
+                gl.Color(0.10, 0.82, 1.0);
+                gl.Vertex(minimum.X, minimum.Y, minimum.Z);
+            }
+            if (maximumSample is not null)
+            {
+                var maximum = CreateC3DGridDisplayPosition(maximumSample.Row, maximumSample.Column, maximumSample.RawHeight);
+                gl.Color(1.0, 0.30, 0.22);
+                gl.Vertex(maximum.X, maximum.Y, maximum.Z);
+            }
+            gl.End();
+        }
     }
 
     private void DrawWorkbenchLineIntersection(OpenGL gl)

@@ -6,6 +6,8 @@ using NoahThicknessInspectionOptions = Lib.ThreeD.Inspection.ThicknessInspection
 using NoahThicknessInspectionTool = Lib.ThreeD.Inspection.ThicknessInspectionTool;
 using NoahWarpageInspectionOptions = Lib.ThreeD.Inspection.WarpageInspectionOptions;
 using NoahWarpageInspectionTool = Lib.ThreeD.Inspection.WarpageInspectionTool;
+using NoahDatumPlaneRawHeightDeviationInspectionOptions = Lib.ThreeD.Inspection.DatumPlaneRawHeightDeviationInspectionOptions;
+using NoahDatumPlaneRawHeightDeviationInspectionTool = Lib.ThreeD.Inspection.DatumPlaneRawHeightDeviationInspectionTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -38,6 +40,17 @@ public sealed record LibraryNoahWarpageInspectionInput(
     double? MaximumRms = null,
     int MinimumValidSamples = 3);
 
+public sealed record LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
+    LibraryNoahHeightMapInput? Source,
+    LibraryNoahGridRoi? Roi,
+    double PlaneNormalX,
+    double PlaneNormalY,
+    double PlaneNormalZ,
+    double PlaneOffset,
+    double MaximumPeakToValleyRawHeight,
+    int MinimumValidSamples = 3,
+    double MinimumAbsoluteNormalY = 0.1);
+
 public sealed record LibraryNoahInspectionEvaluation(
     ToolResult Result,
     bool HasMeasurement,
@@ -52,8 +65,8 @@ public sealed record LibraryNoahInspectionEvaluation(
 public static class LibraryNoahHeightMapInspection
 {
     public const string PackageId = "Lib.ThreeD";
-    public const string PackageVersion = "2.3.0";
-    public const string PackageSourceCommit = "630e37b9111f3223217c815e19c480546fde8ad7";
+    public const string PackageVersion = "2.5.1";
+    public const string PackageSourceCommit = "986f04346af6fea1d627e7a8fa5a56f6f9c0117a";
 
     public static string PackageAssemblyName => typeof(NoahHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 
@@ -98,6 +111,52 @@ public static class LibraryNoahHeightMapInspection
                 MinimumValidSamples = input.MinimumValidSamples
             }).Execute(heightMap));
     }
+
+    public static LibraryNoahInspectionEvaluation EvaluateDatumPlaneRawHeightDeviation(
+        LibraryNoahDatumPlaneRawHeightDeviationInspectionInput? input)
+    {
+        const string toolName = "Library-Noah Datum Plane Raw-Height Deviation";
+        if (input is null)
+        {
+            return Error(toolName, null, null, "Datum-plane raw-height deviation input is required.");
+        }
+
+        return Execute(
+            toolName,
+            input.Source,
+            input.Roi,
+            heightMap => new NoahDatumPlaneRawHeightDeviationInspectionTool(
+                new NoahDatumPlaneRawHeightDeviationInspectionOptions
+                {
+                    Roi = ToNoahRoi(input.Roi),
+                    PlaneNormalX = input.PlaneNormalX,
+                    PlaneNormalY = input.PlaneNormalY,
+                    PlaneNormalZ = input.PlaneNormalZ,
+                    PlaneOffset = input.PlaneOffset,
+                    MaximumPeakToValleyRawHeight = input.MaximumPeakToValleyRawHeight,
+                    MinimumValidSamples = input.MinimumValidSamples,
+                    MinimumAbsoluteNormalY = input.MinimumAbsoluteNormalY
+                }).Execute(heightMap));
+    }
+
+    public static bool TryCalculateDatumPlaneRawHeightResidual(
+        double normalX,
+        double normalY,
+        double normalZ,
+        double planeOffset,
+        double gridX,
+        double gridY,
+        double rawHeight,
+        out double residual) =>
+        NoahDatumPlaneRawHeightDeviationInspectionTool.TryCalculateRawHeightResidual(
+            normalX,
+            normalY,
+            normalZ,
+            planeOffset,
+            gridX,
+            gridY,
+            rawHeight,
+            out residual);
 
     private static LibraryNoahInspectionEvaluation Execute(
         string toolName,
@@ -240,9 +299,11 @@ public static class LibraryNoahHeightMapInspection
     private static MetricKind ResolveMetricKind(string name) =>
         name switch
         {
-            "ValidSampleCount" or "BelowLowerLimitCount" or "AboveUpperLimitCount" => MetricKind.Count,
-            "PeakToValley" or "Rms" or "MinimumResidual" or "MaximumResidual" or "MaximumPeakToValley" or "MaximumRms" => MetricKind.Deviation,
-            "PlaneSlopeX" or "PlaneSlopeY" or "PlaneIntercept" => MetricKind.Number,
+            "ValidSampleCount" or "MissingSampleCount" or "BelowLowerLimitCount" or "AboveUpperLimitCount"
+                or "MinimumResidualRow" or "MinimumResidualColumn" or "MaximumResidualRow" or "MaximumResidualColumn" => MetricKind.Count,
+            "PeakToValley" or "Rms" or "MinimumResidual" or "MaximumResidual" or "MaximumPeakToValley" or "MaximumRms"
+                or "MinimumRawHeightResidual" or "MaximumRawHeightResidual" or "PeakToValleyRawHeight" or "RmsRawHeightResidual" or "MaximumPeakToValleyRawHeight" => MetricKind.Deviation,
+            "PlaneSlopeX" or "PlaneSlopeY" or "PlaneIntercept" or "PlaneNormalX" or "PlaneNormalY" or "PlaneNormalZ" or "PlaneOffset" or "MinimumAbsoluteNormalY" => MetricKind.Number,
             _ => MetricKind.Length
         };
 

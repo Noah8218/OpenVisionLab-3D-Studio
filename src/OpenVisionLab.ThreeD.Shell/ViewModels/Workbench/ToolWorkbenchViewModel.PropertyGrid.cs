@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 2-Point Line, 3-Point Plane, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
+    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 2-Point Line, 3-Point Plane, Datum Plane Raw-Height Deviation, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -54,6 +54,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "height-difference-edge" } step => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "two-point-line" } step => FormatAdapterStatus(step, TwoPointLineStepProperties.MappedNames),
         { ToolId: "three-point-plane" } step => FormatAdapterStatus(step, ThreePointPlaneStepProperties.MappedNames),
+        { ToolId: "datum-plane-raw-height-deviation" } step => FormatAdapterStatus(step, DatumPlaneDeviationStepProperties.MappedNames),
         { ToolId: "three-d-line-fit" } step => FormatAdapterStatus(step, LineFitStepProperties.MappedNames),
         { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
         { ToolId: "landmark-correspondence" } step => FormatAdapterStatus(step, LandmarkCorrespondenceStepProperties.MappedNames),
@@ -231,6 +232,22 @@ public sealed partial class ToolWorkbenchViewModel
                     ["ConstructionPolicy"] = threePointPlane.ConstructionPolicy.ToString()
                 };
                 break;
+            case DatumPlaneDeviationStepProperties datum:
+                if (!datum.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["MaximumPeakToValleyRawHeight"] = datum.MaximumPeakToValleyRawHeight.ToString("G17", CultureInfo.InvariantCulture),
+                    ["OutputRole"] = datum.OutputRole,
+                    ["ResidualPolicy"] = datum.ResidualPolicy.ToString(),
+                    ["MinimumValidSampleCount"] = datum.MinimumValidSampleCount.ToString(CultureInfo.InvariantCulture),
+                    ["MinimumAbsoluteNormalY"] = datum.MinimumAbsoluteNormalY.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
             case LineFitStepProperties lineFit:
                 if (!lineFit.TryValidate(out message))
                 {
@@ -331,6 +348,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkTwoPointLinePreviewStaleIfNeeded(step);
             MarkThreePointPlanePreviewStaleIfNeeded(step);
+            MarkDatumPlaneDeviationPreviewStaleIfNeeded(step);
             MarkLineFitPreviewStaleIfNeeded();
             MarkLineIntersectionPreviewStaleIfNeeded();
             MarkLandmarkCorrespondencePreviewStaleIfNeeded();
@@ -359,6 +377,7 @@ public sealed partial class ToolWorkbenchViewModel
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "two-point-line" => TwoPointLineStepProperties.From(step),
             "three-point-plane" => ThreePointPlaneStepProperties.From(step),
+            "datum-plane-raw-height-deviation" => DatumPlaneDeviationStepProperties.From(step),
             "three-d-line-fit" => LineFitStepProperties.From(step),
             "line-intersection" => LineIntersectionStepProperties.From(step),
             "landmark-correspondence" => LandmarkCorrespondenceStepProperties.From(step),
@@ -388,6 +407,7 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshHeightDifferenceEdgeCommands();
         RefreshTwoPointLineCommands();
         RefreshThreePointPlaneCommands();
+        RefreshDatumPlaneDeviationCommands();
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
         RefreshLandmarkCorrespondenceCommands();
@@ -505,7 +525,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -851,6 +871,99 @@ public sealed class ThreePointPlaneStepProperties
         if (string.IsNullOrWhiteSpace(OutputRole) || OutputRole != OutputRole.Trim())
         {
             message = "Output role must be an explicit non-empty identifier without surrounding whitespace.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+}
+
+public enum DatumPlaneDeviationResidualPolicy
+{
+    RawHeightMinusDatumPlanePredictedRawHeight
+}
+
+[CategoryOrder("Deviation rule", 0)]
+[CategoryOrder("Fixed v1 policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class DatumPlaneDeviationStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "MaximumPeakToValleyRawHeight", "OutputRole", "ResidualPolicy",
+        "MinimumValidSampleCount", "MinimumAbsoluteNormalY"
+    ];
+
+    [Category("Deviation rule")]
+    [DisplayName("Maximum P2V raw height")]
+    [Description("Inclusive peak-to-valley limit of raw-height residuals from the Published 3-Point Plane. This is not a calibrated physical limit.")]
+    [PropertyOrder(0)]
+    [NumberRange(0, 1000000, 0.001, 6)]
+    public double MaximumPeakToValleyRawHeight { get; set; }
+
+    [Category("Deviation rule")]
+    [DisplayName("Output role")]
+    [Description("Named semantic role for the read-only datum-plane residual result.")]
+    [PropertyOrder(1)]
+    public string OutputRole { get; set; } = string.Empty;
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Residual policy")]
+    [Description("Residual is current raw height minus datum-plane predicted raw height at the same grid cell.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public DatumPlaneDeviationResidualPolicy ResidualPolicy { get; set; }
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Minimum valid samples")]
+    [Description("At least this many finite C3D cells must be present in the recipe-owned measurement rectangle.")]
+    [PropertyOrder(3)]
+    [NumberRange(3, 1000000, 1)]
+    public int MinimumValidSampleCount { get; set; }
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Minimum |normal Y|")]
+    [Description("Rejects a near-vertical datum plane because raw height cannot be solved safely from its plane equation.")]
+    [PropertyOrder(4)]
+    [NumberRange(0, 1, 0.01, 6)]
+    public double MinimumAbsoluteNormalY { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [PropertyOrder(5)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static DatumPlaneDeviationStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MaximumPeakToValleyRawHeight = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MaximumPeakToValleyRawHeight"), NumberStyles.Float, CultureInfo.InvariantCulture, out var p2v) ? p2v : 0d,
+        OutputRole = ToolWorkbenchViewModel.GetParameter(step, "OutputRole") ?? string.Empty,
+        ResidualPolicy = DatumPlaneDeviationResidualPolicy.RawHeightMinusDatumPlanePredictedRawHeight,
+        MinimumValidSampleCount = int.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MinimumValidSampleCount"), NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) ? minimum : 0,
+        MinimumAbsoluteNormalY = double.TryParse(ToolWorkbenchViewModel.GetParameter(step, "MinimumAbsoluteNormalY"), NumberStyles.Float, CultureInfo.InvariantCulture, out var normalY) ? normalY : 0d,
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(MaximumPeakToValleyRawHeight) || MaximumPeakToValleyRawHeight <= 0d)
+        {
+            message = "Maximum P2V raw height must be finite and greater than zero.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(OutputRole) || OutputRole != OutputRole.Trim())
+        {
+            message = "Output role is required without surrounding whitespace.";
+            return false;
+        }
+        if (MinimumValidSampleCount < 3)
+        {
+            message = "Minimum valid samples must be at least three.";
+            return false;
+        }
+        if (!double.IsFinite(MinimumAbsoluteNormalY) || MinimumAbsoluteNormalY <= 0d || MinimumAbsoluteNormalY > 1d)
+        {
+            message = "Minimum |normal Y| must be finite, greater than zero, and no greater than one.";
             return false;
         }
         message = string.Empty;

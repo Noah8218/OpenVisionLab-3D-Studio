@@ -255,6 +255,25 @@ public sealed partial class ToolWorkbenchViewModel
                 "PlaneFeature");
         }
 
+        if (string.Equals(step.ToolId, "datum-plane-raw-height-deviation", StringComparison.Ordinal)
+            && TryGetPublishedDatumPlaneDeviationOutput(step.OutputEntityId, out var publishedDatumDeviation)
+            && publishedDatumDeviation is not null)
+        {
+            return new ToolWorkbenchArtifactItem(
+                publishedDatumDeviation.OutputEntityId,
+                step.ToolName,
+                "DatumPlaneDeviationResult",
+                "Published",
+                publishedDatumDeviation.RootSourceEntityId,
+                $"{publishedDatumDeviation.PlaneFeatureEntityId}; {publishedDatumDeviation.MeasurementSelectionId}",
+                publishedDatumDeviation.Unit,
+                publishedDatumDeviation.FrameId,
+                publishedDatumDeviation.ContentSha256,
+                $"{publishedDatumDeviation.OutputRole} | P2V {publishedDatumDeviation.PeakToValleyRawHeight:G6} raw-height | {publishedDatumDeviation.ValidSampleCount:N0} samples | {publishedDatumDeviation.Provenance}",
+                step,
+                "DatumPlaneDeviationResult");
+        }
+
         if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal)
             && TryGetPublishedLineIntersectionOutput(step.OutputEntityId, out var publishedIntersection)
             && publishedIntersection is not null)
@@ -331,6 +350,7 @@ public sealed partial class ToolWorkbenchViewModel
         or "height-difference-edge"
         or "two-point-line"
         or "three-point-plane"
+        or "datum-plane-raw-height-deviation"
         or "line-intersection"
         or "landmark-correspondence";
 

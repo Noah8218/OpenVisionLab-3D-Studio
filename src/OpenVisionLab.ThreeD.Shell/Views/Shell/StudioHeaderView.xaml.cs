@@ -17,6 +17,9 @@ public partial class StudioHeaderView : UserControl
     public event EventHandler? RecipeManagerRequested;
     public event EventHandler? FilterToolLabRequested;
     public event EventHandler? EdgeToolLabRequested;
+    public event EventHandler? TwoPointLineToolLabRequested;
+    public event EventHandler? ThreePointPlaneToolLabRequested;
+    public event EventHandler? DatumPlaneDeviationToolLabRequested;
     public event EventHandler? LineIntersectionToolLabRequested;
     public event EventHandler? LandmarkCorrespondenceToolLabRequested;
     public event EventHandler? XYZAffineSolveToolLabRequested;
@@ -38,6 +41,15 @@ public partial class StudioHeaderView : UserControl
 
     private void OpenEdgeToolLabButton_Click(object sender, RoutedEventArgs args) =>
         EdgeToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenTwoPointLineToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        TwoPointLineToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenThreePointPlaneToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        ThreePointPlaneToolLabRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OpenDatumPlaneDeviationToolLabButton_Click(object sender, RoutedEventArgs args) =>
+        DatumPlaneDeviationToolLabRequested?.Invoke(this, EventArgs.Empty);
 
     private void OpenLineIntersectionToolLabButton_Click(object sender, RoutedEventArgs args) =>
         LineIntersectionToolLabRequested?.Invoke(this, EventArgs.Empty);
