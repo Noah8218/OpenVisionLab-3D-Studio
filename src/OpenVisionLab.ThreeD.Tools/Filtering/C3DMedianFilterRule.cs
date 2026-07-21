@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -14,6 +15,11 @@ public sealed record C3DMedianFilterEvaluation(
     ToolResult Result,
     C3DHeightFieldSnapshot? Output);
 
+/// <summary>
+/// C3D lineage/result adapter. Finite/NaN median window arithmetic lives only
+/// in Library-Noah; Studio owns C3D zero/missing policy, typed artifacts,
+/// recipe identity, and explicit lifecycle evidence.
+/// </summary>
 public static class C3DMedianFilterRule
 {
     public static C3DMedianFilterEvaluation Evaluate(
@@ -23,77 +29,20 @@ public static class C3DMedianFilterRule
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            ArgumentNullException.ThrowIfNull(input);
-            ArgumentNullException.ThrowIfNull(input.Source);
-            ArgumentException.ThrowIfNullOrWhiteSpace(input.StepId);
-            ArgumentException.ThrowIfNullOrWhiteSpace(input.OutputEntityId);
-            if (input.KernelSize is not (3 or 5 or 7))
+            ValidateAdapterInput(input);
+            var numerical = new DeterministicMedianFilterTool().Execute(
+                input.Source.Height,
+                input.Source.Width,
+                input.Source.Values.ToArray(),
+                new DeterministicMedianFilterOptions { KernelSize = input.KernelSize },
+                cancellationToken);
+            if (!numerical.Success)
             {
-                throw new InvalidDataException("Median Filter KernelSize must be 3, 5, or 7.");
-            }
-            if (input.Source.Width <= 0 || input.Source.Height <= 0
-                || input.Source.Values.Length != checked(input.Source.Width * input.Source.Height))
-            {
-                throw new InvalidDataException("Median Filter source grid is invalid.");
-            }
-            if (!string.Equals(input.Source.Unit, "raw-height", StringComparison.Ordinal)
-                || !string.Equals(input.Source.ScalarMeaning, "raw-height", StringComparison.Ordinal))
-            {
-                throw new InvalidDataException("Median Filter v1 accepts raw-height only.");
-            }
-            if (input.Source.ValidCount == 0)
-            {
-                throw new InvalidDataException("Median Filter source contains no valid raw-height samples.");
-            }
-
-            var source = input.Source.Values.Span;
-            var output = new double[source.Length];
-            var radius = input.KernelSize / 2;
-            var changed = 0;
-            Span<double> neighbors = stackalloc double[49];
-            for (var row = 0; row < input.Source.Height; row++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                for (var column = 0; column < input.Source.Width; column++)
-                {
-                    var sourceIndex = row * input.Source.Width + column;
-                    if (!double.IsFinite(source[sourceIndex]))
-                    {
-                        output[sourceIndex] = double.NaN;
-                        continue;
-                    }
-
-                    var count = 0;
-                    for (var neighborRow = Math.Max(0, row - radius);
-                         neighborRow <= Math.Min(input.Source.Height - 1, row + radius);
-                         neighborRow++)
-                    {
-                        for (var neighborColumn = Math.Max(0, column - radius);
-                             neighborColumn <= Math.Min(input.Source.Width - 1, column + radius);
-                             neighborColumn++)
-                        {
-                            var value = source[neighborRow * input.Source.Width + neighborColumn];
-                            if (double.IsFinite(value))
-                            {
-                                neighbors[count++] = value;
-                            }
-                        }
-                    }
-
-                    neighbors[..count].Sort();
-                    var median = (count & 1) == 1
-                        ? neighbors[count / 2]
-                        : (neighbors[count / 2 - 1] + neighbors[count / 2]) / 2.0;
-                    output[sourceIndex] = median;
-                    if (median != source[sourceIndex])
-                    {
-                        changed++;
-                    }
-                }
+                throw new InvalidDataException(numerical.Message);
             }
 
             var provenance = $"{input.StepId}:Median:KernelSize={input.KernelSize}:MissingValuePolicy=PreserveMask:BoundaryPolicy=AvailableNeighbors:source={input.Source.ContentSha256}";
-            var derived = input.Source.CreateDerived(input.OutputEntityId, output, provenance);
+            var derived = input.Source.CreateDerived(input.OutputEntityId, numerical.Values, provenance);
             stopwatch.Stop();
             return new C3DMedianFilterEvaluation(
                 new ToolResult(
@@ -104,7 +53,7 @@ public static class C3DMedianFilterRule
                     [
                         new Metric("Valid sample count", MetricKind.Count, derived.ValidCount, "count"),
                         new Metric("Missing sample count", MetricKind.Count, derived.MissingCount, "count"),
-                        new Metric("Changed sample count", MetricKind.Count, changed, "count"),
+                        new Metric("Changed sample count", MetricKind.Count, numerical.ChangedCount, "count"),
                         new Metric("Kernel size", MetricKind.Count, input.KernelSize, "cells")
                     ],
                     []),
@@ -127,6 +76,35 @@ public static class C3DMedianFilterRule
                     [],
                     []),
                 null);
+        }
+    }
+
+    private static void ValidateAdapterInput(C3DMedianFilterInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(input.Source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(input.StepId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(input.OutputEntityId);
+        if (input.KernelSize is not (3 or 5 or 7))
+        {
+            throw new InvalidDataException("Median Filter KernelSize must be 3, 5, or 7.");
+        }
+
+        if (input.Source.Width <= 0 || input.Source.Height <= 0
+            || input.Source.Values.Length != checked(input.Source.Width * input.Source.Height))
+        {
+            throw new InvalidDataException("Median Filter source grid is invalid.");
+        }
+
+        if (!string.Equals(input.Source.Unit, "raw-height", StringComparison.Ordinal)
+            || !string.Equals(input.Source.ScalarMeaning, "raw-height", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Median Filter v1 accepts raw-height only.");
+        }
+
+        if (input.Source.ValidCount == 0)
+        {
+            throw new InvalidDataException("Median Filter source contains no valid raw-height samples.");
         }
     }
 }

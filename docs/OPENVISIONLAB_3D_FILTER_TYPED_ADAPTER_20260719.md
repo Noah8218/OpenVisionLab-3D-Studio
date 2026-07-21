@@ -5,6 +5,13 @@ Updated: 2026-07-19
 Status: Complete for the approved local v1 gate. Remote Windows CI is not
 claimed for this working tree.
 
+> 2026-07-21 ownership update: deterministic finite/`NaN` median-window
+> arithmetic and changed-count now live in Library-Noah
+> `DeterministicMedianFilterTool`. Studio retains C3D source identity,
+> zero-to-missing conversion, finite-zero derived-output rejection, typed
+> artifact, lifecycle, Viewer, and Runner boundaries. See
+> `OPENVISIONLAB_3D_FILTER_NOAH_MIGRATION_20260721.md`.
+
 ## Approved Scope
 
 The owner approved all four decisions from the design package:
@@ -23,7 +30,7 @@ units, and metrology remain excluded.
 ```text
 Teaching recipe source identity
   -> Data reads and hashes the same C3D bytes
-  -> Tools validates the closed Filter schema and calculates Median
+  -> Tools validates the closed Filter schema and invokes Noah Median
   -> Runner or Workbench calls the same direct adapter
   -> derived C3D carries output/root-source hashes and provenance
   -> Viewer displays the derived file without changing the taught source

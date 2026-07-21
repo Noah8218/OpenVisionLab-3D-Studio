@@ -2,6 +2,33 @@
 
 Updated: 2026-07-21
 
+## Current deterministic feature-extraction Library-Noah migration checkpoint - 2026-07-21
+
+**Complete for deterministic software structure and regression evidence; not
+a physical feature or metrology claim.** `DeterministicMedianFilterTool` owns
+source-neutral finite/NaN median windows, available-neighbor borders,
+missing-mask preservation, and changed-count arithmetic.
+`DeterministicHeightDifferenceEdgeTool` owns adjacent-pair scanning,
+finite-pair skipping, inclusive polarity comparison, strongest-per-scanline
+selection, exact-tie order, and diagnostics. `DeterministicLineFitTool` retains
+the source-neutral ordered-XYZ SHA-256 pair schedule, consensus priority,
+orthogonal TLS, residual membership, support gates, positive-axis direction,
+endpoints, and diagnostics. Studio maps its strict C3D published artifacts to
+and from those tools, retains recipe identity, canonical output hashes, Tool
+Labs, Viewer, and Preview/Publish state, and exclusively enforces the C3D
+finite-zero derived-output boundary. The vendored package is `Lib.ThreeD 2.7.4`,
+Library commit `5d06460c14b1edf390241b28511ce4997f70dc28`, SHA-256
+`BB44D30F8D3AB9C1CF528482CFA2A5A804D9222FFBAE258C765CEF2696EB2573`.
+Library build is `0/0`, smoke `39/39`; Studio Debug build is `0/0`; Filter and
+Edge Goldens are `13/13` each; Line Fit Golden is `9/9`; and package/bridge
+checks pass. Structural searches confirm Studio has no Filter median-window or
+Edge scan/candidate/polarity helpers and calls the Noah tools. No remaining
+planned pure-numerical migration candidate is approved. Real four-anchor data,
+calibration, and metrology remain unverified. See
+`docs/OPENVISIONLAB_3D_FILTER_NOAH_MIGRATION_20260721.md`,
+`docs/OPENVISIONLAB_3D_HEIGHT_DIFFERENCE_EDGE_NOAH_MIGRATION_20260721.md`, and
+`docs/OPENVISIONLAB_3D_LINE_FIT_NOAH_MIGRATION_20260721.md`.
+
 ## Current A3 Re-grid Height Field implementation checkpoint - 2026-07-21
 
 **Implemented for deterministic synthetic software evidence; not validated on

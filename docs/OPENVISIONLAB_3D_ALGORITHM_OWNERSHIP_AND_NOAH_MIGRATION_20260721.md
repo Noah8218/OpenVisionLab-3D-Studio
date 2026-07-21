@@ -35,20 +35,21 @@ reusable by other OpenVisionLab products.
 | Full XYZ Affine Solve | `Lib.ThreeD` | Studio is a typed adapter; preserve Studio artifact/hash/UI. |
 | 2-Point Line | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(2) adapter and owns lifecycle/evidence only. |
 | 3-Point Plane | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(3) datum-plane adapter and owns lifecycle/evidence only. |
-| Filter | Studio | Later migrate after the C3D-zero/missing-mask boundary is reproduced in Noah. |
-| Height Difference Edge | Studio | Later migrate after the source-grid/selection adapter is fixed. |
-| 3D Line Fit | Studio | Later migrate after fitted-edge diagnostics are independently preserved. |
+| Filter | `Lib.ThreeD` pure finite/NaN median filter | Complete: Studio retains the C3D-zero/derived-finite-zero boundary and typed lifecycle/evidence only. |
+| Height Difference Edge | `Lib.ThreeD` pure adjacent-pair scan/selection | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
+| 3D Line Fit | `Lib.ThreeD` pure deterministic consensus/TLS | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
 | Line Intersection | `Lib.ThreeD` | Studio is a typed C3D lineage/artifact adapter; Noah owns closest-approach geometry. |
 | Landmark Correspondence | Studio structural gate | Retain Studio identity/recipe ownership; extract only reusable rank/volume math if repeated external consumers require it. |
 
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.
 
-## Active package migration: Lib.ThreeD 2.4.0
+## Active package migration: Lib.ThreeD 2.7.4
 
-Noah 2.2.0 introduced two source-neutral algorithms. The active 2.4.0 package
-retains them, adds the first reusable common-line geometry calculation, and
-adds an ordered three-point plane constructor:
+The active package retains the source-neutral affine, common-line, plane,
+point-cloud-apply, and reference-grid tools, deterministic full-XYZ
+consensus/TLS line fitting, deterministic height-difference edge selection,
+and deterministic median filtering:
 
 1. `FullXyzAffineSolveTool` — exact four-pair source-to-reference solve using
    scaled partial-pivot arithmetic, determinant/condition evidence, and
@@ -63,6 +64,24 @@ adds an ordered three-point plane constructor:
    oriented unit normal, and plane offset from three finite non-collinear
    points. It has no C3D, recipe, WPF, or measurement dependency.
 
+5. `DeterministicLineFitTool` evaluates ordered finite XYZ points using the
+   fixed SHA-256 pair schedule, consensus priority, orthogonal TLS,
+   source-scanline direction, inlier support gates, and diagnostics. It has no
+   C3D, recipe, WPF, source identity, or measurement dependency.
+
+6. `DeterministicHeightDifferenceEdgeTool` evaluates a source-neutral
+   row-major scalar grid, explicit rectangular selection, axis, polarity, and
+   minimum delta. It owns finite-pair filtering, adjacent-pair deltas,
+   strongest-per-scanline selection, exact-tie ordering, and diagnostics. It
+   has no C3D, recipe, WPF, source identity, or measurement dependency.
+
+7. `DeterministicMedianFilterTool` evaluates source-neutral row-major scalar
+   grids where finite values are valid and non-finite values are missing. It
+   owns bounded `3/5/7` median-window arithmetic, finite-neighbor selection,
+   available-neighbor borders, missing-mask preservation, and changed-cell
+   count. It has no C3D, recipe, WPF, source identity, or measurement
+   dependency.
+
 Studio continues to own C3D locator resolution, source SHA/frame validation,
 recipe parameter parsing, canonical Studio output hashes, and the WPF lifecycle.
 The A1 and Line Intersection Studio rules call Noah rather than retaining
@@ -71,9 +90,9 @@ completed 2-Point Line Tool calls the Noah construction tool and does not
 duplicate subtraction, normalization, or zero-length checks.
 
 The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
-2.4.0 artifact from Library-Noah commit
-`f62345c137b0c0d5e8b671c92f448e0c87f3e88a`; its SHA-256 is
-`D128C08B27A1FFF43EE32EFB11675EA067656711E7C13B545EEDEDF9238060E0`.
+2.7.4 artifact from Library-Noah commit
+`5d06460c14b1edf390241b28511ce4997f70dc28`; its SHA-256 is
+`BB44D30F8D3AB9C1CF528482CFA2A5A804D9222FFBAE258C765CEF2696EB2573`.
 Development uses the packaged output, not a cross-repository `ProjectReference`,
 so the same package boundary is tested locally and in CI.
 
@@ -96,12 +115,26 @@ so the same package boundary is tested locally and in CI.
   ordered-normal replay identity, explicit lifecycle, source-change clearing,
   Tool Lab support-triangle/normal evidence, and Runner behavior without
   copying Noah cross-product, normalization, or plane-equation math.
+- The 3D Line Fit Studio adapter proves strict Published EdgePointSet binding,
+  unchanged canonical artifact hash, explicit lifecycle, and Runner behavior
+  while the Noah tool owns pair scheduling, TLS, residual classification, and
+  support diagnostics.
+- The Height Difference Edge Studio adapter proves strict raw-height derived
+  C3D source/selection binding, unchanged canonical artifact hash, explicit
+  lifecycle, and Runner behavior while the Noah tool owns all pair scanning,
+  missing-pair handling, candidate ordering, and numerical diagnostics.
+- The Filter Studio adapter proves strict raw-height C3D source binding,
+  unchanged finite-zero derived-output rejection, canonical artifact hash,
+  explicit lifecycle, and Runner behavior while the Noah tool owns all median
+  windows, neighbor selection, missing-mask preservation, and changed-count
+  arithmetic.
 
 ## Explicit boundaries
 
 - A1's real four-anchor fixture Preview/Publish/Runner replay remains
   unverified because no real source/reference package exists.
-- A2 affine application, re-grid, Thickness/Warpage after alignment,
+- A2 affine application and A3 re-grid have deterministic synthetic evidence
+  only; real aligned fixture validation, Thickness/Warpage after alignment,
   calibration, and metrology are not included in this migration.
 - Studio does not create a generic graph executor, a plugin factory, or a
   second algorithm API. Each typed adapter remains explicit.

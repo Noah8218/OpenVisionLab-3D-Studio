@@ -229,19 +229,17 @@ decisions. See
 
 Current Library-Noah algorithm-ownership checkpoint on 2026-07-21:
 **Studio is now an adapter, not a duplicate numerical owner, for A1 Full XYZ
-Affine Solve, 2-Point Line, 3-Point Plane, and Line Intersection.** The exact
-vendored `Lib.ThreeD` 2.4.0 package at Library-Noah commit
-`f62345c137b0c0d5e8b671c92f448e0c87f3e88a` contains
-`FullXyzAffineSolveTool`, `TwoPointLineTool`, `ThreePointPlaneTool`, and
-`LineIntersectionTool`. Current source passes Library-Noah build `0/0`, Smoke
-`23/23`, Studio build `0/0`, package integrity, Noah bridge `7/7`, A1 Golden
-`4/4`, Line Intersection Golden `9/9`, Line Intersection Workbench `23/23`,
-teaching `18/18`, Recipe Manager/WPG `18/18`, docking `25/25`, and Artifact
-Navigator `24/24`. The 3-Point Plane Golden/Runner `7/7` and Workbench
-`11/11` also pass. Filter, Height Difference Edge, and 3D Line Fit numerical
-algorithms still remain in Studio pending separate boundary-preservation gates.
-No migration changes the missing real A1 fixture, affine application, re-grid,
-calibration, or metrology boundaries. See
+Affine Solve, 2-Point Line, 3-Point Plane, Line Intersection, Filter, Height
+Difference Edge, and 3D Line Fit.** The exact vendored `Lib.ThreeD` 2.7.4
+package at Library-Noah commit `5d06460c14b1edf390241b28511ce4997f70dc28`
+contains `DeterministicMedianFilterTool`, `DeterministicHeightDifferenceEdgeTool`,
+and `DeterministicLineFitTool` alongside the established pure geometry tools.
+Current source passes Library-Noah build `0/0`, Smoke `39/39`, Studio build
+`0/0`, package integrity, Noah bridge `7/7`, Filter Golden `13/13`, Height
+Difference Edge Golden `13/13`, and 3D Line Fit Golden `9/9`. Studio retains
+the C3D zero/missing conversion and finite-zero derived-output boundary. No
+migration changes the missing real A1 fixture, the synthetic-only A2/A3
+boundary, calibration, or metrology boundaries. See
 `docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`.
 
 Current 2-Point Line implementation checkpoint on 2026-07-21: **the
