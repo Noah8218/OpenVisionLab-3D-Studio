@@ -2,7 +2,15 @@
 
 Updated: 2026-07-21
 
-Status: **Proposed design — implementation requires owner confirmation.**
+Status: **Owner-approved v1 design; implementation is phased after the Noah
+common-line package boundary.**
+
+## Owner approval — 2026-07-21
+
+The owner approved all five v1 decisions in this document: manual construction,
+raw C3D plus `PointSet(2)` input, preserved authored order, a narrow common
+line geometry boundary, and a separate later 3-Point Plane slice. Implementation
+may proceed only through the documented Noah/Studio ownership boundary.
 
 ## Decision context
 
@@ -53,7 +61,9 @@ The existing `C3DLineFeature` is intentionally a fitted-edge object: it owns
 an `EdgePointSet`, fit diagnostics, residual policy, and deterministic TLS
 provenance. A manually picked line must not pretend to have these facts.
 
-Add only the narrow `IC3DLineGeometry` contract needed by Line Intersection:
+`Library-Noah` owns the pure two-point geometry construction. Studio owns the
+typed C3D locator/source adapter and immutable recipe artifact. Add only the
+narrow `IC3DLineGeometry` contract needed by Line Intersection:
 
 ```text
 output identity/content hash
@@ -63,7 +73,8 @@ line origin kind = FittedEdge | PickedPoints
 ```
 
 `C3DLineFeature` implements this contract without changing its fitted-edge
-meaning. New immutable `C3DTwoPointLineFeature` records:
+meaning. The new immutable Studio `C3DTwoPointLineFeature` records the
+Library-Noah result plus Studio lineage:
 
 ```text
 selection identity/content hash and source binding
@@ -77,6 +88,8 @@ provenance and canonical SHA-256
 This is the smallest shared contract because Line Intersection already needs
 the same source/frame/line/segment data from exactly two concrete line types.
 No generic `Feature`, factory, or untyped geometry hierarchy is introduced.
+See `docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`
+for the binding ownership and package boundary.
 
 ## Exact algorithm
 
@@ -171,9 +184,9 @@ Runner and Workbench call the same Tools rule. Required synthetic evidence:
 5. Workbench Preview/Publish/stale/Runner parity plus current-build Tool Lab
    capture at `1920 x 1080` and `1280 x 760`.
 
-## Approval requested
+## Approved v1 decisions
 
-Approve the following exact v1 decisions before implementation:
+The following exact v1 decisions are owner-approved:
 
 1. `2-Point Line` is manual source-coordinate construction, not fitting or a
    measurement result.

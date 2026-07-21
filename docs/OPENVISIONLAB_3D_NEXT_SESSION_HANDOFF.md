@@ -58,10 +58,46 @@ Preview/Publish/Runner replay as **unverified** rather than fabricate data.
 This does not reopen A2 Apply, A3 Re-grid, Thickness, Warpage, calibration,
 or metrology. Source audit confirms that Line Intersection v1 and Landmark
 Correspondence v1 are already implemented; do not duplicate them. The next
-proposed independent tool is 2-Point Line v1. Its source-coordinate,
+approved independent tool is 2-Point Line v1. Its source-coordinate,
 typed-line-contract, intersection-compatibility, and UI/verification decisions
 are in `docs/OPENVISIONLAB_3D_TWO_POINT_LINE_TYPED_ADAPTER_DESIGN_20260721.md`.
-Do not implement it until the owner confirms its five explicit v1 decisions.
+The owner confirmed its five v1 decisions; use the Noah geometry boundary and
+do not include A2/re-grid/measurement work.
+
+## Algorithm ownership and Library-Noah migration - 2026-07-21
+
+The owner confirmed the binding ownership rule: Studio owns typed Tool UI,
+recipe/source identity, explicit lifecycle, Viewer, and Runner evidence;
+`Library-Noah` owns pure reusable 3D algorithms. Thickness/Warpage already
+use that boundary, while Studio currently owns Filter, Edge, Line Fit, and
+Correspondence structural validation. The first completed migration is Noah
+`Lib.ThreeD` 2.3.0: it contains the exact-four affine solve, 2-Point Line
+construction, and Line Intersection geometry. Studio A1 and Line Intersection
+are packaged-Noah adapters; the later 2-Point Line Studio Tool will reuse that
+boundary. Do not use a
+cross-repository ProjectReference, duplicate numerical math in Studio, or
+claim that every legacy algorithm has already moved. Preserve A1 fixture
+unverified status and block A2/re-grid/measurement work. Read
+`docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`
+before working on algorithm code.
+
+## Noah 2.3.0 migration checkpoint — 2026-07-21
+
+Library-Noah commit `630e37b9111f3223217c815e19c480546fde8ad7` is vendored as
+`Lib.ThreeD` 2.3.0. Studio A1 and Line Intersection now adapt Noah's pure
+algorithms; no Studio-local affine inverse/pivot or line closest-approach,
+angle, and support numerical helper remains. Current evidence passes
+Library-Noah build `0/0`, Smoke `20/20`, Studio build `0/0`, package integrity,
+bridge `7/7`, A1 Golden `4/4`, Line Intersection Golden `9/9`, Line
+Intersection Workbench `23/23`, teaching `18/18`, Recipe Manager/WPG `18/18`,
+docking `25/25`, and Artifact Navigator `24/24`; reports are in
+`artifacts/verification/20260721-noah-migration/`.
+
+The next independent executable tool is the owner-approved 2-Point Line
+Studio adapter: bind the existing `PointSet(2)` to the raw C3D source, call
+Noah `TwoPointLineTool`, preserve ordered/stale/publish/Runner evidence, then
+admit it to Line Intersection through the smallest common line contract. This
+does not authorize A2, re-grid, Thickness, Warpage, calibration, or metrology.
 
 **Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
 complete locally. The existing Flow Map now projects input/output port state

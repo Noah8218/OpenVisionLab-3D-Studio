@@ -15,11 +15,11 @@ hash.
 | Item | Value |
 | --- | --- |
 | Package ID | `Lib.ThreeD` |
-| Version | `2.1.0` |
-| Source commit | `b113ee8099ffcfe9f75f34928b0e214b542b75fb` |
+| Version | `2.3.0` |
+| Source commit | `630e37b9111f3223217c815e19c480546fde8ad7` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.1.0.nupkg` |
-| SHA-256 | `C4D119D12EB607874882BB34E65EC264A9F78CF188C785A61FF79CEFF1D895E5` |
+| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.3.0.nupkg` |
+| SHA-256 | `5143A6D270DB60751EDD825ABBC64A49B4612E149A60DF094F24D1ED3A7F21F8` |
 
 `NuGet.Config` adds only a relative `third_party/LibraryNoah` source plus NuGet.org.
 No Studio project may point at the Library-Noah checkout.
@@ -27,7 +27,8 @@ No Studio project may point at the Library-Noah checkout.
 ## Responsibility Split
 
 - `Lib.ThreeD`: immutable scalar height-map contracts; thickness limits; warpage
-  plane-fit residual metrics; controlled error outcomes.
+  plane-fit residual metrics; source-neutral two-point line, line intersection,
+  and exact-four full-XYZ affine solve; controlled error outcomes.
 - `OpenVisionLab.ThreeD.Tools`: `LibraryNoahHeightMapInspection` translates Studio's
   declared source, grid ROI, unit, and frame into the package contract, then maps
   result status and metrics back to Studio `ToolResult`.
@@ -90,3 +91,19 @@ algorithm-boundary evidence only, not physical calibration, metrology, Gauge R a
 R, or a completed Viewer inspection workflow.
 
 Studio commit `c45ce78` passed Windows Actions run `29569056102` on 2026-07-17. The job's vendored-package and Studio bridge steps succeeded alongside the full Viewer/Runner suite; uploaded artifact metadata is ID `8402387241`, `3,727,932` bytes, and digest `sha256:24080e4ef536a56a5c56a5178822ecfb885c4ae71d96c145e339ded4e0045787`. GitHub's public archive endpoint requires authentication, so this local environment did not independently download or inspect that archive. Library-Noah warning-cleanup commit `c2b5860` separately passed Build run `29569055985`.
+
+## Current 2.3.0 checkpoint — 2026-07-21
+
+Library-Noah commit `630e37b9111f3223217c815e19c480546fde8ad7` is the exact
+source of the current vendored package. It adds pure `LineIntersectionTool` to
+the preceding `TwoPointLineTool` and `FullXyzAffineSolveTool`. Studio's A1 and
+Line Intersection rules adapt those algorithms and retain only C3D/recipe
+identity, Studio artifact hashing, and lifecycle evidence. Package integrity,
+Studio bridge, A1 Golden, Line Intersection Golden, and full Studio regression
+evidence passed from the current 2.3.0 package: Library-Noah build `0/0`,
+Smoke `20/20`, Studio build `0/0`, package integrity pass, Studio bridge
+`7/7`, A1 Golden `4/4`, Line Intersection Golden `9/9`, Line Intersection
+Workbench `23/23`, teaching `18/18`, Recipe Manager/WPG `18/18`, docking
+`25/25`, and Artifact Navigator `24/24`. Reports are under
+`artifacts/verification/20260721-noah-migration/`. This does not prove a real
+fixture, affine application, calibration, or metrology.
