@@ -17,7 +17,7 @@ public sealed partial class ToolWorkbenchViewModel
     private object? selectedStepPropertyDraft;
     private string? selectedStepPropertyDraftStepId;
     private bool hasPendingStepParameterChanges;
-    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 2-Point Line, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
+    private string stepParameterEditStatus = "Select Filter, Height Difference Edge, 2-Point Line, 3-Point Plane, 3D Line Fit, Line Intersection, Landmark Correspondence, or XYZ Affine Solve to teach typed parameters.";
     private ToolRecipeSource? openedSourceIdentity;
     private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
@@ -53,6 +53,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "filter" } step => FormatAdapterStatus(step, FilterStepProperties.MappedNames),
         { ToolId: "height-difference-edge" } step => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "two-point-line" } step => FormatAdapterStatus(step, TwoPointLineStepProperties.MappedNames),
+        { ToolId: "three-point-plane" } step => FormatAdapterStatus(step, ThreePointPlaneStepProperties.MappedNames),
         { ToolId: "three-d-line-fit" } step => FormatAdapterStatus(step, LineFitStepProperties.MappedNames),
         { ToolId: "line-intersection" } step => FormatAdapterStatus(step, LineIntersectionStepProperties.MappedNames),
         { ToolId: "landmark-correspondence" } step => FormatAdapterStatus(step, LandmarkCorrespondenceStepProperties.MappedNames),
@@ -217,6 +218,19 @@ public sealed partial class ToolWorkbenchViewModel
                     ["ConstructionPolicy"] = twoPointLine.ConstructionPolicy.ToString()
                 };
                 break;
+            case ThreePointPlaneStepProperties threePointPlane:
+                if (!threePointPlane.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["OutputRole"] = threePointPlane.OutputRole,
+                    ["ConstructionPolicy"] = threePointPlane.ConstructionPolicy.ToString()
+                };
+                break;
             case LineFitStepProperties lineFit:
                 if (!lineFit.TryValidate(out message))
                 {
@@ -316,6 +330,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkFilterPreviewStaleIfNeeded(step);
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkTwoPointLinePreviewStaleIfNeeded(step);
+            MarkThreePointPlanePreviewStaleIfNeeded(step);
             MarkLineFitPreviewStaleIfNeeded();
             MarkLineIntersectionPreviewStaleIfNeeded();
             MarkLandmarkCorrespondencePreviewStaleIfNeeded();
@@ -343,6 +358,7 @@ public sealed partial class ToolWorkbenchViewModel
             "filter" => FilterStepProperties.From(step),
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "two-point-line" => TwoPointLineStepProperties.From(step),
+            "three-point-plane" => ThreePointPlaneStepProperties.From(step),
             "three-d-line-fit" => LineFitStepProperties.From(step),
             "line-intersection" => LineIntersectionStepProperties.From(step),
             "landmark-correspondence" => LandmarkCorrespondenceStepProperties.From(step),
@@ -371,6 +387,7 @@ public sealed partial class ToolWorkbenchViewModel
         RefreshFilterCommands();
         RefreshHeightDifferenceEdgeCommands();
         RefreshTwoPointLineCommands();
+        RefreshThreePointPlaneCommands();
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
         RefreshLandmarkCorrespondenceCommands();
@@ -488,7 +505,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -775,6 +792,57 @@ public sealed class TwoPointLineStepProperties
     {
         OutputRole = ToolWorkbenchViewModel.GetParameter(step, "OutputRole") ?? string.Empty,
         ConstructionPolicy = TwoPointLineConstructionPolicy.OrderedPointsDefineSegment,
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (string.IsNullOrWhiteSpace(OutputRole) || OutputRole != OutputRole.Trim())
+        {
+            message = "Output role must be an explicit non-empty identifier without surrounding whitespace.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+}
+
+public enum ThreePointPlaneConstructionPolicy
+{
+    OrderedPointsDefineOrientedPlane
+}
+
+[CategoryOrder("Construction", 0)]
+[CategoryOrder("Fixed v1 policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class ThreePointPlaneStepProperties
+{
+    internal static readonly HashSet<string> MappedNames = ["OutputRole", "ConstructionPolicy"];
+
+    [Category("Construction")]
+    [DisplayName("Output role")]
+    [Description("A unique operator-facing role for this ordered three-point datum-plane output.")]
+    [PropertyOrder(0)]
+    public string OutputRole { get; set; } = string.Empty;
+
+    [Category("Fixed v1 policy")]
+    [DisplayName("Construction policy")]
+    [Description("P1 -> P2 -> P3 fixes the oriented normal by the right-hand rule. No region fit, snapping, interpolation, or acceptance evaluation occurs.")]
+    [PropertyOrder(1)]
+    [ReadOnly(true)]
+    public ThreePointPlaneConstructionPolicy ConstructionPolicy { get; set; } = ThreePointPlaneConstructionPolicy.OrderedPointsDefineOrientedPlane;
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are preserved unchanged when known parameters are applied.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static ThreePointPlaneStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        OutputRole = ToolWorkbenchViewModel.GetParameter(step, "OutputRole") ?? string.Empty,
+        ConstructionPolicy = ThreePointPlaneConstructionPolicy.OrderedPointsDefineOrientedPlane,
         UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
     };
 

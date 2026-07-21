@@ -177,6 +177,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.ResultOverlayVisible)
             or nameof(MainWindowViewModel.WorkbenchTwoPointLine)
             or nameof(MainWindowViewModel.IsWorkbenchTwoPointLinePublished)
+            or nameof(MainWindowViewModel.WorkbenchThreePointPlane)
+            or nameof(MainWindowViewModel.IsWorkbenchThreePointPlanePublished)
             or nameof(MainWindowViewModel.WorkbenchLineFit)
             or nameof(MainWindowViewModel.SelectedWorkbenchLineFitPoint)
             or nameof(MainWindowViewModel.LineFitInliersVisible)

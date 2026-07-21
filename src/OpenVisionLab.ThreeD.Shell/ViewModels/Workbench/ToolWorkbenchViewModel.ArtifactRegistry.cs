@@ -236,6 +236,25 @@ public sealed partial class ToolWorkbenchViewModel
                 "LineFeature");
         }
 
+        if (string.Equals(step.ToolId, "three-point-plane", StringComparison.Ordinal)
+            && TryGetPublishedThreePointPlaneOutput(step.OutputEntityId, out var publishedThreePointPlane)
+            && publishedThreePointPlane is not null)
+        {
+            return new ToolWorkbenchArtifactItem(
+                publishedThreePointPlane.OutputEntityId,
+                step.ToolName,
+                "PlaneFeature",
+                "Published",
+                publishedThreePointPlane.RootSourceEntityId,
+                publishedThreePointPlane.InputSelectionId,
+                publishedThreePointPlane.Unit,
+                publishedThreePointPlane.FrameId,
+                publishedThreePointPlane.ContentSha256,
+                $"ordered picks ({publishedThreePointPlane.FirstRow}, {publishedThreePointPlane.FirstColumn}) -> ({publishedThreePointPlane.SecondRow}, {publishedThreePointPlane.SecondColumn}) -> ({publishedThreePointPlane.ThirdRow}, {publishedThreePointPlane.ThirdColumn}) | {publishedThreePointPlane.Provenance}",
+                step,
+                "PlaneFeature");
+        }
+
         if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal)
             && TryGetPublishedLineIntersectionOutput(step.OutputEntityId, out var publishedIntersection)
             && publishedIntersection is not null)
@@ -311,6 +330,7 @@ public sealed partial class ToolWorkbenchViewModel
     private static bool HasToolLab(string? toolId) => toolId is "filter"
         or "height-difference-edge"
         or "two-point-line"
+        or "three-point-plane"
         or "line-intersection"
         or "landmark-correspondence";
 

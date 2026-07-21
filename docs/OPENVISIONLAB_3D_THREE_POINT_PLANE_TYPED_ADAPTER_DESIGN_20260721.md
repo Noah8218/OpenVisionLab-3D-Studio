@@ -2,8 +2,9 @@
 
 Updated: 2026-07-21
 
-Status: **Draft design only. No Studio or Library-Noah implementation is
-authorized by this document.**
+Status: **Complete for deterministic local software evidence.** Owner approval
+was recorded before implementation; the exact Noah tool, Studio adapter, UI,
+Runner replay, and current-build C3D Tool Lab evidence are now recorded below.
 
 ## Purpose
 
@@ -141,20 +142,29 @@ input/selection/role/source change -> only this branch and its explicit
 downstream consumers become stale
 ```
 
-Implementation is complete only when all are current-source checks:
+Completion evidence (2026-07-21):
 
-1. Library-Noah deterministic construction/error suite, including authored
-   normal reversal and a near-collinear rejection;
-2. Studio Golden/Runner suite proving C3D source identity, point order,
-   selection hash, actual source locator resolution, strict parameter shape,
-   output identity, malformed input rejection, and cancellation;
-3. Workbench suite proving WPG apply/discard, explicit Preview/Publish,
-   independent branch preservation, stale/source replacement clearing, and
-   Artifact Registry state;
-4. existing 2-Point Line, Line Intersection, recipe teaching, WPG, Artifact
-   Navigator, and docking regressions; and
-5. a current-build actual C3D Tool Lab capture with all three points, plane
-   support, normal direction, and non-OK/NG boundary visible.
+1. Library-Noah commit `f62345c137b0c0d5e8b671c92f448e0c87f3e88a` builds
+   `0/0`; `Lib.Inspection.Smoke` passes `23/23`, including authored normal
+   reversal plus collinear and near-collinear rejection. The vendored
+   `Lib.ThreeD` 2.4.0 SHA-256 is
+   `D128C08B27A1FFF43EE32EFB11675EA067656711E7C13B545EEDEDF9238060E0`.
+2. Studio `C3DThreePointPlaneGoldenVerification` passes `7/7`: current-source
+   binding, order/hash, degeneracy, strict shape, tamper rejection, Runner,
+   and cancellation. The actual Thickness-C3D Runner replay is `Pass` with
+   output SHA-256 `A9AEE8119424035DEDF640908B014443346F2AD0E4B688AF2B4B9BB697DFDAC9`.
+3. The Workbench verification passes `11/11`: typed WPG, explicit
+   Preview/Publish, ordered normal/equation, headless identity parity, stale
+   clearing, source replacement, and `PlaneFeature` artifact state. There is
+   intentionally no Plane measurement or Warpage consumer in v1.
+4. Current-source regressions pass: 2-Point Line `16/16`, Line Intersection
+   `23/23`, recipe teaching `18/18`, Recipe Manager/WPG `18/18`, Artifact
+   Navigator `24/24`, and docking `25/25`; the Debug solution build is `0/0`.
+5. Current-build actual-Thickness C3D Tool Lab capture passes screenshot
+   quality on the first attempt and visibly shows all three ordered markers,
+   support triangle boundary, normal arrow, typed `PlaneFeature`, and the
+   no-OK/NG boundary. Evidence is under
+   `artifacts/three-point-plane-adapter-20260721/`.
 
 ## Explicit exclusions
 
@@ -167,15 +177,13 @@ v1 does not:
   any upstream/downstream execution; or
 - reopen A1's absent real fixture, A2 Apply, A3 Re-grid, or metrology claims.
 
-## Owner decisions required before implementation
+## Owner decisions resolved before implementation
 
-1. Confirm the recommended authored-order normal policy (`P1 -> P2 -> P3`)
-   rather than canonicalizing to a frame-positive normal.
-2. Confirm that v1 remains a raw-C3D manual datum feature with one `OutputRole`
-   only, and has no immediate measurement/warpage consumer.
-3. Confirm that a small translucent support triangle plus normal arrow is the
-   desired Viewer evidence rather than a fitted ROI plane.
-
-On approval, first add and verify the pure Noah tool/package; only then add
-the typed Studio adapter. The design does not authorize changing either
-repository yet.
+1. The authored `P1 -> P2 -> P3` right-hand-rule normal is retained; it is
+   never silently canonicalized.
+2. v1 remains a raw-C3D manual datum `PlaneFeature` with only `OutputRole`;
+   it has no immediate measurement, affine-apply, Thickness, or Warpage
+   consumer.
+3. Viewer evidence is the translucent magenta support triangle, contrast
+   boundary, ordered point markers, and magenta normal arrow on the current
+   source surface rather than a fitted ROI plane.

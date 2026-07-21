@@ -1,6 +1,7 @@
 using System.Numerics;
 using System.Windows;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using SharpGL;
@@ -142,6 +143,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetAppliedTeachingSelections([]);
         viewModel.ClearWorkbenchHeightDifferenceEdge();
         viewModel.ClearWorkbenchTwoPointLine();
+        viewModel.ClearWorkbenchThreePointPlane();
         viewModel.ClearWorkbenchLineFit();
         viewModel.ClearWorkbenchLineIntersection();
         viewModel.ClearWorkbenchLandmarkCorrespondence();
@@ -162,6 +164,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         DrawWorkbenchHeightDifferenceEdge(gl);
         DrawWorkbenchTwoPointLine(gl);
+        DrawWorkbenchThreePointPlane(gl);
         DrawWorkbenchLineFit(gl);
         DrawWorkbenchLineIntersection(gl);
         DrawWorkbenchLandmarkCorrespondence(gl);
@@ -297,6 +300,69 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Begin(OpenGL.GL_POINTS);
         gl.Vertex(start.X, start.Y, start.Z);
         gl.Vertex(end.X, end.Y, end.Z);
+        gl.End();
+    }
+
+    private void DrawWorkbenchThreePointPlane(OpenGL gl)
+    {
+        var output = viewModel.WorkbenchThreePointPlane;
+        if (output is null || c3dSample is null) return;
+
+        var anchor = CreateC3DGridDisplayPosition(output.AnchorZ, output.AnchorX, output.AnchorY);
+        var second = CreateC3DGridDisplayPosition(output.SecondZ, output.SecondX, output.SecondY);
+        var third = CreateC3DGridDisplayPosition(output.ThirdZ, output.ThirdX, output.ThirdY);
+        var published = viewModel.IsWorkbenchThreePointPlanePublished;
+        gl.Enable(OpenGL.GL_BLEND);
+        gl.BlendFunc(OpenGL.GL_SRC_ALPHA, OpenGL.GL_ONE_MINUS_SRC_ALPHA);
+        gl.Color(0.95, 0.16, 0.68, 0.32);
+        gl.Begin(OpenGL.GL_TRIANGLES);
+        gl.Vertex(anchor.X, anchor.Y, anchor.Z);
+        gl.Vertex(second.X, second.Y, second.Z);
+        gl.Vertex(third.X, third.Y, third.Z);
+        gl.End();
+        gl.Disable(OpenGL.GL_BLEND);
+
+        gl.LineWidth(3.0f);
+        gl.Color(1.0, published ? 0.78 : 0.58, 0.12);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        gl.Vertex(anchor.X, anchor.Y, anchor.Z);
+        gl.Vertex(second.X, second.Y, second.Z);
+        gl.Vertex(third.X, third.Y, third.Z);
+        gl.End();
+
+        var normalDisplay = new Vector3(
+            (float)(output.NormalX * c3dSample.HorizontalScale),
+            (float)(output.NormalY * C3DHeightGrid.ViewerHeightScale),
+            (float)(output.NormalZ * c3dSample.HorizontalScale));
+        var normalLength = normalDisplay.Length();
+        if (normalLength > 0.000001f)
+        {
+            var arrowLength = Math.Clamp(Math.Min(c3dSample.Width, c3dSample.Height) * c3dSample.HorizontalScale * 0.08f, 0.3f, 2.2f);
+            var arrowEnd = anchor + Vector3.Normalize(normalDisplay) * arrowLength;
+            var arrowDirection = Vector3.Normalize(arrowEnd - anchor);
+            var arrowSide = Vector3.Cross(arrowDirection, Vector3.UnitY);
+            if (arrowSide.LengthSquared() < 0.000001f) arrowSide = Vector3.Cross(arrowDirection, Vector3.UnitX);
+            arrowSide = Vector3.Normalize(arrowSide);
+            var arrowHeadBase = arrowEnd - arrowDirection * (arrowLength * 0.20f);
+            var arrowHeadOffset = arrowSide * (arrowLength * 0.09f);
+            gl.LineWidth(4.0f);
+            gl.Color(1.0, 0.24, 0.70);
+            gl.Begin(OpenGL.GL_LINES);
+            gl.Vertex(anchor.X, anchor.Y, anchor.Z);
+            gl.Vertex(arrowEnd.X, arrowEnd.Y, arrowEnd.Z);
+            gl.Vertex(arrowEnd.X, arrowEnd.Y, arrowEnd.Z);
+            gl.Vertex((arrowHeadBase + arrowHeadOffset).X, (arrowHeadBase + arrowHeadOffset).Y, (arrowHeadBase + arrowHeadOffset).Z);
+            gl.Vertex(arrowEnd.X, arrowEnd.Y, arrowEnd.Z);
+            gl.Vertex((arrowHeadBase - arrowHeadOffset).X, (arrowHeadBase - arrowHeadOffset).Y, (arrowHeadBase - arrowHeadOffset).Z);
+            gl.End();
+        }
+
+        gl.PointSize(12.0f);
+        gl.Color(1.0, 0.86, 0.20);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Vertex(anchor.X, anchor.Y, anchor.Z);
+        gl.Vertex(second.X, second.Y, second.Z);
+        gl.Vertex(third.X, third.Y, third.Z);
         gl.End();
     }
 

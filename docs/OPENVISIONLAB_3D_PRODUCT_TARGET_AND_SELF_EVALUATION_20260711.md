@@ -217,16 +217,17 @@ decisions. See
 
 Current Library-Noah algorithm-ownership checkpoint on 2026-07-21:
 **Studio is now an adapter, not a duplicate numerical owner, for A1 Full XYZ
-Affine Solve and Line Intersection.** The exact vendored `Lib.ThreeD` 2.3.0
-package at Library-Noah commit `630e37b9111f3223217c815e19c480546fde8ad7`
-contains `FullXyzAffineSolveTool`, `TwoPointLineTool`, and
+Affine Solve, 2-Point Line, 3-Point Plane, and Line Intersection.** The exact
+vendored `Lib.ThreeD` 2.4.0 package at Library-Noah commit
+`f62345c137b0c0d5e8b671c92f448e0c87f3e88a` contains
+`FullXyzAffineSolveTool`, `TwoPointLineTool`, `ThreePointPlaneTool`, and
 `LineIntersectionTool`. Current source passes Library-Noah build `0/0`, Smoke
-`20/20`, Studio build `0/0`, package integrity, Noah bridge `7/7`, A1 Golden
+`23/23`, Studio build `0/0`, package integrity, Noah bridge `7/7`, A1 Golden
 `4/4`, Line Intersection Golden `9/9`, Line Intersection Workbench `23/23`,
 teaching `18/18`, Recipe Manager/WPG `18/18`, docking `25/25`, and Artifact
-Navigator `24/24`. Filter, Height Difference Edge, and 3D Line Fit numerical
-algorithms still remain in Studio pending separate boundary-preservation gates;
-the owner-approved 2-Point Line Studio adapter is the next typed tool slice.
+Navigator `24/24`. The 3-Point Plane Golden/Runner `7/7` and Workbench
+`11/11` also pass. Filter, Height Difference Edge, and 3D Line Fit numerical
+algorithms still remain in Studio pending separate boundary-preservation gates.
 No migration changes the missing real A1 fixture, affine application, re-grid,
 calibration, or metrology boundaries. See
 `docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`.
@@ -252,14 +253,20 @@ authorize affine application, re-grid, Thickness, Warpage, calibration, or
 metrology. See
 `docs/OPENVISIONLAB_3D_TWO_POINT_LINE_TYPED_ADAPTER_DESIGN_20260721.md`.
 
-Next typed-tool design checkpoint on 2026-07-21: **3-Point Plane v1 is
-documented, not implemented.** It proposes a raw-C3D plus recipe-owned
-`PointSet(3)` manual oriented datum plane, with ordered normal, support
-triangle, strict source binding, a pure future Noah calculation, and a typed
-future Studio adapter. It intentionally excludes best-fit ROI planes,
-measurement/OK-NG, affine application, re-grid, Thickness, Warpage,
-calibration, and metrology. Implementation waits for the owner to confirm
-normal orientation and datum/UI semantics. See
+Current 3-Point Plane implementation checkpoint on 2026-07-21: **the
+owner-approved manual `raw C3D + PointSet(3) -> oriented full-XYZ PlaneFeature`
+slice is complete for local software evidence.** The strict Studio adapter
+resolves current raw C3D values for three ordered cells and delegates
+normal/offset construction to packaged Library-Noah `ThreePointPlaneTool`.
+Studio owns source/selection/hash lineage, typed WPG, explicit
+Preview/Publish/stale state, source-change clearing, Artifact Registry output,
+Viewer support-triangle/normal overlay, a single-instance dual-viewer Tool Lab,
+and strict Runner replay. Current source passes Golden/Runner `7/7`, Workbench
+`11/11`, existing teaching/WPG/Artifact/Docking regressions, and a
+first-attempt actual-Thickness C3D Tool Lab screenshot-quality capture. It
+does not fit an ROI plane, detect a feature, produce an acceptance result,
+apply an affine transform, re-grid, measure Thickness or Warpage, prove a
+physical datum, or make calibration/metrology claims. See
 `docs/OPENVISIONLAB_3D_THREE_POINT_PLANE_TYPED_ADAPTER_DESIGN_20260721.md`.
 
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.

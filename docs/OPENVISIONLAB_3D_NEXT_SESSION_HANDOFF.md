@@ -2,6 +2,33 @@
 
 Updated: 2026-07-21
 
+## Current 3-Point Plane checkpoint - 2026-07-21
+
+The owner-approved 3-Point Plane v1 slice is **Complete** for deterministic
+local software evidence. Studio takes only the recipe-bound raw C3D source and
+one ordered `PointSet(3)`, resolves current finite cells, and delegates the
+full-XYZ support triangle, oriented normal, and plane offset to vendored
+`Lib.ThreeD` 2.4.0 `ThreePointPlaneTool` from Library-Noah commit
+`f62345c137b0c0d5e8b671c92f448e0c87f3e88a`. `C3DThreePointPlaneFeature`
+retains Studio source/selection identity, the fixed authored-order policy, and
+the canonical hash.
+
+Workbench has typed WPG, explicit Preview/Publish, branch-local stale state,
+source-change clearing, typed `PlaneFeature` artifact state, a Viewer support
+triangle/normal overlay, a single-instance dual-viewer Tool Lab, and strict
+Runner replay. Current source passes Debug build `0/0`, Noah Smoke `23/23`,
+3-Point Plane Golden/Runner `7/7`, Workbench `11/11`, 2-Point Line `16/16`,
+Line Intersection `23/23`, teaching `18/18`, Recipe Manager/WPG `18/18`,
+Artifact Navigator `24/24`, docking `25/25`, and a first-attempt actual
+Thickness-C3D Tool Lab screenshot-quality capture at
+`artifacts/three-point-plane-adapter-20260721/three-point-plane-tool-lab-after.png`.
+
+This does **not** prove a best-fit plane, physical datum, feature detection,
+inspection OK/NG, affine application, re-grid, Thickness, Warpage, calibration,
+or metrology. There is deliberately no immediate Plane consumer. The next
+algorithm decision must be separately approved after examining real consumer
+requirements and available fixture evidence; do not infer one from this slice.
+
 ## Current 2-Point Line checkpoint - 2026-07-21
 
 The owner-approved 2-Point Line v1 slice is **Complete** for deterministic
@@ -28,12 +55,9 @@ inspection OK/NG, affine application, re-grid, Thickness, Warpage, calibration,
 or metrology. A1 remains synthetic-only because the real four-anchor package
 is still absent. Do not reopen A2/A3/A4 under this completion.
 
-The next unstarted algorithm option is a separately approved 3-Point Plane
-design for three recipe-owned source-bound grid points. The design is now in
-`docs/OPENVISIONLAB_3D_THREE_POINT_PLANE_TYPED_ADAPTER_DESIGN_20260721.md`.
-Before implementation, preserve the same typed/Noah/Studio ownership review
-and obtain explicit owner confirmation of its datum/normal/orientation
-semantics; do not bundle it with affine application or measurements.
+The following 3-Point Plane v1 slice supersedes this historical next-tool
+note. Preserve its typed/Noah/Studio boundary and do not bundle a later Plane
+consumer with affine application or measurements without fresh owner approval.
 
 ## Priority override - 2026-07-20
 
@@ -103,11 +127,10 @@ The owner confirmed the binding ownership rule: Studio owns typed Tool UI,
 recipe/source identity, explicit lifecycle, Viewer, and Runner evidence;
 `Library-Noah` owns pure reusable 3D algorithms. Thickness/Warpage already
 use that boundary, while Studio currently owns Filter, Edge, Line Fit, and
-Correspondence structural validation. The first completed migration is Noah
-`Lib.ThreeD` 2.3.0: it contains the exact-four affine solve, 2-Point Line
-construction, and Line Intersection geometry. Studio A1 and Line Intersection
-are packaged-Noah adapters; the later 2-Point Line Studio Tool will reuse that
-boundary. Do not use a
+Correspondence structural validation. The current completed migration is Noah
+`Lib.ThreeD` 2.4.0: it contains the exact-four affine solve, 2-Point Line,
+3-Point Plane, and Line Intersection geometry. Studio A1, lines, and the
+manual datum plane are packaged-Noah adapters. Do not use a
 cross-repository ProjectReference, duplicate numerical math in Studio, or
 claim that every legacy algorithm has already moved. Preserve A1 fixture
 unverified status and block A2/re-grid/measurement work. Read
@@ -131,6 +154,16 @@ Studio adapter: bind the existing `PointSet(2)` to the raw C3D source, call
 Noah `TwoPointLineTool`, preserve ordered/stale/publish/Runner evidence, then
 admit it to Line Intersection through the smallest common line contract. This
 does not authorize A2, re-grid, Thickness, Warpage, calibration, or metrology.
+
+**Superseding Noah 2.4.0 checkpoint (2026-07-21):** Library-Noah commit
+`f62345c137b0c0d5e8b671c92f448e0c87f3e88a` is vendored as `Lib.ThreeD` 2.4.0
+with SHA-256 `D128C08B27A1FFF43EE32EFB11675EA067656711E7C13B545EEDEDF9238060E0`.
+It adds `ThreePointPlaneTool`; Studio is the strict raw-C3D/PointSet(3)
+identity/lifecycle adapter. Noah build `0/0` and Smoke `23/23`, Studio build
+`0/0`, 3-Point Plane Golden/Runner `7/7`, Workbench `11/11`, and current
+Thickness-C3D Tool Lab evidence pass. This supersedes only the package/tool
+scope above; it does not authorize a Plane consumer, A2/re-grid, calibration,
+or metrology.
 
 **Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
 complete locally. The existing Flow Map now projects input/output port state

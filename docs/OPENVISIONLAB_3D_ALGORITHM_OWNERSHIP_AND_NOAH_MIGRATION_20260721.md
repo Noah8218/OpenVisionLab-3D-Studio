@@ -34,6 +34,7 @@ reusable by other OpenVisionLab products.
 | Thickness / Warpage | `Lib.ThreeD` through the Studio bridge | Retain; Studio remains an adapter. |
 | Full XYZ Affine Solve | `Lib.ThreeD` | Studio is a typed adapter; preserve Studio artifact/hash/UI. |
 | 2-Point Line | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(2) adapter and owns lifecycle/evidence only. |
+| 3-Point Plane | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(3) datum-plane adapter and owns lifecycle/evidence only. |
 | Filter | Studio | Later migrate after the C3D-zero/missing-mask boundary is reproduced in Noah. |
 | Height Difference Edge | Studio | Later migrate after the source-grid/selection adapter is fixed. |
 | 3D Line Fit | Studio | Later migrate after fitted-edge diagnostics are independently preserved. |
@@ -43,10 +44,11 @@ reusable by other OpenVisionLab products.
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.
 
-## Active package migration: Lib.ThreeD 2.3.0
+## Active package migration: Lib.ThreeD 2.4.0
 
-Noah 2.2.0 introduced two source-neutral algorithms. The active 2.3.0 package
-retains them and adds the first reusable common-line geometry calculation:
+Noah 2.2.0 introduced two source-neutral algorithms. The active 2.4.0 package
+retains them, adds the first reusable common-line geometry calculation, and
+adds an ordered three-point plane constructor:
 
 1. `FullXyzAffineSolveTool` — exact four-pair source-to-reference solve using
    scaled partial-pivot arithmetic, determinant/condition evidence, and
@@ -57,6 +59,10 @@ retains them and adds the first reusable common-line geometry calculation:
 3. `LineIntersectionTool` evaluates full-XYZ closest approach, acute angle,
    and finite-segment support for two normalized source-neutral lines.
 
+4. `ThreePointPlaneTool` evaluates an ordered full-XYZ support triangle,
+   oriented unit normal, and plane offset from three finite non-collinear
+   points. It has no C3D, recipe, WPF, or measurement dependency.
+
 Studio continues to own C3D locator resolution, source SHA/frame validation,
 recipe parameter parsing, canonical Studio output hashes, and the WPF lifecycle.
 The A1 and Line Intersection Studio rules call Noah rather than retaining
@@ -65,8 +71,11 @@ completed 2-Point Line Tool calls the Noah construction tool and does not
 duplicate subtraction, normalization, or zero-length checks.
 
 The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
-2.3.0 artifact. Development uses the packaged output, not a cross-repository
-`ProjectReference`, so the same package boundary is tested locally and in CI.
+2.4.0 artifact from Library-Noah commit
+`f62345c137b0c0d5e8b671c92f448e0c87f3e88a`; its SHA-256 is
+`D128C08B27A1FFF43EE32EFB11675EA067656711E7C13B545EEDEDF9238060E0`.
+Development uses the packaged output, not a cross-repository `ProjectReference`,
+so the same package boundary is tested locally and in CI.
 
 ## Migration acceptance gates
 
@@ -83,6 +92,10 @@ The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
 - The 2-Point Line Studio adapter proves strict raw-C3D/PointSet(2) binding,
   ordered replay identity, explicit lifecycle, source-change clearing, Tool
   Lab, and Runner behavior without copying Noah geometry math.
+- The 3-Point Plane Studio adapter proves strict raw-C3D/PointSet(3) binding,
+  ordered-normal replay identity, explicit lifecycle, source-change clearing,
+  Tool Lab support-triangle/normal evidence, and Runner behavior without
+  copying Noah cross-product, normalization, or plane-equation math.
 
 ## Explicit boundaries
 

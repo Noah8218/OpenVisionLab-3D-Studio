@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private readonly EventHandler<ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs> _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchTwoPointLineDisplayRequestEventArgs> _workbenchTwoPointLineDisplayRequestedHandler;
     private readonly EventHandler _workbenchTwoPointLineDisplayClearedHandler;
+    private readonly EventHandler<ToolWorkbenchThreePointPlaneDisplayRequestEventArgs> _workbenchThreePointPlaneDisplayRequestedHandler;
+    private readonly EventHandler _workbenchThreePointPlaneDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs> _workbenchLineIntersectionDisplayRequestedHandler;
@@ -63,6 +65,7 @@ public partial class MainWindow : Window
     private FilterToolLabWindow? filterToolLabWindow;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
     private TwoPointLineToolLabWindow? twoPointLineToolLabWindow;
+    private ThreePointPlaneToolLabWindow? threePointPlaneToolLabWindow;
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
     private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
@@ -130,6 +133,8 @@ public partial class MainWindow : Window
         _workbenchHeightDifferenceEdgeDisplayRequestedHandler = OnWorkbenchHeightDifferenceEdgeDisplayRequested;
         _workbenchTwoPointLineDisplayRequestedHandler = OnWorkbenchTwoPointLineDisplayRequested;
         _workbenchTwoPointLineDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchTwoPointLine();
+        _workbenchThreePointPlaneDisplayRequestedHandler = OnWorkbenchThreePointPlaneDisplayRequested;
+        _workbenchThreePointPlaneDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchThreePointPlane();
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
         _workbenchLineIntersectionDisplayRequestedHandler = OnWorkbenchLineIntersectionDisplayRequested;
@@ -162,6 +167,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested += _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.TwoPointLineDisplayRequested += _workbenchTwoPointLineDisplayRequestedHandler;
         _viewModel.Workbench.TwoPointLineDisplayCleared += _workbenchTwoPointLineDisplayClearedHandler;
+        _viewModel.Workbench.ThreePointPlaneDisplayRequested += _workbenchThreePointPlaneDisplayRequestedHandler;
+        _viewModel.Workbench.ThreePointPlaneDisplayCleared += _workbenchThreePointPlaneDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested += _workbenchLineIntersectionDisplayRequestedHandler;
@@ -220,6 +227,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested -= _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
         _viewModel.Workbench.TwoPointLineDisplayRequested -= _workbenchTwoPointLineDisplayRequestedHandler;
         _viewModel.Workbench.TwoPointLineDisplayCleared -= _workbenchTwoPointLineDisplayClearedHandler;
+        _viewModel.Workbench.ThreePointPlaneDisplayRequested -= _workbenchThreePointPlaneDisplayRequestedHandler;
+        _viewModel.Workbench.ThreePointPlaneDisplayCleared -= _workbenchThreePointPlaneDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested -= _workbenchLineIntersectionDisplayRequestedHandler;
@@ -257,6 +266,8 @@ public partial class MainWindow : Window
         var edgeToolLabScreenshotQualityReportPath = GetCommandLineValue("--edge-tool-lab-screenshot-quality-report");
         var twoPointLineToolLabScreenshotPath = GetCommandLineValue("--two-point-line-tool-lab-screenshot");
         var twoPointLineToolLabScreenshotQualityReportPath = GetCommandLineValue("--two-point-line-tool-lab-screenshot-quality-report");
+        var threePointPlaneToolLabScreenshotPath = GetCommandLineValue("--three-point-plane-tool-lab-screenshot");
+        var threePointPlaneToolLabScreenshotQualityReportPath = GetCommandLineValue("--three-point-plane-tool-lab-screenshot-quality-report");
         var lineIntersectionToolLabScreenshotPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot");
         var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
         var landmarkCorrespondenceToolLabScreenshotPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot");
@@ -274,6 +285,10 @@ public partial class MainWindow : Window
             .Contains("--smoke-tool-two-point-line-publish", StringComparer.OrdinalIgnoreCase);
         var twoPointLinePreviewSmoke = twoPointLinePublishSmoke || Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-two-point-line-preview", StringComparer.OrdinalIgnoreCase);
+        var threePointPlanePublishSmoke = Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-three-point-plane-publish", StringComparer.OrdinalIgnoreCase);
+        var threePointPlanePreviewSmoke = threePointPlanePublishSmoke || Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-three-point-plane-preview", StringComparer.OrdinalIgnoreCase);
         var filterPreviewSmoke = filterPublishSmoke || Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-filter-preview", StringComparer.OrdinalIgnoreCase);
         var edgePublishSmoke = Environment.GetCommandLineArgs()
@@ -287,7 +302,7 @@ public partial class MainWindow : Window
         var edgeStepId = GetCommandLineValue("--tool-teaching-step");
         var edgeSmokeReportPath = GetCommandLineValue("--smoke-tool-edge-report");
         var lineFitSmokeReportPath = GetCommandLineValue("--smoke-tool-line-fit-report");
-        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke)
+        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke || threePointPlanePreviewSmoke)
         {
             Width = 1280;
             Height = 760;
@@ -312,6 +327,7 @@ public partial class MainWindow : Window
             || filterToolLabScreenshotPath is not null
             || edgeToolLabScreenshotPath is not null
             || twoPointLineToolLabScreenshotPath is not null
+            || threePointPlaneToolLabScreenshotPath is not null
             || lineIntersectionToolLabScreenshotPath is not null
             || landmarkCorrespondenceToolLabScreenshotPath is not null
             || xyzAffineSolveToolLabScreenshotPath is not null
@@ -321,7 +337,8 @@ public partial class MainWindow : Window
             || filterPreviewSmoke
             || edgePreviewSmoke
             || lineFitPreviewSmoke
-            || twoPointLinePreviewSmoke)
+            || twoPointLinePreviewSmoke
+            || threePointPlanePreviewSmoke)
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
@@ -381,6 +398,25 @@ public partial class MainWindow : Window
                     && !ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false))
                 {
                     _viewModel.SetViewerSmokeFailed("2-Point Line Tool Lab smoke requires a 2-Point Line recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (threePointPlaneToolLabScreenshotPath is not null
+                    && !ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("3-Point Plane Tool Lab smoke requires a 3-Point Plane recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstThreePointPlaneToolLabWindow = threePointPlaneToolLabWindow;
+                if (threePointPlaneToolLabScreenshotPath is not null
+                    && (firstThreePointPlaneToolLabWindow is null
+                        || !ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: false)
+                        || !ReferenceEquals(firstThreePointPlaneToolLabWindow, threePointPlaneToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("3-Point Plane Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -510,6 +546,27 @@ public partial class MainWindow : Window
                     if (!_viewModel.Workbench.IsTwoPointLinePreviewPublished)
                     {
                         _viewModel.SetViewerSmokeFailed("2-Point Line Publish did not accept the current Preview output.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (threePointPlanePreviewSmoke
+                    && (string.IsNullOrWhiteSpace(edgeStepId)
+                        || !_viewModel.Workbench.SelectPipelineStep(edgeStepId)
+                        || !await _viewModel.Workbench.PreviewSelectedThreePointPlaneAsync()))
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.ThreePointPlaneExecutionSummary);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (threePointPlanePublishSmoke)
+                {
+                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
+                    if (!_viewModel.Workbench.IsThreePointPlanePreviewPublished)
+                    {
+                        _viewModel.SetViewerSmokeFailed("3-Point Plane Publish did not accept the current Preview output.");
                         Application.Current.Shutdown(1);
                         return;
                     }
@@ -756,6 +813,19 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (threePointPlaneToolLabScreenshotPath is not null
+                    && (threePointPlaneToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(threePointPlaneToolLabWindow),
+                            threePointPlaneToolLabScreenshotPath,
+                            threePointPlaneToolLabScreenshotQualityReportPath,
+                            "ThreePointPlaneToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("3-Point Plane Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (lineIntersectionToolLabScreenshotPath is not null
                     && (lineIntersectionToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
@@ -820,6 +890,9 @@ public partial class MainWindow : Window
                 break;
             case TwoPointLineToolLabWindow twoPointLine:
                 twoPointLine.RefreshViews();
+                break;
+            case ThreePointPlaneToolLabWindow threePointPlane:
+                threePointPlane.RefreshViews();
                 break;
             case LineIntersectionToolLabWindow intersection:
                 intersection.RefreshViews();
@@ -1478,6 +1551,9 @@ public partial class MainWindow : Window
             case "two-point-line":
                 ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false, preserveSelectedStep: true);
                 break;
+            case "three-point-plane":
+                ShowThreePointPlaneToolLabWindow(showMissingThreePointPlaneMessage: false, preserveSelectedStep: true);
+                break;
             case "line-intersection":
                 ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false, preserveSelectedStep: true);
                 break;
@@ -1604,6 +1680,34 @@ public partial class MainWindow : Window
         twoPointLineToolLabWindow.RefreshViews();
         twoPointLineToolLabWindow.Show();
         twoPointLineToolLabWindow.Activate();
+        return true;
+    }
+
+    private bool ShowThreePointPlaneToolLabWindow(bool showMissingThreePointPlaneMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("three-point-plane", preserveSelectedStep))
+        {
+            if (showMissingThreePointPlaneMessage)
+            {
+                MessageBox.Show(this, "Add a 3-Point Plane step before opening 3-Point Plane Tool Lab.", "3-Point Plane Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (threePointPlaneToolLabWindow is null)
+        {
+            threePointPlaneToolLabWindow = new ThreePointPlaneToolLabWindow(_viewModel.Workbench, step) { Owner = this };
+            threePointPlaneToolLabWindow.Closed += (_, _) => threePointPlaneToolLabWindow = null;
+        }
+        else
+        {
+            threePointPlaneToolLabWindow.SetLabStep(step);
+        }
+
+        threePointPlaneToolLabWindow.RefreshViews();
+        threePointPlaneToolLabWindow.Show();
+        threePointPlaneToolLabWindow.Activate();
         return true;
     }
 
@@ -1768,6 +1872,18 @@ public partial class MainWindow : Window
             twoPointLineToolLabWindow.ShowTwoPointLineResult(args);
         }
         _viewer.ShowWorkbenchTwoPointLine(args.Output, args.IsPublished);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+    }
+
+    private void OnWorkbenchThreePointPlaneDisplayRequested(
+        object? sender,
+        ToolWorkbenchThreePointPlaneDisplayRequestEventArgs args)
+    {
+        if (threePointPlaneToolLabWindow is { IsVisible: true })
+        {
+            threePointPlaneToolLabWindow.ShowThreePointPlaneResult(args);
+        }
+        _viewer.ShowWorkbenchThreePointPlane(args.Output, args.IsPublished);
         _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
     }
 
@@ -2010,6 +2126,7 @@ public partial class MainWindow : Window
         argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--two-point-line-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--three-point-plane-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)

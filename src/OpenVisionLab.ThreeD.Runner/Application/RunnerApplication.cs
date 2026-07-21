@@ -25,6 +25,7 @@ internal static class RunnerApplication
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
         var toolTeachingTwoPointLinePath = ReadOption(args, "--tool-teaching-two-point-line");
+        var toolTeachingThreePointPlanePath = ReadOption(args, "--tool-teaching-three-point-plane");
         var toolTeachingLineIntersectionPath = ReadOption(args, "--tool-teaching-line-intersection");
         var toolTeachingLandmarkCorrespondencePath = ReadOption(args, "--tool-teaching-landmark-correspondence");
         var toolTeachingStepId = ReadOption(args, "--tool-teaching-step");
@@ -44,6 +45,7 @@ internal static class RunnerApplication
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DTwoPointLine = args.Contains("--verify-c3d-two-point-line", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DThreePointPlane = args.Contains("--verify-c3d-three-point-plane", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineIntersection = args.Contains("--verify-c3d-line-intersection", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLandmarkCorrespondence = args.Contains("--verify-c3d-landmark-correspondence", StringComparer.OrdinalIgnoreCase);
         var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
@@ -105,6 +107,17 @@ internal static class RunnerApplication
             }
 
             return ToolRecipeTwoPointLineRunnerExecution.Run(toolTeachingTwoPointLinePath, toolTeachingStepId, reportPath);
+        }
+
+        if (toolTeachingThreePointPlanePath is not null)
+        {
+            if (toolTeachingStepId is null || reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-three-point-plane <recipe> --tool-teaching-step <id> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeThreePointPlaneRunnerExecution.Run(toolTeachingThreePointPlanePath, toolTeachingStepId, reportPath);
         }
 
         if (toolTeachingLineIntersectionPath is not null)
@@ -171,6 +184,17 @@ internal static class RunnerApplication
             }
 
             return C3DTwoPointLineGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DThreePointPlane)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-three-point-plane --report <path>");
+                return 2;
+            }
+
+            return C3DThreePointPlaneGoldenVerification.Run(reportPath);
         }
 
         if (verifyC3DLineIntersection)
