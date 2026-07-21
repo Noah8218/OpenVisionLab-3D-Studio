@@ -29,10 +29,11 @@ or metrology. A1 remains synthetic-only because the real four-anchor package
 is still absent. Do not reopen A2/A3/A4 under this completion.
 
 The next unstarted algorithm option is a separately approved 3-Point Plane
-design for three recipe-owned source-bound grid points. Before implementation,
-preserve the same typed/Noah/Studio ownership review and obtain explicit owner
-confirmation of its datum/normal/orientation semantics; do not bundle it with
-affine application or measurements.
+design for three recipe-owned source-bound grid points. The design is now in
+`docs/OPENVISIONLAB_3D_THREE_POINT_PLANE_TYPED_ADAPTER_DESIGN_20260721.md`.
+Before implementation, preserve the same typed/Noah/Studio ownership review
+and obtain explicit owner confirmation of its datum/normal/orientation
+semantics; do not bundle it with affine application or measurements.
 
 ## Priority override - 2026-07-20
 

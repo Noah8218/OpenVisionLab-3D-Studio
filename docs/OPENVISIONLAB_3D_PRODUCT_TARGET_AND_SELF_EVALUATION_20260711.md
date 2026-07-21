@@ -252,6 +252,16 @@ authorize affine application, re-grid, Thickness, Warpage, calibration, or
 metrology. See
 `docs/OPENVISIONLAB_3D_TWO_POINT_LINE_TYPED_ADAPTER_DESIGN_20260721.md`.
 
+Next typed-tool design checkpoint on 2026-07-21: **3-Point Plane v1 is
+documented, not implemented.** It proposes a raw-C3D plus recipe-owned
+`PointSet(3)` manual oriented datum plane, with ordered normal, support
+triangle, strict source binding, a pure future Noah calculation, and a typed
+future Studio adapter. It intentionally excludes best-fit ROI planes,
+measurement/OK-NG, affine application, re-grid, Thickness, Warpage,
+calibration, and metrology. Implementation waits for the owner to confirm
+normal orientation and datum/UI semantics. See
+`docs/OPENVISIONLAB_3D_THREE_POINT_PLANE_TYPED_ADAPTER_DESIGN_20260721.md`.
+
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.
