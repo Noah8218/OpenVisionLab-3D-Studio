@@ -50,6 +50,19 @@ simulated claim. Read
 working on affine code. A2 Apply, A3 Re-grid, and A4 measurements remain
 blocked pending that evidence and later approval.
 
+## A1 fixture deferral and next-tool decision - 2026-07-21
+
+The owner confirmed that no real four-anchor source/reference package is
+currently available and directed the project to retain A1 actual-fixture
+Preview/Publish/Runner replay as **unverified** rather than fabricate data.
+This does not reopen A2 Apply, A3 Re-grid, Thickness, Warpage, calibration,
+or metrology. Source audit confirms that Line Intersection v1 and Landmark
+Correspondence v1 are already implemented; do not duplicate them. The next
+proposed independent tool is 2-Point Line v1. Its source-coordinate,
+typed-line-contract, intersection-compatibility, and UI/verification decisions
+are in `docs/OPENVISIONLAB_3D_TWO_POINT_LINE_TYPED_ADAPTER_DESIGN_20260721.md`.
+Do not implement it until the owner confirms its five explicit v1 decisions.
+
 **Current GoPxL chain-readability / G5 checkpoint (2026-07-20):** G5 is
 complete locally. The existing Flow Map now projects input/output port state
 from the typed Artifact Registry: ready/current, declared-upstream waiting,
