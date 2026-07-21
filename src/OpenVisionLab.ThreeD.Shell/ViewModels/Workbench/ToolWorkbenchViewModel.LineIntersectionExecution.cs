@@ -11,7 +11,7 @@ public sealed partial class ToolWorkbenchViewModel
     private bool isLineIntersectionPreviewRunning;
     private bool isLineIntersectionPreviewStale;
     private bool isLineIntersectionPreviewPublished;
-    private string lineIntersectionExecutionSummary = "Teach the explicit gap, acute-angle, and support-extension limits, then publish both named LineFeature inputs before Preview.";
+    private string lineIntersectionExecutionSummary = "Teach the explicit gap, acute-angle, and support-extension limits, then publish both named line-geometry inputs before Preview.";
 
     public event EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs>? LineIntersectionDisplayRequested;
     public event EventHandler? LineIntersectionDisplayCleared;
@@ -24,14 +24,14 @@ public sealed partial class ToolWorkbenchViewModel
     internal C3DLineIntersectionFeature? CurrentLineIntersectionOutput => lineIntersectionPreviewOutput;
     internal bool TryGetPublishedLineIntersectionOutput(string outputEntityId, out C3DLineIntersectionFeature? output) =>
         publishedLineIntersectionOutputs.TryGetValue(outputEntityId, out output);
-    internal bool TryGetCurrentLineIntersectionInputs(out C3DLineFeature? first, out C3DLineFeature? second)
+    internal bool TryGetCurrentLineIntersectionInputs(out IC3DLineGeometry? first, out IC3DLineGeometry? second)
     {
         first = null;
         second = null;
         if (SelectedPipelineStep is not { InputEntityIds.Count: 2 } step) return false;
-        return TryGetPublishedLineFitOutput(step.InputEntityIds[0], out first)
+        return TryGetPublishedLineGeometry(step.InputEntityIds[0], out first)
             && first is not null
-            && TryGetPublishedLineFitOutput(step.InputEntityIds[1], out second)
+            && TryGetPublishedLineGeometry(step.InputEntityIds[1], out second)
             && second is not null;
     }
     public string LineIntersectionExecutionSummary => lineIntersectionExecutionSummary;
@@ -43,9 +43,9 @@ public sealed partial class ToolWorkbenchViewModel
         get
         {
             var step = SelectedPipelineStep;
-            if (step is null || step.InputEntityIds.Count != 2) return "Two routed LineFeature inputs are required.";
-            var first = TryGetPublishedLineFitOutput(step.InputEntityIds[0], out var firstLine) && firstLine is not null;
-            var second = TryGetPublishedLineFitOutput(step.InputEntityIds[1], out var secondLine) && secondLine is not null;
+            if (step is null || step.InputEntityIds.Count != 2) return "Two routed published line inputs are required.";
+            var first = TryGetPublishedLineGeometry(step.InputEntityIds[0], out var firstLine) && firstLine is not null;
+            var second = TryGetPublishedLineGeometry(step.InputEntityIds[1], out var secondLine) && secondLine is not null;
             return $"Line A {step.InputEntityIds[0]}: {(first ? "Published" : "missing/stale")} | Line B {step.InputEntityIds[1]}: {(second ? "Published" : "missing/stale")}";
         }
     }
@@ -56,11 +56,11 @@ public sealed partial class ToolWorkbenchViewModel
     public async Task<bool> PreviewSelectedLineIntersectionAsync()
     {
         if (!CanPreviewSelectedLineIntersection() || SelectedPipelineStep is not { } step) return false;
-        if (!TryGetPublishedLineFitOutput(step.InputEntityIds[0], out var first) || first is null
-            || !TryGetPublishedLineFitOutput(step.InputEntityIds[1], out var second) || second is null)
+        if (!TryGetPublishedLineGeometry(step.InputEntityIds[0], out var first) || first is null
+            || !TryGetPublishedLineGeometry(step.InputEntityIds[1], out var second) || second is null)
         {
             step.State = "Waiting for upstream";
-            SetLineIntersectionSummary("Both routed LineFeature inputs must be current and Published.");
+            SetLineIntersectionSummary("Both routed line inputs must be current and Published.");
             return false;
         }
 
@@ -70,7 +70,7 @@ public sealed partial class ToolWorkbenchViewModel
         isLineIntersectionPreviewStale = false;
         isLineIntersectionPreviewPublished = false;
         step.State = "Preview running";
-        SetLineIntersectionSummary("Line Intersection Preview is evaluating only the exact two Published LineFeatures.");
+        SetLineIntersectionSummary("Line Intersection Preview is evaluating only the exact two Published line inputs.");
         AppendLog("Preview", $"Line Intersection Preview started: {step.Id}.");
         try
         {
@@ -110,8 +110,8 @@ public sealed partial class ToolWorkbenchViewModel
     {
         if (!IsSelectedStepLineIntersection || !IsSourceReadyForRecipe || HasPendingStepParameterChanges
             || isLineIntersectionPreviewRunning || SelectedPipelineStep is not { } step || step.InputEntityIds.Count != 2) return false;
-        return TryGetPublishedLineFitOutput(step.InputEntityIds[0], out var first) && first is not null
-            && TryGetPublishedLineFitOutput(step.InputEntityIds[1], out var second) && second is not null
+        return TryGetPublishedLineGeometry(step.InputEntityIds[0], out var first) && first is not null
+            && TryGetPublishedLineGeometry(step.InputEntityIds[1], out var second) && second is not null
             && ToolRecipeLineIntersectionExecution.TryPrepare(CreateDocument(), step.Id, first, second, out _, out _);
     }
 
@@ -123,8 +123,8 @@ public sealed partial class ToolWorkbenchViewModel
         step.State = "Published";
         SetLineIntersectionSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {lineIntersectionPreviewOutput.ContentSha256} | feature extraction only, no OK/NG");
         AppendLog("Publish", $"Line Intersection output published without re-running: {step.OutputEntityId}.");
-        if (TryGetPublishedLineFitOutput(step.InputEntityIds[0], out var first) && first is not null
-            && TryGetPublishedLineFitOutput(step.InputEntityIds[1], out var second) && second is not null)
+        if (TryGetPublishedLineGeometry(step.InputEntityIds[0], out var first) && first is not null
+            && TryGetPublishedLineGeometry(step.InputEntityIds[1], out var second) && second is not null)
         {
             LineIntersectionDisplayRequested?.Invoke(this, new ToolWorkbenchLineIntersectionDisplayRequestEventArgs(first, second, lineIntersectionPreviewOutput, true));
         }
@@ -185,15 +185,15 @@ public sealed partial class ToolWorkbenchViewModel
             && !isLineIntersectionPreviewRunning)
         {
             if (step.InputEntityIds.Count != 2
-                || !TryGetPublishedLineFitOutput(step.InputEntityIds[0], out var first) || first is null
-                || !TryGetPublishedLineFitOutput(step.InputEntityIds[1], out var second) || second is null)
+                || !TryGetPublishedLineGeometry(step.InputEntityIds[0], out var first) || first is null
+                || !TryGetPublishedLineGeometry(step.InputEntityIds[1], out var second) || second is null)
             {
                 step.State = "Waiting for upstream";
             }
             else if (ToolRecipeLineIntersectionExecution.TryPrepare(CreateDocument(), step.Id, first, second, out _, out var message))
             {
                 step.State = "Ready";
-                lineIntersectionExecutionSummary = "Ready for explicit Preview. Line Fit will not run implicitly.";
+                lineIntersectionExecutionSummary = "Ready for explicit Preview. Upstream line construction or fitting will not run implicitly.";
             }
             else
             {
@@ -237,13 +237,13 @@ public sealed partial class ToolWorkbenchViewModel
 }
 
 public sealed class ToolWorkbenchLineIntersectionDisplayRequestEventArgs(
-    C3DLineFeature firstLine,
-    C3DLineFeature secondLine,
+    IC3DLineGeometry firstLine,
+    IC3DLineGeometry secondLine,
     C3DLineIntersectionFeature output,
     bool isPublished) : EventArgs
 {
-    public C3DLineFeature FirstLine { get; } = firstLine;
-    public C3DLineFeature SecondLine { get; } = secondLine;
+    public IC3DLineGeometry FirstLine { get; } = firstLine;
+    public IC3DLineGeometry SecondLine { get; } = secondLine;
     public C3DLineIntersectionFeature Output { get; } = output;
     public bool IsPublished { get; } = isPublished;
 }

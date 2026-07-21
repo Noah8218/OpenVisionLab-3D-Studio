@@ -44,6 +44,7 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepPreviewRunning =>
         IsSelectedStepFilter ? isFilterPreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
+            : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
             : IsSelectedStepLineFit ? IsLineFitPreviewRunning
             : IsSelectedStepLineIntersection ? IsLineIntersectionPreviewRunning
             : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
@@ -95,6 +96,7 @@ public sealed partial class ToolWorkbenchViewModel
         ? PreviewSelectedLandmarkCorrespondenceAsync()
         : IsSelectedStepLineIntersection
         ? PreviewSelectedLineIntersectionAsync()
+        : IsSelectedStepTwoPointLine ? PreviewSelectedTwoPointLineAsync()
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
@@ -104,6 +106,7 @@ public sealed partial class ToolWorkbenchViewModel
         ? CanPreviewSelectedLandmarkCorrespondence()
         : IsSelectedStepLineIntersection
         ? CanPreviewSelectedLineIntersection()
+        : IsSelectedStepTwoPointLine ? CanPreviewSelectedTwoPointLine()
         : IsSelectedStepLineFit ? CanPreviewSelectedLineFit()
         : IsSelectedStepHeightDifferenceEdge ? CanPreviewSelectedHeightDifferenceEdge() : CanPreviewSelectedFilter();
 
@@ -120,6 +123,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepLineIntersection)
         {
             PublishSelectedLineIntersection();
+        }
+        else if (IsSelectedStepTwoPointLine)
+        {
+            PublishSelectedTwoPointLine();
         }
         else if (IsSelectedStepLineFit)
         {
@@ -141,6 +148,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? HasCurrentLandmarkCorrespondencePreview && !IsLandmarkCorrespondencePreviewPublished
         : IsSelectedStepLineIntersection
         ? HasCurrentLineIntersectionPreview && !IsLineIntersectionPreviewPublished
+        : IsSelectedStepTwoPointLine
+        ? HasCurrentTwoPointLinePreview && !IsTwoPointLinePreviewPublished
         : IsSelectedStepLineFit
         ? HasCurrentLineFitPreview && !IsLineFitPreviewPublished
         : IsSelectedStepHeightDifferenceEdge ? HasCurrentEdgePreview && !IsEdgePreviewPublished : IsSelectedStepFilter && HasCurrentFilterPreview && !isFilterPreviewPublished;
@@ -158,6 +167,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepLineIntersection)
         {
             CancelLineIntersectionPreview();
+        }
+        else if (IsSelectedStepTwoPointLine)
+        {
+            CancelTwoPointLinePreview();
         }
         else if (IsSelectedStepLineFit)
         {

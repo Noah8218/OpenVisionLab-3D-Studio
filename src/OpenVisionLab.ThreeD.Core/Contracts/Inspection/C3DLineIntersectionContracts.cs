@@ -14,8 +14,8 @@ public sealed class C3DLineIntersectionFeature
 
     private C3DLineIntersectionFeature(
         string outputEntityId,
-        C3DLineFeature firstLine,
-        C3DLineFeature secondLine,
+        IC3DLineGeometry firstLine,
+        IC3DLineGeometry secondLine,
         double maximumClosestApproachDistance,
         double minimumAcuteAngleDegrees,
         double maximumSupportExtension,
@@ -120,8 +120,8 @@ public sealed class C3DLineIntersectionFeature
 
     public static C3DLineIntersectionFeature Create(
         string outputEntityId,
-        C3DLineFeature firstLine,
-        C3DLineFeature secondLine,
+        IC3DLineGeometry firstLine,
+        IC3DLineGeometry secondLine,
         double maximumClosestApproachDistance,
         double minimumAcuteAngleDegrees,
         double maximumSupportExtension,
@@ -175,7 +175,7 @@ public sealed class C3DLineIntersectionFeature
     }
 
     private static string CalculateContentSha256(
-        string outputEntityId, C3DLineFeature firstLine, C3DLineFeature secondLine,
+        string outputEntityId, IC3DLineGeometry firstLine, IC3DLineGeometry secondLine,
         double maximumClosestApproachDistance, double minimumAcuteAngleDegrees,
         double maximumSupportExtension, string outputRole,
         double cornerAnchorX, double cornerAnchorY, double cornerAnchorZ,

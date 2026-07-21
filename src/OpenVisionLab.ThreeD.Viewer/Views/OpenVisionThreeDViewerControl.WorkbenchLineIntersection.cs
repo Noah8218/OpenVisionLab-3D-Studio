@@ -5,8 +5,8 @@ namespace OpenVisionLab.ThreeD.Viewer;
 public sealed partial class OpenVisionThreeDViewerControl
 {
     public void ShowWorkbenchLineIntersection(
-        C3DLineFeature firstLine,
-        C3DLineFeature secondLine,
+        IC3DLineGeometry firstLine,
+        IC3DLineGeometry secondLine,
         C3DLineIntersectionFeature output,
         bool isPublished)
     {
@@ -20,7 +20,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         RenderNow();
     }
 
-    public void ShowWorkbenchLineIntersectionInputs(C3DLineFeature firstLine, C3DLineFeature secondLine)
+    public void ShowWorkbenchLineIntersectionInputs(IC3DLineGeometry firstLine, IC3DLineGeometry secondLine)
     {
         viewModel.SetWorkbenchLineIntersectionInputs(firstLine, secondLine);
         RenderNow();

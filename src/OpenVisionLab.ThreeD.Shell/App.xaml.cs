@@ -21,6 +21,7 @@ public partial class App : Application
         const string profileViewModelVerificationOption = "--verify-profile-viewmodel";
         const string c3dHeightDistributionVerificationOption = "--verify-c3d-height-distribution";
         const string heightDifferenceEdgeWorkbenchVerificationOption = "--verify-tool-edge-workbench";
+        const string twoPointLineWorkbenchVerificationOption = "--verify-tool-two-point-line-workbench";
         const string lineFitWorkbenchVerificationOption = "--verify-tool-line-fit-workbench";
         const string lineIntersectionWorkbenchVerificationOption = "--verify-tool-line-intersection-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
@@ -75,12 +76,33 @@ public partial class App : Application
         var heightDifferenceEdgeWorkbenchVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(heightDifferenceEdgeWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        var twoPointLineWorkbenchVerificationIndex = Array.FindIndex(
+            e.Args,
+            argument => argument.Equals(twoPointLineWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
         var lineFitWorkbenchVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(lineFitWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
         var lineIntersectionWorkbenchVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(lineIntersectionWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (twoPointLineWorkbenchVerificationIndex >= 0)
+        {
+            if (twoPointLineWorkbenchVerificationIndex + 1 >= e.Args.Length)
+            {
+                Console.WriteLine($"{twoPointLineWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolTwoPointLineWorkbenchVerification.Verify(e.Args[twoPointLineWorkbenchVerificationIndex + 1], out var detail);
+                return (Passed: passed, Summary: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Summary);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         if (lineIntersectionWorkbenchVerificationIndex >= 0)
         {
             if (lineIntersectionWorkbenchVerificationIndex + 1 >= e.Args.Length)

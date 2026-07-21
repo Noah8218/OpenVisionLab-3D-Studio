@@ -217,6 +217,25 @@ public sealed partial class ToolWorkbenchViewModel
                 "LineFeature");
         }
 
+        if (string.Equals(step.ToolId, "two-point-line", StringComparison.Ordinal)
+            && TryGetPublishedTwoPointLineOutput(step.OutputEntityId, out var publishedTwoPointLine)
+            && publishedTwoPointLine is not null)
+        {
+            return new ToolWorkbenchArtifactItem(
+                publishedTwoPointLine.OutputEntityId,
+                step.ToolName,
+                "LineFeature",
+                "Published",
+                publishedTwoPointLine.RootSourceEntityId,
+                publishedTwoPointLine.InputSelectionId,
+                publishedTwoPointLine.Unit,
+                publishedTwoPointLine.FrameId,
+                publishedTwoPointLine.ContentSha256,
+                $"ordered picks ({publishedTwoPointLine.FirstRow}, {publishedTwoPointLine.FirstColumn}) -> ({publishedTwoPointLine.SecondRow}, {publishedTwoPointLine.SecondColumn}) | {publishedTwoPointLine.Provenance}",
+                step,
+                "LineFeature");
+        }
+
         if (string.Equals(step.ToolId, "line-intersection", StringComparison.Ordinal)
             && TryGetPublishedLineIntersectionOutput(step.OutputEntityId, out var publishedIntersection)
             && publishedIntersection is not null)
@@ -291,6 +310,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     private static bool HasToolLab(string? toolId) => toolId is "filter"
         or "height-difference-edge"
+        or "two-point-line"
         or "line-intersection"
         or "landmark-correspondence";
 

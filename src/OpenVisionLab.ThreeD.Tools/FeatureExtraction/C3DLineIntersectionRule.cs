@@ -9,8 +9,8 @@ namespace OpenVisionLab.ThreeD.Tools;
 
 public sealed record C3DLineIntersectionInput(
     string StepId,
-    C3DLineFeature FirstPublishedLine,
-    C3DLineFeature SecondPublishedLine,
+    IC3DLineGeometry FirstPublishedLine,
+    IC3DLineGeometry SecondPublishedLine,
     string OutputEntityId,
     double MaximumClosestApproachDistance,
     double MinimumAcuteAngleDegrees,
@@ -94,7 +94,7 @@ public static class C3DLineIntersectionRule
         }
     }
 
-    private static NoahLineGeometry ToNoahGeometry(C3DLineFeature line) => new(
+    private static NoahLineGeometry ToNoahGeometry(IC3DLineGeometry line) => new(
         new NoahPoint(line.AnchorX, line.AnchorY, line.AnchorZ),
         new NoahPoint(line.DirectionX, line.DirectionY, line.DirectionZ),
         new NoahPoint(line.SegmentStartX, line.SegmentStartY, line.SegmentStartZ),

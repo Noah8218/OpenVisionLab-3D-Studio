@@ -1,6 +1,38 @@
 # OpenVisionLab 3D Next Session Handoff
 
-Updated: 2026-07-20
+Updated: 2026-07-21
+
+## Current 2-Point Line checkpoint - 2026-07-21
+
+The owner-approved 2-Point Line v1 slice is **Complete** for deterministic
+local software evidence. Studio takes only the recipe-bound raw C3D source and
+one ordered `PointSet(2)`, resolves current finite cell values, and delegates
+the full-XYZ segment calculation to vendored `Lib.ThreeD` 2.3.0
+`TwoPointLineTool`. `C3DTwoPointLineFeature` retains Studio source/selection
+identity, fixed construction policy, and canonical hash. `IC3DLineGeometry`
+is the only shared boundary: Line Intersection can now consume the existing
+fitted line or a picked line without a generic feature hierarchy.
+
+Workbench has typed WPG, explicit Preview/Publish, branch-local stale state,
+source-change clearing, typed artifacts, Viewer overlay, and a single-instance
+two-viewer Tool Lab. Runner replay is strict. Current source passes build
+`0/0`, Two-Point Golden/Runner `7/7`, Line Intersection Golden `10/10`
+including a two-picked-line chain, Two-Point Workbench `16/16`, Line
+Intersection Workbench `23/23`, teaching `18/18`, Recipe Manager/WPG `18/18`,
+Artifact Navigator `24/24`, Docking `25/25`, and a first-attempt real
+Thickness-C3D Tool Lab capture at
+`artifacts/two-point-line-adapter-20260721/two-point-line-tool-lab-after.png`.
+
+This does **not** prove automatic edge selection, a calibrated length,
+inspection OK/NG, affine application, re-grid, Thickness, Warpage, calibration,
+or metrology. A1 remains synthetic-only because the real four-anchor package
+is still absent. Do not reopen A2/A3/A4 under this completion.
+
+The next unstarted algorithm option is a separately approved 3-Point Plane
+design for three recipe-owned source-bound grid points. Before implementation,
+preserve the same typed/Noah/Studio ownership review and obtain explicit owner
+confirmation of its datum/normal/orientation semantics; do not bundle it with
+affine application or measurements.
 
 ## Priority override - 2026-07-20
 

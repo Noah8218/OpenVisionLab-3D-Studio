@@ -1,0 +1,58 @@
+<Window x:Class="OpenVisionLab.ThreeD.Shell.Views.Tooling.TwoPointLineToolLabWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
+        xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
+        Title="2-Point Line Tool Lab | OpenVisionLab 3D Studio"
+        Width="1600" Height="920" MinWidth="1120" MinHeight="700"
+        WindowStyle="None" ResizeMode="CanResize"
+        Background="{DynamicResource ThreeD.AppBackgroundBrush}"
+        AutomationProperties.AutomationId="TwoPointLineToolLabWindow">
+    <shellChrome:WindowChrome.WindowChrome>
+        <shellChrome:WindowChrome CaptionHeight="56" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </shellChrome:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="280" />
+        </Grid.RowDefinitions>
+        <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio" SubtitleText="2-Point Line Tool Lab" StatusText="Ordered raw-C3D picks / line construction evidence" />
+        <Border Grid.Row="1" Margin="16,16,16,0" Padding="16,12" Background="{DynamicResource ThreeD.PanelHeaderBrush}" BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}" BorderThickness="1" CornerRadius="3">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="24" Height="24" Margin="0,0,9,0" Foreground="{DynamicResource ThreeD.AccentBrush}" Symbol="PointScan24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}" Text="Full-XYZ 2-Point Line Tool Lab" />
+                        <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}" Text="Two ordered C3D grid picks define a segment. The tool resolves current source height; it never fits, snaps, interpolates, or evaluates OK/NG." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <ui:Button Margin="0,0,6,0" Content="Show picks" Icon="{ui:SymbolIcon Eye24}" Click="ShowInputsButton_Click" ToolTip="Show the exact current source and constructed segment" AutomationProperties.Name="Show 2-Point Line inputs" />
+                    <ui:Button Margin="0,0,6,0" Content="{Binding Localization.Preview}" Icon="{ui:SymbolIcon Play24}" Command="{Binding PreviewSelectedStepCommand}" ToolTip="Resolve current raw C3D values for the authored picks" AutomationProperties.Name="Preview 2-Point Line" />
+                    <ui:Button Content="{Binding Localization.Publish}" Icon="{ui:SymbolIcon CheckmarkCircle24}" Command="{Binding PublishSelectedStepCommand}" ToolTip="Publish the current 2-Point Line Preview without running again" AutomationProperties.Name="Publish 2-Point Line" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2" Margin="16,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="PointScan24" /><TextBlock FontWeight="SemiBold" Text="Input | Raw C3D + ordered PointSet(2)" /></StackPanel><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineSelectionSummary}" /></StackPanel></Border>
+                    <ContentControl x:Name="InputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+            <Border Grid.Column="2" Padding="1" Background="{DynamicResource ThreeD.PanelBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}"><StackPanel><StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="Output | Ordered full-XYZ segment" /></StackPanel><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineExecutionSummary}" /><TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding TwoPointLineOutputHashSummary}" /></StackPanel></Border>
+                    <ContentControl x:Name="OutputViewerHost" Grid.Row="1" />
+                </Grid>
+            </Border>
+        </Grid>
+        <tooling:ToolLabReviewView Grid.Row="3" Margin="16,0,16,16" />
+    </Grid>
+</Window>

@@ -16,6 +16,7 @@ internal static class C3DLineIntersectionGoldenVerification
             Check("strict-recipe-adapter", VerifyStrictRecipeAdapter),
             Check("deterministic-hash-and-input-order", VerifyDeterminismAndOrder),
             Check("runner-full-feature-chain", VerifyRunnerFullFeatureChain),
+            Check("runner-two-point-line-chain", VerifyRunnerTwoPointLineChain),
             Check("cancellation-propagates", VerifyCancellation)
         };
         var passed = cases.Count(item => item.Passed);
@@ -188,11 +189,63 @@ internal static class C3DLineIntersectionGoldenVerification
         }
     }
 
+    private static (bool Passed, string Evidence) VerifyRunnerTwoPointLineChain()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "TwoPointLineIntersectionRunner", Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(root);
+            var source = C3DHeightFieldSnapshot.CreateForVerification("source.synthetic", 3, 3, Enumerable.Repeat(1d, 9).ToArray());
+            var sourcePath = Path.Combine(root, "source.c3d");
+            source.SaveC3D(sourcePath);
+            var firstSelection = CreatePointSelection(source, "selection.line-a", (0, 0), (0, 2));
+            var secondSelection = CreatePointSelection(source, "selection.line-b", (0, 1), (2, 1));
+            var document = new ToolRecipeDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                "2-Point Line Intersection Runner fixture",
+                new ToolRecipeSource(source.EntityId, "Synthetic", "C3D", source.Unit, source.FrameId, sourcePath, source.ByteLength, source.ContentSha256, source.Width, source.Height),
+                [],
+                [
+                    new ToolRecipeStep("step.line.a", "two-point-line", "2-Point Line", 1, [source.EntityId, firstSelection.Id], "derived.line.a", [new("OutputRole", "FirstEdge"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
+                    new ToolRecipeStep("step.line.b", "two-point-line", "2-Point Line", 1, [source.EntityId, secondSelection.Id], "derived.line.b", [new("OutputRole", "SecondEdge"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
+                    new ToolRecipeStep("step.corner.01", "line-intersection", "Line Intersection", 2, ["derived.line.a", "derived.line.b"], "derived.corner.01", Parameters("SyntheticCorner"))
+                ],
+                [firstSelection, secondSelection]);
+            var recipePath = Path.Combine(root, "fixture.ov3d-teach.json");
+            var reportPath = Path.Combine(root, "runner.txt");
+            ToolRecipeDocumentStore.Save(recipePath, document);
+            var runnerExitCode = ToolRecipeLineIntersectionRunnerExecution.Run(recipePath, "step.corner.01", reportPath);
+            var first = ToolRecipeTwoPointLineExecution.Execute(document, "step.line.a", root);
+            var second = ToolRecipeTwoPointLineExecution.Execute(document, "step.line.b", root);
+            var expected = ToolRecipeLineIntersectionExecution.Execute(document, "step.corner.01", first.Output!, second.Output!);
+            var report = File.ReadAllText(reportPath);
+            return (runnerExitCode == 0 && expected.Output is not null
+                && report.Contains($"sha256={expected.Output.ContentSha256}", StringComparison.Ordinal)
+                && report.Contains("origin=PickedPoints", StringComparison.Ordinal),
+                $"runnerExit={runnerExitCode};expected={expected.Output?.ContentSha256};report={report.Replace(Environment.NewLine, ";")}");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+        }
+    }
+
     private static ToolRecipeStep CreateEdgeStep(string id, string selectionId, string axis, string output) =>
         new(id, "height-difference-edge", "Height Difference Edge", 1, ["derived.filtered.01", selectionId], output, [new("ComparisonAxis", axis), new("Polarity", "Rising"), new("MinimumDelta", "5"), new("CandidatePolicy", "StrongestPerScanline"), new("PointPolicy", "PairMidpoint"), new("MissingValuePolicy", "SkipPair"), new("BoundaryPolicy", "WithinSelection")]);
 
     private static ToolRecipeStep CreateLineStep(string id, string input, string output) =>
         new(id, "three-d-line-fit", "3D Line Fit", 1, [input], output, [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "0.001"), new("MinimumInlierCount", "3"), new("MinimumInlierRatio", "1"), new("MinimumInlierScanlineSpan", "2"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]);
+
+    private static ToolRecipeSelection CreatePointSelection(C3DHeightFieldSnapshot source, string id, (int Row, int Column) first, (int Row, int Column) second) =>
+        new(id, id, ToolRecipeSelectionKinds.PointSet, source.EntityId, source.FrameId,
+            new ToolRecipeSelectionSourceBinding("C3D", source.ContentSha256, source.Width, source.Height), null,
+            [CreatePoint(source, first.Row, first.Column), CreatePoint(source, second.Row, second.Column)], null);
+
+    private static ToolRecipeSelectionPoint CreatePoint(C3DHeightFieldSnapshot source, int row, int column)
+    {
+        var height = source.Values.Span[row * source.Width + column];
+        return new ToolRecipeSelectionPoint(new ToolRecipeGridCellLocator("grid-cell", row, column), new ToolRecipeXyz(column, height, row), height);
+    }
 
     private static C3DLineIntersectionEvaluation Evaluate(C3DLineFeature first, C3DLineFeature second, double maximumGap, double minimumAngle, double maximumExtension) =>
         C3DLineIntersectionRule.Evaluate(new C3DLineIntersectionInput("step.corner.01", first, second, "derived.corner.01", maximumGap, minimumAngle, maximumExtension, "UpperLeftCorner"));

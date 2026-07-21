@@ -231,6 +231,27 @@ No migration changes the missing real A1 fixture, affine application, re-grid,
 calibration, or metrology boundaries. See
 `docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`.
 
+Current 2-Point Line implementation checkpoint on 2026-07-21: **the
+owner-approved manual `raw C3D + PointSet(2) -> ordered full-XYZ LineFeature`
+slice is complete for local software evidence.** The strict Studio adapter
+resolves current source values for exactly two ordered grid cells, delegates
+construction to packaged Library-Noah `TwoPointLineTool`, preserves its own
+immutable source/selection/hash lineage, and provides typed WPG, explicit
+Preview/Publish/stale state, source-change clearing, Artifact Registry output,
+Viewer segment overlay, a single-instance dual-viewer Tool Lab, and headless
+Runner replay. `IC3DLineGeometry` is deliberately narrow and lets the existing
+Line Intersection tool consume either a fitted or a picked published line
+without a generic feature graph. Current-source evidence passes Debug build
+`0/0`, 2-Point Line Golden/Runner `7/7`, Line Intersection Golden including a
+two-picked-line chain `10/10`, 2-Point Line Workbench `16/16`, Line
+Intersection Workbench regression `23/23`, Tool Recipe Teaching `18/18`,
+Recipe Manager/WPG `18/18`, Artifact Navigator `24/24`, Docking `25/25`, and
+a first-attempt actual-Thickness C3D Tool Lab capture. This does not detect a
+physical edge, create an acceptance result, prove calibrated length, or
+authorize affine application, re-grid, Thickness, Warpage, calibration, or
+metrology. See
+`docs/OPENVISIONLAB_3D_TWO_POINT_LINE_TYPED_ADAPTER_DESIGN_20260721.md`.
+
 Current maturity is **early inspection workbench MVP**. No repository-backed percentage is used.
 
 - Viewer Foundation v1: **passed for the current fixed sample matrix**.

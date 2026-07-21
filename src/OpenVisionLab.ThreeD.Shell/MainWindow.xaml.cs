@@ -47,6 +47,8 @@ public partial class MainWindow : Window
     private readonly EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs> _workbenchFilterDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchArtifactDisplayRequestEventArgs> _workbenchArtifactDisplayRequestedHandler;
     private readonly EventHandler<ToolWorkbenchHeightDifferenceEdgeDisplayRequestEventArgs> _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
+    private readonly EventHandler<ToolWorkbenchTwoPointLineDisplayRequestEventArgs> _workbenchTwoPointLineDisplayRequestedHandler;
+    private readonly EventHandler _workbenchTwoPointLineDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineFitDisplayRequestEventArgs> _workbenchLineFitDisplayRequestedHandler;
     private readonly EventHandler _workbenchLineFitDisplayClearedHandler;
     private readonly EventHandler<ToolWorkbenchLineIntersectionDisplayRequestEventArgs> _workbenchLineIntersectionDisplayRequestedHandler;
@@ -60,6 +62,7 @@ public partial class MainWindow : Window
     private RecipeManagerWindow? recipeManagerWindow;
     private FilterToolLabWindow? filterToolLabWindow;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow;
+    private TwoPointLineToolLabWindow? twoPointLineToolLabWindow;
     private LineIntersectionToolLabWindow? lineIntersectionToolLabWindow;
     private LandmarkCorrespondenceToolLabWindow? landmarkCorrespondenceToolLabWindow;
     private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
@@ -125,6 +128,8 @@ public partial class MainWindow : Window
         _workbenchFilterDisplayRequestedHandler = OnWorkbenchFilterDisplayRequested;
         _workbenchArtifactDisplayRequestedHandler = OnWorkbenchArtifactDisplayRequested;
         _workbenchHeightDifferenceEdgeDisplayRequestedHandler = OnWorkbenchHeightDifferenceEdgeDisplayRequested;
+        _workbenchTwoPointLineDisplayRequestedHandler = OnWorkbenchTwoPointLineDisplayRequested;
+        _workbenchTwoPointLineDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchTwoPointLine();
         _workbenchLineFitDisplayRequestedHandler = OnWorkbenchLineFitDisplayRequested;
         _workbenchLineFitDisplayClearedHandler = (_, _) => _viewer.ClearWorkbenchLineFit();
         _workbenchLineIntersectionDisplayRequestedHandler = OnWorkbenchLineIntersectionDisplayRequested;
@@ -155,6 +160,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.FilterDisplayRequested += _workbenchFilterDisplayRequestedHandler;
         _viewModel.Workbench.ViewerArtifactDisplayRequested += _workbenchArtifactDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested += _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
+        _viewModel.Workbench.TwoPointLineDisplayRequested += _workbenchTwoPointLineDisplayRequestedHandler;
+        _viewModel.Workbench.TwoPointLineDisplayCleared += _workbenchTwoPointLineDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested += _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared += _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested += _workbenchLineIntersectionDisplayRequestedHandler;
@@ -211,6 +218,8 @@ public partial class MainWindow : Window
         _viewModel.Workbench.FilterDisplayRequested -= _workbenchFilterDisplayRequestedHandler;
         _viewModel.Workbench.ViewerArtifactDisplayRequested -= _workbenchArtifactDisplayRequestedHandler;
         _viewModel.Workbench.HeightDifferenceEdgeDisplayRequested -= _workbenchHeightDifferenceEdgeDisplayRequestedHandler;
+        _viewModel.Workbench.TwoPointLineDisplayRequested -= _workbenchTwoPointLineDisplayRequestedHandler;
+        _viewModel.Workbench.TwoPointLineDisplayCleared -= _workbenchTwoPointLineDisplayClearedHandler;
         _viewModel.Workbench.LineFitDisplayRequested -= _workbenchLineFitDisplayRequestedHandler;
         _viewModel.Workbench.LineFitDisplayCleared -= _workbenchLineFitDisplayClearedHandler;
         _viewModel.Workbench.LineIntersectionDisplayRequested -= _workbenchLineIntersectionDisplayRequestedHandler;
@@ -246,6 +255,8 @@ public partial class MainWindow : Window
         var filterToolLabScreenshotQualityReportPath = GetCommandLineValue("--filter-tool-lab-screenshot-quality-report");
         var edgeToolLabScreenshotPath = GetCommandLineValue("--edge-tool-lab-screenshot");
         var edgeToolLabScreenshotQualityReportPath = GetCommandLineValue("--edge-tool-lab-screenshot-quality-report");
+        var twoPointLineToolLabScreenshotPath = GetCommandLineValue("--two-point-line-tool-lab-screenshot");
+        var twoPointLineToolLabScreenshotQualityReportPath = GetCommandLineValue("--two-point-line-tool-lab-screenshot-quality-report");
         var lineIntersectionToolLabScreenshotPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot");
         var lineIntersectionToolLabScreenshotQualityReportPath = GetCommandLineValue("--line-intersection-tool-lab-screenshot-quality-report");
         var landmarkCorrespondenceToolLabScreenshotPath = GetCommandLineValue("--landmark-correspondence-tool-lab-screenshot");
@@ -259,6 +270,10 @@ public partial class MainWindow : Window
         var profilePointerSmokeReportPath = GetCommandLineValue("--smoke-profile-pointer-report");
         var filterPublishSmoke = Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-filter-publish", StringComparer.OrdinalIgnoreCase);
+        var twoPointLinePublishSmoke = Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-two-point-line-publish", StringComparer.OrdinalIgnoreCase);
+        var twoPointLinePreviewSmoke = twoPointLinePublishSmoke || Environment.GetCommandLineArgs()
+            .Contains("--smoke-tool-two-point-line-preview", StringComparer.OrdinalIgnoreCase);
         var filterPreviewSmoke = filterPublishSmoke || Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-filter-preview", StringComparer.OrdinalIgnoreCase);
         var edgePublishSmoke = Environment.GetCommandLineArgs()
@@ -272,7 +287,7 @@ public partial class MainWindow : Window
         var edgeStepId = GetCommandLineValue("--tool-teaching-step");
         var edgeSmokeReportPath = GetCommandLineValue("--smoke-tool-edge-report");
         var lineFitSmokeReportPath = GetCommandLineValue("--smoke-tool-line-fit-report");
-        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke)
+        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke)
         {
             Width = 1280;
             Height = 760;
@@ -296,6 +311,7 @@ public partial class MainWindow : Window
             || recipeManagerScreenshotPath is not null
             || filterToolLabScreenshotPath is not null
             || edgeToolLabScreenshotPath is not null
+            || twoPointLineToolLabScreenshotPath is not null
             || lineIntersectionToolLabScreenshotPath is not null
             || landmarkCorrespondenceToolLabScreenshotPath is not null
             || xyzAffineSolveToolLabScreenshotPath is not null
@@ -304,7 +320,8 @@ public partial class MainWindow : Window
             || profilePointerSmokeReportPath is not null
             || filterPreviewSmoke
             || edgePreviewSmoke
-            || lineFitPreviewSmoke)
+            || lineFitPreviewSmoke
+            || twoPointLinePreviewSmoke)
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
@@ -356,6 +373,25 @@ public partial class MainWindow : Window
                         || !ReferenceEquals(firstEdgeToolLabWindow, heightDifferenceEdgeToolLabWindow)))
                 {
                     _viewModel.SetViewerSmokeFailed("Edge Tool Lab smoke could not reuse its single window instance.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (twoPointLineToolLabScreenshotPath is not null
+                    && !ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false))
+                {
+                    _viewModel.SetViewerSmokeFailed("2-Point Line Tool Lab smoke requires a 2-Point Line recipe step.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                var firstTwoPointLineToolLabWindow = twoPointLineToolLabWindow;
+                if (twoPointLineToolLabScreenshotPath is not null
+                    && (firstTwoPointLineToolLabWindow is null
+                        || !ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false)
+                        || !ReferenceEquals(firstTwoPointLineToolLabWindow, twoPointLineToolLabWindow)))
+                {
+                    _viewModel.SetViewerSmokeFailed("2-Point Line Tool Lab smoke could not reuse its single window instance.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -453,6 +489,27 @@ public partial class MainWindow : Window
                     if (!_viewModel.Workbench.IsFilterPreviewPublished)
                     {
                         _viewModel.SetViewerSmokeFailed("Filter Publish did not accept the current Preview output.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (twoPointLinePreviewSmoke
+                    && (string.IsNullOrWhiteSpace(edgeStepId)
+                        || !_viewModel.Workbench.SelectPipelineStep(edgeStepId)
+                        || !await _viewModel.Workbench.PreviewSelectedTwoPointLineAsync()))
+                {
+                    _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.TwoPointLineExecutionSummary);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (twoPointLinePublishSmoke)
+                {
+                    _viewModel.Workbench.PublishSelectedStepCommand.Execute(null);
+                    if (!_viewModel.Workbench.IsTwoPointLinePreviewPublished)
+                    {
+                        _viewModel.SetViewerSmokeFailed("2-Point Line Publish did not accept the current Preview output.");
                         Application.Current.Shutdown(1);
                         return;
                     }
@@ -686,6 +743,19 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (twoPointLineToolLabScreenshotPath is not null
+                    && (twoPointLineToolLabWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            RefreshToolLabForCapture(twoPointLineToolLabWindow),
+                            twoPointLineToolLabScreenshotPath,
+                            twoPointLineToolLabScreenshotQualityReportPath,
+                            "TwoPointLineToolLab")))
+                {
+                    _viewModel.SetViewerSmokeFailed("2-Point Line Tool Lab screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (lineIntersectionToolLabScreenshotPath is not null
                     && (lineIntersectionToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
@@ -747,6 +817,9 @@ public partial class MainWindow : Window
                 break;
             case HeightDifferenceEdgeToolLabWindow edge:
                 edge.RefreshViews();
+                break;
+            case TwoPointLineToolLabWindow twoPointLine:
+                twoPointLine.RefreshViews();
                 break;
             case LineIntersectionToolLabWindow intersection:
                 intersection.RefreshViews();
@@ -1402,6 +1475,9 @@ public partial class MainWindow : Window
             case "height-difference-edge":
                 ShowHeightDifferenceEdgeToolLabWindow(showMissingEdgeMessage: false, preserveSelectedStep: true);
                 break;
+            case "two-point-line":
+                ShowTwoPointLineToolLabWindow(showMissingTwoPointLineMessage: false, preserveSelectedStep: true);
+                break;
             case "line-intersection":
                 ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: false, preserveSelectedStep: true);
                 break;
@@ -1501,6 +1577,34 @@ public partial class MainWindow : Window
     private void OpenLineIntersectionToolLabRequested(object? sender, EventArgs args)
     {
         ShowLineIntersectionToolLabWindow(showMissingLineIntersectionMessage: true);
+    }
+
+    private bool ShowTwoPointLineToolLabWindow(bool showMissingTwoPointLineMessage, bool preserveSelectedStep = false)
+    {
+        if (!EnsureToolLabStepSelected("two-point-line", preserveSelectedStep))
+        {
+            if (showMissingTwoPointLineMessage)
+            {
+                MessageBox.Show(this, "Add a 2-Point Line step before opening 2-Point Line Tool Lab.", "2-Point Line Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return false;
+        }
+
+        var step = _viewModel.Workbench.SelectedPipelineStep!;
+        if (twoPointLineToolLabWindow is null)
+        {
+            twoPointLineToolLabWindow = new TwoPointLineToolLabWindow(_viewModel.Workbench, step) { Owner = this };
+            twoPointLineToolLabWindow.Closed += (_, _) => twoPointLineToolLabWindow = null;
+        }
+        else
+        {
+            twoPointLineToolLabWindow.SetLabStep(step);
+        }
+
+        twoPointLineToolLabWindow.RefreshViews();
+        twoPointLineToolLabWindow.Show();
+        twoPointLineToolLabWindow.Activate();
+        return true;
     }
 
     private bool ShowLineIntersectionToolLabWindow(bool showMissingLineIntersectionMessage, bool preserveSelectedStep = false)
@@ -1653,6 +1757,18 @@ public partial class MainWindow : Window
         _viewer.ShowWorkbenchLineFit(args.Output, args.IsPublished);
         _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
         ToolWorkbench.ActivateFitDiagnosticsPane();
+    }
+
+    private void OnWorkbenchTwoPointLineDisplayRequested(
+        object? sender,
+        ToolWorkbenchTwoPointLineDisplayRequestEventArgs args)
+    {
+        if (twoPointLineToolLabWindow is { IsVisible: true })
+        {
+            twoPointLineToolLabWindow.ShowTwoPointLineResult(args);
+        }
+        _viewer.ShowWorkbenchTwoPointLine(args.Output, args.IsPublished);
+        _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
     }
 
     private void OnWorkbenchLineIntersectionDisplayRequested(
@@ -1893,6 +2009,7 @@ public partial class MainWindow : Window
     private static bool IsAutomatedShellRun() => Environment.GetCommandLineArgs().Any(argument =>
         argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--verify-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--two-point-line-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--line-intersection-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--landmark-correspondence-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)

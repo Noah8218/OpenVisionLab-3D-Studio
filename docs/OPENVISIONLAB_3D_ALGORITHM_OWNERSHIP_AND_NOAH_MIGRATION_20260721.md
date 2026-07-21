@@ -33,7 +33,7 @@ reusable by other OpenVisionLab products.
 | --- | --- | --- |
 | Thickness / Warpage | `Lib.ThreeD` through the Studio bridge | Retain; Studio remains an adapter. |
 | Full XYZ Affine Solve | `Lib.ThreeD` | Studio is a typed adapter; preserve Studio artifact/hash/UI. |
-| 2-Point Line | `Lib.ThreeD` pure construction | Connect the existing packaged construction to a later Studio Tool adapter. |
+| 2-Point Line | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(2) adapter and owns lifecycle/evidence only. |
 | Filter | Studio | Later migrate after the C3D-zero/missing-mask boundary is reproduced in Noah. |
 | Height Difference Edge | Studio | Later migrate after the source-grid/selection adapter is fixed. |
 | 3D Line Fit | Studio | Later migrate after fitted-edge diagnostics are independently preserved. |
@@ -61,7 +61,7 @@ Studio continues to own C3D locator resolution, source SHA/frame validation,
 recipe parameter parsing, canonical Studio output hashes, and the WPF lifecycle.
 The A1 and Line Intersection Studio rules call Noah rather than retaining
 matrix/pivot or closest-approach/angle/support numerical implementations. The
-planned 2-Point Line Tool will call the Noah construction tool and will not
+completed 2-Point Line Tool calls the Noah construction tool and does not
 duplicate subtraction, normalization, or zero-length checks.
 
 The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
@@ -80,6 +80,9 @@ The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
   and no old private numerical helper remains.
 - Vendored package ID/version/hash match the Library-Noah package output.
 - Existing Studio Tool/Runner checks continue to pass.
+- The 2-Point Line Studio adapter proves strict raw-C3D/PointSet(2) binding,
+  ordered replay identity, explicit lifecycle, source-change clearing, Tool
+  Lab, and Runner behavior without copying Noah geometry math.
 
 ## Explicit boundaries
 
@@ -89,3 +92,6 @@ The Studio package reference is pinned to the locally vendored `Lib.ThreeD`
   calibration, and metrology are not included in this migration.
 - Studio does not create a generic graph executor, a plugin factory, or a
   second algorithm API. Each typed adapter remains explicit.
+- 2-Point Line is construction evidence only. It does not find a physical
+  edge, establish a calibrated length, or authorize affine application,
+  re-grid, Thickness, Warpage, calibration, or metrology.

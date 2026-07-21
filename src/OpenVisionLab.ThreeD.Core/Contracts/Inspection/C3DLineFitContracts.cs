@@ -40,7 +40,7 @@ public sealed record C3DLineFeatureDiagnostics(
 /// Y=raw height, Z=row. All residuals are source-coordinate values, not
 /// calibrated physical measurements. The hash is replay evidence only.
 /// </summary>
-public sealed class C3DLineFeature
+public sealed class C3DLineFeature : IC3DLineGeometry
 {
     public const string ContractVersion = "1.0";
     private readonly C3DLineFeaturePointDiagnostic[] pointDiagnostics;
@@ -113,6 +113,7 @@ public sealed class C3DLineFeature
     public string Unit { get; }
     public string FrameId { get; }
     public string CoordinateConvention => "column-rawHeight-row";
+    public C3DLineOriginKind OriginKind => C3DLineOriginKind.FittedEdge;
     public string ResidualUnit => "source-coordinate";
     public C3DLineFitMethod FitMethod => C3DLineFitMethod.DeterministicConsensusOrthogonalTls;
     public C3DHeightDifferenceComparisonAxis InputComparisonAxis { get; }

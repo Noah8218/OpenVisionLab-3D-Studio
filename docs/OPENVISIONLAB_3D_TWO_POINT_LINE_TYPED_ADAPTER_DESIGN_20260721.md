@@ -2,8 +2,8 @@
 
 Updated: 2026-07-21
 
-Status: **Owner-approved v1 design; implementation is phased after the Noah
-common-line package boundary.**
+Status: **Implemented locally as a typed Studio adapter; numerical construction
+is delegated to the vendored Library-Noah `Lib.ThreeD` 2.3.0 package.**
 
 ## Owner approval — 2026-07-21
 
@@ -204,3 +204,35 @@ This design does not change the status of A1's absent real fixture. Real
 four-anchor correspondence evidence remains the prerequisite for actual A1
 Preview/Publish replay and for every affine application or transformed-surface
 algorithm.
+
+## Implementation record - 2026-07-21
+
+The approved v1 scope is now present in the current Studio source:
+
+- `C3DTwoPointLineFeature` holds ordered raw-C3D source-coordinate line
+  evidence, selection/source identity, fixed construction policy, and its
+  canonical hash.
+- `C3DTwoPointLineRule` is the only Studio adapter. It resolves the two current
+  grid cells and calls `Lib.ThreeD.FeatureExtraction.TwoPointLineTool`; Studio
+  does not duplicate subtraction, normalization, or zero-length math.
+- `IC3DLineGeometry` is the narrow shared input accepted by Line Intersection.
+  It admits the existing fitted line and the new picked line without relabeling
+  either feature type as the other.
+- Workbench and the single-instance 2-Point Line Tool Lab provide typed WPG,
+  explicit Preview/Publish, branch-local stale invalidation, source-change
+  clearing, Viewer segment evidence, and typed Artifact Registry output.
+- Runner replays the strict recipe row; it records picked locator/XYZ/source
+  evidence and keeps the result as construction evidence rather than OK/NG.
+
+Current local evidence from the same source state is: Debug build `0/0`,
+2-Point Line Golden/Runner `7/7`, Line Intersection Golden including a
+two-picked-line chain `10/10`, 2-Point Line Workbench `16/16`, Line
+Intersection Workbench regression `23/23`, Recipe Teaching `18/18`, Recipe
+Manager/WPG `18/18`, Artifact Navigator `24/24`, and Docking `25/25`. A real
+Thickness C3D Tool Lab capture passed quality on the first attempt at
+`artifacts/two-point-line-adapter-20260721/two-point-line-tool-lab-after.png`.
+
+This record proves deterministic local software behavior and UI evidence only.
+It does not prove selected points correspond to a physical edge, a calibrated
+length, a datum, an inspection acceptance result, affine application, re-grid,
+Thickness, Warpage, calibration, or metrology.

@@ -78,7 +78,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Prepare", "Filter", "filter", 1, "HeightField", "FilteredHeightField", "Denoise the C3D raw-height source with the approved Median contract.", [new("Method", "Median"), new("KernelSize", "3"), new("MissingValuePolicy", "PreserveMask"), new("BoundaryPolicy", "AvailableNeighbors")]),
             new("Prepare", "ROI / Crop", "roi-crop", 1, "HeightField", "HeightField", "Restrict a later tool to an explicit source region.", [new("ROI", "Select in Viewer"), new("Output frame", "Keep source frame")]),
             new("Feature & Datum", "Height Difference Edge", "height-difference-edge", 1, "Published FilteredHeightField + GridRectangle", "EdgePointSet", "Extract one deterministic adjacent-height candidate per scanline in an explicit search band.", [new("ComparisonAxis", "AcrossColumns"), new("Polarity", "Rising"), new("MinimumDelta", "Set explicitly"), new("CandidatePolicy", "StrongestPerScanline"), new("PointPolicy", "PairMidpoint"), new("MissingValuePolicy", "SkipPair"), new("BoundaryPolicy", "WithinSelection")]),
-            new("Feature & Datum", "2-Point Line", "two-point-line", 1, "HeightField", "LineFeature", "Construct a named line from two recipe-owned point picks.", [new("Point A", "Pick during teaching"), new("Point B", "Pick during teaching")]),
+            new("Feature & Datum", "2-Point Line", "two-point-line", 1, "Raw C3D HeightField + PointSet(2)", "LineFeature", "Construct a named ordered full-XYZ segment from two recipe-owned C3D grid picks.", [new("OutputRole", "Set explicitly"), new("ConstructionPolicy", "OrderedPointsDefineSegment")]),
             new("Feature & Datum", "3-Point Plane", "three-point-plane", 1, "HeightField", "PlaneFeature", "Construct a datum plane from three recipe-owned point picks.", [new("Point A/B/C", "Pick during teaching"), new("Degeneracy", "Reject collinear")]),
             new("Feature & Datum", "3D Line Fit", "three-d-line-fit", 1, "Published EdgePointSet", "LineFeature", "Fit one deterministic full-XYZ line to an explicit published edge-point entity.", [new("FitMethod", "DeterministicConsensusOrthogonalTls"), new("MaximumOrthogonalResidual", "Set explicitly"), new("MinimumInlierCount", "Set explicitly"), new("MinimumInlierRatio", "Set explicitly"), new("MinimumInlierScanlineSpan", "Set explicitly"), new("HypothesisPolicy", "Sha256PairSchedule"), new("MaximumHypotheses", "256"), new("RefinementPolicy", "OrthogonalTlsUntilStable10"), new("DirectionPolicy", "PositiveScanlineAxis"), new("EndpointPolicy", "InlierProjectionExtents")]),
             new("Feature & Datum", "Line Intersection", "line-intersection", 2, "Published LineFeature + LineFeature", "CornerAnchor", "Create a corner anchor only after full-XYZ closest-approach, angle, and bounded-support gates pass.", [new("MaximumClosestApproachDistance", "Set explicitly"), new("MinimumAcuteAngleDegrees", "Set explicitly"), new("MaximumSupportExtension", "Set explicitly"), new("OutputRole", "Set explicitly"), new("ClosestApproachPolicy", "MidpointOfClosestPoints"), new("ParallelPolicy", "RejectBelowMinimumAcuteAngle"), new("SupportPolicy", "WithinInlierProjectionExtentsWithMaximumExtension")]),
@@ -292,6 +292,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshTeachingSelectionContext();
             RefreshFilterExecutionState();
             RefreshHeightDifferenceEdgeExecutionState();
+            RefreshTwoPointLineExecutionState();
             RefreshLineFitExecutionState();
             RefreshLineIntersectionExecutionState();
             RefreshLandmarkCorrespondenceExecutionState();
@@ -707,6 +708,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (sourcePathChanged)
         {
             ClearFilterPreview("Source changed; Preview is required.");
+            ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
         }
         loadedSourceBinding = TryReadSourceBinding(fullPath);
         AcceptCurrentSourceIdentity();
@@ -1397,6 +1399,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshTeachingSelectionContext();
         RefreshFilterExecutionState();
         RefreshHeightDifferenceEdgeExecutionState();
+        RefreshTwoPointLineExecutionState();
         RefreshLineFitExecutionState();
         RefreshLineIntersectionExecutionState();
         RefreshLandmarkCorrespondenceExecutionState();
@@ -1787,6 +1790,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         MarkFilterPreviewStaleIfNeeded(sender);
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
+        MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkLineFitPreviewStaleIfNeeded(sender);
         MarkLineIntersectionPreviewStaleIfNeeded(sender);
         MarkLandmarkCorrespondencePreviewStaleIfNeeded(sender);
@@ -1847,6 +1851,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         moveSelectedStepUpCommand.RaiseCanExecuteChanged();
         moveSelectedStepDownCommand.RaiseCanExecuteChanged();
         RefreshFilterCommands();
+        RefreshTwoPointLineCommands();
         RefreshLineFitCommands();
         RefreshLineIntersectionCommands();
         RefreshLandmarkCorrespondenceCommands();

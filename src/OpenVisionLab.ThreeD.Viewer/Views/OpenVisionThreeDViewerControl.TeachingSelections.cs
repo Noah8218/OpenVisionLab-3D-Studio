@@ -141,6 +141,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.CancelTeachingCapture("Teaching capture cleared because the C3D source changed.");
         viewModel.SetAppliedTeachingSelections([]);
         viewModel.ClearWorkbenchHeightDifferenceEdge();
+        viewModel.ClearWorkbenchTwoPointLine();
         viewModel.ClearWorkbenchLineFit();
         viewModel.ClearWorkbenchLineIntersection();
         viewModel.ClearWorkbenchLandmarkCorrespondence();
@@ -160,6 +161,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         DrawWorkbenchHeightDifferenceEdge(gl);
+        DrawWorkbenchTwoPointLine(gl);
         DrawWorkbenchLineFit(gl);
         DrawWorkbenchLineIntersection(gl);
         DrawWorkbenchLandmarkCorrespondence(gl);
@@ -280,6 +282,24 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
+    private void DrawWorkbenchTwoPointLine(OpenGL gl)
+    {
+        var output = viewModel.WorkbenchTwoPointLine;
+        if (output is null || c3dSample is null) return;
+        DrawWorkbenchLineSegment(gl, output,
+            viewModel.IsWorkbenchTwoPointLinePublished ? 0.18 : 1.0,
+            0.86,
+            viewModel.IsWorkbenchTwoPointLinePublished ? 0.76 : 0.16);
+        var start = CreateC3DGridDisplayPosition(output.SegmentStartZ, output.SegmentStartX, output.SegmentStartY);
+        var end = CreateC3DGridDisplayPosition(output.SegmentEndZ, output.SegmentEndX, output.SegmentEndY);
+        gl.PointSize(11.0f);
+        gl.Color(1.0, 0.86, 0.20);
+        gl.Begin(OpenGL.GL_POINTS);
+        gl.Vertex(start.X, start.Y, start.Z);
+        gl.Vertex(end.X, end.Y, end.Z);
+        gl.End();
+    }
+
     private void DrawWorkbenchLineIntersection(OpenGL gl)
     {
         var output = viewModel.WorkbenchLineIntersection;
@@ -350,7 +370,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.End();
     }
 
-    private void DrawWorkbenchLineSegment(OpenGL gl, C3DLineFeature line, double red, double green, double blue)
+    private void DrawWorkbenchLineSegment(OpenGL gl, IC3DLineGeometry line, double red, double green, double blue)
     {
         var start = CreateC3DGridDisplayPosition(line.SegmentStartZ, line.SegmentStartX, line.SegmentStartY);
         var end = CreateC3DGridDisplayPosition(line.SegmentEndZ, line.SegmentEndX, line.SegmentEndY);

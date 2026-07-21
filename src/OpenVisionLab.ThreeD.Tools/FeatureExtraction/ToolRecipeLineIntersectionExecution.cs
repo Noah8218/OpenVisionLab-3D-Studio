@@ -16,8 +16,8 @@ public static class ToolRecipeLineIntersectionExecution
     ];
 
     public static C3DLineIntersectionEvaluation Execute(
-        ToolRecipeDocument document, string stepId, C3DLineFeature firstPublishedLine,
-        C3DLineFeature secondPublishedLine, CancellationToken cancellationToken = default)
+        ToolRecipeDocument document, string stepId, IC3DLineGeometry firstPublishedLine,
+        IC3DLineGeometry secondPublishedLine, CancellationToken cancellationToken = default)
     {
         if (!TryPrepare(document, stepId, firstPublishedLine, secondPublishedLine, out var input, out var message))
         {
@@ -27,8 +27,8 @@ public static class ToolRecipeLineIntersectionExecution
     }
 
     public static bool TryPrepare(
-        ToolRecipeDocument document, string stepId, C3DLineFeature firstPublishedLine,
-        C3DLineFeature secondPublishedLine, out C3DLineIntersectionInput? input, out string message)
+        ToolRecipeDocument document, string stepId, IC3DLineGeometry firstPublishedLine,
+        IC3DLineGeometry secondPublishedLine, out C3DLineIntersectionInput? input, out string message)
     {
         input = null;
         try
@@ -76,7 +76,7 @@ public static class ToolRecipeLineIntersectionExecution
         }
     }
 
-    private static void ValidateRecipeSource(ToolRecipeSource source, C3DLineFeature first, C3DLineFeature second)
+    private static void ValidateRecipeSource(ToolRecipeSource source, IC3DLineGeometry first, IC3DLineGeometry second)
     {
         foreach (var line in new[] { first, second })
         {

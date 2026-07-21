@@ -5,8 +5,8 @@ namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private C3DLineFeature? workbenchFirstIntersectionLine;
-    private C3DLineFeature? workbenchSecondIntersectionLine;
+    private IC3DLineGeometry? workbenchFirstIntersectionLine;
+    private IC3DLineGeometry? workbenchSecondIntersectionLine;
     private C3DLineIntersectionFeature? workbenchLineIntersection;
     private bool isWorkbenchLineIntersectionPublished;
     private bool lineIntersectionFirstLineVisible = true;
@@ -15,8 +15,8 @@ public sealed partial class MainWindowViewModel
     private bool lineIntersectionCornerAnchorVisible = true;
     private string lineIntersectionHudSummary = string.Empty;
 
-    public C3DLineFeature? WorkbenchFirstIntersectionLine => workbenchFirstIntersectionLine;
-    public C3DLineFeature? WorkbenchSecondIntersectionLine => workbenchSecondIntersectionLine;
+    public IC3DLineGeometry? WorkbenchFirstIntersectionLine => workbenchFirstIntersectionLine;
+    public IC3DLineGeometry? WorkbenchSecondIntersectionLine => workbenchSecondIntersectionLine;
     public C3DLineIntersectionFeature? WorkbenchLineIntersection => workbenchLineIntersection;
     public bool IsWorkbenchLineIntersectionPublished => isWorkbenchLineIntersectionPublished;
     public bool LineIntersectionFirstLineVisible { get => lineIntersectionFirstLineVisible; set => SetField(ref lineIntersectionFirstLineVisible, value); }
@@ -27,8 +27,8 @@ public sealed partial class MainWindowViewModel
     public string LineIntersectionHudSummary { get => lineIntersectionHudSummary; private set => SetField(ref lineIntersectionHudSummary, value); }
 
     internal void SetWorkbenchLineIntersection(
-        C3DLineFeature firstLine,
-        C3DLineFeature secondLine,
+        IC3DLineGeometry firstLine,
+        IC3DLineGeometry secondLine,
         C3DLineIntersectionFeature output,
         bool isPublished)
     {
@@ -56,7 +56,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(LineIntersectionHudVisible));
     }
 
-    internal void SetWorkbenchLineIntersectionInputs(C3DLineFeature firstLine, C3DLineFeature secondLine)
+    internal void SetWorkbenchLineIntersectionInputs(IC3DLineGeometry firstLine, IC3DLineGeometry secondLine)
     {
         ArgumentNullException.ThrowIfNull(firstLine);
         ArgumentNullException.ThrowIfNull(secondLine);
@@ -64,8 +64,8 @@ public sealed partial class MainWindowViewModel
         workbenchSecondIntersectionLine = secondLine;
         workbenchLineIntersection = null;
         isWorkbenchLineIntersectionPublished = false;
-        SelectionSummary = "Published LineFeature inputs | explicit Line Intersection Preview required for corner evidence";
-        ViewerStatus = "Viewing two published LineFeature inputs";
+        SelectionSummary = "Published line-geometry inputs | explicit Line Intersection Preview required for corner evidence";
+        ViewerStatus = "Viewing two published line-geometry inputs";
         LineIntersectionHudSummary = string.Empty;
         OnPropertyChanged(nameof(WorkbenchFirstIntersectionLine));
         OnPropertyChanged(nameof(WorkbenchSecondIntersectionLine));
