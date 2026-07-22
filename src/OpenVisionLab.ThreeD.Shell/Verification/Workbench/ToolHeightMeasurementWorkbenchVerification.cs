@@ -151,6 +151,28 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && koreanVolumeTitle == "\uCCB4\uC801 ROI \uD2F0\uCE6D \uC21C\uC11C",
                 $"en={englishVolumeTitle}; ko={koreanVolumeTitle}");
 
+            var crossSectionWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-cross-section.json"));
+            crossSectionWorkbench.SetC3DSource(sourcePath);
+            crossSectionWorkbench.SelectedTool = crossSectionWorkbench.Tools.Single(tool => tool.Id == "cross-section-dimensions");
+            crossSectionWorkbench.AddSelectedToolCommand.Execute(null);
+            Check("Cross-section Dimensions is a generic single-row Measure tool with typed WPG parameters",
+                crossSectionWorkbench.SelectedPipelineStep is { ToolId: "cross-section-dimensions", MinimumInputCount: 2 }
+                && crossSectionWorkbench.IsSelectedStepCrossSectionDimensions
+                && crossSectionWorkbench.IsSelectedStepMeasurement
+                && crossSectionWorkbench.IsSelectedStepPropertyGridSupported
+                && crossSectionWorkbench.SelectedStepPropertyDraft is CrossSectionDimensionsStepProperties
+                && crossSectionWorkbench.SelectedStepSelectionRequirement is { Kind: ToolRecipeSelectionKinds.GridRectangle, RequiredPointCount: 2 },
+                crossSectionWorkbench.SelectedStepAdapterStatus);
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishCrossSectionTitle = crossSectionWorkbench.SelectedStepSelectionRequirement?.Name;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var koreanCrossSectionTitle = crossSectionWorkbench.SelectedStepSelectionRequirement?.Name;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check("Cross-section row selection is localized independently in English and Korean",
+                englishCrossSectionTitle == "Cross-section row segment"
+                && koreanCrossSectionTitle == "\uB2E8\uBA74 \uD589 \uAD6C\uAC04",
+                $"en={englishCrossSectionTitle}; ko={koreanCrossSectionTitle}");
+
             var captureRecipePath = Path.Combine(root, "captured-plane.ov3d-recipe.json");
             var captureWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-captured-plane.json"));
             captureWorkbench.SetC3DSource(sourcePath);

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using Lib.ThreeD.Inspection;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -53,15 +54,25 @@ public static class CrossSectionDimensionsRule
             || !double.IsFinite(sample.RawHeight)))
             return Error(input, "Cross-section contains an out-of-range or non-finite sample.", stopwatch.Elapsed);
 
-        var minimumX = input.Samples.Min(sample => sample.Position.X);
-        var maximumX = input.Samples.Max(sample => sample.Position.X);
-        var rawMinimum = input.Samples.Min(sample => sample.RawHeight);
-        var rawMaximum = input.Samples.Max(sample => sample.RawHeight);
-        var width = maximumX - minimumX;
-        var heightRange = rawMaximum - rawMinimum;
-        var widthStatus = Math.Abs(width - input.ExpectedWidth) <= input.WidthTolerance ? ResultStatus.Pass : ResultStatus.Fail;
-        var heightStatus = Math.Abs(heightRange - input.ExpectedHeightRange) <= input.HeightTolerance ? ResultStatus.Pass : ResultStatus.Fail;
-        var status = widthStatus == ResultStatus.Pass && heightStatus == ResultStatus.Pass ? ResultStatus.Pass : ResultStatus.Fail;
+        var evaluation = new CrossSectionDimensionsInspectionTool().Execute(
+            input.Samples.Select(sample => new CrossSectionDimensionsSample(
+                sample.Column,
+                sample.Position.X,
+                sample.RawHeight)).ToArray(),
+            new CrossSectionDimensionsInspectionOptions
+            {
+                ExpectedWidth = input.ExpectedWidth,
+                WidthTolerance = input.WidthTolerance,
+                ExpectedHeightRange = input.ExpectedHeightRange,
+                HeightTolerance = input.HeightTolerance
+            });
+        var width = evaluation.Width;
+        var heightRange = evaluation.HeightRange;
+        var rawMinimum = evaluation.HeightMinimum;
+        var rawMaximum = evaluation.HeightMaximum;
+        var widthStatus = evaluation.WidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
+        var heightStatus = evaluation.HeightPassed ? ResultStatus.Pass : ResultStatus.Fail;
+        var status = evaluation.Passed ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
 
         var result = new ToolResult(

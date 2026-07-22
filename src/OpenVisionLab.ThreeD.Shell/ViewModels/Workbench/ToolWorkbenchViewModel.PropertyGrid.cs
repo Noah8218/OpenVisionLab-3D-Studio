@@ -67,6 +67,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "point-pair-dimensions" } step => FormatAdapterStatus(step, PointPairDimensionsStepProperties.MappedNames),
         { ToolId: "gap-flush" } step => FormatAdapterStatus(step, GapFlushStepProperties.MappedNames),
         { ToolId: "volume" } step => FormatAdapterStatus(step, VolumeStepProperties.MappedNames),
+        { ToolId: "cross-section-dimensions" } step => FormatAdapterStatus(step, CrossSectionDimensionsStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -416,6 +417,20 @@ public sealed partial class ToolWorkbenchViewModel
                     ["VolumeTolerance"] = volume.VolumeTolerance.ToString("G17", CultureInfo.InvariantCulture)
                 };
                 break;
+            case CrossSectionDimensionsStepProperties crossSection:
+                if (!crossSection.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ExpectedWidth"] = crossSection.ExpectedWidth.ToString("G17", CultureInfo.InvariantCulture),
+                    ["WidthTolerance"] = crossSection.WidthTolerance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ExpectedHeightRange"] = crossSection.ExpectedHeightRange.ToString("G17", CultureInfo.InvariantCulture),
+                    ["HeightTolerance"] = crossSection.HeightTolerance.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -502,6 +517,7 @@ public sealed partial class ToolWorkbenchViewModel
             "point-pair-dimensions" => PointPairDimensionsStepProperties.From(step),
             "gap-flush" => GapFlushStepProperties.From(step),
             "volume" => VolumeStepProperties.From(step),
+            "cross-section-dimensions" => CrossSectionDimensionsStepProperties.From(step),
             _ => null
         };
 
@@ -645,7 +661,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -1042,6 +1058,67 @@ public sealed class VolumeStepProperties
         return true;
     }
 
+    private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class CrossSectionDimensionsStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance"];
+
+    [Category("Acceptance")]
+    [DisplayName("Expected section width")]
+    [Description("Expected U-axis distance between the first and last finite cells on the authored A3 row segment.")]
+    [PropertyOrder(0)]
+    public double ExpectedWidth { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Width tolerance")]
+    [PropertyOrder(1)]
+    public double WidthTolerance { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Expected height range")]
+    [Description("Expected maximum-minus-minimum H value along the authored row segment.")]
+    [PropertyOrder(2)]
+    public double ExpectedHeightRange { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Height tolerance")]
+    [PropertyOrder(3)]
+    public double HeightTolerance { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static CrossSectionDimensionsStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ExpectedWidth = Parse(step, "ExpectedWidth"),
+        WidthTolerance = Parse(step, "WidthTolerance"),
+        ExpectedHeightRange = Parse(step, "ExpectedHeightRange"),
+        HeightTolerance = Parse(step, "HeightTolerance"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!NonNegative(ExpectedWidth) || !NonNegative(WidthTolerance)
+            || !NonNegative(ExpectedHeightRange) || !NonNegative(HeightTolerance))
+        {
+            message = "Cross-section expected dimensions and tolerances must be finite and non-negative.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
         double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;

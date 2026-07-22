@@ -1202,9 +1202,11 @@ public partial class MainWindow : Window
                 string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.GapFlushStepId, StringComparison.OrdinalIgnoreCase));
             var volumeStep = workbench.PipelineSteps.SingleOrDefault(step =>
                 string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.VolumeStepId, StringComparison.OrdinalIgnoreCase));
-            if (regridStep is null || planeStep is null || pointPairStep is null || gapFlushStep is null || volumeStep is null)
+            var crossSectionStep = workbench.PipelineSteps.SingleOrDefault(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.CrossSectionStepId, StringComparison.OrdinalIgnoreCase));
+            if (regridStep is null || planeStep is null || pointPairStep is null || gapFlushStep is null || volumeStep is null || crossSectionStep is null)
             {
-                return Complete(false, "Prepared fixture recipe is missing its Re-grid, Plane Flatness, Point Pair, Gap / Flush, or Volume step.");
+                return Complete(false, "Prepared fixture recipe is missing its Re-grid, Plane Flatness, Point Pair, Gap / Flush, Volume, or Cross-section step.");
             }
 
             workbench.SelectedPipelineStep = regridStep;
@@ -1386,6 +1388,25 @@ public partial class MainWindow : Window
             }
             lines.Add($"Volume|reference={volumeReference.Id}:{volumeReference.GridRectangle.Row},{volumeReference.GridRectangle.Column},{volumeReference.GridRectangle.RowCount},{volumeReference.GridRectangle.ColumnCount}|measurement={volumeMeasurement.Id}:{volumeMeasurement.GridRectangle.Row},{volumeMeasurement.GridRectangle.Column},{volumeMeasurement.GridRectangle.RowCount},{volumeMeasurement.GridRectangle.ColumnCount}|status={workbench.CurrentMeasurementOutput.Result.Status}|sha256={workbench.CurrentMeasurementOutput.ContentSha256}|evidence={workbench.CurrentMeasurementOutput.EvidenceSummary}|published=True");
 
+            workbench.SelectedPipelineStep = crossSectionStep;
+            var crossSectionSelection = workbench.SelectedStepTeachingSelection;
+            if (crossSectionSelection?.GridRectangle is not { RowCount: 1, ColumnCount: >= 2 }
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, crossSectionSelection.SourceBinding))
+            {
+                return Complete(false, "Cross-section did not expose one A3 row segment with the exact Published A3 binding.");
+            }
+            if (!await workbench.PreviewSelectedMeasurementAsync()
+                || !workbench.PublishSelectedStepCommand.CanExecute(null))
+            {
+                return Complete(false, $"Cross-section Preview was not publishable: {workbench.MeasurementExecutionSummary}");
+            }
+            workbench.PublishSelectedStepCommand.Execute(null);
+            if (!workbench.IsMeasurementPreviewPublished || workbench.CurrentMeasurementOutput is null)
+            {
+                return Complete(false, "Cross-section Publish did not preserve the exact Preview output.");
+            }
+            lines.Add($"CrossSection|selection={crossSectionSelection.Id}:{crossSectionSelection.GridRectangle.Row},{crossSectionSelection.GridRectangle.Column},{crossSectionSelection.GridRectangle.RowCount},{crossSectionSelection.GridRectangle.ColumnCount}|status={workbench.CurrentMeasurementOutput.Result.Status}|sha256={workbench.CurrentMeasurementOutput.ContentSha256}|evidence={workbench.CurrentMeasurementOutput.EvidenceSummary}|published=True");
+
             var fullSavePath = Path.GetFullPath(savePath);
             if (!workbench.TrySaveTeachingRecipe(fullSavePath, out var saveMessage))
             {
@@ -1423,6 +1444,10 @@ public partial class MainWindow : Window
                 string.Equals(selection.Id, reopenedVolumeStep.InputEntityIds[1], StringComparison.OrdinalIgnoreCase));
             var reopenedVolumeMeasurement = reopenedDocument.Selections!.Single(selection =>
                 string.Equals(selection.Id, reopenedVolumeStep.InputEntityIds[2], StringComparison.OrdinalIgnoreCase));
+            var reopenedCrossSectionStep = reopenedDocument.Steps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.CrossSectionStepId, StringComparison.OrdinalIgnoreCase));
+            var reopenedCrossSection = reopenedDocument.Selections!.Single(selection =>
+                string.Equals(selection.Id, reopenedCrossSectionStep.InputEntityIds[1], StringComparison.OrdinalIgnoreCase));
             var reopenPassed = reopenedDocument.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
                 && reopenedStep.InputEntityIds.Count == 3
                 && reopenedDocumentStep.InputEntityIds.SequenceEqual(reopenedStep.InputEntityIds, StringComparer.OrdinalIgnoreCase)
@@ -1441,20 +1466,22 @@ public partial class MainWindow : Window
                 && reopenedVolumeMeasurement.GridRectangle == volumeMeasurement.GridRectangle
                 && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedVolumeReference.SourceBinding)
                 && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedVolumeMeasurement.SourceBinding)
+                && reopenedCrossSection.GridRectangle == crossSectionSelection.GridRectangle
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedCrossSection.SourceBinding)
                 && !workbench.IsDirty
                 && ReferenceEquals(previewBefore, _viewer.ViewModel.PreviewToolResult)
                 && ReferenceEquals(resultsBefore, _viewer.ViewModel.ResultEntities);
-            lines.Add($"Reopen|schema={reopenedDocument.SchemaVersion}|stepInputs={string.Join(';', reopenedStep.InputEntityIds)}|reference={reopenedReference.Id}|measurement={reopenedMeasurement.Id}|pointPair={reopenedPointPair.Id}|gapFirst={reopenedGapFirst.Id}|gapSecond={reopenedGapSecond.Id}|volumeReference={reopenedVolumeReference.Id}|volumeMeasurement={reopenedVolumeMeasurement.Id}|dirty={workbench.IsDirty}|message={reopenMessage}");
+            lines.Add($"Reopen|schema={reopenedDocument.SchemaVersion}|stepInputs={string.Join(';', reopenedStep.InputEntityIds)}|reference={reopenedReference.Id}|measurement={reopenedMeasurement.Id}|pointPair={reopenedPointPair.Id}|gapFirst={reopenedGapFirst.Id}|gapSecond={reopenedGapSecond.Id}|volumeReference={reopenedVolumeReference.Id}|volumeMeasurement={reopenedVolumeMeasurement.Id}|crossSection={reopenedCrossSection.Id}|dirty={workbench.IsDirty}|message={reopenMessage}");
             workbench.SelectedPipelineStep = workbench.PipelineSteps.Single(step =>
-                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.VolumeStepId, StringComparison.OrdinalIgnoreCase));
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.CrossSectionStepId, StringComparison.OrdinalIgnoreCase));
             _viewer.ShowWorkbenchRegridHeightField(publishedA3, isPublished: true);
             SyncAppliedTeachingSelections();
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
             return Complete(
                 reopenPassed,
                 reopenPassed
-                    ? "One live Shell session published synthetic A3, taught Plane Flatness and Point Pair through real Viewer pointer input, explicitly Previewed/Published Point Pair, Gap / Flush, and Volume, then saved and reopened exact geometry/binding evidence."
-                    : "Saved/reopened Plane Flatness, Point Pair, Gap / Flush, or Volume geometry, A3 binding, or explicit-execution boundary did not match.");
+                    ? "One live Shell session published synthetic A3, taught Plane Flatness and Point Pair through real Viewer pointer input, explicitly Previewed/Published Point Pair, Gap / Flush, Volume, and Cross-section Dimensions, then saved and reopened exact geometry/binding evidence."
+                    : "Saved/reopened Plane Flatness, Point Pair, Gap / Flush, Volume, or Cross-section geometry, A3 binding, or explicit-execution boundary did not match.");
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException

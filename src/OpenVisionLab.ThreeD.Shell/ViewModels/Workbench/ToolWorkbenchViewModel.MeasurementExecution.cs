@@ -30,8 +30,9 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepPointPairDimensions => string.Equals(SelectedPipelineStep?.ToolId, "point-pair-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepGapFlush => string.Equals(SelectedPipelineStep?.ToolId, "gap-flush", StringComparison.Ordinal);
     public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
+    public bool IsSelectedStepCrossSectionDimensions => string.Equals(SelectedPipelineStep?.ToolId, "cross-section-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume;
-    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions;
+    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
     public bool IsMeasurementPreviewRunning => isMeasurementPreviewRunning;
     public bool HasCurrentMeasurementPreview => measurementPreviewOutput is not null && !isMeasurementPreviewStale;
     public bool IsMeasurementPreviewPublished => isMeasurementPreviewPublished;
@@ -321,6 +322,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepPointPairDimensions));
         OnPropertyChanged(nameof(IsSelectedStepGapFlush));
         OnPropertyChanged(nameof(IsSelectedStepVolume));
+        OnPropertyChanged(nameof(IsSelectedStepCrossSectionDimensions));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();

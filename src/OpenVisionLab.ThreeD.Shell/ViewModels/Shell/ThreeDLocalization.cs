@@ -50,6 +50,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(CaptureRoi), nameof(ReplaceRoi), nameof(ReuseRoi), nameof(ExistingCompatibleRoi),
         nameof(ReferenceRoiRequiredFirst), nameof(NoRoiTaught), nameof(GapFlushRoiTeaching),
         nameof(GapFlushRoiTeachingDetail), nameof(VolumeRoiTeaching), nameof(VolumeRoiTeachingDetail),
+        nameof(CrossSectionSelection), nameof(CrossSectionSelectionDetail),
         nameof(FirstRoi), nameof(SecondRoi), nameof(FirstRoiRequiredFirst)
     ];
 
@@ -182,6 +183,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string GapFlushRoiTeachingDetail => T("ThreeD.Workbench.GapFlushRoiTeachingDetail", "1. \uCCAB \uBC88\uC9F8 ROI\uC640 2. \uB458\uC9F8 ROI\uB97C U\uCD95 \uBC29\uD5A5 \uC21C\uC11C\uB85C \uC9C0\uC815\uD558\uC138\uC694. ROI \uC21C\uC11C\uAC00 Gap\uACFC Flush\uC758 \uBD80\uD638\uB97C \uACB0\uC815\uD558\uBA70, \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. First ROI, then 2. Second ROI in U-axis order. ROI order defines the Gap/Flush sign; teaching never runs inspection.");
     public string VolumeRoiTeaching => T("ThreeD.Workbench.VolumeRoiTeaching", "\uCCB4\uC801 ROI \uD2F0\uCE6D \uC21C\uC11C", "Volume ROI teaching order");
     public string VolumeRoiTeachingDetail => T("ThreeD.Workbench.VolumeRoiTeachingDetail", "1. \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uCCB4\uC801 \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Volume measurement ROI. Teaching never runs inspection.");
+    public string CrossSectionSelection => T("ThreeD.Workbench.CrossSectionSelection", "\uB2E8\uBA74 \uD589 \uAD6C\uAC04", "Cross-section row segment");
+    public string CrossSectionSelectionDetail => T("ThreeD.Workbench.CrossSectionSelectionDetail", "A3\uC758 \uAC19\uC740 \uD589\uC5D0\uC11C \uC2DC\uC791 \uC140\uACFC \uB05D \uC140\uC744 \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Pick the start and end cells on the same A3 row. Teaching never runs inspection.");
     public string FirstRoi => T("ThreeD.Workbench.FirstRoi", "\uCCAB \uBC88\uC9F8 ROI", "First ROI");
     public string SecondRoi => T("ThreeD.Workbench.SecondRoi", "\uB458\uC9F8 ROI", "Second ROI");
     public string FirstRoiRequiredFirst => T("ThreeD.Workbench.FirstRoiRequiredFirst", "\uBA3C\uC800 \uCCAB \uBC88\uC9F8 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the First ROI first.");

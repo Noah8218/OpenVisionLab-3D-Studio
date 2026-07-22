@@ -5,6 +5,9 @@ using System.Text;
 using NoahGapFlushInspectionOptions = Lib.ThreeD.Inspection.GapFlushInspectionOptions;
 using NoahGapFlushInspectionTool = Lib.ThreeD.Inspection.GapFlushInspectionTool;
 using NoahGapFlushRegionStatistics = Lib.ThreeD.Inspection.GapFlushRegionStatistics;
+using NoahCrossSectionDimensionsInspectionOptions = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionOptions;
+using NoahCrossSectionDimensionsInspectionTool = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionTool;
+using NoahCrossSectionDimensionsSample = Lib.ThreeD.Inspection.CrossSectionDimensionsSample;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -45,6 +48,8 @@ public static class ToolRecipeHeightMeasurementExecution
         ["ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance"];
     private static readonly string[] VolumeParameterNames =
         ["ExpectedNetVolume", "VolumeTolerance"];
+    private static readonly string[] CrossSectionParameterNames =
+        ["ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance"];
 
     public static ToolRecipeHeightMeasurementEvaluation Execute(
         ToolRecipeDocument document,
@@ -210,6 +215,47 @@ public static class ToolRecipeHeightMeasurementExecution
             result = evaluation.Result;
             evidence = $"net {evaluation.NetVolume:G6} | above {evaluation.AboveVolume:G6} | below {evaluation.BelowVolume:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
         }
+        else if (string.Equals(step.ToolId, "cross-section-dimensions", StringComparison.Ordinal))
+        {
+            var roi = prepared.MeasurementRoi!;
+            var samples = CreateCrossSectionSamples(prepared, roi);
+            var expectedWidth = ParseNonNegative(Parameter(step, "ExpectedWidth"), "ExpectedWidth");
+            var widthTolerance = ParseNonNegative(Parameter(step, "WidthTolerance"), "WidthTolerance");
+            var expectedHeightRange = ParseNonNegative(Parameter(step, "ExpectedHeightRange"), "ExpectedHeightRange");
+            var heightTolerance = ParseNonNegative(Parameter(step, "HeightTolerance"), "HeightTolerance");
+            var noah = new NoahCrossSectionDimensionsInspectionTool().Execute(
+                samples,
+                new NoahCrossSectionDimensionsInspectionOptions
+                {
+                    ExpectedWidth = expectedWidth,
+                    WidthTolerance = widthTolerance,
+                    ExpectedHeightRange = expectedHeightRange,
+                    HeightTolerance = heightTolerance
+                });
+            var widthStatus = noah.WidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var heightStatus = noah.HeightPassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var status = noah.Passed ? ResultStatus.Pass : ResultStatus.Fail;
+            result = new ToolResult(
+                "Cross-section Dimensions",
+                status,
+                noah.Passed
+                    ? "A3 U-axis width and H-axis range are within configured tolerances."
+                    : "A3 U-axis width or H-axis range exceeds its configured tolerance.",
+                TimeSpan.Zero,
+                [
+                    new Metric("Section width", MetricKind.Length, noah.Width, prepared.Unit, widthStatus),
+                    new Metric("H range", MetricKind.Deviation, noah.HeightRange, prepared.Unit, heightStatus),
+                    new Metric("H minimum", MetricKind.Number, noah.HeightMinimum, prepared.Unit),
+                    new Metric("H maximum", MetricKind.Number, noah.HeightMaximum, prepared.Unit),
+                    new Metric("Valid section samples", MetricKind.Count, noah.SampleCount, "count")
+                ],
+                [
+                    new Overlay("overlay.cross-section.row", OverlayKind.Polyline, "Artifact-owned A3 row segment", status, prepared.InputEntityId),
+                    new Overlay("overlay.cross-section.width", OverlayKind.Polyline, "U-axis width span", widthStatus, prepared.InputEntityId),
+                    new Overlay("overlay.cross-section.height", OverlayKind.Marker, "H-axis extrema", heightStatus, prepared.InputEntityId)
+                ]);
+            evidence = $"width {noah.Width:G6} | H range {noah.HeightRange:G6} | minimum {noah.HeightMinimum:G6} | maximum {noah.HeightMaximum:G6} | {noah.SampleCount:N0} finite samples";
+        }
         else
         {
             var tolerance = ParsePositive(Parameter(step, "MaximumFlatness"), "MaximumFlatness");
@@ -277,7 +323,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume"))
+            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions"))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
@@ -302,11 +348,16 @@ public static class ToolRecipeHeightMeasurementExecution
                     ? $"{step.ToolName} v1 requires one ordered PointSet(2)."
                     : $"{step.ToolName} v1 selection inputs must be GridRectangles.");
             }
+            if (step.ToolId == "cross-section-dimensions"
+                && selections[0].GridRectangle is not { RowCount: 1, ColumnCount: >= 2 })
+            {
+                throw new InvalidDataException("Cross-section Dimensions v1 requires one GridRectangle spanning exactly one row and at least two columns.");
+            }
             ValidateParameters(step);
             var rois = pointPair ? [] : selections.Select(selection => ToRoi(selection.GridRectangle!)).ToArray();
             if (string.Equals(step.InputEntityIds[0], document.Source.Id, StringComparison.OrdinalIgnoreCase))
             {
-                if (step.ToolId is "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume")
+                if (step.ToolId is "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions")
                 {
                     throw new InvalidDataException($"{step.ToolName} v1 requires a Published TransformedHeightField with an explicit reference frame and unit.");
                 }
@@ -386,6 +437,7 @@ public static class ToolRecipeHeightMeasurementExecution
             "point-pair-dimensions" => PointPairParameterNames,
             "gap-flush" => GapFlushParameterNames,
             "volume" => VolumeParameterNames,
+            "cross-section-dimensions" => CrossSectionParameterNames,
             _ => PlaneFlatnessParameterNames
         };
         var parameters = step.Parameters ?? [];
@@ -426,6 +478,13 @@ public static class ToolRecipeHeightMeasurementExecution
         {
             _ = ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume");
             _ = ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance");
+        }
+        else if (step.ToolId == "cross-section-dimensions")
+        {
+            _ = ParseNonNegative(Parameter(step, "ExpectedWidth"), "ExpectedWidth");
+            _ = ParseNonNegative(Parameter(step, "WidthTolerance"), "WidthTolerance");
+            _ = ParseNonNegative(Parameter(step, "ExpectedHeightRange"), "ExpectedHeightRange");
+            _ = ParseNonNegative(Parameter(step, "HeightTolerance"), "HeightTolerance");
         }
         else
         {
@@ -530,6 +589,23 @@ public static class ToolRecipeHeightMeasurementExecution
                 }
                 samples.Add(new HeightFieldPlaneSample(new Vector3((float)u, (float)height, (float)v), height));
             }
+        }
+        return samples;
+    }
+
+    private static IReadOnlyList<NoahCrossSectionDimensionsSample> CreateCrossSectionSamples(
+        PreparedHeightMeasurement prepared,
+        C3DGridRoi roi)
+    {
+        var profile = prepared.ReferenceGridProfile
+            ?? throw new InvalidDataException("Cross-section Dimensions requires a reference-grid profile.");
+        var samples = new List<NoahCrossSectionDimensionsSample>();
+        for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
+        {
+            var height = prepared.Values[roi.Row * prepared.Width + column];
+            if (!double.IsFinite(height)) continue;
+            var u = (column + 0.5d) * profile.PitchU;
+            samples.Add(new NoahCrossSectionDimensionsSample(column, u, height));
         }
         return samples;
     }

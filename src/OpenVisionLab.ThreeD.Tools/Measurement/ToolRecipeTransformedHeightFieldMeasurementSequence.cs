@@ -58,7 +58,7 @@ public static class ToolRecipeTransformedHeightFieldMeasurementSequence
         {
             return OrderedError("Ordered execution requires at least one measurement step after Re-grid.");
         }
-        var unsupported = downstream.FirstOrDefault(candidate => candidate.Step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume"));
+        var unsupported = downstream.FirstOrDefault(candidate => candidate.Step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions"));
         if (unsupported.Step is not null)
         {
             return OrderedError($"Ordered execution v1 does not support downstream tool '{unsupported.Step.ToolId}' at step '{unsupported.Step.Id}'.");

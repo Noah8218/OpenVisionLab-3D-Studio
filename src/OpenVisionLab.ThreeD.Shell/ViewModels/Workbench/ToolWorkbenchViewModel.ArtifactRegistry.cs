@@ -350,7 +350,7 @@ public sealed partial class ToolWorkbenchViewModel
                 "TransformedHeightField");
         }
 
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume"
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions"
             && measurementPreviewOutput is not null
             && string.Equals(measurementPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {

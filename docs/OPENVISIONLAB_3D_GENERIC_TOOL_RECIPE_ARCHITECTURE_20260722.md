@@ -5,7 +5,7 @@ Status: Accepted implementation direction
 
 ## Decision
 
-OpenVisionLab 3D Studio is not a Thickness/Warpage teaching application. It is a local, rule-based 3D inspection recipe workbench. Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, and Volume are reusable measurement tools in a larger catalog; they must never own the workspace, recipe lifecycle, or product title.
+OpenVisionLab 3D Studio is not a Thickness/Warpage teaching application. It is a local, rule-based 3D inspection recipe workbench. Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, Volume, and Cross-section Dimensions are reusable measurement tools in a larger catalog; they must never own the workspace, recipe lifecycle, or product title.
 
 The canonical product path is:
 
@@ -101,15 +101,21 @@ generic adapter; the legacy raw-C3D recipe remains a compatibility path.
 
 Artifact-owned selections use recipe schema `1.3` and record the exact owner entity ID, artifact SHA-256, root-source SHA-256, grid dimensions, unit, and frame. Save/reopen preserves those fields. A reopened ROI becomes executable only after the same A3 output is Published again; mismatched owner, bytes, grid, unit, frame, or root source fails closed.
 
+Cross-section Dimensions consumes one Published A3 plus one `GridRectangle`
+spanning exactly one row and at least two columns. Library-Noah owns the
+source-neutral U-width/H-range arithmetic and independent acceptance. Studio
+owns exact A3 binding, row policy, U/H adaptation, WPG, result evidence, and
+Runner routing. The generic UI does not reuse the legacy raw-height wording.
+
 ## Current boundary
 
-The Generic Ordered Recipe Executor v1 accepts one explicit Published A2 `TransformedPointCloud`, executes the authored A3 Re-grid step, then executes every following Thickness, Warpage, Plane Flatness, Point Pair Dimensions, Gap/Flush, or Volume step in authored recipe order using the resulting artifact-owned selection inputs. A tolerance `Fail` remains evidence and does not suppress later measurements. V1 rejects any other downstream tool rather than pretending to support an arbitrary graph. It does not invent, auto-publish, or reconstruct A1/A2.
+The Generic Ordered Recipe Executor v1 accepts one explicit Published A2 `TransformedPointCloud`, executes the authored A3 Re-grid step, then executes every following Thickness, Warpage, Plane Flatness, Point Pair Dimensions, Gap/Flush, Volume, or Cross-section Dimensions step in authored recipe order using the resulting artifact-owned selection inputs. A tolerance `Fail` remains evidence and does not suppress later measurements. V1 rejects any other downstream tool rather than pretending to support an arbitrary graph. It does not invent, auto-publish, or reconstruct A1/A2.
 
 Real four-landmark A1/A2 source evidence, arbitrary whole-graph execution, physical scale, calibration, metrology trust, camera/PLC/robot/cloud integration remain outside this gate.
 
 ## Acceptance evidence
 
 - Full solution build: zero warnings, zero errors.
-- Generic measurement Workbench verification: supported typed PropertyGrid adapters, explicit Preview/Publish, `*.ov3d-recipe.json` save, and reopen pass `23/23`.
-- Artifact-owned selection and ordered Runner verification: schema/route, legacy single-sequence compatibility, six-measurement authored order, direct-adapter hash parity, continued evidence after tolerance Fail, ROI/PointSet save/reopen, and wrong owner/hash/grid/order/tool/output rejection pass `17/17`.
+- Generic measurement Workbench verification: supported typed PropertyGrid adapters, explicit Preview/Publish, `*.ov3d-recipe.json` save, and reopen pass `27/27`.
+- Artifact-owned selection and ordered Runner verification: schema/route, legacy single-sequence compatibility, seven-measurement authored order, direct-adapter hash parity, continued evidence after tolerance Fail, ROI/PointSet save/reopen, and wrong owner/hash/grid/order/tool/output rejection pass `18/18`.
 - UI smoke: current-source 1920 x 1080 Workbench capture must show the generic Inspection Recipe navigation and no Thickness/Warpage product-mode selector.

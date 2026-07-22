@@ -45,9 +45,15 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 Name = "Gap / Flush second ROI",
                 GridRectangle = new ToolRecipeGridRectangle(0, 1, 2, 1)
             };
+            var crossSectionSelection = measurementSelection with
+            {
+                Id = "selection.transformed.cross-section-row",
+                Name = "Cross-section row segment",
+                GridRectangle = new ToolRecipeGridRectangle(0, 0, 1, 2)
+            };
             var document = CreateDocument(
-                cloud, profile, [referenceSelection, measurementSelection, pointPairSelection, gapFirstSelection, gapSecondSelection],
-                includeMeasurement: true, includeWarpage: true, includePlaneFlatness: true, includePointPair: true, includeGapFlush: true, includeVolume: true);
+                cloud, profile, [referenceSelection, measurementSelection, pointPairSelection, gapFirstSelection, gapSecondSelection, crossSectionSelection],
+                includeMeasurement: true, includeWarpage: true, includePlaneFlatness: true, includePointPair: true, includeGapFlush: true, includeVolume: true, includeCrossSection: true);
 
             var validation = ToolRecipeValidator.Validate(document);
             checks.Add(("artifact-owned schema and route", validation.IsValid, string.Join(" / ", validation.Errors)));
@@ -58,6 +64,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
             var directPointPair = ToolRecipeHeightMeasurementExecution.Execute(document, "step.point-pair", expectedA3);
             var directGapFlush = ToolRecipeHeightMeasurementExecution.Execute(document, "step.gap-flush", expectedA3);
             var directVolume = ToolRecipeHeightMeasurementExecution.Execute(document, "step.volume", expectedA3);
+            var directCrossSection = ToolRecipeHeightMeasurementExecution.Execute(document, "step.cross-section", expectedA3);
             var ordered = ToolRecipeTransformedHeightFieldMeasurementSequence.Execute(
                 document, "step.regrid", "step.thickness", cloud);
             var orderedAll = ToolRecipeTransformedHeightFieldMeasurementSequence.ExecuteOrdered(
@@ -69,21 +76,22 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 $"direct={direct.Output?.ContentSha256};runner={ordered.Output?.Measurement.ContentSha256};a3={ordered.Output?.HeightField.ContentSha256}"));
             checks.Add(("ordered Runner executes all supported measurements in authored order",
                 orderedAll.Output is not null
-                && orderedAll.Output.Measurements.Select(item => item.StepId).SequenceEqual(["step.thickness", "step.warpage", "step.plane-flatness", "step.point-pair", "step.gap-flush", "step.volume"])
+                && orderedAll.Output.Measurements.Select(item => item.StepId).SequenceEqual(["step.thickness", "step.warpage", "step.plane-flatness", "step.point-pair", "step.gap-flush", "step.volume", "step.cross-section"])
                 && orderedAll.Output.HeightField.ContentSha256 == expectedA3.ContentSha256,
                 orderedAll.Output is null
                     ? orderedAll.Result.Message
                     : string.Join(",", orderedAll.Output.Measurements.Select(item => $"{item.RecipeIndex}:{item.StepId}"))));
             checks.Add(("direct adapters and ordered Runner output hashes match",
                 direct.Output is not null && directWarpage.Output is not null && orderedAll.Output is not null
-                && directFlatness.Output is not null && directPointPair.Output is not null && directGapFlush.Output is not null && directVolume.Output is not null
+                && directFlatness.Output is not null && directPointPair.Output is not null && directGapFlush.Output is not null && directVolume.Output is not null && directCrossSection.Output is not null
                 && orderedAll.Output.Measurements[0].Output.ContentSha256 == direct.Output.ContentSha256
                 && orderedAll.Output.Measurements[1].Output.ContentSha256 == directWarpage.Output.ContentSha256
                 && orderedAll.Output.Measurements[2].Output.ContentSha256 == directFlatness.Output.ContentSha256
                 && orderedAll.Output.Measurements[3].Output.ContentSha256 == directPointPair.Output.ContentSha256
                 && orderedAll.Output.Measurements[4].Output.ContentSha256 == directGapFlush.Output.ContentSha256
-                && orderedAll.Output.Measurements[5].Output.ContentSha256 == directVolume.Output.ContentSha256,
-                $"thickness={direct.Output?.ContentSha256};warpage={directWarpage.Output?.ContentSha256};flatness={directFlatness.Output?.ContentSha256};pointPair={directPointPair.Output?.ContentSha256};gapFlush={directGapFlush.Output?.ContentSha256};volume={directVolume.Output?.ContentSha256}"));
+                && orderedAll.Output.Measurements[5].Output.ContentSha256 == directVolume.Output.ContentSha256
+                && orderedAll.Output.Measurements[6].Output.ContentSha256 == directCrossSection.Output.ContentSha256,
+                $"thickness={direct.Output?.ContentSha256};warpage={directWarpage.Output?.ContentSha256};flatness={directFlatness.Output?.ContentSha256};pointPair={directPointPair.Output?.ContentSha256};gapFlush={directGapFlush.Output?.ContentSha256};volume={directVolume.Output?.ContentSha256};crossSection={directCrossSection.Output?.ContentSha256}"));
             checks.Add(("Plane Flatness consumes ordered reference and measurement ROIs",
                 directFlatness.Output is not null
                 && directFlatness.Output.SelectionId == "selection.transformed.reference-roi;selection.transformed.roi"
@@ -108,6 +116,13 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 && Approximately(directVolume.Result.Metrics.Single(metric => metric.Name == "Signed net volume").Value, 0d)
                 && directVolume.Result.Metrics.Single(metric => metric.Name == "Signed net volume").Unit == "fixture-unit^3",
                 directVolume.Output is null ? directVolume.Result.Message : directVolume.Output.EvidenceSummary));
+            checks.Add(("Cross-section consumes one A3 row segment in U/H space",
+                directCrossSection.Output is not null
+                && directCrossSection.Output.SelectionId == crossSectionSelection.Id
+                && Approximately(directCrossSection.Result.Metrics.Single(metric => metric.Name == "Section width").Value, 1d)
+                && Approximately(directCrossSection.Result.Metrics.Single(metric => metric.Name == "H range").Value, 2d)
+                && directCrossSection.Result.Metrics.Single(metric => metric.Name == "Section width").Unit == "fixture-unit",
+                directCrossSection.Output is null ? directCrossSection.Result.Message : directCrossSection.Output.EvidenceSummary));
             checks.Add(("failed tolerance does not suppress later measurement evidence",
                 orderedAll.Output is not null
                 && orderedAll.Result.Status == ResultStatus.Fail
@@ -122,7 +137,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
             var reopened = ToolRecipeDocumentStore.Load(recipePath);
             var reopenedBindings = reopened.Selections!.Select(item => item.SourceBinding).ToArray();
             checks.Add(("artifact-owned ROI save and reopen",
-                reopenedBindings.Length == 5
+                reopenedBindings.Length == 6
                 && reopenedBindings.All(item => ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(binding, item))
                 && reopened.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion,
                 $"schema={reopened.SchemaVersion};selections={reopenedBindings.Length};owner={reopenedBindings[0].OwnerEntityId};hash={reopenedBindings[0].ContentSha256}"));
@@ -190,7 +205,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
         File.WriteAllLines(reportPath,
         [
             $"ArtifactOwnedRoiRunnerVerification|{(success ? "Pass" : "Fail")}|checks={checks.Count}|passed={passed}|failed={checks.Count - passed}",
-            "Boundary|sequence begins with one explicit Published A2 TransformedPointCloud and supports only A3 followed by Thickness/Warpage/Plane Flatness/Point Pair Dimensions/Gap-Flush/Volume; A1/A2 production, arbitrary graphs, automatic feature detection, physical volume, and metrology are excluded",
+            "Boundary|sequence begins with one explicit Published A2 TransformedPointCloud and supports only A3 followed by Thickness/Warpage/Plane Flatness/Point Pair Dimensions/Gap-Flush/Volume/Cross-section Dimensions; A1/A2 production, arbitrary graphs, automatic feature detection, physical volume, physical dimensions, and metrology are excluded",
             .. checks.Select(check => $"{(check.Passed ? "PASS" : "FAIL")}|{check.Name}|{Clean(check.Evidence)}")
         ]);
         Console.WriteLine($"Artifact-owned ROI ordered Runner verification: {(success ? "Pass" : "Fail")} ({passed}/{checks.Count})");
@@ -209,7 +224,8 @@ internal static class ArtifactOwnedRoiRunnerVerification
         bool includePlaneFlatness = false,
         bool includePointPair = false,
         bool includeGapFlush = false,
-        bool includeVolume = false)
+        bool includeVolume = false,
+        bool includeCrossSection = false)
     {
         var steps = new List<ToolRecipeStep>
         {
@@ -265,6 +281,16 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 "step.volume", "volume", "Volume", 3,
                 ["derived.height-field", "selection.transformed.reference-roi", "selection.transformed.roi"], "result.volume",
                 [new("ExpectedNetVolume", "0"), new("VolumeTolerance", "0.000001")]));
+        }
+        if (includeCrossSection)
+        {
+            steps.Add(new ToolRecipeStep(
+                "step.cross-section", "cross-section-dimensions", "Cross-section Dimensions", 2,
+                ["derived.height-field", "selection.transformed.cross-section-row"], "result.cross-section",
+                [
+                    new("ExpectedWidth", "1"), new("WidthTolerance", "0.000001"),
+                    new("ExpectedHeightRange", "2"), new("HeightTolerance", "0.000001")
+                ]));
         }
         return new ToolRecipeDocument(
             ToolRecipeDocument.CurrentSchemaVersion,

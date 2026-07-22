@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lib.ThreeD" Version="[2.7.8]" />
+    <PackageReference Include="Lib.ThreeD" Version="[2.7.9]" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
   </ItemGroup>

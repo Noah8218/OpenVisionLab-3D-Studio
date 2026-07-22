@@ -22,6 +22,7 @@ internal static class PlaneFlatnessLiveA3PointerSmokeFixture
     internal const string PointPairStepId = "step.live-a3.point-pair";
     internal const string GapFlushStepId = "step.live-a3.gap-flush";
     internal const string VolumeStepId = "step.live-a3.volume";
+    internal const string CrossSectionStepId = "step.live-a3.cross-section";
 
     internal static (string RecipePath, string Summary) Prepare(string packageDirectory)
     {
@@ -61,7 +62,8 @@ internal static class PlaneFlatnessLiveA3PointerSmokeFixture
             CreateSelection("selection.live-a3.measurement-roi.initial", "Initial measurement ROI", cloud, a3, binding),
             CreatePointPairSelection(cloud, a3, binding),
             CreateSelection("selection.live-a3.gap-first-roi.initial", "Initial Gap / Flush first ROI", cloud, a3, binding, new ToolRecipeGridRectangle(2, 1, 3, 2)),
-            CreateSelection("selection.live-a3.gap-second-roi.initial", "Initial Gap / Flush second ROI", cloud, a3, binding, new ToolRecipeGridRectangle(2, 5, 3, 2))
+            CreateSelection("selection.live-a3.gap-second-roi.initial", "Initial Gap / Flush second ROI", cloud, a3, binding, new ToolRecipeGridRectangle(2, 5, 3, 2)),
+            CreateSelection("selection.live-a3.cross-section-row.initial", "Initial cross-section row segment", cloud, a3, binding, new ToolRecipeGridRectangle(3, 1, 1, 6))
         };
         var document = CreateDocument(snapshot, cloud, profile, selections, includePlaneFlatness: true);
         var validation = ToolRecipeValidator.Validate(document);
@@ -219,6 +221,19 @@ internal static class PlaneFlatnessLiveA3PointerSmokeFixture
                 [
                     new ToolRecipeParameter("ExpectedNetVolume", "0"),
                     new ToolRecipeParameter("VolumeTolerance", "100000")
+                ]));
+            steps.Add(new ToolRecipeStep(
+                CrossSectionStepId,
+                "cross-section-dimensions",
+                "Cross-section Dimensions",
+                2,
+                [HeightFieldEntityId, selections[5].Id],
+                "result.live-a3.cross-section",
+                [
+                    new ToolRecipeParameter("ExpectedWidth", "5"),
+                    new ToolRecipeParameter("WidthTolerance", "100000"),
+                    new ToolRecipeParameter("ExpectedHeightRange", "5"),
+                    new ToolRecipeParameter("HeightTolerance", "100000")
                 ]));
         }
 

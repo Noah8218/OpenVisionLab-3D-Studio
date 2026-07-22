@@ -225,7 +225,7 @@ public static class ToolRecipeValidator
                 ValidateRegridHeightMapStep(step, inputs, label, errors);
             }
 
-            if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume")
+            if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions")
             {
                 ValidateHeightMeasurementStep(step, inputs, source, selections, label, errors);
             }
@@ -420,6 +420,7 @@ public static class ToolRecipeValidator
         var isPointPair = step.ToolId == "point-pair-dimensions";
         var isGapFlush = step.ToolId == "gap-flush";
         var isVolume = step.ToolId == "volume";
+        var isCrossSection = step.ToolId == "cross-section-dimensions";
         var expectedInputCount = isPlaneFlatness || isGapFlush || isVolume ? 3 : 2;
         if (inputs.Count != expectedInputCount)
         {
@@ -430,7 +431,7 @@ public static class ToolRecipeValidator
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
             return;
         }
-        if ((isPlaneFlatness || isPointPair || isGapFlush || isVolume) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        if ((isPlaneFlatness || isPointPair || isGapFlush || isVolume || isCrossSection) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add($"{label} {Clean(step.ToolName)} v1 requires a Published TransformedHeightField first input.");
         }
@@ -446,6 +447,10 @@ public static class ToolRecipeValidator
                 errors.Add(isPointPair
                     ? $"{label} {Clean(step.ToolName)} v1 input {inputIndex + 1} must be one recipe-owned ordered PointSet(2)."
                     : $"{label} {Clean(step.ToolName)} v1 input {inputIndex + 1} must be one recipe-owned GridRectangle.");
+            }
+            else if (isCrossSection && selection!.GridRectangle is not { RowCount: 1, ColumnCount: >= 2 })
+            {
+                errors.Add($"{label} Cross-section Dimensions v1 requires one GridRectangle spanning exactly one row and at least two columns.");
             }
             else if (string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
             {
@@ -468,6 +473,7 @@ public static class ToolRecipeValidator
             "point-pair-dimensions" => new[] { "ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees" },
             "gap-flush" => new[] { "ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance" },
             "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
+            "cross-section-dimensions" => new[] { "ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance" },
             _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
         };
         var parameters = step.Parameters ?? [];

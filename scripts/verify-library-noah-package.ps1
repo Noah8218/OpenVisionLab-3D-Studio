@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.7.8.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.7.9.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.7.8.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.7.9.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -81,7 +81,7 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "Lib.ThreeD" -or $version -ne "2.7.8" -or $sourceCommit -ne "d1dff41ca0ce940492930267aa0ae7430e73e437") {
+    if ($id -ne "Lib.ThreeD" -or $version -ne "2.7.9" -or $sourceCommit -ne "e36d9c07baab967fd4252e7052345563f29872a3") {
         throw "Library-Noah package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 

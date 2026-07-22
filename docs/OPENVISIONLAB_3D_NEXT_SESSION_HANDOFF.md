@@ -1,5 +1,26 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## Cross-section Dimensions generic Measure checkpoint - 2026-07-22
+
+Cross-section Dimensions is now an ordinary two-input Measure node:
+`Published TransformedHeightField + one-row GridRectangle -> MeasurementResult`.
+It independently judges A3 U-axis width and H-axis range. WPG parameters,
+Korean/English row-selection text, Preview, Publish, schema `1.3` save/reopen,
+and bounded ordered Runner replay are explicit.
+
+Source-neutral arithmetic is committed locally in Library-Noah `Lib.ThreeD
+2.7.9` at `e36d9c07baab967fd4252e7052345563f29872a3`; vendored package SHA-256
+is `B21A6266AFD470B7EE8A4C857496E53561F4D399F2460FEE2939AAE85AD0FF92`.
+Evidence passes Noah `54/54`, Studio build `0/0`, package/bridge `7/7`, legacy
+Cross-section `9/9`, ordered Runner `18/18`, generic Workbench `27/27`, and one
+live Shell Cross-section Preview/Publish/save/reopen flow. Evidence is under
+`artifacts/verification/20260722-generic-cross-section/`; the durable contract
+is `docs/OPENVISIONLAB_3D_CROSS_SECTION_TOOL_RECIPE_20260722.md`.
+
+Next priority: aggregate the bounded ordered measurement results into one
+durable multi-step Run Record. Automatic feature detection, calibrated
+physical units, uncertainty, Gauge R&R, and metrology remain unverified.
+
 ## Volume generic Measure checkpoint - 2026-07-22
 
 Volume is now an ordinary three-input Measure node:

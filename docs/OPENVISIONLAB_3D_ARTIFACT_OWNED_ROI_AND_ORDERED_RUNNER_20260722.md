@@ -5,7 +5,7 @@ Status: Complete for the bounded A3 -> supported measurement slice
 
 ## Scope
 
-Bind recipe `GridRectangle` and `PointSet` selections to one exact Published `TransformedHeightField`, preserve them through save/reopen, use them in Viewer teaching and measurement Preview, and replay A3 followed by authored Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, and Volume steps through the same Tools adapters.
+Bind recipe `GridRectangle` and `PointSet` selections to one exact Published `TransformedHeightField`, preserve them through save/reopen, use them in Viewer teaching and measurement Preview, and replay A3 followed by authored Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, Volume, and Cross-section Dimensions steps through the same Tools adapters.
 
 ## Contract
 
@@ -19,7 +19,7 @@ explicit Published A2 TransformedPointCloud
        grid width/height
        reference unit/frame
   -> artifact-owned GridRectangle(s) or PointSet(2)
-  -> Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, and/or Volume in authored recipe order
+  -> Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, Volume, and/or Cross-section Dimensions in authored recipe order
   -> ordered MeasurementResults
 ```
 
@@ -39,7 +39,7 @@ Status: Complete
 Scope: TransformedHeightField-owned GridRectangles/PointSet(2), save/reopen, Viewer capture path, shared measurement adapters, and bounded A3 -> multiple-measurement Runner sequence.
 Acceptance criteria:
 - schema and typed route -> pass
-- authored six-measurement order and aggregate status -> pass
+- authored seven-measurement order and aggregate status -> pass
 - direct adapters and ordered Runner measurement hashes match -> pass
 - earlier tolerance Fail preserves later measurement evidence -> pass
 - artifact-owned ROI save/reopen -> pass
@@ -47,9 +47,9 @@ Acceptance criteria:
 - legacy raw-C3D measurement workflow -> retained
 Verification:
 - dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug -p:Platform="Any CPU"
-- Runner --verify-artifact-owned-roi-runner -> 17/17
-Evidence: artifacts/verification/20260722-generic-gap-flush/artifact-owned-runner.txt
-Boundary / next dependency: sequence begins with an explicit Published A2 and supports only A3 followed by Thickness/Warpage/Plane Flatness/Point Pair/Gap-Flush/Volume. Real four-landmark A1/A2 data and arbitrary whole-graph replay are not proven. No automatic feature detection, calibrated physical volume, or metrology claim.
+- Runner --verify-artifact-owned-roi-runner -> 18/18
+Evidence: artifacts/verification/20260722-generic-cross-section/ordered-runner.txt
+Boundary / next dependency: sequence begins with an explicit Published A2 and supports only A3 followed by Thickness/Warpage/Plane Flatness/Point Pair/Gap-Flush/Volume/Cross-section Dimensions. Real four-landmark A1/A2 data and arbitrary whole-graph replay are not proven. No automatic feature detection, calibrated physical volume/dimension, or metrology claim.
 ```
 
 ## Reusable checklist
