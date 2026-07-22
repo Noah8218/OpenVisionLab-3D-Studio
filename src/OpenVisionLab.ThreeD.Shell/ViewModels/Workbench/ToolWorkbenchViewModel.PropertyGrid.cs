@@ -66,6 +66,7 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "plane-flatness" } step => FormatAdapterStatus(step, PlaneFlatnessStepProperties.MappedNames),
         { ToolId: "point-pair-dimensions" } step => FormatAdapterStatus(step, PointPairDimensionsStepProperties.MappedNames),
         { ToolId: "gap-flush" } step => FormatAdapterStatus(step, GapFlushStepProperties.MappedNames),
+        { ToolId: "volume" } step => FormatAdapterStatus(step, VolumeStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -403,6 +404,18 @@ public sealed partial class ToolWorkbenchViewModel
                     ["FlushTolerance"] = gapFlush.FlushTolerance.ToString("G17", CultureInfo.InvariantCulture)
                 };
                 break;
+            case VolumeStepProperties volume:
+                if (!volume.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ExpectedNetVolume"] = volume.ExpectedNetVolume.ToString("G17", CultureInfo.InvariantCulture),
+                    ["VolumeTolerance"] = volume.VolumeTolerance.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -488,6 +501,7 @@ public sealed partial class ToolWorkbenchViewModel
             "plane-flatness" => PlaneFlatnessStepProperties.From(step),
             "point-pair-dimensions" => PointPairDimensionsStepProperties.From(step),
             "gap-flush" => GapFlushStepProperties.From(step),
+            "volume" => VolumeStepProperties.From(step),
             _ => null
         };
 
@@ -631,7 +645,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -981,6 +995,53 @@ public sealed class GapFlushStepProperties
     }
 
     private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
+    private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class VolumeStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["ExpectedNetVolume", "VolumeTolerance"];
+
+    [Category("Acceptance")]
+    [DisplayName("Expected signed net volume")]
+    [Description("Expected signed integral of H-axis height relative to the fitted reference plane, in the declared reference-grid model unit cubed.")]
+    [PropertyOrder(0)]
+    public double ExpectedNetVolume { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Volume tolerance")]
+    [Description("Allowed absolute difference from the expected signed net volume.")]
+    [PropertyOrder(1)]
+    public double VolumeTolerance { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static VolumeStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ExpectedNetVolume = Parse(step, "ExpectedNetVolume"),
+        VolumeTolerance = Parse(step, "VolumeTolerance"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(ExpectedNetVolume) || !double.IsFinite(VolumeTolerance) || VolumeTolerance < 0d)
+        {
+            message = "Expected net volume must be finite and volume tolerance must be finite and non-negative.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
     private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
         double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value : double.NaN;

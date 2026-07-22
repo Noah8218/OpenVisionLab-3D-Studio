@@ -43,6 +43,8 @@ public static class ToolRecipeHeightMeasurementExecution
         ["ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees"];
     private static readonly string[] GapFlushParameterNames =
         ["ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance"];
+    private static readonly string[] VolumeParameterNames =
+        ["ExpectedNetVolume", "VolumeTolerance"];
 
     public static ToolRecipeHeightMeasurementEvaluation Execute(
         ToolRecipeDocument document,
@@ -193,6 +195,21 @@ public static class ToolRecipeHeightMeasurementExecution
                 evidence = $"gap {noah.SignedGap:G6} | flush {noah.SignedFlush:G6} | first {noah.FirstSampleCount:N0} | second {noah.SecondSampleCount:N0} finite samples";
             }
         }
+        else if (string.Equals(step.ToolId, "volume", StringComparison.Ordinal))
+        {
+            var referenceSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.ReferenceRoi!);
+            var measurementSamples = CreateReferenceAxisPlaneSamples(prepared, prepared.MeasurementRoi!);
+            var evaluation = VolumeRule.Evaluate(new VolumeRuleInput(
+                prepared.InputEntityId,
+                referenceSamples,
+                measurementSamples,
+                prepared.ReferenceGridProfile!.PitchU * prepared.ReferenceGridProfile.PitchV,
+                ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume"),
+                ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance"),
+                $"{prepared.Unit}^3"));
+            result = evaluation.Result;
+            evidence = $"net {evaluation.NetVolume:G6} | above {evaluation.AboveVolume:G6} | below {evaluation.BelowVolume:G6} | reference {evaluation.ReferenceSampleCount:N0} | measurement {evaluation.MeasurementSampleCount:N0}";
+        }
         else
         {
             var tolerance = ParsePositive(Parameter(step, "MaximumFlatness"), "MaximumFlatness");
@@ -260,11 +277,11 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush"))
+            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume"))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
-            var twoRoi = step.ToolId is "plane-flatness" or "gap-flush";
+            var twoRoi = step.ToolId is "plane-flatness" or "gap-flush" or "volume";
             var expectedInputCount = twoRoi ? 3 : 2;
             if (step.InputEntityIds.Count != expectedInputCount)
             {
@@ -289,7 +306,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var rois = pointPair ? [] : selections.Select(selection => ToRoi(selection.GridRectangle!)).ToArray();
             if (string.Equals(step.InputEntityIds[0], document.Source.Id, StringComparison.OrdinalIgnoreCase))
             {
-                if (step.ToolId is "plane-flatness" or "point-pair-dimensions" or "gap-flush")
+                if (step.ToolId is "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume")
                 {
                     throw new InvalidDataException($"{step.ToolName} v1 requires a Published TransformedHeightField with an explicit reference frame and unit.");
                 }
@@ -368,6 +385,7 @@ public static class ToolRecipeHeightMeasurementExecution
             "warpage" => WarpageParameterNames,
             "point-pair-dimensions" => PointPairParameterNames,
             "gap-flush" => GapFlushParameterNames,
+            "volume" => VolumeParameterNames,
             _ => PlaneFlatnessParameterNames
         };
         var parameters = step.Parameters ?? [];
@@ -403,6 +421,11 @@ public static class ToolRecipeHeightMeasurementExecution
             _ = ParseNonNegative(Parameter(step, "GapTolerance"), "GapTolerance");
             _ = ParseFinite(Parameter(step, "ExpectedFlush"), "ExpectedFlush");
             _ = ParseNonNegative(Parameter(step, "FlushTolerance"), "FlushTolerance");
+        }
+        else if (step.ToolId == "volume")
+        {
+            _ = ParseFinite(Parameter(step, "ExpectedNetVolume"), "ExpectedNetVolume");
+            _ = ParseNonNegative(Parameter(step, "VolumeTolerance"), "VolumeTolerance");
         }
         else
         {
@@ -480,6 +503,32 @@ public static class ToolRecipeHeightMeasurementExecution
                     throw new InvalidDataException("Plane Flatness reconstructed point exceeds the supported single-precision geometry range.");
                 }
                 samples.Add(new HeightFieldPlaneSample(new Vector3((float)x, (float)y, (float)z), height));
+            }
+        }
+        return samples;
+    }
+
+    private static IReadOnlyList<HeightFieldPlaneSample> CreateReferenceAxisPlaneSamples(
+        PreparedHeightMeasurement prepared,
+        C3DGridRoi roi)
+    {
+        var profile = prepared.ReferenceGridProfile
+            ?? throw new InvalidDataException("Volume requires a reference-grid profile.");
+        var samples = new List<HeightFieldPlaneSample>();
+        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+        {
+            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
+            {
+                var height = prepared.Values[row * prepared.Width + column];
+                if (!double.IsFinite(height)) continue;
+                var u = (column + 0.5d) * profile.PitchU;
+                var v = (row + 0.5d) * profile.PitchV;
+                if (u is < float.MinValue or > float.MaxValue || v is < float.MinValue or > float.MaxValue
+                    || height is < float.MinValue or > float.MaxValue)
+                {
+                    throw new InvalidDataException("Volume reference-axis sample exceeds the supported single-precision geometry range.");
+                }
+                samples.Add(new HeightFieldPlaneSample(new Vector3((float)u, (float)height, (float)v), height));
             }
         }
         return samples;

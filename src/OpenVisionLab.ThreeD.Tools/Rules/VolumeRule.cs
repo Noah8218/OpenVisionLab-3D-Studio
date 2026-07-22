@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Lib.ThreeD.Inspection;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -39,24 +40,37 @@ public static class VolumeRule
             return Error(input, "Reference ROI requires at least three samples.", stopwatch.Elapsed);
         if (input.MeasurementSamples is null || input.MeasurementSamples.Count == 0)
             return Error(input, "Measurement ROI requires at least one sample.", stopwatch.Elapsed);
-
-        HeightFieldPlaneFitResult plane;
-        try { plane = HeightFieldPlaneFit.Fit(input.ReferenceSamples); }
-        catch (ArgumentException ex) { return Error(input, ex.Message, stopwatch.Elapsed); }
-
-        var above = 0.0;
-        var below = 0.0;
-        foreach (var sample in input.MeasurementSamples)
+        if (input.MeasurementSamples.Any(sample =>
+            !float.IsFinite(sample.Position.X)
+            || !float.IsFinite(sample.Position.Y)
+            || !float.IsFinite(sample.Position.Z)))
         {
-            if (!float.IsFinite(sample.Position.X) || !float.IsFinite(sample.Position.Y) || !float.IsFinite(sample.Position.Z))
-                return Error(input, "Measurement ROI contains a non-finite sample.", stopwatch.Elapsed);
-            var delta = sample.Position.Y - plane.EvaluateY(sample.Position.X, sample.Position.Z);
-            if (delta >= 0.0) above += delta * input.SampleArea;
-            else below += -delta * input.SampleArea;
+            return Error(input, "Measurement ROI contains a non-finite sample.", stopwatch.Elapsed);
         }
 
-        var net = above - below;
-        var status = Math.Abs(net - input.ExpectedNetVolume) <= input.Tolerance ? ResultStatus.Pass : ResultStatus.Fail;
+        VolumeInspectionResult evaluation;
+        try
+        {
+            evaluation = new VolumeInspectionTool().Execute(
+                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+                new VolumeInspectionOptions
+                {
+                    SampleArea = input.SampleArea,
+                    ExpectedNetVolume = input.ExpectedNetVolume,
+                    Tolerance = input.Tolerance
+                });
+        }
+        catch (ArgumentException ex)
+        {
+            return Error(input, ex.Message, stopwatch.Elapsed);
+        }
+
+        var plane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
+        var above = evaluation.AboveVolume;
+        var below = evaluation.BelowVolume;
+        var net = evaluation.NetVolume;
+        var status = evaluation.Passed ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
         var result = new ToolResult(
             ToolName,

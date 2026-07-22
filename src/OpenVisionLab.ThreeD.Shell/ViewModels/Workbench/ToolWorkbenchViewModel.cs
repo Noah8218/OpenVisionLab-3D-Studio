@@ -92,6 +92,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Measure", "Plane Flatness", "plane-flatness", 3, "TransformedHeightField + Reference GridRectangle + Measurement GridRectangle", "MeasurementResult", "Fit a reference plane in one artifact-owned ROI and measure signed-distance flatness in a second ROI. Preview and Publish remain explicit.", [new("MaximumFlatness", "100000"), new("MinimumReferenceSampleCount", "3"), new("MinimumMeasurementSampleCount", "3")]),
             new("Measure", "Point Pair Dimensions", "point-pair-dimensions", 2, "TransformedHeightField + PointSet(2)", "MeasurementResult", "Measure full-XYZ distance, reference-plane width, height-axis delta, and elevation angle between two ordered artifact-owned picks.", [new("ExpectedDistance", "0"), new("DistanceTolerance", "100000"), new("ExpectedPlanarWidth", "0"), new("PlanarWidthTolerance", "100000"), new("ExpectedElevationAngleDegrees", "0"), new("ElevationAngleToleranceDegrees", "90")]),
             new("Measure", "Gap / Flush", "gap-flush", 3, "TransformedHeightField + First GridRectangle + Second GridRectangle", "MeasurementResult", "Measure signed U-axis separation between facing ROI edges and signed H-axis mean-height difference. ROI order defines the sign; Preview and Publish remain explicit.", [new("ExpectedGap", "0"), new("GapTolerance", "100000"), new("ExpectedFlush", "0"), new("FlushTolerance", "100000")]),
+            new("Measure", "Volume", "volume", 3, "TransformedHeightField + Reference GridRectangle + Measurement GridRectangle", "MeasurementResult", "Fit an A3 reference-plane ROI and integrate signed H-axis height over a second ROI. Values remain in the declared reference-grid model unit cubed; Preview and Publish remain explicit.", [new("ExpectedNetVolume", "0"), new("VolumeTolerance", "100000")]),
             new("Review", "Overlay / Control Review", "overlay-control-review", 1, "MeasurementResult", "ReviewOverlay", "Group overlays, controls, acceptance, and run evidence without changing the source.", [new("Overlay", "Selected results"), new("Publish", "Explicit")])
         ];
 
@@ -1671,7 +1672,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         out ToolRecipeSelectionSourceBinding binding,
         out string frameId)
     {
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush")
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume")
         {
             if (step.InputEntityIds.Count == 0)
             {
@@ -1787,6 +1788,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
         "point-pair-dimensions" => new("Point pair", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct cells in the Published TransformedHeightField."),
         "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
+        "volume" => CreatePlaneFlatnessSelectionRequirement(),
         "two-point-line" => new("Line points", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct C3D grid cells."),
         "three-point-plane" => new("Plane points", ToolRecipeSelectionKinds.PointSet, 3, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
         "datum-plane-raw-height-deviation" => new("Datum measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),

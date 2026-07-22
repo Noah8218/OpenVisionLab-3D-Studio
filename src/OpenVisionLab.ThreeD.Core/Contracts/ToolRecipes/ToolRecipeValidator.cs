@@ -225,7 +225,7 @@ public static class ToolRecipeValidator
                 ValidateRegridHeightMapStep(step, inputs, label, errors);
             }
 
-            if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush")
+            if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume")
             {
                 ValidateHeightMeasurementStep(step, inputs, source, selections, label, errors);
             }
@@ -419,17 +419,18 @@ public static class ToolRecipeValidator
         var isPlaneFlatness = step.ToolId == "plane-flatness";
         var isPointPair = step.ToolId == "point-pair-dimensions";
         var isGapFlush = step.ToolId == "gap-flush";
-        var expectedInputCount = isPlaneFlatness || isGapFlush ? 3 : 2;
+        var isVolume = step.ToolId == "volume";
+        var expectedInputCount = isPlaneFlatness || isGapFlush || isVolume ? 3 : 2;
         if (inputs.Count != expectedInputCount)
         {
-            errors.Add(isPlaneFlatness || isGapFlush
+            errors.Add(isPlaneFlatness || isGapFlush || isVolume
                 ? $"{label} {Clean(step.ToolName)} v1 requires one TransformedHeightField and two ordered GridRectangles."
                 : isPointPair
                     ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
             return;
         }
-        if ((isPlaneFlatness || isPointPair || isGapFlush) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        if ((isPlaneFlatness || isPointPair || isGapFlush || isVolume) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add($"{label} {Clean(step.ToolName)} v1 requires a Published TransformedHeightField first input.");
         }
@@ -466,6 +467,7 @@ public static class ToolRecipeValidator
             "warpage" => new[] { "MaximumPeakToValley", "MaximumRms", "MinimumValidSampleCount" },
             "point-pair-dimensions" => new[] { "ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees" },
             "gap-flush" => new[] { "ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance" },
+            "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
             _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
         };
         var parameters = step.Parameters ?? [];

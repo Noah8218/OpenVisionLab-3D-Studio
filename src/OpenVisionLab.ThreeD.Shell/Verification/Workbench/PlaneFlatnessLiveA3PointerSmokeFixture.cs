@@ -21,6 +21,7 @@ internal static class PlaneFlatnessLiveA3PointerSmokeFixture
     internal const string PlaneFlatnessStepId = "step.live-a3.plane-flatness";
     internal const string PointPairStepId = "step.live-a3.point-pair";
     internal const string GapFlushStepId = "step.live-a3.gap-flush";
+    internal const string VolumeStepId = "step.live-a3.volume";
 
     internal static (string RecipePath, string Summary) Prepare(string packageDirectory)
     {
@@ -207,6 +208,17 @@ internal static class PlaneFlatnessLiveA3PointerSmokeFixture
                     new ToolRecipeParameter("GapTolerance", "100000"),
                     new ToolRecipeParameter("ExpectedFlush", "0"),
                     new ToolRecipeParameter("FlushTolerance", "100000")
+                ]));
+            steps.Add(new ToolRecipeStep(
+                VolumeStepId,
+                "volume",
+                "Volume",
+                3,
+                [HeightFieldEntityId, selections[0].Id, selections[1].Id],
+                "result.live-a3.volume",
+                [
+                    new ToolRecipeParameter("ExpectedNetVolume", "0"),
+                    new ToolRecipeParameter("VolumeTolerance", "100000")
                 ]));
         }
 

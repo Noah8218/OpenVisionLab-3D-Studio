@@ -29,7 +29,8 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepPlaneFlatness => string.Equals(SelectedPipelineStep?.ToolId, "plane-flatness", StringComparison.Ordinal);
     public bool IsSelectedStepPointPairDimensions => string.Equals(SelectedPipelineStep?.ToolId, "point-pair-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepGapFlush => string.Equals(SelectedPipelineStep?.ToolId, "gap-flush", StringComparison.Ordinal);
-    public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush;
+    public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
+    public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume;
     public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions;
     public bool IsMeasurementPreviewRunning => isMeasurementPreviewRunning;
     public bool HasCurrentMeasurementPreview => measurementPreviewOutput is not null && !isMeasurementPreviewStale;
@@ -56,8 +57,12 @@ public sealed partial class ToolWorkbenchViewModel
         : CanTeachPlaneFlatnessMeasurementRoi ? Localization.NoRoiTaught : DualRoiFirstRequired;
     public string PlaneFlatnessReferenceActionText => PlaneFlatnessReferenceSelection is null ? Localization.CaptureRoi : Localization.ReplaceRoi;
     public string PlaneFlatnessMeasurementActionText => PlaneFlatnessMeasurementSelection is null ? Localization.CaptureRoi : Localization.ReplaceRoi;
-    public string DualRoiTeachingTitle => IsSelectedStepGapFlush ? Localization.GapFlushRoiTeaching : Localization.PlaneFlatnessRoiTeaching;
-    public string DualRoiTeachingDetail => IsSelectedStepGapFlush ? Localization.GapFlushRoiTeachingDetail : Localization.PlaneFlatnessRoiTeachingDetail;
+    public string DualRoiTeachingTitle => IsSelectedStepGapFlush
+        ? Localization.GapFlushRoiTeaching
+        : IsSelectedStepVolume ? Localization.VolumeRoiTeaching : Localization.PlaneFlatnessRoiTeaching;
+    public string DualRoiTeachingDetail => IsSelectedStepGapFlush
+        ? Localization.GapFlushRoiTeachingDetail
+        : IsSelectedStepVolume ? Localization.VolumeRoiTeachingDetail : Localization.PlaneFlatnessRoiTeachingDetail;
     public string DualRoiFirstLabel => IsSelectedStepGapFlush ? Localization.FirstRoi : Localization.ReferenceRoi;
     public string DualRoiSecondLabel => IsSelectedStepGapFlush ? Localization.SecondRoi : Localization.MeasurementRoi;
     public string DualRoiFirstRequired => IsSelectedStepGapFlush ? Localization.FirstRoiRequiredFirst : Localization.ReferenceRoiRequiredFirst;
@@ -315,6 +320,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepPlaneFlatness));
         OnPropertyChanged(nameof(IsSelectedStepPointPairDimensions));
         OnPropertyChanged(nameof(IsSelectedStepGapFlush));
+        OnPropertyChanged(nameof(IsSelectedStepVolume));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();

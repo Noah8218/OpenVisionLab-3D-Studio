@@ -130,6 +130,27 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && koreanTeachingTitle == "평면도 ROI 티칭 순서",
                 $"en={englishTeachingTitle}; ko={koreanTeachingTitle}");
 
+            var volumeWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-volume.json"));
+            volumeWorkbench.SetC3DSource(sourcePath);
+            volumeWorkbench.SelectedTool = volumeWorkbench.Tools.Single(tool => tool.Id == "volume");
+            volumeWorkbench.AddSelectedToolCommand.Execute(null);
+            Check("Volume is a generic dual-ROI Measure tool with typed WPG parameters",
+                volumeWorkbench.SelectedPipelineStep is { ToolId: "volume", MinimumInputCount: 3 }
+                && volumeWorkbench.IsSelectedStepVolume
+                && volumeWorkbench.IsSelectedStepDualRoiMeasurement
+                && volumeWorkbench.IsSelectedStepPropertyGridSupported
+                && volumeWorkbench.SelectedStepPropertyDraft is VolumeStepProperties,
+                volumeWorkbench.SelectedStepAdapterStatus);
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishVolumeTitle = volumeWorkbench.DualRoiTeachingTitle;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var koreanVolumeTitle = volumeWorkbench.DualRoiTeachingTitle;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check("Volume ROI teaching title is localized independently in English and Korean",
+                englishVolumeTitle == "Volume ROI teaching order"
+                && koreanVolumeTitle == "\uCCB4\uC801 ROI \uD2F0\uCE6D \uC21C\uC11C",
+                $"en={englishVolumeTitle}; ko={koreanVolumeTitle}");
+
             var captureRecipePath = Path.Combine(root, "captured-plane.ov3d-recipe.json");
             var captureWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-captured-plane.json"));
             captureWorkbench.SetC3DSource(sourcePath);

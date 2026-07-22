@@ -5,6 +5,12 @@ Updated: 2026-07-21
 Status: **Owner-approved architecture direction; migration is phased and
 evidence-gated.**
 
+> 2026-07-22 current package update: `Lib.ThreeD 2.7.8` at
+> `d1dff41ca0ce940492930267aa0ae7430e73e437` additionally owns pure
+> Gap/Flush and Volume inspection arithmetic. The vendored package SHA-256 is
+> `D7C0BD0ED60249870BD8B0A6DAC7D69A7A608FD23347E5440DF8ED30C3A90F2F`.
+> Older package sections below remain migration history.
+
 ## Binding ownership rule
 
 OpenVisionLab 3D Studio is a typed inspection-tool workbench. It owns recipe
@@ -39,6 +45,7 @@ reusable by other OpenVisionLab products.
 | Height Difference Edge | `Lib.ThreeD` pure adjacent-pair scan/selection | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
 | 3D Line Fit | `Lib.ThreeD` pure deterministic consensus/TLS | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
 | Line Intersection | `Lib.ThreeD` | Studio is a typed C3D lineage/artifact adapter; Noah owns closest-approach geometry. |
+| Plane Flatness / Point Pair / Gap-Flush / Volume | `Lib.ThreeD` pure inspection tools | Complete for deterministic software evidence: Studio owns A3 identity, ROI/WPG/UI, metrics, overlays, hashes, and replay. |
 | Landmark Correspondence | Studio structural gate | Retain Studio identity/recipe ownership; extract only reusable rank/volume math if repeated external consumers require it. |
 
 No migration is a claim of physical calibration, metrology, or a real

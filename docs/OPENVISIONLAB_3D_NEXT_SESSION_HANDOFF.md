@@ -1,5 +1,30 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## Volume generic Measure checkpoint - 2026-07-22
+
+Volume is now an ordinary three-input Measure node:
+`Published TransformedHeightField + reference GridRectangle + measurement
+GridRectangle -> MeasurementResult`. It fits `H = aU + bV + c` in the A3
+reference axes and integrates signed H residual times `PitchU * PitchV` over
+the measurement ROI. Output is declared reference-grid model-unit cubed, not a
+physical-volume claim. WPG edits expected signed net volume and tolerance;
+Korean/English ROI teaching, Preview, Publish, and schema `1.3` save/reopen are
+explicit.
+
+Pure arithmetic is committed and pushed in Library-Noah `Lib.ThreeD 2.7.8` at
+`d1dff41ca0ce940492930267aa0ae7430e73e437`; vendored package SHA-256 is
+`D7C0BD0ED60249870BD8B0A6DAC7D69A7A608FD23347E5440DF8ED30C3A90F2F`.
+Evidence passes Noah `51/51`, Studio build `0/0`, package/bridge `7/7`, legacy
+Volume `9/9`, ordered Runner `17/17`, generic Workbench `25/25`, and one live
+Shell Volume Preview/Publish/save/reopen flow. Evidence is under
+`artifacts/verification/20260722-generic-volume/`; the durable contract is
+`docs/OPENVISIONLAB_3D_VOLUME_TOOL_RECIPE_20260722.md`.
+
+The next generic legacy-slice migration is Cross-section Dimensions. After it,
+aggregate all generic ordered measurement results into one durable multi-step
+Run Record. Automatic feature detection, calibrated physical units,
+uncertainty, Gauge R&R, and metrology remain unverified.
+
 ## Gap/Flush generic Measure checkpoint - 2026-07-22
 
 Gap/Flush is now an ordinary three-input Measure node:
