@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Lib.ThreeD.Inspection;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -60,12 +61,25 @@ public static class GapFlushRule
             return Error(input, "ROI statistics, expected values, and tolerances must be finite; tolerances must be non-negative.", stopwatch.Elapsed);
         }
 
-        var signedGap = (input.RightRegion.CenterX - input.RightRegion.HalfWidth)
-            - (input.LeftRegion.CenterX + input.LeftRegion.HalfWidth);
-        var signedFlush = input.Right.RawMean - input.Left.RawMean;
-        var modelFlush = input.Right.ModelYMean - input.Left.ModelYMean;
-        var gapStatus = Status(signedGap, input.Acceptance.ExpectedGap, input.Acceptance.GapTolerance);
-        var flushStatus = Status(signedFlush, input.Acceptance.ExpectedFlush, input.Acceptance.FlushTolerance);
+        var noah = new GapFlushInspectionTool().Execute(
+            input.LeftRegion.CenterX - input.LeftRegion.HalfWidth,
+            input.LeftRegion.CenterX + input.LeftRegion.HalfWidth,
+            input.RightRegion.CenterX - input.RightRegion.HalfWidth,
+            input.RightRegion.CenterX + input.RightRegion.HalfWidth,
+            new GapFlushRegionStatistics(input.Left.PointCount, input.Left.RawMean, input.Left.ModelYMean),
+            new GapFlushRegionStatistics(input.Right.PointCount, input.Right.RawMean, input.Right.ModelYMean),
+            new GapFlushInspectionOptions
+            {
+                ExpectedGap = input.Acceptance.ExpectedGap,
+                GapTolerance = input.Acceptance.GapTolerance,
+                ExpectedFlush = input.Acceptance.ExpectedFlush,
+                FlushTolerance = input.Acceptance.FlushTolerance
+            });
+        var signedGap = noah.SignedGap;
+        var signedFlush = noah.SignedFlush;
+        var modelFlush = noah.SignedReferenceFlush;
+        var gapStatus = noah.GapPassed ? ResultStatus.Pass : ResultStatus.Fail;
+        var flushStatus = noah.FlushPassed ? ResultStatus.Pass : ResultStatus.Fail;
         var status = gapStatus == ResultStatus.Pass && flushStatus == ResultStatus.Pass
             ? ResultStatus.Pass
             : ResultStatus.Fail;
@@ -112,9 +126,6 @@ public static class GapFlushRule
             double.NaN,
             input.Left?.PointCount ?? 0,
             input.Right?.PointCount ?? 0);
-
-    private static ResultStatus Status(double actual, double expected, double tolerance) =>
-        Math.Abs(actual - expected) <= tolerance ? ResultStatus.Pass : ResultStatus.Fail;
 
     private static bool ValidRegion(HeightDeviationRecipeRoiRegion? region) =>
         region is not null

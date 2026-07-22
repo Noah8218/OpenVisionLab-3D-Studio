@@ -22,6 +22,34 @@ public sealed partial class ToolWorkbenchViewModel
     internal C3DTransformedPointCloud? CurrentAffineApplyOutput => affineApplyPreviewOutput;
     internal bool TryGetPublishedAffineApplyOutput(string outputEntityId, out C3DTransformedPointCloud? output) =>
         publishedAffineApplyOutputs.TryGetValue(outputEntityId, out output);
+    internal bool TryRegisterSyntheticPublishedAffineApplyOutputForSmoke(
+        C3DTransformedPointCloud output,
+        out string message)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        if (SelectedPipelineStep is not { ToolId: "re-grid-height-map", InputEntityIds.Count: 1 } regridStep
+            || !string.Equals(regridStep.InputEntityIds[0], output.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+            || !PipelineSteps.Any(step =>
+                string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.Ordinal)
+                && string.Equals(step.OutputEntityId, output.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            || !string.Equals(Source.Id, output.RootSourceEntityId, StringComparison.OrdinalIgnoreCase)
+            || loadedSourceBinding is null
+            || !string.Equals(loadedSourceBinding.ContentSha256, output.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
+            || loadedSourceBinding.GridWidth != output.SourceGridWidth
+            || loadedSourceBinding.GridHeight != output.SourceGridHeight)
+        {
+            message = "Synthetic smoke A2 identity does not match the selected Re-grid route and loaded recipe source.";
+            return false;
+        }
+
+        publishedAffineApplyOutputs[output.OutputEntityId] = output;
+        AppendLog(
+            "Smoke",
+            $"Registered deterministic synthetic Published A2 prerequisite {output.OutputEntityId} ({output.ContentSha256}); normal Re-grid Preview/Publish remains explicit.");
+        RefreshRegridHeightFieldExecutionState();
+        message = $"Synthetic Published A2 registered for smoke-only execution: {output.ContentSha256}";
+        return true;
+    }
     public string AffineApplyExecutionSummary => affineApplyExecutionSummary;
     public string AffineApplyOutputHashSummary => affineApplyPreviewOutput is null
         ? "No TransformedPointCloud hash until Preview completes."

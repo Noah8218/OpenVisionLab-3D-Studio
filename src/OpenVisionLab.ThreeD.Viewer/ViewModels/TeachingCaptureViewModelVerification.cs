@@ -44,6 +44,53 @@ public static class TeachingCaptureViewModelVerification
             viewModel.ConfirmTeachingCaptureApplied();
             Check("confirm clears transient and retains applied", !viewModel.IsTeachingCaptureActive && viewModel.AppliedTeachingSelections.Count == 1, viewModel.TeachingCaptureSnapshot.Message);
 
+            var artifactBinding = new ToolRecipeSelectionSourceBinding(
+                "TransformedHeightField", new string('B', 64), 20, 10,
+                "derived.height-field", new string('C', 64), "fixture-unit", "frame.fixture");
+            var artifactRequest = new TeachingCaptureRequest(
+                "selection.artifact.roi", "Artifact ROI", ToolRecipeSelectionKinds.GridRectangle, 2,
+                "source.c3d.height-map", "frame.fixture", artifactBinding);
+            Check("artifact-owned rectangle capture begins", viewModel.BeginTeachingCapture(artifactRequest, out _), viewModel.TeachingCaptureSnapshot.ProgressText);
+            viewModel.TryAddTeachingCapturePoint(Point(1, 2, 1, 2, 3, 4), out _);
+            viewModel.TryAddTeachingCapturePoint(Point(5, 8, 5, 6, 7, 8), out _);
+            Check("artifact binding and frame survive candidate creation",
+                viewModel.TryGetTeachingCaptureCandidate(out var artifactSelection, out _)
+                && artifactSelection is not null
+                && artifactSelection.FrameId == "frame.fixture"
+                && artifactSelection.SourceBinding == artifactBinding
+                && artifactSelection.GridRectangle == new ToolRecipeGridRectangle(1, 2, 5, 7),
+                artifactSelection?.SourceBinding.OwnerEntityId ?? "none");
+            viewModel.CancelTeachingCapture();
+
+            var flatnessReferenceRequest = Request(
+                "selection.plane-flatness.reference-roi", "Plane Flatness Reference ROI",
+                ToolRecipeSelectionKinds.GridRectangle, 2, binding);
+            viewModel.BeginTeachingCapture(flatnessReferenceRequest, out _);
+            viewModel.TryAddTeachingCapturePoint(Point(0, 0, 0, 10, 0, 10), out _);
+            viewModel.TryAddTeachingCapturePoint(Point(1, 1, 1, 12, 1, 12), out _);
+            var referenceReady = viewModel.TryGetTeachingCaptureCandidate(out var flatnessReference, out _);
+            Check("Plane Flatness Reference ROI candidate keeps its role identity",
+                referenceReady
+                && flatnessReference?.Id == flatnessReferenceRequest.SelectionId
+                && flatnessReference.GridRectangle == new ToolRecipeGridRectangle(0, 0, 2, 2),
+                flatnessReference?.Id ?? "none");
+            viewModel.ConfirmTeachingCaptureApplied();
+
+            var flatnessMeasurementRequest = Request(
+                "selection.plane-flatness.measurement-roi", "Plane Flatness Measurement ROI",
+                ToolRecipeSelectionKinds.GridRectangle, 2, binding);
+            viewModel.BeginTeachingCapture(flatnessMeasurementRequest, out _);
+            viewModel.TryAddTeachingCapturePoint(Point(2, 2, 2, 14, 2, 14), out _);
+            viewModel.TryAddTeachingCapturePoint(Point(3, 3, 3, 16, 3, 16), out _);
+            var measurementReady = viewModel.TryGetTeachingCaptureCandidate(out var flatnessMeasurement, out _);
+            Check("Plane Flatness Measurement ROI candidate keeps a distinct role identity",
+                measurementReady
+                && flatnessMeasurement?.Id == flatnessMeasurementRequest.SelectionId
+                && flatnessMeasurement.GridRectangle == new ToolRecipeGridRectangle(2, 2, 2, 2)
+                && !string.Equals(flatnessMeasurement.Id, flatnessReference?.Id, StringComparison.Ordinal),
+                flatnessMeasurement?.Id ?? "none");
+            viewModel.CancelTeachingCapture();
+
             var twoPointRequest = Request("selection.line.01", "Line points", ToolRecipeSelectionKinds.PointSet, 2, binding);
             viewModel.BeginTeachingCapture(twoPointRequest, out _);
             viewModel.TryAddTeachingCapturePoint(Point(4, 4, 0, 0, 0, 10), out _);

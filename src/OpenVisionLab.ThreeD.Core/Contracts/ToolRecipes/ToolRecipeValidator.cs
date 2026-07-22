@@ -22,11 +22,15 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.SelectionSchemaVersion,
             StringComparison.Ordinal);
+        var isGenericMeasurementSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.GenericMeasurementSchemaVersion,
+            StringComparison.Ordinal);
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
             StringComparison.Ordinal);
-        if (!isLegacySchema && !isSelectionSchema && !isCurrentSchema)
+        if (!isLegacySchema && !isSelectionSchema && !isGenericMeasurementSchema && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
         }
@@ -96,7 +100,14 @@ public static class ToolRecipeValidator
                 continue;
             }
 
-            ValidateSelection(selection, source, isCurrentSchema, errors, warnings, correspondenceRows);
+            ValidateSelection(
+                selection,
+                source,
+                isGenericMeasurementSchema || isCurrentSchema,
+                isCurrentSchema,
+                errors,
+                warnings,
+                correspondenceRows);
             AddIdentity(globalIds, selection.Id, "selection", errors);
             AddRoutableEntity(routableEntityIds, selection.Id);
             if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, StringComparison.Ordinal)
@@ -212,6 +223,11 @@ public static class ToolRecipeValidator
             if (string.Equals(step.ToolId, "re-grid-height-map", StringComparison.OrdinalIgnoreCase))
             {
                 ValidateRegridHeightMapStep(step, inputs, label, errors);
+            }
+
+            if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush")
+            {
+                ValidateHeightMeasurementStep(step, inputs, source, selections, label, errors);
             }
         }
 
@@ -392,10 +408,78 @@ public static class ToolRecipeValidator
         }
     }
 
+    private static void ValidateHeightMeasurementStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyList<ToolRecipeSelection> selections,
+        string label,
+        List<string> errors)
+    {
+        var isPlaneFlatness = step.ToolId == "plane-flatness";
+        var isPointPair = step.ToolId == "point-pair-dimensions";
+        var isGapFlush = step.ToolId == "gap-flush";
+        var expectedInputCount = isPlaneFlatness || isGapFlush ? 3 : 2;
+        if (inputs.Count != expectedInputCount)
+        {
+            errors.Add(isPlaneFlatness || isGapFlush
+                ? $"{label} {Clean(step.ToolName)} v1 requires one TransformedHeightField and two ordered GridRectangles."
+                : isPointPair
+                    ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
+                : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
+            return;
+        }
+        if ((isPlaneFlatness || isPointPair || isGapFlush) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"{label} {Clean(step.ToolName)} v1 requires a Published TransformedHeightField first input.");
+        }
+        for (var inputIndex = 1; inputIndex < inputs.Count; inputIndex++)
+        {
+            var selection = selections.SingleOrDefault(candidate =>
+                candidate is not null && string.Equals(candidate.Id, inputs[inputIndex], StringComparison.OrdinalIgnoreCase));
+            var validSelection = isPointPair
+                ? selection?.Kind == ToolRecipeSelectionKinds.PointSet && selection.Points?.Count == 2
+                : selection?.Kind == ToolRecipeSelectionKinds.GridRectangle && selection.GridRectangle is not null;
+            if (!validSelection)
+            {
+                errors.Add(isPointPair
+                    ? $"{label} {Clean(step.ToolName)} v1 input {inputIndex + 1} must be one recipe-owned ordered PointSet(2)."
+                    : $"{label} {Clean(step.ToolName)} v1 input {inputIndex + 1} must be one recipe-owned GridRectangle.");
+            }
+            else if (string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(selection!.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+                    || !string.IsNullOrWhiteSpace(selection.SourceBinding.OwnerEntityId))
+                {
+                    errors.Add($"{label} {Clean(step.ToolName)} raw C3D input requires a source-owned C3D selection.");
+                }
+            }
+            else if (!string.Equals(selection!.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal)
+                || !string.Equals(selection.SourceBinding.OwnerEntityId, inputs[0], StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} {Clean(step.ToolName)} transformed input requires selections owned by the first-input TransformedHeightField.");
+            }
+        }
+        var expected = step.ToolId switch
+        {
+            "thickness" => new[] { "MinimumThickness", "MaximumThickness", "MinimumValidSampleCount" },
+            "warpage" => new[] { "MaximumPeakToValley", "MaximumRms", "MinimumValidSampleCount" },
+            "point-pair-dimensions" => new[] { "ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees" },
+            "gap-flush" => new[] { "ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance" },
+            _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
+        };
+        var parameters = step.Parameters ?? [];
+        if (parameters.Count != expected.Length || expected.Any(name => parameters.Count(parameter => parameter.Name == name) != 1))
+        {
+            errors.Add($"{label} {Clean(step.ToolName)} v1 requires exactly {string.Join(", ", expected)}.");
+        }
+    }
+
     private static void ValidateSelection(
         ToolRecipeSelection selection,
         ToolRecipeSource source,
-        bool isCurrentSchema,
+        bool hasCorrespondenceDescriptor,
+        bool supportsArtifactOwnedSelections,
         List<string> errors,
         List<string> warnings,
         List<(string SelectionId, string SelectionLabel, ToolRecipeLandmarkCorrespondence Row)> correspondenceRows)
@@ -413,12 +497,6 @@ public static class ToolRecipeValidator
             errors.Add($"{label} root source '{selection.RootSourceId.Trim()}' does not match recipe source '{Clean(source.Id)}'.");
         }
 
-        if (!string.IsNullOrWhiteSpace(selection.FrameId)
-            && !string.Equals(selection.FrameId.Trim(), source.FrameId?.Trim(), StringComparison.OrdinalIgnoreCase))
-        {
-            errors.Add($"{label} frame '{selection.FrameId.Trim()}' does not match source frame '{Clean(source.FrameId)}'.");
-        }
-
         var binding = selection.SourceBinding;
         if (binding is null)
         {
@@ -426,14 +504,52 @@ public static class ToolRecipeValidator
             return;
         }
 
-        if (!string.Equals(binding.Format, "C3D", StringComparison.OrdinalIgnoreCase))
+        var isRawSourceBinding = string.Equals(binding.Format, "C3D", StringComparison.OrdinalIgnoreCase);
+        var isArtifactBinding = string.Equals(binding.Format, "TransformedHeightField", StringComparison.Ordinal);
+        if (!isRawSourceBinding && !isArtifactBinding)
         {
-            errors.Add($"{label} source binding format must be C3D.");
+            errors.Add($"{label} binding format must be C3D or TransformedHeightField.");
         }
-
-        if (!string.Equals(binding.Format?.Trim(), source.Format?.Trim(), StringComparison.OrdinalIgnoreCase))
+        if (isRawSourceBinding)
         {
-            errors.Add($"{label} source binding format '{Clean(binding.Format)}' does not match source format '{Clean(source.Format)}'.");
+            if (!string.Equals(selection.FrameId?.Trim(), source.FrameId?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} frame '{Clean(selection.FrameId)}' does not match source frame '{Clean(source.FrameId)}'.");
+            }
+            if (!string.Equals(binding.Format?.Trim(), source.Format?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} source binding format '{Clean(binding.Format)}' does not match source format '{Clean(source.Format)}'.");
+            }
+            if (!string.IsNullOrWhiteSpace(binding.OwnerEntityId)
+                || !string.IsNullOrWhiteSpace(binding.RootSourceContentSha256)
+                || !string.IsNullOrWhiteSpace(binding.Unit)
+                || !string.IsNullOrWhiteSpace(binding.FrameId))
+            {
+                errors.Add($"{label} raw C3D binding cannot declare artifact ownership fields.");
+            }
+        }
+        if (isArtifactBinding)
+        {
+            if (!supportsArtifactOwnedSelections)
+            {
+                errors.Add($"{label} artifact-owned binding requires recipe schema {ToolRecipeDocument.CurrentSchemaVersion}.");
+            }
+            if (selection.Kind is not (ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.PointSet))
+            {
+                errors.Add($"{label} TransformedHeightField binding supports GridRectangle or PointSet geometry only.");
+            }
+            if (string.IsNullOrWhiteSpace(binding.OwnerEntityId)) errors.Add($"{label} artifact owner entity ID is required.");
+            if (!IsSha256(binding.RootSourceContentSha256)) errors.Add($"{label} artifact root-source SHA-256 is required.");
+            if (!string.Equals(binding.RootSourceContentSha256, source.ContentSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{label} artifact root-source SHA-256 does not match the recipe source.");
+            }
+            if (string.IsNullOrWhiteSpace(binding.Unit)) errors.Add($"{label} artifact unit is required.");
+            if (string.IsNullOrWhiteSpace(binding.FrameId)) errors.Add($"{label} artifact frame ID is required.");
+            if (!string.Equals(selection.FrameId, binding.FrameId, StringComparison.Ordinal))
+            {
+                errors.Add($"{label} frame must match the owned TransformedHeightField frame.");
+            }
         }
 
         if (!IsSha256(binding.ContentSha256))
@@ -460,7 +576,7 @@ public static class ToolRecipeValidator
 
         if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, StringComparison.Ordinal))
         {
-            ValidateCorrespondenceSet(selection, label, isCurrentSchema, errors, warnings, correspondenceRows);
+            ValidateCorrespondenceSet(selection, label, hasCorrespondenceDescriptor, errors, warnings, correspondenceRows);
             return;
         }
 
@@ -501,7 +617,7 @@ public static class ToolRecipeValidator
                 || rectangle.Row > binding.GridHeight - rectangle.RowCount
                 || rectangle.Column > binding.GridWidth - rectangle.ColumnCount))
         {
-            errors.Add($"{label} grid rectangle is outside the recorded {binding.GridWidth} x {binding.GridHeight} C3D grid.");
+            errors.Add($"{label} grid rectangle is outside the recorded {binding.GridWidth} x {binding.GridHeight} bound grid.");
         }
     }
 

@@ -11,29 +11,29 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel>
                 <TextBox Margin="0,10,0,0"
-                         AutomationProperties.Name="Teaching recipe name"
+                         AutomationProperties.Name="Inspection recipe name"
                          Text="{Binding RecipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <WrapPanel Margin="0,8,0,0">
                     <ui:Button Margin="0,0,5,5"
                                Content="New"
                                Icon="{ui:SymbolIcon DocumentAdd24}"
                                Command="{Binding NewTeachingRecipeCommand}"
-                               AutomationProperties.Name="New teaching recipe" />
+                               AutomationProperties.Name="New inspection recipe" />
                     <ui:Button Margin="0,0,5,5"
                                Content="Open..."
                                Icon="{ui:SymbolIcon FolderOpen24}"
                                Command="{Binding OpenTeachingRecipeCommand}"
-                               AutomationProperties.Name="Open teaching recipe" />
+                               AutomationProperties.Name="Open inspection recipe" />
                     <ui:Button Margin="0,0,5,5"
                                Content="Save"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
                                Command="{Binding SaveTeachingRecipeCommand}"
-                               AutomationProperties.Name="Save teaching recipe" />
+                               AutomationProperties.Name="Save inspection recipe" />
                     <ui:Button Margin="0,0,5,5"
                                Content="Save As..."
                                Icon="{ui:SymbolIcon SaveCopy24}"
                                Command="{Binding SaveTeachingRecipeAsCommand}"
-                               AutomationProperties.Name="Save teaching recipe as" />
+                               AutomationProperties.Name="Save inspection recipe as" />
                 </WrapPanel>
 
                 <Border Margin="0,4,0,0"

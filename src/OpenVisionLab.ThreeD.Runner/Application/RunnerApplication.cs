@@ -32,6 +32,7 @@ internal static class RunnerApplication
         var toolTeachingStepId = ReadOption(args, "--tool-teaching-step");
         var outputC3DPath = ReadOption(args, "--output-c3d");
         var alignedPointRepeatabilityStudyPath = ReadOption(args, "--aligned-point-repeatability-study");
+        var syntheticAffinePackagePath = ReadOption(args, "--synthetic-affine-package");
         var reportPath = ReadOption(args, "--report");
         var expectedStatus = ReadOption(args, "--expect-status");
         var compareContractPath = ReadOption(args, "--compare-contract");
@@ -53,6 +54,8 @@ internal static class RunnerApplication
         var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
         var verifyC3DAffineApply = args.Contains("--verify-c3d-affine-apply", StringComparer.OrdinalIgnoreCase);
         var verifyC3DRegridHeightField = args.Contains("--verify-c3d-regrid-height-field", StringComparer.OrdinalIgnoreCase);
+        var verifyArtifactOwnedRoiRunner = args.Contains("--verify-artifact-owned-roi-runner", StringComparer.OrdinalIgnoreCase);
+        var verifySyntheticAffineInspectionPlate = args.Contains("--verify-synthetic-affine-inspection-plate", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
         var verifyPointPairDimensions = args.Contains("--verify-point-pair-dimensions", StringComparer.OrdinalIgnoreCase);
         var verifyGapFlush = args.Contains("--verify-gap-flush", StringComparer.OrdinalIgnoreCase);
@@ -166,6 +169,27 @@ internal static class RunnerApplication
             }
 
             return C3DMedianFilterGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyArtifactOwnedRoiRunner)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
+                return 2;
+            }
+            return ArtifactOwnedRoiRunnerVerification.Run(reportPath);
+        }
+
+        if (verifySyntheticAffineInspectionPlate)
+        {
+            if (syntheticAffinePackagePath is null || reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-synthetic-affine-inspection-plate --synthetic-affine-package <directory> --report <path>");
+                return 2;
+            }
+
+            return SyntheticAffineInspectionPlateVerification.Run(syntheticAffinePackagePath, reportPath);
         }
 
         if (verifyC3DEdge)
@@ -576,6 +600,7 @@ internal static class RunnerApplication
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");

@@ -72,8 +72,9 @@ public static class ToolRecipeDocumentStore
 
     private static void VerifyCurrentSelectionBindings(string documentPath, ToolRecipeDocument document)
     {
-        var selections = document.Selections ?? [];
-        if (selections.Count == 0)
+        var rawSelections = (document.Selections ?? []).Where(selection =>
+            string.Equals(selection.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (rawSelections.Length == 0)
         {
             return;
         }
@@ -96,7 +97,7 @@ public static class ToolRecipeDocumentStore
                 exception);
         }
 
-        foreach (var selection in selections)
+        foreach (var selection in rawSelections)
         {
             var result = ToolRecipeSelectionSourceBindingVerifier.Verify(current, selection.SourceBinding);
             if (!result.IsCurrent)

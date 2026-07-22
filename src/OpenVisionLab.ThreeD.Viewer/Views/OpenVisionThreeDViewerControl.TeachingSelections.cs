@@ -20,15 +20,36 @@ public sealed partial class OpenVisionThreeDViewerControl
     public bool BeginC3DTeachingCapture(TeachingCaptureRequest request, out string message)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (!viewModel.C3DSampleVisible || c3dSample is null)
+        var isTransformedHeightField = string.Equals(
+            request.SourceBinding.Format,
+            "TransformedHeightField",
+            StringComparison.Ordinal);
+        if (isTransformedHeightField)
+        {
+            if (regridHeightFieldRenderOutput is null)
+            {
+                message = "The owned Published TransformedHeightField must be visible before teaching capture.";
+                return false;
+            }
+            var verification = ToolRecipeSelectionSourceBindingVerifier.Verify(
+                regridHeightFieldRenderOutput,
+                request.SourceBinding);
+            if (!verification.IsCurrent)
+            {
+                message = verification.Message;
+                return false;
+            }
+        }
+        else if (!viewModel.C3DSampleVisible || c3dSample is null)
         {
             message = "A visible C3D source is required before teaching capture.";
             return false;
         }
 
-        if (!string.Equals(request.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
-            || request.SourceBinding.GridWidth != c3dSample.Width
-            || request.SourceBinding.GridHeight != c3dSample.Height)
+        if (!isTransformedHeightField
+            && (!string.Equals(request.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || request.SourceBinding.GridWidth != c3dSample!.Width
+            || request.SourceBinding.GridHeight != c3dSample.Height))
         {
             message = "Teaching capture source format or grid dimensions do not match the loaded C3D source.";
             return false;
@@ -40,9 +61,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
-        if (!string.Equals(
+        if (!isTransformedHeightField && !string.Equals(
                 request.SourceBinding.ContentSha256,
-                c3dSample.ContentSha256,
+                c3dSample!.ContentSha256,
                 StringComparison.OrdinalIgnoreCase))
         {
             message = "Teaching capture source SHA-256 does not match the loaded C3D bytes.";
@@ -110,6 +131,33 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!viewModel.IsTeachingCaptureActive)
         {
             return false;
+        }
+
+        if (string.Equals(
+                viewModel.TeachingCaptureSourceBinding?.Format,
+                "TransformedHeightField",
+                StringComparison.Ordinal))
+        {
+            if (!TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
+            {
+                const string message = "Teaching capture pick missed the visible TransformedHeightField grid.";
+                viewModel.SetTeachingCaptureMessage(message);
+                viewModel.PickCoordinate = "(none)";
+                viewModel.ViewerStatus = message;
+                RaiseTeachingCaptureStateChanged();
+                return true;
+            }
+
+            var regridSelectionPoint = new ToolRecipeSelectionPoint(
+                new ToolRecipeGridCellLocator("grid-cell", regridPoint.Row, regridPoint.Column),
+                new ToolRecipeXyz(regridPoint.ReferencePosition.X, regridPoint.ReferencePosition.Y, regridPoint.ReferencePosition.Z),
+                regridPoint.Height);
+            viewModel.TryAddTeachingCapturePoint(regridSelectionPoint, out var regridCaptureMessage);
+            viewModel.SelectedEntity = "TransformedHeightField Teaching Selection Candidate";
+            viewModel.PickCoordinate = $"row {regridPoint.Row}, col {regridPoint.Column}, H {regridPoint.Height:G6}";
+            viewModel.ViewerStatus = regridCaptureMessage;
+            RaiseTeachingCaptureStateChanged();
+            return true;
         }
 
         if (!TryPickC3DPoint(screenPoint, out var point))
@@ -185,6 +233,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         DrawWorkbenchAffineApply(gl);
         DrawWorkbenchRegridHeightField(gl);
+        DrawRegridTeachingSelectionOverlays(gl);
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);

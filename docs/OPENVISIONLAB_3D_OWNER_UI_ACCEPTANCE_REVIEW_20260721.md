@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Owner UI Acceptance Review Packet
 
-Updated: 2026-07-21
+Updated: 2026-07-22
 Status: Complete — owner accepted the current UI/UX gate at 85/100 on 2026-07-21.
 
 ## Scope
@@ -42,17 +42,35 @@ chain merely to manufacture evidence.
 | Recipe and tool workflow | 20 | 18 | Tree-first routing, read-only Input -> Parameters -> Output summaries, Flow Map, explicit Preview/Publish, and focused Tool Labs are present. Deduct 2 until a first-time operator confirms the multi-step workflow. |
 | Feedback and accessibility | 15 | 12 | Current states retain text, color, icons, tooltips, and Automation names; keyboard automation passes 5/5. Deduct 3 until the owner completes the keyboard-only pane navigation and a real 150% DPI/assistive review. |
 | Evidence and visual polish | 10 | 7 | Fresh Workbench, Recipe Manager, 3-Point Plane, and Datum captures pass. Deduct 3 because current-source captures do not yet cover every available Tool Lab and all docked comparison panes at this review point. |
-| **Total** | **100** | **85** | **Above threshold, but not owner accepted** |
+| **Total** | **100** | **85** | **Owner accepted on 2026-07-21** |
 
-## Concrete issue recorded for the next UI slice
+## Compact Viewer-header follow-up - 2026-07-22
 
-At `1280 x 760`, the Viewer command/status strip gives the long selected-step
-status too much horizontal pressure, making part of the status unreadable
-before the independent pan hint. The corrective scope is limited to a compact
-Viewer-header layout: preserve `R-drag: Pan` as a no-wrap affordance, ellipsize
-the long status intentionally, and expose its complete text through a tooltip
-and accessible name. Do not change Viewer interaction, selection, Preview,
-Publish, or rendering behavior.
+Status: Complete
+
+The Viewer command/status strip now keeps Geometry/HUD and the independent
+no-wrap `R-drag: Pan`/View controls on the first row. Viewer status occupies a
+separate full-width row with intentional ellipsis, a full-value tooltip, and
+an accessible name. The selected 3-Point Plane fixture now shows the complete
+`C3D source loaded for teaching: Ori_20240116_094414.C3D` status at both
+`1280 x 760` and `1920 x 1080`; Viewer interaction, selection,
+Preview/Publish/Run, and rendering bindings were not changed.
+
+Acceptance criteria and current-task evidence:
+
+- Compact status remains readable while `R-drag: Pan` remains independent:
+  before/after `1280 x 760` captures in
+  `artifacts/current/20260722-viewer-header-status/`.
+- Normal-width hierarchy remains intact: after `1920 x 1080` capture in the
+  same folder.
+- Current Debug build: pass, `0` warnings and `0` errors.
+- Workbench docking: pass, `25/25`.
+- Viewer display ViewModel: pass, `82` checks.
+- Both after captures passed screenshot quality on attempt 1.
+
+Boundary: this closes only the recorded non-gate P1 layout issue. It does not
+rescore the owner-approved `85/100`, complete the deferred manual reviews, or
+add an algorithm, calibration, metrology, or production-integration claim.
 
 ## Deferred manual evidence
 
@@ -66,8 +84,6 @@ explicitly unverified rather than treated as passing evidence:
 3. First-time-operator protocol: an engineer who did not implement this UI
    identifies source, selected route, typed chain, next safe action, and the
    non-mutating candidate-selection boundary.
-4. Owner decision record: `Pass`, `Revise`, or `Reject` with the evidence
-   folder above.
 
 ## Owner decision
 
@@ -78,6 +94,6 @@ first-time-operator, keyboard-only operator, or assistive review into passing
 evidence, and it does not make a physical calibration, metrology, or
 production-readiness claim.
 
-The compact Viewer-header issue remains a non-gate P1 polish follow-up. A
-future `Revise` decision should use that bounded issue first and preserve
-Viewer interaction, selection, Preview, Publish, and rendering behavior.
+The former compact Viewer-header issue is closed by the 2026-07-22 follow-up
+above. The owner decision and score remain the recorded 2026-07-21 decision;
+the deferred manual evidence still requires separate owner/operator review.

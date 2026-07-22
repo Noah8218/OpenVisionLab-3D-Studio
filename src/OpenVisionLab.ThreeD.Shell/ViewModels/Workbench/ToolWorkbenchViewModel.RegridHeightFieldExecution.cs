@@ -91,6 +91,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (SelectedPipelineStep is not { } step || !HasCurrentRegridHeightFieldPreview || !regridHeightFieldPreviewOutput!.MeetsMinimumCoverage) return;
         isRegridHeightFieldPreviewPublished = true;
         publishedRegridHeightFieldOutputs[regridHeightFieldPreviewOutput.OutputEntityId] = regridHeightFieldPreviewOutput;
+        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         step.State = "Published";
         SetRegridHeightFieldSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {regridHeightFieldPreviewOutput.ContentSha256} | no interpolation or measurement was run.");
         AppendLog("Publish", $"Re-grid Height Map output published without re-running: {step.OutputEntityId}.");

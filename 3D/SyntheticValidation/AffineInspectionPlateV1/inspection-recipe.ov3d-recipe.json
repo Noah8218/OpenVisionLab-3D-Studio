@@ -1,0 +1,1448 @@
+{
+  "schemaVersion": "1.3",
+  "name": "Synthetic Multi-tool 3D Inspection Recipe - Affine Plate v1",
+  "source": {
+    "id": "source.synthetic-affine-plate.v1",
+    "name": "Synthetic Affine Inspection Plate v1",
+    "format": "C3D",
+    "unit": "raw-height",
+    "frameId": "frame.c3d-grid-index",
+    "path": "source-affine-inspection-plate-v1.C3D",
+    "byteLength": 153608,
+    "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+    "gridWidth": 240,
+    "gridHeight": 160
+  },
+  "references": [
+    {
+      "id": "reference.synthetic-fixture.v1",
+      "name": "Synthetic fixture landmark set",
+      "kind": "Reference landmark set"
+    }
+  ],
+  "steps": [
+    {
+      "id": "step.filter",
+      "toolId": "filter",
+      "toolName": "Median Filter",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "source.synthetic-affine-plate.v1"
+      ],
+      "outputEntityId": "derived.filtered-height.v1",
+      "parameters": [
+        {
+          "name": "Method",
+          "value": "Median"
+        },
+        {
+          "name": "KernelSize",
+          "value": "3"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "PreserveMask"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "AvailableNeighbors"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.upper-left.across-columns",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.upper-left.across-columns"
+      ],
+      "outputEntityId": "derived.edge.upper-left.across-columns",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossColumns"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.upper-left.across-columns",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.upper-left.across-columns"
+      ],
+      "outputEntityId": "derived.line.upper-left.across-columns",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.upper-left.across-rows",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.upper-left.across-rows"
+      ],
+      "outputEntityId": "derived.edge.upper-left.across-rows",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossRows"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.upper-left.across-rows",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.upper-left.across-rows"
+      ],
+      "outputEntityId": "derived.line.upper-left.across-rows",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.intersection.upper-left",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.line.upper-left.across-columns",
+        "derived.line.upper-left.across-rows"
+      ],
+      "outputEntityId": "derived.corner-anchor.upper-left",
+      "parameters": [
+        {
+          "name": "MaximumClosestApproachDistance",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumAcuteAngleDegrees",
+          "value": "80"
+        },
+        {
+          "name": "MaximumSupportExtension",
+          "value": "6"
+        },
+        {
+          "name": "OutputRole",
+          "value": "UpperLeftAnchor"
+        },
+        {
+          "name": "ClosestApproachPolicy",
+          "value": "MidpointOfClosestPoints"
+        },
+        {
+          "name": "ParallelPolicy",
+          "value": "RejectBelowMinimumAcuteAngle"
+        },
+        {
+          "name": "SupportPolicy",
+          "value": "WithinInlierProjectionExtentsWithMaximumExtension"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.upper-right.across-columns",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.upper-right.across-columns"
+      ],
+      "outputEntityId": "derived.edge.upper-right.across-columns",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossColumns"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.upper-right.across-columns",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.upper-right.across-columns"
+      ],
+      "outputEntityId": "derived.line.upper-right.across-columns",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.upper-right.across-rows",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.upper-right.across-rows"
+      ],
+      "outputEntityId": "derived.edge.upper-right.across-rows",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossRows"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.upper-right.across-rows",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.upper-right.across-rows"
+      ],
+      "outputEntityId": "derived.line.upper-right.across-rows",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.intersection.upper-right",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.line.upper-right.across-columns",
+        "derived.line.upper-right.across-rows"
+      ],
+      "outputEntityId": "derived.corner-anchor.upper-right",
+      "parameters": [
+        {
+          "name": "MaximumClosestApproachDistance",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumAcuteAngleDegrees",
+          "value": "80"
+        },
+        {
+          "name": "MaximumSupportExtension",
+          "value": "6"
+        },
+        {
+          "name": "OutputRole",
+          "value": "UpperRightAnchor"
+        },
+        {
+          "name": "ClosestApproachPolicy",
+          "value": "MidpointOfClosestPoints"
+        },
+        {
+          "name": "ParallelPolicy",
+          "value": "RejectBelowMinimumAcuteAngle"
+        },
+        {
+          "name": "SupportPolicy",
+          "value": "WithinInlierProjectionExtentsWithMaximumExtension"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.lower-left.across-columns",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.lower-left.across-columns"
+      ],
+      "outputEntityId": "derived.edge.lower-left.across-columns",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossColumns"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.lower-left.across-columns",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.lower-left.across-columns"
+      ],
+      "outputEntityId": "derived.line.lower-left.across-columns",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.lower-left.across-rows",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.lower-left.across-rows"
+      ],
+      "outputEntityId": "derived.edge.lower-left.across-rows",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossRows"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.lower-left.across-rows",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.lower-left.across-rows"
+      ],
+      "outputEntityId": "derived.line.lower-left.across-rows",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.intersection.lower-left",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.line.lower-left.across-columns",
+        "derived.line.lower-left.across-rows"
+      ],
+      "outputEntityId": "derived.corner-anchor.lower-left",
+      "parameters": [
+        {
+          "name": "MaximumClosestApproachDistance",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumAcuteAngleDegrees",
+          "value": "80"
+        },
+        {
+          "name": "MaximumSupportExtension",
+          "value": "6"
+        },
+        {
+          "name": "OutputRole",
+          "value": "LowerLeftAnchor"
+        },
+        {
+          "name": "ClosestApproachPolicy",
+          "value": "MidpointOfClosestPoints"
+        },
+        {
+          "name": "ParallelPolicy",
+          "value": "RejectBelowMinimumAcuteAngle"
+        },
+        {
+          "name": "SupportPolicy",
+          "value": "WithinInlierProjectionExtentsWithMaximumExtension"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.lower-right.across-columns",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.lower-right.across-columns"
+      ],
+      "outputEntityId": "derived.edge.lower-right.across-columns",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossColumns"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.lower-right.across-columns",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.lower-right.across-columns"
+      ],
+      "outputEntityId": "derived.line.lower-right.across-columns",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.edge.lower-right.across-rows",
+      "toolId": "height-difference-edge",
+      "toolName": "Height Difference Edge",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.filtered-height.v1",
+        "selection.edge.lower-right.across-rows"
+      ],
+      "outputEntityId": "derived.edge.lower-right.across-rows",
+      "parameters": [
+        {
+          "name": "ComparisonAxis",
+          "value": "AcrossRows"
+        },
+        {
+          "name": "Polarity",
+          "value": "Rising"
+        },
+        {
+          "name": "MinimumDelta",
+          "value": "5"
+        },
+        {
+          "name": "CandidatePolicy",
+          "value": "StrongestPerScanline"
+        },
+        {
+          "name": "PointPolicy",
+          "value": "PairMidpoint"
+        },
+        {
+          "name": "MissingValuePolicy",
+          "value": "SkipPair"
+        },
+        {
+          "name": "BoundaryPolicy",
+          "value": "WithinSelection"
+        }
+      ]
+    },
+    {
+      "id": "step.line.lower-right.across-rows",
+      "toolId": "three-d-line-fit",
+      "toolName": "3D Line Fit",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.edge.lower-right.across-rows"
+      ],
+      "outputEntityId": "derived.line.lower-right.across-rows",
+      "parameters": [
+        {
+          "name": "FitMethod",
+          "value": "DeterministicConsensusOrthogonalTls"
+        },
+        {
+          "name": "MaximumOrthogonalResidual",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumInlierCount",
+          "value": "10"
+        },
+        {
+          "name": "MinimumInlierRatio",
+          "value": "1"
+        },
+        {
+          "name": "MinimumInlierScanlineSpan",
+          "value": "10"
+        },
+        {
+          "name": "HypothesisPolicy",
+          "value": "Sha256PairSchedule"
+        },
+        {
+          "name": "MaximumHypotheses",
+          "value": "256"
+        },
+        {
+          "name": "RefinementPolicy",
+          "value": "OrthogonalTlsUntilStable10"
+        },
+        {
+          "name": "DirectionPolicy",
+          "value": "PositiveScanlineAxis"
+        },
+        {
+          "name": "EndpointPolicy",
+          "value": "InlierProjectionExtents"
+        }
+      ]
+    },
+    {
+      "id": "step.intersection.lower-right",
+      "toolId": "line-intersection",
+      "toolName": "Line Intersection",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.line.lower-right.across-columns",
+        "derived.line.lower-right.across-rows"
+      ],
+      "outputEntityId": "derived.corner-anchor.lower-right",
+      "parameters": [
+        {
+          "name": "MaximumClosestApproachDistance",
+          "value": "0.01"
+        },
+        {
+          "name": "MinimumAcuteAngleDegrees",
+          "value": "80"
+        },
+        {
+          "name": "MaximumSupportExtension",
+          "value": "6"
+        },
+        {
+          "name": "OutputRole",
+          "value": "LowerRightAnchor"
+        },
+        {
+          "name": "ClosestApproachPolicy",
+          "value": "MidpointOfClosestPoints"
+        },
+        {
+          "name": "ParallelPolicy",
+          "value": "RejectBelowMinimumAcuteAngle"
+        },
+        {
+          "name": "SupportPolicy",
+          "value": "WithinInlierProjectionExtentsWithMaximumExtension"
+        }
+      ]
+    },
+    {
+      "id": "step.landmark-correspondence",
+      "toolId": "landmark-correspondence",
+      "toolName": "Landmark Correspondence",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "selection.landmark-correspondence.v1"
+      ],
+      "outputEntityId": "derived.landmark-correspondence.v1",
+      "parameters": [
+        {
+          "name": "PairCountPolicy",
+          "value": "ExactlyFour"
+        },
+        {
+          "name": "SourceArtifactPolicy",
+          "value": "CurrentPublishedCornerAnchor"
+        },
+        {
+          "name": "AffineIndependencePolicy",
+          "value": "RequireNonDegenerateTetrahedra"
+        }
+      ]
+    },
+    {
+      "id": "step.xyz-affine",
+      "toolId": "xyz-affine-solve",
+      "toolName": "XYZ Affine Solve",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.landmark-correspondence.v1"
+      ],
+      "outputEntityId": "derived.xyz-affine.v1",
+      "parameters": [
+        {
+          "name": "SolvePolicy",
+          "value": "ExactFourPartialPivot"
+        },
+        {
+          "name": "MaximumConditionEstimate",
+          "value": "1000000000"
+        },
+        {
+          "name": "ArithmeticResidualWarning",
+          "value": "1E-9"
+        }
+      ]
+    },
+    {
+      "id": "step.xyz-affine-apply",
+      "toolId": "xyz-affine-apply",
+      "toolName": "Apply XYZ Affine",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "source.synthetic-affine-plate.v1",
+        "derived.xyz-affine.v1"
+      ],
+      "outputEntityId": "derived.transformed-point-cloud.v1",
+      "parameters": []
+    },
+    {
+      "id": "step.regrid",
+      "toolId": "re-grid-height-map",
+      "toolName": "Re-grid Height Map",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "derived.transformed-point-cloud.v1"
+      ],
+      "outputEntityId": "derived.transformed-height-field.v1",
+      "parameters": [
+        {
+          "name": "ReferenceFrameId",
+          "value": "frame.synthetic-fixture.v1"
+        },
+        {
+          "name": "ReferenceUnit",
+          "value": "synthetic-unit"
+        },
+        {
+          "name": "ReferenceProvenance",
+          "value": "OpenVisionLab Synthetic Affine Inspection Plate v1"
+        },
+        {
+          "name": "ReferenceRevision",
+          "value": "V1"
+        },
+        {
+          "name": "OriginX",
+          "value": "100"
+        },
+        {
+          "name": "OriginY",
+          "value": "-25"
+        },
+        {
+          "name": "OriginZ",
+          "value": "50"
+        },
+        {
+          "name": "UAxisX",
+          "value": "0.86602540378443871"
+        },
+        {
+          "name": "UAxisY",
+          "value": "0"
+        },
+        {
+          "name": "UAxisZ",
+          "value": "-0.49999999999999994"
+        },
+        {
+          "name": "VAxisX",
+          "value": "-0.46984631039295416"
+        },
+        {
+          "name": "VAxisY",
+          "value": "0.34202014332566877"
+        },
+        {
+          "name": "VAxisZ",
+          "value": "-0.8137976813493738"
+        },
+        {
+          "name": "HAxisX",
+          "value": "0.17101007166283433"
+        },
+        {
+          "name": "HAxisY",
+          "value": "0.93969262078590843"
+        },
+        {
+          "name": "HAxisZ",
+          "value": "0.29619813272602386"
+        },
+        {
+          "name": "PitchU",
+          "value": "1.25"
+        },
+        {
+          "name": "PitchV",
+          "value": "0.80000000000000004"
+        },
+        {
+          "name": "RowCount",
+          "value": "160"
+        },
+        {
+          "name": "ColumnCount",
+          "value": "240"
+        },
+        {
+          "name": "MinimumCoverageRatio",
+          "value": "0.98999999999999999"
+        },
+        {
+          "name": "CellAssignment",
+          "value": "PlanarNearestCellCenter"
+        },
+        {
+          "name": "CollisionPolicy",
+          "value": "NearestCenterThenSourceLocator"
+        },
+        {
+          "name": "OutOfBoundsPolicy",
+          "value": "RejectPreview"
+        },
+        {
+          "name": "HolePolicy",
+          "value": "PreserveMissing"
+        }
+      ]
+    },
+    {
+      "id": "step.thickness",
+      "toolId": "thickness",
+      "toolName": "Thickness",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.transformed-height-field.v1",
+        "selection.thickness-roi"
+      ],
+      "outputEntityId": "result.thickness",
+      "parameters": [
+        {
+          "name": "MinimumThickness",
+          "value": "19.4"
+        },
+        {
+          "name": "MaximumThickness",
+          "value": "20.6"
+        },
+        {
+          "name": "MinimumValidSampleCount",
+          "value": "800"
+        }
+      ]
+    },
+    {
+      "id": "step.warpage",
+      "toolId": "warpage",
+      "toolName": "Warpage",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "derived.transformed-height-field.v1",
+        "selection.warpage-roi"
+      ],
+      "outputEntityId": "result.warpage",
+      "parameters": [
+        {
+          "name": "MaximumPeakToValley",
+          "value": "5"
+        },
+        {
+          "name": "MaximumRms",
+          "value": "2"
+        },
+        {
+          "name": "MinimumValidSampleCount",
+          "value": "2400"
+        }
+      ]
+    }
+  ],
+  "selections": [
+    {
+      "id": "selection.edge.upper-left.across-columns",
+      "name": "upper left column edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 24,
+        "column": 18,
+        "rowCount": 18,
+        "columnCount": 5
+      }
+    },
+    {
+      "id": "selection.edge.upper-left.across-rows",
+      "name": "upper left row edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 18,
+        "column": 24,
+        "rowCount": 5,
+        "columnCount": 18
+      }
+    },
+    {
+      "id": "selection.edge.upper-right.across-columns",
+      "name": "upper right column edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 24,
+        "column": 183,
+        "rowCount": 18,
+        "columnCount": 5
+      }
+    },
+    {
+      "id": "selection.edge.upper-right.across-rows",
+      "name": "upper right row edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 18,
+        "column": 189,
+        "rowCount": 5,
+        "columnCount": 18
+      }
+    },
+    {
+      "id": "selection.edge.lower-left.across-columns",
+      "name": "lower left column edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 119,
+        "column": 18,
+        "rowCount": 18,
+        "columnCount": 5
+      }
+    },
+    {
+      "id": "selection.edge.lower-left.across-rows",
+      "name": "lower left row edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 113,
+        "column": 24,
+        "rowCount": 5,
+        "columnCount": 18
+      }
+    },
+    {
+      "id": "selection.edge.lower-right.across-columns",
+      "name": "lower right column edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 119,
+        "column": 183,
+        "rowCount": 18,
+        "columnCount": 5
+      }
+    },
+    {
+      "id": "selection.edge.lower-right.across-rows",
+      "name": "lower right row edge band",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "gridRectangle": {
+        "row": 113,
+        "column": 189,
+        "rowCount": 5,
+        "columnCount": 18
+      }
+    },
+    {
+      "id": "selection.landmark-correspondence.v1",
+      "name": "Four synthetic CornerAnchor correspondences",
+      "kind": "landmark-correspondence-set",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "gridWidth": 240,
+        "gridHeight": 160
+      },
+      "rows": [
+        {
+          "sourceEntityId": "derived.corner-anchor.upper-left",
+          "referenceLandmarkId": "reference.upper-left",
+          "referencePosition": {
+            "x": 115.41566966579497,
+            "y": -12.479983050894987,
+            "z": 26.700723093855203
+          },
+          "referenceFrameId": "frame.synthetic-fixture.v1"
+        },
+        {
+          "sourceEntityId": "derived.corner-anchor.upper-right",
+          "referenceLandmarkId": "reference.upper-right",
+          "referencePosition": {
+            "x": 294.6746969650711,
+            "y": -8.95613572294783,
+            "z": -75.31353390842219
+          },
+          "referenceFrameId": "frame.synthetic-fixture.v1"
+        },
+        {
+          "sourceEntityId": "derived.corner-anchor.lower-left",
+          "referenceLandmarkId": "reference.lower-left",
+          "referencePosition": {
+            "x": 80.98992561340171,
+            "y": 20.561242497750154,
+            "z": -32.92641469325204
+          },
+          "referenceFrameId": "frame.synthetic-fixture.v1"
+        },
+        {
+          "sourceEntityId": "derived.corner-anchor.lower-right",
+          "referenceLandmarkId": "reference.lower-right",
+          "referencePosition": {
+            "x": 261.104003270992,
+            "y": 28.783552929626854,
+            "z": -133.45968103189932
+          },
+          "referenceFrameId": "frame.synthetic-fixture.v1"
+        }
+      ],
+      "correspondenceDescriptor": {
+        "referenceFrameId": "frame.synthetic-fixture.v1",
+        "referenceUnit": "synthetic-unit",
+        "referenceProvenance": "OpenVisionLab Synthetic Affine Inspection Plate v1",
+        "referenceRevision": "V1",
+        "pairCountPolicy": "ExactlyFour",
+        "sourceArtifactPolicy": "CurrentPublishedCornerAnchor",
+        "affineIndependencePolicy": "RequireNonDegenerateTetrahedra",
+        "minimumNormalizedTetrahedronVolume": 1E-06
+      }
+    },
+    {
+      "id": "selection.thickness-roi",
+      "name": "Known thickness statistics ROI",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.synthetic-fixture.v1",
+      "sourceBinding": {
+        "format": "TransformedHeightField",
+        "contentSha256": "E37A54357708A1E6EAA517A0917975D5FB46D9B44A9DC2A3F9BA5225E5994D3A",
+        "gridWidth": 240,
+        "gridHeight": 160,
+        "ownerEntityId": "derived.transformed-height-field.v1",
+        "rootSourceContentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "unit": "synthetic-unit",
+        "frameId": "frame.synthetic-fixture.v1"
+      },
+      "gridRectangle": {
+        "row": 50,
+        "column": 60,
+        "rowCount": 20,
+        "columnCount": 40
+      }
+    },
+    {
+      "id": "selection.warpage-roi",
+      "name": "Known dome and depression warpage ROI",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.synthetic-affine-plate.v1",
+      "frameId": "frame.synthetic-fixture.v1",
+      "sourceBinding": {
+        "format": "TransformedHeightField",
+        "contentSha256": "E37A54357708A1E6EAA517A0917975D5FB46D9B44A9DC2A3F9BA5225E5994D3A",
+        "gridWidth": 240,
+        "gridHeight": 160,
+        "ownerEntityId": "derived.transformed-height-field.v1",
+        "rootSourceContentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+        "unit": "synthetic-unit",
+        "frameId": "frame.synthetic-fixture.v1"
+      },
+      "gridRectangle": {
+        "row": 82,
+        "column": 100,
+        "rowCount": 40,
+        "columnCount": 60
+      }
+    }
+  ]
+}

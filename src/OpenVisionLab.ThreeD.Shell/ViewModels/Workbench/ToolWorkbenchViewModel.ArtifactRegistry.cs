@@ -350,6 +350,25 @@ public sealed partial class ToolWorkbenchViewModel
                 "TransformedHeightField");
         }
 
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush"
+            && measurementPreviewOutput is not null
+            && string.Equals(measurementPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                measurementPreviewOutput.OutputEntityId,
+                step.ToolName,
+                "MeasurementResult",
+                isMeasurementPreviewStale ? "Stale" : isMeasurementPreviewPublished ? "Published" : "Preview",
+                measurementPreviewOutput.RootSourceEntityId,
+                $"{measurementPreviewOutput.InputEntityId}; {measurementPreviewOutput.SelectionId}",
+                measurementPreviewOutput.Unit,
+                measurementPreviewOutput.FrameId,
+                measurementPreviewOutput.ContentSha256,
+                $"{measurementPreviewOutput.Result.Status} | {measurementPreviewOutput.EvidenceSummary}",
+                step,
+                "MeasurementResult");
+        }
+
         return new ToolWorkbenchArtifactItem(
             step.OutputEntityId,
             step.ToolName,

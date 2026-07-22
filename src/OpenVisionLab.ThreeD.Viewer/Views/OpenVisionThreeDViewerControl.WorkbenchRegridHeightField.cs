@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Windows;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using SharpGL;
@@ -11,6 +12,8 @@ public sealed partial class OpenVisionThreeDViewerControl
     private C3DTransformedHeightField? regridHeightFieldRenderOutput;
     private Vector3[]? regridHeightFieldPositions;
     private bool[]? regridHeightFieldPopulated;
+    private Vector3 regridHeightFieldDisplayCenter;
+    private float regridHeightFieldDisplayScale = 1f;
 
     public void ShowWorkbenchRegridHeightField(C3DTransformedHeightField output, bool isPublished, bool standaloneReferenceDisplay = true)
     {
@@ -26,6 +29,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         regridHeightFieldRenderOutput = null;
         regridHeightFieldPositions = null;
         regridHeightFieldPopulated = null;
+        regridHeightFieldDisplayCenter = default;
+        regridHeightFieldDisplayScale = 1f;
         viewModel.ClearWorkbenchRegridHeightField();
         RenderNow();
     }
@@ -63,6 +68,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         regridHeightFieldRenderOutput = output;
         regridHeightFieldPositions = rawPositions;
         regridHeightFieldPopulated = populated;
+        regridHeightFieldDisplayCenter = center;
+        regridHeightFieldDisplayScale = scale;
     }
 
     private void DrawWorkbenchRegridHeightField(OpenGL gl)
@@ -106,4 +113,113 @@ public sealed partial class OpenVisionThreeDViewerControl
         var start = positions[sourceIndex]; var end = positions[targetIndex];
         gl.Vertex(start.X, start.Y, start.Z); gl.Vertex(end.X, end.Y, end.Z);
     }
+
+    private bool TryPickRegridHeightFieldPoint(Point screenPoint, out RegridHeightFieldPick hit)
+    {
+        hit = default;
+        var output = regridHeightFieldRenderOutput;
+        var positions = regridHeightFieldPositions;
+        var populated = regridHeightFieldPopulated;
+        if (output is null || positions is null || populated is null || Viewport.ActualWidth <= 0 || Viewport.ActualHeight <= 0) return false;
+
+        var ray = CreatePickRay(screenPoint);
+        var bestDistance = float.PositiveInfinity;
+        var bestIndex = -1;
+        var maximumDistance = Math.Max(0.12f, (float)viewModel.CameraDistance * 0.025f);
+        for (var index = 0; index < positions.Length; index++)
+        {
+            if (!populated[index]) continue;
+            var toPoint = positions[index] - ray.origin;
+            var alongRay = Vector3.Dot(toPoint, ray.direction);
+            if (alongRay < 0) continue;
+            var distance = Vector3.Distance(positions[index], ray.origin + ray.direction * alongRay);
+            if (distance < bestDistance) { bestDistance = distance; bestIndex = index; }
+        }
+        if (bestIndex < 0 || bestDistance > maximumDistance) return false;
+        var cell = output.Cells[bestIndex];
+        hit = new RegridHeightFieldPick(cell.Row, cell.Column, cell.Height, CreateRegridReferencePosition(cell.Row, cell.Column, cell.Height));
+        return true;
+    }
+
+    private void DrawRegridTeachingSelectionOverlays(OpenGL gl)
+    {
+        var output = regridHeightFieldRenderOutput;
+        if (output is null || viewModel.C3DSampleVisible) return;
+        foreach (var selection in viewModel.AppliedTeachingSelections.Where(selection =>
+                     string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal)
+                     && string.Equals(selection.SourceBinding.OwnerEntityId, output.OutputEntityId, StringComparison.OrdinalIgnoreCase)
+                     && string.Equals(selection.SourceBinding.ContentSha256, output.ContentSha256, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (selection.GridRectangle is { } rectangle) DrawRegridGridRectangle(gl, rectangle, 0.10, 0.90, 0.88);
+            if (selection.Points is { Count: > 0 } points) DrawRegridPointSet(gl, points, 0.10, 0.90, 0.88);
+        }
+
+        var capture = viewModel.TeachingCaptureSnapshot;
+        if (!capture.IsActive
+            || !string.Equals(viewModel.TeachingCaptureSourceBinding?.OwnerEntityId, output.OutputEntityId, StringComparison.OrdinalIgnoreCase)) return;
+        if (capture.Kind == ToolRecipeSelectionKinds.GridRectangle && capture.Points.Count == 2)
+        {
+            var first = capture.Points[0].Locator; var second = capture.Points[1].Locator;
+            DrawRegridGridRectangle(gl, new ToolRecipeGridRectangle(
+                Math.Min(first.Row, second.Row), Math.Min(first.Column, second.Column),
+                Math.Abs(second.Row - first.Row) + 1, Math.Abs(second.Column - first.Column) + 1), 1.0, 0.82, 0.12);
+        }
+        if (capture.Points.Count > 0) DrawRegridPointSet(gl, capture.Points, 1.0, 0.82, 0.12);
+    }
+
+    private void DrawRegridGridRectangle(OpenGL gl, ToolRecipeGridRectangle rectangle, double red, double green, double blue)
+    {
+        var output = regridHeightFieldRenderOutput;
+        if (output is null || rectangle.Row < 0 || rectangle.Column < 0 || rectangle.RowCount <= 0 || rectangle.ColumnCount <= 0
+            || rectangle.Row > output.RowCount - rectangle.RowCount || rectangle.Column > output.ColumnCount - rectangle.ColumnCount) return;
+        var heights = output.Cells.Where(cell => cell.HasValue && cell.Row >= rectangle.Row && cell.Row < rectangle.Row + rectangle.RowCount
+            && cell.Column >= rectangle.Column && cell.Column < rectangle.Column + rectangle.ColumnCount).Select(cell => cell.Height).ToArray();
+        var height = heights.Length == 0 ? 0d : heights.Average();
+        var lastRow = rectangle.Row + rectangle.RowCount - 1; var lastColumn = rectangle.Column + rectangle.ColumnCount - 1;
+        var corners = new[]
+        {
+            CreateRegridDisplayPosition(rectangle.Row, rectangle.Column, height),
+            CreateRegridDisplayPosition(rectangle.Row, lastColumn, height),
+            CreateRegridDisplayPosition(lastRow, lastColumn, height),
+            CreateRegridDisplayPosition(lastRow, rectangle.Column, height)
+        };
+        gl.LineWidth(3f); gl.Color(red, green, blue); gl.Begin(OpenGL.GL_LINE_LOOP);
+        foreach (var corner in corners) gl.Vertex(corner.X, corner.Y, corner.Z);
+        gl.End();
+    }
+
+    private void DrawRegridPointSet(
+        OpenGL gl,
+        IReadOnlyList<ToolRecipeSelectionPoint> points,
+        double red,
+        double green,
+        double blue)
+    {
+        var positions = points.Select(point =>
+            CreateRegridDisplayPosition(point.Locator.Row, point.Locator.Column, point.RawHeight)).ToArray();
+        if (positions.Length >= 2)
+        {
+            gl.LineWidth(3f); gl.Color(red, green, blue); gl.Begin(OpenGL.GL_LINE_STRIP);
+            foreach (var position in positions) gl.Vertex(position.X, position.Y, position.Z);
+            gl.End();
+        }
+        gl.PointSize(11f); gl.Color(red, green, blue); gl.Begin(OpenGL.GL_POINTS);
+        foreach (var position in positions) gl.Vertex(position.X, position.Y, position.Z);
+        gl.End();
+    }
+
+    private Vector3 CreateRegridReferencePosition(int row, int column, double height)
+    {
+        var profile = regridHeightFieldRenderOutput!.ReferenceGridProfile;
+        var u = (column + 0.5) * profile.PitchU; var v = (row + 0.5) * profile.PitchV;
+        return new Vector3(
+            (float)(profile.Origin.X + u * profile.UAxis.X + v * profile.VAxis.X + height * profile.HAxis.X),
+            (float)(profile.Origin.Y + u * profile.UAxis.Y + v * profile.VAxis.Y + height * profile.HAxis.Y),
+            (float)(profile.Origin.Z + u * profile.UAxis.Z + v * profile.VAxis.Z + height * profile.HAxis.Z));
+    }
+
+    private Vector3 CreateRegridDisplayPosition(int row, int column, double height) =>
+        (CreateRegridReferencePosition(row, column, height) - regridHeightFieldDisplayCenter) * regridHeightFieldDisplayScale;
+
+    private readonly record struct RegridHeightFieldPick(int Row, int Column, double Height, Vector3 ReferencePosition);
 }

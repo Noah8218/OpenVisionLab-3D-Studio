@@ -96,15 +96,32 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var capture = TeachingCaptureSnapshot;
             if (!capture.IsActive
-                || capture.Kind != ToolRecipeSelectionKinds.GridRectangle
+                || capture.Kind is not (ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.PointSet)
                 || capture.RequiredPointCount != 2
                 || capture.CapturedPointCount != 0)
             {
                 throw new InvalidOperationException(
-                    "Pointer smoke requires an active empty 2-point C3D grid-rectangle capture.");
+                    "Pointer smoke requires an active empty GridRectangle(2) or PointSet(2) capture.");
             }
 
-            if (!viewModel.C3DSampleVisible || c3dSample is null)
+            var captureSourceBinding = viewModel.TeachingCaptureSourceBinding;
+            var capturesTransformedHeightField = string.Equals(
+                captureSourceBinding?.Format,
+                "TransformedHeightField",
+                StringComparison.Ordinal);
+            if (capturesTransformedHeightField)
+            {
+                if (regridHeightFieldRenderOutput is null
+                    || captureSourceBinding is null
+                    || !ToolRecipeSelectionSourceBindingVerifier.Verify(
+                        regridHeightFieldRenderOutput,
+                        captureSourceBinding).IsCurrent)
+                {
+                    throw new InvalidOperationException(
+                        "Pointer smoke requires the exact owned Published TransformedHeightField to be visible.");
+                }
+            }
+            else if (!viewModel.C3DSampleVisible || c3dSample is null)
             {
                 throw new InvalidOperationException("Pointer smoke requires a visible loaded C3D source.");
             }
@@ -235,14 +252,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             candidatePassed = TryGetC3DTeachingCandidate(out var candidate, out _)
-                && expectedRectangle is not null
-                && candidate is
-                {
-                    Kind: ToolRecipeSelectionKinds.GridRectangle,
-                    GridRectangle: not null
-                }
-                && candidate.GridRectangle == expectedRectangle
-                && candidate.Points is null or { Count: 0 }
+                && (capture.Kind == ToolRecipeSelectionKinds.GridRectangle
+                    ? expectedRectangle is not null
+                        && candidate is { Kind: ToolRecipeSelectionKinds.GridRectangle, GridRectangle: not null }
+                        && candidate.GridRectangle == expectedRectangle
+                        && candidate.Points is null or { Count: 0 }
+                    : candidate is { Kind: ToolRecipeSelectionKinds.PointSet, GridRectangle: null, Points.Count: 2 })
                 && candidate.Rows is null or { Count: 0 };
 
             authoredOnlyPassed = viewModel.AppliedTeachingSelections.Count == initialAppliedCount;
@@ -348,6 +363,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         out Point localPoint,
         out HeightGridPoint point)
     {
+        var capturesTransformedHeightField = string.Equals(
+            viewModel.TeachingCaptureSourceBinding?.Format,
+            "TransformedHeightField",
+            StringComparison.Ordinal);
         var candidates = new Dictionary<(int Row, int Column), (Point Screen, HeightGridPoint Point)>();
         for (var yIndex = 2; yIndex <= 8; yIndex++)
         {
@@ -356,8 +375,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 var screen = new Point(
                     Viewport.ActualWidth * xIndex / 10.0,
                     Viewport.ActualHeight * yIndex / 10.0);
-                if (TryPickC3DPoint(screen, out var candidate)
-                    && !excluded.Contains((candidate.Row, candidate.Column)))
+                HeightGridPoint candidate;
+                var picked = capturesTransformedHeightField
+                    ? TryPickTransformedHeightFieldForSmoke(screen, out candidate)
+                    : TryPickC3DPoint(screen, out candidate);
+                if (picked && !excluded.Contains((candidate.Row, candidate.Column)))
                 {
                     candidates.TryAdd((candidate.Row, candidate.Column), (screen, candidate));
                 }
@@ -380,6 +402,24 @@ public sealed partial class OpenVisionThreeDViewerControl
             .FirstOrDefault();
         localPoint = selected.Screen;
         point = selected.Point;
+        return true;
+    }
+
+    private bool TryPickTransformedHeightFieldForSmoke(Point screenPoint, out HeightGridPoint point)
+    {
+        if (!TryPickRegridHeightFieldPoint(screenPoint, out var regridPoint))
+        {
+            point = default;
+            return false;
+        }
+
+        point = new HeightGridPoint(
+            regridPoint.ReferencePosition,
+            regridPoint.Height,
+            0,
+            (float)regridPoint.Height,
+            regridPoint.Row,
+            regridPoint.Column);
         return true;
     }
 

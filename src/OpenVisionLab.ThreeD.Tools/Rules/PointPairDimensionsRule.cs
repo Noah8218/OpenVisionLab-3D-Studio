@@ -1,5 +1,9 @@
 using System.Diagnostics;
 using System.Numerics;
+using NoahPointPairOptions = Lib.ThreeD.Inspection.PointPairDimensionsInspectionOptions;
+using NoahPointPairResult = Lib.ThreeD.Inspection.PointPairDimensionsInspectionResult;
+using NoahPointPairTool = Lib.ThreeD.Inspection.PointPairDimensionsInspectionTool;
+using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -12,7 +16,8 @@ public sealed record PointPairDimensionsInput(
     double SecondRawHeight,
     C3DPointPairDimensionsAcceptance Acceptance,
     string Unit,
-    string RawHeightUnit);
+    string RawHeightUnit,
+    Vector3? HeightAxis = null);
 
 public sealed record PointPairDimensionsEvaluation(
     ToolResult Result,
@@ -50,54 +55,77 @@ public static class PointPairDimensionsRule
             return Error(input, "Expected values and tolerances are invalid.", stopwatch.Elapsed);
         }
 
-        var delta = input.Second - input.First;
-        var distance = delta.Length();
-        if (!double.IsFinite(distance) || distance <= 1e-9)
+        try
         {
-            return Error(input, "Point pair references must resolve to different positions.", stopwatch.Elapsed);
+            var heightAxis = input.HeightAxis ?? Vector3.UnitY;
+            NoahPointPairResult evaluation = new NoahPointPairTool().Execute(
+                ToNoah(input.First),
+                ToNoah(input.Second),
+                ToNoah(heightAxis),
+                input.FirstRawHeight,
+                input.SecondRawHeight,
+                new NoahPointPairOptions
+                {
+                    ExpectedDistance = input.Acceptance.ExpectedDistance,
+                    DistanceTolerance = input.Acceptance.DistanceTolerance,
+                    ExpectedPlanarWidth = input.Acceptance.ExpectedWidth,
+                    PlanarWidthTolerance = input.Acceptance.WidthTolerance,
+                    ExpectedElevationAngleDegrees = input.Acceptance.ExpectedElevationAngleDegrees,
+                    ElevationAngleToleranceDegrees = input.Acceptance.ElevationAngleToleranceDegrees
+                });
+
+            var delta = new Vector3((float)evaluation.Delta.X, (float)evaluation.Delta.Y, (float)evaluation.Delta.Z);
+            var distance = evaluation.Distance;
+            var width = evaluation.PlanarWidth;
+            var angle = evaluation.ElevationAngleDegrees;
+            var rawHeightDelta = evaluation.ScalarHeightDelta;
+            var usesLegacyYAxis = input.HeightAxis is null
+                || Vector3.DistanceSquared(input.HeightAxis.Value, Vector3.UnitY) <= 1e-12f;
+            var planarWidthName = usesLegacyYAxis ? "XZ planar width" : "Planar width";
+            var expectedPlanarWidthName = usesLegacyYAxis ? "Expected XZ planar width" : "Expected planar width";
+            var distanceStatus = evaluation.DistancePassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var widthStatus = evaluation.PlanarWidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var angleStatus = evaluation.ElevationAnglePassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var status = evaluation.Passed ? ResultStatus.Pass : ResultStatus.Fail;
+            stopwatch.Stop();
+
+            var result = new ToolResult(
+                ToolName,
+                status,
+                status == ResultStatus.Pass
+                    ? "Point pair dimensions are within configured tolerances. Source geometry is unchanged."
+                    : "One or more point pair dimensions exceed configured tolerances. Source geometry is unchanged.",
+                stopwatch.Elapsed,
+                [
+                    new Metric("3D distance", MetricKind.Length, distance, input.Unit, distanceStatus),
+                    new Metric(planarWidthName, MetricKind.Length, width, input.Unit, widthStatus),
+                    new Metric("Elevation angle", MetricKind.Angle, angle, "degree", angleStatus),
+                    new Metric("Delta X", MetricKind.Length, delta.X, input.Unit),
+                    new Metric("Delta Y", MetricKind.Length, delta.Y, input.Unit),
+                    new Metric("Delta Z", MetricKind.Length, delta.Z, input.Unit),
+                    new Metric("Height-axis delta", MetricKind.Length, evaluation.AxialHeightDelta, input.Unit),
+                    new Metric("Raw height delta", MetricKind.Length, rawHeightDelta, input.RawHeightUnit),
+                    new Metric("Expected 3D distance", MetricKind.Length, input.Acceptance.ExpectedDistance, input.Unit),
+                    new Metric("Distance tolerance", MetricKind.Length, input.Acceptance.DistanceTolerance, input.Unit),
+                    new Metric(expectedPlanarWidthName, MetricKind.Length, input.Acceptance.ExpectedWidth, input.Unit),
+                    new Metric("Width tolerance", MetricKind.Length, input.Acceptance.WidthTolerance, input.Unit),
+                    new Metric("Expected elevation angle", MetricKind.Angle, input.Acceptance.ExpectedElevationAngleDegrees, "degree"),
+                    new Metric("Elevation angle tolerance", MetricKind.Angle, input.Acceptance.ElevationAngleToleranceDegrees, "degree")
+                ],
+                [
+                    new Overlay("overlay.c3d-point-pair-line", OverlayKind.Polyline, "Point pair measurement line", status, input.SourceEntityId),
+                    new Overlay("overlay.c3d-point-pair-endpoints", OverlayKind.Marker, "Point pair endpoint markers", status, input.SourceEntityId)
+                ]);
+
+            return new PointPairDimensionsEvaluation(result, delta, distance, width, angle, rawHeightDelta);
         }
-
-        var width = Math.Sqrt(delta.X * delta.X + delta.Z * delta.Z);
-        var angle = Math.Atan2(delta.Y, width) * 180.0 / Math.PI;
-        var rawHeightDelta = input.SecondRawHeight - input.FirstRawHeight;
-        var distanceStatus = Status(distance, input.Acceptance.ExpectedDistance, input.Acceptance.DistanceTolerance);
-        var widthStatus = Status(width, input.Acceptance.ExpectedWidth, input.Acceptance.WidthTolerance);
-        var angleStatus = Status(angle, input.Acceptance.ExpectedElevationAngleDegrees, input.Acceptance.ElevationAngleToleranceDegrees);
-        var status = distanceStatus == ResultStatus.Pass
-            && widthStatus == ResultStatus.Pass
-            && angleStatus == ResultStatus.Pass
-                ? ResultStatus.Pass
-                : ResultStatus.Fail;
-        stopwatch.Stop();
-
-        var result = new ToolResult(
-            ToolName,
-            status,
-            status == ResultStatus.Pass
-                ? "Point pair dimensions are within configured tolerances. Source geometry is unchanged."
-                : "One or more point pair dimensions exceed configured tolerances. Source geometry is unchanged.",
-            stopwatch.Elapsed,
-            [
-                new Metric("3D distance", MetricKind.Length, distance, input.Unit, distanceStatus),
-                new Metric("XZ planar width", MetricKind.Length, width, input.Unit, widthStatus),
-                new Metric("Elevation angle", MetricKind.Angle, angle, "degree", angleStatus),
-                new Metric("Delta X", MetricKind.Length, delta.X, input.Unit),
-                new Metric("Delta Y", MetricKind.Length, delta.Y, input.Unit),
-                new Metric("Delta Z", MetricKind.Length, delta.Z, input.Unit),
-                new Metric("Raw height delta", MetricKind.Length, rawHeightDelta, input.RawHeightUnit),
-                new Metric("Expected 3D distance", MetricKind.Length, input.Acceptance.ExpectedDistance, input.Unit),
-                new Metric("Distance tolerance", MetricKind.Length, input.Acceptance.DistanceTolerance, input.Unit),
-                new Metric("Expected XZ planar width", MetricKind.Length, input.Acceptance.ExpectedWidth, input.Unit),
-                new Metric("Width tolerance", MetricKind.Length, input.Acceptance.WidthTolerance, input.Unit),
-                new Metric("Expected elevation angle", MetricKind.Angle, input.Acceptance.ExpectedElevationAngleDegrees, "degree"),
-                new Metric("Elevation angle tolerance", MetricKind.Angle, input.Acceptance.ElevationAngleToleranceDegrees, "degree")
-            ],
-            [
-                new Overlay("overlay.c3d-point-pair-line", OverlayKind.Polyline, "Point pair measurement line", status, input.SourceEntityId),
-                new Overlay("overlay.c3d-point-pair-endpoints", OverlayKind.Marker, "Point pair endpoint markers", status, input.SourceEntityId)
-            ]);
-
-        return new PointPairDimensionsEvaluation(result, delta, distance, width, angle, rawHeightDelta);
+        catch (ArgumentException exception)
+        {
+            var message = exception.Message.Contains("distinct", StringComparison.OrdinalIgnoreCase)
+                ? "Point pair references must resolve to different positions."
+                : exception.Message;
+            return Error(input, message, stopwatch.Elapsed);
+        }
     }
 
     private static PointPairDimensionsEvaluation Error(PointPairDimensionsInput input, string message, TimeSpan elapsed) =>
@@ -114,9 +142,6 @@ public static class PointPairDimensionsRule
             double.NaN,
             double.NaN,
             double.NaN);
-
-    private static ResultStatus Status(double actual, double expected, double tolerance) =>
-        Math.Abs(actual - expected) <= tolerance ? ResultStatus.Pass : ResultStatus.Fail;
 
     private static bool IsValid(C3DPointPairDimensionsAcceptance? acceptance) =>
         acceptance is not null
@@ -136,4 +161,6 @@ public static class PointPairDimensionsRule
 
     private static bool IsFinite(Vector3 point) =>
         float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z);
+
+    private static NoahPoint ToNoah(Vector3 point) => new(point.X, point.Y, point.Z);
 }

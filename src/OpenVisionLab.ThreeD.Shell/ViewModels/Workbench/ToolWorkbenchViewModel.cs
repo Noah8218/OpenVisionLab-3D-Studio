@@ -87,8 +87,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new("Transform", "XYZ Affine Solve", "xyz-affine-solve", 1, "Published CorrespondenceSet", "AffineTransform3D", "Solve one full XYZ source-to-reference matrix from exactly four published correspondence pairs. It does not move C3D points.", [new("SolvePolicy", "ExactFourPartialPivot"), new("MaximumConditionEstimate", "1000000"), new("ArithmeticResidualWarning", "0.001")]),
             new("Transform", "Apply XYZ Affine", "xyz-affine-apply", 2, "Verified raw C3D + Published AffineTransform3D", "TransformedPointCloud", "Transform each finite raw source-grid point once in full XYZ while preserving its row/column locator. It does not re-grid, interpolate, triangulate, or measure.", []),
             new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "Published TransformedPointCloud", "TransformedHeightField", "Project a published full-XYZ cloud into one explicit right-handed reference grid. Missing cells remain missing; Preview rejects out-of-bounds points and Publish requires authored coverage.", CreateDefaultRegridParameters()),
-            new("Measure", "Thickness", "thickness", 1, "TransformedHeightField", "MeasurementResult", "Measure thickness from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("Tolerance", "Set during teaching")]),
-            new("Measure", "Warpage", "warpage", 1, "TransformedHeightField", "MeasurementResult", "Measure warpage from the transformed inspection surface.", [new("ROI", "Recipe-owned"), new("P2V limit", "Set during teaching")]),
+            new("Measure", "Thickness", "thickness", 2, "HeightField + GridRectangle", "MeasurementResult", "Measure scalar height values inside one recipe-owned grid ROI. This is one reusable measurement tool, not a product mode.", [new("MinimumThickness", "0"), new("MaximumThickness", "100000"), new("MinimumValidSampleCount", "1")]),
+            new("Measure", "Warpage", "warpage", 2, "HeightField + GridRectangle", "MeasurementResult", "Measure best-fit-plane residual warpage inside one recipe-owned grid ROI. This is one reusable measurement tool, not a product mode.", [new("MaximumPeakToValley", "100000"), new("MaximumRms", "100000"), new("MinimumValidSampleCount", "3")]),
+            new("Measure", "Plane Flatness", "plane-flatness", 3, "TransformedHeightField + Reference GridRectangle + Measurement GridRectangle", "MeasurementResult", "Fit a reference plane in one artifact-owned ROI and measure signed-distance flatness in a second ROI. Preview and Publish remain explicit.", [new("MaximumFlatness", "100000"), new("MinimumReferenceSampleCount", "3"), new("MinimumMeasurementSampleCount", "3")]),
+            new("Measure", "Point Pair Dimensions", "point-pair-dimensions", 2, "TransformedHeightField + PointSet(2)", "MeasurementResult", "Measure full-XYZ distance, reference-plane width, height-axis delta, and elevation angle between two ordered artifact-owned picks.", [new("ExpectedDistance", "0"), new("DistanceTolerance", "100000"), new("ExpectedPlanarWidth", "0"), new("PlanarWidthTolerance", "100000"), new("ExpectedElevationAngleDegrees", "0"), new("ElevationAngleToleranceDegrees", "90")]),
+            new("Measure", "Gap / Flush", "gap-flush", 3, "TransformedHeightField + First GridRectangle + Second GridRectangle", "MeasurementResult", "Measure signed U-axis separation between facing ROI edges and signed H-axis mean-height difference. ROI order defines the sign; Preview and Publish remain explicit.", [new("ExpectedGap", "0"), new("GapTolerance", "100000"), new("ExpectedFlush", "0"), new("FlushTolerance", "100000")]),
             new("Review", "Overlay / Control Review", "overlay-control-review", 1, "MeasurementResult", "ReviewOverlay", "Group overlays, controls, acceptance, and run evidence without changing the source.", [new("Overlay", "Selected results"), new("Publish", "Explicit")])
         ];
 
@@ -133,6 +136,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             _ => SelectedCorrespondenceRow is not null && IsSelectedStepCorrespondence);
 
         InitializePropertyGridEditing();
+        InitializePlaneFlatnessTeaching();
         NewTeachingRecipeCommand = new RelayCommand(_ => NewTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
         AddSelectedToolCommand = addSelectedToolCommand;
         RemoveSelectedStepCommand = removeSelectedStepCommand;
@@ -303,6 +307,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RefreshXYZAffineSolveExecutionState();
             RefreshXYZAffineApplyExecutionState();
             RefreshRegridHeightFieldExecutionState();
+            RefreshMeasurementExecutionState();
             RefreshStepCommands();
             RefreshNavigatorSelection();
         }
@@ -337,6 +342,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             selectedCompatibleSelection = value;
             OnPropertyChanged();
             useExistingTeachingSelectionCommand.RaiseCanExecuteChanged();
+            NotifyPlaneFlatnessTeachingState();
         }
     }
 
@@ -554,8 +560,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ? $"Teaching has {sourceBindingErrors.Count} stale source selection(s); recapture or replace them before saving."
         : validation.IsValid
         ? validation.Warnings.Count == 0
-            ? "Teaching recipe is structurally valid. Filter and ready Height Difference Edge rows support explicit Preview; unsupported rows stay blocked."
-            : $"Teaching recipe is valid with {validation.Warnings.Count} warning(s). Filter and ready Height Difference Edge rows support explicit Preview; unsupported rows stay blocked."
+            ? "Inspection recipe is structurally valid. Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
+            : $"Inspection recipe is valid with {validation.Warnings.Count} warning(s). Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
         : $"Teaching needs {validation.Errors.Count} correction(s) before it can be saved.";
 
     public string RecipePathSummary => string.IsNullOrWhiteSpace(RecipePath)
@@ -624,9 +630,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public ToolRecipeSelection? SelectedStepTeachingSelection => SelectedPipelineStep is null
         ? null
-        : Selections.FirstOrDefault(selection =>
-            SelectedPipelineStep.InputEntityIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase)
-            && SelectionMatchesRequirement(selection, SelectedStepSelectionRequirement));
+        : IsSelectedStepDualRoiMeasurement
+            ? (isPlaneFlatnessMeasurementRole ? PlaneFlatnessMeasurementSelection : PlaneFlatnessReferenceSelection)
+            : Selections.FirstOrDefault(selection =>
+                SelectedPipelineStep.InputEntityIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase)
+                && SelectionMatchesRequirement(selection, SelectedStepSelectionRequirement));
 
     public string SelectedStepTeachingSelectionSummary => SelectedStepTeachingSelection is null
         ? "No recipe-owned selection is routed to this step."
@@ -676,8 +684,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private bool CanBeginTeachingSelectionCapture =>
         IsSelectedStepViewerCaptureSupported
         && !IsTeachingSelectionCaptureActive
+        && CanUseActivePlaneFlatnessRole()
         && !string.IsNullOrWhiteSpace(Source.Path)
-        && loadedSourceBinding is not null;
+        && SelectedPipelineStep is { } step
+        && TryGetSelectionCaptureContext(step, out _, out _);
 
     private bool CanEditCorrespondenceRows =>
         IsSelectedStepCorrespondence
@@ -720,6 +730,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ClearFilterPreview("Source changed; Preview is required.");
             ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
             ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
+            ClearMeasurementPreview("Source changed; measurement Preview is required.");
         }
         loadedSourceBinding = TryReadSourceBinding(fullPath);
         AcceptCurrentSourceIdentity();
@@ -962,7 +973,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         var step = SelectedPipelineStep;
         var requirement = SelectedStepSelectionRequirement;
-        if (step is null || requirement is not { UsesViewerCapture: true } || loadedSourceBinding is null)
+        if (step is null
+            || requirement is not { UsesViewerCapture: true }
+            || !TryGetSelectionCaptureContext(step, out var captureBinding, out var captureFrameId))
         {
             return;
         }
@@ -973,19 +986,28 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             capturedPointCount: 0,
             requiredPointCount: requirement.RequiredPointCount,
             canApply: false,
-            message: "Pick the first C3D grid cell.");
+            message: $"Pick the first {captureBinding.Format} grid cell.");
         var existing = SelectedStepTeachingSelection;
         BeginTeachingSelectionCaptureRequested?.Invoke(
             this,
             new ToolWorkbenchTeachingCaptureRequestEventArgs(
                 step.Id,
                 existing?.Id ?? CreateSelectionId(step, requirement),
-                existing?.Name ?? $"{step.ToolName} selection",
+                existing?.Name ?? (IsSelectedStepDualRoiMeasurement
+                    ? CreatePlaneFlatnessSelectionName(step)
+                    : $"{step.ToolName} selection"),
                 requirement.Kind,
                 requirement.RequiredPointCount,
                 Source.Id,
-                Source.FrameId,
-                loadedSourceBinding));
+                captureFrameId,
+                captureBinding));
+        if (IsTeachingSelectionCaptureActive)
+        {
+            // The Viewer may switch the displayed artifact before it starts the new
+            // capture. That transition clears the preceding Viewer state, so commit
+            // the owning step only after the synchronous begin request has settled.
+            teachingSelectionCaptureStepId = step.Id;
+        }
         AppendLog("Teach", $"Selection capture started for {step.ToolName}; no inspection was run.");
     }
 
@@ -1032,32 +1054,35 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         var step = SelectedPipelineStep;
         var requirement = SelectedStepSelectionRequirement;
-        if (!IsTeachingSelectionCaptureActive
-            || step is null
-            || requirement is not { UsesViewerCapture: true }
-            || !string.Equals(teachingSelectionCaptureStepId, step.Id, StringComparison.OrdinalIgnoreCase))
+        if (!IsTeachingSelectionCaptureActive)
         {
-            message = "The teaching capture no longer belongs to the selected recipe step.";
+            message = "The teaching capture is no longer active.";
+            return false;
+        }
+        if (step is null || requirement is not { UsesViewerCapture: true })
+        {
+            message = "The selected recipe step no longer supports Viewer teaching capture.";
+            return false;
+        }
+        if (!string.Equals(teachingSelectionCaptureStepId, step.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            message = $"The teaching capture belongs to '{teachingSelectionCaptureStepId ?? "(none)"}', not the selected step '{step.Id}'.";
             return false;
         }
 
         if (selection is null
             || !SelectionMatchesRequirement(selection, requirement)
             || !string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase))
+            || !TryGetSelectionCaptureContext(step, out var expectedBinding, out var expectedFrameId)
+            || !string.Equals(selection.FrameId, expectedFrameId, StringComparison.Ordinal)
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, expectedBinding))
         {
-            message = "The captured selection kind, source, or frame does not match the selected step.";
-            return false;
-        }
-
-        var verification = ToolRecipeSelectionSourceBindingVerifier.Verify(Source.Path, selection.SourceBinding);
-        if (!verification.IsCurrent)
-        {
-            message = verification.Message;
+            message = "The captured selection kind, owner artifact, bytes, grid, or frame does not match the selected step.";
             return false;
         }
 
         PersistSelectionForSelectedStep(selection);
+        AdvancePlaneFlatnessTeachingRole();
         ClearTeachingSelectionCaptureState("Selection applied to the authored recipe.");
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         message = $"Selection applied: {selection.Name}";
@@ -1112,6 +1137,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             }
         });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
+        MarkMeasurementPreviewStaleIfNeeded();
         RefreshTeachingSelectionContext();
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         AppendLog("Teach", $"Removed recipe-owned selection: {selection.Name}.");
@@ -1126,9 +1152,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             return;
         }
 
-        MutateRecipe(() => AddInputEntity(SelectedPipelineStep, selection.Id));
+        MutateRecipe(() =>
+        {
+            if (IsSelectedStepDualRoiMeasurement)
+            {
+                RoutePlaneFlatnessRoleSelection(SelectedPipelineStep, selection.Id);
+            }
+            else
+            {
+                AddInputEntity(SelectedPipelineStep, selection.Id);
+            }
+        });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
         RefreshTeachingSelectionContext();
+        AdvancePlaneFlatnessTeachingRole();
         AppendLog("Teach", $"Routed existing selection '{selection.Name}' to {SelectedPipelineStep.ToolName}.");
     }
 
@@ -1244,6 +1281,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             if (string.Equals(SelectedPipelineStep.ToolId, "landmark-correspondence", StringComparison.Ordinal))
             {
                 SelectedPipelineStep.InputEntityIdsText = selection.Id;
+            }
+            else if (IsSelectedStepDualRoiMeasurement)
+            {
+                RoutePlaneFlatnessRoleSelection(SelectedPipelineStep, selection.Id);
             }
             else
             {
@@ -1419,6 +1460,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshXYZAffineSolveExecutionState();
         RefreshXYZAffineApplyExecutionState();
         RefreshRegridHeightFieldExecutionState();
+        RefreshMeasurementExecutionState();
         RefreshAdapterCoverage();
         OnPropertyChanged(nameof(ValidationSummary));
         OnPropertyChanged(nameof(CanSaveTeachingRecipe));
@@ -1548,6 +1590,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             CorrespondenceSourceEntityId = AvailableCorrespondenceSourceEntityIds.FirstOrDefault() ?? string.Empty;
         }
 
+        RefreshPlaneFlatnessTeachingState();
         OnPropertyChanged(nameof(SelectedStepSelectionRequirement));
         OnPropertyChanged(nameof(IsSelectedStepViewerCaptureSupported));
         OnPropertyChanged(nameof(IsSelectedStepCorrespondence));
@@ -1576,10 +1619,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var errors = new List<string>();
         foreach (var selection in Selections)
         {
-            if (!string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase))
             {
-                errors.Add($"Selection '{selection.Id}' does not match source '{Source.Id}' and frame '{Source.FrameId}'.");
+                errors.Add($"Selection '{selection.Id}' does not match root source '{Source.Id}'.");
+                continue;
+            }
+
+            if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
+            {
+                if (TryGetPublishedRegridHeightFieldOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
+                    && output is not null
+                    && !ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent)
+                {
+                    errors.Add($"Selection '{selection.Id}' is stale because its Published TransformedHeightField identity changed.");
+                }
                 continue;
             }
 
@@ -1589,7 +1642,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            if (!SourceBindingsEqual(selection.SourceBinding, loadedSourceBinding))
+            if (!string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, loadedSourceBinding))
             {
                 errors.Add($"Selection '{selection.Id}' is stale because the C3D source bytes or grid dimensions changed.");
             }
@@ -1598,19 +1652,52 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         return errors;
     }
 
-    private bool IsSelectionCurrent(ToolRecipeSelection selection) =>
-        loadedSourceBinding is not null
-        && string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
-        && SourceBindingsEqual(selection.SourceBinding, loadedSourceBinding);
+    private bool IsSelectionCurrent(ToolRecipeSelection selection)
+    {
+        if (!string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)) return false;
+        if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
+        {
+            return TryGetPublishedRegridHeightFieldOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
+                && output is not null
+                && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
+        }
+        return loadedSourceBinding is not null
+            && string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
+            && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, loadedSourceBinding);
+    }
 
-    private static bool SourceBindingsEqual(
-        ToolRecipeSelectionSourceBinding first,
-        ToolRecipeSelectionSourceBinding second) =>
-        string.Equals(first.Format, second.Format, StringComparison.OrdinalIgnoreCase)
-        && string.Equals(first.ContentSha256, second.ContentSha256, StringComparison.OrdinalIgnoreCase)
-        && first.GridWidth == second.GridWidth
-        && first.GridHeight == second.GridHeight;
+    private bool TryGetSelectionCaptureContext(
+        ToolWorkbenchPipelineStepItem step,
+        out ToolRecipeSelectionSourceBinding binding,
+        out string frameId)
+    {
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush")
+        {
+            if (step.InputEntityIds.Count == 0)
+            {
+                binding = null!;
+                frameId = string.Empty;
+                return false;
+            }
+            if (!string.Equals(step.InputEntityIds[0], Source.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                if (TryGetPublishedRegridHeightFieldOutput(step.InputEntityIds[0], out var transformed)
+                    && transformed is not null)
+                {
+                    binding = ToolRecipeSelectionSourceBindingVerifier.FromTransformedHeightField(transformed);
+                    frameId = transformed.ReferenceFrameId;
+                    return true;
+                }
+                binding = null!;
+                frameId = string.Empty;
+                return false;
+            }
+        }
+
+        binding = loadedSourceBinding!;
+        frameId = Source.FrameId;
+        return loadedSourceBinding is not null;
+    }
 
     private static ToolRecipeSelectionSourceBinding? TryReadSourceBinding(string path)
     {
@@ -1690,13 +1777,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             "; ",
             step.InputEntityIds.Where(input => !string.Equals(input, entityId, StringComparison.OrdinalIgnoreCase)));
 
-    private static ToolWorkbenchTeachingSelectionRequirement? CreateSelectionRequirement(
+    private ToolWorkbenchTeachingSelectionRequirement? CreateSelectionRequirement(
         ToolWorkbenchPipelineStepItem? step) => step?.ToolId switch
     {
         "roi-crop" => new("Grid rectangle", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the crop ROI."),
         "height-difference-edge" => new("Edge search band", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the explicit edge search band."),
         "thickness" => new("Thickness measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the measurement ROI."),
         "warpage" => new("Warpage measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the measurement ROI."),
+        "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
+        "point-pair-dimensions" => new("Point pair", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct cells in the Published TransformedHeightField."),
+        "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
         "two-point-line" => new("Line points", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct C3D grid cells."),
         "three-point-plane" => new("Plane points", ToolRecipeSelectionKinds.PointSet, 3, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
         "datum-plane-raw-height-deviation" => new("Datum measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
@@ -1727,7 +1817,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ToolWorkbenchPipelineStepItem step,
         ToolWorkbenchTeachingSelectionRequirement requirement)
     {
-        var suffix = requirement.Kind switch
+        var suffix = IsSelectedStepDualRoiMeasurement
+            ? IsSelectedStepGapFlush
+                ? (isPlaneFlatnessMeasurementRole ? "second-roi" : "first-roi")
+                : (isPlaneFlatnessMeasurementRole ? "measurement-roi" : "reference-roi")
+            : requirement.Kind switch
         {
             ToolRecipeSelectionKinds.GridRectangle => "roi",
             ToolRecipeSelectionKinds.PointSet => "points",
@@ -1813,6 +1907,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkLineIntersectionPreviewStaleIfNeeded(sender);
         MarkLandmarkCorrespondencePreviewStaleIfNeeded(sender);
         MarkAffineSolvePreviewStaleIfNeeded(sender);
+        MarkMeasurementPreviewStaleIfNeeded(sender);
         if (ReferenceEquals(sender, SelectedPipelineStep))
         {
             OnPropertyChanged(nameof(SelectedPipelineStepTitle));

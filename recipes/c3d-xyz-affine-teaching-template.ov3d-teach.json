@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.1",
-  "name": "C3D XYZ Affine Teaching Intake (Two-Corner Scaffold)",
+  "schemaVersion": "1.2",
+  "name": "Generic 3D Inspection Recipe (Affine Scaffold)",
   "source": {
     "id": "source.c3d.height-map",
     "name": "Ori_20240116_094430",
@@ -18,6 +18,29 @@
       "id": "reference.fixture-landmarks",
       "name": "Fixture/reference landmark set",
       "kind": "Reference landmark set"
+    }
+  ],
+  "selections": [
+    {
+      "id": "selection.measurement-roi.01",
+      "name": "Measurement ROI",
+      "kind": "grid-rectangle",
+      "rootSourceId": "source.c3d.height-map",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "79C02761F9B711C0F8980D4376B9FCE25E00D425E6CA85DA4D4349ECF5F0299C",
+        "gridWidth": 1301,
+        "gridHeight": 1967
+      },
+      "gridRectangle": {
+        "row": 0,
+        "column": 0,
+        "rowCount": 1967,
+        "columnCount": 1301
+      },
+      "points": null,
+      "rows": null
     }
   ],
   "steps": [
@@ -249,32 +272,57 @@
       "inputEntityIds": [ "derived.transformed-point-cloud.01" ],
       "outputEntityId": "derived.transformed-height-field.01",
       "parameters": [
-        { "name": "Grid frame", "value": "Selected transform" },
-        { "name": "Hole policy", "value": "Teach explicitly" }
+        { "name": "ReferenceFrameId", "value": "frame.reference" },
+        { "name": "ReferenceUnit", "value": "unitless" },
+        { "name": "ReferenceProvenance", "value": "Authored reference grid" },
+        { "name": "ReferenceRevision", "value": "R1" },
+        { "name": "OriginX", "value": "0" },
+        { "name": "OriginY", "value": "0" },
+        { "name": "OriginZ", "value": "0" },
+        { "name": "UAxisX", "value": "1" },
+        { "name": "UAxisY", "value": "0" },
+        { "name": "UAxisZ", "value": "0" },
+        { "name": "VAxisX", "value": "0" },
+        { "name": "VAxisY", "value": "1" },
+        { "name": "VAxisZ", "value": "0" },
+        { "name": "HAxisX", "value": "0" },
+        { "name": "HAxisY", "value": "0" },
+        { "name": "HAxisZ", "value": "1" },
+        { "name": "PitchU", "value": "1" },
+        { "name": "PitchV", "value": "1" },
+        { "name": "RowCount", "value": "1" },
+        { "name": "ColumnCount", "value": "1" },
+        { "name": "MinimumCoverageRatio", "value": "1" },
+        { "name": "CellAssignment", "value": "PlanarNearestCellCenter" },
+        { "name": "CollisionPolicy", "value": "NearestCenterThenSourceLocator" },
+        { "name": "OutOfBoundsPolicy", "value": "RejectPreview" },
+        { "name": "HolePolicy", "value": "PreserveMissing" }
       ]
     },
     {
       "id": "step.thickness.01",
       "toolId": "thickness",
       "toolName": "Thickness",
-      "minimumInputCount": 1,
-      "inputEntityIds": [ "derived.transformed-height-field.01" ],
+      "minimumInputCount": 2,
+      "inputEntityIds": [ "source.c3d.height-map", "selection.measurement-roi.01" ],
       "outputEntityId": "derived.thickness.01",
       "parameters": [
-        { "name": "ROI", "value": "Recipe-owned measurement ROI" },
-        { "name": "Tolerance", "value": "Teach acceptance limits" }
+        { "name": "MinimumThickness", "value": "0" },
+        { "name": "MaximumThickness", "value": "100000" },
+        { "name": "MinimumValidSampleCount", "value": "1" }
       ]
     },
     {
       "id": "step.warpage.01",
       "toolId": "warpage",
       "toolName": "Warpage",
-      "minimumInputCount": 1,
-      "inputEntityIds": [ "derived.transformed-height-field.01" ],
+      "minimumInputCount": 2,
+      "inputEntityIds": [ "source.c3d.height-map", "selection.measurement-roi.01" ],
       "outputEntityId": "derived.warpage.01",
       "parameters": [
-        { "name": "ROI", "value": "Recipe-owned measurement ROI" },
-        { "name": "P2V limit", "value": "Teach acceptance limit" }
+        { "name": "MaximumPeakToValley", "value": "100000" },
+        { "name": "MaximumRms", "value": "100000" },
+        { "name": "MinimumValidSampleCount", "value": "3" }
       ]
     },
     {

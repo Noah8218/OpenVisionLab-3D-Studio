@@ -194,6 +194,12 @@
                                     <DataTrigger Binding="{Binding IsSelectedStepHeightDifferenceEdge}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelectedStepPlaneFlatness}" Value="True">
+                                        <Setter Property="IsExpanded" Value="False" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelectedStepGapFlush}" Value="True">
+                                        <Setter Property="IsExpanded" Value="False" />
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Expander.Style>
@@ -215,7 +221,7 @@
                     </Expander>
 
                     <Expander Margin="0,7,0,0"
-                              Header="Teaching selections">
+                              Header="{Binding Localization.TeachingSelections}">
                         <Expander.Style>
                             <Style TargetType="Expander">
                                 <Setter Property="Visibility" Value="Visible" />
@@ -249,7 +255,166 @@
                             </Border>
 
                             <StackPanel Margin="0,7,0,0"
-                                        Visibility="{Binding IsSelectedStepViewerCaptureSupported, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="{Binding DualRoiTeachingTitle}" />
+                                <TextBlock Margin="0,2,0,7"
+                                           FontSize="10.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding DualRoiTeachingDetail}" />
+
+                                <Border Padding="8"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPlaneFlatnessReferenceRoleActive}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="22" Height="22" CornerRadius="11"
+                                                    Background="{DynamicResource ThreeD.AccentBrush}">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="White" FontWeight="Bold" Text="1" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Margin="7,0,4,0" VerticalAlignment="Center"
+                                                       FontWeight="SemiBold" Text="{Binding DualRoiFirstLabel}" />
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="10.5"
+                                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                       Text="{Binding PlaneFlatnessReferenceState}" />
+                                        </Grid>
+                                        <TextBlock Margin="29,4,0,0" FontSize="10.5"
+                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                   TextWrapping="Wrap" Text="{Binding PlaneFlatnessReferenceSummary}" />
+                                        <Button Margin="29,7,0,0" HorizontalAlignment="Left"
+                                                Command="{Binding CapturePlaneFlatnessReferenceRoiCommand}"
+                                                ToolTip="{Binding DualRoiTeachingDetail}"
+                                                AutomationProperties.Name="Capture or replace first ordered ROI">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="TargetArrow24" />
+                                                <TextBlock Text="{Binding PlaneFlatnessReferenceActionText}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,6,0,0" Padding="8"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPlaneFlatnessMeasurementRoleActive}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding CanTeachPlaneFlatnessMeasurementRoi}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.58" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="22" Height="22" CornerRadius="11"
+                                                    Background="{DynamicResource ThreeD.InfoBrush}">
+                                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="White" FontWeight="Bold" Text="2" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Margin="7,0,4,0" VerticalAlignment="Center"
+                                                       FontWeight="SemiBold" Text="{Binding DualRoiSecondLabel}" />
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="10.5"
+                                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                       Text="{Binding PlaneFlatnessMeasurementState}" />
+                                        </Grid>
+                                        <TextBlock Margin="29,4,0,0" FontSize="10.5"
+                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                   TextWrapping="Wrap" Text="{Binding PlaneFlatnessMeasurementSummary}" />
+                                        <Button Margin="29,7,0,0" HorizontalAlignment="Left"
+                                                Command="{Binding CapturePlaneFlatnessMeasurementRoiCommand}"
+                                                ToolTip="{Binding DualRoiTeachingDetail}"
+                                                AutomationProperties.Name="Capture or replace second ordered ROI">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="PointScan24" />
+                                                <TextBlock Text="{Binding PlaneFlatnessMeasurementActionText}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Margin="0,8,0,2" FontSize="10.5"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding Localization.ExistingCompatibleRoi}" />
+                                <ComboBox ItemsSource="{Binding AvailableCompatibleSelections}"
+                                          SelectedItem="{Binding SelectedCompatibleSelection}"
+                                          DisplayMemberPath="Name" />
+                                <WrapPanel Margin="0,5,0,0">
+                                    <Button Margin="0,0,5,0"
+                                            Command="{Binding ReusePlaneFlatnessReferenceRoiCommand}"
+                                            AutomationProperties.Name="Reuse compatible ROI as Plane Flatness reference">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Link24" />
+                                            <TextBlock>
+                                                <TextBlock.Inlines>
+                                                    <Run Text="{Binding DualRoiFirstLabel, Mode=OneWay}" />
+                                                    <Run Text=" · " />
+                                                    <Run Text="{Binding Localization.ReuseRoi, Mode=OneWay}" />
+                                                </TextBlock.Inlines>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding ReusePlaneFlatnessMeasurementRoiCommand}"
+                                            AutomationProperties.Name="Reuse compatible ROI as Plane Flatness measurement">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Link24" />
+                                            <TextBlock>
+                                                <TextBlock.Inlines>
+                                                    <Run Text="{Binding DualRoiSecondLabel, Mode=OneWay}" />
+                                                    <Run Text=" · " />
+                                                    <Run Text="{Binding Localization.ReuseRoi, Mode=OneWay}" />
+                                                </TextBlock.Inlines>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </WrapPanel>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,7,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility"
+                                                Value="{Binding IsSelectedStepViewerCaptureSupported, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelectedStepPlaneFlatness}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSelectedStepGapFlush}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
                                 <TextBlock FontSize="10.5"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="Recipe-owned selection" />

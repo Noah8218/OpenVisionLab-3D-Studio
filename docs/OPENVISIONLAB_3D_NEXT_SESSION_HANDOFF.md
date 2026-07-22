@@ -1,8 +1,141 @@
 # OpenVisionLab 3D Next Session Handoff
 
-Updated: 2026-07-21
+## Gap/Flush generic Measure checkpoint - 2026-07-22
 
-## Current deterministic feature-extraction Library-Noah migration checkpoint - 2026-07-21
+Gap/Flush is now an ordinary three-input Measure node:
+`Published TransformedHeightField + first GridRectangle + second GridRectangle
+-> MeasurementResult`. ROI order is authored and signed: gap is second minimum
+U minus first maximum U, and flush is second mean H minus first mean H. The
+Shell presents separate first/second ROI teaching roles, explicit
+Preview/Publish, and schema `1.3` save/reopen; editing or ROI capture never
+runs inspection. Source-neutral arithmetic is committed in Library-Noah
+`Lib.ThreeD 2.7.7` at `6aba3d5b37e9d10f2d90977e483956b6d57e2aaf`;
+the vendored package SHA-256 is
+`B2909B939EEEF1000F22BDBED96D7A3AC1F67E2F6068AEC2F658ED1FF10E4708`.
+
+Current evidence passes Noah `48/48`, Studio build `0/0`, package/bridge,
+legacy Gap/Flush `8/8`, artifact-owned ordered Runner `16/16`, generic
+Workbench `23/23`, teaching `18/18`, selection contract `17/17`, and one live
+Shell A3 Gap/Flush Preview/Publish/save/reopen flow. Evidence is under
+`artifacts/verification/20260722-generic-gap-flush/`; the durable contract is
+`docs/OPENVISIONLAB_3D_GAP_FLUSH_TOOL_RECIPE_20260722.md`. This is
+deterministic display-frame software evidence only. Automatic seam detection,
+physical calibration, uncertainty, Gauge R&R, and metrology remain unverified.
+The next generic legacy-slice migration is Volume, followed by Cross-section
+and a multi-step Run Record.
+
+## Point Pair generic Measure checkpoint - 2026-07-22
+
+Point Pair Dimensions is now an ordinary two-input Measure node:
+`Published TransformedHeightField + PointSet(2) -> MeasurementResult`. The
+Viewer captures two actual A3 cells and renders endpoints plus a connecting
+line; WPG edits distance, planar-width, and elevation-angle acceptance values;
+Preview and Publish remain explicit. Studio reconstructs full XYZ from the A3
+profile and delegates source-neutral axis-relative arithmetic to Library-Noah
+`Lib.ThreeD 2.7.6` at commit
+`83507676ce4d7a21021def8751d77415f8a542da`, package SHA-256
+`A460C4B4C0706E033B76003EE374955B00121A71F1E7DE4FAC273F30F30D1AB1`.
+Current evidence passes Noah `45/45`, Studio build `0/0`, package/bridge,
+artifact-owned direct/Ordered Runner `15/15`, and one live Shell A3 Publish ->
+real pointer PointSet(2) -> Point Pair Preview/Publish -> schema `1.3`
+save/reopen flow. Evidence is under
+`artifacts/verification/20260722-generic-point-pair/`. This is deterministic
+display-frame evidence only. The next legacy-slice migration is Gap/Flush,
+followed by Volume and Cross-section; physical/metrology trust remains blocked.
+
+## Plane Flatness generic Measure and Noah ownership checkpoint - 2026-07-22
+
+Plane Flatness is now an ordinary three-input Measure node:
+`Published TransformedHeightField + reference GridRectangle + measurement
+GridRectangle -> MeasurementResult`. Both ROIs are exact artifact-owned schema
+`1.3` bindings. The WPG exposes maximum flatness and independent minimum
+reference/measurement sample counts. Preview reconstructs full XYZ from the A3
+grid profile and delegates numerical work through `PlaneFlatnessRule` to
+Library-Noah `LeastSquaresHeightFieldPlaneFitTool` and
+`PlaneFlatnessInspectionTool`; ordered Runner and direct adapter hashes match.
+Studio no longer owns the least-squares, signed-distance, RMS, extrema, or
+projection arithmetic. This checkpoint originally used `Lib.ThreeD 2.7.5`;
+the current superset package is `Lib.ThreeD 2.7.6` at Library-Noah commit
+`83507676ce4d7a21021def8751d77415f8a542da`, SHA-256
+`A460C4B4C0706E033B76003EE374955B00121A71F1E7DE4FAC273F30F30D1AB1`.
+Current evidence passes Noah build `0/0` and Smoke `45/45`, Studio build `0/0`,
+package/bridge pass and `7/7`, Plane Flatness `9/9`, artifact-owned Runner
+`14/14`, generic measurement Workbench `23/23`, and synthetic plate `16/16`.
+The role-aware sequential ROI teaching gate now passes in one actual Shell
+session: normal A3 Preview/Publish, Reference ROI and Measurement ROI through
+separate real OS-pointer captures, schema `1.3` save/reopen, exact A3 owner/hash
+binding, and no implicit inspection execution. A Viewer artifact transition
+previously cleared the Workbench capture-owner step; ownership is now committed
+after the synchronous Viewer begin transition settles. Evidence is under
+`artifacts/verification/20260722-plane-flatness-live-a3-pointer/`. See
+`docs/OPENVISIONLAB_3D_PLANE_FLATNESS_TOOL_RECIPE_20260722.md`.
+
+The owner-supplied historical Thickness and Warpage teaching recordings were
+reviewed only for general workflow lessons. Adopt synchronized step/overlay/
+properties/results, repeatable tool instances, compact per-step and overall
+status, and visibility/edit protection. Keep the current generic typed tool
+chain, dockable views, explicit Preview/Publish, and artifact provenance.
+Exclude the historical product visuals, fixed four-pane layout, top-level
+Thickness/Warpage taxonomy, oversized OK/NG, ambiguous icon-only controls, and
+implicit rerun. See
+`docs/OPENVISIONLAB_3D_LEGACY_TEACHING_VIDEO_REVIEW_20260722.md`.
+
+The real four-landmark input gate was audited and remains blocked: local data
+contains the C3D and display PNG but no trusted four reference XYZ values,
+frame/unit/provenance/revision, or owner-selected normalized-volume threshold.
+No coordinate was inferred. See
+`docs/OPENVISIONLAB_3D_REAL_FOUR_LANDMARK_INPUT_AUDIT_20260722.md`.
+
+Updated: 2026-07-22
+
+## Synthetic Affine Inspection Plate v1 checkpoint - 2026-07-22
+
+**Complete for deterministic synthetic display-frame verification.** The
+reusable package under `3D/SyntheticValidation/AffineInspectionPlateV1`
+contains the exact `240 x 160` C3D, schema `1.3` generic 27-step recipe,
+ground-truth JSON, README, and source/reference PNG previews. The focused
+current-source verifier passes `16/16`: all four actual
+Edge -> Line Fit -> Intersection anchors have error `0`; A1 maximum matrix
+error is `1.7053025658242404E-13`; A2 maximum point error is
+`1.0306789158764915E-12`; A3 preserves `38,348` finite and `52` missing cells
+with zero collisions; independent Thickness and Warpage truths match within
+`6.7501559897209518E-14`; and recipe save/reopen preserves all 27 steps and 11
+selections. See
+`docs/OPENVISIONLAB_3D_SYNTHETIC_AFFINE_INSPECTION_PLATE_V1_20260722.md`.
+
+This does not change the accepted UI score or establish physical/metrology
+trust. The next project priority is a distinct real four-landmark acquisition
+with trusted source/reference frame, unit, provenance, revision, and grid
+profile, followed by the same A1 -> A2 -> A3 -> measurement replay.
+
+## Current identity and Generic Ordered Recipe Executor checkpoint - 2026-07-22
+
+**Complete for the documented current assessment and the closed A2 -> A3 ->
+multiple height-measurement software slice.** OpenVisionLab 3D Studio remains
+an explainable, local, sensor-neutral, rule-based 3D inspection recipe
+Workbench. Thickness and Warpage are Measure tools, not product modes. The
+current assessment keeps separate denominators: owner UI `85/100`, narrow
+software MVP `65-70%`, GoPxL Tools/Tool Chaining core about `60%`, full GoPxL
+commercial platform about `35-40%`, and physical/metrology trust `Unverified`.
+See
+`docs/OPENVISIONLAB_3D_IDENTITY_DIRECTION_AND_GOPXL_COMPLETENESS_20260722.md`.
+
+The existing Tools sequence owner now derives all supported downstream
+measurement execution from authored `ToolRecipeDocument.Steps` after one
+explicit Published A2 and A3. It preserves recipe order, direct-adapter
+hashes, later evidence after an earlier tolerance Fail, and aggregate
+status/metrics/overlays. It rejects missing measurements, unsupported
+downstream tools, invalid order, stale artifact identity, and duplicate
+outputs. The legacy one-measurement API remains compatible. The focused
+current-build verification passes `16/16`; Plane Flatness, Point Pair, and
+Gap/Flush are now migrated. The next active implementation priority is Volume,
+followed by Cross-section and a multi-step Run Record.
+
+Real four-landmark A1/A2 evidence, arbitrary whole-graph execution, trusted
+physical mapping, calibration, metrology, camera, PLC, robot, and cloud scope
+remain open or intentionally excluded.
+
+## Current deterministic algorithm Library-Noah migration checkpoint - 2026-07-22
 
 **Complete for deterministic software structure and regression evidence; not
 a physical feature or metrology claim.** `DeterministicMedianFilterTool` owns
@@ -16,10 +149,11 @@ orthogonal TLS, residual membership, support gates, positive-axis direction,
 endpoints, and diagnostics. Studio maps its strict C3D published artifacts to
 and from those tools, retains recipe identity, canonical output hashes, Tool
 Labs, Viewer, and Preview/Publish state, and exclusively enforces the C3D
-finite-zero derived-output boundary. The vendored package is `Lib.ThreeD 2.7.4`,
-Library commit `5d06460c14b1edf390241b28511ce4997f70dc28`, SHA-256
-`BB44D30F8D3AB9C1CF528482CFA2A5A804D9222FFBAE258C765CEF2696EB2573`.
-Library build is `0/0`, smoke `39/39`; Studio Debug build is `0/0`; Filter and
+finite-zero derived-output boundary. The later Gap/Flush ownership checkpoint
+supersedes the package head: `Lib.ThreeD 2.7.7`, Library commit
+`6aba3d5b37e9d10f2d90977e483956b6d57e2aaf`, SHA-256
+`B2909B939EEEF1000F22BDBED96D7A3AC1F67E2F6068AEC2F658ED1FF10E4708`.
+Library build is `0/0`, smoke `48/48`; Studio Debug build is `0/0`; Filter and
 Edge Goldens are `13/13` each; Line Fit Golden is `9/9`; and package/bridge
 checks pass. Structural searches confirm Studio has no Filter median-window or
 Edge scan/candidate/polarity helpers and calls the Noah tools. No remaining
@@ -27,7 +161,10 @@ planned pure-numerical migration candidate is approved. Real four-anchor data,
 calibration, and metrology remain unverified. See
 `docs/OPENVISIONLAB_3D_FILTER_NOAH_MIGRATION_20260721.md`,
 `docs/OPENVISIONLAB_3D_HEIGHT_DIFFERENCE_EDGE_NOAH_MIGRATION_20260721.md`, and
-`docs/OPENVISIONLAB_3D_LINE_FIT_NOAH_MIGRATION_20260721.md`.
+`docs/OPENVISIONLAB_3D_LINE_FIT_NOAH_MIGRATION_20260721.md`,
+`docs/OPENVISIONLAB_3D_PLANE_FLATNESS_NOAH_MIGRATION_20260722.md`, and
+`docs/OPENVISIONLAB_3D_POINT_PAIR_TOOL_RECIPE_20260722.md`, and
+`docs/OPENVISIONLAB_3D_GAP_FLUSH_TOOL_RECIPE_20260722.md`.
 
 ## Current A3 Re-grid Height Field implementation checkpoint - 2026-07-21
 

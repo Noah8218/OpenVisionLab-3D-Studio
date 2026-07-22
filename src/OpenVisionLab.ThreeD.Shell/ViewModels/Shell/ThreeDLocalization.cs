@@ -11,7 +11,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
 {
     private static readonly string[] PropertyNames =
     [
-        nameof(StudioSubtitle), nameof(Teach), nameof(Calibrate), nameof(RecipeManager), nameof(ToolLabs),
+        nameof(StudioSubtitle), nameof(Teach), nameof(RecipeWorkbench), nameof(Calibrate), nameof(RecipeManager), nameof(ToolLabs),
         nameof(AdvancedLayout), nameof(Language), nameof(OpenRecipeManagerToolTip), nameof(OpenToolLabsToolTip),
         nameof(OpenAdvancedToolTip), nameof(Filter), nameof(HeightDifferenceEdge), nameof(TwoPointLine),
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
@@ -45,7 +45,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(Discard), nameof(ApplyParameters), nameof(Produces), nameof(OutputEntity),
         nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
         nameof(OpenSelectedToolLab), nameof(ToolLabReview), nameof(ToolLabReviewDetail),
-        nameof(ShowInput)
+        nameof(ShowInput), nameof(TeachingSelections), nameof(PlaneFlatnessRoiTeaching), nameof(PlaneFlatnessRoiTeachingDetail),
+        nameof(ReferenceRoi), nameof(MeasurementRoi), nameof(RoiComplete), nameof(RoiWaiting),
+        nameof(CaptureRoi), nameof(ReplaceRoi), nameof(ReuseRoi), nameof(ExistingCompatibleRoi),
+        nameof(ReferenceRoiRequiredFirst), nameof(NoRoiTaught), nameof(GapFlushRoiTeaching),
+        nameof(GapFlushRoiTeachingDetail), nameof(FirstRoi), nameof(SecondRoi), nameof(FirstRoiRequiredFirst)
     ];
 
     public static ThreeDLocalization Shared { get; } = new();
@@ -58,6 +62,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string Teach => T("ThreeD.Header.Teach", "\uD2F0\uCE6D", "Teach");
     public string Calibrate => T("ThreeD.Header.Calibrate", "\uAD50\uC815", "Calibrate");
     public string RecipeManager => T("ThreeD.Header.RecipeManager", "\uB808\uC2DC\uD53C \uAD00\uB9AC\uC790", "Recipe Manager");
+    public string RecipeWorkbench => T("ThreeD.Header.RecipeWorkbench", "\uAC80\uC0AC \uB808\uC2DC\uD53C", "Inspection Recipe");
     public string ToolLabs => T("ThreeD.Header.ToolLabs", "\uD234 \uB7A9", "Tool Labs");
     public string AdvancedLayout => T("ThreeD.Header.AdvancedLayout", "\uACE0\uAE09 \uB808\uC774\uC544\uC6C3", "Advanced layout");
     public string Language => T("ThreeD.Header.Language", "\uC5B8\uC5B4", "Language");
@@ -159,6 +164,24 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ToolLabReview => T("ThreeD.ToolLab.Review", "\uD30C\uB77C\uBBF8\uD130 \uBC0F \uC2E4\uD589 \uADFC\uAC70", "Parameters & execution evidence");
     public string ToolLabReviewDetail => T("ThreeD.ToolLab.ReviewDetail", "\uD30C\uB77C\uBBF8\uD130\uB294 \uB808\uC2DC\uD53C \uCD08\uC548\uC5D0\uB9CC \uC801\uC6A9\uB429\uB2C8\uB2E4. \uBBF8\uB9AC\uBCF4\uAE30\uC640 \uAC8C\uC2DC\uB294 \uBA85\uC2DC\uC801\uC73C\uB85C \uC218\uD589\uD569\uB2C8\uB2E4.", "Edits stay in the recipe draft. Preview and Publish remain explicit.");
     public string ShowInput => T("ThreeD.Command.ShowInput", "\uC785\uB825 \uBCF4\uAE30", "Show input");
+    public string TeachingSelections => T("ThreeD.Workbench.TeachingSelections", "\uD2F0\uCE6D \uC120\uD0DD \uC601\uC5ED", "Teaching selections");
+    public string PlaneFlatnessRoiTeaching => T("ThreeD.Workbench.PlaneFlatnessRoiTeaching", "\uD3C9\uBA74\uB3C4 ROI \uD2F0\uCE6D \uC21C\uC11C", "Plane Flatness ROI teaching order");
+    public string PlaneFlatnessRoiTeachingDetail => T("ThreeD.Workbench.PlaneFlatnessRoiTeachingDetail", "1. \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Measurement ROI. Teaching never runs inspection.");
+    public string ReferenceRoi => T("ThreeD.Workbench.ReferenceRoi", "\uAE30\uC900 \uD3C9\uBA74 ROI", "Reference ROI");
+    public string MeasurementRoi => T("ThreeD.Workbench.MeasurementRoi", "\uCE21\uC815 ROI", "Measurement ROI");
+    public string RoiComplete => T("ThreeD.Workbench.RoiComplete", "\uC644\uB8CC", "Complete");
+    public string RoiWaiting => T("ThreeD.Workbench.RoiWaiting", "\uB300\uAE30", "Waiting");
+    public string CaptureRoi => T("ThreeD.Command.CaptureRoi", "ROI \uC9C0\uC815", "Capture ROI");
+    public string ReplaceRoi => T("ThreeD.Command.ReplaceRoi", "ROI \uAD50\uCCB4", "Replace ROI");
+    public string ReuseRoi => T("ThreeD.Command.ReuseRoi", "\uAE30\uC874 ROI \uC7AC\uC0AC\uC6A9", "Reuse ROI");
+    public string ExistingCompatibleRoi => T("ThreeD.Workbench.ExistingCompatibleRoi", "\uC7AC\uC0AC\uC6A9\uD560 \uD638\uD658 ROI", "Compatible ROI to reuse");
+    public string ReferenceRoiRequiredFirst => T("ThreeD.Workbench.ReferenceRoiRequiredFirst", "\uBA3C\uC800 \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the Reference ROI first.");
+    public string NoRoiTaught => T("ThreeD.Workbench.NoRoiTaught", "\uC9C0\uC815\uB41C ROI \uC5C6\uC74C", "No ROI taught");
+    public string GapFlushRoiTeaching => T("ThreeD.Workbench.GapFlushRoiTeaching", "Gap / Flush ROI \uD2F0\uCE6D \uC21C\uC11C", "Gap / Flush ROI teaching order");
+    public string GapFlushRoiTeachingDetail => T("ThreeD.Workbench.GapFlushRoiTeachingDetail", "1. \uCCAB \uBC88\uC9F8 ROI\uC640 2. \uB458\uC9F8 ROI\uB97C U\uCD95 \uBC29\uD5A5 \uC21C\uC11C\uB85C \uC9C0\uC815\uD558\uC138\uC694. ROI \uC21C\uC11C\uAC00 Gap\uACFC Flush\uC758 \uBD80\uD638\uB97C \uACB0\uC815\uD558\uBA70, \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. First ROI, then 2. Second ROI in U-axis order. ROI order defines the Gap/Flush sign; teaching never runs inspection.");
+    public string FirstRoi => T("ThreeD.Workbench.FirstRoi", "\uCCAB \uBC88\uC9F8 ROI", "First ROI");
+    public string SecondRoi => T("ThreeD.Workbench.SecondRoi", "\uB458\uC9F8 ROI", "Second ROI");
+    public string FirstRoiRequiredFirst => T("ThreeD.Workbench.FirstRoiRequiredFirst", "\uBA3C\uC800 \uCCAB \uBC88\uC9F8 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694.", "Teach the First ROI first.");
 
     public string FlowMapPortState => T("ThreeD.Workbench.FlowMapPortState", "\uD3EC\uD2B8 \uC0C1\uD0DC", "Port state");
     public string Problems => T("ThreeD.Workbench.Problems", "\uBB38\uC81C", "Problems");

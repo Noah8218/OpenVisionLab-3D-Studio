@@ -82,7 +82,7 @@
                                        Icon="{ui:SymbolIcon PlayCircle24}"
                                        Command="{Binding Workbench.RunTeachingRecipeCommand}"
                                        ToolTip="Enabled only when every taught step has a typed adapter"
-                                       AutomationProperties.Name="Run complete teaching recipe" />
+                                       AutomationProperties.Name="Run complete inspection recipe" />
                             <TextBlock Margin="6,0" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.DisabledBrush}" Text="→" />
                             <ui:Button Padding="8,3"
                                        Content="{Binding Localization.Publish}"

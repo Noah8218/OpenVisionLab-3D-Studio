@@ -2,6 +2,7 @@ using Microsoft.Win32;
 using OpenVisionLab;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
@@ -295,7 +296,12 @@ public partial class MainWindow : Window
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
         var teachingRecipeSmokeSavePath = GetCommandLineValue("--smoke-save-tool-teaching-recipe");
+        var planeFlatnessLiveA3PointerSmoke = Environment.GetCommandLineArgs()
+            .Contains("--smoke-plane-flatness-live-a3-pointer", StringComparer.OrdinalIgnoreCase);
+        var planeFlatnessLiveA3PointerReportPath = GetCommandLineValue("--smoke-plane-flatness-live-a3-pointer-report");
+        var planeFlatnessLiveA3PointerSavePath = GetCommandLineValue("--smoke-plane-flatness-live-a3-pointer-save");
         var profilePointerSmokeReportPath = GetCommandLineValue("--smoke-profile-pointer-report");
+        var smokeSelectToolId = GetCommandLineValue("--smoke-select-tool");
         var filterPublishSmoke = Environment.GetCommandLineArgs()
             .Contains("--smoke-tool-filter-publish", StringComparer.OrdinalIgnoreCase);
         var twoPointLinePublishSmoke = Environment.GetCommandLineArgs()
@@ -323,7 +329,7 @@ public partial class MainWindow : Window
         var edgeStepId = GetCommandLineValue("--tool-teaching-step");
         var edgeSmokeReportPath = GetCommandLineValue("--smoke-tool-edge-report");
         var lineFitSmokeReportPath = GetCommandLineValue("--smoke-tool-line-fit-report");
-        if (teachingSelectionSmokeMode is not null || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke || threePointPlanePreviewSmoke || datumPlaneDeviationPreviewSmoke)
+        if (teachingSelectionSmokeMode is not null || planeFlatnessLiveA3PointerSmoke || profilePointerSmokeReportPath is not null || edgePreviewSmoke || lineFitPreviewSmoke || twoPointLinePreviewSmoke || threePointPlanePreviewSmoke || datumPlaneDeviationPreviewSmoke)
         {
             Width = 1280;
             Height = 760;
@@ -357,6 +363,7 @@ public partial class MainWindow : Window
             || regridHeightMapToolLabScreenshotPath is not null
             || _viewer.HasConfiguredSmokeScreenshot
             || teachingSelectionSmokeMode is not null
+            || planeFlatnessLiveA3PointerSmoke
             || profilePointerSmokeReportPath is not null
             || filterPreviewSmoke
             || edgePreviewSmoke
@@ -829,6 +836,15 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (planeFlatnessLiveA3PointerSmoke
+                    && !await RunPlaneFlatnessLiveA3PointerSmokeAsync(
+                        planeFlatnessLiveA3PointerReportPath,
+                        planeFlatnessLiveA3PointerSavePath))
+                {
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (teachingRecipeSmokeSavePath is not null
                     && !_viewModel.Workbench.TrySaveTeachingRecipe(teachingRecipeSmokeSavePath, out var teachingSaveMessage))
                 {
@@ -896,6 +912,20 @@ public partial class MainWindow : Window
                 if (!await _viewer.CaptureConfiguredSmokeViewAsync())
                 {
                     _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
+                }
+
+                if (!string.IsNullOrWhiteSpace(smokeSelectToolId))
+                {
+                    var tool = _viewModel.Workbench.Tools.SingleOrDefault(candidate =>
+                        string.Equals(candidate.Id, smokeSelectToolId, StringComparison.OrdinalIgnoreCase));
+                    if (tool is null)
+                    {
+                        _viewModel.SetViewerSmokeFailed($"Smoke tool '{smokeSelectToolId}' was not found in the Workbench catalog.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    _viewModel.Workbench.SelectedTool = tool;
+                    _viewModel.Workbench.AddSelectedToolCommand.Execute(null);
                 }
 
                 UpdateLayout();
@@ -1116,6 +1146,294 @@ public partial class MainWindow : Window
         return window;
     }
 
+    private async Task<bool> RunPlaneFlatnessLiveA3PointerSmokeAsync(
+        string? reportPath,
+        string? savePath)
+    {
+        var lines = new List<string>
+        {
+            "OpenVisionLab 3D Plane Flatness live A3 pointer Shell smoke",
+            "Boundary|Deterministic synthetic display-frame evidence only; this is not physical calibration, Gauge R&R, or metrology evidence."
+        };
+        var workbench = _viewModel.Workbench;
+        var previewBefore = _viewer.ViewModel.PreviewToolResult;
+        var resultsBefore = _viewer.ViewModel.ResultEntities;
+
+        bool Complete(bool passed, string message)
+        {
+            lines.Add($"InspectionBoundary|previewReferenceUnchanged={ReferenceEquals(previewBefore, _viewer.ViewModel.PreviewToolResult)}|resultReferenceUnchanged={ReferenceEquals(resultsBefore, _viewer.ViewModel.ResultEntities)}");
+            lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{message}");
+            WriteTeachingSelectionSmokeReport(reportPath, lines);
+            Console.WriteLine(lines[^1]);
+            if (!passed)
+            {
+                _viewModel.SetViewerSmokeFailed(message);
+            }
+            return passed;
+        }
+
+        string? PointerReport(string role)
+        {
+            if (string.IsNullOrWhiteSpace(reportPath)) return null;
+            var fullReportPath = Path.GetFullPath(reportPath);
+            return Path.Combine(
+                Path.GetDirectoryName(fullReportPath)!,
+                $"{Path.GetFileNameWithoutExtension(fullReportPath)}.{role}-pointer.txt");
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(reportPath) || string.IsNullOrWhiteSpace(savePath))
+            {
+                return Complete(false, "Live A3 pointer smoke requires explicit report and saved-recipe paths.");
+            }
+            if (string.IsNullOrWhiteSpace(workbench.RecipePath))
+            {
+                return Complete(false, "Live A3 pointer smoke requires the prepared fixture recipe to be opened by --tool-teaching-recipe.");
+            }
+
+            var regridStep = workbench.PipelineSteps.SingleOrDefault(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.RegridStepId, StringComparison.OrdinalIgnoreCase));
+            var planeStep = workbench.PipelineSteps.SingleOrDefault(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.PlaneFlatnessStepId, StringComparison.OrdinalIgnoreCase));
+            var pointPairStep = workbench.PipelineSteps.SingleOrDefault(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.PointPairStepId, StringComparison.OrdinalIgnoreCase));
+            var gapFlushStep = workbench.PipelineSteps.SingleOrDefault(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.GapFlushStepId, StringComparison.OrdinalIgnoreCase));
+            if (regridStep is null || planeStep is null || pointPairStep is null || gapFlushStep is null)
+            {
+                return Complete(false, "Prepared fixture recipe is missing its Re-grid, Plane Flatness, Point Pair, or Gap / Flush step.");
+            }
+
+            workbench.SelectedPipelineStep = regridStep;
+            var publishedA2 = PlaneFlatnessLiveA3PointerSmokeFixture.CreatePublishedA2(workbench.RecipePath);
+            if (!workbench.TryRegisterSyntheticPublishedAffineApplyOutputForSmoke(publishedA2, out var a2Message))
+            {
+                return Complete(false, a2Message);
+            }
+            lines.Add($"A2|entity={publishedA2.OutputEntityId}|sha256={publishedA2.ContentSha256}|finite={publishedA2.FinitePointCount}|registration={a2Message}");
+
+            if (!await workbench.PreviewSelectedRegridHeightFieldAsync()
+                || !workbench.PublishSelectedStepCommand.CanExecute(null))
+            {
+                return Complete(false, $"Normal Re-grid Preview was not publishable: {workbench.RegridHeightFieldExecutionSummary}");
+            }
+            workbench.PublishSelectedStepCommand.Execute(null);
+            if (!workbench.IsRegridHeightFieldPreviewPublished
+                || !workbench.TryGetPublishedRegridHeightFieldOutput(
+                    PlaneFlatnessLiveA3PointerSmokeFixture.HeightFieldEntityId,
+                    out var publishedA3)
+                || publishedA3 is null)
+            {
+                return Complete(false, "Normal Re-grid Publish did not register the exact Preview A3 output.");
+            }
+            var expectedBinding = ToolRecipeSelectionSourceBindingVerifier.FromTransformedHeightField(publishedA3);
+            lines.Add($"A3|entity={publishedA3.OutputEntityId}|sha256={publishedA3.ContentSha256}|populated={publishedA3.PopulatedCellCount}/{publishedA3.Cells.Count}|coverage={publishedA3.CoverageRatio:R}|published=True");
+
+            workbench.SelectedPipelineStep = planeStep;
+            if (!workbench.CapturePlaneFlatnessReferenceRoiCommand.CanExecute(null))
+            {
+                return Complete(false, "Plane Flatness reference ROI capture was not enabled after A3 Publish.");
+            }
+            workbench.CapturePlaneFlatnessReferenceRoiCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            if (!_viewer.TeachingCaptureSnapshot.IsActive
+                || !await _viewer.RunTeachingCapturePointerSmokeAsync(
+                    cancelWhenReady: false,
+                    PointerReport("reference"),
+                    exerciseNavigationGestures: false)
+                || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+            {
+                return Complete(false, "Two real Viewer pointer picks did not produce an applicable reference ROI candidate.");
+            }
+            _viewer.TryGetC3DTeachingCandidate(out var referenceCandidate, out var referenceCandidateMessage);
+            lines.Add($"ReferenceCandidate|id={referenceCandidate?.Id}|rectangle={referenceCandidate?.GridRectangle}|owner={referenceCandidate?.SourceBinding.OwnerEntityId}|sha256={referenceCandidate?.SourceBinding.ContentSha256}|message={referenceCandidateMessage}");
+            workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            lines.Add($"ReferenceApplyState|workbenchActive={workbench.IsTeachingSelectionCaptureActive}|viewerActive={_viewer.TeachingCaptureSnapshot.IsActive}|progress={workbench.TeachingSelectionCaptureProgress}");
+            if (workbench.IsTeachingSelectionCaptureActive || _viewer.TeachingCaptureSnapshot.IsActive)
+            {
+                return Complete(false, "Reference ROI candidate was not accepted by the workbench.");
+            }
+            var referenceSelection = workbench.PlaneFlatnessReferenceSelection;
+            if (referenceSelection?.GridRectangle is null)
+            {
+                return Complete(false, "Applied reference ROI was not routed into the Plane Flatness step.");
+            }
+            lines.Add($"ReferenceROI|id={referenceSelection.Id}|rectangle={referenceSelection.GridRectangle.Row},{referenceSelection.GridRectangle.Column},{referenceSelection.GridRectangle.RowCount},{referenceSelection.GridRectangle.ColumnCount}|owner={referenceSelection.SourceBinding.OwnerEntityId}|sha256={referenceSelection.SourceBinding.ContentSha256}");
+
+            if (!workbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null))
+            {
+                return Complete(false, "Plane Flatness measurement ROI capture was not enabled after the reference ROI was applied.");
+            }
+            workbench.CapturePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            if (!_viewer.TeachingCaptureSnapshot.IsActive
+                || !await _viewer.RunTeachingCapturePointerSmokeAsync(
+                    cancelWhenReady: false,
+                    PointerReport("measurement"),
+                    exerciseNavigationGestures: false)
+                || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+            {
+                return Complete(false, "Two real Viewer pointer picks did not produce an applicable measurement ROI candidate.");
+            }
+            _viewer.TryGetC3DTeachingCandidate(out var measurementCandidate, out var measurementCandidateMessage);
+            lines.Add($"MeasurementCandidate|id={measurementCandidate?.Id}|rectangle={measurementCandidate?.GridRectangle}|owner={measurementCandidate?.SourceBinding.OwnerEntityId}|sha256={measurementCandidate?.SourceBinding.ContentSha256}|message={measurementCandidateMessage}");
+            workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            lines.Add($"MeasurementApplyState|workbenchActive={workbench.IsTeachingSelectionCaptureActive}|viewerActive={_viewer.TeachingCaptureSnapshot.IsActive}|progress={workbench.TeachingSelectionCaptureProgress}");
+            if (workbench.IsTeachingSelectionCaptureActive || _viewer.TeachingCaptureSnapshot.IsActive)
+            {
+                return Complete(false, "Measurement ROI candidate was not accepted by the workbench.");
+            }
+            var measurementSelection = workbench.PlaneFlatnessMeasurementSelection;
+            if (measurementSelection?.GridRectangle is null
+                || string.Equals(referenceSelection.Id, measurementSelection.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                return Complete(false, "Applied measurement ROI was not routed as a distinct Plane Flatness role.");
+            }
+            lines.Add($"MeasurementROI|id={measurementSelection.Id}|rectangle={measurementSelection.GridRectangle.Row},{measurementSelection.GridRectangle.Column},{measurementSelection.GridRectangle.RowCount},{measurementSelection.GridRectangle.ColumnCount}|owner={measurementSelection.SourceBinding.OwnerEntityId}|sha256={measurementSelection.SourceBinding.ContentSha256}");
+
+            var executionUnchanged = ReferenceEquals(previewBefore, _viewer.ViewModel.PreviewToolResult)
+                && ReferenceEquals(resultsBefore, _viewer.ViewModel.ResultEntities);
+            if (!executionUnchanged)
+            {
+                return Complete(false, "ROI teaching changed inspection Preview/Run evidence before an explicit measurement Preview.");
+            }
+
+            workbench.SelectedPipelineStep = pointPairStep;
+            if (!workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null))
+            {
+                return Complete(false, "Point Pair capture was not enabled against the Published A3 output.");
+            }
+            workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            if (!_viewer.TeachingCaptureSnapshot.IsActive
+                || !await _viewer.RunTeachingCapturePointerSmokeAsync(
+                    cancelWhenReady: false,
+                    PointerReport("point-pair"),
+                    exerciseNavigationGestures: false)
+                || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+            {
+                return Complete(false, "Two real Viewer pointer picks did not produce an applicable PointSet(2) candidate.");
+            }
+            _viewer.TryGetC3DTeachingCandidate(out var pointPairCandidate, out var pointPairCandidateMessage);
+            lines.Add($"PointPairCandidate|id={pointPairCandidate?.Id}|points={pointPairCandidate?.Points?.Count}|owner={pointPairCandidate?.SourceBinding.OwnerEntityId}|sha256={pointPairCandidate?.SourceBinding.ContentSha256}|message={pointPairCandidateMessage}");
+            workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            var pointPairSelection = workbench.SelectedStepTeachingSelection;
+            if (pointPairSelection?.Points?.Count != 2
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, pointPairSelection.SourceBinding))
+            {
+                return Complete(false, "Applied PointSet(2) was not routed with the exact A3 binding.");
+            }
+            lines.Add($"PointPair|id={pointPairSelection.Id}|first={pointPairSelection.Points[0].Locator.Row},{pointPairSelection.Points[0].Locator.Column}|second={pointPairSelection.Points[1].Locator.Row},{pointPairSelection.Points[1].Locator.Column}|owner={pointPairSelection.SourceBinding.OwnerEntityId}|sha256={pointPairSelection.SourceBinding.ContentSha256}");
+
+            if (!await workbench.PreviewSelectedMeasurementAsync()
+                || !workbench.PublishSelectedStepCommand.CanExecute(null))
+            {
+                return Complete(false, $"Point Pair Preview was not publishable: {workbench.MeasurementExecutionSummary}");
+            }
+            workbench.PublishSelectedStepCommand.Execute(null);
+            if (!workbench.IsMeasurementPreviewPublished || workbench.CurrentMeasurementOutput is null)
+            {
+                return Complete(false, "Point Pair Publish did not preserve the exact Preview output.");
+            }
+            lines.Add($"PointPairResult|status={workbench.CurrentMeasurementOutput.Result.Status}|sha256={workbench.CurrentMeasurementOutput.ContentSha256}|evidence={workbench.CurrentMeasurementOutput.EvidenceSummary}|published=True");
+
+            workbench.SelectedPipelineStep = gapFlushStep;
+            var gapFirst = workbench.PlaneFlatnessReferenceSelection;
+            var gapSecond = workbench.PlaneFlatnessMeasurementSelection;
+            if (gapFirst?.GridRectangle is null || gapSecond?.GridRectangle is null
+                || string.Equals(gapFirst.Id, gapSecond.Id, StringComparison.OrdinalIgnoreCase)
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, gapFirst.SourceBinding)
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, gapSecond.SourceBinding))
+            {
+                return Complete(false, "Gap / Flush did not expose two distinct ordered ROIs with the exact A3 binding.");
+            }
+            if (!await workbench.PreviewSelectedMeasurementAsync()
+                || !workbench.PublishSelectedStepCommand.CanExecute(null))
+            {
+                return Complete(false, $"Gap / Flush Preview was not publishable: {workbench.MeasurementExecutionSummary}");
+            }
+            workbench.PublishSelectedStepCommand.Execute(null);
+            if (!workbench.IsMeasurementPreviewPublished || workbench.CurrentMeasurementOutput is null)
+            {
+                return Complete(false, "Gap / Flush Publish did not preserve the exact Preview output.");
+            }
+            lines.Add($"GapFlush|first={gapFirst.Id}:{gapFirst.GridRectangle.Row},{gapFirst.GridRectangle.Column},{gapFirst.GridRectangle.RowCount},{gapFirst.GridRectangle.ColumnCount}|second={gapSecond.Id}:{gapSecond.GridRectangle.Row},{gapSecond.GridRectangle.Column},{gapSecond.GridRectangle.RowCount},{gapSecond.GridRectangle.ColumnCount}|status={workbench.CurrentMeasurementOutput.Result.Status}|sha256={workbench.CurrentMeasurementOutput.ContentSha256}|evidence={workbench.CurrentMeasurementOutput.EvidenceSummary}|published=True");
+
+            var fullSavePath = Path.GetFullPath(savePath);
+            if (!workbench.TrySaveTeachingRecipe(fullSavePath, out var saveMessage))
+            {
+                return Complete(false, saveMessage);
+            }
+            lines.Add($"Save|path={fullSavePath}|message={saveMessage}");
+
+            if (!workbench.TryOpenTeachingRecipe(fullSavePath, out var reopenMessage))
+            {
+                return Complete(false, reopenMessage);
+            }
+            var reopenedStep = workbench.PipelineSteps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.PlaneFlatnessStepId, StringComparison.OrdinalIgnoreCase));
+            workbench.SelectedPipelineStep = reopenedStep;
+            var reopenedReference = workbench.Selections.Single(selection =>
+                string.Equals(selection.Id, reopenedStep.InputEntityIds[1], StringComparison.OrdinalIgnoreCase));
+            var reopenedMeasurement = workbench.Selections.Single(selection =>
+                string.Equals(selection.Id, reopenedStep.InputEntityIds[2], StringComparison.OrdinalIgnoreCase));
+            var reopenedDocument = ToolRecipeDocumentStore.Load(fullSavePath);
+            var reopenedDocumentStep = reopenedDocument.Steps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.PlaneFlatnessStepId, StringComparison.OrdinalIgnoreCase));
+            var reopenedPointPairStep = reopenedDocument.Steps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.PointPairStepId, StringComparison.OrdinalIgnoreCase));
+            var reopenedPointPair = reopenedDocument.Selections!.Single(selection =>
+                string.Equals(selection.Id, reopenedPointPairStep.InputEntityIds[1], StringComparison.OrdinalIgnoreCase));
+            var reopenedGapStep = reopenedDocument.Steps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.GapFlushStepId, StringComparison.OrdinalIgnoreCase));
+            var reopenedGapFirst = reopenedDocument.Selections!.Single(selection =>
+                string.Equals(selection.Id, reopenedGapStep.InputEntityIds[1], StringComparison.OrdinalIgnoreCase));
+            var reopenedGapSecond = reopenedDocument.Selections!.Single(selection =>
+                string.Equals(selection.Id, reopenedGapStep.InputEntityIds[2], StringComparison.OrdinalIgnoreCase));
+            var reopenPassed = reopenedDocument.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+                && reopenedStep.InputEntityIds.Count == 3
+                && reopenedDocumentStep.InputEntityIds.SequenceEqual(reopenedStep.InputEntityIds, StringComparer.OrdinalIgnoreCase)
+                && reopenedReference.GridRectangle == referenceSelection.GridRectangle
+                && reopenedMeasurement.GridRectangle == measurementSelection.GridRectangle
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedReference.SourceBinding)
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedMeasurement.SourceBinding)
+                && reopenedPointPair.Points?.Count == 2
+                && reopenedPointPair.Points.SequenceEqual(pointPairSelection.Points)
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedPointPair.SourceBinding)
+                && reopenedGapFirst.GridRectangle == gapFirst.GridRectangle
+                && reopenedGapSecond.GridRectangle == gapSecond.GridRectangle
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedGapFirst.SourceBinding)
+                && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(expectedBinding, reopenedGapSecond.SourceBinding)
+                && !workbench.IsDirty
+                && ReferenceEquals(previewBefore, _viewer.ViewModel.PreviewToolResult)
+                && ReferenceEquals(resultsBefore, _viewer.ViewModel.ResultEntities);
+            lines.Add($"Reopen|schema={reopenedDocument.SchemaVersion}|stepInputs={string.Join(';', reopenedStep.InputEntityIds)}|reference={reopenedReference.Id}|measurement={reopenedMeasurement.Id}|pointPair={reopenedPointPair.Id}|gapFirst={reopenedGapFirst.Id}|gapSecond={reopenedGapSecond.Id}|dirty={workbench.IsDirty}|message={reopenMessage}");
+            workbench.SelectedPipelineStep = workbench.PipelineSteps.Single(step =>
+                string.Equals(step.Id, PlaneFlatnessLiveA3PointerSmokeFixture.GapFlushStepId, StringComparison.OrdinalIgnoreCase));
+            _viewer.ShowWorkbenchRegridHeightField(publishedA3, isPublished: true);
+            SyncAppliedTeachingSelections();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            return Complete(
+                reopenPassed,
+                reopenPassed
+                    ? "One live Shell session published synthetic A3, taught Plane Flatness and Point Pair through real Viewer pointer input, explicitly Previewed/Published Point Pair and Gap / Flush, then saved and reopened exact geometry/binding evidence."
+                    : "Saved/reopened Plane Flatness, Point Pair, or Gap / Flush geometry, A3 binding, or explicit-execution boundary did not match.");
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException
+            or ArgumentException
+            or InvalidOperationException
+            or OverflowException)
+        {
+            return Complete(false, $"{exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
     private async Task<bool> RunToolTeachingSelectionSmokeAsync(string modeValue, string? reportPath)
     {
         var mode = modeValue.Trim().ToLowerInvariant();
@@ -1294,7 +1612,7 @@ public partial class MainWindow : Window
         return Complete(
             applied,
             applied
-                ? "Two real Viewer picks were applied, schema promoted to 1.1, the step route became dirty, and Preview/Run remained untouched."
+                ? "Two real Viewer picks were applied, the recipe uses the current structured-selection schema, the step route became dirty, and Preview/Run remained untouched."
                 : "Applying the Viewer candidate did not satisfy recipe persistence or execution-boundary checks.");
     }
 
@@ -1444,7 +1762,28 @@ public partial class MainWindow : Window
 
     private void ConfigureToolTeachingRecipeFromCommandLine()
     {
+        var fixtureDirectory = GetCommandLineValue("--plane-flatness-live-a3-fixture");
         var recipePath = GetCommandLineValue("--tool-teaching-recipe");
+        if (!string.IsNullOrWhiteSpace(fixtureDirectory))
+        {
+            try
+            {
+                var fixture = PlaneFlatnessLiveA3PointerSmokeFixture.Prepare(fixtureDirectory);
+                recipePath = fixture.RecipePath;
+                OVLog.Write(LogCategory.UI, LogLevel.Info, fixture.Summary);
+            }
+            catch (Exception exception) when (exception is IOException
+                or UnauthorizedAccessException
+                or InvalidDataException
+                or ArgumentException
+                or InvalidOperationException
+                or OverflowException)
+            {
+                OVLog.Write(LogCategory.UI, LogLevel.Error, $"Plane Flatness live A3 fixture preparation failed: {exception}");
+                _viewModel.SetViewerSmokeFailed($"Plane Flatness live A3 fixture preparation failed: {exception.Message}");
+                return;
+            }
+        }
         if (string.IsNullOrWhiteSpace(recipePath))
         {
             return;
@@ -1603,6 +1942,26 @@ public partial class MainWindow : Window
         object? sender,
         ToolWorkbenchTeachingCaptureRequestEventArgs args)
     {
+        if (string.Equals(args.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
+        {
+            if (!_viewModel.Workbench.TryGetPublishedRegridHeightFieldOutput(
+                    args.SourceBinding.OwnerEntityId ?? string.Empty,
+                    out var transformedHeightField)
+                || transformedHeightField is null)
+            {
+                _viewModel.Workbench.RejectTeachingSelectionCapture(
+                    "The ROI owner TransformedHeightField is not currently Published.");
+                return;
+            }
+            _viewer.ShowWorkbenchRegridHeightField(transformedHeightField, isPublished: true, standaloneReferenceDisplay: true);
+            SyncAppliedTeachingSelections();
+        }
+        else
+        {
+            _viewer.ClearWorkbenchRegridHeightField();
+            _viewer.ViewModel.C3DSampleVisible = true;
+        }
+
         var request = new TeachingCaptureRequest(
             args.SelectionId,
             args.SelectionName,
@@ -2315,8 +2674,8 @@ public partial class MainWindow : Window
             var dialog = new SaveFileDialog
             {
                 Title = forceDialog ? "Save 3D Tool Teaching Recipe As" : "Save 3D Tool Teaching Recipe",
-                Filter = "OpenVisionLab 3D teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
-                FileName = string.IsNullOrWhiteSpace(path) ? "tool-recipe.ov3d-teach.json" : Path.GetFileName(path),
+                Filter = "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
+                FileName = string.IsNullOrWhiteSpace(path) ? "inspection-recipe.ov3d-recipe.json" : Path.GetFileName(path),
                 InitialDirectory = string.IsNullOrWhiteSpace(path) ? null : Path.GetDirectoryName(path),
                 OverwritePrompt = true
             };
@@ -2347,7 +2706,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Title = "Open 3D Tool Teaching Recipe",
-            Filter = "OpenVisionLab 3D teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
+            Filter = "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
             CheckFileExists = true,
             Multiselect = false
         };

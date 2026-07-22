@@ -1,6 +1,8 @@
 # OpenVisionLab 3D Product Target And Self Evaluation
 
-Updated: 2026-07-21
+> 2026-07-22 architecture update: the canonical UI and recipe lifecycle is the generic `Inspection Recipe` Workbench using `ToolRecipeDocument`. Thickness, Warpage, Plane Flatness, Point Pair Dimensions, and Gap/Flush are Measure tool steps, not product modes. Schema `1.3` preserves exact `TransformedHeightField` GridRectangle/PointSet ownership, and Generic Ordered Recipe Executor v1 replays A3 then every following supported measurement step in authored order with direct-adapter hash parity. Gap/Flush uses ordered first/second A3 ROIs; their order determines signed separation/overlap and signed flush. The focused Runner now passes `16/16`, and current-build Shell sessions pass real OS-pointer teaching, explicit Preview/Publish, exact A3 binding, and schema `1.3` save/reopen. Reusable Plane Fit/Flatness, Point Pair, and Gap/Flush arithmetic is owned by committed Library-Noah `Lib.ThreeD 2.7.7`, while Studio retains identity/UI/recipe/result adaptation. See `OPENVISIONLAB_3D_GAP_FLUSH_TOOL_RECIPE_20260722.md` plus the Plane Flatness and Point Pair documents. The historical owner-supplied Thickness/Warpage videos contribute only general synchronized step/overlay/properties/results and repeated-instance lessons; their visual identity, fixed layout, and fixed algorithm taxonomy are excluded. `Synthetic Affine Inspection Plate v1` remains the deterministic whole-chain `16/16` software golden. Automatic seam detection, the real four-landmark audit, and physical/metrology trust remain blocked by missing trusted evidence.
+
+Updated: 2026-07-22
 
 Status: current product-direction source of truth. Older market reviews remain useful as history, but this document controls current priorities when they conflict.
 
@@ -9,6 +11,14 @@ Viewer reliability phases and claim limits are governed by `docs/OPENVISIONLAB_3
 ## Executive Decision
 
 OpenVisionLab 3D Studio should target an explainable, local, rule-based 3D inspection recipe workbench for height maps, point clouds, and meshes.
+
+The current identity/direction audit records the accepted UI gate at `85/100`,
+a directional `65-70%` against the deliberately narrow local software MVP,
+about `60%` against the GoPxL Tools/Tool Chaining core workflow, and about
+`35-40%` against the full GoPxL commercial platform. These denominators must
+remain separate; physical/metrology trust is unverified rather than assigned
+a percentage. See
+`docs/OPENVISIONLAB_3D_IDENTITY_DIRECTION_AND_GOPXL_COMPLETENESS_20260722.md`.
 
 The product workflow is:
 
@@ -41,8 +51,11 @@ The owner accepted the current local UI/UX gate at the evidence-based
 the UI-priority hold for selecting the next bounded product task. The deferred
 150% DPI, first-time-operator, keyboard-only operator, and assistive reviews
 remain unverified rather than inferred as passing evidence. The small compact
-Viewer-header status-pressure issue remains optional P1 polish, not a gate
-block. This decision does not expand the product into hardware control,
+Viewer-header status-pressure issue was closed locally on 2026-07-22 by
+separating the no-wrap controls from a full-width, ellipsized status row whose
+complete value remains available through its tooltip and accessible name. The
+owner-approved `85/100` score is not silently rescored by this implementation.
+This decision does not expand the product into hardware control,
 physical calibration, or metrology claims.
 
 ## Full-XYZ affine design authorization - 2026-07-20
@@ -227,17 +240,28 @@ Thickness, Warpage, calibration, and metrology remain separate blocked
 decisions. See
 `docs/OPENVISIONLAB_3D_XYZ_AFFINE_SOLVE_IMPLEMENTATION_20260721.md`.
 
-Current Library-Noah algorithm-ownership checkpoint on 2026-07-21:
+Current Library-Noah algorithm-ownership checkpoint on 2026-07-22:
 **Studio is now an adapter, not a duplicate numerical owner, for A1 Full XYZ
 Affine Solve, 2-Point Line, 3-Point Plane, Line Intersection, Filter, Height
-Difference Edge, and 3D Line Fit.** The exact vendored `Lib.ThreeD` 2.7.4
-package at Library-Noah commit `5d06460c14b1edf390241b28511ce4997f70dc28`
+Difference Edge, 3D Line Fit, least-squares Height-field Plane Fit, Plane
+Flatness, Point Pair Dimensions, and Gap/Flush.** The exact vendored
+`Lib.ThreeD` 2.7.7 package at Library-Noah commit
+`6aba3d5b37e9d10f2d90977e483956b6d57e2aaf`
 contains `DeterministicMedianFilterTool`, `DeterministicHeightDifferenceEdgeTool`,
-and `DeterministicLineFitTool` alongside the established pure geometry tools.
-Current source passes Library-Noah build `0/0`, Smoke `39/39`, Studio build
+`DeterministicLineFitTool`, `LeastSquaresHeightFieldPlaneFitTool`, and
+`PlaneFlatnessInspectionTool`, `PointPairDimensionsInspectionTool`, and
+`GapFlushInspectionTool` alongside the established pure geometry tools. The
+2.7.7 package SHA-256 is
+`B2909B939EEEF1000F22BDBED96D7A3AC1F67E2F6068AEC2F658ED1FF10E4708`;
+Noah Smoke passes `48/48`, and the Studio Runner/Workbench/synthetic gates pass
+`16/16`, `23/23`, and `16/16`. See
+`OPENVISIONLAB_3D_PLANE_FLATNESS_NOAH_MIGRATION_20260722.md` and
+`OPENVISIONLAB_3D_GAP_FLUSH_TOOL_RECIPE_20260722.md`.
+Current source passes Library-Noah build `0/0`, Smoke `48/48`, Studio build
 `0/0`, package integrity, Noah bridge `7/7`, Filter Golden `13/13`, Height
-Difference Edge Golden `13/13`, and 3D Line Fit Golden `9/9`. Studio retains
-the C3D zero/missing conversion and finite-zero derived-output boundary. No
+Difference Edge Golden `13/13`, 3D Line Fit Golden `9/9`, and legacy Gap/Flush
+Golden `8/8`. Studio retains the C3D zero/missing conversion and finite-zero
+derived-output boundary. No
 migration changes the missing real A1 fixture, the synthetic-only A2/A3
 boundary, calibration, or metrology boundaries. See
 `docs/OPENVISIONLAB_3D_ALGORITHM_OWNERSHIP_AND_NOAH_MIGRATION_20260721.md`.
@@ -344,7 +368,7 @@ Current maturity is **early inspection workbench MVP**. No repository-backed per
 - C3D map fidelity: **display frame passed for the fixed Thickness sample; physical scale unverified**.
 - Inspection Recipe v1: **baseline passed for five independent typed C3D slices: numeric-reference-ROI plane flatness, explicit-cell point-pair dimensions, explicit two-region Gap/Flush, explicit reference/measurement-ROI Volume, and exact-row Cross-section Dimensions**.
 - Functional inspection direction: **feature-first C3D Thickness Teaching v1 and bounded local raw-height Warpage now cover load -> one taught grid ROI -> explicit Preview/Publish -> recipe save/reopen -> Runner replay -> Viewer and Shell result surfaces in the current local working tree. Neither `raw-height` result is a calibrated physical measurement claim. See `docs/OPENVISIONLAB_3D_C3D_THICKNESS_TEACHING_20260717.md` and `docs/OPENVISIONLAB_3D_WARPAGE_INPUT_PREFLIGHT_20260717.md`.**
-- Tool Recipe Workbench and generic teaching: **the Shell now defaults to `Workbench`, a composable 3D-tool layout with Toolbox / Entities, Viewer, Tool Inspector, Recipe Pipeline / Review, Run Log, Height Profile, and Fit Diagnostics. Teaching Recipe v1 supports C3D source selection, reference declaration, ordered tool authoring, entity routing, parameter editing, structural validation, JSON save/reopen, and a portable `3D/Warpage` feature-first template. Filter, Height Difference Edge, and 3D Line Fit are bounded typed adapters; later intersection, XYZ Affine, re-grid, Thickness, Warpage, and review rows remain teachable but execution-blocked. Existing Task (`Teach -> Inspect -> Review`), Calibrate, and Expert surfaces remain available as specialized workspaces. This does not create a generic executor, automatic feature finder, physical warpage claim, or XYZ affine solver. See `docs/OPENVISIONLAB_3D_TOOL_RECIPE_TEACHING_CONTRACT_20260718.md`, `docs/OPENVISIONLAB_3D_HEIGHT_DIFFERENCE_EDGE_TYPED_ADAPTER_20260719.md`, and `docs/OPENVISIONLAB_3D_LINE_FIT_TYPED_ADAPTER_20260719.md`.**
+- Tool Recipe Workbench and generic inspection recipe: **the Shell now exposes one canonical `Inspection Recipe` Workbench with Toolbox / Entities, Viewer, Step Parameters, Recipe Pipeline / Review, logs, profile, and typed evidence. `ToolRecipeDocument` owns source identity, references, ordered steps, typed entity routing, PropertyGrid parameters, recipe-owned selections, validation, and JSON save/reopen. The bounded adapters include Filter, Height Difference Edge, manual 2-Point Line, 3-Point Plane, Datum Plane Deviation, 3D Line Fit, Line Intersection, Landmark Correspondence, XYZ Affine Solve/Apply, Re-grid Height Map, Thickness, Warpage, and Plane Flatness. Plane Flatness requires an exact Published TransformedHeightField plus ordered reference/measurement ROIs. Schema `1.3` records transformed ROI owner/hash/root/grid/unit/frame; reopen retains the authored ROIs and requires exact A3 republish before execution. Generic Ordered Recipe Executor v1 executes A3 then every following supported measurement step from an explicit Published A2, preserves later evidence after a tolerance Fail, and matches direct-adapter output hashes; its focused verification passes `14/14`. Thickness, Warpage, and Plane Flatness do not own product navigation. New generic recipes use `*.ov3d-recipe.json`, while legacy `*.ov3d-teach.json` documents remain readable. Real four-landmark A1/A2 evidence, arbitrary whole-graph Runner execution, physical calibration, and metrology remain open. See `docs/OPENVISIONLAB_3D_GENERIC_TOOL_RECIPE_ARCHITECTURE_20260722.md`, `docs/OPENVISIONLAB_3D_ARTIFACT_OWNED_ROI_AND_ORDERED_RUNNER_20260722.md`, `docs/OPENVISIONLAB_3D_PLANE_FLATNESS_TOOL_RECIPE_20260722.md`, and `docs/OPENVISIONLAB_3D_IDENTITY_DIRECTION_AND_GOPXL_COMPLETENESS_20260722.md`.**
 - Workbench V2, docking, and interactive Profile UI gate: **passed locally on 2026-07-18. The default teaching surface presents recipe/source/frame/alignment/saved state, a category-grouped tool catalog, workflow-grouped properties, an explicit non-running `Teach -> Preview -> Run -> Publish` lifecycle, and six real AvalonDock panes: Project Explorer, 3D View, Properties, Pipeline / Validation, Session Log, and Height Profile. Advanced also has six dock panes and Calibration has four. C3D defaults to Wireframe; right-drag pans, short right-click opens the menu, and the canvas/top `View` menus both expose Fit all, Fit selection, Reset view, Screenshot, and Profile. A camera-aware Viewer-display XYZ triad and draggable P1/P2 height profile are visible; Profile is source-SHA-bound display state and does not alter recipe point-pair evidence or run Preview/Run/Publish. Current evidence passes docking `15/15`, focused contracts `78/78`, Profile pointer `6/6`, both menu bindings `5/5`, current UI quality `4/4`, and BinaryHost manifest/outputs/Host API `14/14`, `12/12`, `3/3`. This does not prove filter/edge/fit/intersection execution, XYZ affine solving, physical calibration, or metrology. See `docs/OPENVISIONLAB_3D_DOCKABLE_WORKBENCH_REFACTOR_20260718.md`.**
 - C3D height color/distribution legend gate: **passed locally on 2026-07-19. The Viewer right side now combines a palette-matched vertical raw-height scale with a full-source 32-bin histogram, valid/missing counts, mean, and the most-populated interval. Distribution values come from every finite, non-zero C3D cell and remain independent of render density. Height, Grayscale, and Thermal update the scale from their rendering palettes; Solid, Deviation, and non-C3D sources hide it. The overlay is hit-test-free and display-only, and it remains visible in the docked Shell and zero-`ProjectReference` external host. Current evidence passes the focused contract `20/20`, display settings `82`, docking `15/15`, established Profile pointer `6/6`, accepted current Shell/Viewer captures, and BinaryHost `14/14`, `12/12`, `3/3`. Manual/ROI ranges, physical scale, calibration, uncertainty, and metrology remain open. See `docs/OPENVISIONLAB_3D_C3D_HEIGHT_DISTRIBUTION_LEGEND_20260719.md`.**
 - Historical TLB manual functional reference: **all 87 slides of the user-provided former 3D program manual were inspected locally on 2026-07-19 as confidential reference material. OpenVisionLab may reuse abstract workflows such as docked teaching, grouped ROI/entity organization, view presets, profile, palette/contour, source/processed/aligned comparison, and step-result drilldown, but must use its own typed contracts, fixtures, icons, wording, styling, and layout. Sensor/MMI/database/equipment control, alarm/retry, physical correction, and the historical UI identity remain out of scope. See `docs/OPENVISIONLAB_3D_TLB_MANUAL_FUNCTIONAL_REFERENCE_20260719.md`.**

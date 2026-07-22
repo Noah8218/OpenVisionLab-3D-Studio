@@ -1,0 +1,232 @@
+{
+  "schemaVersion": "1.0",
+  "name": "Synthetic Affine Inspection Plate v1",
+  "boundary": "Synthetic display-frame golden only; not physical calibration or metrology evidence.",
+  "source": {
+    "file": "source-affine-inspection-plate-v1.C3D",
+    "width": 240,
+    "height": 160,
+    "unit": "raw-height",
+    "frameId": "frame.c3d-grid-index",
+    "byteLength": 153608,
+    "contentSha256": "9FBDA9392F8A25CF6C46C78BA940618D8BA2DB8532C95FF1DF9CF55F9E46A0CA",
+    "validCount": 38348,
+    "missingCount": 52,
+    "impulses": [
+      {
+        "row": 10,
+        "column": 100,
+        "height": 95
+      },
+      {
+        "row": 35,
+        "column": 150,
+        "height": 75
+      },
+      {
+        "row": 75,
+        "column": 30,
+        "height": 70
+      },
+      {
+        "row": 140,
+        "column": 130,
+        "height": 90
+      }
+    ]
+  },
+  "landmarks": [
+    {
+      "id": "upper-left",
+      "role": "UpperLeftAnchor",
+      "padHeight": 20,
+      "expectedSource": {
+        "x": 19.5,
+        "y": 15,
+        "z": 19.5
+      },
+      "expectedReference": {
+        "x": 115.41566966579497,
+        "y": -12.479983050894987,
+        "z": 26.700723093855203
+      },
+      "extractedSource": {
+        "x": 19.5,
+        "y": 15,
+        "z": 19.5
+      },
+      "extractionError": 0
+    },
+    {
+      "id": "upper-right",
+      "role": "UpperRightAnchor",
+      "padHeight": 35,
+      "expectedSource": {
+        "x": 184.5,
+        "y": 22.5,
+        "z": 19.5
+      },
+      "expectedReference": {
+        "x": 294.6746969650711,
+        "y": -8.95613572294783,
+        "z": -75.31353390842219
+      },
+      "extractedSource": {
+        "x": 184.5,
+        "y": 22.5,
+        "z": 19.5
+      },
+      "extractionError": 0
+    },
+    {
+      "id": "lower-left",
+      "role": "LowerLeftAnchor",
+      "padHeight": 50,
+      "expectedSource": {
+        "x": 19.5,
+        "y": 30,
+        "z": 114.5
+      },
+      "expectedReference": {
+        "x": 80.98992561340171,
+        "y": 20.561242497750154,
+        "z": -32.92641469325204
+      },
+      "extractedSource": {
+        "x": 19.5,
+        "y": 30,
+        "z": 114.5
+      },
+      "extractionError": 0
+    },
+    {
+      "id": "lower-right",
+      "role": "LowerRightAnchor",
+      "padHeight": 85,
+      "expectedSource": {
+        "x": 184.5,
+        "y": 47.5,
+        "z": 114.5
+      },
+      "expectedReference": {
+        "x": 261.104003270992,
+        "y": 28.783552929626854,
+        "z": -133.45968103189932
+      },
+      "extractedSource": {
+        "x": 184.5,
+        "y": 47.5,
+        "z": 114.5
+      },
+      "extractionError": 0
+    }
+  ],
+  "affine": {
+    "sourceConvention": "column-rawHeight-row",
+    "intendedMatrix": [
+      1.0825317547305484,
+      0.08550503583141716,
+      -0.37587704831436336,
+      100.3533273532081,
+      0,
+      0.4698463103929542,
+      0.27361611466053504,
+      -24.863191942669733,
+      -0.6249999999999999,
+      0.14809906636301193,
+      -0.6510381450794991,
+      49.36198092746025
+    ],
+    "solvedMatrix": [
+      1.0825317547305502,
+      0.08550503583140312,
+      -0.37587704831436053,
+      100.35332735320827,
+      -8.326672684688674E-17,
+      0.4698463103929562,
+      0.2736161146605348,
+      -24.863191942669747,
+      -0.6249999999999996,
+      0.14809906636300774,
+      -0.6510381450794989,
+      49.36198092746028
+    ],
+    "maximumMatrixError": 1.7053025658242404E-13,
+    "conditionEstimate": 1114.4108851674646,
+    "arithmeticMaximumResidual": 2.275470816668197E-13,
+    "reference": {
+      "frameId": "frame.synthetic-fixture.v1",
+      "unit": "synthetic-unit",
+      "provenance": "OpenVisionLab Synthetic Affine Inspection Plate v1",
+      "revision": "V1"
+    },
+    "grid": {
+      "origin": {
+        "x": 100,
+        "y": -25,
+        "z": 50
+      },
+      "uAxis": {
+        "x": 0.8660254037844387,
+        "y": 0,
+        "z": -0.49999999999999994
+      },
+      "vAxis": {
+        "x": -0.46984631039295416,
+        "y": 0.34202014332566877,
+        "z": -0.8137976813493738
+      },
+      "hAxis": {
+        "x": 0.17101007166283433,
+        "y": 0.9396926207859084,
+        "z": 0.29619813272602386
+      },
+      "pitchU": 1.25,
+      "pitchV": 0.8
+    }
+  },
+  "regrid": {
+    "rows": 160,
+    "columns": 240,
+    "populatedCellCount": 38348,
+    "missingCellCount": 52,
+    "coverageRatio": 0.9986458333333333,
+    "collisionCount": 0,
+    "contentSha256": "E37A54357708A1E6EAA517A0917975D5FB46D9B44A9DC2A3F9BA5225E5994D3A"
+  },
+  "measurements": {
+    "thickness": {
+      "roi": {
+        "row": 50,
+        "column": 60,
+        "rowCount": 20,
+        "columnCount": 40
+      },
+      "mean": 20,
+      "minimum": 19.49999999999999,
+      "maximum": 20.50000000000003,
+      "range": 1.000000000000039,
+      "validSampleCount": 800
+    },
+    "warpage": {
+      "roi": {
+        "row": 82,
+        "column": 100,
+        "rowCount": 40,
+        "columnCount": 60
+      },
+      "peakToValley": 2.506350526020297,
+      "rms": 0.480844107153003,
+      "minimumResidual": -0.8567829532176194,
+      "maximumResidual": 1.6495675728026775,
+      "slopeX": -0.0013887138120268205,
+      "slopeY": 0.000918288991330729,
+      "intercept": 15.428864396941135,
+      "validSampleCount": 2400
+    }
+  },
+  "verification": {
+    "checks": 16,
+    "passed": 16
+  }
+}

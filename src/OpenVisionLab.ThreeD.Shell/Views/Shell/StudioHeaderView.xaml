@@ -38,10 +38,10 @@
                                      IsChecked="{Binding IsWorkbenchWorkspaceSelected, Mode=TwoWay}"
                                      Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
                                      AutomationProperties.AutomationId="WorkbenchModeButton"
-                                     AutomationProperties.Name="Teach workspace">
+                                     AutomationProperties.Name="Inspection recipe workspace">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="WrenchScrewdriver24" />
-                                <TextBlock Text="{Binding Localization.Teach}" />
+                                <TextBlock Text="{Binding Localization.RecipeWorkbench}" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="CalibrateModeButton"

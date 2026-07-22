@@ -1,8 +1,9 @@
 namespace OpenVisionLab.ThreeD.Core;
 
 /// <summary>
-/// A teachable 3D tool graph. It records intended entity routing only and is
-/// deliberately separate from executable inspection recipes.
+/// Canonical 3D inspection recipe document. It records the ordered tool graph,
+/// typed entity routing, recipe-owned selections, and authored parameters used
+/// by explicit Preview, Publish, save/reopen, and Runner adapters.
 /// </summary>
 public sealed record ToolRecipeDocument(
     string SchemaVersion,
@@ -14,7 +15,8 @@ public sealed record ToolRecipeDocument(
 {
     public const string LegacySchemaVersion = "1.0";
     public const string SelectionSchemaVersion = "1.1";
-    public const string CurrentSchemaVersion = "1.2";
+    public const string GenericMeasurementSchemaVersion = "1.2";
+    public const string CurrentSchemaVersion = "1.3";
 }
 
 public sealed record ToolRecipeSource(
@@ -61,7 +63,11 @@ public sealed record ToolRecipeSelectionSourceBinding(
     string Format,
     string ContentSha256,
     int GridWidth,
-    int GridHeight);
+    int GridHeight,
+    string? OwnerEntityId = null,
+    string? RootSourceContentSha256 = null,
+    string? Unit = null,
+    string? FrameId = null);
 
 public sealed record ToolRecipeGridRectangle(
     int Row,

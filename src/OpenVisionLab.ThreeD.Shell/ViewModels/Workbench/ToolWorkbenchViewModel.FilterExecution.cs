@@ -52,7 +52,8 @@ public sealed partial class ToolWorkbenchViewModel
             : IsSelectedStepLandmarkCorrespondence ? IsLandmarkCorrespondencePreviewRunning
             : IsSelectedStepXYZAffineSolve ? IsAffineSolvePreviewRunning
             : IsSelectedStepXYZAffineApply ? IsAffineApplyPreviewRunning
-            : IsSelectedStepRegridHeightField && IsRegridHeightFieldPreviewRunning;
+            : IsSelectedStepRegridHeightField ? IsRegridHeightFieldPreviewRunning
+            : IsSelectedStepMeasurement && IsMeasurementPreviewRunning;
     public bool HasCurrentFilterPreview => filterPreviewOutput is not null && !isFilterPreviewStale;
     public bool IsFilterPreviewStale => isFilterPreviewStale;
     public bool IsFilterPreviewPublished => isFilterPreviewPublished;
@@ -94,7 +95,9 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepRegridHeightField
+    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepMeasurement
+        ? PreviewSelectedMeasurementAsync()
+        : IsSelectedStepRegridHeightField
         ? PreviewSelectedRegridHeightFieldAsync()
         : IsSelectedStepXYZAffineApply
         ? PreviewSelectedXYZAffineApplyAsync()
@@ -111,7 +114,9 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepRegridHeightField
+    private bool CanPreviewSelectedStep() => IsSelectedStepMeasurement
+        ? CanPreviewSelectedMeasurement()
+        : IsSelectedStepRegridHeightField
         ? CanPreviewSelectedRegridHeightField()
         : IsSelectedStepXYZAffineApply
         ? CanPreviewSelectedXYZAffineApply()
@@ -130,7 +135,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void PublishSelectedStep()
     {
-        if (IsSelectedStepRegridHeightField)
+        if (IsSelectedStepMeasurement)
+        {
+            PublishSelectedMeasurement();
+        }
+        else if (IsSelectedStepRegridHeightField)
         {
             PublishSelectedRegridHeightField();
         }
@@ -176,7 +185,9 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepRegridHeightField
+    private bool CanPublishSelectedStep() => IsSelectedStepMeasurement
+        ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
+        : IsSelectedStepRegridHeightField
         ? HasCurrentRegridHeightFieldPreview && !IsRegridHeightFieldPreviewPublished && regridHeightFieldPreviewOutput!.MeetsMinimumCoverage
         : IsSelectedStepXYZAffineApply
         ? HasCurrentAffineApplyPreview && !IsAffineApplyPreviewPublished
@@ -198,7 +209,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void CancelSelectedPreview()
     {
-        if (IsSelectedStepRegridHeightField)
+        if (IsSelectedStepMeasurement)
+        {
+            CancelMeasurementPreview();
+        }
+        else if (IsSelectedStepRegridHeightField)
         {
             CancelRegridHeightFieldPreview();
         }

@@ -61,6 +61,11 @@ public sealed partial class ToolWorkbenchViewModel
         { ToolId: "xyz-affine-solve" } step => FormatAdapterStatus(step, XYZAffineSolveStepProperties.MappedNames),
         { ToolId: "xyz-affine-apply" } step => FormatAdapterStatus(step, XYZAffineApplyStepProperties.MappedNames),
         { ToolId: "re-grid-height-map" } step => FormatAdapterStatus(step, RegridHeightMapStepProperties.MappedNames),
+        { ToolId: "thickness" } step => FormatAdapterStatus(step, ThicknessStepProperties.MappedNames),
+        { ToolId: "warpage" } step => FormatAdapterStatus(step, WarpageStepProperties.MappedNames),
+        { ToolId: "plane-flatness" } step => FormatAdapterStatus(step, PlaneFlatnessStepProperties.MappedNames),
+        { ToolId: "point-pair-dimensions" } step => FormatAdapterStatus(step, PointPairDimensionsStepProperties.MappedNames),
+        { ToolId: "gap-flush" } step => FormatAdapterStatus(step, GapFlushStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -329,6 +334,75 @@ public sealed partial class ToolWorkbenchViewModel
 
                 values = profile.ToRecipeParameters().ToDictionary(parameter => parameter.Name, parameter => parameter.Value, StringComparer.Ordinal);
                 break;
+            case ThicknessStepProperties thickness:
+                if (!thickness.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["MinimumThickness"] = thickness.MinimumThickness.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MaximumThickness"] = thickness.MaximumThickness.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MinimumValidSampleCount"] = thickness.MinimumValidSampleCount.ToString(CultureInfo.InvariantCulture)
+                };
+                break;
+            case WarpageStepProperties warpage:
+                if (!warpage.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["MaximumPeakToValley"] = warpage.MaximumPeakToValley.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MaximumRms"] = warpage.MaximumRms.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MinimumValidSampleCount"] = warpage.MinimumValidSampleCount.ToString(CultureInfo.InvariantCulture)
+                };
+                break;
+            case PlaneFlatnessStepProperties flatness:
+                if (!flatness.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["MaximumFlatness"] = flatness.MaximumFlatness.ToString("G17", CultureInfo.InvariantCulture),
+                    ["MinimumReferenceSampleCount"] = flatness.MinimumReferenceSampleCount.ToString(CultureInfo.InvariantCulture),
+                    ["MinimumMeasurementSampleCount"] = flatness.MinimumMeasurementSampleCount.ToString(CultureInfo.InvariantCulture)
+                };
+                break;
+            case PointPairDimensionsStepProperties pointPair:
+                if (!pointPair.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ExpectedDistance"] = pointPair.ExpectedDistance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["DistanceTolerance"] = pointPair.DistanceTolerance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ExpectedPlanarWidth"] = pointPair.ExpectedPlanarWidth.ToString("G17", CultureInfo.InvariantCulture),
+                    ["PlanarWidthTolerance"] = pointPair.PlanarWidthTolerance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ExpectedElevationAngleDegrees"] = pointPair.ExpectedElevationAngleDegrees.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ElevationAngleToleranceDegrees"] = pointPair.ElevationAngleToleranceDegrees.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
+            case GapFlushStepProperties gapFlush:
+                if (!gapFlush.TryValidate(out message))
+                {
+                    SetParameterDraftStatus(message);
+                    return false;
+                }
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ExpectedGap"] = gapFlush.ExpectedGap.ToString("G17", CultureInfo.InvariantCulture),
+                    ["GapTolerance"] = gapFlush.GapTolerance.ToString("G17", CultureInfo.InvariantCulture),
+                    ["ExpectedFlush"] = gapFlush.ExpectedFlush.ToString("G17", CultureInfo.InvariantCulture),
+                    ["FlushTolerance"] = gapFlush.FlushTolerance.ToString("G17", CultureInfo.InvariantCulture)
+                };
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetParameterDraftStatus(message);
@@ -409,6 +483,11 @@ public sealed partial class ToolWorkbenchViewModel
             "xyz-affine-solve" => XYZAffineSolveStepProperties.From(step),
             "xyz-affine-apply" => XYZAffineApplyStepProperties.From(step),
             "re-grid-height-map" => RegridHeightMapStepProperties.From(step),
+            "thickness" => ThicknessStepProperties.From(step),
+            "warpage" => WarpageStepProperties.From(step),
+            "plane-flatness" => PlaneFlatnessStepProperties.From(step),
+            "point-pair-dimensions" => PointPairDimensionsStepProperties.From(step),
+            "gap-flush" => GapFlushStepProperties.From(step),
             _ => null
         };
 
@@ -552,7 +631,7 @@ public sealed partial class ToolWorkbenchViewModel
     }
 
     private static bool IsSupportedPropertyGridTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map";
+        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush";
 
     private static string FormatAdapterStatus(
         ToolWorkbenchPipelineStepItem step,
@@ -578,6 +657,333 @@ public sealed partial class ToolWorkbenchViewModel
             .ToArray();
         return values.Length == 0 ? "(none)" : string.Join("; ", values);
     }
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Sampling", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class ThicknessStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["MinimumThickness", "MaximumThickness", "MinimumValidSampleCount"];
+
+    [Category("Acceptance")]
+    [DisplayName("Minimum thickness")]
+    [Description("Inclusive lower acceptance limit in the source field's declared scalar unit.")]
+    [PropertyOrder(0)]
+    public double MinimumThickness { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum thickness")]
+    [Description("Inclusive upper acceptance limit in the source field's declared scalar unit.")]
+    [PropertyOrder(1)]
+    public double MaximumThickness { get; set; }
+
+    [Category("Sampling")]
+    [DisplayName("Minimum valid samples")]
+    [Description("Minimum finite samples required inside the recipe-owned GridRectangle.")]
+    [PropertyOrder(0)]
+    public int MinimumValidSampleCount { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static ThicknessStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MinimumThickness = ParseDouble(step, "MinimumThickness"),
+        MaximumThickness = ParseDouble(step, "MaximumThickness"),
+        MinimumValidSampleCount = ParseInt(step, "MinimumValidSampleCount"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(MinimumThickness) || !double.IsFinite(MaximumThickness) || MinimumThickness > MaximumThickness)
+        {
+            message = "Thickness limits must be finite and ordered.";
+            return false;
+        }
+        if (MinimumValidSampleCount < 1)
+        {
+            message = "Minimum valid samples must be at least one.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+    private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
+        int.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value : 0;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Sampling", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class WarpageStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["MaximumPeakToValley", "MaximumRms", "MinimumValidSampleCount"];
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum peak-to-valley")]
+    [Description("Maximum allowed best-fit-plane residual peak-to-valley value.")]
+    [PropertyOrder(0)]
+    public double MaximumPeakToValley { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum RMS")]
+    [Description("Maximum allowed best-fit-plane residual RMS value.")]
+    [PropertyOrder(1)]
+    public double MaximumRms { get; set; }
+
+    [Category("Sampling")]
+    [DisplayName("Minimum valid samples")]
+    [Description("Minimum finite samples required inside the recipe-owned GridRectangle.")]
+    [PropertyOrder(0)]
+    public int MinimumValidSampleCount { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static WarpageStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MaximumPeakToValley = ParseDouble(step, "MaximumPeakToValley"),
+        MaximumRms = ParseDouble(step, "MaximumRms"),
+        MinimumValidSampleCount = ParseInt(step, "MinimumValidSampleCount"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(MaximumPeakToValley) || MaximumPeakToValley <= 0d
+            || !double.IsFinite(MaximumRms) || MaximumRms <= 0d)
+        {
+            message = "Warpage peak-to-valley and RMS limits must be finite and greater than zero.";
+            return false;
+        }
+        if (MinimumValidSampleCount < 3)
+        {
+            message = "Warpage requires at least three valid samples.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+    private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
+        int.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value : 0;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Sampling", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class PlaneFlatnessStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount"];
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum flatness")]
+    [Description("Inclusive maximum signed-distance peak-to-valley value in the TransformedHeightField reference unit.")]
+    [PropertyOrder(0)]
+    public double MaximumFlatness { get; set; }
+
+    [Category("Sampling")]
+    [DisplayName("Minimum reference samples")]
+    [Description("Minimum finite samples required to fit the reference plane.")]
+    [PropertyOrder(0)]
+    public int MinimumReferenceSampleCount { get; set; }
+
+    [Category("Sampling")]
+    [DisplayName("Minimum measurement samples")]
+    [Description("Minimum finite samples required in the measured surface ROI.")]
+    [PropertyOrder(1)]
+    public int MinimumMeasurementSampleCount { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static PlaneFlatnessStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MaximumFlatness = ParseDouble(step, "MaximumFlatness"),
+        MinimumReferenceSampleCount = ParseInt(step, "MinimumReferenceSampleCount"),
+        MinimumMeasurementSampleCount = ParseInt(step, "MinimumMeasurementSampleCount"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(MaximumFlatness) || MaximumFlatness <= 0d)
+        {
+            message = "Maximum flatness must be finite and greater than zero.";
+            return false;
+        }
+        if (MinimumReferenceSampleCount < 3 || MinimumMeasurementSampleCount < 3)
+        {
+            message = "Plane Flatness requires at least three finite samples in each ROI.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static double ParseDouble(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+    private static int ParseInt(ToolWorkbenchPipelineStepItem step, string name) =>
+        int.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? value : 0;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class PointPairDimensionsStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["ExpectedDistance", "DistanceTolerance", "ExpectedPlanarWidth", "PlanarWidthTolerance", "ExpectedElevationAngleDegrees", "ElevationAngleToleranceDegrees"];
+
+    [Category("Acceptance")]
+    [DisplayName("Expected 3D distance")]
+    [Description("Expected full-XYZ distance in the Published TransformedHeightField reference unit.")]
+    [PropertyOrder(0)]
+    public double ExpectedDistance { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Distance tolerance")]
+    [PropertyOrder(1)]
+    public double DistanceTolerance { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Expected planar width")]
+    [Description("Expected distance after removing the component along the reference-grid height axis.")]
+    [PropertyOrder(2)]
+    public double ExpectedPlanarWidth { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Planar width tolerance")]
+    [PropertyOrder(3)]
+    public double PlanarWidthTolerance { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Expected elevation angle")]
+    [Description("Signed elevation from the reference plane toward the reference-grid height axis, in degrees.")]
+    [PropertyOrder(4)]
+    public double ExpectedElevationAngleDegrees { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Elevation angle tolerance")]
+    [PropertyOrder(5)]
+    public double ElevationAngleToleranceDegrees { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static PointPairDimensionsStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ExpectedDistance = Parse(step, "ExpectedDistance"),
+        DistanceTolerance = Parse(step, "DistanceTolerance"),
+        ExpectedPlanarWidth = Parse(step, "ExpectedPlanarWidth"),
+        PlanarWidthTolerance = Parse(step, "PlanarWidthTolerance"),
+        ExpectedElevationAngleDegrees = Parse(step, "ExpectedElevationAngleDegrees"),
+        ElevationAngleToleranceDegrees = Parse(step, "ElevationAngleToleranceDegrees"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!NonNegative(ExpectedDistance) || !NonNegative(DistanceTolerance)
+            || !NonNegative(ExpectedPlanarWidth) || !NonNegative(PlanarWidthTolerance)
+            || !double.IsFinite(ExpectedElevationAngleDegrees) || ExpectedElevationAngleDegrees is < -90d or > 90d
+            || !NonNegative(ElevationAngleToleranceDegrees))
+        {
+            message = "Point Pair expected lengths and tolerances must be finite and non-negative; elevation angle must be between -90 and 90 degrees.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
+    private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
+}
+
+[CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class GapFlushStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        ["ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance"];
+
+    [Category("Acceptance")]
+    [DisplayName("Expected signed gap")]
+    [Description("Expected signed U-axis separation between the second ROI left edge and first ROI right edge.")]
+    [PropertyOrder(0)]
+    public double ExpectedGap { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Gap tolerance")]
+    [PropertyOrder(1)]
+    public double GapTolerance { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Expected signed flush")]
+    [Description("Expected second-minus-first mean height along the TransformedHeightField H axis.")]
+    [PropertyOrder(2)]
+    public double ExpectedFlush { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Flush tolerance")]
+    [PropertyOrder(3)]
+    public double FlushTolerance { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static GapFlushStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ExpectedGap = Parse(step, "ExpectedGap"),
+        GapTolerance = Parse(step, "GapTolerance"),
+        ExpectedFlush = Parse(step, "ExpectedFlush"),
+        FlushTolerance = Parse(step, "FlushTolerance"),
+        UnmappedParameters = ToolWorkbenchViewModel.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(ExpectedGap) || !NonNegative(GapTolerance)
+            || !double.IsFinite(ExpectedFlush) || !NonNegative(FlushTolerance))
+        {
+            message = "Gap / Flush expected values must be finite and tolerances must be non-negative.";
+            return false;
+        }
+        message = string.Empty;
+        return true;
+    }
+
+    private static bool NonNegative(double value) => double.IsFinite(value) && value >= 0d;
+    private static double Parse(ToolWorkbenchPipelineStepItem step, string name) =>
+        double.TryParse(ToolWorkbenchViewModel.GetParameter(step, name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+            ? value : double.NaN;
 }
 
 public enum FilterMethod

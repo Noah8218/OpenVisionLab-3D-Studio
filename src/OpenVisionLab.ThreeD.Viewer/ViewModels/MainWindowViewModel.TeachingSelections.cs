@@ -11,6 +11,7 @@ public sealed partial class MainWindowViewModel
     private string teachingCaptureMessage = "No active teaching capture.";
 
     public bool IsTeachingCaptureActive => teachingCaptureRequest is not null;
+    internal ToolRecipeSelectionSourceBinding? TeachingCaptureSourceBinding => teachingCaptureRequest?.SourceBinding;
 
     public IReadOnlyList<ToolRecipeSelection> AppliedTeachingSelections => appliedTeachingSelections;
 

@@ -109,12 +109,18 @@ internal static class ToolRecipeTeachingVerification
             affine.InputEntityIdsText = correspondence.OutputEntityId;
             var regrid = AddTool(workbench, "Re-grid Height Map");
             regrid.InputEntityIdsText = affine.OutputEntityId;
+            var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+            var measurementSelection = new OpenVisionLab.ThreeD.Core.ToolRecipeSelection(
+                "selection.measurement-roi", "Measurement ROI", OpenVisionLab.ThreeD.Core.ToolRecipeSelectionKinds.GridRectangle,
+                workbench.Source.Id, workbench.Source.FrameId, binding,
+                new OpenVisionLab.ThreeD.Core.ToolRecipeGridRectangle(0, 0, 2, 2), null, null);
+            workbench.Selections.Add(measurementSelection);
             var thickness = AddTool(workbench, "Thickness");
-            thickness.InputEntityIdsText = regrid.OutputEntityId;
-            thickness.Parameters.Single(parameter => parameter.Name == "Tolerance").Value = "120 raw-height";
+            thickness.InputEntityIdsText = $"{workbench.Source.Id}; {measurementSelection.Id}";
+            thickness.Parameters.Single(parameter => parameter.Name == "MaximumThickness").Value = "120";
             var warpage = AddTool(workbench, "Warpage");
-            warpage.InputEntityIdsText = regrid.OutputEntityId;
-            warpage.Parameters.Single(parameter => parameter.Name == "P2V limit").Value = "80 raw-height";
+            warpage.InputEntityIdsText = $"{workbench.Source.Id}; {measurementSelection.Id}";
+            warpage.Parameters.Single(parameter => parameter.Name == "MaximumPeakToValley").Value = "80";
             var review = AddTool(workbench, "Overlay / Control Review");
             review.InputEntityIdsText = warpage.OutputEntityId;
 

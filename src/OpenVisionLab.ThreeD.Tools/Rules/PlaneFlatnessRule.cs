@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
+using NoahFlatnessTool = Lib.ThreeD.Inspection.PlaneFlatnessInspectionTool;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -59,48 +60,29 @@ public static class PlaneFlatnessRule
             return Error(input, "Measurement surface must contain at least three finite samples.", stopwatch.Elapsed);
         }
 
-        HeightFieldPlaneFitResult referencePlane;
-        try
-        {
-            referencePlane = HeightFieldPlaneFit.Fit(input.ReferenceSamples);
-        }
-        catch (ArgumentException exception)
-        {
-            return Error(input, exception.Message, stopwatch.Elapsed);
-        }
-
-        var minimumDistance = double.PositiveInfinity;
-        var maximumDistance = double.NegativeInfinity;
-        var squaredDistanceSum = 0.0;
-        var minimumPoint = Vector3.Zero;
-        var maximumPoint = Vector3.Zero;
         foreach (var sample in input.MeasurementSamples)
         {
             if (!IsFinite(sample))
             {
                 return Error(input, "Measurement surface contains a non-finite sample.", stopwatch.Elapsed);
             }
-
-            var distance = SignedDistance(sample.Position, referencePlane.Normal, referencePlane.Offset);
-            squaredDistanceSum += distance * distance;
-            if (distance < minimumDistance)
-            {
-                minimumDistance = distance;
-                minimumPoint = sample.Position;
-            }
-
-            if (distance > maximumDistance)
-            {
-                maximumDistance = distance;
-                maximumPoint = sample.Position;
-            }
         }
 
-        var flatness = maximumDistance - minimumDistance;
-        var rootMeanSquareDistance = Math.Sqrt(squaredDistanceSum / input.MeasurementSamples.Count);
-        var status = flatness <= input.Tolerance ? ResultStatus.Pass : ResultStatus.Fail;
-        var minimumProjection = minimumPoint - referencePlane.Normal * (float)minimumDistance;
-        var maximumProjection = maximumPoint - referencePlane.Normal * (float)maximumDistance;
+        Lib.ThreeD.Inspection.PlaneFlatnessInspectionResult evaluation;
+        try
+        {
+            evaluation = new NoahFlatnessTool().Execute(
+                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+                input.Tolerance);
+        }
+        catch (ArgumentException exception)
+        {
+            return Error(input, exception.Message, stopwatch.Elapsed);
+        }
+
+        var referencePlane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
+        var status = evaluation.Passed ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
 
         var result = new ToolResult(
@@ -111,11 +93,11 @@ public static class PlaneFlatnessRule
                 : "Measured surface flatness exceeds tolerance. Source geometry is unchanged.",
             stopwatch.Elapsed,
             [
-                new Metric("Flatness", MetricKind.Deviation, flatness, input.Unit, status),
+                new Metric("Flatness", MetricKind.Deviation, evaluation.Flatness, input.Unit, status),
                 new Metric("Flatness tolerance", MetricKind.Deviation, input.Tolerance, input.Unit, status),
-                new Metric("Minimum signed deviation", MetricKind.Deviation, minimumDistance, input.Unit),
-                new Metric("Maximum signed deviation", MetricKind.Deviation, maximumDistance, input.Unit),
-                new Metric("Surface RMS deviation", MetricKind.Deviation, rootMeanSquareDistance, input.Unit),
+                new Metric("Minimum signed deviation", MetricKind.Deviation, evaluation.MinimumSignedDistance, input.Unit),
+                new Metric("Maximum signed deviation", MetricKind.Deviation, evaluation.MaximumSignedDistance, input.Unit),
+                new Metric("Surface RMS deviation", MetricKind.Deviation, evaluation.RootMeanSquareDistance, input.Unit),
                 new Metric("Reference fit RMS", MetricKind.Deviation, referencePlane.RootMeanSquareDistance, input.Unit),
                 new Metric("Reference sample count", MetricKind.Count, input.ReferenceSamples.Count, "count"),
                 new Metric("Measurement sample count", MetricKind.Count, input.MeasurementSamples.Count, "count")
@@ -131,14 +113,14 @@ public static class PlaneFlatnessRule
             referencePlane,
             input.ReferenceSamples.Count,
             input.MeasurementSamples.Count,
-            minimumDistance,
-            maximumDistance,
-            flatness,
-            rootMeanSquareDistance,
-            minimumPoint,
-            maximumPoint,
-            minimumProjection,
-            maximumProjection);
+            evaluation.MinimumSignedDistance,
+            evaluation.MaximumSignedDistance,
+            evaluation.Flatness,
+            evaluation.RootMeanSquareDistance,
+            HeightFieldPlaneFit.ToVector3(evaluation.MinimumPoint),
+            HeightFieldPlaneFit.ToVector3(evaluation.MaximumPoint),
+            HeightFieldPlaneFit.ToVector3(evaluation.MinimumProjection),
+            HeightFieldPlaneFit.ToVector3(evaluation.MaximumProjection));
     }
 
     private static PlaneFlatnessEvaluation Error(PlaneFlatnessRuleInput input, string message, TimeSpan elapsed)
@@ -178,6 +160,4 @@ public static class PlaneFlatnessRule
         && float.IsFinite(sample.Position.Z)
         && double.IsFinite(sample.RawHeight);
 
-    private static double SignedDistance(Vector3 point, Vector3 normal, double offset) =>
-        normal.X * point.X + normal.Y * point.Y + normal.Z * point.Z + offset;
 }

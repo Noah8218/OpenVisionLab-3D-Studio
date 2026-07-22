@@ -28,6 +28,28 @@ public partial class App : Application
         const string lineIntersectionWorkbenchVerificationOption = "--verify-tool-line-intersection-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
+        const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
+        var heightMeasurementWorkbenchVerificationIndex = Array.FindIndex(
+            e.Args,
+            argument => argument.Equals(heightMeasurementWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (heightMeasurementWorkbenchVerificationIndex >= 0)
+        {
+            if (heightMeasurementWorkbenchVerificationIndex + 1 >= e.Args.Length)
+            {
+                Console.WriteLine($"{heightMeasurementWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+            var result = Task.Run(() =>
+            {
+                var passed = ToolHeightMeasurementWorkbenchVerification.Verify(
+                    e.Args[heightMeasurementWorkbenchVerificationIndex + 1], out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         var artifactNavigatorVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(artifactNavigatorVerificationOption, StringComparison.OrdinalIgnoreCase));

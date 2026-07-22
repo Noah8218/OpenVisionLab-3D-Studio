@@ -173,7 +173,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public bool IsWorkbenchWorkspaceSelected
     {
-        get => SelectedWorkspaceMode == ShellWorkspaceMode.Workbench;
+        get => SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
+            or ShellWorkspaceMode.Teach
+            or ShellWorkspaceMode.Inspect
+            or ShellWorkspaceMode.Review;
         set
         {
             if (value)
@@ -231,9 +234,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool IsTaskWorkspaceSelected => IsTeachWorkspaceSelected
-        || IsInspectWorkspaceSelected
-        || IsReviewWorkspaceSelected;
+    // The former Thickness/Warpage task page is retained only as a source-level
+    // compatibility view. Product navigation always uses the generic tool recipe workbench.
+    public bool IsTaskWorkspaceSelected => false;
 
     public ShellInspectionTask SelectedInspectionTask
     {
@@ -284,13 +287,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public string WorkspaceSummary => SelectedWorkspaceMode switch
     {
         ShellWorkspaceMode.Workbench => "Tool Workbench | Compose typed 3D inspection steps",
-        ShellWorkspaceMode.Teach => SelectedInspectionTask == ShellInspectionTask.Warpage
-            ? "Warpage Teach | Define best-fit ROI and P2V limit"
-            : "Thickness Teach | Define ROI and tolerance",
-        ShellWorkspaceMode.Inspect => SelectedInspectionTask == ShellInspectionTask.Warpage
-            ? "Warpage Inspect | Preview and publish"
-            : "Thickness Inspect | Preview and publish",
-        ShellWorkspaceMode.Review => $"{CurrentInspectionTaskLabel} Review | Published result evidence",
+        ShellWorkspaceMode.Teach => "Recipe Workbench | Teach ordered tool steps and typed routes",
+        ShellWorkspaceMode.Inspect => "Recipe Workbench | Preview selected tools and publish outputs",
+        ShellWorkspaceMode.Review => "Recipe Workbench | Review published entities and evidence",
         ShellWorkspaceMode.Calibrate => "Calibration workspace | Offline datasets",
         ShellWorkspaceMode.Expert => "Expert workspace | Full inspection layout",
         _ => "Inspection workspace"
