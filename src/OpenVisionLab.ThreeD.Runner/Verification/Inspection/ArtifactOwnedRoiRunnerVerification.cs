@@ -1,17 +1,25 @@
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 internal static class ArtifactOwnedRoiRunnerVerification
 {
-    public static int Run(string reportPath)
+    public static int Run(string reportPath, RunArtifactOptions? runArtifacts = null)
     {
         var checks = new List<(string Name, bool Passed, string Evidence)>();
-        var root = Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", nameof(ArtifactOwnedRoiRunnerVerification), Guid.NewGuid().ToString("N"));
+        runArtifacts ??= new RunArtifactOptions(null, null, null, null);
+        var retainedFixture = runArtifacts.Requested;
+        var artifactPath = runArtifacts.JsonPath ?? runArtifacts.HtmlPath ?? runArtifacts.CsvPath;
+        var root = retainedFixture
+            ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(artifactPath!))!, "ordered-fixture")
+            : Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", nameof(ArtifactOwnedRoiRunnerVerification), Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(root);
-            var cloud = CreateCloud();
+            var sourcePath = Path.Combine(root, "fixture.c3d");
+            var cloud = CreateCloud(sourcePath);
             var profile = CreateProfile(cloud);
             var baseDocument = CreateDocument(cloud, profile, null, includeMeasurement: false);
             var expectedA3 = ToolRecipeRegridHeightFieldExecution.Execute(baseDocument, "step.regrid", cloud).Output
@@ -142,6 +150,55 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 && reopened.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion,
                 $"schema={reopened.SchemaVersion};selections={reopenedBindings.Length};owner={reopenedBindings[0].OwnerEntityId};hash={reopenedBindings[0].ContentSha256}"));
 
+            if (runArtifacts.Requested && orderedAll.Output is not null)
+            {
+                RunRecordWriter.WriteOrdered(
+                    runArtifacts,
+                    recipePath,
+                    document,
+                    sourcePath,
+                    "step.regrid",
+                    orderedAll.Result,
+                    orderedAll.Output,
+                    reportPath,
+                    null);
+                if (runArtifacts.JsonPath is not null)
+                {
+                    var jsonOptions = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new JsonStringEnumConverter() }
+                    };
+                    var record = JsonSerializer.Deserialize<InspectionRunRecord>(
+                        File.ReadAllText(runArtifacts.JsonPath), jsonOptions);
+                    checks.Add(("schema 1.3 JSON preserves ordered A3 and seven measurement steps",
+                        record is { SchemaVersion: "1.3", Step: null, Steps.Count: 8 }
+                        && record.Steps.Select(step => step.Id).SequenceEqual([
+                            "step.regrid", "step.thickness", "step.warpage", "step.plane-flatness",
+                            "step.point-pair", "step.gap-flush", "step.volume", "step.cross-section"])
+                        && record.Steps.All(step => step.InputEntityIds.Count > 0 && !string.IsNullOrWhiteSpace(step.OutputEntityId)),
+                        record is null ? "record=null" : $"schema={record.SchemaVersion};steps={record.Steps?.Count ?? 0};legacyStep={record.Step?.Id ?? "null"}"));
+                }
+                if (runArtifacts.HtmlPath is not null)
+                {
+                    var html = File.ReadAllText(runArtifacts.HtmlPath);
+                    checks.Add(("HTML exposes ordered step identity and per-step metrics",
+                        html.Contains("8 ordered steps", StringComparison.Ordinal)
+                        && document.Steps.Skip(2).All(step => html.Contains(step.Id, StringComparison.Ordinal))
+                        && html.Contains("H range", StringComparison.Ordinal),
+                        $"bytes={new FileInfo(runArtifacts.HtmlPath).Length}"));
+                }
+                if (runArtifacts.CsvPath is not null)
+                {
+                    var csv = File.ReadAllText(runArtifacts.CsvPath);
+                    checks.Add(("CSV exposes ordered typed routing and per-step metrics",
+                        csv.StartsWith("runId,recordedAtUtc,recipeIndex,stepId,toolId", StringComparison.Ordinal)
+                        && document.Steps.Skip(2).All(step => csv.Contains(step.Id, StringComparison.Ordinal))
+                        && csv.Contains("derived.height-field", StringComparison.Ordinal),
+                        $"lines={File.ReadLines(runArtifacts.CsvPath).Count()}"));
+                }
+            }
+
             var wrongOwner = ReplaceBinding(document, binding with { OwnerEntityId = "derived.wrong-owner" });
             checks.Add(("wrong owner rejected", !ToolRecipeValidator.Validate(wrongOwner).IsValid,
                 string.Join(" / ", ToolRecipeValidator.Validate(wrongOwner).Errors)));
@@ -196,7 +253,7 @@ internal static class ArtifactOwnedRoiRunnerVerification
         }
         finally
         {
-            try { if (Directory.Exists(root)) Directory.Delete(root, true); } catch { }
+            try { if (!retainedFixture && Directory.Exists(root)) Directory.Delete(root, true); } catch { }
         }
 
         var passed = checks.Count(check => check.Passed);
@@ -299,10 +356,11 @@ internal static class ArtifactOwnedRoiRunnerVerification
             [], steps, selections ?? []);
     }
 
-    private static C3DTransformedPointCloud CreateCloud()
+    private static C3DTransformedPointCloud CreateCloud(string sourcePath)
     {
         var snapshot = C3DHeightFieldSnapshot.CreateForVerification(
             "source.artifact-roi", 2, 2, [10d, 12d, 14d, 17d], "raw-height", "frame.c3d-grid-index");
+        snapshot.SaveC3D(sourcePath);
         var pairs = new[]
         {
             new C3DLandmarkCorrespondencePair("a", "a", snapshot.RootSourceSha256, 0, 10, 0, "ra", 0, 0, 0),

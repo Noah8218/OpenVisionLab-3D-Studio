@@ -1915,6 +1915,9 @@ public partial class MainWindow : Window
             case "problems" or "flow-problems":
                 ToolWorkbench.ActivateProblems();
                 break;
+            case "run-record" or "record" or "execution-record":
+                ToolWorkbench.ActivateRunRecord();
+                break;
             case "compare" or "output-compare":
                 ToolWorkbench.ActivateOutputComparePane();
                 break;

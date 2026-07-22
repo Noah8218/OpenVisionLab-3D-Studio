@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Tools;
 
 internal sealed record RunArtifactOptions(
     string? JsonPath,
@@ -69,6 +70,90 @@ internal static class RunRecordWriter
             Step = step
         };
 
+        WriteOutputs(options, record);
+    }
+
+    public static void WriteOrdered(
+        RunArtifactOptions options,
+        string recipePath,
+        ToolRecipeDocument document,
+        string sourcePath,
+        string regridStepId,
+        ToolResult result,
+        ToolRecipeOrderedTransformedHeightFieldExecutionOutput output,
+        string runnerReportPath,
+        string? viewerContractPath)
+    {
+        if (!options.Requested) return;
+
+        var recordedAt = DateTimeOffset.UtcNow;
+        var recipeHash = HashFile(recipePath);
+        var sourceHash = HashFile(sourcePath);
+        var regridIndex = document.Steps.ToList().FindIndex(step =>
+            string.Equals(step.Id, regridStepId, StringComparison.OrdinalIgnoreCase));
+        if (regridIndex < 0) throw new InvalidDataException($"Ordered Run Record cannot find Re-grid step '{regridStepId}'.");
+
+        var regridStep = document.Steps[regridIndex];
+        var steps = new List<InspectionRunStepResult>
+        {
+            ToStepResult(regridIndex, regridStep, output.RegridResult)
+        };
+        steps.AddRange(output.Measurements.Select(item =>
+            ToStepResult(
+                item.RecipeIndex,
+                document.Steps[item.RecipeIndex],
+                item.Output.Result)));
+
+        var record = new InspectionRunRecord(
+            "1.3",
+            $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
+            recordedAt,
+            new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
+            new InspectionRunSource(document.Source.Id, Path.GetFullPath(sourcePath), sourceHash, new FileInfo(sourcePath).Length, document.Source.Unit),
+            result.ToolName,
+            result.Status,
+            result.Message,
+            result.Elapsed.TotalMilliseconds,
+            ToMetrics(result.Metrics),
+            ToOverlays(result.Overlays),
+            viewerContractPath is null ? "NotCompared" : "Matched",
+            new InspectionRunArtifacts(
+                Path.GetFullPath(runnerReportPath),
+                FullOptionalPath(viewerContractPath),
+                FullOptionalPath(options.ViewerScreenshotPath),
+                FullOptionalPath(options.JsonPath),
+                FullOptionalPath(options.HtmlPath),
+                FullOptionalPath(options.CsvPath)))
+        {
+            ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
+            Steps = steps
+        };
+
+        WriteOutputs(options, record);
+    }
+
+    private static InspectionRunStepResult ToStepResult(int recipeIndex, ToolRecipeStep step, ToolResult result) =>
+        new(
+            recipeIndex,
+            step.Id,
+            step.ToolId,
+            result.ToolName,
+            step.InputEntityIds,
+            step.OutputEntityId,
+            result.Status,
+            result.Message,
+            result.Elapsed.TotalMilliseconds,
+            ToMetrics(result.Metrics),
+            ToOverlays(result.Overlays));
+
+    private static InspectionRunMetric[] ToMetrics(IEnumerable<Metric> metrics) =>
+        metrics.Select(metric => new InspectionRunMetric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status)).ToArray();
+
+    private static InspectionRunOverlay[] ToOverlays(IEnumerable<Overlay> overlays) =>
+        overlays.Select(overlay => new InspectionRunOverlay(overlay.Id, overlay.Kind, overlay.Label, overlay.Status, overlay.SourceEntityId)).ToArray();
+
+    private static void WriteOutputs(RunArtifactOptions options, InspectionRunRecord record)
+    {
         if (options.JsonPath is not null) WriteJson(options.JsonPath, record);
         if (options.HtmlPath is not null) WriteHtml(options.HtmlPath, record);
         if (options.CsvPath is not null) WriteCsv(options.CsvPath, record);
@@ -83,8 +168,15 @@ internal static class RunRecordWriter
     private static void WriteHtml(string path, InspectionRunRecord record)
     {
         EnsureDirectory(path);
-        var rows = string.Join(Environment.NewLine, record.Metrics.Select(metric =>
-            $"<tr><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>"));
+        var hasSteps = record.Steps is { Count: > 0 };
+        var rows = hasSteps
+            ? string.Join(Environment.NewLine, record.Steps!.SelectMany(step => step.Metrics.Select(metric =>
+                $"<tr><td>{step.RecipeIndex + 1}</td><td>{Encode(step.Id)}</td><td>{Encode(step.ToolName)}</td><td class=\"{step.Status}\">{step.Status}</td><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>")))
+            : string.Join(Environment.NewLine, record.Metrics.Select(metric =>
+                $"<tr><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>"));
+        var tableHeader = hasSteps
+            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Step status</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th></tr>"
+            : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
         var html = $$"""
         <!doctype html>
         <html lang="en">
@@ -99,7 +191,7 @@ internal static class RunRecordWriter
             <dt>Run ID</dt><dd>{{Encode(record.RunId)}}</dd>
             <dt>Recorded UTC</dt><dd>{{Encode(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture))}}</dd>
             <dt>Tool</dt><dd>{{Encode(record.ToolName)}}</dd>
-            <dt>Step</dt><dd>{{Encode(FormatStep(record.Step))}}</dd>
+            <dt>Step</dt><dd>{{Encode(FormatStepSummary(record))}}</dd>
             <dt>Status</dt><dd class="{{record.Status}}">{{record.Status}}</dd>
             <dt>Recipe</dt><dd>{{Encode(record.Recipe.Path)}}<br>SHA-256 {{record.Recipe.Sha256}}</dd>
             <dt>Source</dt><dd>{{Encode(record.Source.Path)}}<br>SHA-256 {{record.Source.Sha256}}</dd>
@@ -111,7 +203,7 @@ internal static class RunRecordWriter
             <dt>Platform</dt><dd>{{Encode(FormatPlatform(record.ExecutionEnvironment))}}</dd>
           </dl>
           <p>{{Encode(record.Message)}}</p>
-          <table><thead><tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr></thead><tbody>
+          <table><thead>{{tableHeader}}</thead><tbody>
           {{rows}}
           </tbody></table>
         </body>
@@ -123,6 +215,11 @@ internal static class RunRecordWriter
     private static void WriteCsv(string path, InspectionRunRecord record)
     {
         EnsureDirectory(path);
+        if (record.Steps is { Count: > 0 })
+        {
+            WriteMultiStepCsv(path, record);
+            return;
+        }
         var lines = new List<string> { "runId,recordedAtUtc,tool,stepId,stepSourceEntityId,stepReferenceIds,stepMeasurementIds,status,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,applicationName,applicationVersion,viewerHostApiVersion,gitCommit,gitWorkingTree,dotNetRuntime,operatingSystem,processArchitecture" };
         lines.AddRange(record.Metrics.Select(metric => string.Join(',',
             Csv(record.RunId),
@@ -149,6 +246,30 @@ internal static class RunRecordWriter
             Csv(record.ExecutionEnvironment?.DotNetRuntime ?? "unknown"),
             Csv(record.ExecutionEnvironment?.OperatingSystem ?? "unknown"),
             Csv(record.ExecutionEnvironment?.ProcessArchitecture ?? "unknown"))));
+        File.WriteAllLines(path, lines, new UTF8Encoding(false));
+    }
+
+    private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
+    {
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch" };
+        lines.AddRange(record.Steps!.SelectMany(step => step.Metrics.Select(metric => string.Join(',',
+            Csv(record.RunId),
+            Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
+            Csv(step.RecipeIndex.ToString(CultureInfo.InvariantCulture)),
+            Csv(step.Id),
+            Csv(step.ToolId),
+            Csv(step.ToolName),
+            Csv(FormatIds(step.InputEntityIds)),
+            Csv(step.OutputEntityId),
+            Csv(step.Status.ToString()),
+            Csv(metric.Name),
+            Csv(metric.Kind.ToString()),
+            Csv(Format(metric.Value)),
+            Csv(metric.Unit),
+            Csv(metric.Status?.ToString() ?? string.Empty),
+            Csv(record.Recipe.Sha256),
+            Csv(record.Source.Sha256),
+            Csv(record.ViewerRunnerMatchState)))));
         File.WriteAllLines(path, lines, new UTF8Encoding(false));
     }
 
@@ -247,6 +368,10 @@ internal static class RunRecordWriter
     private static string FormatStep(InspectionRunStep? step) => step is null
         ? "Not recorded"
         : $"{step.Id} | Source {step.SourceEntityId} | References {FormatIds(step.ReferenceIds)} | Measurements {FormatIds(step.MeasurementIds)}";
+
+    private static string FormatStepSummary(InspectionRunRecord record) => record.Steps is { Count: > 0 } steps
+        ? $"{steps.Count} ordered steps"
+        : FormatStep(record.Step);
 
     private static string FormatIds(IReadOnlyList<string>? ids) =>
         ids is null || ids.Count == 0 ? "(none)" : string.Join(";", ids);

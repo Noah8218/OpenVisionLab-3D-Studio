@@ -427,7 +427,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RecipeComparisonDetails =
             $"{PreviewLines(root, "Runner report", reportPath, reportLines)}\n\n{PreviewLines(root, "UI contract", contractPath, contractLines)}";
         RefreshRunSnapshot(root, recipePath, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
-        RefreshInspectionSteps(root, recipePath, contractPath, reportPath, contractLines, reportLines, uiEvidence, runnerEvidence, comparisonState);
+        RefreshInspectionSteps(root, recipePath, contractPath, reportPath, contractLines, reportLines, uiEvidence, runnerEvidence, comparisonState, runRecord);
         RefreshRunHistory(root, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
@@ -462,13 +462,34 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         string[] reportLines,
         ToolComparisonEvidence uiEvidence,
         ToolComparisonEvidence runnerEvidence,
-        string comparisonState)
+        string comparisonState,
+        InspectionRunRecord? runRecord)
     {
         InspectionSteps.Clear();
 
         var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
         var order = 1;
-        var recipeSteps = contractLines
+        var orderedRunSteps = runRecord?.Steps ?? [];
+        var recipeSteps = Array.Empty<string>();
+        if (orderedRunSteps.Count > 0)
+        {
+            foreach (var step in orderedRunSteps)
+            {
+                var metric = step.Metrics.FirstOrDefault();
+                var metricSummary = metric is null
+                    ? "no metrics"
+                    : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
+                InspectionSteps.Add(new InspectionStepItem(
+                    (step.RecipeIndex + 1).ToString(CultureInfo.InvariantCulture),
+                    step.ToolName,
+                    step.Status.ToString(),
+                    $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}"));
+            }
+            InspectionStepSummary = $"Run Record schema {runRecord!.SchemaVersion} | Ordered steps: {orderedRunSteps.Count} | Overall: {runRecord.Status}";
+            return;
+        }
+
+        recipeSteps = contractLines
             .Concat(reportLines)
             .Where(line => line.StartsWith(InspectionContractText.InspectionStepMarker + "|", StringComparison.Ordinal))
             .Distinct(StringComparer.Ordinal)

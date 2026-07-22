@@ -17,6 +17,7 @@ public sealed record InspectionRunRecord(
 {
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
     public InspectionRunStep? Step { get; init; }
+    public IReadOnlyList<InspectionRunStepResult>? Steps { get; init; }
 }
 
 public sealed record InspectionRunEnvironment(
@@ -47,6 +48,19 @@ public sealed record InspectionRunStep(
     string SourceEntityId,
     IReadOnlyList<string> ReferenceIds,
     IReadOnlyList<string> MeasurementIds);
+
+public sealed record InspectionRunStepResult(
+    int RecipeIndex,
+    string Id,
+    string ToolId,
+    string ToolName,
+    IReadOnlyList<string> InputEntityIds,
+    string OutputEntityId,
+    ResultStatus Status,
+    string Message,
+    double ElapsedMilliseconds,
+    IReadOnlyList<InspectionRunMetric> Metrics,
+    IReadOnlyList<InspectionRunOverlay> Overlays);
 
 public sealed record InspectionRunMetric(
     string Name,

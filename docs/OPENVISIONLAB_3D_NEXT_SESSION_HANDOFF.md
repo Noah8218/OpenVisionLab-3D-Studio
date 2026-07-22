@@ -1,5 +1,26 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## Ordered multi-step Run Record checkpoint - 2026-07-22
+
+The bounded explicit-A2 executor now emits one schema `1.3` JSON/HTML/CSV Run
+Record for A3 Re-grid plus all seven supported measurement steps. Each step
+retains stable identity, typed inputs/output, status, message, elapsed time,
+metrics, and overlays. A tolerance Fail contributes to the aggregate state but
+does not erase later evidence. The default dockable Tool Workbench includes a
+bilingual read-only `Run Record` tab showing the same eight-step route.
+
+Current evidence passes build `0/0`, focused ordered Runner and report checks
+`21/21`, legacy schema `1.2` single-step compatibility, and Korean/English
+`1920 x 1080` screenshot quality on attempt 1. Evidence is under
+`artifacts/verification/20260722-multi-step-run-record/`; the durable contract
+is `docs/OPENVISIONLAB_3D_MULTI_STEP_RUN_RECORD_20260722.md`.
+
+Next product gate: execute from a trusted real four-landmark A1/A2 acquisition
+with verified unit/frame/alignment/correspondence/reference-grid provenance.
+That prerequisite is currently absent, so physical calibration, Gauge R&R,
+and metrology claims remain blocked. A generic arbitrary graph executor and
+batch/multi-piece platform are not implied by this checkpoint.
+
 ## Cross-section Dimensions generic Measure checkpoint - 2026-07-22
 
 Cross-section Dimensions is now an ordinary two-input Measure node:

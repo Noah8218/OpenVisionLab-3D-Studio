@@ -113,9 +113,15 @@ The Generic Ordered Recipe Executor v1 accepts one explicit Published A2 `Transf
 
 Real four-landmark A1/A2 source evidence, arbitrary whole-graph execution, physical scale, calibration, metrology trust, camera/PLC/robot/cloud integration remain outside this gate.
 
+The bounded sequence has one durable result projection: schema `1.3` Run
+Record `Steps` contains A3 plus all seven executed measurements and is rendered
+from the same contract into JSON, HTML, CSV, and the docked bilingual Shell
+view. Single-step tools retain their schema `1.2` `Step` output. This reporting
+projection does not expand which graph nodes the executor supports.
+
 ## Acceptance evidence
 
 - Full solution build: zero warnings, zero errors.
 - Generic measurement Workbench verification: supported typed PropertyGrid adapters, explicit Preview/Publish, `*.ov3d-recipe.json` save, and reopen pass `27/27`.
-- Artifact-owned selection and ordered Runner verification: schema/route, legacy single-sequence compatibility, seven-measurement authored order, direct-adapter hash parity, continued evidence after tolerance Fail, ROI/PointSet save/reopen, and wrong owner/hash/grid/order/tool/output rejection pass `18/18`.
+- Artifact-owned selection, ordered Runner, and Run Record verification: schema/route, legacy single-sequence compatibility, seven-measurement authored order, direct-adapter hash parity, continued evidence after tolerance Fail, ROI/PointSet save/reopen, wrong owner/hash/grid/order/tool/output rejection, and matching JSON/HTML/CSV identities pass `21/21`.
 - UI smoke: current-source 1920 x 1080 Workbench capture must show the generic Inspection Recipe navigation and no Thickness/Warpage product-mode selector.

@@ -1,7 +1,7 @@
 # Artifact-owned ROI and ordered Runner
 
 Date: 2026-07-22  
-Status: Complete for the bounded A3 -> supported measurement slice
+Status: Complete for the bounded A3 -> supported measurement slice and its durable multi-step record
 
 ## Scope
 
@@ -47,8 +47,8 @@ Acceptance criteria:
 - legacy raw-C3D measurement workflow -> retained
 Verification:
 - dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug -p:Platform="Any CPU"
-- Runner --verify-artifact-owned-roi-runner -> 18/18
-Evidence: artifacts/verification/20260722-generic-cross-section/ordered-runner.txt
+- Runner --verify-artifact-owned-roi-runner -> 21/21
+Evidence: artifacts/verification/20260722-multi-step-run-record/
 Boundary / next dependency: sequence begins with an explicit Published A2 and supports only A3 followed by Thickness/Warpage/Plane Flatness/Point Pair/Gap-Flush/Volume/Cross-section Dimensions. Real four-landmark A1/A2 data and arbitrary whole-graph replay are not proven. No automatic feature detection, calibrated physical volume/dimension, or metrology claim.
 ```
 
@@ -62,3 +62,10 @@ When another transformed-grid measurement tool is added:
 4. On reopen, republish upstream and require exact binding verification.
 5. Compare direct adapter and ordered Runner output hashes.
 6. Add wrong-owner, wrong-hash, wrong-grid, and wrong-order rejection cases.
+
+## Durable output
+
+Schema `1.3` Run Record `Steps` stores the A3 tool and all seven measurement
+results in authored order. JSON, HTML, CSV, and the current docked Shell view
+share those identities. The existing schema `1.2` single-step `Step` output is
+unchanged. See `OPENVISIONLAB_3D_MULTI_STEP_RUN_RECORD_20260722.md`.

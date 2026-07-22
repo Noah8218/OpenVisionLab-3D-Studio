@@ -18,6 +18,7 @@ public sealed record ToolRecipeOrderedHeightMeasurementStepOutput(
 
 public sealed record ToolRecipeOrderedTransformedHeightFieldExecutionOutput(
     C3DTransformedHeightField HeightField,
+    ToolResult RegridResult,
     IReadOnlyList<ToolRecipeOrderedHeightMeasurementStepOutput> Measurements);
 
 public sealed record ToolRecipeOrderedTransformedHeightFieldExecutionEvaluation(
@@ -105,7 +106,7 @@ public static class ToolRecipeTransformedHeightFieldMeasurementSequence
             measurements.SelectMany(item => item.Output.Result.Overlays).ToArray());
         return new ToolRecipeOrderedTransformedHeightFieldExecutionEvaluation(
             result,
-            new ToolRecipeOrderedTransformedHeightFieldExecutionOutput(regrid.Output, measurements));
+            new ToolRecipeOrderedTransformedHeightFieldExecutionOutput(regrid.Output, regrid.Result, measurements));
     }
 
     public static ToolRecipeTransformedHeightFieldMeasurementSequenceEvaluation Execute(

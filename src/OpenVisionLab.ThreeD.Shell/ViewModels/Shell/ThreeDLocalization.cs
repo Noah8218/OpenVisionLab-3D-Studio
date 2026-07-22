@@ -16,7 +16,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(OpenAdvancedToolTip), nameof(Filter), nameof(HeightDifferenceEdge), nameof(TwoPointLine),
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
         nameof(XYZAffineSolve), nameof(XYZAffineApply), nameof(ToolboxAndEntities), nameof(Viewer), nameof(StepParameters),
-        nameof(PipelineValidation), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
+        nameof(PipelineValidation), nameof(RunRecord), nameof(RunRecordTitle), nameof(RunRecordDetail),
+        nameof(ColumnEvidence), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
         nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
         nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
         nameof(DisplayedOutputs), nameof(DisplayedOutputsTitle), nameof(DisplayedOutputsDetail),
@@ -85,6 +86,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string Viewer => T("ThreeD.Workbench.Viewer", "3D \uBDF0", "3D View");
     public string StepParameters => T("ThreeD.Workbench.StepParameters", "\uB2E8\uACC4 \uD30C\uB77C\uBBF8\uD130", "Step Parameters");
     public string PipelineValidation => T("ThreeD.Workbench.PipelineValidation", "\uD30C\uC774\uD504\uB77C\uC778 / \uAC80\uC99D", "Pipeline / Validation");
+    public string RunRecord => T("ThreeD.Workbench.RunRecord", "\uC2E4\uD589 \uAE30\uB85D", "Run Record");
+    public string RunRecordTitle => T("ThreeD.Workbench.RunRecordTitle", "\uC21C\uC11C\uD615 \uB2E4\uC911 \uB2E8\uACC4 \uC2E4\uD589 \uAE30\uB85D", "Ordered multi-step run record");
+    public string RunRecordDetail => T("ThreeD.Workbench.RunRecordDetail", "\uAC01 \uB3C4\uAD6C\uC758 \uC785\uB825\u00B7\uCD9C\uB825 \uC5D4\uD2F0\uD2F0, \uC0C1\uD0DC, \uD575\uC2EC \uCE21\uC815\uAC12\uC744 \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC5EC\uC90D\uB2C8\uB2E4.", "Read-only input/output entities, state, and key metric for each executed tool.");
+    public string ColumnEvidence => T("ThreeD.Column.Evidence", "\uC2E4\uD589 \uADFC\uAC70", "Execution evidence");
     public string SessionLog => T("ThreeD.Workbench.SessionLog", "\uC138\uC158 \uB85C\uADF8", "Session Log");
     public string HeightProfile => T("ThreeD.Workbench.HeightProfile", "\uB192\uC774 \uD504\uB85C\uD30C\uC77C", "Height Profile");
     public string FitDiagnostics => T("ThreeD.Workbench.FitDiagnostics", "\uD53C\uD305 \uC9C4\uB2E8", "Fit Diagnostics");

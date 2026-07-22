@@ -84,7 +84,19 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     }
 
     public bool IsProblemsSelected => DockWorkspace.IsEvidencePaneSelected
-                                      && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsProblemsSelected: true };
+                                       && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsProblemsSelected: true };
+
+    public void ActivateRunRecord()
+    {
+        DockWorkspace.ActivateEvidencePane();
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        {
+            review.ActivateRunRecord();
+        }
+    }
+
+    public bool IsRunRecordSelected => DockWorkspace.IsEvidencePaneSelected
+                                        && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsRunRecordSelected: true };
 
     public void ActivateOutputComparePane() => DockWorkspace.ActivateOutputComparePane();
 

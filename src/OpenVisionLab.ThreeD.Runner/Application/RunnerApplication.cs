@@ -178,7 +178,7 @@ internal static class RunnerApplication
                 Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
                 return 2;
             }
-            return ArtifactOwnedRoiRunnerVerification.Run(reportPath);
+            return ArtifactOwnedRoiRunnerVerification.Run(reportPath, runArtifacts);
         }
 
         if (verifySyntheticAffineInspectionPlate)

@@ -250,6 +250,8 @@
 
         <dock:OpenVisionDockWorkspaceView.EvidenceContent>
             <workbench:RecipePipelineReviewView DataContext="{Binding Workbench}"
+                                                RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
+                                                RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
                                                 AutomationProperties.AutomationId="WorkbenchBottomPanel" />
         </dock:OpenVisionDockWorkspaceView.EvidenceContent>
 

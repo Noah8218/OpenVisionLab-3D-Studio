@@ -454,6 +454,105 @@
                         </Grid>
                     </Grid>
                 </TabItem>
+
+                <TabItem Header="{Binding Localization.RunRecord}">
+                    <Grid Margin="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Margin="4,0,4,6">
+                            <TextBlock FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding Localization.RunRecordTitle}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       FontSize="10"
+                                       Text="{Binding Localization.RunRecordDetail}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                        </StackPanel>
+                        <Grid Grid.Row="1" Margin="8,2,8,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="42" />
+                                <ColumnDefinition Width="190" />
+                                <ColumnDefinition Width="100" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnNumber}" />
+                            <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnTool}" />
+                            <TextBlock Grid.Column="2" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnState}" />
+                            <TextBlock Grid.Column="3" FontSize="9.5" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding Localization.ColumnEvidence}" />
+                        </Grid>
+                        <ListBox Grid.Row="2"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemsSource="{Binding RunRecordSteps, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="{Binding Localization.RunRecordTitle}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,3"
+                                            Padding="7,5"
+                                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="3">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="42" />
+                                                <ColumnDefinition Width="190" />
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding Order}" />
+                                            <TextBlock Grid.Column="1" FontSize="10.5" FontWeight="SemiBold" Text="{Binding Stage}" TextTrimming="CharacterEllipsis" />
+                                            <Border Grid.Column="2"
+                                                    Margin="0,0,8,0"
+                                                    Padding="6,2"
+                                                    HorizontalAlignment="Left"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Pass">
+                                                                <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Fail">
+                                                                <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Warning">
+                                                                <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock FontSize="9.5" FontWeight="SemiBold" Text="{Binding Status}" />
+                                            </Border>
+                                            <TextBlock Grid.Column="3"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       FontSize="10"
+                                                       Text="{Binding Evidence}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Evidence}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </TabItem>
             </TabControl>
         </Grid>
     </Border>
