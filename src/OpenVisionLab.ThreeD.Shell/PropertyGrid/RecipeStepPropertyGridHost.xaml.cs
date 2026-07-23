@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using OpenVisionLab;
 
 namespace OpenVisionLab.ThreeD.Shell.PropertyGrid;
 
@@ -19,6 +20,8 @@ public partial class RecipeStepPropertyGridHost : UserControl
     {
         InitializeComponent();
         InnerGrid.PropertyValueChanged += (_, _) => PropertyValueChanged?.Invoke(this, EventArgs.Empty);
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public event EventHandler? PropertyValueChanged;
@@ -75,8 +78,31 @@ public partial class RecipeStepPropertyGridHost : UserControl
     private static void OnSelectedObjectChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
     {
         var host = (RecipeStepPropertyGridHost)sender;
-        host.InnerGrid.SelectedObject = args.NewValue;
+        host.RefreshSelectedObject();
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        OpenVisionLanguageService.LanguageChanged += OnLanguageChanged;
+        RefreshSelectedObject();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args) =>
+        OpenVisionLanguageService.LanguageChanged -= OnLanguageChanged;
+
+    private void OnLanguageChanged(object? sender, EventArgs args) => RefreshSelectedObject();
+
+    private void RefreshSelectedObject()
+    {
+        InnerGrid.SelectedObject = null;
+        if (SelectedObject is not null)
+        {
+            InnerGrid.SelectedObject = LocalizedPropertyGridObject.Create(SelectedObject);
+        }
+    }
+
+    private void OnPropertyFilterTextChanged(object sender, TextChangedEventArgs args) =>
+        InnerGrid.PropertyFilter = PropertyFilterBox.Text;
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)
         where T : DependencyObject

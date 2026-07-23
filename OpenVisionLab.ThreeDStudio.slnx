@@ -5,6 +5,7 @@
   <Project Path="src/OpenVisionLab.Logging/OpenVisionLab.Logging.csproj" />
   <Project Path="src/OpenVisionLab.Logging.Controls/OpenVisionLab.Logging.Controls.csproj" />
   <Project Path="src/OpenVisionLab.Localization/OpenVisionLab.Localization.csproj" />
+  <Project Path="src/OpenVisionLab.Wpf.MessageDialogs/OpenVisionLab.Wpf.MessageDialogs.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj" />
   <Project Path="src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj" />

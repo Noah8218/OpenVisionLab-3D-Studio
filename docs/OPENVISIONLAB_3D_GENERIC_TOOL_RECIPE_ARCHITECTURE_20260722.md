@@ -36,6 +36,10 @@ This follows the useful GoPxL pattern—catalog, ordered tool chain, selected-to
 
 ## UI rules
 
+- `docs/OPENVISIONLAB_3D_FIRST_RECIPE_UX_AND_RECIPE_CENTER_20260722.md` is the
+  canonical first-operator and Recipe Center UI contract. The separate
+  lifecycle window is a start center, while tool authoring remains in the
+  dockable Workbench.
 - The main workspace is named `Inspection Recipe` / `검사 레시피`.
 - The former Thickness/Warpage task page is not a product navigation destination.
 - Toolbox categories are Prepare, Feature & Datum, Transform, Measure, and Review.

@@ -612,6 +612,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSourceReadyForRecipe));
         OnPropertyChanged(nameof(SourceReadinessSummary));
         OnPropertyChanged(nameof(ViewerSourceSummary));
+        NotifyFirstRecipeUx();
     }
 
     private void RecordRecentRecipe(string path)

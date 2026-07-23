@@ -2,10 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="Line Intersection Tool Lab | OpenVisionLab 3D Studio"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.WindowTitle, Korean='라인 교차점 툴 랩 | OpenVisionLab 3D Studio', English='Line Intersection Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1600"
         Height="920"
         MinWidth="1120"
@@ -29,8 +30,8 @@
         </Grid.RowDefinitions>
 
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="Line Intersection Tool Lab"
-                                  StatusText="Published line inputs / corner evidence" />
+                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Subtitle, Korean='라인 교차점 툴 랩', English='Line Intersection Tool Lab'}"
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Status, Korean='게시된 라인 입력 / 코너 증거', English='Published line inputs / corner evidence'}" />
 
         <Border Grid.Row="1"
                 Margin="16,16,16,0"
@@ -50,9 +51,9 @@
                                    Symbol="PointScan24" />
                     <StackPanel>
                         <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
-                                   Text="Full-XYZ Line Intersection Tool Lab" />
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Title, Korean='전체 XYZ 라인 교차점', English='Full-XYZ Line Intersection Tool Lab'}" />
                         <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
-                                   Text="Two named Published LineFeature inputs are compared. The output is a closest-approach midpoint anchor, never an implied calibrated intersection." />
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Detail, Korean='이름이 지정된 두 게시 LineFeature를 비교합니다. 출력은 최근접 중점 앵커이며 교정된 실제 교차점으로 간주하지 않습니다.', English='Two named Published LineFeature inputs are compared. The output is a closest-approach midpoint anchor, never an implied calibrated intersection.'}" />
                     </StackPanel>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
@@ -87,7 +88,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Inputs}" /><TextBlock FontWeight="SemiBold" Text=" | Published LineFeature A + B" /></StackPanel>
+                                <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Branch24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Inputs}" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Inputs, Korean=' | 게시된 LineFeature A + B', English=' | Published LineFeature A + B'}" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionUpstreamSummary}" />
                         </StackPanel>
                     </Border>
@@ -100,7 +101,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text=" | Corner Anchor Evidence" /></StackPanel>
+                                <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.LineIntersection.Output, Korean=' | 코너 앵커 증거', English=' | Corner Anchor Evidence'}" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionExecutionSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionEvidenceSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LineIntersectionOutputHashSummary}" />

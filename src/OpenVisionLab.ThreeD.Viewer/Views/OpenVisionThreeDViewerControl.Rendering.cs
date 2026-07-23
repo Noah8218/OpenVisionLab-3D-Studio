@@ -414,9 +414,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dDisplayListId = gl.GenLists(1);
             if (c3dDisplayListId != 0)
             {
+                var displayListBuildStart = Stopwatch.GetTimestamp();
                 gl.NewList(c3dDisplayListId, OpenGL.GL_COMPILE);
                 DrawC3DGeometry(gl, renderProxy, positions, geometryStyle);
                 gl.EndList();
+                lastC3DDisplayListBuildMilliseconds = Stopwatch.GetElapsedTime(displayListBuildStart).TotalMilliseconds;
+                c3dDisplayListBuildCount++;
                 c3dDisplayListKey = displayListKey;
             }
         }

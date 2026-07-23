@@ -190,6 +190,9 @@ public sealed partial class MainWindowViewModel
         ResultOverlayVisible = false;
         SelectedEntity = "No source";
         PickCoordinate = "(none)";
+        TransformSummary = "Transform: not available";
+        AlignmentSummary = "Alignment: no source";
+        CoordinateMappingSummary = "Mapping: no source";
         MeasurementSummary = "No recipe source is ready.";
         SelectionSummary = "Load or relink a C3D source to begin teaching.";
         SelectedColorMode = "Height";

@@ -1,8 +1,17 @@
+extern alias OvlMessageDialogs;
+
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.WpfPropertyGrid;
+using OpenVisionLab;
+using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
+using WpfMessageDialogControl = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogControl;
+using WpfMessageDialogKind = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogKind;
+using WpfMessageDialogOptions = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogOptions;
+using WpfMessageDialogResult = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogResult;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.PropertyGrid;
@@ -53,7 +62,70 @@ internal static class RecipeManagerWpgVerification
             var workbench = new ToolWorkbenchViewModel(recentPath);
             workbench.RecipeName = "Recipe Manager Fixture";
             workbench.SetC3DSource(sourcePath);
+            var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var localizedPropertyChanges = new List<string?>();
+            workbench.PropertyChanged += (_, args) => localizedPropertyChanges.Add(args.PropertyName);
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishSource = workbench.LocalizedSourceReadinessSummary;
+            var englishPath = workbench.LocalizedRecipePathSummary;
+            var englishState = workbench.LocalizedRecipeStateSummary;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var koreanSource = workbench.LocalizedSourceReadinessSummary;
+            var koreanPath = workbench.LocalizedRecipePathSummary;
+            var koreanState = workbench.LocalizedRecipeStateSummary;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "Recipe Center source and save-path status switch between English and Korean",
+                englishSource == "Input ready · 3 x 3"
+                && englishPath == "Not saved yet"
+                && koreanSource == "입력 준비됨 · 3 x 3"
+                && koreanPath == "아직 저장하지 않음",
+                $"en={englishSource}; {englishPath} | ko={koreanSource}; {koreanPath}");
+            Check(
+                "saveable empty recipe is labeled as execution-incomplete rather than structurally invalid",
+                englishState == "1 execution requirement(s) | Modified"
+                && koreanState == "\uC2E4\uD589 \uC900\uBE44 \uD544\uC694 1\uAC1C | \uC218\uC815\uB428",
+                $"en={englishState} | ko={koreanState}");
+            Check(
+                "language change notifies all Recipe Center computed status properties",
+                localizedPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.LocalizedSourceReadinessSummary), StringComparer.Ordinal)
+                && localizedPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.LocalizedRecipePathSummary), StringComparer.Ordinal)
+                && localizedPropertyChanges.Contains(nameof(ToolWorkbenchViewModel.LocalizedRecipeStateSummary), StringComparer.Ordinal),
+                string.Join(",", localizedPropertyChanges.Distinct(StringComparer.Ordinal)));
+            Check(
+                "empty recipe enables Save and Save As before inspection steps exist",
+                !workbench.IsRecipeSaveBlocked
+                && workbench.CanSaveTeachingRecipe
+                && workbench.SaveTeachingRecipeCommand.CanExecute(null)
+                && workbench.SaveTeachingRecipeAsCommand.CanExecute(null)
+                && !workbench.IsTeachingRecipeExecutionReady,
+                $"blocked={workbench.IsRecipeSaveBlocked}; save={workbench.SaveTeachingRecipeCommand.CanExecute(null)}; saveAs={workbench.SaveTeachingRecipeAsCommand.CanExecute(null)}");
+            var emptyRecipePath = Path.Combine(fixtureRoot, "empty-recipe.ov3d-recipe.json");
+            var emptySaved = workbench.TrySaveTeachingRecipe(emptyRecipePath, out var emptySaveMessage);
+            var emptyStored = emptySaved ? ToolRecipeDocumentStore.Load(emptyRecipePath) : null;
+            Check(
+                "empty recipe saves without fabricating an inspection step",
+                emptySaved
+                && emptyStored is not null
+                && emptyStored.Steps.Count == 0
+                && ToolRecipeValidator.ValidateForStorage(emptyStored).IsValid
+                && !ToolRecipeValidator.Validate(emptyStored).IsValid,
+                emptySaveMessage);
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var savedLocalizedState = workbench.LocalizedRecipeStateSummary;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "successful zero-step save refreshes the localized saved state",
+                savedLocalizedState == "1 execution requirement(s) | Saved",
+                savedLocalizedState);
             var filter = AddTool(workbench, "filter");
+            Check(
+                "first valid inspection step keeps Save enabled and makes execution validation ready",
+                workbench.CanSaveTeachingRecipe
+                && workbench.IsTeachingRecipeExecutionReady
+                && workbench.SaveTeachingRecipeCommand.CanExecute(null)
+                && workbench.SaveTeachingRecipeAsCommand.CanExecute(null),
+                $"valid={workbench.CanSaveTeachingRecipe}; save={workbench.SaveTeachingRecipeCommand.CanExecute(null)}; saveAs={workbench.SaveTeachingRecipeAsCommand.CanExecute(null)}");
             filter.Parameters.Remove(filter.Parameters.Single(parameter => parameter.Name == "BoundaryPolicy"));
             filter.Parameters.Add(new ToolWorkbenchParameterItem("FuturePolicy", "RetainMe"));
             workbench.DiscardSelectedStepParameterDraft();
@@ -239,6 +311,96 @@ internal static class RecipeManagerWpgVerification
                 "WPG theme keys stay view-local",
                 !appResourcesHadThemeKey && !Application.Current.Resources.Contains("Ovl3D.Wpg.SurfaceBrush"),
                 "Application resources contain no Ovl3D.Wpg.SurfaceBrush key before or after host creation.");
+
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var localizedRegrid = LocalizedPropertyGridObject.Create(new RegridHeightMapStepProperties());
+            var koreanRegridProperties = TypeDescriptor.GetProperties(localizedRegrid);
+            var koreanReferenceFrame = koreanRegridProperties[nameof(RegridHeightMapStepProperties.ReferenceFrameId)];
+            var koreanCoverage = koreanRegridProperties[nameof(RegridHeightMapStepProperties.MinimumCoverageRatio)];
+            var koreanReferenceFrameDisplayName = koreanReferenceFrame?.DisplayName;
+            var koreanReferenceFrameCategory = koreanReferenceFrame?.Category;
+            var koreanCoverageDisplayName = koreanCoverage?.DisplayName;
+            var koreanCoverageCategory = koreanCoverage?.Category;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishRegrid = LocalizedPropertyGridObject.Create(new RegridHeightMapStepProperties());
+            var englishRegridProperties = TypeDescriptor.GetProperties(englishRegrid);
+            var englishReferenceFrame = englishRegridProperties[nameof(RegridHeightMapStepProperties.ReferenceFrameId)];
+            var englishReferenceFrameDisplayName = englishReferenceFrame?.DisplayName;
+            var englishReferenceFrameCategory = englishReferenceFrame?.Category;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "WPG display metadata localizes without renaming the typed Re-grid properties",
+                koreanReferenceFrame?.Name == nameof(RegridHeightMapStepProperties.ReferenceFrameId)
+                && koreanReferenceFrameDisplayName == "기준 프레임 ID"
+                && koreanReferenceFrameCategory == "A3 기준 그리드"
+                && koreanCoverageDisplayName == "최소 커버리지 비율"
+                && koreanCoverageCategory == "A3 게시 정책"
+                && englishReferenceFrame?.Name == nameof(RegridHeightMapStepProperties.ReferenceFrameId)
+                && englishReferenceFrameDisplayName == "Reference frame ID"
+                && englishReferenceFrameCategory == "A3 reference grid",
+                $"ko={koreanReferenceFrameDisplayName}/{koreanReferenceFrameCategory}; coverage={koreanCoverageDisplayName}/{koreanCoverageCategory}; en={englishReferenceFrameDisplayName}/{englishReferenceFrameCategory}");
+
+            var messageDialog = new WpfMessageDialogControl();
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            messageDialog.Configure(new WpfMessageDialogOptions
+            {
+                Title = "레시피 저장",
+                Message = "레시피 파일을 저장할 수 없습니다.",
+                Details = "Access to the selected recipe folder was denied.",
+                Kind = WpfMessageDialogKind.Warning,
+                Buttons = WpfMessageDialogButtons.YesNoCancel
+            });
+            var koreanDialogButtons = ((StackPanel)messageDialog.FindName("ButtonPanel")).Children
+                .OfType<Button>()
+                .Select(button => button.Content?.ToString())
+                .ToArray();
+            var koreanDetailsLabel = ((Button)messageDialog.FindName("DetailsToggleButton")).Content?.ToString();
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            messageDialog.Configure(new WpfMessageDialogOptions
+            {
+                Title = "Save Recipe",
+                Message = "The recipe file could not be saved.",
+                Details = "Access to the selected recipe folder was denied.",
+                Kind = WpfMessageDialogKind.Warning,
+                Buttons = WpfMessageDialogButtons.YesNoCancel
+            });
+            var englishDialogButtons = ((StackPanel)messageDialog.FindName("ButtonPanel")).Children
+                .OfType<Button>()
+                .Select(button => button.Content?.ToString())
+                .ToArray();
+            var englishDetailsLabel = ((Button)messageDialog.FindName("DetailsToggleButton")).Content?.ToString();
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "shared WPF message dialog localizes buttons and technical-details affordance",
+                koreanDialogButtons.SequenceEqual(["예", "아니오", "취소"])
+                && koreanDetailsLabel == "상세 정보"
+                && englishDialogButtons.SequenceEqual(["Yes", "No", "Cancel"])
+                && englishDetailsLabel == "Technical Details",
+                $"ko={string.Join('/', koreanDialogButtons)}; details={koreanDetailsLabel} | en={string.Join('/', englishDialogButtons)}; details={englishDetailsLabel}");
+
+            WpfMessageDialogResult requestedResult = WpfMessageDialogResult.None;
+            messageDialog.DialogResultRequested += result => requestedResult = result;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            messageDialog.Configure(new WpfMessageDialogOptions
+            {
+                Title = "저장하지 않은 레시피",
+                Message = "현재 레시피의 변경 내용을 저장하시겠습니까?",
+                Kind = WpfMessageDialogKind.Question,
+                Buttons = WpfMessageDialogButtons.YesNoCancel,
+                PrimaryButtonText = "저장",
+                SecondaryButtonText = "저장 안 함",
+                TertiaryButtonText = "취소"
+            });
+            var lifecycleButtons = ((StackPanel)messageDialog.FindName("ButtonPanel")).Children
+                .OfType<Button>()
+                .ToArray();
+            lifecycleButtons[1].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "unsaved recipe dialog maps 저장 안 함 to the No continuation branch",
+                lifecycleButtons.Select(button => button.Content?.ToString()).SequenceEqual(["저장", "저장 안 함", "취소"])
+                && requestedResult == WpfMessageDialogResult.No,
+                $"buttons={string.Join('/', lifecycleButtons.Select(button => button.Content))}; result={requestedResult}");
         }
         catch (Exception exception)
         {

@@ -10,7 +10,7 @@
                                   RecipeText="{Binding Workbench.RecipeName}"
                                   SourceContextText="{Binding Workbench.SourceContextSummary}"
                                   AlignmentStatusText="{Binding Workbench.AlignmentStatusSummary}"
-                                  RecipeStateText="{Binding Workbench.RecipeStateSummary}"
+                                  RecipeStateText="{Binding Workbench.LocalizedRecipeStateSummary}"
                                   IsRecipeContextVisible="{Binding IsWorkbenchWorkspaceSelected}"
                                   StatusText="{Binding StatusText}" />
         <Border Background="{DynamicResource ThreeD.CommandBarBrush}"

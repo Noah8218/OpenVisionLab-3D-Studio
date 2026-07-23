@@ -124,6 +124,11 @@ internal static class ViewerDisplaySettingsViewModelVerification
             c3dViewModel.SelectedColorMap = "Deviation";
             Check("C3D deviation selection", c3dViewModel.SelectedColorMap == "Deviation", c3dViewModel.EffectiveSummary);
             Check("C3D deviation render notification", c3dRenderChanges == 6, c3dRenderChanges.ToString(CultureInfo.InvariantCulture));
+            c3dViewModel.ResetC3DHeightGridGeometryStyle();
+            Check(
+                "new C3D source resets display geometry to Wireframe",
+                c3dViewModel.SelectedGeometryStyle == "Wireframe" && c3dRenderChanges == 7,
+                $"{c3dViewModel.EffectiveSummary}|renders={c3dRenderChanges}");
 
             c3dViewModel.ConfigurePointCloud(sourceColorAvailable: true);
             Check("point-cloud geometry capability", Sequence(c3dViewModel.AvailableGeometryStyles, "Points"), string.Join(",", c3dViewModel.AvailableGeometryStyles));
@@ -225,7 +230,10 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 && renderProxy.EdgeCount == 5
                 && renderProxy.GridEdgeCount == 4
                 && renderProxy.SurfaceEdgeCount == 4
-                && renderProxy.TriangleIndices.SequenceEqual([0, 2, 1, 1, 2, 3]),
+                && renderProxy.TriangleIndices.SequenceEqual([0, 2, 1, 1, 2, 3])
+                && renderProxy.EdgeIndices.SequenceEqual([0, 2, 2, 1, 1, 0, 2, 3, 3, 1])
+                && renderProxy.GridEdgeIndices.SequenceEqual([0, 1, 0, 2, 1, 3, 2, 3])
+                && renderProxy.SurfaceEdgeIndices.SequenceEqual([0, 1, 2, 3, 0, 2, 1, 3]),
                 $"triangles={renderProxy.TriangleCount}|edges={renderProxy.EdgeCount}|gridEdges={renderProxy.GridEdgeCount}|surfaceEdges={renderProxy.SurfaceEdgeCount}");
             Check(
                 "render proxy unique edges",

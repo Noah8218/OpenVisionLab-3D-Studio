@@ -9,6 +9,7 @@ internal static class ToolWorkbenchDockingVerification
 {
     private static readonly string[] WorkbenchContentIds =
     [
+        "tool-library",
         "data-layers",
         "three-d-viewer",
         "tool-inspector",
@@ -67,14 +68,16 @@ internal static class ToolWorkbenchDockingVerification
                 ViewerContent = viewerOwner,
             };
             var workbenchContracts = workbench.GetDockingPaneContracts();
-            Check("Workbench exposes eleven dock panes", workbenchContracts.Count == 11, Describe(workbenchContracts));
+            Check("Workbench exposes twelve dock panes", workbenchContracts.Count == 12, Describe(workbenchContracts));
             Check(
-                "Workbench left pane is Toolbox and does not host Recipe Manager",
+                "Workbench separates Tool Library and Recipe Flow without hosting Recipe Center",
                 HasExactIds(workbenchContracts, WorkbenchContentIds)
-                && workbenchContracts[0].ContentId == "data-layers"
-                && workbenchContracts[0].HasContent,
+                && workbenchContracts[0].ContentId == "tool-library"
+                && workbenchContracts[1].ContentId == "data-layers"
+                && workbenchContracts[0].HasContent
+                && workbenchContracts[1].HasContent,
                 Describe(workbenchContracts));
-            Check("Workbench hosts all eleven dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
+            Check("Workbench hosts all twelve dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));
             Check("Workbench required panes cannot close", workbenchContracts.All(contract => !contract.CanClose), Describe(workbenchContracts));
             Check("Fit Diagnostics may hide without closing", workbenchContracts.Single(contract => contract.ContentId == "fit-diagnostics").CanHide == true, Describe(workbenchContracts));
@@ -96,6 +99,11 @@ internal static class ToolWorkbenchDockingVerification
                 ReferenceEquals(workbench.DataContext, dataContextOwner)
                 && ReferenceEquals(workbench.ViewerContent, viewerOwner),
                 "DataContext and ViewerContent references retained");
+
+            Check(
+                "Workbench starts with the empty bottom review pane collapsed",
+                !workbench.IsBottomPaneExpanded && !workbench.IsBottomPaneAttached,
+                $"expanded={workbench.IsBottomPaneExpanded}, attached={workbench.IsBottomPaneAttached}");
 
             workbench.IsBottomPaneExpanded = false;
             var focusCollapsed = !workbench.IsBottomPaneAttached;
@@ -124,16 +132,25 @@ internal static class ToolWorkbenchDockingVerification
                 "Workbench Problems command selects the read-only port diagnostics in the docked Pipeline pane",
                 workbench.IsBottomPaneAttached && workbench.IsProblemsSelected,
                 $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsProblemsSelected}");
+            workbench.ActivateRunRecord();
+            Check(
+                "Workbench Run Record exposes open, recent, and export controls in the docked Pipeline pane",
+                workbench.IsBottomPaneAttached && workbench.IsRunRecordSelected && workbench.HasRunRecordHistoryControls,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsRunRecordSelected}, controls={workbench.HasRunRecordHistoryControls}");
             workbench.ActivateOutputComparePane();
             Check(
-                "Workbench Output Compare command selects the floatable output compare pane",
-                workbench.IsBottomPaneAttached && workbench.IsOutputComparePaneSelected,
-                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsOutputComparePaneSelected}");
+                "Workbench Output Compare command selects a floatable pane with usable default height",
+                workbench.IsBottomPaneAttached
+                && workbench.IsOutputComparePaneSelected
+                && workbench.HasUsableOutputCompareDockHeight,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsOutputComparePaneSelected}, usableHeight={workbench.HasUsableOutputCompareDockHeight}");
             workbench.ActivateDisplayedOutputsPane();
             Check(
-                "Workbench Displayed Outputs command selects the floatable output manager pane",
-                workbench.IsBottomPaneAttached && workbench.IsDisplayedOutputsPaneSelected,
-                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsDisplayedOutputsPaneSelected}");
+                "Workbench Displayed Outputs command restores the standard bottom-pane height",
+                workbench.IsBottomPaneAttached
+                && workbench.IsDisplayedOutputsPaneSelected
+                && workbench.HasStandardBottomPaneHeight,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsDisplayedOutputsPaneSelected}, standardHeight={workbench.HasStandardBottomPaneHeight}");
             workbench.ActivateFitDiagnosticsPane();
             Check("Workbench Fit Diagnostics command selects docked diagnostics pane", workbench.IsBottomPaneAttached && workbench.IsFitDiagnosticsPaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsFitDiagnosticsPaneSelected}");
             workbench.ActivateIntersectionEvidencePane();
@@ -144,6 +161,7 @@ internal static class ToolWorkbenchDockingVerification
             var advancedMarker = new object();
             var advanced = new OpenVisionDockWorkspaceView
             {
+                ToolLibraryContent = advancedMarker,
                 DataLayersContent = advancedMarker,
                 ViewerContent = advancedMarker,
                 ToolInspectorContent = advancedMarker,
@@ -157,7 +175,7 @@ internal static class ToolWorkbenchDockingVerification
                 CorrespondenceEvidenceContent = advancedMarker,
             };
             var advancedContracts = advanced.GetDockingPaneContracts();
-            Check("Advanced exposes eleven dock panes", advancedContracts.Count == 11 && HasExactIds(advancedContracts, WorkbenchContentIds), Describe(advancedContracts));
+            Check("Advanced exposes twelve dock panes", advancedContracts.Count == 12 && HasExactIds(advancedContracts, WorkbenchContentIds), Describe(advancedContracts));
             Check("Advanced panes can float and remain required", advancedContracts.All(contract => contract.CanFloat && !contract.CanClose) && advancedContracts.Single(contract => contract.ContentId == "fit-diagnostics").CanHide == true, Describe(advancedContracts));
 
             var calibrationMarker = new object();

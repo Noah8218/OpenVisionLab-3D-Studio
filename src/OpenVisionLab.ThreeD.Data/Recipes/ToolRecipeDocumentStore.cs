@@ -17,7 +17,7 @@ public static class ToolRecipeDocumentStore
     public static void Save(string path, ToolRecipeDocument document)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var validation = ToolRecipeValidator.Validate(document);
+        var validation = ToolRecipeValidator.ValidateForStorage(document);
         if (!validation.IsValid)
         {
             throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));
@@ -61,7 +61,7 @@ public static class ToolRecipeDocumentStore
         using var stream = File.OpenRead(fullPath);
         var document = JsonSerializer.Deserialize<ToolRecipeDocument>(stream, JsonOptions)
             ?? throw new InvalidDataException("Teaching recipe JSON is empty.");
-        var validation = ToolRecipeValidator.Validate(document);
+        var validation = ToolRecipeValidator.ValidateForStorage(document);
         if (!validation.IsValid)
         {
             throw new InvalidDataException(string.Join(Environment.NewLine, validation.Errors));

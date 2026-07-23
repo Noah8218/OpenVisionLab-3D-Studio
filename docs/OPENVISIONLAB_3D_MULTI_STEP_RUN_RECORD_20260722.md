@@ -3,6 +3,11 @@
 Date: 2026-07-22
 Status: Complete for the bounded A3 -> supported measurement sequence
 
+> Historical compatibility checkpoint: schema `1.3` and this bounded
+> eight-step path remain supported. Schema `1.4` general sequential graph
+> reporting supersedes this document as the latest coverage checkpoint; see
+> `OPENVISIONLAB_3D_GENERAL_GRAPH_RUN_RECORD_20260723.md`.
+
 ## Outcome
 
 The bounded ordered executor now writes one durable Run Record for the full

@@ -1,6 +1,8 @@
 <UserControl x:Class="OpenVisionLab.ThreeD.Shell.PropertyGrid.RecipeStepPropertyGridHost"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:wpg="clr-namespace:System.Windows.Controls.WpfPropertyGrid;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
              AutomationProperties.AutomationId="RecipeStepPropertyGridHost">
     <UserControl.Resources>
@@ -28,10 +30,49 @@
         <SolidColorBrush x:Key="Ovl3D.Wpg.SliderFillBrush" Color="#FF0F766E" />
         <SolidColorBrush x:Key="Ovl3D.Wpg.SliderThumbBrush" Color="#FFFFFFFF" />
     </UserControl.Resources>
-    <wpg:PropertyGrid x:Name="InnerGrid"
-                      AutomationProperties.Name="Selected step parameters"
-                      EditorColumnMinWidth="120"
-                      PropertyFilterVisibility="Visible"
-                      PropertyNameColumnWidth="132"
-                      ShowReadOnlyProperties="True" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Margin="2,2,2,4">
+            <TextBox x:Name="PropertyFilterBox"
+                     MinHeight="28"
+                     Padding="8,3,30,3"
+                     VerticalContentAlignment="Center"
+                     AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='파라미터 검색', English='Search parameters'}"
+                     TextChanged="OnPropertyFilterTextChanged" />
+            <TextBlock Margin="10,0,32,0"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource Ovl3D.Wpg.MutedTextBrush}"
+                       IsHitTestVisible="False"
+                       Text="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='파라미터 검색', English='Search parameters'}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=PropertyFilterBox}" Value="">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <ui:SymbolIcon Width="16"
+                           Height="16"
+                           Margin="0,0,9,0"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource Ovl3D.Wpg.AccentBrush}"
+                           IsHitTestVisible="False"
+                           Symbol="Search24" />
+        </Grid>
+        <wpg:PropertyGrid x:Name="InnerGrid"
+                          Grid.Row="1"
+                          AutomationProperties.Name="Selected step parameters"
+                          EditorColumnMinWidth="120"
+                          PropertyFilterVisibility="Collapsed"
+                          PropertyNameColumnWidth="168"
+                          ShowReadOnlyProperties="True" />
+    </Grid>
 </UserControl>

@@ -194,6 +194,15 @@ public sealed partial class OpenVisionThreeDViewerControl
         pointerInputMouseMoveCount = 0;
         pointerInputMouseUpCount = 0;
         pointerInputMouseWheelCount = 0;
+        pointerInputMouseMoveTimingCount = 0;
+        pointerInputMouseMoveTotalMilliseconds = 0.0;
+        pointerInputMouseMoveMaximumMilliseconds = 0.0;
+        pointerInputLastMouseMoveTimestamp = 0;
+        pointerInputNextFrameTimingCount = 0;
+        pointerInputNextFrameTotalMilliseconds = 0.0;
+        pointerInputNextFrameMaximumMilliseconds = 0.0;
+        pointerInputScheduledMouseMoveRenderCount = 0;
+        pointerInputImmediateMouseMoveRenderCount = 0;
 
         try
         {
@@ -383,6 +392,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             && pointerInputMouseMoveCount >= 3
             && pointerInputMouseUpCount >= 5
             && pointerInputMouseWheelCount >= 1;
+        var interactiveRenderPerformancePassed = pointerInputMouseMoveTimingCount >= 3
+            && pointerInputNextFrameTimingCount >= 1
+            && pointerInputScheduledMouseMoveRenderCount >= 3
+            && pointerInputImmediateMouseMoveRenderCount == 0
+            && pointerInputMouseMoveMaximumMilliseconds <= 33.34
+            && pointerInputNextFrameMaximumMilliseconds <= 100.0;
         var passed = pickPassed
             && orbitPassed
             && panPassed
@@ -392,7 +407,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             && contextMenuPassed
             && contextMenuBindingsPassed
             && topViewMenuBindingsPassed
-            && routedEventsPassed;
+            && routedEventsPassed
+            && interactiveRenderPerformancePassed;
         if (!passed && string.IsNullOrWhiteSpace(failure))
         {
             failure = CreatePointerInputFailureSummary(
@@ -405,7 +421,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 contextMenuPassed,
                 contextMenuBindingsPassed,
                 topViewMenuBindingsPassed,
-                routedEventsPassed);
+                routedEventsPassed,
+                interactiveRenderPerformancePassed);
         }
 
         return new PointerInputRegressionResult(
@@ -427,6 +444,19 @@ public sealed partial class OpenVisionThreeDViewerControl
             pointerInputMouseMoveCount,
             pointerInputMouseUpCount,
             pointerInputMouseWheelCount,
+            pointerInputMouseMoveTimingCount,
+            pointerInputMouseMoveTimingCount == 0 ? 0.0 : pointerInputMouseMoveTotalMilliseconds / pointerInputMouseMoveTimingCount,
+            pointerInputMouseMoveMaximumMilliseconds,
+            pointerInputNextFrameTimingCount,
+            pointerInputNextFrameTimingCount == 0 ? 0.0 : pointerInputNextFrameTotalMilliseconds / pointerInputNextFrameTimingCount,
+            pointerInputNextFrameMaximumMilliseconds,
+            pointerInputScheduledMouseMoveRenderCount,
+            pointerInputImmediateMouseMoveRenderCount,
+            interactiveRenderPerformancePassed,
+            viewModel.C3DSampleVisible,
+            c3dRenderProxy?.Points.Length ?? 0,
+            c3dDisplayListBuildCount,
+            lastC3DDisplayListBuildMilliseconds,
             viewportWidth,
             viewportHeight,
             initialCamera,
@@ -504,7 +534,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         bool contextMenuPassed,
         bool contextMenuBindingsPassed,
         bool topViewMenuBindingsPassed,
-        bool routedEventsPassed)
+        bool routedEventsPassed,
+        bool interactiveRenderPerformancePassed)
     {
         var failures = new List<string>();
         if (!pickPassed) failures.Add("pick state did not change");
@@ -517,6 +548,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!contextMenuBindingsPassed) failures.Add("Viewer context menu command bindings were incomplete");
         if (!topViewMenuBindingsPassed) failures.Add("Viewer top View menu command bindings were incomplete");
         if (!routedEventsPassed) failures.Add("WPF mouse event counts were incomplete");
+        if (!interactiveRenderPerformancePassed) failures.Add("pointer render coalescing or latency threshold failed");
         return string.Join("; ", failures);
     }
 
@@ -581,6 +613,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             "PointerInputRegression",
             $"Result|pass={result.Passed}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}",
             $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}",
+            $"PointerLatency|mouseMoveSamples={result.MouseMoveTimingCount}|handlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|handlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameSamples={result.NextFrameTimingCount}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}",
+            $"InteractiveRender|pass={result.InteractiveRenderPerformancePassed}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|handlerLimitMs=33.340|nextFrameLimitMs=100.000",
+            $"C3DRender|active={result.C3DSceneActive}|points={result.C3DRenderedPointCount}|displayListBuilds={result.C3DDisplayListBuildCount}|lastDisplayListBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|scheduledFps=30",
             $"Pick|pass={result.PickPassed}|entity={result.PickedEntity}|coordinate={result.PickCoordinate}|summary={result.SelectionSummary}",
             $"Orbit|pass={result.OrbitPassed}|before={FormatCameraSnapshot(result.InitialCamera)}|after={FormatCameraSnapshot(result.OrbitCamera)}",
             $"Pan|pass={result.PanPassed}|before={FormatCameraSnapshot(result.OrbitCamera)}|after={FormatCameraSnapshot(result.PanCamera)}",
@@ -612,7 +647,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var result = pointerInputRegressionResult;
-        return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|middlePan={result.PanPassed}|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|rightPanMenuSuppressed={result.RightPanMenuSuppressed}|zoom={result.ZoomPassed}|shortRightClick={result.ContextMenuPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}|contextMenuCommands={result.ContextMenuCommandCount}/5|topViewMenuBindings={result.TopViewMenuBindingsPassed}|topViewMenuCommands={result.TopViewMenuCommandCount}/5|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
+        return $"PointerInputRegression|configured=True|pass={result.Passed}|pick={result.PickPassed}|orbit={result.OrbitPassed}|pan={result.PanPassed}|middlePan={result.PanPassed}|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|rightPanMenuSuppressed={result.RightPanMenuSuppressed}|zoom={result.ZoomPassed}|shortRightClick={result.ContextMenuPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}|contextMenuCommands={result.ContextMenuCommandCount}/5|topViewMenuBindings={result.TopViewMenuBindingsPassed}|topViewMenuCommands={result.TopViewMenuCommandCount}/5|routedEvents={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}|mouseMoveHandlerAverageMs={result.AverageMouseMoveMilliseconds:F3}|mouseMoveHandlerMaximumMs={result.MaximumMouseMoveMilliseconds:F3}|nextFrameAverageMs={result.AverageNextFrameMilliseconds:F3}|nextFrameMaximumMs={result.MaximumNextFrameMilliseconds:F3}|scheduledMouseMoveRequests={result.ScheduledMouseMoveRenderCount}|immediateMouseMoveRenders={result.ImmediateMouseMoveRenderCount}|interactiveRenderPass={result.InteractiveRenderPerformancePassed}|c3dActive={result.C3DSceneActive}|c3dPoints={result.C3DRenderedPointCount}|displayListBuilds={result.C3DDisplayListBuildCount}|lastDisplayListBuildMs={result.LastC3DDisplayListBuildMilliseconds:F3}|windowActivated={result.WindowActivated}|viewport={result.ViewportWidth:F0}x{result.ViewportHeight:F0}|failure={CleanContractText(result.Failure)}";
     }
 
     private void ApplySmokeArguments(string[] args)

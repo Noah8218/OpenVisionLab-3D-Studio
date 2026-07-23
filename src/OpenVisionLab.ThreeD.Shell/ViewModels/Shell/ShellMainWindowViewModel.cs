@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -37,6 +38,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private readonly string? runRecordPath;
     private readonly string? htmlReportPath;
     private readonly string? csvReportPath;
+    private readonly string recentRunRecordsPath;
     private string? currentContractPath;
     private string? currentReportPath;
     private string? currentShellScreenshotPath;
@@ -55,6 +57,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
     private readonly IReadOnlyList<OpenVisionLanguageOption> languageOptions;
     private OpenVisionLanguageOption? selectedLanguageOption;
+    private RunRecordRecentItem? selectedRecentRunRecord;
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -68,6 +71,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? SaveRecipeRequested;
     public event EventHandler? PublishInspectionResultRequested;
     public event EventHandler? InspectionTaskChanged;
+    public event EventHandler? OpenRunRecordRequested;
+    public event EventHandler? ExportRunRecordRequested;
     public event EventHandler<EvidenceArtifactOpenRequestEventArgs>? OpenEvidenceArtifactRequested;
 
     public ShellMainWindowViewModel(
@@ -76,7 +81,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         string? shellScreenshotPath = null,
         string? runRecordPath = null,
         string? htmlReportPath = null,
-        string? csvReportPath = null)
+        string? csvReportPath = null,
+        string? recentRunRecordsPath = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
@@ -84,6 +90,12 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.runRecordPath = runRecordPath;
         this.htmlReportPath = htmlReportPath;
         this.csvReportPath = csvReportPath;
+        this.recentRunRecordsPath = recentRunRecordsPath
+            ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "OpenVisionLab",
+                "ThreeDStudio",
+                "recent-run-records.json");
         languageOptions = OpenVisionLanguageService.GetLanguageOptions();
         selectedLanguageOption = languageOptions.FirstOrDefault(option => option.Language == OpenVisionLanguageService.CurrentLanguage)
             ?? languageOptions[0];
@@ -93,6 +105,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             parameter => SelectWorkspace(parameter),
             parameter => parameter is ShellWorkspaceMode mode
                 && Enum.IsDefined(typeof(ShellWorkspaceMode), mode));
+        OpenVisionLanguageService.LanguageChanged += (_, _) => RaisePropertyChanged(nameof(WorkspaceSummary));
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         RefreshRecipeComparisonCommand = new RelayCommand(_ => RefreshRecipeComparisonRequested?.Invoke(this, EventArgs.Empty));
@@ -104,7 +117,24 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         OpenRunRecordCommand = new RelayCommand(_ => RequestEvidenceArtifact("Run JSON", currentRunRecordPath), _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
         OpenHtmlReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("HTML report", currentHtmlReportPath), _ => !string.IsNullOrWhiteSpace(currentHtmlReportPath));
         OpenCsvReportCommand = new RelayCommand(_ => RequestEvidenceArtifact("CSV report", currentCsvReportPath), _ => !string.IsNullOrWhiteSpace(currentCsvReportPath));
-        RefreshRecipeComparison();
+        OpenRunRecordFolderCommand = new RelayCommand(
+            _ => RequestEvidenceArtifact("Run folder", Path.GetDirectoryName(currentRunRecordPath)),
+            _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
+        SelectRunRecordCommand = new RelayCommand(_ => OpenRunRecordRequested?.Invoke(this, EventArgs.Empty));
+        OpenRecentRunRecordCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is RunRecordRecentItem item)
+                {
+                    LoadRunRecord(item.Path, out _);
+                }
+            },
+            parameter => parameter is RunRecordRecentItem { IsAvailable: true });
+        ExportRunRecordCommand = new RelayCommand(
+            _ => ExportRunRecordRequested?.Invoke(this, EventArgs.Empty),
+            _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
+        LoadRecentRunRecords();
+        RefreshRecipeComparison(runRecordPath, useStartupOverrides: true);
     }
 
     public ICommand ApplyRoiAlignmentCommand { get; }
@@ -119,6 +149,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenRunRecordCommand { get; }
     public ICommand OpenHtmlReportCommand { get; }
     public ICommand OpenCsvReportCommand { get; }
+    public ICommand OpenRunRecordFolderCommand { get; }
+    public ICommand SelectRunRecordCommand { get; }
+    public ICommand OpenRecentRunRecordCommand { get; }
+    public ICommand ExportRunRecordCommand { get; }
     public ToolWorkbenchViewModel Workbench { get; }
     public CalibrationCenterViewModel Calibration { get; }
     public ThreeDLocalization Localization => ThreeDLocalization.Shared;
@@ -135,6 +169,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             }
 
             OpenVisionLanguageService.SetLanguage(value.Language);
+            RefreshRecipeComparison();
         }
     }
 
@@ -286,13 +321,13 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public string WorkspaceSummary => SelectedWorkspaceMode switch
     {
-        ShellWorkspaceMode.Workbench => "Tool Workbench | Compose typed 3D inspection steps",
-        ShellWorkspaceMode.Teach => "Recipe Workbench | Teach ordered tool steps and typed routes",
-        ShellWorkspaceMode.Inspect => "Recipe Workbench | Preview selected tools and publish outputs",
-        ShellWorkspaceMode.Review => "Recipe Workbench | Review published entities and evidence",
-        ShellWorkspaceMode.Calibrate => "Calibration workspace | Offline datasets",
-        ShellWorkspaceMode.Expert => "Expert workspace | Full inspection layout",
-        _ => "Inspection workspace"
+        ShellWorkspaceMode.Workbench => L("도구 워크벤치 | 정식 3D 검사 단계를 구성합니다", "Tool Workbench | Compose typed 3D inspection steps"),
+        ShellWorkspaceMode.Teach => L("레시피 워크벤치 | 순서가 있는 도구 단계와 정식 경로를 티칭합니다", "Recipe Workbench | Teach ordered tool steps and typed routes"),
+        ShellWorkspaceMode.Inspect => L("레시피 워크벤치 | 선택한 도구를 미리보고 출력을 게시합니다", "Recipe Workbench | Preview selected tools and publish outputs"),
+        ShellWorkspaceMode.Review => L("레시피 워크벤치 | 게시된 엔티티와 증거를 검토합니다", "Recipe Workbench | Review published entities and evidence"),
+        ShellWorkspaceMode.Calibrate => L("교정 작업공간 | 오프라인 데이터셋", "Calibration workspace | Offline datasets"),
+        ShellWorkspaceMode.Expert => L("고급 작업공간 | 전체 검사 레이아웃", "Expert workspace | Full inspection layout"),
+        _ => L("검사 작업공간", "Inspection workspace")
     };
 
     public string StatusText
@@ -347,6 +382,14 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<InspectionStepItem> InspectionSteps { get; } = [];
 
+    public ObservableCollection<RunRecordRecentItem> RecentRunRecords { get; } = [];
+
+    public RunRecordRecentItem? SelectedRecentRunRecord
+    {
+        get => selectedRecentRunRecord;
+        set => SetField(ref selectedRecentRunRecord, value);
+    }
+
     public void ShowReviewWorkspace() => SelectedWorkspaceMode = ShellWorkspaceMode.Review;
 
     public void SelectInspectionTask(ShellInspectionTask task)
@@ -397,18 +440,27 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             "(viewer smoke failure)"));
     }
 
-    public void RefreshRecipeComparison()
+    public void RefreshRecipeComparison() =>
+        RefreshRecipeComparison(currentRunRecordPath, useStartupOverrides: false);
+
+    private void RefreshRecipeComparison(string? selectedRunRecordPath, bool useStartupOverrides)
     {
         var root = ResolveWorkspaceRoot();
-        currentRunRecordPath = ResolveOptionalPath(root, runRecordPath);
+        currentRunRecordPath = ResolveOptionalPath(root, selectedRunRecordPath);
         var runRecord = ReadRunRecord(currentRunRecordPath);
-        var contractPath = ResolvePath(root, comparisonContractPath ?? runRecord?.Artifacts.ViewerContract, Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
-        var reportPath = ResolvePath(root, comparisonReportPath ?? runRecord?.Artifacts.RunnerTextReport, Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
+        var contractPath = ResolvePath(
+            root,
+            (useStartupOverrides ? comparisonContractPath : null) ?? runRecord?.Artifacts.ViewerContract,
+            Path.Combine(root, "artifacts", "shell_recipe_ui_after.txt"));
+        var reportPath = ResolvePath(
+            root,
+            (useStartupOverrides ? comparisonReportPath : null) ?? runRecord?.Artifacts.RunnerTextReport,
+            Path.Combine(root, "artifacts", "runner_shell_recipe_ui_compare_after.txt"));
         currentContractPath = contractPath;
         currentReportPath = reportPath;
-        currentShellScreenshotPath = ResolveOptionalPath(root, shellScreenshotPath ?? runRecord?.Artifacts.ViewerScreenshot);
-        currentHtmlReportPath = ResolveOptionalPath(root, htmlReportPath ?? runRecord?.Artifacts.HtmlReport);
-        currentCsvReportPath = ResolveOptionalPath(root, csvReportPath ?? runRecord?.Artifacts.CsvReport);
+        currentShellScreenshotPath = ResolveOptionalPath(root, (useStartupOverrides ? shellScreenshotPath : null) ?? runRecord?.Artifacts.ViewerScreenshot);
+        currentHtmlReportPath = ResolveOptionalPath(root, (useStartupOverrides ? htmlReportPath : null) ?? runRecord?.Artifacts.HtmlReport);
+        currentCsvReportPath = ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
         RefreshCommandCanExecute();
 
         var contractLines = ReadLinesOrEmpty(contractPath);
@@ -429,6 +481,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RefreshRunSnapshot(root, recipePath, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
         RefreshInspectionSteps(root, recipePath, contractPath, reportPath, contractLines, reportLines, uiEvidence, runnerEvidence, comparisonState, runRecord);
         RefreshRunHistory(root, contractPath, reportPath, uiEvidence, runnerEvidence, comparisonState);
+        if (runRecord is not null && currentRunRecordPath is not null)
+        {
+            RecordRecentRunRecord(currentRunRecordPath, runRecord);
+        }
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
             : "Viewer hosted | recipe comparison pending";
@@ -479,13 +535,21 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
                 var metricSummary = metric is null
                     ? "no metrics"
                     : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
+                var outputHash = string.IsNullOrWhiteSpace(step.OutputContentSha256)
+                    ? string.Empty
+                    : $" | SHA-256 {step.OutputContentSha256[..Math.Min(12, step.OutputContentSha256.Length)]}";
                 InspectionSteps.Add(new InspectionStepItem(
                     (step.RecipeIndex + 1).ToString(CultureInfo.InvariantCulture),
                     step.ToolName,
                     step.Status.ToString(),
-                    $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}"));
+                    $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}{outputHash}"));
             }
-            InspectionStepSummary = $"Run Record schema {runRecord!.SchemaVersion} | Ordered steps: {orderedRunSteps.Count} | Overall: {runRecord.Status}";
+            InspectionStepSummary = string.Format(
+                CultureInfo.CurrentCulture,
+                Localization.RunRecordSummaryFormat,
+                runRecord!.SchemaVersion,
+                orderedRunSteps.Count,
+                runRecord.Status);
             return;
         }
 
@@ -601,6 +665,128 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool LoadRunRecord(string path, out string message)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var record = ReadRunRecord(fullPath);
+            if (record is null)
+            {
+                message = Localization.RunRecordOpenFailed;
+                return false;
+            }
+
+            RefreshRecipeComparison(fullPath, useStartupOverrides: false);
+            message = fullPath;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    public bool ExportCurrentRunRecordBundle(string targetRoot, out string message)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(currentRunRecordPath) || !File.Exists(currentRunRecordPath))
+            {
+                message = Localization.RunRecordOpenFailed;
+                return false;
+            }
+
+            var record = ReadRunRecord(currentRunRecordPath);
+            if (record is null)
+            {
+                message = Localization.RunRecordOpenFailed;
+                return false;
+            }
+
+            var safeRunId = string.Concat(record.RunId.Select(character =>
+                Path.GetInvalidFileNameChars().Contains(character) ? '_' : character));
+            var exportDirectory = Path.Combine(Path.GetFullPath(targetRoot), $"RunRecord-{safeRunId}");
+            for (var suffix = 2; Directory.Exists(exportDirectory); suffix++)
+            {
+                exportDirectory = Path.Combine(Path.GetFullPath(targetRoot), $"RunRecord-{safeRunId}-{suffix}");
+            }
+
+            Directory.CreateDirectory(exportDirectory);
+            foreach (var sourcePath in new[] { currentRunRecordPath, currentHtmlReportPath, currentCsvReportPath }
+                         .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path)))
+            {
+                var source = sourcePath!;
+                File.Copy(source, Path.Combine(exportDirectory, Path.GetFileName(source)), overwrite: false);
+            }
+
+            StatusText = string.Format(CultureInfo.CurrentCulture, Localization.RunRecordExportedFormat, exportDirectory);
+            message = exportDirectory;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    private void LoadRecentRunRecords()
+    {
+        try
+        {
+            foreach (var path in RecipeRecentFileStore.Load(recentRunRecordsPath))
+            {
+                RecentRunRecords.Add(CreateRecentRunRecordItem(path, ReadRunRecord(path)));
+            }
+
+            SelectedRecentRunRecord = RecentRunRecords.FirstOrDefault();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            StatusText = $"Viewer hosted | recent Run Records unavailable: {exception.Message}";
+        }
+    }
+
+    private void RecordRecentRunRecord(string path, InspectionRunRecord record)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var existing = RecentRunRecords.FirstOrDefault(item =>
+            string.Equals(item.Path, fullPath, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            RecentRunRecords.Remove(existing);
+        }
+
+        var item = CreateRecentRunRecordItem(fullPath, record);
+        RecentRunRecords.Insert(0, item);
+        while (RecentRunRecords.Count > RecipeRecentFileStore.MaximumEntries)
+        {
+            RecentRunRecords.RemoveAt(RecentRunRecords.Count - 1);
+        }
+
+        SelectedRecentRunRecord = item;
+        try
+        {
+            RecipeRecentFileStore.Save(recentRunRecordsPath, RecentRunRecords.Select(recent => recent.Path));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            StatusText = $"Viewer hosted | recent Run Records could not be saved: {exception.Message}";
+        }
+    }
+
+    private static RunRecordRecentItem CreateRecentRunRecordItem(string path, InspectionRunRecord? record) =>
+        new(
+            Path.GetFullPath(path),
+            Path.GetFileName(path),
+            record?.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)
+                ?? File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture),
+            record?.Status.ToString() ?? "Unavailable",
+            record?.Steps?.Count ?? (record?.Step is null ? 0 : 1),
+            record is not null);
+
     public void UpdateC3DSampleVisible(bool isVisible)
     {
         if (c3DSampleVisible != isVisible)
@@ -620,6 +806,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         ((RelayCommand)OpenRunRecordCommand).RaiseCanExecuteChanged();
         ((RelayCommand)OpenHtmlReportCommand).RaiseCanExecuteChanged();
         ((RelayCommand)OpenCsvReportCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)OpenRunRecordFolderCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ExportRunRecordCommand).RaiseCanExecuteChanged();
     }
 
     private void RequestEvidenceArtifact(string label, string? path)
@@ -938,6 +1126,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     private void RaisePropertyChanged(string propertyName) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private static string L(string korean, string english) =>
+        OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English ? english : korean;
 }
 
 public sealed class RecipeRunHistoryItem
@@ -985,6 +1176,14 @@ public sealed class InspectionStepItem
 
     public string Evidence { get; }
 }
+
+public sealed record RunRecordRecentItem(
+    string Path,
+    string Name,
+    string RecordedAt,
+    string Status,
+    int StepCount,
+    bool IsAvailable);
 
 public sealed class EvidenceArtifactOpenRequestEventArgs : EventArgs
 {

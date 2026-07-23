@@ -42,7 +42,10 @@ internal static class SyntheticAffineInspectionPlateVerification
         (10, 100, 95), (35, 150, 75), (75, 30, 70), (140, 130, 90)
     ];
 
-    public static int Run(string packageDirectory, string reportPath)
+    public static int Run(
+        string packageDirectory,
+        string reportPath,
+        RunArtifactOptions? runArtifacts = null)
     {
         var checks = new List<CheckResult>();
         try
@@ -152,6 +155,26 @@ internal static class SyntheticAffineInspectionPlateVerification
                     .SequenceEqual(["step.thickness", "step.warpage"]),
                 string.Join(",", ordered.Output.Measurements.Select(item => $"{item.RecipeIndex}:{item.StepId}"))));
 
+            var graphReplay = ToolRecipeOrderedGraphExecution.Execute(finalDocument, c3dPath);
+            checks.Add(Check("general ordered graph replay reaches every authored typed step",
+                graphReplay.Status == ResultStatus.Pass
+                && graphReplay.Steps.Count == finalDocument.Steps.Count
+                && graphReplay.Steps.Select(item => item.StepId)
+                    .SequenceEqual(finalDocument.Steps.Select(item => item.Id)),
+                $"status={graphReplay.Status};steps={graphReplay.Steps.Count}/{finalDocument.Steps.Count};message={graphReplay.Message}"));
+            checks.Add(Check("general graph output hashes match established direct adapters",
+                Hash(graphReplay, "step.filter") == filtered.ContentSha256
+                && Hash(graphReplay, "step.landmark-correspondence") == correspondence.Output!.ContentSha256
+                && Hash(graphReplay, "step.xyz-affine") == affine.Output!.ContentSha256
+                && Hash(graphReplay, "step.xyz-affine-apply") == applied.Output!.ContentSha256
+                && Hash(graphReplay, "step.regrid") == field.ContentSha256
+                && Hash(graphReplay, "step.thickness") == ordered.Output!.Measurements[0].Output.ContentSha256
+                && Hash(graphReplay, "step.warpage") == ordered.Output.Measurements[1].Output.ContentSha256,
+                string.Join(",", graphReplay.Steps
+                    .Where(item => item.StepId is "step.filter" or "step.landmark-correspondence" or "step.xyz-affine"
+                        or "step.xyz-affine-apply" or "step.regrid" or "step.thickness" or "step.warpage")
+                    .Select(item => $"{item.StepId}={item.OutputContentSha256}"))));
+
             var thicknessExpected = CalculateThickness(field, ThicknessRoi);
             var thicknessActual = ordered.Output.Measurements[0].Output.Result;
             var thicknessError = MaximumMetricError(thicknessActual,
@@ -181,9 +204,23 @@ internal static class SyntheticAffineInspectionPlateVerification
                 && reopened.Steps.Select(step => step.Id).SequenceEqual(finalDocument.Steps.Select(step => step.Id)),
                 $"schema={reopened.SchemaVersion};steps={reopened.Steps.Count};selections={reopened.Selections?.Count}"));
 
+            var coreChecks = checks.ToArray();
+            if (runArtifacts is { Requested: true })
+            {
+                RunRecordWriter.WriteOrderedGraph(
+                    runArtifacts,
+                    recipePath,
+                    finalDocument,
+                    c3dPath,
+                    graphReplay,
+                    reportPath,
+                    null);
+                VerifyRunRecordArtifacts(runArtifacts, finalDocument, graphReplay, checks);
+            }
+
             WriteGroundTruth(
                 package, source, corners, affine.Output, field,
-                thicknessExpected, warpageExpected, checks);
+                thicknessExpected, warpageExpected, coreChecks);
             WriteReadme(package);
         }
         catch (Exception exception)
@@ -649,6 +686,55 @@ internal static class SyntheticAffineInspectionPlateVerification
 
     private static double Distance(Vec3 a, Vec3 b) =>
         Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y) + (a.Z - b.Z) * (a.Z - b.Z));
+
+    private static string? Hash(ToolRecipeOrderedGraphExecutionResult result, string stepId) =>
+        result.Steps.Single(item => string.Equals(item.StepId, stepId, StringComparison.Ordinal)).OutputContentSha256;
+
+    private static void VerifyRunRecordArtifacts(
+        RunArtifactOptions options,
+        ToolRecipeDocument document,
+        ToolRecipeOrderedGraphExecutionResult execution,
+        ICollection<CheckResult> checks)
+    {
+        if (options.JsonPath is not null)
+        {
+            var record = JsonSerializer.Deserialize<InspectionRunRecord>(
+                File.ReadAllText(options.JsonPath),
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+                });
+            checks.Add(Check("schema 1.4 JSON preserves the complete general graph",
+                record is { SchemaVersion: "1.4", Step: null, Steps.Count: 27 }
+                && record.Steps.Select(step => step.Id).SequenceEqual(document.Steps.Select(step => step.Id))
+                && record.Steps.All(step => !string.IsNullOrWhiteSpace(step.OutputContentSha256))
+                && record.Status == execution.Status,
+                record is null
+                    ? "record=null"
+                    : $"schema={record.SchemaVersion};steps={record.Steps?.Count ?? 0};status={record.Status}"));
+        }
+        if (options.HtmlPath is not null)
+        {
+            var html = File.ReadAllText(options.HtmlPath);
+            checks.Add(Check("HTML exposes all ordered routes, elapsed time, hashes, metrics, and overlays",
+                html.Contains("27 ordered steps", StringComparison.Ordinal)
+                && document.Steps.All(step => html.Contains(step.Id, StringComparison.Ordinal))
+                && html.Contains("Output SHA-256", StringComparison.Ordinal)
+                && html.Contains("Overlays", StringComparison.Ordinal),
+                $"bytes={new FileInfo(options.HtmlPath).Length}"));
+        }
+        if (options.CsvPath is not null)
+        {
+            var csv = File.ReadAllText(options.CsvPath);
+            checks.Add(Check("CSV exposes every step including feature-only evidence rows",
+                csv.StartsWith("runId,recordedAtUtc,recipeIndex,stepId,toolId", StringComparison.Ordinal)
+                && document.Steps.All(step => csv.Contains(step.Id, StringComparison.Ordinal))
+                && csv.Contains("outputContentSha256", StringComparison.Ordinal)
+                && csv.Contains("overlayIds", StringComparison.Ordinal),
+                $"lines={File.ReadLines(options.CsvPath).Count()}"));
+        }
+    }
 
     private static bool Nearly(double actual, double expected, double tolerance) => Math.Abs(actual - expected) <= tolerance;
     private static string Format(Vec3 value) => $"{value.X:G17},{value.Y:G17},{value.Z:G17}";

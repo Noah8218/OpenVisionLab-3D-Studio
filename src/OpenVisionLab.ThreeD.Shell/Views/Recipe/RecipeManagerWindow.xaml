@@ -5,10 +5,10 @@
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Recipe Manager | OpenVisionLab 3D Studio"
-        Width="520"
-        Height="720"
-        MinWidth="420"
-        MinHeight="520"
+        Width="900"
+        Height="620"
+        MinWidth="760"
+        MinHeight="540"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"
@@ -25,8 +25,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="Recipe Manager"
-                                  StatusText="Recipe lifecycle" />
+                                  SubtitleText="{Binding Localization.RecipeCenter}"
+                                  StatusText="{Binding Localization.CurrentRecipe}" />
         <recipe:RecipeManagerView Grid.Row="1" />
     </Grid>
 </Window>

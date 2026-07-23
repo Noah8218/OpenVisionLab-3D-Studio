@@ -25,6 +25,8 @@
     <ProjectReference Include="..\OpenVisionLab.Logging\OpenVisionLab.Logging.csproj" />
     <ProjectReference Include="..\OpenVisionLab.Logging.Controls\OpenVisionLab.Logging.Controls.csproj" />
     <ProjectReference Include="..\OpenVisionLab.Localization\OpenVisionLab.Localization.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Wpf.MessageDialogs\OpenVisionLab.Wpf.MessageDialogs.csproj"
+                      Aliases="OvlMessageDialogs" />
   </ItemGroup>
 
   <ItemGroup>

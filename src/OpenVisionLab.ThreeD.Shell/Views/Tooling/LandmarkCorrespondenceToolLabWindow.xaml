@@ -2,10 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:i18n="clr-namespace:OpenVisionLab.ThreeD.Shell"
         xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:shellChrome="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:tooling="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Tooling"
-        Title="Landmark Correspondence Tool Lab | OpenVisionLab 3D Studio"
+        Title="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.WindowTitle, Korean='랜드마크 대응 툴 랩 | OpenVisionLab 3D Studio', English='Landmark Correspondence Tool Lab | OpenVisionLab 3D Studio'}"
         Width="1680"
         Height="940"
         MinWidth="1200"
@@ -29,8 +30,8 @@
         </Grid.RowDefinitions>
 
         <shell:StudioTitleBarView TitleText="OpenVisionLab 3D Studio"
-                                  SubtitleText="Landmark Correspondence Tool Lab"
-                                  StatusText="Teach 4 corner-anchor mappings / reference descriptor / no affine calculation" />
+                                  SubtitleText="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.Subtitle, Korean='랜드마크 대응 툴 랩', English='Landmark Correspondence Tool Lab'}"
+                                  StatusText="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.Status, Korean='코너 앵커 4개 대응 티칭 / 기준 설명자 / 어파인 계산 없음', English='Teach 4 corner-anchor mappings / reference descriptor / no affine calculation'}" />
 
         <Border Grid.Row="1"
                 Margin="16,16,16,0"
@@ -50,9 +51,9 @@
                                    Symbol="PointScan24" />
                     <StackPanel>
                         <TextBlock Style="{DynamicResource ThreeD.WindowHeaderTitleTextStyle}"
-                                   Text="Full-XYZ Landmark Correspondence" />
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.Title, Korean='전체 XYZ 랜드마크 대응', English='Full-XYZ Landmark Correspondence'}" />
                         <TextBlock Style="{DynamicResource ThreeD.WindowHeaderSubtitleTextStyle}"
-                                   Text="Teach exactly four current Published CornerAnchor mappings to a named reference frame. Preview only validates correspondence geometry; XYZ affine is a later explicit tool." />
+                                   Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.Detail, Korean='현재 게시된 CornerAnchor 네 개를 이름 있는 기준 프레임에 대응시킵니다. 미리보기는 대응 형상만 검증하며 XYZ 어파인은 이후의 명시적 도구입니다.', English='Teach exactly four current Published CornerAnchor mappings to a named reference frame. Preview only validates correspondence geometry; XYZ affine is a later explicit tool.'}" />
                     </StackPanel>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
@@ -87,7 +88,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" /><TextBlock FontWeight="SemiBold" Text=" | Source Frame / Four Published CornerAnchor Inputs" /></StackPanel>
+                                <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="TargetArrow24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Input}" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.SourceInputs, Korean=' | 원본 프레임 / 게시된 CornerAnchor 입력 4개', English=' | Source Frame / Four Published CornerAnchor Inputs'}" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceUpstreamSummary}" />
                         </StackPanel>
                     </Border>
@@ -100,35 +101,35 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                     <Border Padding="10,6" Background="{DynamicResource ThreeD.CommandBarBrush}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text=" | Reference-coordinate evidence" /></StackPanel>
+                                <StackPanel Orientation="Horizontal"><ui:SymbolIcon Width="16" Height="16" Margin="0,0,5,0" Symbol="Cube24" /><TextBlock FontWeight="SemiBold" Text="{Binding Localization.Output}" /><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.ReferenceEvidence, Korean=' | 기준 좌표 증거', English=' | Reference-coordinate evidence'}" /></StackPanel>
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceExecutionSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceEvidenceSummary}" />
                             <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding LandmarkCorrespondenceOutputHashSummary}" />
-                            <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="No nominal surface is fabricated here; this is the taught reference-coordinate set." />
+                                <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.NoFabricatedSurface, Korean='가상의 기준 면을 생성하지 않습니다. 티칭된 기준 좌표 집합만 표시합니다.', English='No nominal surface is fabricated here; this is the taught reference-coordinate set.'}" />
                         </StackPanel>
                     </Border>
                     <Grid Grid.Row="1" Margin="14">
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <UniformGrid Columns="2" Margin="0,0,0,8">
-                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="Reference frame" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceFrameId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Named reference coordinate frame" /></StackPanel>
-                            <StackPanel><TextBlock FontWeight="SemiBold" Text="Unit" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceUnit, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate unit" /></StackPanel>
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.ReferenceFrame, Korean='기준 프레임', English='Reference frame'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceFrameId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Named reference coordinate frame" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Unit, Korean='단위', English='Unit'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceUnit, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate unit" /></StackPanel>
                         </UniformGrid>
                         <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,8">
-                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="Provenance" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference coordinate provenance" /></StackPanel>
-                            <StackPanel><TextBlock FontWeight="SemiBold" Text="Revision" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate revision" /></StackPanel>
+                            <StackPanel Margin="0,0,8,0"><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Provenance, Korean='출처', English='Provenance'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceProvenance, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference coordinate provenance" /></StackPanel>
+                            <StackPanel><TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.Revision, Korean='리비전', English='Revision'}" /><TextBox Margin="0,4,0,0" Text="{Binding CorrespondenceReferenceRevision, UpdateSourceTrigger=PropertyChanged}" ToolTip="Reference-coordinate revision" /></StackPanel>
                         </UniformGrid>
                         <StackPanel Grid.Row="2" Margin="0,0,0,10">
-                            <TextBlock FontWeight="SemiBold" Text="Minimum normalized tetrahedron volume" />
+                            <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.MinimumTetrahedronVolume, Korean='최소 정규화 사면체 체적', English='Minimum normalized tetrahedron volume'}" />
                             <TextBox Margin="0,4,0,0" Width="180" HorizontalAlignment="Left" Text="{Binding CorrespondenceMinimumNormalizedTetrahedronVolume, UpdateSourceTrigger=PropertyChanged}" ToolTip="Strictly between 0 and 1; source and reference must both exceed it" />
                         </StackPanel>
                         <Border Grid.Row="3" Padding="10" Background="{DynamicResource ThreeD.PanelAlternateBrush}" BorderBrush="{DynamicResource ThreeD.DividerBrush}" BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                                <TextBlock FontWeight="SemiBold" Text="Taught mappings" />
+                                <TextBlock FontWeight="SemiBold" Text="{i18n:ThreeDText Key=ThreeD.ToolLab.TaughtMappings, Korean='티칭된 대응', English='Taught mappings'}" />
                                 <DataGrid Grid.Row="1" Margin="0,8,0,8" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" ItemsSource="{Binding SelectedCorrespondenceRows}" HeadersVisibility="Column" MinHeight="150">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Source anchor" Binding="{Binding SourceEntityId}" Width="*" />
-                                        <DataGridTextColumn Header="Reference" Binding="{Binding ReferenceLandmarkId}" Width="*" />
+                                    <DataGridTextColumn Header="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.SourceAnchor, Korean='원본 앵커', English='Source anchor'}" Binding="{Binding SourceEntityId}" Width="*" />
+                                    <DataGridTextColumn Header="{i18n:ThreeDText Key=ThreeD.ToolLab.Correspondence.Reference, Korean='기준점', English='Reference'}" Binding="{Binding ReferenceLandmarkId}" Width="*" />
                                         <DataGridTextColumn Header="X" Binding="{Binding ReferencePosition.X, StringFormat=F4}" Width="64" />
                                         <DataGridTextColumn Header="Y" Binding="{Binding ReferencePosition.Y, StringFormat=F4}" Width="64" />
                                         <DataGridTextColumn Header="Z" Binding="{Binding ReferencePosition.Z, StringFormat=F4}" Width="64" />

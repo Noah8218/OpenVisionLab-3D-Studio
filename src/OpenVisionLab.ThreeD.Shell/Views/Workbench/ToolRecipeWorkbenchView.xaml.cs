@@ -58,7 +58,11 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool IsBottomPaneAttached => DockWorkspace.IsBottomPaneAttached;
 
+    public bool IsCompactDockLayout => DockWorkspace.IsCompactLayout;
+
     public void ActivateSessionLogPane() => DockWorkspace.ActivateLinkedViewPane();
+
+    public void ActivateToolLibraryPane() => DockWorkspace.ActivateToolLibraryPane();
 
     public bool IsSessionLogPaneSelected => DockWorkspace.IsLinkedViewPaneSelected;
 
@@ -98,13 +102,32 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool IsRunRecordSelected => DockWorkspace.IsEvidencePaneSelected
                                         && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsRunRecordSelected: true };
 
+    public bool HasRunRecordHistoryControls =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView { HasRunRecordHistoryControls: true };
+
+    public void ActivateValidationSet()
+    {
+        DockWorkspace.ActivateEvidencePane();
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        {
+            review.ActivateValidationSet();
+        }
+    }
+
+    public bool IsValidationSetSelected => DockWorkspace.IsEvidencePaneSelected
+                                           && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsValidationSetSelected: true };
+
     public void ActivateOutputComparePane() => DockWorkspace.ActivateOutputComparePane();
 
     public bool IsOutputComparePaneSelected => DockWorkspace.IsOutputComparePaneSelected;
 
+    public bool HasUsableOutputCompareDockHeight => DockWorkspace.HasUsableOutputCompareDockHeight;
+
     public void ActivateDisplayedOutputsPane() => DockWorkspace.ActivateDisplayedOutputsPane();
 
     public bool IsDisplayedOutputsPaneSelected => DockWorkspace.IsDisplayedOutputsPaneSelected;
+
+    public bool HasStandardBottomPaneHeight => DockWorkspace.HasStandardBottomPaneHeight;
 
     public void ActivateProfilePane() => DockWorkspace.ActivateProfilePane();
 
@@ -123,7 +146,8 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool IsCorrespondenceEvidencePaneSelected => DockWorkspace.IsCorrespondenceEvidencePaneSelected;
 
     public bool HasAllDockContentHosts =>
-        DockWorkspace.DataLayersContent is not null
+        DockWorkspace.ToolLibraryContent is not null
+        && DockWorkspace.DataLayersContent is not null
         && DockWorkspace.ViewerContent is not null
         && DockWorkspace.ToolInspectorContent is not null
         && DockWorkspace.EvidenceContent is not null
@@ -145,6 +169,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         message = "The Step Parameters view is unavailable.";
         return false;
     }
+
+    private void OpenPipelineReview_Click(object sender, RoutedEventArgs args) =>
+        DockWorkspace.ActivateEvidencePane();
 
     private static void OnViewerContentChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {

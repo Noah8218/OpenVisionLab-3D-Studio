@@ -3,18 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:vm="clr-namespace:OpenVisionLab.ThreeD.Shell.ViewModels.Workbench"
-             AutomationProperties.AutomationId="ToolboxEntityExplorer">
+             AutomationProperties.AutomationId="RecipeFlowExplorer">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <CollectionViewSource x:Key="GroupedTools" Source="{Binding Tools}">
-            <CollectionViewSource.GroupDescriptions>
-                <PropertyGroupDescription PropertyName="Category" />
-            </CollectionViewSource.GroupDescriptions>
-        </CollectionViewSource>
     </UserControl.Resources>
-    <Border Background="{DynamicResource ThreeD.PanelBrush}"
-            TextElement.Foreground="{DynamicResource ThreeD.TextBrush}"
-            Padding="12">
+
+    <Border Padding="12"
+            Background="{DynamicResource ThreeD.PanelBrush}"
+            TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel>
@@ -23,25 +19,25 @@
                                    Height="20"
                                    Margin="0,0,7,0"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                   Symbol="BoxToolbox24" />
+                                   Symbol="Branch24" />
                     <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                               Text="{Binding Localization.ToolboxAndEntities}" />
+                               Text="{Binding Localization.RecipeFlow}" />
                 </StackPanel>
                 <TextBlock Margin="0,4,0,0"
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            TextWrapping="Wrap"
-                           Text="{Binding Localization.NavigatorHint}" />
-                <Border Margin="0,8,0,0"
-                        Padding="8"
-                        ToolTip="{Binding SourceReadinessSummary}"
-                        AutomationProperties.Name="{Binding SourceReadinessSummary, StringFormat=Recipe source state: {0}}">
+                           Text="{Binding Localization.RecipeFlowHint}" />
+
+                <Border Margin="0,9,0,0"
+                        Padding="9"
+                        ToolTip="{Binding LocalizedSourceReadinessSummary}">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
                             <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
                             <Setter Property="BorderThickness" Value="1" />
-                            <Setter Property="CornerRadius" Value="3" />
+                            <Setter Property="CornerRadius" Value="4" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
                                     <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
@@ -50,41 +46,51 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Width="16"
-                                       Height="16"
-                                       Margin="0,1,6,0">
-                            <ui:SymbolIcon.Style>
-                                <Style TargetType="ui:SymbolIcon">
-                                    <Setter Property="Symbol" Value="Warning24" />
-                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
-                                            <Setter Property="Symbol" Value="CheckmarkCircle24" />
-                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ui:SymbolIcon.Style>
-                        </ui:SymbolIcon>
-                        <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Width="17"
+                                       Height="17"
+                                       Margin="0,1,7,0"
+                                       Foreground="{DynamicResource ThreeD.PassBrush}"
+                                       Symbol="CheckmarkCircle24" />
+                        <StackPanel Grid.Column="1">
                             <TextBlock FontSize="10"
                                        FontWeight="SemiBold"
                                        Text="{Binding Localization.RecipeSource}" />
-                            <TextBlock Margin="0,1,0,0"
-                                       FontSize="10"
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="9.5"
                                        Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                       Text="{Binding SourceReadinessSummary}" />
+                                       Text="{Binding LocalizedSourceReadinessSummary}"
+                                       TextWrapping="Wrap" />
+                            <ui:Button Margin="0,7,0,0"
+                                       HorizontalAlignment="Left"
+                                       Content="{Binding Localization.LoadInputActionTitle}"
+                                       Icon="{ui:SymbolIcon FolderOpen24}"
+                                       Command="{Binding LoadC3DSourceCommand}">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
                 </Border>
 
                 <Border Margin="0,8,0,0"
-                        Padding="8"
+                        Padding="9"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                         BorderBrush="{DynamicResource ThreeD.InfoBrush}"
                         BorderThickness="1"
-                        CornerRadius="3">
+                        CornerRadius="4">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -96,267 +102,75 @@
                         </Style>
                     </Border.Style>
                     <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="16"
-                                               Height="16"
-                                               Margin="0,0,5,0"
-                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                               Symbol="Branch24" />
-                                <TextBlock FontSize="10"
-                                           FontWeight="SemiBold"
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Width="16"
+                                           Height="16"
+                                           Margin="0,1,6,0"
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                           Text="{Binding Localization.SelectedRoute}" />
-                            </StackPanel>
-                            <Border Grid.Column="1"
-                                    DataContext="{Binding SelectedPipelineStep}"
-                                    Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
-                                <TextBlock MaxWidth="116"
-                                           FontSize="9.5"
-                                           FontWeight="SemiBold"
-                                           Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
-                                           Text="{Binding State}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Border>
-                        </Grid>
-                        <TextBlock Margin="0,3,0,0"
-                                   FontSize="10.5"
+                                           Symbol="ArrowFlowUpRight24" />
+                            <TextBlock FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                       Text="{Binding Localization.SelectedRoute}" />
+                        </StackPanel>
+                        <TextBlock Margin="22,4,0,0"
                                    FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ThreeD.TextBrush}"
                                    Text="{Binding SelectedPipelineStepTitle}"
                                    TextTrimming="CharacterEllipsis" />
-                        <Grid Margin="0,5,0,0">
+                        <Grid Margin="22,6,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.Input}" />
-                                <TextBlock FontSize="10"
-                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                <TextBlock FontSize="9.5"
                                            Text="{Binding SelectedRouteInputIds}"
-                                           ToolTip="{Binding SelectedRouteInputIds}"
-                                           AutomationProperties.Name="{Binding SelectedRouteInputIds}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                             <ui:SymbolIcon Grid.Column="1"
                                            Width="14"
                                            Height="14"
-                                           Margin="7,9"
+                                           Margin="7,7"
                                            Foreground="{DynamicResource ThreeD.InfoBrush}"
                                            Symbol="ArrowRight24" />
                             <StackPanel Grid.Column="2">
-                                <TextBlock FontSize="9.5"
+                                <TextBlock FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.Output}" />
-                                <TextBlock FontSize="10"
+                                <TextBlock FontSize="9.5"
                                            Foreground="{DynamicResource ThreeD.AccentBrush}"
                                            Text="{Binding SelectedRouteOutputId}"
-                                           ToolTip="{Binding SelectedRouteOutputId}"
-                                           AutomationProperties.Name="{Binding SelectedRouteOutputId}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Grid>
-                        <ui:Button Margin="0,7,0,0"
+                        <ui:Button Margin="22,7,0,0"
                                    HorizontalAlignment="Left"
-                                   Padding="8,3"
                                    Content="{Binding Localization.OpenSelectedToolLab}"
                                    Icon="{ui:SymbolIcon WrenchScrewdriver24}"
                                    Command="{Binding OpenSelectedToolLabCommand}"
-                                   ToolTip="{Binding Localization.OpenSelectedToolLab}"
-                                   Visibility="{Binding IsSelectedToolLabAvailable, Converter={StaticResource BoolToVisibilityConverter}}"
-                                   AutomationProperties.AutomationId="OpenSelectedToolLabButton"
-                                   AutomationProperties.Name="Open selected Tool Lab" />
-                    </StackPanel>
-                </Border>
-
-                <Border Margin="0,8,0,0"
-                        Padding="8"
-                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="1"
-                        CornerRadius="3"
-                        AutomationProperties.Name="Compatible next-tool catalog">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Width="16"
-                                               Height="16"
-                                               Margin="0,1,5,0"
-                                               Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                               Symbol="LightbulbFilament24" />
-                                <TextBlock FontSize="10.5"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           Text="{Binding Localization.CompatibleToolCatalogTitle}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1"
-                                       MaxWidth="128"
-                                       FontSize="9.5"
-                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                       Text="{Binding CompatibleToolCatalogSummary}"
-                                       TextTrimming="CharacterEllipsis" />
-                        </Grid>
-                        <TextBlock Margin="0,3,0,0"
-                                   FontSize="9.5"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding Localization.CompatibleToolCatalogDetail}" />
-                        <ScrollViewer Margin="0,5,0,0"
-                                      MaxHeight="42"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding CompatibleToolSuggestions}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,2,0,0"
-                                                Padding="3"
-                                                BorderThickness="1"
-                                                CornerRadius="3"
-                                                ToolTip="{Binding Detail}">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
-                                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                            <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
-                                                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <Button Padding="3,1"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Command="{Binding DataContext.SelectCompatibleToolCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        AutomationProperties.Name="{Binding AccessibleName}">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="Auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <ui:SymbolIcon Width="15"
-                                                                       Height="15"
-                                                                       Margin="0,1,6,0"
-                                                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
-                                                                       Symbol="FlowchartCircle24" />
-                                                        <StackPanel Grid.Column="1">
-                                                            <TextBlock FontSize="10"
-                                                                       FontWeight="SemiBold"
-                                                                       Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                                       Text="{Binding Title}"
-                                                                       TextTrimming="CharacterEllipsis" />
-                                                            <TextBlock FontSize="9"
-                                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                                       Text="{Binding Detail}"
-                                                                       TextTrimming="CharacterEllipsis" />
-                                                        </StackPanel>
-                                                        <TextBlock Grid.Column="2"
-                                                                   Margin="5,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   FontSize="9"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource ThreeD.PassBrush}"
-                                                                   Text="{Binding State}" />
-                                                    </Grid>
-                                                </Button>
-                                                <ui:Button Grid.Column="1"
-                                                           Margin="4,0,0,0"
-                                                           Padding="6,2"
-                                                           VerticalAlignment="Center"
-                                                           Content="{Binding DataContext.Localization.AddCompatibleTool, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           Command="{Binding DataContext.AddCompatibleToolCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding}"
-                                                           ToolTip="{Binding DataContext.Localization.AddCompatibleToolToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           AutomationProperties.Name="{Binding Title, StringFormat=Add compatible taught step: {0}}" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <Border Margin="0,5,0,0"
-                                Padding="6,4"
-                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
-                                BorderBrush="{DynamicResource ThreeD.WarningBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3"
-                                ToolTip="{Binding CompatibleToolBlockerDetail}"
-                                AutomationProperties.Name="{Binding CompatibleToolBlockerDetail}">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasCompatibleToolBlocker}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <ui:SymbolIcon Width="14"
-                                               Height="14"
-                                               Margin="0,1,5,0"
-                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                               Symbol="Info24" />
-                                <TextBlock Grid.Column="1"
-                                           Margin="0,0,4,0"
-                                           FontSize="9"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.WarningBrush}"
-                                           Text="{Binding Localization.CompatibleToolBlockerLabel}" />
-                                <TextBlock Grid.Column="2"
-                                           FontSize="9"
-                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                           Text="{Binding CompatibleToolBlockerDetail}"
-                                           TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                        </Border>
+                                   Visibility="{Binding IsSelectedToolLabAvailable, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </StackPanel>
                 </Border>
 
                 <Expander Margin="0,10,0,0"
                           Header="{Binding Localization.RecipeNavigator}"
-                          IsExpanded="True"
-                          AutomationProperties.Name="{Binding Localization.RecipeNavigator}">
+                          IsExpanded="True">
                     <StackPanel Margin="0,6,0,0">
-                        <TextBlock FontSize="10"
+                        <TextBlock FontSize="9.5"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding ArtifactRegistrySummary}" />
                         <TreeView Margin="0,6,0,0"
-                                  MaxHeight="330"
+                                  MaxHeight="390"
                                   Background="Transparent"
                                   BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                   BorderThickness="1"
                                   ItemsSource="{Binding NavigatorRoots}"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                  AutomationProperties.Name="Typed recipe input output navigator">
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="TreeViewItem">
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -365,212 +179,83 @@
                             <TreeView.Resources>
                                 <HierarchicalDataTemplate DataType="{x:Type vm:ToolWorkbenchNavigatorItem}"
                                                           ItemsSource="{Binding Children}">
-                                    <Border Margin="1"
-                                            Padding="3"
-                                            CornerRadius="3">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="Transparent" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <Button Padding="2"
-                                                HorizontalContentAlignment="Stretch"
-                                                Background="Transparent"
-                                                BorderThickness="0"
-                                                Command="{Binding DataContext.SelectNavigatorItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}"
-                                                ToolTip="{Binding Detail}"
-                                                AutomationProperties.Name="{Binding AccessibleName}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <ui:SymbolIcon Grid.Column="0"
-                                                               Width="16"
-                                                               Height="16"
-                                                               Margin="0,1,6,0"
-                                                               VerticalAlignment="Top"
-                                                               Foreground="{DynamicResource ThreeD.AccentBrush}">
-                                                    <ui:SymbolIcon.Style>
-                                                        <Style TargetType="ui:SymbolIcon">
-                                                            <Setter Property="Symbol" Value="CubeTree24" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Source"><Setter Property="Symbol" Value="DataBarVertical24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Reference"><Setter Property="Symbol" Value="FolderLink24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Pipeline"><Setter Property="Symbol" Value="Branch24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Step"><Setter Property="Symbol" Value="FlowchartCircle24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Input"><Setter Property="Symbol" Value="LinkSquare24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="FilteredHeightField"><Setter Property="Symbol" Value="DataFunnel24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="EdgePointSet"><Setter Property="Symbol" Value="PointScan24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="Selection"><Setter Property="Symbol" Value="TargetArrow24" /></DataTrigger>
-                                                                <DataTrigger Binding="{Binding NodeKind}" Value="DeclaredOutput"><Setter Property="Symbol" Value="ArrowFlowUpRight24" /></DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ui:SymbolIcon.Style>
-                                                </ui:SymbolIcon>
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock FontSize="10.5"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                               Text="{Binding Title}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Margin="0,1,0,0"
-                                                               FontSize="9.5"
-                                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                               Text="{Binding Detail}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </Button>
-                                    </Border>
+                                    <Button Padding="3"
+                                            HorizontalContentAlignment="Stretch"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Command="{Binding DataContext.SelectNavigatorItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="{Binding Detail}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <ui:SymbolIcon Width="15"
+                                                           Height="15"
+                                                           Margin="0,1,6,0"
+                                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                                           Symbol="FlowchartCircle24" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Title}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock FontSize="9"
+                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                           Text="{Binding Detail}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
                                 </HierarchicalDataTemplate>
                             </TreeView.Resources>
                         </TreeView>
                     </StackPanel>
                 </Expander>
 
-                <Expander Margin="0,10,0,0"
-                          Header="{Binding Localization.AddInspectionStep}"
+                <Expander Margin="0,9,0,0"
+                          Header="{Binding Localization.JourneyInput}"
                           IsExpanded="False">
                     <StackPanel Margin="0,6,0,0">
-                        <TextBlock FontSize="10.5"
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{Binding Source.Name}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding Localization.ToolboxSequenceHint}" />
-                        <ListBox MaxHeight="270"
-                                 Margin="0,7,0,0"
-                                 Background="Transparent"
-                                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                 BorderThickness="1"
-                                 ItemsSource="{Binding Source={StaticResource GroupedTools}}"
-                                 SelectedItem="{Binding SelectedTool, Mode=TwoWay}"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
-                            <ListBox.GroupStyle>
-                                <GroupStyle>
-                                    <GroupStyle.HeaderTemplate>
-                                        <DataTemplate>
-                                            <Border Padding="8,5"
-                                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                                    BorderThickness="0,0,0,1">
-                                                <TextBlock FontSize="10.5"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                                           Text="{Binding Name}" />
-                                            </Border>
-                                        </DataTemplate>
-                                    </GroupStyle.HeaderTemplate>
-                                </GroupStyle>
-                            </ListBox.GroupStyle>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="2"
-                                            Padding="7,5"
-                                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="3">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                           Text="{Binding Name}" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1"
-                                                       Margin="8,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       FontSize="10"
-                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                       Text="{Binding OutputContract}"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                                   Text="{Binding Source.Path}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Source.Path}" />
                         <ui:Button Margin="0,7,0,0"
                                    HorizontalAlignment="Left"
-                                   Content="Add selected step"
-                                   Icon="{ui:SymbolIcon AddCircle24}"
-                                   Command="{Binding AddSelectedToolCommand}"
-                                   AutomationProperties.Name="Add selected inspection step" />
-                        <TextBlock Margin="0,4,0,0"
-                                   FontSize="10"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{Binding SelectedToolTitle}"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                </Expander>
-
-                <Expander Margin="0,10,0,0"
-                          Header="Input data"
-                          IsExpanded="False">
-                    <StackPanel Margin="0,6,0,0">
-                        <Border Padding="8"
-                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                BorderThickness="1"
-                                CornerRadius="3">
-                            <StackPanel>
-                                <TextBlock FontWeight="SemiBold"
-                                           Foreground="{DynamicResource ThreeD.TextBrush}"
-                                           Text="{Binding Source.Name}" />
-                                <TextBlock Margin="0,3,0,0"
-                                           FontSize="10.5"
-                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{Binding Source.Path, StringFormat=Path: {0}}"
-                                           TextTrimming="CharacterEllipsis" />
-                                <ui:Button Margin="0,8,0,0"
-                                           HorizontalAlignment="Left"
-                                           Content="Load C3D..."
-                                           Icon="{ui:SymbolIcon FolderOpen24}"
-                                           Command="{Binding LoadC3DSourceCommand}"
-                                           AutomationProperties.Name="Load C3D source" />
-                            </StackPanel>
-                        </Border>
-                        <Grid Margin="0,6,0,0">
+                                   Content="{Binding Localization.LoadInputActionTitle}"
+                                   Icon="{ui:SymbolIcon FolderOpen24}"
+                                   Command="{Binding LoadC3DSourceCommand}" />
+                        <Grid Margin="0,7,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,4,0">
-                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                           Margin="0,0,0,3"
-                                           Text="Unit" />
+                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Unit" />
                                 <TextBox Text="{Binding Source.Unit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1"
-                                        Margin="4,0,0,0">
-                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                           Margin="0,0,0,3"
-                                           Text="Frame" />
+                            <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Frame" />
                                 <TextBox Text="{Binding Source.FrameId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Expander>
 
-                <Expander Margin="0,8,0,0"
+                <Expander Margin="0,9,0,0"
                           Header="References &amp; frame"
                           IsExpanded="False">
                     <StackPanel Margin="0,6,0,0">
-                        <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Margin="0,0,0,3"
-                                   Text="Source entity ID" />
+                        <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Source entity ID" />
                         <TextBox Text="{Binding Source.Id, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
-                                   Text="Declared reference" />
+                        <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Declared reference" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -589,15 +274,13 @@
                                      ToolTip="Reference kind"
                                      Text="{Binding NewReferenceKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             <ui:Button Margin="5,0,0,0"
-                                       Content="Add"
+                                       Content="{Binding Localization.AddCompatibleTool}"
                                        Icon="{ui:SymbolIcon AddCircle24}"
-                                       Command="{Binding AddReferenceCommand}"
-                                       AutomationProperties.Name="Add declared reference" />
+                                       Command="{Binding AddReferenceCommand}" />
                             <ui:Button Margin="5,0,0,0"
-                                       Content="Remove"
+                                       Content="{Binding Localization.Remove}"
                                        Icon="{ui:SymbolIcon DeleteDismiss24}"
-                                       Command="{Binding RemoveSelectedReferenceCommand}"
-                                       AutomationProperties.Name="Remove selected reference" />
+                                       Command="{Binding RemoveSelectedReferenceCommand}" />
                         </WrapPanel>
                         <ListBox Margin="0,5,0,0"
                                  MaxHeight="84"
@@ -608,9 +291,8 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="4,2">
-                                        <TextBlock FontWeight="SemiBold"
-                                                   Text="{Binding Id}" />
-                                        <TextBlock FontSize="10"
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding Id}" />
+                                        <TextBlock FontSize="9.5"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding Kind}" />
                                     </StackPanel>
@@ -619,7 +301,6 @@
                         </ListBox>
                     </StackPanel>
                 </Expander>
-
             </StackPanel>
         </ScrollViewer>
     </Border>

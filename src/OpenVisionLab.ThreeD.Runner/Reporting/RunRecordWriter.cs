@@ -132,8 +132,62 @@ internal static class RunRecordWriter
         WriteOutputs(options, record);
     }
 
-    private static InspectionRunStepResult ToStepResult(int recipeIndex, ToolRecipeStep step, ToolResult result) =>
-        new(
+    public static void WriteOrderedGraph(
+        RunArtifactOptions options,
+        string recipePath,
+        ToolRecipeDocument document,
+        string sourcePath,
+        ToolRecipeOrderedGraphExecutionResult execution,
+        string runnerReportPath,
+        string? viewerContractPath)
+    {
+        if (!options.Requested) return;
+
+        var recordedAt = DateTimeOffset.UtcNow;
+        var recipeHash = HashFile(recipePath);
+        var sourceHash = HashFile(sourcePath);
+        var steps = execution.Steps.Select(step =>
+            ToStepResult(
+                step.Order - 1,
+                document.Steps[step.Order - 1],
+                step.Result,
+                step.OutputContentSha256)).ToArray();
+        var metrics = steps.SelectMany(step => step.Metrics).ToArray();
+        var overlays = steps.SelectMany(step => step.Overlays).ToArray();
+        var record = new InspectionRunRecord(
+            "1.4",
+            $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
+            recordedAt,
+            new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
+            new InspectionRunSource(document.Source.Id, Path.GetFullPath(sourcePath), sourceHash, new FileInfo(sourcePath).Length, document.Source.Unit),
+            "Ordered Tool Recipe Replay",
+            execution.Status,
+            execution.Message,
+            execution.Duration.TotalMilliseconds,
+            metrics,
+            overlays,
+            viewerContractPath is null ? "NotCompared" : "Matched",
+            new InspectionRunArtifacts(
+                Path.GetFullPath(runnerReportPath),
+                FullOptionalPath(viewerContractPath),
+                FullOptionalPath(options.ViewerScreenshotPath),
+                FullOptionalPath(options.JsonPath),
+                FullOptionalPath(options.HtmlPath),
+                FullOptionalPath(options.CsvPath)))
+        {
+            ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
+            Steps = steps
+        };
+
+        WriteOutputs(options, record);
+    }
+
+    private static InspectionRunStepResult ToStepResult(
+        int recipeIndex,
+        ToolRecipeStep step,
+        ToolResult result,
+        string? outputContentSha256 = null) =>
+        new InspectionRunStepResult(
             recipeIndex,
             step.Id,
             step.ToolId,
@@ -144,7 +198,10 @@ internal static class RunRecordWriter
             result.Message,
             result.Elapsed.TotalMilliseconds,
             ToMetrics(result.Metrics),
-            ToOverlays(result.Overlays));
+            ToOverlays(result.Overlays))
+        {
+            OutputContentSha256 = outputContentSha256
+        };
 
     private static InspectionRunMetric[] ToMetrics(IEnumerable<Metric> metrics) =>
         metrics.Select(metric => new InspectionRunMetric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status)).ToArray();
@@ -170,12 +227,14 @@ internal static class RunRecordWriter
         EnsureDirectory(path);
         var hasSteps = record.Steps is { Count: > 0 };
         var rows = hasSteps
-            ? string.Join(Environment.NewLine, record.Steps!.SelectMany(step => step.Metrics.Select(metric =>
-                $"<tr><td>{step.RecipeIndex + 1}</td><td>{Encode(step.Id)}</td><td>{Encode(step.ToolName)}</td><td class=\"{step.Status}\">{step.Status}</td><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>")))
+            ? string.Join(Environment.NewLine, record.Steps!.SelectMany(step =>
+                step.Metrics.Count == 0
+                    ? [FormatHtmlStepRow(step, null)]
+                    : step.Metrics.Select(metric => FormatHtmlStepRow(step, metric))))
             : string.Join(Environment.NewLine, record.Metrics.Select(metric =>
                 $"<tr><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>"));
         var tableHeader = hasSteps
-            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Step status</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th></tr>"
+            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
         var html = $$"""
         <!doctype html>
@@ -251,8 +310,19 @@ internal static class RunRecordWriter
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch" };
-        lines.AddRange(record.Steps!.SelectMany(step => step.Metrics.Select(metric => string.Join(',',
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch" };
+        lines.AddRange(record.Steps!.SelectMany(step =>
+            step.Metrics.Count == 0
+                ? [FormatMultiStepCsvRow(record, step, null)]
+                : step.Metrics.Select(metric => FormatMultiStepCsvRow(record, step, metric))));
+        File.WriteAllLines(path, lines, new UTF8Encoding(false));
+    }
+
+    private static string FormatMultiStepCsvRow(
+        InspectionRunRecord record,
+        InspectionRunStepResult step,
+        InspectionRunMetric? metric) =>
+        string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
             Csv(step.RecipeIndex.ToString(CultureInfo.InvariantCulture)),
@@ -262,16 +332,28 @@ internal static class RunRecordWriter
             Csv(FormatIds(step.InputEntityIds)),
             Csv(step.OutputEntityId),
             Csv(step.Status.ToString()),
-            Csv(metric.Name),
-            Csv(metric.Kind.ToString()),
-            Csv(Format(metric.Value)),
-            Csv(metric.Unit),
-            Csv(metric.Status?.ToString() ?? string.Empty),
+            Csv(Format(step.ElapsedMilliseconds)),
+            Csv(step.OutputContentSha256 ?? string.Empty),
+            Csv(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray())),
+            Csv(metric?.Name ?? string.Empty),
+            Csv(metric?.Kind.ToString() ?? string.Empty),
+            Csv(metric is null ? string.Empty : Format(metric.Value)),
+            Csv(metric?.Unit ?? string.Empty),
+            Csv(metric?.Status?.ToString() ?? string.Empty),
             Csv(record.Recipe.Sha256),
             Csv(record.Source.Sha256),
-            Csv(record.ViewerRunnerMatchState)))));
-        File.WriteAllLines(path, lines, new UTF8Encoding(false));
-    }
+            Csv(record.ViewerRunnerMatchState));
+
+    private static string FormatHtmlStepRow(
+        InspectionRunStepResult step,
+        InspectionRunMetric? metric) =>
+        $"<tr><td>{step.RecipeIndex + 1}</td><td>{Encode(step.Id)}</td><td>{Encode(step.ToolName)}</td>"
+        + $"<td>{Encode($"{FormatIds(step.InputEntityIds)} -> {step.OutputEntityId}")}</td>"
+        + $"<td class=\"{step.Status}\">{step.Status}</td><td>{Format(step.ElapsedMilliseconds)}</td>"
+        + $"<td>{Encode(step.OutputContentSha256 ?? string.Empty)}</td><td>{Encode(metric?.Name ?? string.Empty)}</td>"
+        + $"<td>{Encode(metric?.Kind.ToString() ?? string.Empty)}</td><td>{(metric is null ? string.Empty : Format(metric.Value))}</td>"
+        + $"<td>{Encode(metric?.Unit ?? string.Empty)}</td><td>{Encode(metric?.Status?.ToString() ?? string.Empty)}</td>"
+        + $"<td>{Encode(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray()))}</td></tr>";
 
     private static InspectionRunEnvironment CreateExecutionEnvironment(string recipePath)
     {

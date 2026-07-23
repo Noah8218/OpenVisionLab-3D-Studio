@@ -15,8 +15,19 @@
                     <avalonDock:LayoutPanel x:Name="workbenchPane"
                                         Orientation="Horizontal"
                                         DockHeight="2.35*">
+                        <avalonDock:LayoutAnchorablePane x:Name="toolLibraryPane"
+                                                          DockWidth="0.68*">
+                            <avalonDock:LayoutAnchorable x:Name="toolLibraryAnchorable"
+                                                         Title="{Binding ToolLibraryTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
+                                                         ContentId="tool-library"
+                                                         CanClose="False"
+                                                         CanFloat="True"
+                                                         CanHide="False">
+                                <ContentPresenter Content="{Binding ToolLibraryContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}" />
+                            </avalonDock:LayoutAnchorable>
+                        </avalonDock:LayoutAnchorablePane>
                         <avalonDock:LayoutAnchorablePane x:Name="dataLayersPane"
-                                                          DockWidth="0.82*">
+                                                           DockWidth="0.80*">
                             <avalonDock:LayoutAnchorable x:Name="dataLayersAnchorable"
                                                          Title="{Binding DataLayersTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
                                                          ContentId="data-layers"
@@ -27,7 +38,7 @@
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
                         <avalonDock:LayoutAnchorablePane x:Name="primaryPane"
-                                                          DockWidth="2.45*">
+                                                           DockWidth="2.60*">
                             <avalonDock:LayoutAnchorable x:Name="viewerAnchorable"
                                                          Title="{Binding ViewerTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
                                                          ContentId="three-d-viewer"

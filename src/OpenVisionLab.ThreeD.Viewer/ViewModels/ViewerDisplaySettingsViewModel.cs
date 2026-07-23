@@ -163,6 +163,20 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             surfaceGeometryAvailable ? ViewerGeometryStyle.Wireframe : ViewerGeometryStyle.Points,
             ViewerColorMap.Height);
 
+    internal void ResetC3DHeightGridGeometryStyle(bool surfaceGeometryAvailable = true)
+    {
+        var defaultStyle = surfaceGeometryAvailable
+            ? ViewerGeometryStyle.Wireframe
+            : ViewerGeometryStyle.Points;
+        if (SetField(ref selectedGeometryStyle, defaultStyle, nameof(SelectedGeometryStyle)))
+        {
+            OnPropertyChanged(nameof(EffectiveGeometryStyle));
+            OnPropertyChanged(nameof(EffectiveSummary));
+            OnPropertyChanged(nameof(EffectiveSettings));
+            RenderSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     internal void ConfigureImportedMesh(bool sourceColorAvailable) =>
         Configure(
             ViewerDisplaySourceKind.ImportedTriangleMesh,

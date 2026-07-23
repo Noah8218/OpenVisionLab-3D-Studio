@@ -116,6 +116,16 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int pointerInputMouseMoveCount;
     private int pointerInputMouseUpCount;
     private int pointerInputMouseWheelCount;
+    private int pointerInputMouseMoveTimingCount;
+    private double pointerInputMouseMoveTotalMilliseconds;
+    private double pointerInputMouseMoveMaximumMilliseconds;
+    private long pointerInputLastMouseMoveTimestamp;
+    private int pointerInputNextFrameTimingCount;
+    private double pointerInputNextFrameTotalMilliseconds;
+    private double pointerInputNextFrameMaximumMilliseconds;
+    private int pointerInputScheduledMouseMoveRenderCount;
+    private int pointerInputImmediateMouseMoveRenderCount;
+    private bool isHandlingPointerMouseMove;
     private PointerInputRegressionResult? pointerInputRegressionResult;
     private string? smokePickTarget;
     private string? smokeMeasureMode;
@@ -150,6 +160,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private int performanceDrawCount;
     private double accumulatedFrameIntervalMilliseconds;
     private double accumulatedDrawMilliseconds;
+    private int c3dDisplayListBuildCount;
+    private double lastC3DDisplayListBuildMilliseconds;
     private Point lastMousePosition;
 
     private readonly record struct CameraSnapshot(
@@ -186,6 +198,19 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         int MouseMoveCount,
         int MouseUpCount,
         int MouseWheelCount,
+        int MouseMoveTimingCount,
+        double AverageMouseMoveMilliseconds,
+        double MaximumMouseMoveMilliseconds,
+        int NextFrameTimingCount,
+        double AverageNextFrameMilliseconds,
+        double MaximumNextFrameMilliseconds,
+        int ScheduledMouseMoveRenderCount,
+        int ImmediateMouseMoveRenderCount,
+        bool InteractiveRenderPerformancePassed,
+        bool C3DSceneActive,
+        int C3DRenderedPointCount,
+        int C3DDisplayListBuildCount,
+        double LastC3DDisplayListBuildMilliseconds,
         double ViewportWidth,
         double ViewportHeight,
         CameraSnapshot InitialCamera,
@@ -199,6 +224,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         string Failure);
 
     public OpenVisionThreeDViewerControl()
+        : this(loadDefaultSamples: true)
+    {
+    }
+
+    public OpenVisionThreeDViewerControl(bool loadDefaultSamples)
     {
         InitializeComponent();
         UpdateSidePanelsVisibility();
@@ -227,9 +257,9 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         SubscribeViewModelEvents();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        c3dSample = LoadDefaultC3DSample();
-        importedMesh = LoadDefaultGlbSample();
-        lazSample = LoadDefaultLazSample();
+        c3dSample = loadDefaultSamples ? LoadDefaultC3DSample() : null;
+        importedMesh = loadDefaultSamples ? LoadDefaultGlbSample() : null;
+        lazSample = loadDefaultSamples ? LoadDefaultLazSample() : null;
         ConfigureC3DHeightDeviationRule();
         viewModel.PointCloudPointCount = generatedPointCloud.Length.ToString("N0", CultureInfo.InvariantCulture);
         SetC3DSampleStatus();

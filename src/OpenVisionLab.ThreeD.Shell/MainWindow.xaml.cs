@@ -1,3 +1,5 @@
+extern alias OvlMessageDialogs;
+
 using Microsoft.Win32;
 using OpenVisionLab;
 using OpenVisionLab.Logging;
@@ -11,18 +13,25 @@ using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Recipe;
 using OpenVisionLab.ThreeD.Shell.Views.Tooling;
+using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
+using WpfMessageDialogKind = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogKind;
+using WpfMessageDialogOptions = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogOptions;
+using WpfMessageDialogResult = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogResult;
+using WpfMessageDialogWindow = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogWindow;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
 public partial class MainWindow : Window
 {
-    private readonly OpenVisionThreeDViewerControl _viewer = new();
+    private readonly OpenVisionThreeDViewerControl _viewer;
     private readonly ShellMainWindowViewModel _viewModel;
     private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
     private readonly EventHandler _profileViewRequestedHandler;
@@ -33,12 +42,16 @@ public partial class MainWindow : Window
     private readonly EventHandler _publishInspectionResultRequestedHandler;
     private readonly EventHandler _calibrationLoadStudyRequestedHandler;
     private readonly EventHandler<EvidenceArtifactOpenRequestEventArgs> _openEvidenceArtifactRequestedHandler;
+    private readonly EventHandler _openRunRecordRequestedHandler;
+    private readonly EventHandler _exportRunRecordRequestedHandler;
     private readonly EventHandler _workbenchNewTeachingRecipeRequestedHandler;
     private readonly EventHandler _workbenchSaveTeachingRecipeRequestedHandler;
     private readonly EventHandler _workbenchSaveTeachingRecipeAsRequestedHandler;
+    private readonly EventHandler _workbenchOpenToolLibraryRequestedHandler;
     private readonly EventHandler _workbenchOpenTeachingRecipeRequestedHandler;
     private readonly EventHandler<ToolWorkbenchRecipePathRequestEventArgs> _workbenchOpenRecentTeachingRecipeRequestedHandler;
     private readonly EventHandler _workbenchLoadC3DSourceRequestedHandler;
+    private readonly EventHandler _workbenchCancelC3DSourceLoadRequestedHandler;
     private readonly EventHandler<ToolWorkbenchTeachingCaptureRequestEventArgs> _workbenchBeginTeachingCaptureRequestedHandler;
     private readonly EventHandler _workbenchUndoTeachingCaptureRequestedHandler;
     private readonly EventHandler _workbenchCancelTeachingCaptureRequestedHandler;
@@ -75,6 +88,7 @@ public partial class MainWindow : Window
     private XYZAffineSolveToolLabWindow? xyzAffineSolveToolLabWindow;
     private XYZAffineApplyToolLabWindow? xyzAffineApplyToolLabWindow;
     private RegridHeightMapToolLabWindow? regridHeightMapToolLabWindow;
+    private CancellationTokenSource? c3dSourceLoadCancellation;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     public MainWindow()
@@ -82,6 +96,7 @@ public partial class MainWindow : Window
         OpenVisionLanguageService.Load();
         ApplyCommandLineLanguage();
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio starting.");
+        _viewer = new OpenVisionThreeDViewerControl(loadDefaultSamples: !ShouldStartWithEmptyRecipeInput());
         InitializeComponent();
         _viewModel = new ShellMainWindowViewModel(
             GetCommandLineValue("--recipe-comparison-contract"),
@@ -97,7 +112,14 @@ public partial class MainWindow : Window
             advancedHeightProfileView.DataContext = _viewer.ViewModel;
         }
         OVLog.Write(LogCategory.UI, LogLevel.Info, "Tool Workbench is the default Shell workspace.");
-        SyncWorkbenchSourceFromViewer();
+        if (ShouldStartWithEmptyRecipeInput())
+        {
+            _viewer.ClearC3DTeachingSource(_viewModel.Workbench.LocalizedSourceReadinessSummary);
+        }
+        else
+        {
+            SyncWorkbenchSourceFromViewer();
+        }
         _viewer.SidePanelsVisible = false;
         TaskWorkspace.ViewerViewModel = _viewer.ViewModel;
         _viewModelPropertyChangedHandler = OnShellViewModelPropertyChanged;
@@ -122,12 +144,16 @@ public partial class MainWindow : Window
         _publishInspectionResultRequestedHandler = (_, _) => OnPublishInspectionResultRequested();
         _calibrationLoadStudyRequestedHandler = OnCalibrationLoadStudyRequested;
         _openEvidenceArtifactRequestedHandler = OnOpenEvidenceArtifactRequested;
+        _openRunRecordRequestedHandler = OnOpenRunRecordRequested;
+        _exportRunRecordRequestedHandler = OnExportRunRecordRequested;
         _workbenchNewTeachingRecipeRequestedHandler = OnWorkbenchNewTeachingRecipeRequested;
         _workbenchSaveTeachingRecipeRequestedHandler = OnWorkbenchSaveTeachingRecipeRequested;
         _workbenchSaveTeachingRecipeAsRequestedHandler = OnWorkbenchSaveTeachingRecipeAsRequested;
+        _workbenchOpenToolLibraryRequestedHandler = OnWorkbenchOpenToolLibraryRequested;
         _workbenchOpenTeachingRecipeRequestedHandler = OnWorkbenchOpenTeachingRecipeRequested;
         _workbenchOpenRecentTeachingRecipeRequestedHandler = OnWorkbenchOpenRecentTeachingRecipeRequested;
         _workbenchLoadC3DSourceRequestedHandler = OnWorkbenchLoadC3DSourceRequested;
+        _workbenchCancelC3DSourceLoadRequestedHandler = OnWorkbenchCancelC3DSourceLoadRequested;
         _workbenchBeginTeachingCaptureRequestedHandler = OnWorkbenchBeginTeachingCaptureRequested;
         _workbenchUndoTeachingCaptureRequestedHandler = OnWorkbenchUndoTeachingCaptureRequested;
         _workbenchCancelTeachingCaptureRequestedHandler = OnWorkbenchCancelTeachingCaptureRequested;
@@ -158,12 +184,16 @@ public partial class MainWindow : Window
         _viewModel.PublishInspectionResultRequested += _publishInspectionResultRequestedHandler;
         _viewModel.Calibration.LoadStudyRequested += _calibrationLoadStudyRequestedHandler;
         _viewModel.OpenEvidenceArtifactRequested += _openEvidenceArtifactRequestedHandler;
+        _viewModel.OpenRunRecordRequested += _openRunRecordRequestedHandler;
+        _viewModel.ExportRunRecordRequested += _exportRunRecordRequestedHandler;
         _viewModel.Workbench.NewTeachingRecipeRequested += _workbenchNewTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeRequested += _workbenchSaveTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeAsRequested += _workbenchSaveTeachingRecipeAsRequestedHandler;
+        _viewModel.Workbench.OpenToolLibraryRequested += _workbenchOpenToolLibraryRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested += _workbenchOpenTeachingRecipeRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested += _workbenchOpenRecentTeachingRecipeRequestedHandler;
         _viewModel.Workbench.LoadC3DSourceRequested += _workbenchLoadC3DSourceRequestedHandler;
+        _viewModel.Workbench.CancelC3DSourceLoadRequested += _workbenchCancelC3DSourceLoadRequestedHandler;
         _viewModel.Workbench.BeginTeachingSelectionCaptureRequested += _workbenchBeginTeachingCaptureRequestedHandler;
         _viewModel.Workbench.UndoTeachingSelectionCaptureRequested += _workbenchUndoTeachingCaptureRequestedHandler;
         _viewModel.Workbench.CancelTeachingSelectionCaptureRequested += _workbenchCancelTeachingCaptureRequestedHandler;
@@ -192,6 +222,8 @@ public partial class MainWindow : Window
         ConfigureToolTeachingRecipeFromCommandLine();
         ConfigureOutputCompareFromCommandLine();
         ConfigureWorkbenchBottomPaneFromCommandLine();
+        ConfigureValidationSetFromCommandLine();
+        ConfigureC3DSourceLoadProgressFromCommandLine();
         SyncAppliedTeachingSelections();
         Loaded += EnsureWorkbenchViewerSourceConsistency;
         EnableShellSmokeFromCommandLine();
@@ -208,6 +240,88 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+        {
+            source.AddHook(ConstrainMaximizeToWorkArea);
+        }
+    }
+
+    private static IntPtr ConstrainMaximizeToWorkArea(
+        IntPtr windowHandle,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        const int WmGetMinMaxInfo = 0x0024;
+        const uint MonitorDefaultToNearest = 0x00000002;
+
+        if (message != WmGetMinMaxInfo || lParam == IntPtr.Zero)
+        {
+            return IntPtr.Zero;
+        }
+
+        var monitor = MonitorFromWindow(windowHandle, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return IntPtr.Zero;
+        }
+
+        var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        minMaxInfo.MaxPosition.X = monitorInfo.WorkArea.Left - monitorInfo.MonitorArea.Left;
+        minMaxInfo.MaxPosition.Y = monitorInfo.WorkArea.Top - monitorInfo.MonitorArea.Top;
+        minMaxInfo.MaxSize.X = monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left;
+        minMaxInfo.MaxSize.Y = monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top;
+        Marshal.StructureToPtr(minMaxInfo, lParam, false);
+        return IntPtr.Zero;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
+    {
+        public NativePoint Reserved;
+        public NativePoint MaxSize;
+        public NativePoint MaxPosition;
+        public NativePoint MinTrackSize;
+        public NativePoint MaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRectangle
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRectangle MonitorArea;
+        public NativeRectangle WorkArea;
+        public uint Flags;
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio shutdown.");
@@ -220,12 +334,16 @@ public partial class MainWindow : Window
         _viewModel.PublishInspectionResultRequested -= _publishInspectionResultRequestedHandler;
         _viewModel.Calibration.LoadStudyRequested -= _calibrationLoadStudyRequestedHandler;
         _viewModel.OpenEvidenceArtifactRequested -= _openEvidenceArtifactRequestedHandler;
+        _viewModel.OpenRunRecordRequested -= _openRunRecordRequestedHandler;
+        _viewModel.ExportRunRecordRequested -= _exportRunRecordRequestedHandler;
         _viewModel.Workbench.NewTeachingRecipeRequested -= _workbenchNewTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeRequested -= _workbenchSaveTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeAsRequested -= _workbenchSaveTeachingRecipeAsRequestedHandler;
+        _viewModel.Workbench.OpenToolLibraryRequested -= _workbenchOpenToolLibraryRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested -= _workbenchOpenTeachingRecipeRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested -= _workbenchOpenRecentTeachingRecipeRequestedHandler;
         _viewModel.Workbench.LoadC3DSourceRequested -= _workbenchLoadC3DSourceRequestedHandler;
+        _viewModel.Workbench.CancelC3DSourceLoadRequested -= _workbenchCancelC3DSourceLoadRequestedHandler;
         _viewModel.Workbench.BeginTeachingSelectionCaptureRequested -= _workbenchBeginTeachingCaptureRequestedHandler;
         _viewModel.Workbench.UndoTeachingSelectionCaptureRequested -= _workbenchUndoTeachingCaptureRequestedHandler;
         _viewModel.Workbench.CancelTeachingSelectionCaptureRequested -= _workbenchCancelTeachingCaptureRequestedHandler;
@@ -253,6 +371,9 @@ public partial class MainWindow : Window
         _viewModel.InspectionTaskChanged -= _inspectionTaskChangedHandler;
         Loaded -= _shellSmokeLoadedHandler;
         Loaded -= EnsureWorkbenchViewerSourceConsistency;
+        c3dSourceLoadCancellation?.Cancel();
+        c3dSourceLoadCancellation?.Dispose();
+        c3dSourceLoadCancellation = null;
         base.OnClosed(e);
     }
 
@@ -272,6 +393,9 @@ public partial class MainWindow : Window
         var screenshotQualityReportPath = GetCommandLineValue("--shell-screenshot-quality-report");
         var recipeManagerScreenshotPath = GetCommandLineValue("--recipe-manager-screenshot");
         var recipeManagerScreenshotQualityReportPath = GetCommandLineValue("--recipe-manager-screenshot-quality-report");
+        var messageDialogScreenshotPath = GetCommandLineValue("--message-dialog-screenshot");
+        var messageDialogScreenshotQualityReportPath = GetCommandLineValue("--message-dialog-screenshot-quality-report");
+        WpfMessageDialogWindow? messageDialogSmokeWindow = null;
         var filterToolLabScreenshotPath = GetCommandLineValue("--filter-tool-lab-screenshot");
         var filterToolLabScreenshotQualityReportPath = GetCommandLineValue("--filter-tool-lab-screenshot-quality-report");
         var edgeToolLabScreenshotPath = GetCommandLineValue("--edge-tool-lab-screenshot");
@@ -296,6 +420,21 @@ public partial class MainWindow : Window
         var teachingSelectionSmokeMode = GetCommandLineValue("--smoke-tool-teaching-selection");
         var teachingSelectionSmokeReportPath = GetCommandLineValue("--smoke-tool-teaching-selection-report");
         var teachingRecipeSmokeSavePath = GetCommandLineValue("--smoke-save-tool-teaching-recipe");
+        var newRecipeLifecycleSmokePath = GetCommandLineValue("--smoke-new-recipe-lifecycle");
+        var newRecipeLifecycleSmokeReportPath = GetCommandLineValue("--smoke-new-recipe-lifecycle-report");
+        var openRecipeLifecycleSmokePath = GetCommandLineValue("--smoke-open-recipe-lifecycle");
+        var openRecipeLifecycleSmokeReportPath = GetCommandLineValue("--smoke-open-recipe-lifecycle-report");
+        var asyncC3DLoadSmokePath = GetCommandLineValue("--smoke-async-c3d-load");
+        var asyncC3DLoadSmokeReportPath = GetCommandLineValue("--smoke-async-c3d-load-report");
+        var asyncC3DLoadCancelAt = double.TryParse(
+            GetCommandLineValue("--smoke-async-c3d-load-cancel-at"),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var parsedCancelAt)
+            ? parsedCancelAt
+            : (double?)null;
+        var asyncC3DLoadExpectFailure = Environment.GetCommandLineArgs()
+            .Contains("--smoke-async-c3d-load-expect-failure", StringComparer.OrdinalIgnoreCase);
         var planeFlatnessLiveA3PointerSmoke = Environment.GetCommandLineArgs()
             .Contains("--smoke-plane-flatness-live-a3-pointer", StringComparer.OrdinalIgnoreCase);
         var planeFlatnessLiveA3PointerReportPath = GetCommandLineValue("--smoke-plane-flatness-live-a3-pointer-report");
@@ -340,6 +479,7 @@ public partial class MainWindow : Window
             && smokeWidth >= MinWidth
             && smokeHeight >= MinHeight)
         {
+            WindowState = WindowState.Normal;
             Width = smokeWidth;
             Height = smokeHeight;
         }
@@ -351,6 +491,7 @@ public partial class MainWindow : Window
             || _viewer.ViewModel.NominalActualInput is not null;
         if (shellScreenshotPath is not null
             || recipeManagerScreenshotPath is not null
+            || messageDialogScreenshotPath is not null
             || filterToolLabScreenshotPath is not null
             || edgeToolLabScreenshotPath is not null
             || twoPointLineToolLabScreenshotPath is not null
@@ -370,11 +511,175 @@ public partial class MainWindow : Window
             || lineFitPreviewSmoke
             || twoPointLinePreviewSmoke
             || threePointPlanePreviewSmoke
-            || datumPlaneDeviationPreviewSmoke)
+            || datumPlaneDeviationPreviewSmoke
+            || newRecipeLifecycleSmokePath is not null
+            || openRecipeLifecycleSmokePath is not null
+            || asyncC3DLoadSmokePath is not null)
         {
             _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
+                if (asyncC3DLoadSmokePath is not null)
+                {
+                    var dispatcherTicks = 0;
+                    var cancelIssued = false;
+                    var previousPath = _viewer.CurrentC3DSourcePath;
+                    var timer = new DispatcherTimer(
+                        TimeSpan.FromMilliseconds(1),
+                        DispatcherPriority.Input,
+                        (_, _) =>
+                        {
+                            dispatcherTicks++;
+                            if (!cancelIssued
+                                && asyncC3DLoadCancelAt is { } cancelAt
+                                && _viewModel.Workbench.IsC3DSourceLoading
+                                && _viewModel.Workbench.C3DSourceLoadProgressPercent >= cancelAt)
+                            {
+                                cancelIssued = true;
+                                _viewModel.Workbench.CancelC3DSourceLoadCommand.Execute(null);
+                            }
+                        },
+                        Dispatcher);
+                    var stopwatch = Stopwatch.StartNew();
+                    timer.Start();
+                    await LoadWorkbenchC3DSourceAsync(asyncC3DLoadSmokePath, showFailureDialog: false);
+                    timer.Stop();
+                    stopwatch.Stop();
+                    var expectedPath = Path.GetFullPath(asyncC3DLoadSmokePath);
+                    var loadPerformance = _viewer.LastC3DSourceLoadPerformance;
+                    var loadStateCleared = !_viewModel.Workbench.IsC3DSourceLoading;
+                    var passed = asyncC3DLoadExpectFailure
+                        ? !cancelIssued
+                          && previousPath is not null
+                          && IsViewerSourceAlreadyLoaded(previousPath)
+                          && loadStateCleared
+                        : asyncC3DLoadCancelAt is null
+                        ? IsViewerSourceAlreadyLoaded(expectedPath)
+                          && loadStateCleared
+                          && dispatcherTicks > 0
+                        : cancelIssued
+                          && previousPath is not null
+                          && IsViewerSourceAlreadyLoaded(previousPath)
+                          && loadStateCleared;
+                    if (!string.IsNullOrWhiteSpace(asyncC3DLoadSmokeReportPath))
+                    {
+                        var reportPath = Path.GetFullPath(asyncC3DLoadSmokeReportPath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+                        File.WriteAllLines(reportPath,
+                        [
+                            "OpenVisionLab 3D actual EXE asynchronous C3D load smoke",
+                            $"Result: {(passed ? "Pass" : "Fail")}",
+                            $"Mode: {(asyncC3DLoadExpectFailure ? "Failure" : asyncC3DLoadCancelAt is null ? "Complete" : "Cancel")}",
+                            $"PreviousPath: {previousPath}",
+                            $"TargetPath: {expectedPath}",
+                            $"CurrentPath: {_viewer.CurrentC3DSourcePath}",
+                            $"ElapsedMilliseconds: {stopwatch.ElapsedMilliseconds}",
+                            $"GridReadAndStatisticsMilliseconds: {loadPerformance?.Grid.ReadAndStatisticsMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"GridDistributionMilliseconds: {loadPerformance?.Grid.DistributionMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"GridRenderPointsMilliseconds: {loadPerformance?.Grid.RenderPointsMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"GridHashMilliseconds: {loadPerformance?.Grid.HashMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"GridTotalMilliseconds: {loadPerformance?.Grid.TotalMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"RenderTopologyMilliseconds: {loadPerformance?.TopologyMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"RenderPositionsMilliseconds: {loadPerformance?.PositionsMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"WorkerTotalMilliseconds: {loadPerformance?.WorkerMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"UiApplyAndFirstRenderMilliseconds: {loadPerformance?.ApplyMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"DispatcherTicksDuringLoad: {dispatcherTicks}",
+                            $"CancelAtPercent: {asyncC3DLoadCancelAt?.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
+                            $"CancelIssued: {cancelIssued}",
+                            $"LoadStateCleared: {loadStateCleared}",
+                            $"FinalProgressPercent: {_viewModel.Workbench.C3DSourceLoadProgressPercent:F1}"
+                        ]);
+                    }
+
+                    if (!passed)
+                    {
+                        _viewModel.SetViewerSmokeFailed("Asynchronous C3D load smoke did not keep the Dispatcher responsive or activate the target source.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (newRecipeLifecycleSmokePath is not null)
+                {
+                    ShowRecipeManagerWindow();
+                    _viewModel.Workbench.RecipeName = "Discard this current draft";
+                    var doNotSaveClick = ClickUnsavedRecipeDoNotSaveForSmokeAsync();
+                    _viewModel.Workbench.NewTeachingRecipeCommand.Execute(null);
+                    var clickedDoNotSave = await doNotSaveClick;
+                    var createdPath = Path.GetFullPath(newRecipeLifecycleSmokePath);
+                    ToolRecipeDocument? createdDocument = null;
+                    if (File.Exists(createdPath))
+                    {
+                        createdDocument = ToolRecipeDocumentStore.Load(createdPath);
+                    }
+
+                    var passed = clickedDoNotSave
+                        && createdDocument is not null
+                        && createdDocument.Steps.Count == 0
+                        && string.IsNullOrWhiteSpace(createdDocument.Source.Path)
+                        && string.Equals(_viewModel.Workbench.RecipePath, createdPath, StringComparison.OrdinalIgnoreCase)
+                        && !_viewModel.Workbench.IsSourceReadyForRecipe
+                        && _viewer.CurrentC3DSourcePath is null
+                        && !_viewModel.Workbench.IsDirty;
+                    if (!string.IsNullOrWhiteSpace(newRecipeLifecycleSmokeReportPath))
+                    {
+                        var reportPath = Path.GetFullPath(newRecipeLifecycleSmokeReportPath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+                        File.WriteAllLines(reportPath,
+                        [
+                            "OpenVisionLab 3D actual EXE new-recipe lifecycle smoke",
+                            $"Result: {(passed ? "Pass" : "Fail")}",
+                            $"DoNotSaveButtonClicked: {clickedDoNotSave}",
+                            $"RecipePath: {_viewModel.Workbench.RecipePath}",
+                            $"RecipeExists: {File.Exists(createdPath)}",
+                            $"StepCount: {createdDocument?.Steps.Count}",
+                            $"SourcePath: {createdDocument?.Source.Path}",
+                            $"SourceReady: {_viewModel.Workbench.IsSourceReadyForRecipe}",
+                            $"ViewerSourcePath: {_viewer.CurrentC3DSourcePath}",
+                            $"IsDirty: {_viewModel.Workbench.IsDirty}"
+                        ]);
+                    }
+
+                    if (!passed)
+                    {
+                        _viewModel.SetViewerSmokeFailed("New recipe lifecycle smoke did not create and open a clean zero-step recipe.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
+                if (openRecipeLifecycleSmokePath is not null)
+                {
+                    ShowRecipeManagerWindow();
+                    var stopwatch = Stopwatch.StartNew();
+                    OpenWorkbenchRecipe(openRecipeLifecycleSmokePath);
+                    stopwatch.Stop();
+                    var expectedPath = Path.GetFullPath(openRecipeLifecycleSmokePath);
+                    var passed = string.Equals(_viewModel.Workbench.RecipePath, expectedPath, StringComparison.OrdinalIgnoreCase)
+                        && !_viewModel.Workbench.IsDirty
+                        && recipeManagerWindow?.IsVisible != true;
+                    if (!string.IsNullOrWhiteSpace(openRecipeLifecycleSmokeReportPath))
+                    {
+                        var reportPath = Path.GetFullPath(openRecipeLifecycleSmokeReportPath);
+                        Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
+                        File.WriteAllLines(reportPath,
+                        [
+                            "OpenVisionLab 3D actual EXE open-recipe lifecycle smoke",
+                            $"Result: {(passed ? "Pass" : "Fail")}",
+                            $"OpenWorkbenchRecipeMilliseconds: {stopwatch.ElapsedMilliseconds}",
+                            $"RecipePath: {_viewModel.Workbench.RecipePath}",
+                            $"IsDirty: {_viewModel.Workbench.IsDirty}",
+                            $"RecipeManagerVisible: {recipeManagerWindow?.IsVisible == true}",
+                            $"ViewerSourceReused: {IsViewerSourceAlreadyLoaded(_viewModel.Workbench.Source.Path)}"
+                        ]);
+                    }
+                    if (!passed)
+                    {
+                        _viewModel.SetViewerSmokeFailed("Open recipe lifecycle smoke did not activate the saved recipe in Workbench.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
                 if (recipeManagerScreenshotPath is not null)
                 {
                     ShowRecipeManagerWindow();
@@ -386,6 +691,25 @@ public partial class MainWindow : Window
                         Application.Current.Shutdown(1);
                         return;
                     }
+                }
+
+                if (messageDialogScreenshotPath is not null)
+                {
+                    messageDialogSmokeWindow = new WpfMessageDialogWindow(new WpfMessageDialogOptions
+                    {
+                        Title = DialogText("ThreeD.Dialog.RecipeSave.Title", "레시피 저장", "Save Recipe"),
+                        Message = DialogText(
+                            "ThreeD.Dialog.RecipeSave.Failed",
+                            "레시피 파일을 저장할 수 없습니다. 표시된 파일 또는 구조 오류를 확인하세요.",
+                            "The recipe file could not be saved. Check the listed file or structural error."),
+                        Details = "Access to the selected recipe folder was denied.",
+                        Kind = WpfMessageDialogKind.Warning,
+                        Buttons = WpfMessageDialogButtons.OK
+                    })
+                    {
+                        Owner = this
+                    };
+                    messageDialogSmokeWindow.Show();
                 }
 
                 if (filterToolLabScreenshotPath is not null
@@ -952,6 +1276,19 @@ public partial class MainWindow : Window
                     return;
                 }
 
+                if (messageDialogScreenshotPath is not null
+                    && (messageDialogSmokeWindow is null
+                        || !await CaptureWindowWithRetryAsync(
+                            messageDialogSmokeWindow,
+                            messageDialogScreenshotPath,
+                            messageDialogScreenshotQualityReportPath,
+                            "MessageDialog")))
+                {
+                    _viewModel.SetViewerSmokeFailed("Message dialog screenshot remained blank or invalid after 3 attempts.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (filterToolLabScreenshotPath is not null
                     && (filterToolLabWindow is null
                         || !await CaptureWindowWithRetryAsync(
@@ -1098,6 +1435,10 @@ public partial class MainWindow : Window
                 if (datumPlaneDeviationToolLabScreenshotPath is not null && datumPlaneDeviationToolLabWindow is { IsVisible: true })
                 {
                     datumPlaneDeviationToolLabWindow.Close();
+                }
+                if (messageDialogSmokeWindow is { IsVisible: true })
+                {
+                    messageDialogSmokeWindow.Close();
                 }
                 Application.Current.Shutdown(
                     nominalActualReady ? _viewer.SmokeExitCode : 1);
@@ -1871,6 +2212,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (IsViewerSourceAlreadyLoaded(source.Path))
+        {
+            _viewModel.UpdateC3DSampleVisible(_viewer.HostState.C3DSampleVisible);
+            if (_viewModel.IsWorkbenchWorkspaceSelected)
+            {
+                _viewer.ViewModel.HudDetailsVisible = false;
+            }
+            return;
+        }
+
         if (_viewer.LoadC3DSource(source.Path) && _viewer.CurrentC3DSourcePath is { } loadedSourcePath)
         {
             _viewModel.Workbench.SetC3DSource(loadedSourcePath);
@@ -1905,6 +2256,33 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ConfigureValidationSetFromCommandLine()
+    {
+        var recipePath = GetCommandLineValue("--smoke-validation-set-recipe");
+        var sourceList = GetCommandLineValue("--smoke-validation-set-sources");
+        if (string.IsNullOrWhiteSpace(recipePath) || string.IsNullOrWhiteSpace(sourceList))
+        {
+            return;
+        }
+
+        if (!_viewModel.Workbench.TryOpenTeachingRecipe(recipePath, out var message))
+        {
+            throw new InvalidDataException($"Validation Set smoke recipe could not be opened: {message}");
+        }
+
+        var sources = sourceList
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(Path.GetFullPath)
+            .ToArray();
+        _viewModel.Workbench.SetValidationSetSources(sources);
+        ToolWorkbench.IsBottomPaneExpanded = true;
+        ToolWorkbench.ActivateValidationSet();
+        if (Environment.GetCommandLineArgs().Contains("--smoke-validation-set-run", StringComparer.OrdinalIgnoreCase))
+        {
+            _viewModel.Workbench.RunValidationSetCommand.Execute(null);
+        }
+    }
+
     private void ConfigureWorkbenchBottomPaneFromCommandLine()
     {
         switch (GetCommandLineValue("--workbench-bottom-pane")?.Trim().ToLowerInvariant())
@@ -1917,6 +2295,9 @@ public partial class MainWindow : Window
                 break;
             case "run-record" or "record" or "execution-record":
                 ToolWorkbench.ActivateRunRecord();
+                break;
+            case "validation-set" or "repeat-validation":
+                ToolWorkbench.ActivateValidationSet();
                 break;
             case "compare" or "output-compare":
                 ToolWorkbench.ActivateOutputComparePane();
@@ -1949,6 +2330,21 @@ public partial class MainWindow : Window
         _viewModel.Workbench.CompareSlotCArtifactId = GetCommandLineValue("--workbench-compare-slot-c") ?? string.Empty;
     }
 
+    private void ConfigureC3DSourceLoadProgressFromCommandLine()
+    {
+        if (!double.TryParse(
+                GetCommandLineValue("--smoke-c3d-load-progress"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var progress))
+        {
+            return;
+        }
+
+        _viewModel.Workbench.BeginC3DSourceLoad("large-inspection.C3D");
+        _viewModel.Workbench.ReportC3DSourceLoadProgress(progress);
+    }
+
     private void LoadSelectedInspectionTask()
     {
         var recipeFileName = _viewModel.SelectedInspectionTask == ShellInspectionTask.Warpage
@@ -1961,8 +2357,8 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Load Thickness Repeatability Study",
-            Filter = "Thickness Repeatability Study (*.json)|*.json|All files (*.*)|*.*",
+            Title = DialogText("ThreeD.FileDialog.LoadRepeatability.Title", "두께 반복성 연구 불러오기", "Load Thickness Repeatability Study"),
+            Filter = DialogText("ThreeD.FileDialog.LoadRepeatability.Filter", "두께 반복성 연구 (*.json)|*.json|모든 파일 (*.*)|*.*", "Thickness Repeatability Study (*.json)|*.json|All files (*.*)|*.*"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -1972,12 +2368,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnWorkbenchLoadC3DSourceRequested(object? sender, EventArgs args)
+    private async void OnWorkbenchLoadC3DSourceRequested(object? sender, EventArgs args)
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Load C3D Source for Tool Recipe Teaching",
-            Filter = "C3D height map (*.C3D)|*.C3D|All files (*.*)|*.*",
+            Title = DialogText("ThreeD.FileDialog.LoadC3D.Title", "레시피 티칭용 C3D 입력 불러오기", "Load C3D Input for Recipe Teaching"),
+            Filter = DialogText("ThreeD.FileDialog.LoadC3D.Filter", "C3D 높이 맵 (*.C3D)|*.C3D|모든 파일 (*.*)|*.*", "C3D height map (*.C3D)|*.C3D|All files (*.*)|*.*"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -1986,19 +2382,58 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_viewer.LoadC3DSource(dialog.FileName) && _viewer.CurrentC3DSourcePath is { } sourcePath)
+        if (IsViewerSourceAlreadyLoaded(dialog.FileName))
         {
-            _viewModel.Workbench.SetC3DSource(sourcePath);
+            _viewModel.Workbench.SetC3DSource(Path.GetFullPath(dialog.FileName));
             _viewer.ViewModel.HudDetailsVisible = false;
             return;
         }
 
-        MessageBox.Show(
-            this,
-            _viewer.HostState.ViewerStatus,
-            "Load C3D Source",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
+        await LoadWorkbenchC3DSourceAsync(dialog.FileName);
+    }
+
+    private async Task LoadWorkbenchC3DSourceAsync(string path, bool showFailureDialog = true)
+    {
+        var cancellation = new CancellationTokenSource();
+        c3dSourceLoadCancellation = cancellation;
+        var stopwatch = Stopwatch.StartNew();
+        _viewModel.Workbench.BeginC3DSourceLoad(path);
+        var progress = new Progress<double>(_viewModel.Workbench.ReportC3DSourceLoadProgress);
+
+        try
+        {
+            if (await _viewer.LoadC3DSourceAsync(path, cancellation.Token, progress)
+                && _viewer.CurrentC3DSourcePath is { } sourcePath)
+            {
+                _viewModel.Workbench.SetC3DSource(sourcePath);
+                _viewer.ViewModel.HudDetailsVisible = false;
+                _viewModel.Workbench.CompleteC3DSourceLoad(sourcePath, stopwatch.ElapsedMilliseconds);
+                return;
+            }
+
+            _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
+            if (showFailureDialog)
+            {
+                ShowLoadSourceFailure(_viewer.HostState.ViewerStatus);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
+        }
+        finally
+        {
+            if (ReferenceEquals(c3dSourceLoadCancellation, cancellation))
+            {
+                c3dSourceLoadCancellation = null;
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private void OnWorkbenchCancelC3DSourceLoadRequested(object? sender, EventArgs args)
+    {
+        c3dSourceLoadCancellation?.Cancel();
     }
 
     private void OnWorkbenchBeginTeachingCaptureRequested(
@@ -2089,13 +2524,20 @@ public partial class MainWindow : Window
         TeachingCaptureStateChangedEventArgs args) =>
         ApplyViewerTeachingCaptureState(args.State);
 
-    private void ApplyViewerTeachingCaptureState(TeachingCaptureState state) =>
+    private void ApplyViewerTeachingCaptureState(TeachingCaptureState state)
+    {
+        if (state.IsActive)
+        {
+            ToolWorkbench.IsBottomPaneExpanded = false;
+        }
+
         _viewModel.Workbench.UpdateTeachingSelectionCaptureState(
             state.IsActive,
             state.CapturedPointCount,
             state.RequiredPointCount,
             state.CanApply,
             state.Message);
+    }
 
     private void SyncAppliedTeachingSelections() =>
         _viewer.SetAppliedTeachingSelections(_viewModel.Workbench.GetCurrentAppliedTeachingSelections());
@@ -2163,6 +2605,22 @@ public partial class MainWindow : Window
         recipeManagerWindow.Activate();
     }
 
+    private void OnWorkbenchOpenToolLibraryRequested(object? sender, EventArgs args)
+    {
+        recipeManagerWindow?.Close();
+        if (!_viewModel.IsWorkbenchWorkspaceSelected)
+        {
+            _viewModel.IsWorkbenchWorkspaceSelected = true;
+        }
+
+        ToolWorkbench.ActivateToolLibraryPane();
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+        Activate();
+    }
+
     private void OpenFilterToolLabRequested(object? sender, EventArgs args)
     {
         ShowFilterToolLabWindow(showMissingFilterMessage: true);
@@ -2216,12 +2674,7 @@ public partial class MainWindow : Window
         {
             if (showMissingFilterMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add a Filter step before opening Filter Tool Lab.",
-                    "Filter Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Filter");
             }
             return false;
         }
@@ -2258,12 +2711,7 @@ public partial class MainWindow : Window
         {
             if (showMissingEdgeMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add a Height Difference Edge step before opening Edge Tool Lab.",
-                    "Edge Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Height Difference Edge");
             }
             return false;
         }
@@ -2315,7 +2763,7 @@ public partial class MainWindow : Window
         {
             if (showMissingTwoPointLineMessage)
             {
-                MessageBox.Show(this, "Add a 2-Point Line step before opening 2-Point Line Tool Lab.", "2-Point Line Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowMissingToolLabStep("2-Point Line");
             }
             return false;
         }
@@ -2343,7 +2791,7 @@ public partial class MainWindow : Window
         {
             if (showMissingThreePointPlaneMessage)
             {
-                MessageBox.Show(this, "Add a 3-Point Plane step before opening 3-Point Plane Tool Lab.", "3-Point Plane Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowMissingToolLabStep("3-Point Plane");
             }
             return false;
         }
@@ -2371,7 +2819,7 @@ public partial class MainWindow : Window
         {
             if (showMissingDatumDeviationMessage)
             {
-                MessageBox.Show(this, "Add a Datum Plane Raw-Height Deviation step before opening its Tool Lab.", "Datum Plane Deviation Tool Lab", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowMissingToolLabStep("Datum Plane Raw-Height Deviation");
             }
             return false;
         }
@@ -2399,12 +2847,7 @@ public partial class MainWindow : Window
         {
             if (showMissingLineIntersectionMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add a Line Intersection step before opening Line Intersection Tool Lab.",
-                    "Line Intersection Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Line Intersection");
             }
             return false;
         }
@@ -2441,12 +2884,7 @@ public partial class MainWindow : Window
         {
             if (showMissingCorrespondenceMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add a Landmark Correspondence step before opening Landmark Correspondence Tool Lab.",
-                    "Landmark Correspondence Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Landmark Correspondence");
             }
             return false;
         }
@@ -2493,12 +2931,7 @@ public partial class MainWindow : Window
         {
             if (showMissingAffineSolveMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add an XYZ Affine Solve step before opening XYZ Affine Solve Tool Lab.",
-                    "XYZ Affine Solve Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("XYZ Affine Solve");
             }
             return false;
         }
@@ -2529,12 +2962,7 @@ public partial class MainWindow : Window
         {
             if (showMissingAffineApplyMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add an Apply XYZ Affine step before opening Apply XYZ Affine Tool Lab.",
-                    "Apply XYZ Affine Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Apply XYZ Affine");
             }
             return false;
         }
@@ -2565,12 +2993,7 @@ public partial class MainWindow : Window
         {
             if (showMissingRegridMessage)
             {
-                MessageBox.Show(
-                    this,
-                    "Open or add a Re-grid Height Map step before opening Re-grid Height Map Tool Lab.",
-                    "Re-grid Height Map Tool Lab",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ShowMissingToolLabStep("Re-grid Height Map");
             }
             return false;
         }
@@ -2710,7 +3133,137 @@ public partial class MainWindow : Window
             return;
         }
 
-        _viewModel.Workbench.CreateNewTeachingRecipe();
+        var path = SelectNewWorkbenchRecipePath();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        _viewModel.Workbench.CreateNewTeachingRecipe(GetRecipeNameFromPath(path));
+        if (!_viewModel.Workbench.TrySaveTeachingRecipe(path, out var message))
+        {
+            ShowRecipeSaveFailure(message);
+            return;
+        }
+
+        _viewer.ClearC3DTeachingSource(_viewModel.Workbench.LocalizedSourceReadinessSummary);
+        _viewModel.UpdateC3DSampleVisible(false);
+        ActivateWorkbenchAfterRecipeLifecycle();
+    }
+
+    private string? SelectNewWorkbenchRecipePath()
+    {
+        var smokePath = GetCommandLineValue("--smoke-new-recipe-lifecycle");
+        if (!string.IsNullOrWhiteSpace(smokePath))
+        {
+            return Path.GetFullPath(smokePath);
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = DialogText("ThreeD.FileDialog.CreateRecipe.Title", "새 3D 검사 레시피 만들기", "Create New 3D Inspection Recipe"),
+            Filter = DialogText("ThreeD.FileDialog.SaveRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json)|*.ov3d-recipe.json|기존 티칭 레시피 (*.ov3d-teach.json)|*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
+            FileName = "new-inspection.ov3d-recipe.json",
+            OverwritePrompt = true
+        };
+        return dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true
+            ? dialog.FileName
+            : null;
+    }
+
+    private static string GetRecipeNameFromPath(string path)
+    {
+        const string currentSuffix = ".ov3d-recipe.json";
+        const string legacySuffix = ".ov3d-teach.json";
+        var fileName = Path.GetFileName(path);
+        if (fileName.EndsWith(currentSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return fileName[..^currentSuffix.Length];
+        }
+        if (fileName.EndsWith(legacySuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return fileName[..^legacySuffix.Length];
+        }
+        return Path.GetFileNameWithoutExtension(fileName);
+    }
+
+    private Window GetRecipeLifecycleDialogOwner() =>
+        recipeManagerWindow?.IsVisible == true ? recipeManagerWindow : this;
+
+    private void ActivateWorkbenchAfterRecipeLifecycle()
+    {
+        recipeManagerWindow?.Hide();
+        if (!_viewModel.IsWorkbenchWorkspaceSelected)
+        {
+            _viewModel.IsWorkbenchWorkspaceSelected = true;
+        }
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+        Activate();
+    }
+
+    private bool IsViewerSourceAlreadyLoaded(string path)
+    {
+        if (_viewer.CurrentC3DSourcePath is not { } currentPath)
+        {
+            return false;
+        }
+        return string.Equals(
+            Path.GetFullPath(currentPath),
+            Path.GetFullPath(path),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<bool> ClickUnsavedRecipeDoNotSaveForSmokeAsync()
+    {
+        var buttonText = DialogText(
+            "ThreeD.Dialog.UnsavedRecipe.DoNotSave",
+            "저장 안 함",
+            "Don't Save");
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            await Task.Delay(100).ConfigureAwait(false);
+            var clicked = await Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = Application.Current.Windows
+                    .OfType<WpfMessageDialogWindow>()
+                    .FirstOrDefault(window => window.IsVisible);
+                var button = dialog is null
+                    ? null
+                    : FindVisualDescendants<System.Windows.Controls.Button>(dialog)
+                        .FirstOrDefault(candidate => string.Equals(candidate.Content?.ToString(), buttonText, StringComparison.Ordinal));
+                if (button is null)
+                {
+                    return false;
+                }
+                button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+                return true;
+            });
+            if (clicked)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+            foreach (var descendant in FindVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
     }
 
     private void OnWorkbenchSaveTeachingRecipeRequested(object? sender, EventArgs args)
@@ -2736,13 +3289,15 @@ public partial class MainWindow : Window
         {
             var dialog = new SaveFileDialog
             {
-                Title = forceDialog ? "Save 3D Tool Teaching Recipe As" : "Save 3D Tool Teaching Recipe",
-                Filter = "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
+                Title = forceDialog
+                    ? DialogText("ThreeD.FileDialog.SaveRecipeAs.Title", "3D 검사 레시피 다른 이름으로 저장", "Save 3D Inspection Recipe As")
+                    : DialogText("ThreeD.FileDialog.SaveRecipe.Title", "3D 검사 레시피 저장", "Save 3D Inspection Recipe"),
+                Filter = DialogText("ThreeD.FileDialog.SaveRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json)|*.ov3d-recipe.json|기존 티칭 레시피 (*.ov3d-teach.json)|*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
                 FileName = string.IsNullOrWhiteSpace(path) ? "inspection-recipe.ov3d-recipe.json" : Path.GetFileName(path),
                 InitialDirectory = string.IsNullOrWhiteSpace(path) ? null : Path.GetDirectoryName(path),
                 OverwritePrompt = true
             };
-            if (dialog.ShowDialog(this) != true)
+            if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) != true)
             {
                 return false;
             }
@@ -2755,7 +3310,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        MessageBox.Show(this, message, "Save Teaching Recipe", MessageBoxButton.OK, MessageBoxImage.Warning);
+        ShowRecipeSaveFailure(message);
         return false;
     }
 
@@ -2768,12 +3323,12 @@ public partial class MainWindow : Window
 
         var dialog = new OpenFileDialog
         {
-            Title = "Open 3D Tool Teaching Recipe",
-            Filter = "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*",
+            Title = DialogText("ThreeD.FileDialog.OpenRecipe.Title", "3D 검사 레시피 열기", "Open 3D Inspection Recipe"),
+            Filter = DialogText("ThreeD.FileDialog.OpenRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
             CheckFileExists = true,
             Multiselect = false
         };
-        if (dialog.ShowDialog(this) != true)
+        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) != true)
         {
             return;
         }
@@ -2797,27 +3352,30 @@ public partial class MainWindow : Window
     {
         if (!File.Exists(path))
         {
-            MessageBox.Show(this, $"Recipe file is unavailable:{Environment.NewLine}{path}", "Open Teaching Recipe", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowRecipeFileUnavailable(path);
             return;
         }
 
         if (!_viewModel.Workbench.TryOpenTeachingRecipe(path, out var message))
         {
-            MessageBox.Show(this, message, "Open Teaching Recipe", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowRecipeOpenFailure(message);
             return;
         }
+
+        ActivateWorkbenchAfterRecipeLifecycle();
 
         var source = _viewModel.Workbench.Source;
         if (!_viewModel.Workbench.IsSourceReadyForRecipe)
         {
             _viewer.ClearC3DTeachingSource(_viewModel.Workbench.SourceReadinessSummary);
             _viewModel.UpdateC3DSampleVisible(false);
-            MessageBox.Show(
-                this,
-                $"The teaching recipe was opened, but its source is not ready. The recipe remains editable and no inspection was run.{Environment.NewLine}{Environment.NewLine}{_viewModel.Workbench.SourceReadinessSummary}",
-                "Teaching Recipe Source",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            ShowRecipeSourceNotReady();
+            return;
+        }
+
+        if (IsViewerSourceAlreadyLoaded(source.Path))
+        {
+            SyncAppliedTeachingSelections();
             return;
         }
 
@@ -2826,7 +3384,7 @@ public partial class MainWindow : Window
             var loadFailure = _viewer.HostState.ViewerStatus;
             _viewer.ClearC3DTeachingSource("Recipe source could not be loaded. Relink a valid C3D source.");
             _viewModel.UpdateC3DSampleVisible(false);
-            MessageBox.Show(this, loadFailure, "Teaching Recipe Source", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowRecipeSourceLoadFailure(loadFailure);
             return;
         }
 
@@ -2837,7 +3395,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private bool TryResolveWorkbenchChanges(string action)
+    private bool TryResolveWorkbenchChanges(string _)
     {
         if (!TryResolveParameterDraft())
         {
@@ -2849,16 +3407,11 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var result = MessageBox.Show(
-            this,
-            $"Save recipe changes before {action}?",
-            "Unsaved 3D Recipe",
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
+        var result = ConfirmUnsavedRecipeChanges();
         return result switch
         {
-            MessageBoxResult.Yes => SaveWorkbenchRecipe(forceDialog: false),
-            MessageBoxResult.No => true,
+            WpfMessageDialogResult.Yes => SaveWorkbenchRecipe(forceDialog: false),
+            WpfMessageDialogResult.No => true,
             _ => false
         };
     }
@@ -2870,18 +3423,13 @@ public partial class MainWindow : Window
             return true;
         }
 
-        var result = MessageBox.Show(
-            this,
-            "Apply the selected step's parameter changes? No discards only the unapplied PropertyGrid draft.",
-            "Unapplied Step Parameters",
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question);
-        if (result == MessageBoxResult.Cancel)
+        var result = ConfirmPendingParameterChanges();
+        if (result == WpfMessageDialogResult.Cancel)
         {
             return false;
         }
 
-        if (result == MessageBoxResult.No)
+        if (result == WpfMessageDialogResult.No)
         {
             _viewModel.Workbench.DiscardSelectedStepParameterDraft();
             return true;
@@ -2891,7 +3439,7 @@ public partial class MainWindow : Window
             || !_viewModel.Workbench.TryApplySelectedStepParameterDraft(out message))
         {
             _viewModel.Workbench.ReportParameterDraftCommitError(message);
-            MessageBox.Show(this, message, "Step Parameters", MessageBoxButton.OK, MessageBoxImage.Warning);
+            ShowParameterApplyFailure(message);
             return false;
         }
 
@@ -2909,27 +3457,28 @@ public partial class MainWindow : Window
         || argument.StartsWith("--xyz-affine-solve-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--xyz-affine-apply-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--regrid-height-map-tool-lab-", StringComparison.OrdinalIgnoreCase)
+        || argument.StartsWith("--message-dialog-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
+
+    private static bool ShouldStartWithEmptyRecipeInput() =>
+        !IsAutomatedShellRun()
+        || Environment.GetCommandLineArgs().Any(argument =>
+            argument.Equals("--smoke-input-first-start", StringComparison.OrdinalIgnoreCase));
 
     private void SyncWorkbenchSourceFromViewer()
     {
         if (_viewer.CurrentC3DSourcePath is { } sourcePath
             && string.IsNullOrWhiteSpace(_viewModel.Workbench.Source.Path))
         {
-            _viewModel.Workbench.SetC3DSource(sourcePath);
+            _viewModel.Workbench.SetC3DSource(sourcePath, markDirty: false);
         }
     }
 
     private void OnOpenEvidenceArtifactRequested(object? sender, EvidenceArtifactOpenRequestEventArgs args)
     {
-        if (!File.Exists(args.Path))
+        if (!File.Exists(args.Path) && !Directory.Exists(args.Path))
         {
-            MessageBox.Show(
-                this,
-                $"{args.Label} artifact was not found.\n\n{args.Path}",
-                "Open Evidence Artifact",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            ShowEvidenceArtifactMissing(args.Label, args.Path);
             return;
         }
 
@@ -2939,12 +3488,41 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
-                this,
-                $"Could not open {args.Label} artifact.\n\n{args.Path}\n\n{ex.Message}",
-                "Open Evidence Artifact",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            ShowEvidenceArtifactOpenFailure(args.Label, args.Path, ex.Message);
+        }
+    }
+
+    private void OnOpenRunRecordRequested(object? sender, EventArgs args)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        var dialog = new OpenFileDialog
+        {
+            Title = english ? "Open Run Record" : "\uC2E4\uD589 \uAE30\uB85D \uC5F4\uAE30",
+            Filter = english
+                ? "OpenVisionLab Run Record (*.json)|*.json|All files (*.*)|*.*"
+                : "OpenVisionLab \uC2E4\uD589 \uAE30\uB85D (*.json)|*.json|\uBAA8\uB4E0 \uD30C\uC77C (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) == true
+            && !_viewModel.LoadRunRecord(dialog.FileName, out var message))
+        {
+            ShowRunRecordOpenFailure(message);
+        }
+    }
+
+    private void OnExportRunRecordRequested(object? sender, EventArgs args)
+    {
+        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
+        var dialog = new OpenFolderDialog
+        {
+            Title = english ? "Export Run Record Bundle" : "\uC2E4\uD589 \uAE30\uB85D \uBB36\uC74C \uB0B4\uBCF4\uB0B4\uAE30",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) == true
+            && !_viewModel.ExportCurrentRunRecordBundle(dialog.FolderName, out var message))
+        {
+            ShowRunRecordExportFailure(message);
         }
     }
 

@@ -33,6 +33,38 @@ public static class C3DHeightDistributionVerification
             var sparse = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 1);
             var distribution = dense.HeightDistribution;
 
+            var progressValues = new List<double>();
+            var progressGrid = C3DHeightGrid.Load(
+                sourcePath,
+                maxRenderedPoints: 1000,
+                CancellationToken.None,
+                new CallbackProgress<double>(progressValues.Add));
+            Check(
+                "C3D load progress is monotonic and completes at 100 percent",
+                progressGrid.ContentSha256 == dense.ContentSha256
+                && progressValues.Count >= 4
+                && Near(progressValues[0], 0.0)
+                && Near(progressValues[^1], 100.0)
+                && progressValues.Zip(progressValues.Skip(1), (left, right) => left <= right).All(value => value),
+                string.Join(",", progressValues.Select(value => value.ToString("F1", CultureInfo.InvariantCulture))));
+
+            using var cancellation = new CancellationTokenSource();
+            var cancellationProgress = new CallbackProgress<double>(value =>
+            {
+                if (value >= 5.0)
+                {
+                    cancellation.Cancel();
+                }
+            });
+            Check(
+                "C3D load observes cancellation before returning a replacement grid",
+                Throws<OperationCanceledException>(() => C3DHeightGrid.Load(
+                    sourcePath,
+                    maxRenderedPoints: 1000,
+                    cancellation.Token,
+                    cancellationProgress)),
+                $"cancelled={cancellation.IsCancellationRequested}");
+
             Check(
                 "full-source statistics are exact",
                 Near(distribution.Minimum, 10.0)
@@ -319,6 +351,11 @@ public static class C3DHeightDistributionVerification
         {
             return true;
         }
+    }
+
+    private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
+    {
+        public void Report(T value) => callback(value);
     }
 
     private static void WriteC3D(string path, int width, int height, IReadOnlyList<float> values)

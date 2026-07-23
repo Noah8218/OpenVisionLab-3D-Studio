@@ -21,6 +21,8 @@ internal static class RunnerApplication
         var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
         var c3DMapPlyPath = ReadOption(args, "--ply");
         var recipePath = ReadOption(args, "--recipe");
+        var toolRecipePath = ReadOption(args, "--tool-recipe");
+        var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
@@ -71,6 +73,21 @@ internal static class RunnerApplication
         var verifyAlignedPointRepeatabilityStudy = args.Contains("--verify-aligned-point-repeatability-study", StringComparer.OrdinalIgnoreCase);
         var verifyLibraryNoahThreeD = args.Contains("--verify-library-noah-3d", StringComparer.OrdinalIgnoreCase);
         var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
+
+        if (toolRecipePath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--expect-status Pass|Fail|Warning|Error] [--run-record <json> --html-report <html> --csv-report <csv>]");
+                return 2;
+            }
+            return RunToolRecipe(
+                toolRecipePath,
+                toolRecipeSourcePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts);
+        }
 
         if (toolTeachingFilterPath is not null)
         {
@@ -189,7 +206,7 @@ internal static class RunnerApplication
                 return 2;
             }
 
-            return SyntheticAffineInspectionPlateVerification.Run(syntheticAffinePackagePath, reportPath);
+            return SyntheticAffineInspectionPlateVerification.Run(syntheticAffinePackagePath, reportPath, runArtifacts);
         }
 
         if (verifyC3DEdge)
@@ -612,6 +629,7 @@ internal static class RunnerApplication
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
             return 2;
         }
 
@@ -1035,6 +1053,80 @@ internal static class RunnerApplication
         Console.WriteLine($"{result.ToolName}: {result.Status}");
         return result.Status == ResultStatus.Error ? 4 : 0;
     }
+
+    static int RunToolRecipe(
+        string recipePath,
+        string? requestedSourcePath,
+        string reportPath,
+        string? expectedStatus,
+        RunArtifactOptions runArtifacts)
+    {
+        try
+        {
+            var fullRecipePath = Path.GetFullPath(recipePath);
+            var document = ToolRecipeDocumentStore.Load(fullRecipePath);
+            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
+            var sourcePath = string.IsNullOrWhiteSpace(requestedSourcePath)
+                ? Path.IsPathFullyQualified(document.Source.Path)
+                    ? Path.GetFullPath(document.Source.Path)
+                    : Path.GetFullPath(Path.Combine(recipeDirectory, document.Source.Path))
+                : Path.GetFullPath(requestedSourcePath);
+            var execution = ToolRecipeOrderedGraphExecution.Execute(document, sourcePath);
+
+            var fullReportPath = Path.GetFullPath(reportPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+            File.WriteAllLines(
+                fullReportPath,
+                [
+                    $"OrderedToolRecipeReplay|{execution.Status}|steps={execution.Steps.Count}/{document.Steps.Count}|elapsedMs={execution.Duration.TotalMilliseconds:R}",
+                    $"Recipe|path={fullRecipePath}|schema={document.SchemaVersion}|name={CleanReportValue(document.Name)}",
+                    $"Source|path={sourcePath}|sha256={execution.SourceContentSha256}|unit={document.Source.Unit}|frame={document.Source.FrameId}",
+                    $"Message|{CleanReportValue(execution.Message)}",
+                    .. execution.Steps.Select(step =>
+                        $"Step|order={step.Order}|id={step.StepId}|toolId={step.ToolId}|tool={CleanReportValue(step.ToolName)}"
+                        + $"|inputs={string.Join(";", document.Steps[step.Order - 1].InputEntityIds)}|output={step.OutputEntityId}"
+                        + $"|outputSha256={step.OutputContentSha256}|status={step.Result.Status}|elapsedMs={step.Result.Elapsed.TotalMilliseconds:R}"
+                        + $"|metrics={step.Result.Metrics.Count}|overlays={step.Result.Overlays.Count}|message={CleanReportValue(step.Result.Message)}")
+                ]);
+
+            if (File.Exists(sourcePath))
+            {
+                RunRecordWriter.WriteOrderedGraph(
+                    runArtifacts,
+                    fullRecipePath,
+                    document,
+                    sourcePath,
+                    execution,
+                    fullReportPath,
+                    null);
+            }
+
+            if (expectedStatus is not null
+                && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status)
+                    || execution.Status != status))
+            {
+                Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {execution.Status}.");
+                return 3;
+            }
+
+            Console.WriteLine($"Ordered Tool Recipe Replay: {execution.Status} ({execution.Steps.Count}/{document.Steps.Count} steps)");
+            return execution.Status == ResultStatus.Error ? 4 : 0;
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException
+            or ArgumentException
+            or InvalidOperationException
+            or NotSupportedException
+            or OverflowException)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 1;
+        }
+    }
+
+    static string CleanReportValue(string value) =>
+        value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
 
     static int RunLazProbe(string lazPath, string reportPath, int maxSampledPoints)
     {

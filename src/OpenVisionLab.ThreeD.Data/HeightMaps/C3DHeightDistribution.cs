@@ -78,7 +78,8 @@ public sealed class C3DHeightDistribution
         float maximum,
         double mean,
         int validSampleCount,
-        int binCount = DefaultBinCount)
+        int binCount = DefaultBinCount,
+        CancellationToken cancellationToken = default)
     {
         if (binCount <= 0)
         {
@@ -97,8 +98,14 @@ public sealed class C3DHeightDistribution
         var bins = new int[binCount];
         var observedValidCount = 0;
         var span = (double)maximum - minimum;
-        foreach (var value in samples)
+        for (var sampleIndex = 0; sampleIndex < samples.Length; sampleIndex++)
         {
+            if ((sampleIndex & 0x3fff) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            var value = samples[sampleIndex];
             if (!float.IsFinite(value) || value == 0.0f)
             {
                 continue;

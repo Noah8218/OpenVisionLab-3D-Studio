@@ -4,7 +4,16 @@ public static class ToolRecipeValidator
 {
     private const string GridCellLocatorKind = "grid-cell";
 
-    public static ToolRecipeValidationResult Validate(ToolRecipeDocument? document)
+    public static ToolRecipeValidationResult Validate(ToolRecipeDocument? document) =>
+        ValidateCore(document, requireSourcePath: true, requireInspectionStep: true);
+
+    public static ToolRecipeValidationResult ValidateForStorage(ToolRecipeDocument? document) =>
+        ValidateCore(document, requireSourcePath: false, requireInspectionStep: false);
+
+    private static ToolRecipeValidationResult ValidateCore(
+        ToolRecipeDocument? document,
+        bool requireSourcePath,
+        bool requireInspectionStep)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -52,7 +61,7 @@ public static class ToolRecipeValidator
         if (string.IsNullOrWhiteSpace(source.Format)) errors.Add("Source format is required.");
         if (string.IsNullOrWhiteSpace(source.Unit)) errors.Add("Source unit is required.");
         if (string.IsNullOrWhiteSpace(source.FrameId)) errors.Add("Source frame ID is required.");
-        if (string.IsNullOrWhiteSpace(source.Path)) errors.Add("Source path is required.");
+        if (requireSourcePath && string.IsNullOrWhiteSpace(source.Path)) errors.Add("Source path is required.");
         if (source.ByteLength is <= 0) errors.Add("Source byte length must be positive when recorded.");
         if (source.ContentSha256 is not null && !IsSha256(source.ContentSha256))
         {
@@ -118,7 +127,7 @@ public static class ToolRecipeValidator
         }
 
         var steps = document.Steps ?? [];
-        if (steps.Count == 0)
+        if (requireInspectionStep && steps.Count == 0)
         {
             errors.Add("At least one taught tool step is required.");
         }

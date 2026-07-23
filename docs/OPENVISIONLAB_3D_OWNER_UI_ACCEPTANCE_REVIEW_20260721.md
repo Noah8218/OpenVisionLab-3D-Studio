@@ -97,3 +97,76 @@ production-readiness claim.
 The former compact Viewer-header issue is closed by the 2026-07-22 follow-up
 above. The owner decision and score remain the recorded 2026-07-21 decision;
 the deferred manual evidence still requires separate owner/operator review.
+
+## First-use gate reopened - 2026-07-22
+
+The owner subsequently opened the real program to begin a recipe and could
+not identify the correct first action from the current Workbench or Recipe
+Manager. This is genuine evidence against the deferred first-time-operator
+criterion in lines 84-86, not a visual-theme regression.
+
+The historical `85/100` remains the accepted score for the evidence reviewed
+on 2026-07-21, but it must not be cited as current first-task usability. The
+first-use portion of `Workbench information hierarchy` and `Recipe and tool
+workflow` is reopened. The approved corrective contract is
+`docs/OPENVISIONLAB_3D_FIRST_RECIPE_UX_AND_RECIPE_CENTER_20260722.md`; a new
+owner/operator acceptance decision is required after its current-build
+before/after and workflow protocol pass.
+
+## First-use corrective implementation - 2026-07-22
+
+Status: Complete for implementation and automated current-build evidence;
+owner first-use replay remains unverified.
+
+The corrective contract in
+`docs/OPENVISIONLAB_3D_FIRST_RECIPE_UX_AND_RECIPE_CENTER_20260722.md` is now
+implemented. The default Workbench separates Tool Library, Recipe Flow, 3D
+View, and Step Parameters; displays the five-stage first-recipe journey; shows
+one next action at zero steps; and keeps the empty bottom pipeline closed. The
+separate single-instance window is now a Recipe Center with full-width
+New/Open actions, current-session details, and path-qualified recent recipes.
+
+Current Debug evidence passes build `0/0`, docking `25/25`, Recipe
+Center/WPG/localization `20/20`, recipe teaching `18/18`, and Korean/English
+Workbench plus Recipe Center screenshot quality on attempt 1. Evidence is in
+`artifacts/current/20260722-first-recipe-ux/`.
+
+This closes the implementation defect that produced the owner's failed first
+attempt. It does not revise the historical owner score automatically and does
+not fabricate the still-required owner replay. The user should now retry the
+first recipe flow from the current EXE; that result determines whether the
+reopened manual first-use criterion can be accepted.
+
+## Recipe-save and message-dialog follow-up - 2026-07-22
+
+The owner's next real attempt exposed an English stock WPF message box. That
+dialog/localization defect was closed, but the accompanying decision to forbid
+zero-step recipe persistence was later identified by the owner as a product
+contract error.
+
+Shell prompts use the source-authoritative company WPF dialog port; Korean and
+English operator text, standard buttons, and details labels follow the selected
+language. Technical exception evidence stays in expandable details.
+
+Current evidence passes build `0/0`, Recipe Center/WPG/dialog localization
+`24/24`, docking `25/25`, recipe teaching `18/18`, zero stock message-box
+references under `src`, and four current-build captures on attempt 1. See
+`docs/OPENVISIONLAB_3D_MESSAGE_DIALOG_AND_RECIPE_SAVE_UX_20260722.md`.
+
+The zero-step restriction from this historical follow-up is superseded by
+`docs/OPENVISIONLAB_3D_EMPTY_RECIPE_LIFECYCLE_20260722.md`: an empty recipe is a
+valid saved draft, while Preview/Run readiness remains strict. It still does
+not fabricate the owner's unaided replay or revise the historical score.
+
+## Main-window work-area follow-up - 2026-07-22
+
+The owner then observed that the lower application area was covered by the
+taskbar on the `1920 x 1080` desktop. The measured pre-fix normal window was
+`(26,26)-(1946,1106)` against work area `(0,0)-(1920,1040)`. A custom-chrome
+maximize without native work-area correction also failed and was rejected.
+
+The current Shell starts maximized, constrains `WM_GETMINMAXINFO` to the
+current monitor work area, and uses a reachable `1600 x 900` restore size.
+Live initial/restore/re-maximize checks pass, build is `0/0`, and the current
+desktop evidence shows the taskbar plus the complete lower UI. See
+`docs/OPENVISIONLAB_3D_MAIN_WINDOW_WORK_AREA_20260722.md`.

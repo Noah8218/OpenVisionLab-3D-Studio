@@ -60,7 +60,10 @@ public sealed record InspectionRunStepResult(
     string Message,
     double ElapsedMilliseconds,
     IReadOnlyList<InspectionRunMetric> Metrics,
-    IReadOnlyList<InspectionRunOverlay> Overlays);
+    IReadOnlyList<InspectionRunOverlay> Overlays)
+{
+    public string? OutputContentSha256 { get; init; }
+}
 
 public sealed record InspectionRunMetric(
     string Name,

@@ -1,5 +1,367 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## UI localization and density checkpoint - 2026-07-23
+
+All ten exposed Tool Labs, Calibration, and Expert now switch their fixed
+structural labels between separate Korean and English states. The shared
+localization service drives the view text; a view-only PropertyGrid descriptor
+wrapper localizes names/categories without changing CLR properties, recipe
+JSON, or adapter contracts. Tool Lab title badges and form labels no longer
+clip in the representative captures, Calibration reaches the bottom bar at
+`1280 x 760`, and Expert keeps its existing dock topology at `1920 x 1040` and
+`1280 x 760`.
+
+Current evidence passes build `0/0`, Calibration ViewModel `72/72`, docking
+`27/27`, Recipe Center/WPG `28/28`, and eight current Korean/English actual-EXE
+screenshot-quality reports on attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_UI_LOCALIZATION_AND_DENSITY_20260723.md` and
+`artifacts/current/20260723-ui-localization-density/`.
+
+This checkpoint covers fixed view labels, not every runtime string. Shared
+Viewer HUD/control text and dynamic execution/evidence summaries remain the
+next bounded localization priority. Keep technical IDs and coordinate symbols
+stable. Do not rescore the owner-approved scoped UI `85/100` without a new
+owner replay, and do not infer physical calibration or metrology trust.
+
+## Calibration capability availability checkpoint - 2026-07-23
+
+Calibration Center now keeps only `Overview` and `Repeatability` selectable.
+Height Calibration, Sensor Alignment, Calibration History, Profile History,
+Sensor Transform, and profile Validate/Activate remain visible as bilingual
+`준비 중 / Coming soon` roadmap items, but cannot open blank placeholder
+workspaces. Typed ViewModel selection attempts are also ignored. The narrow
+inspector retains only the implemented Calculate action and replaces the
+clipped Validate/Activate row with a truthful status surface.
+
+Current evidence passes build `0/0`, Calibration Center ViewModel `70/70`,
+docking `27/27`, and Korean/English current actual-EXE screenshot quality on
+attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_CALIBRATION_AVAILABILITY_UI_20260723.md` and
+`artifacts/current/20260723-calibration-availability/`.
+
+This is a capability-truthfulness and layout checkpoint, not Height
+Calibration, Sensor Alignment, profile activation, physical calibration,
+Gauge R&R, or metrology evidence. The next bounded UI priority is the remaining
+Tool Lab, Calibration, and Expert Korean/English label and truncation pass.
+The external algorithm trust gate remains distinct real four-landmark
+multi-piece data with declared unit/frame/provenance.
+
+## Run Record history/export UX checkpoint - 2026-07-23
+
+The existing docked bilingual Run Record tab now exposes Open record, current
+JSON/HTML/CSV, Open folder, collision-safe bundle export, and the ten most
+recent valid record paths. Recent paths use the existing atomic local
+recent-file mechanism. Opening a record is read-only and never changes the
+recipe, Viewer source, or inspection execution state. Invalid JSON retains the
+current record. Export creates a new `RunRecord-<RunId>` folder and copies the
+existing JSON/HTML/CSV byte-for-byte without silent overwrite.
+
+Current evidence passes Shell build `0/0`, focused history/load/export `8/8`,
+docking `27/27`, recipe teaching `25/25`, and actual-EXE screenshot quality in
+Korean and English, including `1920 x 1040` and `1280 x 760`, on attempt 1.
+Preserve `docs/OPENVISIONLAB_3D_RUN_RECORD_HISTORY_UX_20260723.md` and
+`artifacts/current/20260723-run-record-history-ux/`.
+
+Do not expand this local recent-file list into a database, production batch
+system, trend platform, or audit-retention subsystem without a new owner
+decision. The next evidence step is an unaided owner open/reopen/export
+replay. The external algorithm trust gate remains distinct real
+four-landmark multi-piece data with declared unit/frame/provenance.
+
+## General ordered graph Run Record checkpoint - 2026-07-23
+
+The production Runner now accepts a generic `ToolRecipeDocument` through
+`--tool-recipe` and maps the one existing
+`ToolRecipeOrderedGraphExecution` result into schema `1.4` JSON/HTML/CSV.
+There is no second graph executor. All 27 authored steps retain exact order,
+typed route, status/message/time, metrics, overlays, and output-content
+SHA-256. Feature-only steps remain visible even when they have no measurement
+metric. The existing bilingual docked Run Record tab reads the same record and
+shows a short output hash without breaking older records.
+
+The fixed Synthetic Affine Plate production run completes Pass `27/27`. A
+controlled same-grid measurement sample completes expected Fail `27/27` and
+retains later Warpage evidence. Current Debug evidence passes build `0/0`,
+writer `21/21`, schema `1.3` regression `21/21`, recipe teaching `25/25`,
+docking `26/26`, and Korean/English actual-EXE screenshot quality on attempt
+1. Preserve
+`docs/OPENVISIONLAB_3D_GENERAL_GRAPH_RUN_RECORD_20260723.md` and
+`artifacts/current/20260723-general-graph-run-record/`.
+
+Historical internal next step, now closed by the history/export checkpoint
+above: the next external gate is distinct real four-landmark multi-piece data with
+declared unit/frame/provenance. Without that prerequisite, a bounded internal
+follow-up added Run Record history/open/export UX using schema `1.4`; do not
+expand into arbitrary DAG editing, production batch infrastructure,
+camera/PLC integration, physical calibration, or metrology claims.
+
+## Ordered graph Validation Set checkpoint - 2026-07-23
+
+The dockable bilingual `Validation Set` now uses one general per-sample ordered
+executor for all currently executable typed adapters. It rebinds fresh
+same-grid C3D source selections, refreshes raw PointSet captures by locator,
+executes exact INPUT -> OUTPUT IDs, then rebinds artifact-owned selections to
+the newly generated A3 identity. The authored recipe and Viewer input remain
+unchanged. Upstream Error/NotRun/missing artifacts stop the dependent graph;
+measurement Fail preserves later evidence.
+
+The fixed 27-step Synthetic Affine Plate completes Pass. A modified Thickness
+sample completes all 27 steps as Fail and retains later Warpage evidence. A
+same-grid missing-edge sample stops at step 2 as Error. Filter,
+Correspondence, A1, A2, A3, Thickness, and Warpage output hashes match the
+established direct adapters. Current Debug evidence passes build `0/0`,
+Validation Set `16/16`, Synthetic Affine Plate `18/18`, recipe teaching
+`25/25`, docking `26/26`, and Korean/English actual-EXE screenshot quality on
+attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_ORDERED_GRAPH_VALIDATION_20260723.md` and
+`artifacts/current/20260723-ordered-graph-validation/`.
+
+Historical next step, now closed by the general Run Record checkpoint above:
+the next external gate is real multi-piece validation using a trusted
+four-landmark acquisition set with declared unit/frame/provenance. If that data
+is unavailable, durable general graph Run Record/export uses this executor and
+is complete. Arbitrary DAG editing, production batch
+infrastructure, camera/PLC integration, physical calibration, and metrology
+remain outside or unverified.
+
+## Validation Set v1 checkpoint - 2026-07-23
+
+The dockable bilingual `Validation Set` workspace now covers the first bounded
+repeat-inspection loop: add an explicit ordered C3D list, choose `Run all`,
+review Pass/Fail/Error per sample, then select a failed/error sample to inspect
+its ordered step evidence. Adding or selecting samples does not mutate the
+authored recipe or current Viewer source. Execution continues after a Fail.
+
+Historical boundary, superseded by the ordered graph checkpoint above: the v1 executor fails closed. It verifies file and same-grid identity, creates
+an ephemeral source/selection rebinding, and invokes existing typed adapters.
+Its current fresh-sample coverage is raw-source measurement steps only; it
+rejects Filter/feature/affine/A3 graphs rather than pretending the whole graph
+ran. The UI remains algorithm-neutral.
+
+Current Debug evidence passes build `0/0`, Validation Set `10/10`, recipe
+teaching `25/25`, docking `26/26`, and Korean/English actual-EXE screenshot
+quality on attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_VALIDATION_SET_V1_20260723.md` and
+`artifacts/current/20260723-validation-set-v1/`.
+
+The next implementation gate is a general per-sample ordered recipe executor
+from fresh C3D through Filter, feature/datum, full-XYZ affine, A3, and
+measurement while preserving typed identity and Run Record evidence. Real
+calibrated multi-piece evidence remains external and metrology remains
+unverified.
+
+## Input-first Guided Flow checkpoint - 2026-07-23
+
+The first inspection path now starts source-less. Normal Shell startup no longer
+loads or synchronizes the fixed Thickness sample, and Recipe Center New saves a
+named zero-step recipe with an empty source before activating the Workbench.
+Only explicit Open 3D Map or a valid recipe open establishes source readiness.
+Tool addition requires that readiness contract; before it, the catalog and
+palette details are hidden and the bilingual Inspection Tools, Inspection Flow,
+and Viewer all present the same input action. After input, compatible tools
+appear, and selected-step guidance points to Step Parameters and explicit
+Preview. Preview, Run, and Publish remain explicit.
+
+Current evidence passes build `0/0`, recipe teaching `25/25`, Recipe Center/WPG
+`27/27`, docking `26/26`, actual EXE New through Don't Save with empty source
+and zero steps, actual EXE empty -> fixed C3D transition, and Korean/English
+`1920 x 1040` screenshot quality. Preserve
+`docs/OPENVISIONLAB_3D_INPUT_FIRST_GUIDED_FLOW_20260723.md` and
+`artifacts/current/20260723-input-first-guided-flow/`.
+
+The next internal UX priority is multi-sample repeat validation. Viewer UI-
+apply/first-render performance follows. An unaided owner replay and trusted
+real frame/unit/metrology evidence remain external or blocked gates.
+
+## C3D load performance checkpoint - 2026-07-23
+
+The bounded C3D topology-performance slice is complete. Stage instrumentation
+showed that the fixed C3D grid load itself was about `0.33 s`, while render
+topology creation consumed about `2.82 s`. Packed cell keys, single-pass bounds,
+and direction-owned edge occupancy replace the tuple dictionary and three edge
+hash sets without changing the exact triangle/wire/grid/surface-edge order.
+
+Three identical current Debug actual-EXE runs reduce median topology creation
+from `2,821.555 ms` to `48.088 ms` (`-98.3%`) and median Thickness -> Warpage
+transition from `5,447 ms` to `2,891 ms` (`-46.9%`). Build is `0/0`; display
+and exact topology are `83`, loader/distribution `22`, recipe teaching `25/25`,
+and docking `26/26`. Completion, 10% cancellation retention, missing-source
+retention, post-load pointer regression, and Korean `1920 x 1040` screenshot
+quality all pass. Preserve
+`docs/OPENVISIONLAB_3D_C3D_LOAD_PERFORMANCE_20260723.md` and
+`artifacts/current/20260723-c3d-load-performance/`.
+
+This is fixed local Debug evidence. UI apply and first render remain the next
+bounded performance target at about `1.09 s`. The unaided owner first-recipe
+replay and the trusted real four-landmark acquisition remain separate external
+gates; no Release, large-data, calibration, or metrology claim is supported.
+
+## Viewer pointer-render coalescing checkpoint - 2026-07-23
+
+The bounded P0-C pointer-render slice is complete. Orbit, middle/right pan, and
+profile endpoint drag no longer call synchronous OpenGL rendering for every
+`MouseMove`; the existing SharpGL 30 FPS scheduler collapses current state into
+the next frame. The actual-EXE smoke now fails closed on handler, next-frame,
+and immediate-render thresholds and records C3D display-list timing.
+
+The instrumented fixed-scene baseline was average `22.884 ms`, maximum
+`108.186 ms`, and 6 immediate renders per pointer run. Final actual-EXE C3D
+repetition passes `3/3`: averages are `0.134-0.184 ms`, maxima are
+`0.963-1.528 ms`, next-frame maxima are `36.787-51.914 ms`, and immediate
+renders are zero. A different-source Thickness -> Warpage run also passes with
+handler maximum `0.889 ms`, next-frame maximum `46.416 ms`, and display-list
+build `37.581 ms`. Build is `0/0`; display is `83`, docking `26/26`, and recipe
+teaching `25/25`. Preserve
+`docs/OPENVISIONLAB_3D_VIEWER_RENDER_COALESCING_20260723.md` and
+`artifacts/current/20260723-viewer-render-coalescing/`.
+
+This is fixed local software evidence, not a production frame-time, large-data
+LOD, calibration, or metrology claim. The next product evidence priority is an
+unaided owner first-recipe replay. The real four-landmark trust gate remains
+blocked by missing acquisition unit/frame/provenance/correspondence/reference-
+grid evidence.
+
+## Asynchronous C3D load checkpoint - 2026-07-23
+
+The bounded P0-B source-load slice is complete. The existing Open 3D Map path
+now performs C3D decode, distribution calculation, sampled render-point
+creation, and render-topology preparation off the UI thread; a localized
+determinate ribbon exposes progress and Cancel. The prepared grid is committed
+only on success, so cancellation and failure retain the current Viewer and
+recipe source.
+
+Current evidence passes build `0/0`, loader `22`, recipe teaching `25/25`, and
+docking `26/26`. Actual EXE evidence changes Thickness to Warpage in `3,814 ms`
+while processing 77 input-priority Dispatcher ticks; cancellation at 10% ends
+in `327 ms` and retains Thickness; a missing source fails in `51 ms` and also
+retains Thickness. Korean 1920 x 1040 and English 1280 x 720 load-state captures
+pass quality on attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_ASYNC_C3D_LOAD_20260723.md` and
+`artifacts/current/20260723-async-c3d-load/`.
+
+This does not prove smooth interaction or a maximum input-latency bound. The
+next priority is P0-C: first-render/display-list cost plus pointer-render
+coalescing measured with drag latency and frame rate.
+
+## Viewer-first usability checkpoint - 2026-07-23
+
+The bounded P0-A UI slice is complete in current source. The 3D View now has a
+persistent localized Open 3D Map action and `Ctrl+Shift+O`; explicit C3D loads
+reset to Wireframe; the empty Pipeline/Validation pane stays collapsed until an
+explicit execution/evidence action; and widths below 1500 pixels tab Tool
+Library with Recipe Flow so the Viewer and Step Parameters remain usable.
+
+Current evidence passes build `0/0`, docking `26/26`, Viewer display settings
+`83`, recipe teaching `23/23`, Recipe Center/WPG/localization `27/27`, and
+Korean/English 1920 x 1040 plus Korean 1280 x 720 screenshot quality on attempt
+1. Preserve `docs/OPENVISIONLAB_3D_VIEWER_FIRST_USABILITY_20260723.md` and
+`artifacts/current/20260723-viewer-first-usability/`. The historical file named
+`before-1280x720-ko.png` is another 1920 x 1040 image caused by the old smoke
+maximize path and is not valid 1280 baseline evidence.
+
+The next priorities are P0-B asynchronous/cancellable different-source C3D
+loading with visible progress and P0-C pointer/render coalescing with measured
+drag latency. This checkpoint makes no performance, calibration, or metrology
+claim.
+
+## Recipe New / Don't Save / Open correction - 2026-07-22
+
+The owner-observed lifecycle defect is closed in current source. A fresh
+Workbench no longer starts dirty merely because the startup C3D was
+synchronized. Recipe Center `New` now resolves current changes, asks for the
+new path, creates a named zero-step recipe, saves it immediately, and activates
+the main Workbench. The unsaved prompt uses `저장 / Save`, `저장 안 함 / Don't
+Save`, and `취소 / Cancel`; `저장 안 함` continues New/Open. Dialogs are owned
+by the visible Recipe Center, and Open reuses an identical Viewer C3D instead
+of decoding it again.
+
+Current evidence passes build `0/0`, Recipe Center/WPG `27/27`, recipe teaching
+`23/23`, and docking `25/25`. The actual Debug EXE raised the real shared-dialog
+`저장 안 함` button and created a zero-step schema `1.3` file with
+`IsDirty=False`; the exact Open handler then loaded it in `774 ms`,
+hid Recipe Center, activated Workbench, and reused the current source. Current
+captures pass quality on attempt 1 and show the localized `저장됨` state. Preserve
+`docs/OPENVISIONLAB_3D_EMPTY_RECIPE_LIFECYCLE_20260722.md` and
+`artifacts/current/20260722-recipe-lifecycle-recheck/`.
+
+The automation injects the Save/Open picker choice; a manual owner picker
+replay and different-source C3D load-time measurement remain unverified. The
+next technical gate remains the trusted real four-landmark acquisition.
+
+## Main-window work-area checkpoint - 2026-07-22
+
+The owner-observed `1920 x 1080` startup window extended below the Windows
+work area and was covered by the bottom taskbar. The custom-chrome Shell now
+starts maximized, handles `WM_GETMINMAXINFO` against the current monitor's
+work area, and restores to `1600 x 900`.
+
+Current live evidence passes initial maximize `(0,0)-(1920,1040)`, restore
+`(78,78)-(1678,978)`, and re-maximize `(0,0)-(1920,1040)`. The full build is
+`0/0`; the Shell screenshot passed quality on attempt 1; the reviewed desktop
+capture shows the taskbar and complete application bottom simultaneously.
+Preserve `docs/OPENVISIONLAB_3D_MAIN_WINDOW_WORK_AREA_20260722.md` and
+`artifacts/current/20260722-shell-work-area/`.
+
+This changes no algorithm, recipe, Runner, docking, or Viewer interaction
+contract. The next technical gate remains blocked by the missing trusted real
+four-landmark acquisition.
+
+## Message dialog and invalid-save UX checkpoint - 2026-07-22
+
+The Labelling Application's `OpenVisionLab.Wpf.MessageDialogs` project is now
+vendored into Studio with its API/behavior preserved, a .NET 10 target,
+existing localization DLL integration, and the 3D navy/teal visual tokens.
+Shell prompts no longer use stock `System.Windows.MessageBox`; primary
+operator titles, instructions, standard buttons, and the technical-details
+affordance switch between Korean and English. Raw exceptions and file/schema
+evidence may remain inside expandable details.
+
+This checkpoint's original zero-step Save restriction is superseded. Recipe
+Center now permits Save and Save As before any inspection step exists. Strict
+input/step validation continues to block Preview and Run. See
+`docs/OPENVISIONLAB_3D_EMPTY_RECIPE_LIFECYCLE_20260722.md`.
+
+The latest Debug EXE created and reopened a schema `1.3` recipe with
+`steps: []`; both executions returned `0`. Current focused evidence passes
+Recipe Center/WPG `24/24`, recipe teaching `21/21`, and selection contracts
+`17/17` under `artifacts/current/20260722-empty-recipe-lifecycle/`.
+
+Current Debug evidence passes build `0/0`, Recipe Center/WPG/dialog
+localization `24/24`, docking `25/25`, recipe teaching `18/18`, zero stock
+message-box references under `src`, and Korean/English Recipe Center plus
+message-dialog captures on attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_MESSAGE_DIALOG_AND_RECIPE_SAVE_UX_20260722.md` and
+`artifacts/current/20260722-message-dialog-localization/`.
+
+The owner first-use replay remains external evidence. The next technical gate
+is still blocked by the absence of a trusted real four-landmark acquisition
+with unit/frame/provenance/reference-grid evidence.
+
+## First Recipe UX and Recipe Center checkpoint - 2026-07-22
+
+The owner's failed unaided first attempt reopened first-task usability even
+though the historical visual/docking score was `85/100`. The corrective slice
+is now implemented: the separate single-instance window is a Recipe Center,
+and the default authoring workspace is split into Tool Library, Recipe Flow,
+3D View, and Step Parameters. A five-stage journey and one contextual next
+action guide the initial recipe; at zero steps the empty bottom pipeline stays
+closed. New/Open are primary Recipe Center actions, recent items show paths,
+and new computed status is bilingual.
+
+Current Debug evidence passes build `0/0`, docking `25/25`, Recipe
+Center/WPG/localization `24/24`, recipe teaching `18/18`, and Korean/English
+`1920 x 1080` Workbench and Recipe Center captures on attempt 1. Preserve
+`docs/OPENVISIONLAB_3D_FIRST_RECIPE_UX_AND_RECIPE_CENTER_20260722.md` and
+`artifacts/current/20260722-first-recipe-ux/` as the evidence sources.
+
+This proves the implementation and current-source UI contract, not an
+unaided-operator pass. The owner should replay New/Open -> Add -> Teach and
+Preview -> Save in the current EXE. Algorithm, recipe schema, Run Record,
+Viewer interaction, and explicit Preview/Publish/Run behavior were not
+changed. The next technical product gate remains a trusted real
+four-landmark acquisition; physical calibration and metrology claims remain
+blocked until that prerequisite exists.
+
 ## Ordered multi-step Run Record checkpoint - 2026-07-22
 
 The bounded explicit-A2 executor now emits one schema `1.3` JSON/HTML/CSV Run

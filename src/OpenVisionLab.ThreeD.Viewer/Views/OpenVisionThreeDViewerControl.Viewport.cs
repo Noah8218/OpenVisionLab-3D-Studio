@@ -50,6 +50,14 @@ public sealed partial class OpenVisionThreeDViewerControl
     private void Viewport_OpenGLDraw(object sender, OpenGLRoutedEventArgs args)
     {
         var drawStart = Stopwatch.GetTimestamp();
+        if (pointerInputRegressionActive && pointerInputLastMouseMoveTimestamp != 0)
+        {
+            var nextFrameMilliseconds = Stopwatch.GetElapsedTime(pointerInputLastMouseMoveTimestamp, drawStart).TotalMilliseconds;
+            pointerInputNextFrameTimingCount++;
+            pointerInputNextFrameTotalMilliseconds += nextFrameMilliseconds;
+            pointerInputNextFrameMaximumMilliseconds = Math.Max(pointerInputNextFrameMaximumMilliseconds, nextFrameMilliseconds);
+            pointerInputLastMouseMoveTimestamp = 0;
+        }
         UpdateFrameInterval(drawStart);
 
         var gl = args.OpenGL;
@@ -308,11 +316,34 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
+        var mouseMoveStart = Stopwatch.GetTimestamp();
+        var measurePointerMove = pointerInputRegressionActive;
+        isHandlingPointerMouseMove = measurePointerMove;
         if (pointerInputRegressionActive)
         {
             pointerInputMouseMoveCount++;
+            pointerInputLastMouseMoveTimestamp = mouseMoveStart;
         }
 
+        try
+        {
+            HandleViewportMouseMove(e);
+        }
+        finally
+        {
+            isHandlingPointerMouseMove = false;
+            if (measurePointerMove)
+            {
+                var elapsedMilliseconds = Stopwatch.GetElapsedTime(mouseMoveStart).TotalMilliseconds;
+                pointerInputMouseMoveTimingCount++;
+                pointerInputMouseMoveTotalMilliseconds += elapsedMilliseconds;
+                pointerInputMouseMoveMaximumMilliseconds = Math.Max(pointerInputMouseMoveMaximumMilliseconds, elapsedMilliseconds);
+            }
+        }
+    }
+
+    private void HandleViewportMouseMove(MouseEventArgs e)
+    {
         if (profileDraggedEndpoint != 0)
         {
             if (e.LeftButton != MouseButtonState.Pressed)
@@ -325,7 +356,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var profilePoint = e.GetPosition(Viewport);
             if (TryMoveProfileEndpoint(profilePoint))
             {
-                RenderNow();
+                RequestInteractiveRender();
             }
 
             return;
@@ -412,7 +443,21 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.UpdateCameraStatus();
         }
 
-        RenderNow();
+        RequestInteractiveRender();
+    }
+
+    private void RequestInteractiveRender()
+    {
+        if (pointerInputRegressionActive)
+        {
+            pointerInputScheduledMouseMoveRenderCount++;
+        }
+
+        // SharpGL already renders at the Viewport's fixed 30 FPS. Updating only
+        // lightweight WPF state here lets all pointer changes since the previous
+        // frame collapse into that next scheduled render instead of calling the
+        // synchronous OpenGL path once per MouseMove event.
+        UpdateOrientationTriad();
     }
 
     private void Viewport_MouseUp(object sender, MouseButtonEventArgs e)

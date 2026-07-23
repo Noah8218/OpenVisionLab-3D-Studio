@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows.Input;
 using LiveChartsCore.Kernel;
+using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -26,8 +27,6 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
 {
     private static readonly ReadOnlyCollection<string> SectionNames = Array.AsReadOnly(
         new[] { "Overview", "Height Calibration", "Sensor Alignment", "Repeatability", "History" });
-    private static readonly ReadOnlyCollection<string> MetricNames = Array.AsReadOnly(
-        new[] { "Thickness" });
 
     private readonly RelayCommand loadStudyCommand;
     private readonly RelayCommand calculateCommand;
@@ -44,6 +43,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
 
     public CalibrationCenterViewModel()
     {
+        repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
         loadStudyCommand = new RelayCommand(_ => LoadStudyRequested?.Invoke(this, EventArgs.Empty));
         calculateCommand = new RelayCommand(_ => CalculateRepeatability(), _ => CanCalculate);
         validateCommand = new RelayCommand(_ => { }, _ => false);
@@ -52,13 +52,14 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
             SelectRepeatabilityChartPoint,
             CanSelectRepeatabilityChartPoint);
         RepeatabilityChartSeries.Add(new CalibrationRepeatabilityChartSeriesModel(RepeatabilityChartValues));
+        OpenVisionLanguageService.LanguageChanged += (_, _) => RefreshLanguage();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? LoadStudyRequested;
 
     public IReadOnlyList<string> Sections => SectionNames;
-    public IReadOnlyList<string> RepeatabilityMetricOptions => MetricNames;
+    public IReadOnlyList<string> RepeatabilityMetricOptions => [SelectedRepeatabilityMetric];
     public ObservableCollection<CalibrationRepeatabilityRunItem> RepeatabilityRuns { get; } = [];
     public ObservableCollection<double> RepeatabilityChartValues { get; } = [];
     public ObservableCollection<CalibrationRepeatabilityChartSeriesModel> RepeatabilityChartSeries { get; } = [];
@@ -75,7 +76,9 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         get => selectedSection;
         set
         {
-            if (!Enum.IsDefined(value) || !SetField(ref selectedSection, value))
+            if (!Enum.IsDefined(value)
+                || !IsSectionAvailable(value)
+                || !SetField(ref selectedSection, value))
             {
                 return;
             }
@@ -83,6 +86,9 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedSectionIndex));
         }
     }
+
+    public static bool IsSectionAvailable(CalibrationSection section) =>
+        section is CalibrationSection.Overview or CalibrationSection.Repeatability;
 
     public int SelectedSectionIndex
     {
@@ -114,81 +120,86 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
     public bool CanActivate => false;
     public bool HasLoadedRepeatabilityStudy => loadedStudy is not null;
     public bool HasCalculatedRepeatability => evaluation is not null;
-    public bool HasMultipleRepeatabilityMetrics => MetricNames.Count > 1;
-    public string SelectedRepeatabilityMetric => MetricNames[0];
+    public bool HasMultipleRepeatabilityMetrics => false;
+    public string SelectedRepeatabilityMetric => L("두께", "Thickness");
     public string? LoadedRepeatabilityStudyPath => loadedStudy?.Path;
 
-    public string WorkspaceStatus => "Offline calibration workspace";
+    public string WorkspaceStatus => L("오프라인 교정 작업공간", "Offline calibration workspace");
     public string UnitFrameStatus => loadedStudy is null
-        ? "Declared unit: not set | Frame: not set"
-        : $"Declared unit: {loadedStudy.Input.Unit} | Frame: {loadedStudy.Input.FrameId}";
-    public string CalibrationStatus => "Calibration: no active profile";
-    public string ActiveProfileStatus => "No active calibration profile";
-    public string SelectedProfileStatus => "No profile selected";
-    public string ProfileVersionStatus => "Version: -";
-    public string ProfileValidityStatus => "Valid until: -";
-    public string HeightTargetStatus => "Height target: not loaded";
-    public string AlignmentTargetStatus => "Alignment target: not loaded";
+        ? L("선언 단위: 미설정 | 프레임: 미설정", "Declared unit: not set | Frame: not set")
+        : L($"선언 단위: {loadedStudy.Input.Unit} | 프레임: {loadedStudy.Input.FrameId}", $"Declared unit: {loadedStudy.Input.Unit} | Frame: {loadedStudy.Input.FrameId}");
+    public string CalibrationStatus => L("교정: 활성 프로파일 없음", "Calibration: no active profile");
+    public string ActiveProfileStatus => L("활성 교정 프로파일 없음", "No active calibration profile");
+    public string SelectedProfileStatus => L("선택된 프로파일 없음", "No profile selected");
+    public string ProfileVersionStatus => L("버전: -", "Version: -");
+    public string ProfileValidityStatus => L("유효 기한: -", "Valid until: -");
+    public string HeightTargetStatus => L("높이 타깃: 불러오지 않음", "Height target: not loaded");
+    public string AlignmentTargetStatus => L("정렬 타깃: 불러오지 않음", "Alignment target: not loaded");
     public string RepeatabilityInputStatus => loadedStudy is null
         ? repeatabilityOperationStatus
-        : $"Repeatability runs: {loadedStudy.Input.Runs!.Count} | {Path.GetFileName(loadedStudy.Path)}";
+        : L($"반복 실행: {loadedStudy.Input.Runs!.Count} | {Path.GetFileName(loadedStudy.Path)}", $"Repeatability runs: {loadedStudy.Input.Runs!.Count} | {Path.GetFileName(loadedStudy.Path)}");
     public string RepeatabilitySummary => evaluation is not null
-        ? string.Create(
+        ? L(
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"N={evaluation.RunCount} | 평균 {FormatNumber(evaluation.Mean)} | s {FormatNumber(evaluation.SampleStandardDeviation)} | 6s {FormatNumber(evaluation.SixSigmaSpread)} | 범위 {FormatNumber(evaluation.Range)} {loadedStudy!.Input.Unit} | {LocalizeResultStatus(evaluation.Result.Status)}"),
+            string.Create(
             CultureInfo.InvariantCulture,
             $"N={evaluation.RunCount} | Mean {FormatNumber(evaluation.Mean)} | s {FormatNumber(evaluation.SampleStandardDeviation)} | 6s {FormatNumber(evaluation.SixSigmaSpread)} | Range {FormatNumber(evaluation.Range)} {loadedStudy!.Input.Unit} | {evaluation.Result.Status}")
+          )
         : loadedStudy is not null
-            ? $"{loadedStudy.Input.Runs!.Count} runs | {loadedStudy.Input.ReferenceRoiId} | {repeatabilityOperationStatus}"
+            ? L($"{loadedStudy.Input.Runs!.Count}회 | {loadedStudy.Input.ReferenceRoiId} | {LocalizedOperationState}", $"{loadedStudy.Input.Runs!.Count} runs | {loadedStudy.Input.ReferenceRoiId} | {LocalizedOperationState}")
             : repeatabilityOperationStatus;
     public string RepeatabilityMapState => evaluation is null
-        ? "Not calculated"
-        : $"Aggregate result: {evaluation.Result.Status}";
+        ? L("계산하지 않음", "Not calculated")
+        : L($"종합 결과: {LocalizeResultStatus(evaluation.Result.Status)}", $"Aggregate result: {evaluation.Result.Status}");
     public string RepeatabilityMapHint => evaluation is not null
-        ? "Per-point variation is unavailable for this representative-value study"
+        ? L("대표값 스터디에는 포인트별 변동 데이터가 없습니다.", "Per-point variation is unavailable for this representative-value study")
         : loadedStudy is not null
-            ? "Verified study inputs are ready"
-            : "Load repeated measurements to compare per-point variation";
+            ? L("검증된 스터디 입력이 준비되었습니다.", "Verified study inputs are ready")
+            : L("반복 측정값을 불러와 포인트별 변동을 비교하세요.", "Load repeated measurements to compare per-point variation");
     public string RepeatabilityChartState => evaluation is not null
-        ? $"{evaluation.RunCount} included runs | {evaluation.Result.Status}"
+        ? L($"{evaluation.RunCount}회 포함 | {LocalizeResultStatus(evaluation.Result.Status)}", $"{evaluation.RunCount} included runs | {evaluation.Result.Status}")
         : loadedStudy is not null
             ? inputValidation?.IsReady == true
-                ? $"{loadedStudy.Input.Runs!.Count} verified runs"
-                : $"{loadedStudy.Input.Runs!.Count} runs | input invalid"
-            : "No repeatability runs";
-    public string HeightCalibrationState => "Not calculated";
-    public string AlignmentState => "Not calculated";
+                ? L($"{loadedStudy.Input.Runs!.Count}회 검증됨", $"{loadedStudy.Input.Runs!.Count} verified runs")
+                : L($"{loadedStudy.Input.Runs!.Count}회 | 입력 오류", $"{loadedStudy.Input.Runs!.Count} runs | input invalid")
+            : L("반복 실행 없음", "No repeatability runs");
+    public string HeightCalibrationState => L("계산하지 않음", "Not calculated");
+    public string AlignmentState => L("계산하지 않음", "Not calculated");
     public string RepeatabilityOverviewState => evaluation is not null
-        ? $"{evaluation.Result.Status} | N={evaluation.RunCount}"
+        ? $"{LocalizeResultStatus(evaluation.Result.Status)} | N={evaluation.RunCount}"
         : inputValidation?.IsReady == true
-            ? $"Ready | N={inputValidation.RunCount}"
-            : "No valid study";
-    public string ProfileActivationState => "Blocked";
-    public string HeightTargetEmptyState => "No height target loaded";
-    public string AlignmentTargetEmptyState => "No alignment target loaded";
-    public string EmptyRepeatabilityRunsText => "No repeatability runs";
-    public string EmptyEvidenceText => "No calculation evidence";
-    public string EmptyProfilesText => "No calibration profiles";
-    public string ProfileNameValue => loadedStudy?.Input.StudyId ?? "Not set";
-    public string SensorIdentityValue => "Not set";
+            ? L($"준비됨 | N={inputValidation.RunCount}", $"Ready | N={inputValidation.RunCount}")
+            : L("유효한 스터디 없음", "No valid study");
+    public string ProfileActivationState => L("차단됨", "Blocked");
+    public string HeightTargetEmptyState => L("높이 타깃 없음", "No height target loaded");
+    public string AlignmentTargetEmptyState => L("정렬 타깃 없음", "No alignment target loaded");
+    public string EmptyRepeatabilityRunsText => L("반복 실행 없음", "No repeatability runs");
+    public string EmptyEvidenceText => L("계산 증거 없음", "No calculation evidence");
+    public string EmptyProfilesText => L("교정 프로파일 없음", "No calibration profiles");
+    public string ProfileNameValue => loadedStudy?.Input.StudyId ?? L("미설정", "Not set");
+    public string SensorIdentityValue => L("미설정", "Not set");
     public string CalibrationTargetValue => loadedStudy is null
-        ? "Not set"
+        ? L("미설정", "Not set")
         : $"{loadedStudy.Input.MeasurementDefinitionId} | {loadedStudy.Input.ReferenceRoiId}";
     public string UnitFrameValue => loadedStudy is null
-        ? "Not set"
+        ? L("미설정", "Not set")
         : $"{loadedStudy.Input.Unit} | {loadedStudy.Input.FrameId}";
     public string MinimumRunCountValue => loadedStudy?.Input.Acceptance is { } acceptance
         ? acceptance.MinimumRunCount.ToString(CultureInfo.InvariantCulture)
-        : "Not configured";
+        : L("미설정", "Not configured");
     public string StandardDeviationLimitValue => loadedStudy?.Input.Acceptance is { } acceptance
         ? Format(acceptance.MaximumSampleStandardDeviation, loadedStudy.Input.Unit)
-        : "Not configured";
+        : L("미설정", "Not configured");
     public string RangeLimitValue => loadedStudy?.Input.Acceptance is { } acceptance
         ? Format(acceptance.MaximumRange, loadedStudy.Input.Unit)
-        : "Not configured";
+        : L("미설정", "Not configured");
     public string RepeatabilityCalculationMessage => evaluation?.Result.Message ?? repeatabilityOperationStatus;
-    public string ProfileLifecycleSummary => "Draft  >  Calculated  >  Validated  >  Active";
+    public string ProfileLifecycleSummary => L("초안  >  계산됨  >  검증됨  >  활성", "Draft  >  Calculated  >  Validated  >  Active");
     public string SelectedRepeatabilityRunSummary => SelectedRepeatabilityRun is null
-        ? "No repeatability run selected"
-        : $"Run {SelectedRepeatabilityRun.RunNumber} | {SelectedRepeatabilityRun.RunId} | {SelectedRepeatabilityRun.ValueText} | {SelectedRepeatabilityRun.Status}";
+        ? L("선택된 반복 실행 없음", "No repeatability run selected")
+        : L($"실행 {SelectedRepeatabilityRun.RunNumber} | {SelectedRepeatabilityRun.RunId} | {SelectedRepeatabilityRun.ValueText} | {SelectedRepeatabilityRun.Status}", $"Run {SelectedRepeatabilityRun.RunNumber} | {SelectedRepeatabilityRun.RunId} | {SelectedRepeatabilityRun.ValueText} | {SelectedRepeatabilityRun.Status}");
 
     public bool LoadStudy(string path)
     {
@@ -198,7 +209,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
             loadedStudy = ThicknessRepeatabilityStudyLoader.Load(path);
             inputValidation = ThicknessRepeatabilityRule.Validate(loadedStudy.Input);
             repeatabilityOperationStatus = inputValidation.Message;
-            PopulateRunRows(inputValidation.IsReady ? "Ready" : "Invalid");
+            PopulateRunRows(inputValidation.IsReady ? L("준비됨", "Ready") : L("오류", "Invalid"));
             NotifyRepeatabilityState();
             return inputValidation.IsReady;
         }
@@ -226,14 +237,14 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         {
             evaluation = null;
             repeatabilityOperationStatus = inputValidation.Message;
-            PopulateRunRows("Invalid");
+            PopulateRunRows(L("오류", "Invalid"));
             NotifyRepeatabilityState();
             return;
         }
 
         evaluation = ThicknessRepeatabilityRule.Evaluate(inputValidation.Input);
         repeatabilityOperationStatus = evaluation.Result.Message;
-        PopulateRunRows("Included");
+        PopulateRunRows(L("포함됨", "Included"));
         NotifyRepeatabilityState();
     }
 
@@ -242,7 +253,7 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
         loadedStudy = null;
         inputValidation = null;
         evaluation = null;
-        repeatabilityOperationStatus = "No repeatability study loaded";
+        repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
         SelectedRepeatabilityRun = null;
         RepeatabilityRuns.Clear();
         RepeatabilityChartValues.Clear();
@@ -295,6 +306,32 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
             repeatabilityChartRuns.Add(run);
             RepeatabilityChartRunLabels.Add(run.RunNumber.ToString(CultureInfo.InvariantCulture));
         }
+    }
+
+    private string LocalizedOperationState => evaluation is not null
+        ? L($"계산 완료 | {LocalizeResultStatus(evaluation.Result.Status)}", $"Calculated | {evaluation.Result.Status}")
+        : loadedStudy is not null
+            ? inputValidation?.IsReady == true
+                ? L("검증된 입력이 계산 준비되었습니다.", "Verified inputs are ready to calculate.")
+                : L("스터디 입력이 유효하지 않습니다.", "Study inputs are invalid.")
+            : L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+
+    private void RefreshLanguage()
+    {
+        if (loadedStudy is null)
+        {
+            repeatabilityOperationStatus = L("반복성 스터디를 불러오지 않았습니다.", "No repeatability study loaded");
+        }
+        else
+        {
+            PopulateRunRows(evaluation is not null
+                ? L("포함됨", "Included")
+                : inputValidation?.IsReady == true
+                    ? L("준비됨", "Ready")
+                    : L("오류", "Invalid"));
+        }
+
+        OnPropertyChanged(string.Empty);
     }
 
     private void SelectRepeatabilityChartPoint(object? parameter)
@@ -427,6 +464,18 @@ public sealed class CalibrationCenterViewModel : INotifyPropertyChanged
 
     private static string FormatNumber(double value) =>
         value.ToString("0.######", CultureInfo.InvariantCulture);
+
+    private static string LocalizeResultStatus(object? status) =>
+        status?.ToString() switch
+        {
+            "Pass" => L("통과", "Pass"),
+            "Fail" => L("실패", "Fail"),
+            "Error" => L("오류", "Error"),
+            var value => value ?? L("미정", "Unknown")
+        };
+
+    private static string L(string korean, string english) =>
+        OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English ? english : korean;
 }
 
 public sealed record CalibrationRepeatabilityRunItem(

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              Background="{DynamicResource ThreeD.AppBackgroundBrush}">
     <DockPanel LastChildFill="True">
@@ -33,7 +34,11 @@
             </Grid>
         </Border>
 
-        <dock:OpenVisionCalibrationDockWorkspaceView>
+        <dock:OpenVisionCalibrationDockWorkspaceView
+            ExplorerTitle="{shell:ThreeDText Key=ThreeD.Calibration.ExplorerPane, Korean='교정 탐색기', English='Calibration Explorer'}"
+            WorkspaceTitle="{shell:ThreeDText Key=ThreeD.Calibration.WorkspacePane, Korean='교정 작업공간', English='Calibration Workspace'}"
+            InspectorTitle="{shell:ThreeDText Key=ThreeD.Calibration.InspectorPane, Korean='교정 속성', English='Calibration Inspector'}"
+            EvidenceTitle="{shell:ThreeDText Key=ThreeD.Calibration.EvidencePane, Korean='교정 증거', English='Calibration Evidence'}">
             <dock:OpenVisionCalibrationDockWorkspaceView.ExplorerContent>
                 <Border Background="{DynamicResource ThreeD.PanelBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -42,21 +47,21 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                                       Text="Calibration Center" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.Center, Korean='교정 센터', English='Calibration Center'}" />
                             <TextBlock Margin="0,4,0,0"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                       Text="Sensor-neutral profile workspace" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.CenterDetail, Korean='센서 독립형 프로파일 작업공간', English='Sensor-neutral profile workspace'}" />
 
                             <StackPanel Margin="0,10,0,0">
                                 <ui:Button HorizontalAlignment="Stretch"
                                            AutomationProperties.AutomationId="LoadRepeatabilityStudyButton"
-                                           Content="Load Study"
+                                           Content="{shell:ThreeDText Key=ThreeD.Calibration.LoadStudy, Korean='반복성 스터디 열기', English='Load Study'}"
                                            Icon="{ui:SymbolIcon FolderOpen24}"
                                            Command="{Binding LoadStudyCommand}" />
                                 <ui:Button Margin="0,6,0,0"
                                            HorizontalAlignment="Stretch"
                                            AutomationProperties.AutomationId="CalculateRepeatabilityButton"
-                                           Content="Calculate"
+                                           Content="{shell:ThreeDText Key=ThreeD.Calibration.Calculate, Korean='계산', English='Calculate'}"
                                            Icon="{ui:SymbolIcon ArrowSync24}"
                                            Command="{Binding CalculateCommand}" />
                             </StackPanel>
@@ -64,13 +69,65 @@
                             <ListBox Margin="0,10,0,0"
                                      BorderThickness="0"
                                      Background="Transparent"
-                                     ItemsSource="{Binding Sections}"
-                                     SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}" />
+                                     HorizontalContentAlignment="Stretch"
+                                     SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
+                                <ListBoxItem>
+                                    <TextBlock Text="{Binding CalibrationOverview, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </ListBoxItem>
+                                <ListBoxItem IsEnabled="False"
+                                             ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                                    <DockPanel LastChildFill="True">
+                                        <Border DockPanel.Dock="Right"
+                                                Margin="6,0,10,0"
+                                                Padding="4,1"
+                                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                                CornerRadius="2">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                                       Text="{Binding CalibrationSoonShort, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                        </Border>
+                                        <TextBlock Text="{Binding CalibrationHeightCalibration, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    </DockPanel>
+                                </ListBoxItem>
+                                <ListBoxItem IsEnabled="False"
+                                             ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                                    <DockPanel LastChildFill="True">
+                                        <Border DockPanel.Dock="Right"
+                                                Margin="6,0,10,0"
+                                                Padding="4,1"
+                                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                                CornerRadius="2">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                                       Text="{Binding CalibrationSoonShort, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                        </Border>
+                                        <TextBlock Text="{Binding CalibrationSensorAlignment, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    </DockPanel>
+                                </ListBoxItem>
+                                <ListBoxItem>
+                                    <TextBlock Text="{Binding CalibrationRepeatability, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </ListBoxItem>
+                                <ListBoxItem IsEnabled="False"
+                                             ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                                    <DockPanel LastChildFill="True">
+                                        <Border DockPanel.Dock="Right"
+                                                Margin="6,0,10,0"
+                                                Padding="4,1"
+                                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                                CornerRadius="2">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                                       Text="{Binding CalibrationSoonShort, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                        </Border>
+                                        <TextBlock Text="{Binding CalibrationHistory, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    </DockPanel>
+                                </ListBoxItem>
+                            </ListBox>
 
                             <Separator Margin="0,12,0,10" />
                             <TextBlock FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.TextBrush}"
-                                       Text="Active Profile" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.ActiveProfile, Korean='활성 프로파일', English='Active Profile'}" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="{DynamicResource ThreeD.WarningBrush}"
                                        FontWeight="SemiBold"
@@ -85,7 +142,7 @@
                             <Separator Margin="0,12,0,10" />
                             <TextBlock FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.TextBrush}"
-                                       Text="Input Sets" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.InputSets, Korean='입력 세트', English='Input Sets'}" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{Binding HeightTargetStatus}" />
@@ -106,14 +163,14 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,0,0">
                     <TabControl SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
-                        <TabItem Header="Overview">
+                        <TabItem Header="{Binding CalibrationOverview, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid Margin="14">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                                           Text="Calibration Readiness" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.Readiness, Korean='교정 준비 상태', English='Calibration Readiness'}" />
                                 <Grid Grid.Row="1" Margin="0,12,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="180" />
@@ -125,19 +182,29 @@
                                         <RowDefinition Height="36" />
                                         <RowDefinition Height="36" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock VerticalAlignment="Center" Text="Height calibration" />
+                            <TextBlock VerticalAlignment="Center" Text="{shell:ThreeDText Key=ThreeD.Calibration.HeightCalibration, Korean='높이 교정', English='Height calibration'}" />
                                     <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding HeightCalibrationState}" />
-                                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Sensor alignment" />
+                            <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="{shell:ThreeDText Key=ThreeD.Calibration.SensorAlignment, Korean='센서 정렬', English='Sensor alignment'}" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding AlignmentState}" />
-                                    <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Repeatability" />
+                            <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="{shell:ThreeDText Key=ThreeD.Calibration.Repeatability, Korean='반복성', English='Repeatability'}" />
                                     <TextBlock Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding RepeatabilityOverviewState}" />
-                                    <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="Profile activation" />
+                            <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="{shell:ThreeDText Key=ThreeD.Calibration.ProfileActivation, Korean='프로파일 활성화', English='Profile activation'}" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource ThreeD.WarningBrush}" Text="{Binding ProfileActivationState}" />
                                 </Grid>
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Height Calibration">
+                        <TabItem IsEnabled="False"
+                                 ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CalibrationHeightCalibration, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    <TextBlock Margin="5,0,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               Text="{Binding CalibrationComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="*" />
@@ -152,7 +219,7 @@
                                                    VerticalAlignment="Top"
                                                    Foreground="White"
                                                    FontWeight="SemiBold"
-                                                   Text="Height target map" />
+                                               Text="{shell:ThreeDText Key=ThreeD.Calibration.HeightTargetMap, Korean='높이 대상 맵', English='Height target map'}" />
                                         <TextBlock HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    Foreground="#CBD5E1"
@@ -163,16 +230,26 @@
                                           Margin="0,8,0,0"
                                           Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Target step" Width="*" />
-                                        <DataGridTextColumn Header="Nominal height" Width="120" />
-                                        <DataGridTextColumn Header="Measured mean" Width="120" />
-                                        <DataGridTextColumn Header="Residual" Width="100" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.TargetStep, Korean='대상 단계', English='Target step'}" Width="*" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.NominalHeight, Korean='기준 높이', English='Nominal height'}" Width="120" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.MeasuredMean, Korean='측정 평균', English='Measured mean'}" Width="120" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Residual, Korean='잔차', English='Residual'}" Width="100" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Sensor Alignment">
+                        <TabItem IsEnabled="False"
+                                 ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CalibrationSensorAlignment, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    <TextBlock Margin="5,0,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               Text="{Binding CalibrationComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid Margin="10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -186,7 +263,7 @@
                                                    VerticalAlignment="Top"
                                                    Foreground="White"
                                                    FontWeight="SemiBold"
-                                                   Text="Alignment residual map" />
+                                               Text="{shell:ThreeDText Key=ThreeD.Calibration.AlignmentResidualMap, Korean='정렬 잔차 맵', English='Alignment residual map'}" />
                                         <TextBlock HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"
                                                    Foreground="#CBD5E1"
@@ -198,21 +275,21 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}" Text="Sensor Transform" />
+                            <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.SensorTransform, Korean='센서 변환', English='Sensor Transform'}" />
                                     <DataGrid Grid.Row="1"
                                               Margin="0,8,0,0"
                                               Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Axis" Width="70" />
-                                            <DataGridTextColumn Header="Translation" Width="*" />
-                                            <DataGridTextColumn Header="Rotation" Width="*" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Axis, Korean='축', English='Axis'}" Width="70" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Translation, Korean='이동', English='Translation'}" Width="*" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Rotation, Korean='회전', English='Rotation'}" Width="*" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                 </Grid>
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="Repeatability">
+                        <TabItem Header="{Binding CalibrationRepeatability, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -226,7 +303,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                                                   Text="Thickness Repeatability" />
+                                                   Text="{shell:ThreeDText Key=ThreeD.Calibration.ThicknessRepeatability, Korean='두께 반복성', English='Thickness Repeatability'}" />
                                         <TextBlock Margin="0,3,0,8"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                    Text="{Binding RepeatabilitySummary}" />
@@ -269,7 +346,7 @@
                                                    VerticalAlignment="Top"
                                                    Foreground="White"
                                                    FontWeight="SemiBold"
-                                                   Text="3D repeatability map" />
+                                                   Text="{shell:ThreeDText Key=ThreeD.Calibration.RepeatabilityMap, Korean='3D 반복성 맵', English='3D repeatability map'}" />
                                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <TextBlock HorizontalAlignment="Center"
                                                        Foreground="#E5E7EB"
@@ -297,7 +374,7 @@
                                                 BorderBrush="#4B5563"
                                                 BorderThickness="1"
                                                 CornerRadius="3">
-                                            <TextBlock Foreground="#D1D5DB" Text="Color: standard deviation" />
+                                            <TextBlock Foreground="#D1D5DB" Text="{shell:ThreeDText Key=ThreeD.Calibration.ColorStandardDeviation, Korean='색상: 표준편차', English='Color: standard deviation'}" />
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -316,15 +393,15 @@
                                         <TextBlock VerticalAlignment="Center"
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                   Text="Values Grid" />
+                                                   Text="{shell:ThreeDText Key=ThreeD.Calibration.ValuesGrid, Korean='측정값 표', English='Values Grid'}" />
                                         <DataGrid Grid.Row="1"
                                                   ItemsSource="{Binding RepeatabilityRuns}"
                                                   SelectedItem="{Binding SelectedRepeatabilityRun, Mode=TwoWay}"
                                                   Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
                                             <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Run" Width="48" Binding="{Binding RunNumber, Mode=OneWay}" />
-                                                <DataGridTextColumn Header="Thickness" Width="*" Binding="{Binding ValueText, Mode=OneWay}" />
-                                                <DataGridTextColumn Header="Status" Width="72" Binding="{Binding Status, Mode=OneWay}" />
+                                                <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Run, Korean='실행', English='Run'}" Width="48" Binding="{Binding RunNumber, Mode=OneWay}" />
+                                                <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Thickness, Korean='두께', English='Thickness'}" Width="*" Binding="{Binding ValueText, Mode=OneWay}" />
+                                                <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Status, Korean='상태', English='Status'}" Width="72" Binding="{Binding Status, Mode=OneWay}" />
                                             </DataGrid.Columns>
                                         </DataGrid>
                                         <TextBlock Grid.Row="1"
@@ -355,7 +432,7 @@
                                             <TextBlock VerticalAlignment="Center"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource ThreeD.TextBrush}"
-                                                       Text="Run Chart" />
+                                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.RunChart, Korean='실행 차트', English='Run Chart'}" />
                                             <TextBlock HorizontalAlignment="Right"
                                                        VerticalAlignment="Center"
                                                        FontSize="11"
@@ -426,7 +503,7 @@
                                                            VerticalAlignment="Bottom"
                                                            FontSize="10"
                                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                                           Text="Run" />
+                                                           Text="{shell:ThreeDText Key=ThreeD.Calibration.Run, Korean='실행', English='Run'}" />
                                                 <TextBlock Margin="0,0,0,18"
                                                            HorizontalAlignment="Left"
                                                            VerticalAlignment="Center"
@@ -444,15 +521,25 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="History">
+                        <TabItem IsEnabled="False"
+                                 ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CalibrationHistory, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    <TextBlock Margin="5,0,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               Text="{Binding CalibrationComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid Margin="10">
                                 <DataGrid Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Profile" Width="*" />
-                                        <DataGridTextColumn Header="Version" Width="90" />
-                                        <DataGridTextColumn Header="State" Width="110" />
-                                        <DataGridTextColumn Header="Validated" Width="150" />
-                                        <DataGridTextColumn Header="Activated" Width="150" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Profile, Korean='프로파일', English='Profile'}" Width="*" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Version, Korean='버전', English='Version'}" Width="90" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.State, Korean='상태', English='State'}" Width="110" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Validated, Korean='검증 시각', English='Validated'}" Width="150" />
+                                    <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Activated, Korean='활성화 시각', English='Activated'}" Width="150" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock HorizontalAlignment="Center"
@@ -474,7 +561,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
-                                       Text="Calibration Inspector" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.Inspector, Korean='교정 속성', English='Calibration Inspector'}" />
                             <Border Margin="0,10,0,2"
                                     Padding="9,7"
                                     Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
@@ -486,48 +573,50 @@
                                            Text="{Binding ActiveProfileStatus}" />
                             </Border>
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Study ID" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.StudyId, Korean='스터디 ID', English='Study ID'}" />
                             <TextBox IsReadOnly="True" Text="{Binding ProfileNameValue, Mode=OneWay}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Sensor / serial" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.SensorSerial, Korean='센서 / 시리얼', English='Sensor / serial'}" />
                             <TextBox IsReadOnly="True" Text="{Binding SensorIdentityValue, Mode=OneWay}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Measurement / ROI" />
-                            <TextBox IsReadOnly="True" Text="{Binding CalibrationTargetValue, Mode=OneWay}" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.MeasurementRoi, Korean='측정 / ROI', English='Measurement / ROI'}" />
+                            <TextBox IsReadOnly="True" Text="{Binding CalibrationTargetValue, Mode=OneWay}" ToolTip="{Binding CalibrationTargetValue}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Declared unit / frame" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.UnitFrame, Korean='선언 단위 / 프레임', English='Declared unit / frame'}" />
                             <TextBox IsReadOnly="True" Text="{Binding UnitFrameValue, Mode=OneWay}" />
 
                             <Separator Margin="0,12,0,6" />
                             <TextBlock FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.TextBrush}"
-                                       Text="Repeatability Acceptance" />
+                                       Text="{shell:ThreeDText Key=ThreeD.Calibration.RepeatabilityAcceptance, Korean='반복성 허용 기준', English='Repeatability Acceptance'}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Minimum run count" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.MinimumRunCount, Korean='최소 실행 횟수', English='Minimum run count'}" />
                             <TextBox IsReadOnly="True" Text="{Binding MinimumRunCountValue, Mode=OneWay}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Standard deviation limit" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.StandardDeviationLimit, Korean='표준편차 한계', English='Standard deviation limit'}" />
                             <TextBox IsReadOnly="True" Text="{Binding StandardDeviationLimitValue, Mode=OneWay}" />
 
-                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="Range limit" />
+                            <TextBlock Style="{DynamicResource ThreeD.FieldLabelTextStyle}" Text="{shell:ThreeDText Key=ThreeD.Calibration.RangeLimit, Korean='범위 한계', English='Range limit'}" />
                             <TextBox IsReadOnly="True" Text="{Binding RangeLimitValue, Mode=OneWay}" />
 
                             <Separator Margin="0,12,0,8" />
-                            <StackPanel Orientation="Horizontal">
-                                <ui:Button Width="92"
-                                           Margin="0,0,6,0"
-                                           Content="Calculate"
+                            <StackPanel>
+                                <ui:Button HorizontalAlignment="Stretch"
+                                           Content="{shell:ThreeDText Key=ThreeD.Calibration.Calculate, Korean='계산', English='Calculate'}"
                                            Icon="{ui:SymbolIcon ArrowSync24}"
                                            Command="{Binding CalculateCommand}" />
-                                <ui:Button Width="88"
-                                           Margin="0,0,6,0"
-                                           Content="Validate"
-                                           Icon="{ui:SymbolIcon ShieldCheckmark24}"
-                                           Command="{Binding ValidateCommand}" />
-                                <ui:Button Width="88"
-                                           Content="Activate"
-                                           Icon="{ui:SymbolIcon PlayCircle24}"
-                                           Command="{Binding ActivateCommand}" />
+                                <Border Margin="0,6,0,0"
+                                        Padding="8,6"
+                                        Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.WarningBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="3"
+                                        ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                                    <TextBlock HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding CalibrationProfileLifecycleComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </Border>
                             </StackPanel>
 
                             <TextBlock Margin="0,10,0,0"
@@ -550,17 +639,17 @@
                         BorderThickness="0,1,0,0"
                         Padding="10,6">
                     <TabControl>
-                        <TabItem Header="Run Log">
+                        <TabItem Header="{Binding CalibrationRunLog, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid>
                                 <DataGrid ItemsSource="{Binding RepeatabilityRuns}"
                                           SelectedItem="{Binding SelectedRepeatabilityRun, Mode=TwoWay}"
                                           Style="{DynamicResource ThreeD.CalibrationDataGridStyle}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Run" Width="60" Binding="{Binding RunNumber, Mode=OneWay}" />
-                                        <DataGridTextColumn Header="Timestamp" Width="150" Binding="{Binding TimestampText, Mode=OneWay}" />
-                                        <DataGridTextColumn Header="Source" Width="*" Binding="{Binding Source, Mode=OneWay}" />
-                                        <DataGridTextColumn Header="Thickness" Width="110" Binding="{Binding ValueText, Mode=OneWay}" />
-                                        <DataGridTextColumn Header="Status" Width="90" Binding="{Binding Status, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Run, Korean='실행', English='Run'}" Width="60" Binding="{Binding RunNumber, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Timestamp, Korean='시각', English='Timestamp'}" Width="150" Binding="{Binding TimestampText, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Source, Korean='소스', English='Source'}" Width="*" Binding="{Binding Source, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Thickness, Korean='두께', English='Thickness'}" Width="110" Binding="{Binding ValueText, Mode=OneWay}" />
+                                        <DataGridTextColumn Header="{shell:ThreeDText Key=ThreeD.Calibration.Status, Korean='상태', English='Status'}" Width="90" Binding="{Binding Status, Mode=OneWay}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <TextBlock HorizontalAlignment="Center"
@@ -581,20 +670,40 @@
                                 </TextBlock>
                             </Grid>
                         </TabItem>
-                        <TabItem Header="Profile History">
+                        <TabItem IsEnabled="False"
+                                 ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CalibrationProfileHistory, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    <TextBlock Margin="5,0,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               Text="{Binding CalibrationComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid>
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="No profile history" />
+                                               Text="{shell:ThreeDText Key=ThreeD.Calibration.NoProfileHistory, Korean='프로파일 이력이 없습니다', English='No profile history'}" />
                             </Grid>
                         </TabItem>
-                        <TabItem Header="Transform">
+                        <TabItem IsEnabled="False"
+                                 ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding CalibrationTransform, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                    <TextBlock Margin="5,0,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                               Text="{Binding CalibrationComingSoon, Source={x:Static shell:ThreeDLocalization.Shared}}" />
+                                </StackPanel>
+                            </TabItem.Header>
                             <Grid>
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="No sensor transform" />
+                                               Text="{shell:ThreeDText Key=ThreeD.Calibration.NoSensorTransform, Korean='센서 변환이 없습니다', English='No sensor transform'}" />
                             </Grid>
                         </TabItem>
                     </TabControl>

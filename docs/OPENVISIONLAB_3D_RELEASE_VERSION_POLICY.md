@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Release And Version Policy
 
-Updated: 2026-07-22
+Updated: 2026-07-23
 
 ## Scope
 
@@ -13,7 +13,7 @@ This policy covers the OpenVisionLab 3D Studio application, the separately hoste
 | Product and assembly package version | `Directory.Build.props` / `OpenVisionLabProductVersion` | `0.1.1-dev` |
 | Viewer Host API | `Directory.Build.props` / `OpenVisionLabViewerHostApiVersion` | `1.0` |
 | Viewer bundle manifest schema | `scripts/build-viewer-dll.ps1` | `1.0` |
-| Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` | `1.3` latest; `1.2` retained for single-step output |
+| Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` | `1.4` latest; `1.3` bounded multi-step and `1.2` single-step output retained |
 | Recipe schema | Each recipe's `Version` field and loader | Generic `ToolRecipeDocument` currently `1.3`; legacy tool-specific versions retained |
 
 Do not duplicate a product or Host API version in another source file. Generated assemblies, Viewer manifests, and Run Records consume the central MSBuild values.
@@ -138,6 +138,7 @@ Known limitations:
 - NuGet supply-chain evidence was added at commit `6779881`; Windows Actions run `29297655730` passed separate verifier-self-test and live-audit steps for all eight solution projects with zero vulnerable/deprecated direct or transitive packages. Authenticated artifact `8297372590` matched digest `sha256:66a3a2650a720aa8810ca4a433f73f08d97053122f77750f740455e6b9385fde` and preserved both raw JSON responses plus the summary report.
 - Durable Run Record schema `1.2` adds optional typed-step identity without changing Viewer Host API `1.0`. Local Cross-section evidence under `artifacts/run_record_step_identity_20260714` records `step.c3d-cross-section-dimensions`, source `source.c3d-thickness`, and reference `reference.c3d-row-range` consistently in JSON, HTML, and CSV; schema `1.0` and `1.1` remain readable by the current Shell.
 - Durable Run Record schema `1.3` adds optional ordered `Steps` for the bounded A3 -> seven-measurement sequence without changing Viewer Host API `1.0` or the existing schema `1.2` single-step writer. Local evidence under `artifacts/verification/20260722-multi-step-run-record` preserves eight typed routes in JSON/HTML/CSV and the bilingual docked Shell view; older records remain readable when `Steps` is absent.
+- Durable Run Record schema `1.4` adds optional per-step `OutputContentSha256` and records the complete currently registered 27-step sequential typed graph without changing Viewer Host API `1.0`, schema `1.3` bounded multi-step output, or schema `1.2` single-step output. Local evidence under `artifacts/current/20260723-general-graph-run-record` preserves exact typed routes and feature/transform/measurement rows in JSON/HTML/CSV and the bilingual docked Shell view.
 - Post-RC development source now reports product `0.1.1-dev`, separating current manifests and Run Records from the immutable public `v0.1.0-rc.1` evidence. No tag, package, release asset, stable promotion, or Host API change accompanies this development identity.
 - Post-RC Windows Actions run `29302323300` passed at commit `e704f6f`. Authenticated artifact `8298975554` matched digest `sha256:70935ecfb48978cc20abeda446b62fd0ba8d67fb29809a932b122b7a77fa5d00`; its clean manifest and Run Record identify `0.1.1-dev`, Host API `1.0`, schema `1.2`, and `Matched` Cross-section state. The LF-enforced executed recipe SHA-256 `f9355976ebd179f20719e20d24736a6f61d8b6711e98bad4b543ced1ae279666` matches local and Windows CI evidence.
 - Do not replace prerelease assets or promote `0.1.0-rc.1` to stable `0.1.0` without explicit owner approval and a new complete release gate.

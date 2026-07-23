@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using OpenVisionLab;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -25,6 +26,7 @@ internal static class CalibrationCenterViewModelVerification
             $"Generated: {DateTimeOffset.Now:O}"
         };
         var passed = 0;
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),
             "OpenVisionLab.ThreeD",
@@ -33,6 +35,7 @@ internal static class CalibrationCenterViewModelVerification
 
         try
         {
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
             var shell = new ShellMainWindowViewModel();
             var shellPropertyChanges = new List<string?>();
             shell.PropertyChanged += (_, args) => shellPropertyChanges.Add(args.PropertyName);
@@ -64,11 +67,23 @@ internal static class CalibrationCenterViewModelVerification
             Check("workspace command rejects unknown parameter", !shell.SelectWorkspaceCommand.CanExecute("Calibrate"), "string rejected");
 
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
-            Check("inspection workspace selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect && shell.IsTaskWorkspaceSelected, shell.WorkspaceSummary);
-            Check("inspection workspace summary", shell.WorkspaceSummary == "Thickness Inspect | Preview and publish", shell.WorkspaceSummary);
+            Check(
+                "inspection workspace selection",
+                shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect
+                && shell.IsInspectWorkspaceSelected
+                && shell.IsWorkbenchWorkspaceSelected
+                && !shell.IsTaskWorkspaceSelected,
+                shell.WorkspaceSummary);
+            Check("inspection workspace summary", shell.WorkspaceSummary == "Recipe Workbench | Preview selected tools and publish outputs", shell.WorkspaceSummary);
             shell.ShowReviewWorkspace();
-            Check("review workspace selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Review && shell.IsReviewWorkspaceSelected && shell.IsTaskWorkspaceSelected, shell.WorkspaceSummary);
-            Check("review workspace summary", shell.WorkspaceSummary == "Thickness Review | Published result evidence", shell.WorkspaceSummary);
+            Check(
+                "review workspace selection",
+                shell.SelectedWorkspaceMode == ShellWorkspaceMode.Review
+                && shell.IsReviewWorkspaceSelected
+                && shell.IsWorkbenchWorkspaceSelected
+                && !shell.IsTaskWorkspaceSelected,
+                shell.WorkspaceSummary);
+            Check("review workspace summary", shell.WorkspaceSummary == "Recipe Workbench | Review published entities and evidence", shell.WorkspaceSummary);
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Expert);
             Check("expert workspace selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Expert && shell.IsExpertWorkspaceSelected && !shell.IsTaskWorkspaceSelected, shell.WorkspaceSummary);
             Check("expert workspace summary", shell.WorkspaceSummary == "Expert workspace | Full inspection layout", shell.WorkspaceSummary);
@@ -115,17 +130,61 @@ internal static class CalibrationCenterViewModelVerification
                     StringComparer.Ordinal),
                 string.Join(',', viewModel.Sections));
             Check("default section", viewModel.SelectedSection == CalibrationSection.Repeatability && viewModel.SelectedSectionIndex == 3, viewModel.SelectedSection.ToString());
+            Check(
+                "implemented section contract",
+                CalibrationCenterViewModel.IsSectionAvailable(CalibrationSection.Overview)
+                && CalibrationCenterViewModel.IsSectionAvailable(CalibrationSection.Repeatability)
+                && !CalibrationCenterViewModel.IsSectionAvailable(CalibrationSection.HeightCalibration)
+                && !CalibrationCenterViewModel.IsSectionAvailable(CalibrationSection.SensorAlignment)
+                && !CalibrationCenterViewModel.IsSectionAvailable(CalibrationSection.History),
+                "Overview and Repeatability only");
             viewModel.SelectedSectionIndex = 0;
             Check("section index selection", viewModel.SelectedSection == CalibrationSection.Overview, viewModel.SelectedSection.ToString());
             viewModel.SelectedSection = CalibrationSection.History;
-            Check("typed section selection", viewModel.SelectedSectionIndex == 4, viewModel.SelectedSectionIndex.ToString(CultureInfo.InvariantCulture));
+            Check("unavailable typed section ignored", viewModel.SelectedSection == CalibrationSection.Overview, viewModel.SelectedSection.ToString());
+            viewModel.SelectedSectionIndex = 2;
+            Check("unavailable section index ignored", viewModel.SelectedSection == CalibrationSection.Overview, viewModel.SelectedSection.ToString());
             viewModel.SelectedSectionIndex = -1;
-            Check("invalid section index ignored", viewModel.SelectedSection == CalibrationSection.History, viewModel.SelectedSection.ToString());
+            Check("invalid section index ignored", viewModel.SelectedSection == CalibrationSection.Overview, viewModel.SelectedSection.ToString());
             Check(
                 "section property notifications",
                 propertyChanges.Contains(nameof(viewModel.SelectedSection))
                 && propertyChanges.Contains(nameof(viewModel.SelectedSectionIndex)),
                 string.Join(',', propertyChanges));
+            var verificationLanguage = OpenVisionLanguageService.CurrentLanguage;
+            try
+            {
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+                Check(
+                    "calibration availability Korean localization",
+                    ThreeDLocalization.Shared.CalibrationOverview == "\uAC1C\uC694"
+                    && ThreeDLocalization.Shared.CalibrationRepeatability == "\uBC18\uBCF5\uC131"
+                    && ThreeDLocalization.Shared.CalibrationComingSoon == "\uC900\uBE44 \uC911",
+                    $"{ThreeDLocalization.Shared.CalibrationOverview}|{ThreeDLocalization.Shared.CalibrationRepeatability}|{ThreeDLocalization.Shared.CalibrationComingSoon}");
+                Check(
+                    "calibration state Korean localization",
+                    shell.WorkspaceSummary.StartsWith("\uB808\uC2DC\uD53C \uC6CC\uD06C\uBCA4\uCE58", StringComparison.Ordinal)
+                    && viewModel.ActiveProfileStatus == "\uD65C\uC131 \uAD50\uC815 \uD504\uB85C\uD30C\uC77C \uC5C6\uC74C"
+                    && viewModel.SelectedRepeatabilityMetric == "\uB450\uAED8",
+                    $"{shell.WorkspaceSummary}|{viewModel.ActiveProfileStatus}|{viewModel.SelectedRepeatabilityMetric}");
+                OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+                Check(
+                    "calibration availability English localization",
+                    ThreeDLocalization.Shared.CalibrationOverview == "Overview"
+                    && ThreeDLocalization.Shared.CalibrationRepeatability == "Repeatability"
+                    && ThreeDLocalization.Shared.CalibrationComingSoon == "Coming soon",
+                    $"{ThreeDLocalization.Shared.CalibrationOverview}|{ThreeDLocalization.Shared.CalibrationRepeatability}|{ThreeDLocalization.Shared.CalibrationComingSoon}");
+                Check(
+                    "calibration state English localization",
+                    shell.WorkspaceSummary.StartsWith("Recipe Workbench", StringComparison.Ordinal)
+                    && viewModel.ActiveProfileStatus == "No active calibration profile"
+                    && viewModel.SelectedRepeatabilityMetric == "Thickness",
+                    $"{shell.WorkspaceSummary}|{viewModel.ActiveProfileStatus}|{viewModel.SelectedRepeatabilityMetric}");
+            }
+            finally
+            {
+                OpenVisionLanguageService.SetLanguage(verificationLanguage, save: false);
+            }
 
             Check("empty profile state", viewModel.ActiveProfileStatus == "No active calibration profile" && viewModel.CalibrationStatus.Contains("no active profile", StringComparison.Ordinal), viewModel.CalibrationStatus);
             Check("empty input state", viewModel.HeightTargetStatus.EndsWith("not loaded", StringComparison.Ordinal) && viewModel.RepeatabilityInputStatus == "No repeatability study loaded", viewModel.RepeatabilityInputStatus);
@@ -218,6 +277,7 @@ internal static class CalibrationCenterViewModelVerification
         }
         finally
         {
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
             if (Directory.Exists(fixtureRoot))
             {
                 Directory.Delete(fixtureRoot, recursive: true);

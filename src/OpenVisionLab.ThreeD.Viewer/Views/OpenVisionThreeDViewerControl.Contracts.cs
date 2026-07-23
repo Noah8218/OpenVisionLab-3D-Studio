@@ -589,6 +589,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void RenderNow()
     {
+        if (pointerInputRegressionActive && isHandlingPointerMouseMove)
+        {
+            pointerInputImmediateMouseMoveRenderCount++;
+        }
+
         UpdateOrientationTriad();
         if (Viewport.IsLoaded)
         {

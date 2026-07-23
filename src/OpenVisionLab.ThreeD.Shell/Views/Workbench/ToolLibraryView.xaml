@@ -1,0 +1,299 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.ToolLibraryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             AutomationProperties.AutomationId="ToolLibrary">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <CollectionViewSource x:Key="GroupedTools" Source="{Binding FilteredTools}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+    </UserControl.Resources>
+
+    <Border Padding="12"
+            Background="{DynamicResource ThreeD.PanelBrush}"
+            TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="20"
+                                   Height="20"
+                                   Margin="0,0,7,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="BoxToolbox24" />
+                    <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
+                               Text="{Binding Localization.ToolLibrary}" />
+                </StackPanel>
+                <TextBlock Margin="0,4,0,0"
+                           FontSize="10.5"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           TextWrapping="Wrap"
+                           Text="{Binding Localization.ToolLibraryHint}" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Margin="0,9,0,0"
+                    Padding="9"
+                    CornerRadius="4">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ui:SymbolIcon Width="18"
+                                   Height="18"
+                                   Margin="0,1,7,0"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                   Symbol="ArrowCircleRight24" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.NextAction}" />
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Margin="0,2,0,0"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding Localization.LoadInputActionTitle}"
+                                       TextWrapping="Wrap" />
+                            <ui:Button Margin="0,7,0,0"
+                                       HorizontalAlignment="Left"
+                                       Content="{Binding Localization.LoadInputActionTitle}"
+                                       Icon="{ui:SymbolIcon FolderOpen24}"
+                                       Command="{Binding LoadC3DSourceCommand}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsSourceReadyForRecipe}" Value="True" />
+                                                <Condition Binding="{Binding IsPipelineEmpty}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Margin="0,2,0,0"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                       Text="{Binding Localization.AddFirstToolActionTitle}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,3,0,0"
+                                       FontSize="9.5"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding Localization.AddFirstToolActionDetail}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasPipelineSteps}" Value="True" />
+                                                <Condition Binding="{Binding HasSelectedPipelineStep}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Margin="0,2,0,0"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                       Text="{Binding Localization.SelectStepActionTitle}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Margin="0,2,0,0"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                       Text="{Binding Localization.TeachSelectedStepActionTitle}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,3,0,0"
+                                       FontSize="9.5"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding Localization.TeachSelectedStepActionDetail}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="2" Margin="0,10,0,0"
+                        Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontWeight="SemiBold"
+                               Text="{Binding Localization.CompatibleToolCatalogTitle}" />
+                    <TextBlock Grid.Column="1"
+                               FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                               Text="{Binding CompatibleToolCatalogSummary}" />
+                </Grid>
+                <ItemsControl Margin="0,5,0,0" ItemsSource="{Binding CompatibleToolSuggestions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,4"
+                                    Padding="7,5"
+                                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding Title}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding Detail}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1"
+                                               Margin="5,0,0,0"
+                                               Padding="7,2"
+                                               Content="{Binding DataContext.Localization.AddCompatibleTool, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               Icon="{ui:SymbolIcon AddCircle24}"
+                                               Command="{Binding DataContext.AddCompatibleToolCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}"
+                                               ToolTip="{Binding DataContext.Localization.AddCompatibleToolToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Margin="0,2,0,0"
+                           FontSize="9.5"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding Localization.FilterOptionalHint}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Grid Grid.Row="3" Margin="0,12,0,6"
+                  Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Text="{Binding Localization.AllTools}" />
+                <TextBox Grid.Column="1"
+                         Margin="10,0,0,0"
+                         ToolTip="{Binding Localization.ToolSearch}"
+                         AutomationProperties.Name="{Binding Localization.ToolSearch}"
+                         Text="{Binding ToolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <ListBox Grid.Row="4"
+                     Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}"
+                     Background="Transparent"
+                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                     BorderThickness="1"
+                     ItemsSource="{Binding Source={StaticResource GroupedTools}}"
+                     SelectedItem="{Binding SelectedTool, Mode=TwoWay}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.HeaderTemplate>
+                            <DataTemplate>
+                                <Border Padding="7,4"
+                                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}">
+                                    <TextBlock FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                               Text="{Binding Name}" />
+                                </Border>
+                            </DataTemplate>
+                        </GroupStyle.HeaderTemplate>
+                    </GroupStyle>
+                </ListBox.GroupStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="5,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="10.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding Name}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding InputContract}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1"
+                                       Margin="5,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                       Text="{Binding OutputContract}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ui:Button Grid.Row="5"
+                       Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}"
+                       Margin="0,8,0,0"
+                       HorizontalAlignment="Stretch"
+                       HorizontalContentAlignment="Center"
+                       Content="{Binding Localization.AddSelectedStep}"
+                       Icon="{ui:SymbolIcon AddCircle24}"
+                       Command="{Binding AddSelectedToolCommand}"
+                       AutomationProperties.Name="{Binding Localization.AddSelectedStep}" />
+        </Grid>
+    </Border>
+</UserControl>

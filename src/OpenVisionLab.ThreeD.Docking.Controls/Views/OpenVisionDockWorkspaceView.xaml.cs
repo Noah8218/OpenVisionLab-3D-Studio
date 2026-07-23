@@ -5,7 +5,11 @@ namespace OpenVisionLab.ThreeD.Docking.Controls;
 
 public sealed partial class OpenVisionDockWorkspaceView : UserControl
 {
+    private const double CompactWorkbenchWidth = 1500;
+    private const double OutputCompareWorkbenchHeightRatio = 1.2;
+    private const double StandardWorkbenchHeightRatio = 2;
     private bool bottomPaneDetachedForFocus;
+    private bool dataLayersTabbedForCompactLayout;
 
     public static readonly DependencyProperty ViewerContentProperty =
         DependencyProperty.Register(
@@ -17,6 +21,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     public static readonly DependencyProperty DataLayersContentProperty =
         DependencyProperty.Register(
             nameof(DataLayersContent),
+            typeof(object),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ToolLibraryContentProperty =
+        DependencyProperty.Register(
+            nameof(ToolLibraryContent),
             typeof(object),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata(null));
@@ -34,6 +45,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(string),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Data & Layers", OnDataLayersTitleChanged));
+
+    public static readonly DependencyProperty ToolLibraryTitleProperty =
+        DependencyProperty.Register(
+            nameof(ToolLibraryTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Tool Library", OnToolLibraryTitleChanged));
 
     public static readonly DependencyProperty ToolInspectorContentProperty =
         DependencyProperty.Register(
@@ -172,7 +190,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         InitializeComponent();
         ApplyDockTitles();
-        Loaded += (_, _) => ApplyInitialDockSizes();
+        Loaded += (_, _) =>
+        {
+            ApplyInitialDockSizes();
+            ApplyResponsiveDockLayout(ActualWidth);
+        };
+        SizeChanged += (_, args) => ApplyResponsiveDockLayout(args.NewSize.Width);
+        outputCompareAnchorable.IsSelectedChanged += (_, _) => ApplyBottomPanePresentation();
     }
 
     public object? ViewerContent
@@ -187,6 +211,12 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(DataLayersContentProperty, value);
     }
 
+    public object? ToolLibraryContent
+    {
+        get => GetValue(ToolLibraryContentProperty);
+        set => SetValue(ToolLibraryContentProperty, value);
+    }
+
     public string ViewerTitle
     {
         get => (string)GetValue(ViewerTitleProperty);
@@ -197,6 +227,12 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         get => (string)GetValue(DataLayersTitleProperty);
         set => SetValue(DataLayersTitleProperty, value);
+    }
+
+    public string ToolLibraryTitle
+    {
+        get => (string)GetValue(ToolLibraryTitleProperty);
+        set => SetValue(ToolLibraryTitleProperty, value);
     }
 
     public object? ToolInspectorContent
@@ -313,6 +349,8 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(IsBottomPaneExpandedProperty, value);
     }
 
+    public bool IsCompactLayout => dataLayersTabbedForCompactLayout;
+
     public void ActivateLinkedViewPane()
     {
         if (!IsBottomPaneExpanded)
@@ -326,8 +364,17 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public bool IsLinkedViewPaneSelected => linkedViewAnchorable.IsSelected && linkedViewAnchorable.IsActive;
 
+    public void ActivateToolLibraryPane()
+    {
+        toolLibraryAnchorable.IsSelected = true;
+        toolLibraryAnchorable.IsActive = true;
+    }
+
+    public bool IsToolLibraryPaneSelected => toolLibraryAnchorable.IsSelected && toolLibraryAnchorable.IsActive;
+
     public IReadOnlyList<DockingPaneContract> GetDockingPaneContracts() =>
     [
+        ToContract(toolLibraryAnchorable),
         ToContract(dataLayersAnchorable),
         ToContract(viewerAnchorable),
         ToContract(toolInspectorAnchorable),
@@ -355,9 +402,22 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
         outputCompareAnchorable.IsSelected = true;
         outputCompareAnchorable.IsActive = true;
+        ApplyBottomPanePresentation();
     }
 
     public bool IsOutputComparePaneSelected => outputCompareAnchorable.IsSelected && outputCompareAnchorable.IsActive;
+
+    public bool HasUsableOutputCompareDockHeight =>
+        workbenchPane.DockHeight.IsStar
+        && evidencePane.DockHeight.IsStar
+        && workbenchPane.DockHeight.Value <= OutputCompareWorkbenchHeightRatio
+        && evidencePane.DockHeight.Value >= 1;
+
+    public bool HasStandardBottomPaneHeight =>
+        workbenchPane.DockHeight.IsStar
+        && evidencePane.DockHeight.IsStar
+        && workbenchPane.DockHeight.Value >= StandardWorkbenchHeightRatio
+        && evidencePane.DockHeight.Value == 1;
 
     public void ActivateDisplayedOutputsPane()
     {
@@ -464,6 +524,14 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         }
     }
 
+    private static void OnToolLibraryTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.toolLibraryAnchorable is not null)
+        {
+            view.toolLibraryAnchorable.Title = args.NewValue as string ?? string.Empty;
+        }
+    }
+
     private static void OnViewerTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
         if (owner is OpenVisionDockWorkspaceView view && view.viewerAnchorable is not null)
@@ -554,6 +622,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     private void ApplyDockTitles()
     {
+        toolLibraryAnchorable.Title = ToolLibraryTitle;
         dataLayersAnchorable.Title = DataLayersTitle;
         viewerAnchorable.Title = ViewerTitle;
         toolInspectorAnchorable.Title = ToolInspectorTitle;
@@ -571,9 +640,48 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         workbenchPane.DockHeight = new GridLength(2, GridUnitType.Star);
         ApplyBottomPaneHeight();
-        dataLayersPane.DockWidth = new GridLength(0.9, GridUnitType.Star);
-        primaryPane.DockWidth = new GridLength(1.8, GridUnitType.Star);
-        toolInspectorPane.DockWidth = new GridLength(1.1, GridUnitType.Star);
+        toolLibraryPane.DockWidth = new GridLength(0.68, GridUnitType.Star);
+        dataLayersPane.DockWidth = new GridLength(0.80, GridUnitType.Star);
+        primaryPane.DockWidth = new GridLength(2.60, GridUnitType.Star);
+        toolInspectorPane.DockWidth = new GridLength(1.05, GridUnitType.Star);
+    }
+
+    private void ApplyResponsiveDockLayout(double width)
+    {
+        if (width <= 0)
+        {
+            return;
+        }
+
+        var useCompactLayout = width < CompactWorkbenchWidth;
+        if (useCompactLayout && !dataLayersTabbedForCompactLayout)
+        {
+            dataLayersPane.Children.Remove(dataLayersAnchorable);
+            toolLibraryPane.Children.Add(dataLayersAnchorable);
+            workbenchPane.Children.Remove(dataLayersPane);
+        }
+        else if (!useCompactLayout && dataLayersTabbedForCompactLayout)
+        {
+            toolLibraryPane.Children.Remove(dataLayersAnchorable);
+            dataLayersPane.Children.Add(dataLayersAnchorable);
+            workbenchPane.Children.Insert(1, dataLayersPane);
+        }
+
+        if (useCompactLayout)
+        {
+            toolLibraryPane.DockWidth = new GridLength(0.88, GridUnitType.Star);
+            primaryPane.DockWidth = new GridLength(2.60, GridUnitType.Star);
+            toolInspectorPane.DockWidth = new GridLength(1.10, GridUnitType.Star);
+        }
+        else
+        {
+            toolLibraryPane.DockWidth = new GridLength(0.68, GridUnitType.Star);
+            dataLayersPane.DockWidth = new GridLength(0.80, GridUnitType.Star);
+            primaryPane.DockWidth = new GridLength(2.60, GridUnitType.Star);
+            toolInspectorPane.DockWidth = new GridLength(1.05, GridUnitType.Star);
+        }
+
+        dataLayersTabbedForCompactLayout = useCompactLayout;
     }
 
     private void ApplyBottomPaneHeight() =>
@@ -598,6 +706,9 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             bottomPaneDetachedForFocus = false;
         }
 
+        workbenchPane.DockHeight = new GridLength(
+            outputCompareAnchorable.IsSelected ? OutputCompareWorkbenchHeightRatio : StandardWorkbenchHeightRatio,
+            GridUnitType.Star);
         evidencePane.DockHeight = new GridLength(1, GridUnitType.Star);
     }
 }

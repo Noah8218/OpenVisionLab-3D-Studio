@@ -29,6 +29,50 @@ public partial class App : Application
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
+        const string validationSetVerificationOption = "--verify-validation-set";
+        const string runRecordHistoryVerificationOption = "--verify-run-record-history";
+        var runRecordHistoryVerificationIndex = Array.FindIndex(
+            e.Args,
+            argument => argument.Equals(runRecordHistoryVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (runRecordHistoryVerificationIndex >= 0)
+        {
+            if (runRecordHistoryVerificationIndex + 1 >= e.Args.Length)
+            {
+                Console.WriteLine($"{runRecordHistoryVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = RunRecordHistoryVerification.Verify(
+                e.Args[runRecordHistoryVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+        var validationSetVerificationIndex = Array.FindIndex(
+            e.Args,
+            argument => argument.Equals(validationSetVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (validationSetVerificationIndex >= 0)
+        {
+            if (validationSetVerificationIndex + 1 >= e.Args.Length)
+            {
+                Console.WriteLine($"{validationSetVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolRecipeValidationSetVerification.Verify(
+                    e.Args[validationSetVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         var heightMeasurementWorkbenchVerificationIndex = Array.FindIndex(
             e.Args,
             argument => argument.Equals(heightMeasurementWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));

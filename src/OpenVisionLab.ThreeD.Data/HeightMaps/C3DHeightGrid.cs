@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Numerics;
 using System.Security.Cryptography;
 
@@ -21,6 +22,7 @@ public sealed class C3DHeightGrid
         float max,
         double mean,
         C3DHeightDistribution heightDistribution,
+        C3DHeightGridLoadPerformance loadPerformance,
         int pointStride,
         HeightGridPoint[] points)
     {
@@ -35,6 +37,7 @@ public sealed class C3DHeightGrid
         Max = max;
         Mean = mean;
         HeightDistribution = heightDistribution;
+        LoadPerformance = loadPerformance;
         PointStride = pointStride;
         Points = points;
         HorizontalScale = CalculateHorizontalScale(width, height);
@@ -63,6 +66,8 @@ public sealed class C3DHeightGrid
     public double Mean { get; }
 
     public C3DHeightDistribution HeightDistribution { get; }
+
+    public C3DHeightGridLoadPerformance LoadPerformance { get; }
 
     public int PointStride { get; }
 
@@ -208,7 +213,17 @@ public sealed class C3DHeightGrid
     }
 
     public static C3DHeightGrid Load(string path, int maxRenderedPoints = 55000)
+        => Load(path, maxRenderedPoints, CancellationToken.None, progress: null);
+
+    public static C3DHeightGrid Load(
+        string path,
+        int maxRenderedPoints,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress)
     {
+        var totalStart = Stopwatch.GetTimestamp();
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(0.0);
         using var reader = new BinaryReader(File.OpenRead(path));
         var width = reader.ReadInt32();
         var height = reader.ReadInt32();
@@ -226,8 +241,15 @@ public sealed class C3DHeightGrid
         var max = float.NegativeInfinity;
         var sum = 0.0;
 
+        var readStart = Stopwatch.GetTimestamp();
         for (var i = 0; i < samples.Length; i++)
         {
+            if ((i & 0x3fff) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(5.0 + 60.0 * i / Math.Max(1, samples.Length));
+            }
+
             var value = reader.ReadSingle();
             samples[i] = value;
 
@@ -247,6 +269,7 @@ public sealed class C3DHeightGrid
             max = Math.Max(max, value);
             sum += value;
         }
+        var readMilliseconds = Stopwatch.GetElapsedTime(readStart).TotalMilliseconds;
 
         if (validCount == 0)
         {
@@ -254,22 +277,40 @@ public sealed class C3DHeightGrid
         }
 
         var mean = sum / validCount;
+        progress?.Report(65.0);
+        var distributionStart = Stopwatch.GetTimestamp();
         var heightDistribution = C3DHeightDistribution.Create(
             samples,
             min,
             max,
             mean,
-            validCount);
+            validCount,
+            cancellationToken: cancellationToken);
+        var distributionMilliseconds = Stopwatch.GetElapsedTime(distributionStart).TotalMilliseconds;
+        progress?.Report(78.0);
         var pointStride = maxRenderedPoints <= 0
             ? 0
             : Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints)));
+        var pointsStart = Stopwatch.GetTimestamp();
         var points = pointStride == 0
             ? []
-            : CreatePoints(samples, width, height, pointStride, min, max, mean);
+            : CreatePoints(samples, width, height, pointStride, min, max, mean, cancellationToken, progress);
+        var pointsMilliseconds = Stopwatch.GetElapsedTime(pointsStart).TotalMilliseconds;
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(96.0);
         var sourceByteLength = reader.BaseStream.Length;
         reader.BaseStream.Position = 0;
+        var hashStart = Stopwatch.GetTimestamp();
         var contentSha256 = Convert.ToHexString(SHA256.HashData(reader.BaseStream));
-        return new C3DHeightGrid(
+        var hashMilliseconds = Stopwatch.GetElapsedTime(hashStart).TotalMilliseconds;
+        cancellationToken.ThrowIfCancellationRequested();
+        var loadPerformance = new C3DHeightGridLoadPerformance(
+            readMilliseconds,
+            distributionMilliseconds,
+            pointsMilliseconds,
+            hashMilliseconds,
+            Stopwatch.GetElapsedTime(totalStart).TotalMilliseconds);
+        var grid = new C3DHeightGrid(
             path,
             sourceByteLength,
             contentSha256,
@@ -281,15 +322,33 @@ public sealed class C3DHeightGrid
             max,
             mean,
             heightDistribution,
+            loadPerformance,
             pointStride,
             points);
+        progress?.Report(100.0);
+        return grid;
     }
 
-    private static HeightGridPoint[] CreatePoints(float[] samples, int width, int height, int stride, float min, float max, double mean)
+    private static HeightGridPoint[] CreatePoints(
+        float[] samples,
+        int width,
+        int height,
+        int stride,
+        float min,
+        float max,
+        double mean,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress)
     {
         var points = new List<HeightGridPoint>();
+        var progressRowInterval = Math.Max(stride, height / 32);
         for (var row = 0; row < height; row += stride)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (row % progressRowInterval < stride)
+            {
+                progress?.Report(78.0 + 14.0 * row / Math.Max(1, height));
+            }
             for (var column = 0; column < width; column += stride)
             {
                 var value = samples[row * width + column];
@@ -372,3 +431,10 @@ public readonly record struct HeightGridPoint(
     float RawValue,
     int Row = -1,
     int Column = -1);
+
+public readonly record struct C3DHeightGridLoadPerformance(
+    double ReadAndStatisticsMilliseconds,
+    double DistributionMilliseconds,
+    double RenderPointsMilliseconds,
+    double HashMilliseconds,
+    double TotalMilliseconds);

@@ -29,6 +29,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 {
     public string? CurrentC3DSourcePath => c3dSample?.SourcePath;
 
+    public C3DSourceLoadPerformance? LastC3DSourceLoadPerformance { get; private set; }
+
     /// <summary>
     /// Loads a C3D source for recipe teaching. This only changes Viewer source
     /// state; it does not configure, preview, publish, or run an inspection.
@@ -37,32 +39,10 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullPath = Path.GetFullPath(path);
-            if (!File.Exists(fullPath))
-            {
-                throw new FileNotFoundException("C3D source was not found.", fullPath);
-            }
-
-            c3dSample = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
-            ClearTeachingSelectionsForSourceChange();
-            planeFlatnessEvaluation = null;
-            planeReferenceMeasurement = null;
-            ClearWarpageTransientInspectionState();
-            viewModel.ClearThicknessPreview();
-            viewModel.ClearWarpagePreview();
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            SetC3DSampleStatus();
-            viewModel.UseC3DSmokeScene();
-            viewModel.SetC3DAlignment(
-                ModelTransform.Identity,
-                "C3D grid-index scalar frame",
-                Path.GetFileNameWithoutExtension(fullPath));
-            viewModel.ViewerStatus = $"C3D source loaded for teaching: {Path.GetFileName(fullPath)}";
-            RenderNow();
+            LastC3DSourceLoadPerformance = null;
+            var fullPath = GetExistingC3DSourcePath(path);
+            var loaded = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
+            ApplyLoadedC3DSource(loaded, fullPath);
             return true;
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -71,6 +51,139 @@ public sealed partial class OpenVisionThreeDViewerControl
             RenderNow();
             return false;
         }
+    }
+
+    public async Task<bool> LoadC3DSourceAsync(
+        string path,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress = null)
+    {
+        try
+        {
+            var fullPath = GetExistingC3DSourcePath(path);
+            var gridProgress = progress is null
+                ? null
+                : new ForwardingProgress(value => progress.Report(value * 0.82));
+            var prepared = await Task.Run(
+                () =>
+                {
+                    var workerStart = Stopwatch.GetTimestamp();
+                    var grid = C3DHeightGrid.Load(
+                        fullPath,
+                        viewModel.C3DMaxRenderedPoints,
+                        cancellationToken,
+                        gridProgress);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    progress?.Report(84.0);
+                    var topologyStart = Stopwatch.GetTimestamp();
+                    var renderProxy = C3DHeightGridRenderProxy.Create(grid, cancellationToken);
+                    var topologyMilliseconds = Stopwatch.GetElapsedTime(topologyStart).TotalMilliseconds;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    progress?.Report(96.0);
+                    var positionsStart = Stopwatch.GetTimestamp();
+                    var positions = renderProxy.Points
+                        .Select(point => point.Position)
+                        .ToArray();
+                    var positionsMilliseconds = Stopwatch.GetElapsedTime(positionsStart).TotalMilliseconds;
+                    return new PreparedC3DSource(
+                        grid,
+                        renderProxy,
+                        positions,
+                        topologyMilliseconds,
+                        positionsMilliseconds,
+                        Stopwatch.GetElapsedTime(workerStart).TotalMilliseconds);
+                },
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            var applyStart = Stopwatch.GetTimestamp();
+            ApplyLoadedC3DSource(
+                prepared.Grid,
+                fullPath,
+                prepared.RenderProxy,
+                prepared.Positions);
+            var applyMilliseconds = Stopwatch.GetElapsedTime(applyStart).TotalMilliseconds;
+            LastC3DSourceLoadPerformance = new C3DSourceLoadPerformance(
+                prepared.Grid.LoadPerformance,
+                prepared.TopologyMilliseconds,
+                prepared.PositionsMilliseconds,
+                prepared.WorkerMilliseconds,
+                applyMilliseconds);
+            progress?.Report(100.0);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            viewModel.ViewerStatus = "C3D source load cancelled; current source retained.";
+            RenderNow();
+            throw;
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            viewModel.ViewerStatus = $"C3D source load failed; current source retained: {exception.Message}";
+            RenderNow();
+            return false;
+        }
+    }
+
+    private static string GetExistingC3DSourcePath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("C3D source was not found.", fullPath);
+        }
+
+        return fullPath;
+    }
+
+    private void ApplyLoadedC3DSource(
+        C3DHeightGrid loaded,
+        string fullPath,
+        C3DHeightGridRenderProxy? preparedRenderProxy = null,
+        Vector3[]? preparedPositions = null)
+    {
+        c3dSample = loaded;
+        if (preparedRenderProxy is not null && preparedPositions is not null)
+        {
+            c3dRenderProxySource = loaded;
+            c3dRenderProxy = preparedRenderProxy;
+            c3dRenderPositions = preparedPositions;
+            c3dRenderPositionsTransform = ModelTransform.Identity;
+            c3dDisplayListKey = null;
+        }
+        ClearTeachingSelectionsForSourceChange();
+        planeFlatnessEvaluation = null;
+        planeReferenceMeasurement = null;
+        ClearWarpageTransientInspectionState();
+        viewModel.ClearThicknessPreview();
+        viewModel.ClearWarpagePreview();
+        viewModel.ClearPlaneFlatnessRecipeStep();
+        viewModel.ClearPointPairDimensionsRecipeStep();
+        viewModel.ClearGapFlushRecipeStep();
+        viewModel.ClearVolumeRecipeStep();
+        viewModel.ClearCrossSectionRecipeStep();
+        SetC3DSampleStatus();
+        viewModel.UseC3DSmokeScene();
+        viewModel.Display.ResetC3DHeightGridGeometryStyle();
+        viewModel.SetC3DAlignment(
+            ModelTransform.Identity,
+            "C3D grid-index scalar frame",
+            Path.GetFileNameWithoutExtension(fullPath));
+        viewModel.ViewerStatus = $"C3D source loaded for teaching: {Path.GetFileName(fullPath)}";
+        RenderNow();
+    }
+
+    private sealed record PreparedC3DSource(
+        C3DHeightGrid Grid,
+        C3DHeightGridRenderProxy RenderProxy,
+        Vector3[] Positions,
+        double TopologyMilliseconds,
+        double PositionsMilliseconds,
+        double WorkerMilliseconds);
+
+    private sealed class ForwardingProgress(Action<double> callback) : IProgress<double>
+    {
+        public void Report(double value) => callback(value);
     }
 
     /// <summary>
@@ -804,3 +917,10 @@ public sealed partial class OpenVisionThreeDViewerControl
     }
 
 }
+
+public sealed record C3DSourceLoadPerformance(
+    C3DHeightGridLoadPerformance Grid,
+    double TopologyMilliseconds,
+    double PositionsMilliseconds,
+    double WorkerMilliseconds,
+    double ApplyMilliseconds);

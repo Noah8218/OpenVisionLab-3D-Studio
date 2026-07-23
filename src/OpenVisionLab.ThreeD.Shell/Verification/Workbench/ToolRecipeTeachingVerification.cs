@@ -1,4 +1,5 @@
 using System.IO;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -48,9 +49,34 @@ internal static class ToolRecipeTeachingVerification
                 2,
                 [1.0, 2.0, 3.0, 4.0]).SaveC3D(sourcePath);
             var recipePath = Path.Combine(fixtureRoot, "fixture.ov3d-teach.json");
+            var emptyRecipePath = Path.Combine(fixtureRoot, "empty.ov3d-recipe.json");
 
             var workbench = new ToolWorkbenchViewModel();
-            Check("new teaching recipe starts unsaved", workbench.IsDirty, workbench.RecipeStateSummary);
+            Check(
+                "initial empty recipe is clean and unsaved",
+                !workbench.IsDirty && string.IsNullOrWhiteSpace(workbench.RecipePath),
+                workbench.RecipeStateSummary);
+            var sourceLoadCancellationRequested = false;
+            workbench.CancelC3DSourceLoadRequested += (_, _) => sourceLoadCancellationRequested = true;
+            workbench.BeginC3DSourceLoad(sourcePath);
+            workbench.ReportC3DSourceLoadProgress(42.0);
+            workbench.CancelC3DSourceLoadCommand.Execute(null);
+            Check(
+                "C3D source load state exposes progress, disables Open, and routes Cancel",
+                workbench.IsC3DSourceLoading
+                && Math.Abs(workbench.C3DSourceLoadProgressPercent - 42.0) < 0.001
+                && workbench.C3DSourceLoadStatus.Contains(Path.GetFileName(sourcePath), StringComparison.Ordinal)
+                && !workbench.LoadC3DSourceCommand.CanExecute(null)
+                && sourceLoadCancellationRequested,
+                $"loading={workbench.IsC3DSourceLoading}; progress={workbench.C3DSourceLoadProgressPercent:F1}; cancel={sourceLoadCancellationRequested}");
+            workbench.CancelC3DSourceLoad(elapsedMilliseconds: 1);
+            Check(
+                "cancelled C3D load restores Open without modifying the recipe",
+                !workbench.IsC3DSourceLoading
+                && workbench.LoadC3DSourceCommand.CanExecute(null)
+                && !workbench.IsDirty
+                && string.IsNullOrWhiteSpace(workbench.RecipePath),
+                $"loading={workbench.IsC3DSourceLoading}; open={workbench.LoadC3DSourceCommand.CanExecute(null)}; dirty={workbench.IsDirty}");
             Check(
                 "catalog covers intended 3D teaching chain",
                 workbench.Tools.Any(tool => tool.Name == "Filter")
@@ -62,7 +88,46 @@ internal static class ToolRecipeTeachingVerification
                 && workbench.Tools.Any(tool => tool.Name == "Thickness")
                 && workbench.Tools.Any(tool => tool.Name == "Warpage"),
                 string.Join(", ", workbench.Tools.Select(tool => tool.Name)));
-            Check("empty recipe cannot save", !workbench.CanSaveTeachingRecipe, workbench.ValidationSummary);
+            Check(
+                "source-less empty recipe can save but cannot execute",
+                workbench.CanSaveTeachingRecipe && !workbench.IsTeachingRecipeExecutionReady,
+                workbench.ValidationSummary);
+            var emptySaved = workbench.TrySaveTeachingRecipe(emptyRecipePath, out var emptySaveMessage);
+            Check("source-less empty recipe saves", emptySaved && File.Exists(emptyRecipePath), emptySaveMessage);
+            var emptyStored = ToolRecipeDocumentStore.Load(emptyRecipePath);
+            Check(
+                "source-less empty recipe storage contract preserves zero steps and empty source path",
+                emptyStored.Steps.Count == 0
+                && string.IsNullOrEmpty(emptyStored.Source.Path)
+                && ToolRecipeValidator.ValidateForStorage(emptyStored).IsValid
+                && !ToolRecipeValidator.Validate(emptyStored).IsValid,
+                $"steps={emptyStored.Steps.Count}; source='{emptyStored.Source.Path}'");
+            var emptyReopened = new ToolWorkbenchViewModel();
+            var emptyOpened = emptyReopened.TryOpenTeachingRecipe(emptyRecipePath, out var emptyOpenMessage);
+            Check(
+                "source-less empty recipe reopens as a saved editable draft",
+                emptyOpened
+                && emptyReopened.PipelineSteps.Count == 0
+                && string.IsNullOrEmpty(emptyReopened.Source.Path)
+                && emptyReopened.CanSaveTeachingRecipe
+                && !emptyReopened.IsTeachingRecipeExecutionReady
+                && !emptyReopened.IsDirty,
+                emptyOpenMessage);
+            var newLifecycle = new ToolWorkbenchViewModel();
+            newLifecycle.SetC3DSource(sourcePath, markDirty: false);
+            Check("automatic startup source does not create an unsaved-change prompt", !newLifecycle.IsDirty, newLifecycle.RecipeStateSummary);
+            newLifecycle.RecipeName = "Discarded draft";
+            newLifecycle.CreateNewTeachingRecipe("Created recipe");
+            Check(
+                "New resets to a named source-less clean zero-step draft",
+                newLifecycle.RecipeName == "Created recipe"
+                && newLifecycle.PipelineSteps.Count == 0
+                && string.IsNullOrWhiteSpace(newLifecycle.Source.Path)
+                && !newLifecycle.IsSourceReadyForRecipe
+                && !newLifecycle.AddSelectedToolCommand.CanExecute(null)
+                && string.IsNullOrWhiteSpace(newLifecycle.RecipePath)
+                && !newLifecycle.IsDirty,
+                newLifecycle.RecipeStateSummary);
 
             workbench.RecipeName = "Fixture XYZ Affine Inspection";
             workbench.SetC3DSource(sourcePath);
@@ -131,7 +196,7 @@ internal static class ToolRecipeTeachingVerification
                 "Only the selected Filter Preview adapter exists in this 11-step fixture.");
             Check(
                 "ordered entity routing validates",
-                workbench.CanSaveTeachingRecipe && workbench.PipelineSteps.Count == 11,
+                workbench.CanSaveTeachingRecipe && workbench.IsTeachingRecipeExecutionReady && workbench.PipelineSteps.Count == 11,
                 workbench.ValidationSummary);
             Check(
                 "affine solve keeps its exact numerical contract without implicit execution",

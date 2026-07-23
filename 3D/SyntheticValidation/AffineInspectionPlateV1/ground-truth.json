@@ -226,7 +226,7 @@
     }
   },
   "verification": {
-    "checks": 16,
-    "passed": 16
+    "checks": 18,
+    "passed": 18
   }
 }
