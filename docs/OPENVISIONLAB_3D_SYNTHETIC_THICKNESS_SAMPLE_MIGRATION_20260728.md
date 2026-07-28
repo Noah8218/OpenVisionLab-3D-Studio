@@ -140,9 +140,29 @@ forks, Actions artifacts, or third-party clones. If the retired blobs must be
 made inaccessible by old object URL as well, the repository owner must request
 GitHub sensitive-data cleanup and separately audit those external copies.
 
+## Post-push external retention audit
+
+The post-push audit distinguishes a clean public tip from full remote erasure:
+
+- `origin/main` and `origin/codex/3d-workbench-line-fit` both resolve to
+  `1c90b8374adb7a66c35355fd1cfd6734df272b0c`.
+- Both tips contain 716 files and pass the retired-path and
+  retired-identifier/hash scans with zero findings.
+- `git ls-remote --tags origin` returns no tags and the GitHub Releases API
+  returns no releases.
+- The GitHub commit API still returns HTTP `200` for the former `main` tip.
+  Git ref replacement therefore has not yet made every old object URL
+  inaccessible.
+- The Actions API reports 58 unexpired artifacts: one belongs to the new
+  sanitized root and 57 belong to historical commits.
+- The historical workflow generated a PLY from the retired C3D and then
+  uploaded `artifacts/ci/**`; the 57 historical artifacts must therefore be
+  treated as potentially derived from the retired source until deleted or
+  independently inspected.
+
 ## Completion record
 
-Status: Complete
+Status: Blocked
 
 Scope: Public-safe synthetic C3D, ground truth, preview, eight-step Thickness
 recipe, current-tree source defaults, legacy recipe inputs, CI map probe,
@@ -160,7 +180,11 @@ Acceptance criteria:
   save/reopen;
 - reachable remote branch history replacement -> pass, both public heads now
   descend from the parentless sanitized root;
-- retired release tag removal -> pass, tag absent from local and remote refs.
+- retired release tag removal -> pass, tag absent from local and remote refs;
+- old GitHub object URL inaccessible -> fail, former commit API response is
+  HTTP `200`;
+- historical Actions artifact cleanup -> fail, 57 pre-sanitization artifacts
+  remain unexpired.
 
 Verification: deterministic regeneration; Release build `0/0`; generic Tool
 Recipe Runner `8/8`; repeat authoring `20/20`; recipe selections `29/29`;
@@ -169,11 +193,15 @@ Quality and Height Image probes; current Wide actual UI ROI replay,
 Ctrl+S/save/reopen; README local-link check.
 
 Evidence: `artifacts/current/20260728-synthetic-thickness-coupon/`, parentless
-root `6936af87a80f29f43c8e27ce34abf55c37dd8f97`, and post-push
-`git ls-remote`/tree/content scans.
+root `6936af87a80f29f43c8e27ce34abf55c37dd8f97`, post-rewrite audit tip
+`1c90b8374adb7a66c35355fd1cfd6734df272b0c`, post-push
+`git ls-remote`/tree/content scans, and read-only GitHub commit, release, and
+Actions artifact API audits.
 
-Boundary / next dependency: public reachable Git refs are sanitized, but
-GitHub unreachable-object caches, forks, Actions artifacts, and third-party
-clones are outside this Git-ref proof. Request GitHub sensitive-data cleanup
-if old object URLs must be invalidated. Existing clones must be replaced with
-a fresh clone. Local untracked files remain untouched.
+Boundary / next dependency: the repository owner must authorize deletion of
+the 57 historical Actions artifacts and authenticate an account capable of
+that deletion. The owner must also submit a GitHub sensitive-data cleanup
+request for the still-addressable old objects. Preserve the one artifact whose
+head is the sanitized root. Forks and third-party clones require separate
+coordination; existing local clones must be replaced with a fresh clone. Local
+untracked files remain untouched.
