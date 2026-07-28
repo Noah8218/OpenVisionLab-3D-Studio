@@ -121,16 +121,28 @@ enough:
 | `origin/codex/3d-workbench-line-fit` | the same captured C3D/PNG blobs plus the source-specific generated recipe, generator script, historical document path, and old README GIF |
 | `v0.1.0-rc.1` | the same two captured C3D and PNG aliases |
 
-The safest cleanup is a coordinated sanitized-root replacement or an
-equivalent verified `git filter-repo` rewrite across `main`, the feature
-branch, and the release tag, followed by force-push and a GitHub unreachable
-object/cache purge request when appropriate. This rewrites public commit IDs
-and invalidates existing clones, links, and open comparisons, so it must not
-run without explicit owner approval and a short coordination window.
+The owner approved a coordinated sanitized-root replacement. On 2026-07-28,
+both public branches were force-updated with exact `--force-with-lease`
+expectations:
+
+| Updated ref | Sanitized root |
+| --- | --- |
+| `refs/heads/main` | `6936af87a80f29f43c8e27ce34abf55c37dd8f97` |
+| `refs/heads/codex/3d-workbench-line-fit` | `6936af87a80f29f43c8e27ce34abf55c37dd8f97` |
+
+The retired `refs/tags/v0.1.0-rc.1` tag was deleted locally and from `origin`.
+The sanitized root has no parent, contains 716 files, and passed both the
+retired-path scan and retired-identifier/hash scan with zero findings.
+
+This invalidates previous commit IDs, clones, links, and comparisons. Removing
+reachable refs does not prove immediate physical deletion from GitHub caches,
+forks, Actions artifacts, or third-party clones. If the retired blobs must be
+made inaccessible by old object URL as well, the repository owner must request
+GitHub sensitive-data cleanup and separately audit those external copies.
 
 ## Completion record
 
-Status: Incomplete
+Status: Complete
 
 Scope: Public-safe synthetic C3D, ground truth, preview, eight-step Thickness
 recipe, current-tree source defaults, legacy recipe inputs, CI map probe,
@@ -146,7 +158,9 @@ Acceptance criteria:
   scan `0`;
 - fresh synthetic-only README GIF -> pass, Wide actual UI replay and
   save/reopen;
-- remote history removal -> fail, destructive rewrite not yet approved.
+- reachable remote branch history replacement -> pass, both public heads now
+  descend from the parentless sanitized root;
+- retired release tag removal -> pass, tag absent from local and remote refs.
 
 Verification: deterministic regeneration; Release build `0/0`; generic Tool
 Recipe Runner `8/8`; repeat authoring `20/20`; recipe selections `29/29`;
@@ -154,10 +168,12 @@ height measurement `46/46`; teaching `28/28`; structure `17/17`; Source
 Quality and Height Image probes; current Wide actual UI ROI replay,
 Ctrl+S/save/reopen; README local-link check.
 
-Evidence: `artifacts/current/20260728-synthetic-thickness-coupon/`.
+Evidence: `artifacts/current/20260728-synthetic-thickness-coupon/`, parentless
+root `6936af87a80f29f43c8e27ce34abf55c37dd8f97`, and post-push
+`git ls-remote`/tree/content scans.
 
-Boundary / next dependency: both remote `main` and
-`codex/3d-workbench-line-fit` retain the retired captured C3D/PNG blobs in Git
-history. Completing public data removal requires explicit approval for a
-coordinated history rewrite and force-push. Local untracked files remain
-untouched.
+Boundary / next dependency: public reachable Git refs are sanitized, but
+GitHub unreachable-object caches, forks, Actions artifacts, and third-party
+clones are outside this Git-ref proof. Request GitHub sensitive-data cleanup
+if old object URLs must be invalidated. Existing clones must be replaced with
+a fresh clone. Local untracked files remain untouched.
