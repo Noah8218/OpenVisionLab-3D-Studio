@@ -259,8 +259,48 @@
                     </StackPanel>
                 </Expander>
 
+                <Border Margin="0,0,0,7"
+                        Padding="8"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        Visibility="{Binding IsSelectedStepRemoveOutlierPixels, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.OutlierEvidence, Korean='이상치 제거 증거', English='Outlier removal evidence'}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding RemoveOutlierRuleSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   Text="{Binding RemoveOutlierExecutionSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding RemoveOutlierOutputSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding RemoveOutlierMaskSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.OutlierSourceImmutable, Korean='원본은 변경되지 않으며 제거 셀은 파생 출력에서 결측으로 표시됩니다.', English='The source is unchanged; removed cells become missing only in the derived output.'}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <Expander Style="{StaticResource WorkspaceSectionStyle}"
                           IsExpanded="True"
+                          Visibility="{Binding IsSelectedStepRegionSurfaceVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Regions, Korean='3  ROI / 영역', English='3  ROI / Regions'}">
                     <StackPanel Margin="0,5,0,0">
                         <Border Margin="0,0,0,6"
@@ -814,7 +854,7 @@
                                 BorderBrush="{DynamicResource ThreeD.AccentBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3"
-                                Visibility="{Binding OrientedBoxEditor.HasSourceContext, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Visibility="{Binding IsOrientedBoxEditorContextVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                 AutomationProperties.AutomationId="OrientedBox3DEditor">
                             <StackPanel>
                                 <Grid>
@@ -937,19 +977,11 @@
                                                Foreground="{DynamicResource ThreeD.InfoBrush}"
                                                Text="{Binding OrientedBoxEditor.ValidationSummary}"
                                                TextWrapping="Wrap" />
-                                    <WrapPanel Margin="0,6,0,0">
-                                        <ui:Button Margin="0,0,5,0"
-                                                   Padding="8,3"
-                                                   Appearance="Primary"
-                                                   Content="{views:ThreeDText Key=ThreeD.Command.ApplyOrientedBox, Korean='박스 적용', English='Apply box'}"
-                                                   Command="{Binding OrientedBoxEditor.ApplyCommand}"
-                                                   AutomationProperties.AutomationId="ApplyOrientedBox3D"
-                                                   AutomationProperties.Name="Apply numeric OrientedBox3D" />
-                                        <ui:Button Padding="8,3"
-                                                   Content="{views:ThreeDText Key=ThreeD.Command.CancelOrientedBox, Korean='편집 취소', English='Cancel edit'}"
-                                                   Command="{Binding OrientedBoxEditor.CancelCommand}"
-                                                   AutomationProperties.Name="Cancel numeric OrientedBox3D edit" />
-                                    </WrapPanel>
+                                    <TextBlock Margin="0,5,0,0"
+                                               FontSize="8.5"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.Workspace.OrientedBoxReviewBarHint, Korean='위 검토 바 사용: Enter 적용, Esc 취소', English='Use the Review bar above: Enter applies, Esc cancels.'}"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <TextBlock Margin="0,5,0,0"

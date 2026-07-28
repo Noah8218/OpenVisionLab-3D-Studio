@@ -72,6 +72,6 @@ public partial class FilterToolLabWindow : Window
 
         outputViewer.ShowC3DWorkbenchResult(
             args.C3DPath,
-            $"Filter Preview | {args.ContentSha256[..Math.Min(12, args.ContentSha256.Length)]}");
+            $"{args.DisplayLabel} | {args.ContentSha256[..Math.Min(12, args.ContentSha256.Length)]}");
     }
 }

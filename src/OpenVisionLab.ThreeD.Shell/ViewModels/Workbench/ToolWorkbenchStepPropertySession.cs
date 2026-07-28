@@ -39,6 +39,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     {
         null => "No step selected",
         { ToolId: "filter" } => FormatAdapterStatus(step, FilterStepProperties.MappedNames),
+        { ToolId: "remove-outlier-pixels" } => FormatAdapterStatus(step, RemoveOutlierPixelsStepProperties.MappedNames),
         { ToolId: "height-difference-edge" } => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "two-point-line" } => FormatAdapterStatus(step, TwoPointLineStepProperties.MappedNames),
         { ToolId: "three-point-plane" } => FormatAdapterStatus(step, ThreePointPlaneStepProperties.MappedNames),
@@ -65,6 +66,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         Draft = step?.ToolId switch
         {
             "filter" => FilterStepProperties.From(step),
+            "remove-outlier-pixels" => RemoveOutlierPixelsStepProperties.From(step),
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "two-point-line" => TwoPointLineStepProperties.From(step),
             "three-point-plane" => ThreePointPlaneStepProperties.From(step),
@@ -138,6 +140,30 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
                     ["KernelSize"] = filter.KernelSize.ToString(CultureInfo.InvariantCulture),
                     ["MissingValuePolicy"] = filter.MissingValuePolicy.ToString(),
                     ["BoundaryPolicy"] = filter.BoundaryPolicy.ToString()
+                };
+                break;
+            case RemoveOutlierPixelsStepProperties outlier:
+                if (!outlier.TryValidate(out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["Rule"] = outlier.Rule.ToString(),
+                    ["WindowSize"] =
+                        outlier.WindowSize.ToString(CultureInfo.InvariantCulture),
+                    ["MaximumAbsoluteDeviation"] =
+                        outlier.MaximumAbsoluteDeviation.ToString(
+                            "G17",
+                            CultureInfo.InvariantCulture),
+                    ["MinimumValidNeighbors"] =
+                        outlier.MinimumValidNeighbors.ToString(
+                            CultureInfo.InvariantCulture),
+                    ["MissingValuePolicy"] = outlier.MissingValuePolicy.ToString(),
+                    ["BoundaryPolicy"] = outlier.BoundaryPolicy.ToString(),
+                    ["OutlierPolicy"] = outlier.OutlierPolicy.ToString()
                 };
                 break;
             case HeightDifferenceEdgeStepProperties edge:
@@ -383,7 +409,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     }
 
     public static bool IsSupportedTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions";
+        step.ToolId is "filter" or "remove-outlier-pixels" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions";
 
     internal static string GetParameter(ToolWorkbenchPipelineStepItem step, string name) =>
         step.Parameters.FirstOrDefault(parameter =>

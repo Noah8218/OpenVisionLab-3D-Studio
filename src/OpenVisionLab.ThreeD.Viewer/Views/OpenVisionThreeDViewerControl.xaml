@@ -1137,6 +1137,8 @@
                                FontWeight="Bold"
                                Text="{localization:ViewerText Key=ThreeD.Viewer.RoiOverlayYHandle, Korean='Y 위치 ↕', English='Y position ↕'}" />
                 </Canvas>
+                <Canvas x:Name="TeachingOrientedBoxHandleOverlay"
+                        Visibility="Collapsed" />
             </Canvas>
             <Border HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"

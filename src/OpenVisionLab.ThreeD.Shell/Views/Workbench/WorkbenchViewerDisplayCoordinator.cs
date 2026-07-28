@@ -88,7 +88,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
             : args.ContentSha256;
         var label = args.IsSource
             ? $"Source | {Path.GetFileName(args.C3DPath)}"
-            : $"Filter Preview | {hashLabel}";
+            : $"{args.DisplayLabel} | {hashLabel}";
         if (viewer.ShowC3DWorkbenchResult(args.C3DPath, label))
         {
             RefreshViewerSourceState(syncTeaching: true);

@@ -96,9 +96,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 77 |
+| Complete `C` | 79 |
 | Partial `P` | 17 |
-| New `N` | 115 |
+| New `N` | 113 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 234 |
@@ -119,6 +119,39 @@ Current inventory count:
 
 ### Current execution checkpoint - 2026-07-28
 
+`D-04 Remove Outlier Pixels` is complete. The typed
+`LocalMedianAbsoluteDeviation` preparation rule excludes the center sample,
+uses a strict-greater-than threshold, supports odd `3/5/7` windows and an
+explicit minimum-neighbor gate, preserves source missing cells, uses available
+neighbors at boundaries, and sets detected outliers missing. Data owns one
+immutable coordinate-true outlier mask; Tools, Workbench, Viewer, Output
+Compare, and Runner share its identity and the derived C3D. The known
+`12 x 10` fixture removes exactly `3` cells and changes valid/missing from
+`119/1` to `116/4`, while the source hash remains unchanged. Preserve
+`docs/OPENVISIONLAB_3D_REMOVE_OUTLIER_PIXELS_20260728.md` and
+`artifacts/current/20260728-remove-outlier-pixels/`.
+
+The next implementation item is `D-05/D-06 Level Surface`. Height Image
+press-drag-release versus 3D two-point instruction and a focused Compact ROI
+teaching surface remain P1 UX items. The owner R0 replay and physical
+metrology remain external.
+
+`E-09 OrientedBox3D Viewer outline and pointer handles` is complete. The
+persisted schema `1.4` volume now renders as a translucent oriented cuboid
+with a rotation ring and fixed-screen-size center, X/Y/Z resize, height, and
+local-Y rotation handles. When a projected axis collapses in Top or side
+views, its screen-space fallback remains visible and draggable. Viewer
+gestures and numeric fields edit one synchronized transient Review candidate;
+the global Review bar is the sole visible Apply/Cancel owner, Enter/Esc remain
+available, and Apply preserves the selection identity without running
+inspection. Real Windows pointer evidence passes Perspective move/X/Y/Z
+resize/rotate, Top height resize, and side collapsed-axis resize while recipe,
+execution, and gesture camera state remain unchanged. Preserve
+`docs/OPENVISIONLAB_3D_ORIENTED_BOX_VIEWER_HANDLES_20260728.md` and
+`artifacts/current/20260728-oriented-box-viewer-handles/`.
+
+The E-09 checkpoint preceded the newer D-04 closure above.
+
 The two P0 findings from the current Release operator-video review are closed.
 Schema `1.5` stores first/second ROI identities on the owning inspection step,
 so deleting Reference cannot promote the surviving Measurement selection.
@@ -133,10 +166,8 @@ or Run implicitly. Preserve
 `artifacts/current/20260728-dual-roi-role-preservation/`, and the updated
 `docs/assets/openvisionlab-3d-roi-workflow.gif`.
 
-The next implementation item is `E-09` OrientedBox3D Viewer outline and
-pointer handles. Height Image press-drag-release versus 3D two-point
-instruction and a focused Compact ROI teaching surface remain P1 UX items.
-The owner R0 replay and physical metrology remain external.
+That dual-ROI closure was the prerequisite immediately before E-09; the newer
+checkpoint above supersedes its former next-item statement.
 
 `E-07/E-08 OrientedBox3D contract and numeric editing` is complete:
 
@@ -160,8 +191,8 @@ Preserve
 `docs/OPENVISIONLAB_3D_ORIENTED_BOX_CONTRACT_AND_NUMERIC_EDITOR_20260728.md`
 and `artifacts/current/20260728-oriented-box-contract/`.
 
-This is the persisted numeric contract, not the rendered or pointer-editable
-box. `E-09` is next.
+That checkpoint was the persisted numeric contract before rendering.
+The newer E-09 checkpoint above closes the Viewer outline and pointer handles.
 
 The current Wide and Compact synchronized ROI captures were reviewed against
 the v3 and GoPxL-derived interaction contracts. One concrete v3 acceptance
@@ -464,7 +495,7 @@ Reasoning effort: high
 | D-01 | C | Median Filter creates a separate `FilteredHeightField` | None | Filter adapter and Runner verification |
 | D-02 | C | Missing mask preserved and available-neighbor boundary policy | None | Filter contract verification |
 | D-03 | P | ROI/Crop is cataloged, while full preparation-output workflow is incomplete | E-01 | Typed output identity and Runner execution |
-| D-04 | N | Remove Outlier Pixels tool with explicit rule and mask evidence | B-09 | Known outlier fixture, before/after counts, Viewer/Runner parity |
+| D-04 | C | Remove Outlier Pixels tool with explicit rule and mask evidence | B-09 | Known outlier fixture, before/after counts, Viewer/Runner parity |
 | D-05 | N | Level Surface from one or more explicit reference ROIs | F-01, C-06 | Tilted synthetic plane becomes level with residual evidence |
 | D-06 | N | Preserve leveling transform as typed output, not hidden image mutation | D-05 | Save/reopen and Runner transform parity |
 | D-07 | N | Reduce Domain/Mask tool | E-11, D-03 | Outside cells remain missing in derived output |
@@ -496,7 +527,7 @@ Reasoning effort: high
 | E-06 | C | `4 x 2` repeat-grid display review and ordinary-step Apply | None | Repeat authoring `20/20` |
 | E-07 | C | New `OrientedBox3D` selection kind | B-05 | Core/Data schema and validator verification |
 | E-08 | C | `OrientedBox3D` center, axes, and half-extents numeric editor | E-07 | Round-trip and invalid-axis rejection |
-| E-09 | N | Top/side/perspective move, resize, rotate, and height handles | E-07, C-06 | Actual pointer evidence |
+| E-09 | C | Top/side/perspective move, resize, rotate, and height handles | E-07, C-06 | `docs/OPENVISIONLAB_3D_ORIENTED_BOX_VIEWER_HANDLES_20260728.md`; actual Windows pointer Perspective/Top/side evidence |
 | E-10 | N | Distinguish view-only GridRectangle overlay Y from persisted volume extent | E-07 | UI wording and contract verification |
 | E-11 | N | Region artifact output that downstream tools can consume | E-07 or E-01 | Typed route and Artifact Registry evidence |
 | E-12 | N | Region-source relationship and transform propagation | E-11, F-05 | Same physical region after typed alignment |
@@ -896,21 +927,19 @@ volume contract.
 
 Execute only one queue item at a time.
 
-1. `E-09 OrientedBox3D 3D handles`
-2. `D-04 Remove Outlier Pixels`
-3. `D-05/D-06 Level Surface`
-4. `I-04/I-05 labeled sample evidence`
-5. `I-06/I-07 threshold suggestions and error table`
-6. `I-08/I-10 explicit Apply and held-out replay`
-7. `H-02/H-03/H-04 completeness grid metrics`
-8. `H-05/H-06/H-07 completeness result and overlays`
-9. `J-01/J-03/J-04 SurfaceModel preparation foundation`
-10. `J-06/J-08/J-09 scene matching, pose, and score`
-11. `J-10/J-16 overlay and Workbench/Runner parity`
-12. `K-02/K-03/K-06 edge-supported score components`
-13. `K-08/K-11 false-positive review and performance gate`
+1. `D-05/D-06 Level Surface`
+2. `I-04/I-05 labeled sample evidence`
+3. `I-06/I-07 threshold suggestions and error table`
+4. `I-08/I-10 explicit Apply and held-out replay`
+5. `H-02/H-03/H-04 completeness grid metrics`
+6. `H-05/H-06/H-07 completeness result and overlays`
+7. `J-01/J-03/J-04 SurfaceModel preparation foundation`
+8. `J-06/J-08/J-09 scene matching, pose, and score`
+9. `J-10/J-16 overlay and Workbench/Runner parity`
+10. `K-02/K-03/K-06 edge-supported score components`
+11. `K-08/K-11 false-positive review and performance gate`
 
-Recommended model for queue items 1-13: `gpt-5.6-sol`.
+Recommended model for queue items 1-11: `gpt-5.6-sol`.
 
 Reasoning effort: high, except narrow UI/localization follow-ups after a
 contract passes may use medium.

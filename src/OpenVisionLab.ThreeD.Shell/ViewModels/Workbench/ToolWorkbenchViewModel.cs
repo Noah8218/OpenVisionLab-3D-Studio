@@ -144,14 +144,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             _ => UndoTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty),
             _ => IsTeachingSelectionCaptureActive && TeachingSelectionCapturedPointCount > 0);
         cancelTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => CancelTeachingSelectionCapture(),
-            _ => IsTeachingSelectionCaptureActive);
-        applyTeachingSelectionCaptureCommand = new RelayCommand(
-            _ => ApplyTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty),
+            _ => CancelActiveSelectionCandidate(),
             _ => IsTeachingSelectionCaptureActive
-                && CanApplyTeachingSelectionCapture
-                && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
-                    || IsTeachingGridRectangleDraftValid));
+                || OrientedBoxEditor.CancelCommand.CanExecute(null));
+        applyTeachingSelectionCaptureCommand = new RelayCommand(
+            _ => ApplyActiveSelectionCandidate(),
+            _ => IsTeachingSelectionCaptureActive
+                ? CanApplyTeachingSelectionCapture
+                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
+                      || IsTeachingGridRectangleDraftValid)
+                : OrientedBoxEditor.ApplyCommand.CanExecute(null));
         removeSelectedTeachingSelectionCommand = new RelayCommand(
             _ => RemoveSelectedTeachingSelection(),
             _ => SelectedStepTeachingSelection is not null);
@@ -359,6 +361,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedRouteInputIds));
             OnPropertyChanged(nameof(SelectedRouteOutputId));
             OnPropertyChanged(nameof(IsSelectedToolLabAvailable));
+            OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
+            OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
             NotifySourceQualityWorkspaceState();
             openSelectedToolLabCommand.RaiseCanExecuteChanged();
             RefreshSelectedStepPropertyDraft();
@@ -698,6 +702,27 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public bool IsSelectedStepViewerCaptureSupported =>
         SelectedStepSelectionRequirement is { UsesViewerCapture: true };
 
+    public bool IsOrientedBoxEditorContextVisible =>
+        OrientedBoxEditor.HasSourceContext
+        && (OrientedBoxEditor.IsDraftOpen
+            || string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "oriented-box-authoring",
+                StringComparison.Ordinal)
+            || SelectedPipelineStep?.InputEntityIds.Any(
+                input => Selections.Any(
+                    selection =>
+                        selection.Kind == ToolRecipeSelectionKinds.OrientedBox3D
+                        && string.Equals(
+                            selection.Id,
+                            input,
+                            StringComparison.OrdinalIgnoreCase))) == true);
+
+    public bool IsSelectedStepRegionSurfaceVisible =>
+        IsSelectedStepDualRoiMeasurement
+        || IsSelectedStepViewerCaptureSupported
+        || IsOrientedBoxEditorContextVisible;
+
     public bool IsSelectedStepCorrespondence =>
         SelectedStepSelectionRequirement is { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet };
 
@@ -745,7 +770,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public bool IsTeachingSelectionCaptureActive => isTeachingSelectionCaptureActive;
 
-    public bool IsPipelineReviewExpanded => !IsTeachingSelectionCaptureActive && HasPipelineSteps;
+    public bool IsSelectionCandidateActive =>
+        IsTeachingSelectionCaptureActive || OrientedBoxEditor.IsDraftOpen;
+
+    public bool IsPipelineReviewExpanded => !IsSelectionCandidateActive && HasPipelineSteps;
 
     public int TeachingSelectionCapturedPointCount => teachingSelectionCapturedPointCount;
 
@@ -803,7 +831,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ? $"X columns {TeachingGridRectangleColumn}..{TeachingGridRectangleColumn + TeachingGridRectangleColumnCount - 1} | Z rows {TeachingGridRectangleRow}..{TeachingGridRectangleRow + TeachingGridRectangleRowCount - 1} | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
             : "X/Z source-frame footprint unavailable until the ROI values are valid.";
 
-    public string TeachingSelectionCaptureTitle => SelectedStepSelectionRequirement is null
+    public string TeachingSelectionCaptureTitle => !IsTeachingSelectionCaptureActive
+        && OrientedBoxEditor.IsDraftOpen
+            ? $"{OrientedBoxEditor.Name} · 3D Box Review"
+        : SelectedStepSelectionRequirement is null
         ? Localization.SelectionCapture
         : SelectedStepSelectionRequirement.Kind == ToolRecipeSelectionKinds.GridRectangle
             ? $"{SelectedStepSelectionRequirement.Name} \u00B7 {(CanApplyTeachingSelectionCapture ? Localization.RoiReview : Localization.RoiDrawing)}"
@@ -817,11 +848,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                     Localization.SelectionCaptureProgressFormat,
                     TeachingSelectionCapturedPointCount,
                     TeachingSelectionRequiredPointCount)
+        : OrientedBoxEditor.IsDraftOpen
+            ? "Viewer handles and numeric values edit one transient candidate. Enter applies; Esc cancels."
         : Localization.SelectionCaptureInactive;
 
     public string TeachingSelectionCaptureInstruction =>
         !IsTeachingSelectionCaptureActive
-            ? string.Empty
+            ? OrientedBoxEditor.IsDraftOpen
+                ? OrientedBoxEditor.ValidationSummary
+                : string.Empty
             : SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
                 ? CanApplyTeachingSelectionCapture
                     ? Localization.RoiCaptureReadyInstruction
@@ -970,6 +1005,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (sourcePathChanged)
         {
             ClearFilterPreview("Source changed; Preview is required.");
+            ClearRemoveOutlierPreview(
+                "Source changed; Remove Outlier Pixels Preview is required.");
             ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
             ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
             ClearMeasurementPreview("Source changed; measurement Preview is required.");
@@ -1178,6 +1215,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             case "filter":
                 RefreshFilterExecutionState();
+                break;
+            case "remove-outlier-pixels":
+                RefreshRemoveOutlierExecutionState();
                 break;
             case "height-difference-edge":
                 RefreshHeightDifferenceEdgeExecutionState();
@@ -1755,6 +1795,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         bool captureOpenedSourceIdentity)
     {
         ClearFilterPreview(previewStatus);
+        ClearRemoveOutlierPreview(previewStatus);
         if (markDirty)
         {
             ClearMeasurementPreview(previewStatus);
@@ -1931,6 +1972,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         stageStarted = Stopwatch.GetTimestamp();
         RefreshFilterExecutionState();
+        RefreshRemoveOutlierExecutionState();
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshTwoPointLineExecutionState();
         RefreshThreePointPlaneExecutionState();
@@ -2236,6 +2278,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         canApplyTeachingSelectionCapture = canApply;
         teachingSelectionCaptureMessage = message;
         OnPropertyChanged(nameof(IsTeachingSelectionCaptureActive));
+        OnPropertyChanged(nameof(IsSelectionCandidateActive));
         OnPropertyChanged(nameof(IsPipelineReviewExpanded));
         OnPropertyChanged(nameof(TeachingSelectionCapturedPointCount));
         OnPropertyChanged(nameof(TeachingSelectionRequiredPointCount));
@@ -2501,6 +2544,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
 
         MarkFilterPreviewStaleIfNeeded(sender);
+        MarkRemoveOutlierPreviewStaleIfNeeded(sender);
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkThreePointPlanePreviewStaleIfNeeded(sender);

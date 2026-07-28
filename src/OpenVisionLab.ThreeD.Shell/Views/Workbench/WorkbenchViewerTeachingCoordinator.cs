@@ -29,17 +29,20 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.ApplyTeachingSelectionCaptureRequested += OnApplyTeachingCaptureRequested;
         workbench.AppliedTeachingSelectionsChanged += OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged += OnGridRectangleDraftChanged;
+        workbench.OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged += OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested += OnFitWorkspaceRegionRequested;
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         viewer.TeachingCaptureStateChanged += OnViewerTeachingCaptureStateChanged;
         viewer.TeachingSelectionSelected += OnViewerTeachingSelectionSelected;
+        viewer.TeachingOrientedBox3DDraftChanged += OnViewerOrientedBoxDraftChanged;
         viewer.TeachingRoiDisplayHeightChanged += OnViewerTeachingRoiDisplayHeightChanged;
     }
 
     public void SyncAppliedSelections()
     {
         viewer.SetAppliedTeachingSelections(workbench.GetCurrentAppliedTeachingSelections());
+        SyncOrientedBoxDraft();
         SyncSelectedSelection();
     }
 
@@ -57,11 +60,13 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.ApplyTeachingSelectionCaptureRequested -= OnApplyTeachingCaptureRequested;
         workbench.AppliedTeachingSelectionsChanged -= OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged -= OnGridRectangleDraftChanged;
+        workbench.OrientedBoxEditor.DraftChanged -= OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged -= OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested -= OnFitWorkspaceRegionRequested;
         workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
         viewer.TeachingCaptureStateChanged -= OnViewerTeachingCaptureStateChanged;
         viewer.TeachingSelectionSelected -= OnViewerTeachingSelectionSelected;
+        viewer.TeachingOrientedBox3DDraftChanged -= OnViewerOrientedBoxDraftChanged;
         viewer.TeachingRoiDisplayHeightChanged -= OnViewerTeachingRoiDisplayHeightChanged;
     }
 
@@ -178,7 +183,13 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             message);
 
     private void SyncSelectedSelection() =>
-        viewer.SetSelectedTeachingSelection(workbench.SelectedStepTeachingSelection?.Id);
+        viewer.SetSelectedTeachingSelection(
+            workbench.OrientedBoxEditor.DraftSelectionId
+            ?? workbench.SelectedStepTeachingSelection?.Id);
+
+    private void SyncOrientedBoxDraft() =>
+        viewer.SetTeachingOrientedBox3DDraft(
+            workbench.OrientedBoxEditor.CurrentDraftSelection);
 
     private void OnWorkbenchPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
@@ -201,6 +212,32 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         UpdateWorkbenchCaptureState(viewer.TeachingCaptureSnapshot, message);
     }
 
+    private void OnOrientedBoxDraftChanged(
+        object? sender,
+        OrientedBox3DDraftChangedEventArgs args)
+    {
+        viewer.SetTeachingOrientedBox3DDraft(args.Selection);
+        SyncSelectedSelection();
+    }
+
+    private void OnViewerOrientedBoxDraftChanged(
+        object? sender,
+        TeachingOrientedBox3DDraftChangedEventArgs args)
+    {
+        if (!workbench.OrientedBoxEditor.TryUpdateDraftFromViewer(args.Selection))
+        {
+            return;
+        }
+
+        if (args.Source.Contains("completed", StringComparison.OrdinalIgnoreCase))
+        {
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Info,
+                $"OrientedBox3D draft changed | selection={args.Selection.Id} | source={args.Source} | recipeChanged=false | inspectionRun=false");
+        }
+    }
+
     private void OnThicknessRepeatGridPreviewChanged(
         object? sender,
         ThicknessRepeatGridPreviewChangedEventArgs args) =>
@@ -213,6 +250,16 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         object? sender,
         TeachingSelectionSelectedEventArgs args)
     {
+        var orientedBox = workbench.OrientedBoxEditor.Selections.FirstOrDefault(
+            selection => string.Equals(
+                selection.Id,
+                args.SelectionId,
+                StringComparison.OrdinalIgnoreCase));
+        if (orientedBox is not null)
+        {
+            workbench.OrientedBoxEditor.SelectedSelection = orientedBox;
+        }
+
         workbench.SelectPipelineStepForSelection(args.SelectionId);
         SyncSelectedSelection();
     }

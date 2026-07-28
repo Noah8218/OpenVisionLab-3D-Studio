@@ -517,6 +517,175 @@ public sealed class FilterStepProperties
     }
 }
 
+public enum RemoveOutlierPixelsRule
+{
+    LocalMedianAbsoluteDeviation
+}
+
+public enum RemoveOutlierPixelsMissingValuePolicy
+{
+    PreserveMask
+}
+
+public enum RemoveOutlierPixelsBoundaryPolicy
+{
+    AvailableNeighbors
+}
+
+public enum RemoveOutlierPixelsOutlierPolicy
+{
+    SetMissing
+}
+
+[CategoryOrder("Outlier rule", 0)]
+[CategoryOrder("Evidence policy", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class RemoveOutlierPixelsStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "Rule",
+        "WindowSize",
+        "MaximumAbsoluteDeviation",
+        "MinimumValidNeighbors",
+        "MissingValuePolicy",
+        "BoundaryPolicy",
+        "OutlierPolicy"
+    ];
+
+    [Category("Outlier rule")]
+    [DisplayName("Rule")]
+    [Description("Compares each finite center cell with the median of its finite neighbors.")]
+    [PropertyOrder(0)]
+    public RemoveOutlierPixelsRule Rule { get; set; }
+
+    [Category("Outlier rule")]
+    [DisplayName("Window size")]
+    [Description("Odd square neighborhood. The center cell is excluded from the local median.")]
+    [PropertyOrder(1)]
+    [NumberRange(3, 7, 2)]
+    public int WindowSize { get; set; }
+
+    [Category("Outlier rule")]
+    [DisplayName("Maximum absolute deviation")]
+    [Description("A cell is removed only when |center - local median| is strictly greater than this raw-height threshold.")]
+    [PropertyOrder(2)]
+    [NumberRange(0.000001, double.MaxValue, 1)]
+    public double MaximumAbsoluteDeviation { get; set; }
+
+    [Category("Outlier rule")]
+    [DisplayName("Minimum valid neighbors")]
+    [Description("Leaves the center unchanged when fewer finite neighbors are available.")]
+    [PropertyOrder(3)]
+    [NumberRange(1, 48, 1)]
+    public int MinimumValidNeighbors { get; set; }
+
+    [Category("Evidence policy")]
+    [DisplayName("Missing values")]
+    [Description("Original missing cells remain missing and are not counted in the outlier mask.")]
+    [PropertyOrder(4)]
+    public RemoveOutlierPixelsMissingValuePolicy MissingValuePolicy { get; set; }
+
+    [Category("Evidence policy")]
+    [DisplayName("Boundary")]
+    [Description("Uses finite neighbors available inside the source boundary without padding.")]
+    [PropertyOrder(5)]
+    public RemoveOutlierPixelsBoundaryPolicy BoundaryPolicy { get; set; }
+
+    [Category("Evidence policy")]
+    [DisplayName("Outlier action")]
+    [Description("Removed outliers become missing cells in the separate derived output.")]
+    [PropertyOrder(6)]
+    public RemoveOutlierPixelsOutlierPolicy OutlierPolicy { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are retained unchanged when known parameters are applied.")]
+    [PropertyOrder(10)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static RemoveOutlierPixelsStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+    {
+        Rule = Enum.TryParse<RemoveOutlierPixelsRule>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "Rule"),
+            out var rule)
+            ? rule
+            : RemoveOutlierPixelsRule.LocalMedianAbsoluteDeviation,
+        WindowSize = int.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "WindowSize"),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var windowSize)
+            ? windowSize
+            : 0,
+        MaximumAbsoluteDeviation = double.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(
+                step,
+                "MaximumAbsoluteDeviation"),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var maximumDeviation)
+            ? maximumDeviation
+            : double.NaN,
+        MinimumValidNeighbors = int.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(
+                step,
+                "MinimumValidNeighbors"),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var minimumNeighbors)
+            ? minimumNeighbors
+            : 0,
+        MissingValuePolicy = Enum.TryParse<RemoveOutlierPixelsMissingValuePolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"),
+            out var missing)
+            ? missing
+            : RemoveOutlierPixelsMissingValuePolicy.PreserveMask,
+        BoundaryPolicy = Enum.TryParse<RemoveOutlierPixelsBoundaryPolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "BoundaryPolicy"),
+            out var boundary)
+            ? boundary
+            : RemoveOutlierPixelsBoundaryPolicy.AvailableNeighbors,
+        OutlierPolicy = Enum.TryParse<RemoveOutlierPixelsOutlierPolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "OutlierPolicy"),
+            out var outlier)
+            ? outlier
+            : RemoveOutlierPixelsOutlierPolicy.SetMissing,
+        UnmappedParameters =
+            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (WindowSize is not (3 or 5 or 7))
+        {
+            message = "Window size must be 3, 5, or 7.";
+            return false;
+        }
+
+        if (!double.IsFinite(MaximumAbsoluteDeviation)
+            || MaximumAbsoluteDeviation <= 0d)
+        {
+            message = "Maximum absolute deviation must be finite and greater than zero.";
+            return false;
+        }
+
+        var maximumNeighbors = checked(WindowSize * WindowSize - 1);
+        if (MinimumValidNeighbors < 1
+            || MinimumValidNeighbors > maximumNeighbors)
+        {
+            message =
+                $"Minimum valid neighbors must be between 1 and {maximumNeighbors} for a {WindowSize} x {WindowSize} window.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
+}
+
 public enum HeightDifferenceEdgeComparisonAxis
 {
     Unspecified,

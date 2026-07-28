@@ -243,6 +243,21 @@ public static class ToolRecipeValidator
                 ValidateFilterStep(step, inputs, source, label, errors, warnings);
             }
 
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "remove-outlier-pixels",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateRemoveOutlierPixelsStep(
+                    step,
+                    inputs,
+                    source,
+                    label,
+                    errors,
+                    warnings);
+            }
+
             if (string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
             {
                 warnings.Add($"{label} XYZ Affine is taught only: execution needs four affine-independent source/reference landmarks or a fixture-constrained contract.");
@@ -451,6 +466,136 @@ public static class ToolRecipeValidator
         if (!string.Equals(Value("BoundaryPolicy"), "AvailableNeighbors", StringComparison.Ordinal))
         {
             errors.Add($"{label} Filter v1 BoundaryPolicy must be 'AvailableNeighbors'.");
+        }
+    }
+
+    private static void ValidateRemoveOutlierPixelsStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count != 1
+            || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 requires exactly the recipe C3D source as input.");
+        }
+
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal))
+        {
+            errors.Add($"{label} Remove Outlier Pixels v1 requires a C3D raw-height source.");
+        }
+
+        if (source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 requires source byte length, SHA-256, width, and height identity.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        var expectedNames = new HashSet<string>(
+            [
+                "Rule",
+                "WindowSize",
+                "MaximumAbsoluteDeviation",
+                "MinimumValidNeighbors",
+                "MissingValuePolicy",
+                "BoundaryPolicy",
+                "OutlierPolicy"
+            ],
+            StringComparer.Ordinal);
+        if (expectedNames.Any(
+                name => parameters.Count(
+                    parameter => parameter is not null && parameter.Name == name) != 1))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 requires Rule, WindowSize, MaximumAbsoluteDeviation, MinimumValidNeighbors, MissingValuePolicy, BoundaryPolicy, and OutlierPolicy.");
+            return;
+        }
+
+        var unknownNames = parameters
+            .Where(parameter => parameter is not null && !expectedNames.Contains(parameter.Name))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add(
+                $"{label} preserves unmapped Remove Outlier Pixels parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+
+        string Value(string name) =>
+            parameters.Single(parameter => parameter.Name == name).Value;
+
+        if (!string.Equals(
+                Value("Rule"),
+                "LocalMedianAbsoluteDeviation",
+                StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 Rule must be 'LocalMedianAbsoluteDeviation'.");
+        }
+
+        if (Value("WindowSize") is not ("3" or "5" or "7"))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 WindowSize must be 3, 5, or 7.");
+        }
+
+        if (!double.TryParse(
+                Value("MaximumAbsoluteDeviation"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var maximumDeviation)
+            || !double.IsFinite(maximumDeviation)
+            || maximumDeviation <= 0d)
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 MaximumAbsoluteDeviation must be finite and greater than zero.");
+        }
+
+        var maximumNeighbors = Value("WindowSize") switch
+        {
+            "3" => 8,
+            "5" => 24,
+            "7" => 48,
+            _ => 0
+        };
+        if (!int.TryParse(
+                Value("MinimumValidNeighbors"),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var minimumNeighbors)
+            || minimumNeighbors < 1
+            || minimumNeighbors > maximumNeighbors)
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 MinimumValidNeighbors must fit the selected WindowSize.");
+        }
+
+        if (!string.Equals(Value("MissingValuePolicy"), "PreserveMask", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 MissingValuePolicy must be 'PreserveMask'.");
+        }
+
+        if (!string.Equals(Value("BoundaryPolicy"), "AvailableNeighbors", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 BoundaryPolicy must be 'AvailableNeighbors'.");
+        }
+
+        if (!string.Equals(Value("OutlierPolicy"), "SetMissing", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Remove Outlier Pixels v1 OutlierPolicy must be 'SetMissing'.");
         }
     }
 

@@ -43,6 +43,7 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsFilterPreviewRunning => isFilterPreviewRunning;
     public bool IsSelectedStepPreviewRunning =>
         IsSelectedStepFilter ? isFilterPreviewRunning
+            : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
             : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
             : IsSelectedStepThreePointPlane ? IsThreePointPlanePreviewRunning
@@ -97,6 +98,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepMeasurement
         ? PreviewSelectedMeasurementAsync()
+        : IsSelectedStepRemoveOutlierPixels
+        ? PreviewSelectedRemoveOutlierPixelsAsync()
         : IsSelectedStepRegridHeightField
         ? PreviewSelectedRegridHeightFieldAsync()
         : IsSelectedStepXYZAffineApply
@@ -116,6 +119,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanPreviewSelectedStep() => IsSelectedStepMeasurement
         ? CanPreviewSelectedMeasurement()
+        : IsSelectedStepRemoveOutlierPixels
+        ? CanPreviewSelectedRemoveOutlierPixels()
         : IsSelectedStepRegridHeightField
         ? CanPreviewSelectedRegridHeightField()
         : IsSelectedStepXYZAffineApply
@@ -138,6 +143,10 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepMeasurement)
         {
             PublishSelectedMeasurement();
+        }
+        else if (IsSelectedStepRemoveOutlierPixels)
+        {
+            PublishSelectedRemoveOutlierPixels();
         }
         else if (IsSelectedStepRegridHeightField)
         {
@@ -187,6 +196,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanPublishSelectedStep() => IsSelectedStepMeasurement
         ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
+        : IsSelectedStepRemoveOutlierPixels
+        ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
         : IsSelectedStepRegridHeightField
         ? HasCurrentRegridHeightFieldPreview && !IsRegridHeightFieldPreviewPublished && regridHeightFieldPreviewOutput!.MeetsMinimumCoverage
         : IsSelectedStepXYZAffineApply
@@ -212,6 +223,10 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepMeasurement)
         {
             CancelMeasurementPreview();
+        }
+        else if (IsSelectedStepRemoveOutlierPixels)
+        {
+            CancelRemoveOutlierPreview();
         }
         else if (IsSelectedStepRegridHeightField)
         {
@@ -326,14 +341,33 @@ public sealed partial class ToolWorkbenchViewModel
     private async Task RunTeachingRecipeAsync()
     {
         var document = CreateDocument();
-        if (!ToolRecipeFilterExecution.CanRunWholeRecipe(document, out var message))
+        var canRun = IsSelectedStepRemoveOutlierPixels
+            ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
+                document,
+                out var message)
+            : ToolRecipeFilterExecution.CanRunWholeRecipe(document, out message);
+        if (!canRun)
         {
-            SetFilterSummary(message);
+            if (IsSelectedStepRemoveOutlierPixels)
+            {
+                SetRemoveOutlierSummary(message);
+            }
+            else
+            {
+                SetFilterSummary(message);
+            }
             AppendLog("Run", message);
             return;
         }
 
-        await PreviewSelectedFilterAsync();
+        if (IsSelectedStepRemoveOutlierPixels)
+        {
+            await PreviewSelectedRemoveOutlierPixelsAsync();
+        }
+        else
+        {
+            await PreviewSelectedFilterAsync();
+        }
     }
 
     private void PublishSelectedFilter()
@@ -381,8 +415,13 @@ public sealed partial class ToolWorkbenchViewModel
         IsSourceReadyForRecipe
         && !HasPendingStepParameterChanges
         && !isFilterPreviewRunning
+        && !isRemoveOutlierPreviewRunning
         && !IsEdgePreviewRunning
-        && ToolRecipeFilterExecution.CanRunWholeRecipe(CreateDocument(), out _);
+        && (IsSelectedStepRemoveOutlierPixels
+            ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
+                CreateDocument(),
+                out _)
+            : ToolRecipeFilterExecution.CanRunWholeRecipe(CreateDocument(), out _));
 
     private void SetFilterKernel(int kernelSize)
     {
@@ -509,14 +548,20 @@ public sealed partial class ToolWorkbenchViewModel
 
 public sealed class ToolWorkbenchFilterDisplayRequestEventArgs : EventArgs
 {
-    public ToolWorkbenchFilterDisplayRequestEventArgs(string c3DPath, string contentSha256, bool isSource)
+    public ToolWorkbenchFilterDisplayRequestEventArgs(
+        string c3DPath,
+        string contentSha256,
+        bool isSource,
+        string displayLabel = "Filter Preview")
     {
         C3DPath = c3DPath;
         ContentSha256 = contentSha256;
         IsSource = isSource;
+        DisplayLabel = displayLabel;
     }
 
     public string C3DPath { get; }
     public string ContentSha256 { get; }
     public bool IsSource { get; }
+    public string DisplayLabel { get; }
 }

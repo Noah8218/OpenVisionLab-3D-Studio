@@ -369,6 +369,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         teachingCapturePointerDownPosition = null;
         teachingCaptureDragExceeded = false;
         ClearTeachingGridRectangleEdit();
+        teachingOrientedBoxDraft = null;
+        ClearTeachingOrientedBoxEdit();
         HideTeachingCaptureDragOverlay();
         viewModel.CancelTeachingCapture("Teaching capture cleared because the C3D source changed.");
         viewModel.SetAppliedTeachingSelections([]);
@@ -1095,6 +1097,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (c3dSample is null)
         {
             TeachingRoiHeightHandleOverlay.Visibility = Visibility.Collapsed;
+            TeachingOrientedBoxHandleOverlay.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -1129,6 +1132,18 @@ public sealed partial class OpenVisionThreeDViewerControl
                     selected && !viewModel.IsTeachingCaptureActive);
             }
 
+            if (TryGetTeachingOrientedBoxDraft(out var orientedBoxDraft)
+                && orientedBoxDraft.OrientedBox3D is { } orientedBox)
+            {
+                DrawTeachingOrientedBox(
+                    gl,
+                    orientedBox,
+                    1.00,
+                    0.78,
+                    0.08,
+                    showHandles: true);
+            }
+
             DrawWorkbenchHeightDifferenceEdge(gl);
             DrawWorkbenchTwoPointLine(gl);
             DrawWorkbenchThreePointPlane(gl);
@@ -1148,6 +1163,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         DrawWorkbenchRegridHeightField(gl);
         DrawRegridTeachingSelectionOverlays(gl);
         UpdateTeachingRoiHeightHandleOverlay();
+        UpdateTeachingOrientedBoxHandleOverlay();
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);
@@ -1546,6 +1562,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (selection.Points is { Count: > 0 } points)
         {
             DrawTeachingPointSet(gl, points, red, green, blue);
+        }
+
+        if (selection.OrientedBox3D is { } orientedBox)
+        {
+            DrawTeachingOrientedBox(
+                gl,
+                orientedBox,
+                red,
+                green,
+                blue,
+                showHandles);
         }
     }
 

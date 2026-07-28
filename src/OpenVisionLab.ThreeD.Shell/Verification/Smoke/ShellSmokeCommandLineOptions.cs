@@ -69,6 +69,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? PlaneFlatnessLiveA3PointerReportPath => GetValue("--smoke-plane-flatness-live-a3-pointer-report");
     public string? PlaneFlatnessLiveA3PointerSavePath => GetValue("--smoke-plane-flatness-live-a3-pointer-save");
     public string? ProfilePointerSmokeReportPath => GetValue("--smoke-profile-pointer-report");
+    public string? OrientedBoxPointerSmokeReportPath =>
+        GetValue("--smoke-oriented-box-pointer-report");
     public string? SmokeSelectToolId => GetValue("--smoke-select-tool");
     public string? WorkbenchInteractionReportPath => GetValue("--smoke-workbench-interaction-report");
     public string? EdgeStepId => GetValue("--tool-teaching-step");
@@ -99,6 +101,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool PlaneFlatnessLiveA3PointerSmoke => HasFlag("--smoke-plane-flatness-live-a3-pointer");
     public bool FilterPublishSmoke => HasFlag("--smoke-tool-filter-publish");
     public bool FilterPreviewSmoke => FilterPublishSmoke || HasFlag("--smoke-tool-filter-preview");
+    public bool RemoveOutlierPreviewSmoke =>
+        HasFlag("--smoke-tool-remove-outlier-preview");
     public bool MeasurementPreviewSmoke => HasFlag("--smoke-tool-measurement-preview");
     public bool TwoPointLinePublishSmoke => HasFlag("--smoke-tool-two-point-line-publish");
     public bool TwoPointLinePreviewSmoke => TwoPointLinePublishSmoke || HasFlag("--smoke-tool-two-point-line-preview");
@@ -124,7 +128,9 @@ internal sealed class ShellSmokeCommandLineOptions
         TeachingSelectionSmokeMode is not null
         || PlaneFlatnessLiveA3PointerSmoke
         || ProfilePointerSmokeReportPath is not null
+        || OrientedBoxPointerSmokeReportPath is not null
         || EdgePreviewSmoke
+        || RemoveOutlierPreviewSmoke
         || LineFitPreviewSmoke
         || TwoPointLinePreviewSmoke
         || ThreePointPlanePreviewSmoke
@@ -147,6 +153,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || hasViewerSmokeScreenshot
         || NeedsCompactWorkbench
         || FilterPreviewSmoke
+        || RemoveOutlierPreviewSmoke
         || MeasurementPreviewSmoke
         || ViewerLayoutSmoke is not null
         || ThicknessRepeatGridSmoke is not null
@@ -158,6 +165,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || HeightImageDisplayRangeSmoke
         || SharedHeightHoverSmoke
         || HeightImageRoiPointerSmoke is not null
+        || OrientedBoxPointerSmokeReportPath is not null
         || WorkbenchInteractionReportPath is not null;
 
     private bool HasFlag(string name) =>

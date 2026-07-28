@@ -37,6 +37,47 @@ This file defines the working agreement for Codex in this repository.
 
 ## Current Product Target
 
+- Remove Outlier Pixels D-04 closure (2026-07-28): Prepare now owns a typed
+  deterministic `LocalMedianAbsoluteDeviation` rule with an excluded center,
+  strict-greater-than threshold, odd `3/5/7` window, explicit minimum valid
+  neighbors, preserved source missing cells, available-neighbor boundaries,
+  and `SetMissing` outlier output. Data owns one immutable coordinate-true
+  row-major LSB-first `C3DOutlierCellMap`; Tools, Workbench, Viewer, Output
+  Compare, and production Runner share the derived C3D and mask identity.
+  The known `12 x 10` fixture changes valid/missing from `119/1` to `116/4`
+  by removing exactly `3` cells. Source SHA-256 remains
+  `FAE710BB1886C2D406F66A507D9B45866D42C184C70F31CE9E7DF9724A5415FC`;
+  output SHA-256 is
+  `08C7B173D30C9ADF0B83CCF7D37DF4A1B3C2B8A15A0D312E9BFAB24263C7DF0E`;
+  mask SHA-256 is
+  `AE44FA864AD48A1ABF7FEC959137A84962F6E0A8E69D8C53B69F30FF44D3AD3E`.
+  Current Release evidence passes build `0/0`, rule golden `9/9`, Workbench
+  `14/14`, Inspection Workspace `63/63`, shell options `23/23`, structure
+  `17/17`, and current Wide/Compact capture quality. Preserve
+  `docs/OPENVISIONLAB_3D_REMOVE_OUTLIER_PIXELS_20260728.md` and
+  `artifacts/current/20260728-remove-outlier-pixels/`. Removed cells remain
+  missing; interpolation, calibrated units, and metrology are not claimed.
+  `D-05/D-06 Level Surface` is next.
+
+- OrientedBox3D Viewer handles E-09 closure (2026-07-28): the schema `1.4`
+  persisted volume now renders as a translucent oriented cuboid with a
+  rotation ring and fixed-screen-size center, local X/Y/Z resize, height, and
+  local-Y rotation handles. Numeric fields and Viewer gestures share one
+  transient Review draft; the global Review bar is the sole visible
+  Apply/Cancel owner. Axis handles that collapse in Top or side projection
+  receive deterministic screen-space fallback positions without changing
+  stored geometry. Current Release evidence passes build `0/0`, actual
+  Windows pointer Perspective move/X-Y-Z resize/rotate plus Top height and
+  side collapsed-axis resize, Inspection Workspace `63/63`, shell options
+  `22/22`, teaching `28/28`, height measurement `46/46`, docking `33/33`,
+  display `103/103`, structure `17/17`, and current Wide/Compact/side capture
+  quality. Preserve
+  `docs/OPENVISIONLAB_3D_ORIENTED_BOX_VIEWER_HANDLES_20260728.md` and
+  `artifacts/current/20260728-oriented-box-viewer-handles/`. `D-04 Remove
+  Outlier Pixels` is complete in the newer checkpoint above. The box still has no downstream inspection
+  consumer; free local-X/Z rotation, calibration, physical metrology, and R0
+  owner replay remain unverified or external.
+
 - Public-safe synthetic Thickness sample migration (2026-07-28): the former
   non-public company-derived C3D fixture, generated recipe, identifiers,
   source-specific hashes/statistics, and README GIF are retired from the
@@ -74,9 +115,9 @@ This file defines the working agreement for Codex in this repository.
   dimensions. Preserve
   `docs/OPENVISIONLAB_3D_PUBLIC_README_REDESIGN_20260728.md` and
   `artifacts/current/20260728-readme-user-facing/`. The public `main` page
-  remains unchanged until this branch is merged. `E-09` OrientedBox3D Viewer
-  outline/handles remains the next product priority; R0 owner replay and
-  physical metrology remain external or unverified.
+  remains unchanged until this branch is merged. The newer D-04 checkpoint
+  above supersedes this historical priority; `D-04` is complete. R0 owner
+  replay and physical metrology remain external or unverified.
 
 - Dual-ROI role preservation closure (2026-07-28): recipe schema `1.5` now
   stores optional first/second GridRectangle role identities on the owning
@@ -94,8 +135,8 @@ This file defines the working agreement for Codex in this repository.
   reopen replay. Preserve
   `docs/OPENVISIONLAB_3D_DUAL_ROI_ROLE_PRESERVATION_20260728.md`,
   `artifacts/current/20260728-dual-roi-role-preservation/`, and
-  `docs/assets/openvisionlab-3d-roi-workflow.gif`. `E-09` OrientedBox3D
-  Viewer outline/handles is next. Compact focused ROI authoring and
+  `docs/assets/openvisionlab-3d-roi-workflow.gif`. The newer D-04 checkpoint
+  above supersedes this historical next item. Compact focused ROI authoring and
   gesture-specific instruction remain P1; R0 owner replay and physical
   metrology remain external or unverified.
 
@@ -115,8 +156,8 @@ This file defines the working agreement for Codex in this repository.
   `artifacts/current/20260728-operator-video-self-review/`, and
   `docs/assets/openvisionlab-3d-roi-workflow.gif`. Those two P0 findings are
   superseded by the newer dual-ROI closure above. The remaining gesture,
-  Compact, and `E-09` findings still apply. R0, physical calibration, and
-  metrology remain external or unverified.
+  Compact findings still apply; the newer checkpoint above closes `E-09`.
+  R0, physical calibration, and metrology remain external or unverified.
 
 - OrientedBox3D E-07/E-08 closure (2026-07-28): recipe schema `1.4` now
   owns a distinct persisted `oriented-box-3d` selection with center XYZ,
@@ -133,9 +174,9 @@ This file defines the working agreement for Codex in this repository.
   shell options `21/21`, structure `17/17`, and Wide/Compact capture quality.
   Preserve
   `docs/OPENVISIONLAB_3D_ORIENTED_BOX_CONTRACT_AND_NUMERIC_EDITOR_20260728.md`
-  and `artifacts/current/20260728-oriented-box-contract/`. `E-09` Viewer
-  outline and pointer handles are next. R0 owner replay, physical calibration,
-  and metrology remain external or unverified.
+  and `artifacts/current/20260728-oriented-box-contract/`. The newer
+  checkpoints above close `E-09` and `D-04`. R0 owner replay, physical
+  calibration, and metrology remain external or unverified.
 
 - Visible invalid/missing-cell overlay C-11 closure (2026-07-28): Height Image
   now shows the existing coordinate-true `C3DInvalidCellMap` in magenta by

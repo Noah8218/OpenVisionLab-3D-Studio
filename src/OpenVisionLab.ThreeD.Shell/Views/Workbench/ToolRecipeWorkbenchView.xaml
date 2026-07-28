@@ -285,7 +285,7 @@
                                 BorderBrush="{DynamicResource ThreeD.InfoBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3"
-                                Visibility="{Binding Workbench.IsTeachingSelectionCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Visibility="{Binding Workbench.IsSelectionCandidateActive, Converter={StaticResource BoolToVisibilityConverter}}"
                                 AutomationProperties.AutomationId="TeachingSelectionCaptureRibbon">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -307,6 +307,7 @@
                                            VerticalAlignment="Center">
                                     <Button Margin="0,0,5,0"
                                             Command="{Binding Workbench.UndoTeachingSelectionCaptureCommand}"
+                                            Visibility="{Binding Workbench.IsTeachingSelectionCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}"
                                             AutomationProperties.Name="Undo last teaching point">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ArrowUndo24" />
@@ -315,6 +316,7 @@
                                     </Button>
                                     <Button Margin="0,0,5,0"
                                             Command="{Binding Workbench.CancelTeachingSelectionCaptureCommand}"
+                                            AutomationProperties.AutomationId="CancelSelectionCandidate"
                                             AutomationProperties.Name="Cancel teaching selection capture">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Dismiss24" />
@@ -324,6 +326,7 @@
                                     <ui:Button Appearance="Primary"
                                                ToolTip="Enter"
                                                Command="{Binding Workbench.ApplyTeachingSelectionCaptureCommand}"
+                                               AutomationProperties.AutomationId="ApplyOrientedBox3D"
                                                AutomationProperties.Name="Apply teaching selection (Enter)">
                                         <StackPanel Orientation="Horizontal">
                                             <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Checkmark24" />

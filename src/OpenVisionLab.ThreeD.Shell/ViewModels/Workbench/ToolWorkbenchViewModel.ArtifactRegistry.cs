@@ -165,6 +165,35 @@ public sealed partial class ToolWorkbenchViewModel
 
     private ToolWorkbenchArtifactItem CreateStepArtifact(ToolWorkbenchPipelineStepItem step)
     {
+        if (string.Equals(
+                step.ToolId,
+                "remove-outlier-pixels",
+                StringComparison.Ordinal)
+            && removeOutlierPreview is
+            {
+                Output: { } outlierOutput,
+                OutlierMask: { } outlierMask
+            })
+        {
+            return new ToolWorkbenchArtifactItem(
+                outlierOutput.EntityId,
+                step.ToolName,
+                "FilteredHeightField",
+                isRemoveOutlierPreviewStale
+                    ? "Stale"
+                    : isRemoveOutlierPreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                Source.Id,
+                outlierOutput.Unit,
+                outlierOutput.FrameId,
+                outlierOutput.ContentSha256,
+                $"{outlierOutput.Width} × {outlierOutput.Height} | removed {outlierMask.OutlierCellCount:N0} | outlier mask {outlierMask.Sha256} | source unchanged",
+                step,
+                "FilteredHeightField");
+        }
+
         if (string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
             && filterPreviewOutput is not null)
         {

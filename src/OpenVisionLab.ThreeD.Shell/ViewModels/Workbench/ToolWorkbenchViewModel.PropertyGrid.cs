@@ -218,6 +218,7 @@ public sealed partial class ToolWorkbenchViewModel
         if (changed)
         {
             MarkFilterPreviewStaleIfNeeded(step);
+            MarkRemoveOutlierPreviewStaleIfNeeded(step);
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkTwoPointLinePreviewStaleIfNeeded(step);
             MarkThreePointPlanePreviewStaleIfNeeded(step);

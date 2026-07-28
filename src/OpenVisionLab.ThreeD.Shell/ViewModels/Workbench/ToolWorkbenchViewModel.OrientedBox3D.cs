@@ -9,6 +9,49 @@ public sealed partial class ToolWorkbenchViewModel
     {
         OrientedBoxEditor.ApplyRequested += OnOrientedBoxApplyRequested;
         OrientedBoxEditor.DeleteRequested += OnOrientedBoxDeleteRequested;
+        OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
+    }
+
+    private void ApplyActiveSelectionCandidate()
+    {
+        if (IsTeachingSelectionCaptureActive)
+        {
+            ApplyTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        if (OrientedBoxEditor.ApplyCommand.CanExecute(null))
+        {
+            OrientedBoxEditor.ApplyCommand.Execute(null);
+        }
+    }
+
+    private void CancelActiveSelectionCandidate()
+    {
+        if (IsTeachingSelectionCaptureActive)
+        {
+            CancelTeachingSelectionCapture();
+            return;
+        }
+
+        if (OrientedBoxEditor.CancelCommand.CanExecute(null))
+        {
+            OrientedBoxEditor.CancelCommand.Execute(null);
+        }
+    }
+
+    private void OnOrientedBoxDraftChanged(
+        object? sender,
+        OrientedBox3DDraftChangedEventArgs args)
+    {
+        OnPropertyChanged(nameof(IsSelectionCandidateActive));
+        OnPropertyChanged(nameof(IsPipelineReviewExpanded));
+        OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
+        OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
+        OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
+        OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
+        OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
+        RefreshTeachingSelectionCaptureCommands();
     }
 
     private void OnOrientedBoxApplyRequested(

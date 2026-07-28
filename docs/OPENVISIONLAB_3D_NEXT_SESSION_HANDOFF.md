@@ -1,5 +1,82 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## Remove Outlier Pixels D-04 closure - 2026-07-28
+
+`D-04` is complete while R0 remains an external owner acceptance gate.
+
+- Tools owns the deterministic `LocalMedianAbsoluteDeviation` rule.
+- The center is excluded; the comparison is strict `>`; windows are odd
+  `3/5/7`; minimum valid neighbors are explicit.
+- Source missing cells remain missing, available neighbors define boundaries,
+  and detected outliers become missing.
+- Data owns one immutable coordinate-true row-major LSB-first outlier mask.
+- Typed PropertyGrid Apply changes only the recipe and marks prior evidence
+  stale.
+- Explicit Preview produces before/after counts, mask identity, source
+  immutability evidence, and a renderable derived C3D.
+- Publish reuses Preview without rerunning the rule.
+- Show/Pin/Compare and production Runner consume the same derived identity.
+- Non-region tools hide unrelated ROI and 3D Box authoring controls.
+
+The known `12 x 10` fixture removes exactly `3` cells, changing valid/missing
+from `119/1` to `116/4`. Source SHA-256 is
+`FAE710BB1886C2D406F66A507D9B45866D42C184C70F31CE9E7DF9724A5415FC`,
+output SHA-256 is
+`08C7B173D30C9ADF0B83CCF7D37DF4A1B3C2B8A15A0D312E9BFAB24263C7DF0E`,
+and outlier-mask SHA-256 is
+`AE44FA864AD48A1ABF7FEC959137A84962F6E0A8E69D8C53B69F30FF44D3AD3E`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_REMOVE_OUTLIER_PIXELS_20260728.md`;
+- `artifacts/current/20260728-remove-outlier-pixels/`;
+- `src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DOutlierCellMap.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Filtering/C3DRemoveOutlierPixelsRule.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Filtering/ToolRecipeRemoveOutlierPixelsExecution.cs`.
+
+Current evidence passes Release build `0/0`, rule golden `9/9`, Workbench
+`14/14`, Inspection Workspace `63/63`, shell options `23/23`, structure
+`17/17`, and current Wide/Compact screenshot quality.
+
+Immediate implementation priority is `D-05/D-06 Level Surface`. Removed
+outliers remain missing; interpolation, calibrated units, physical metrology,
+and R0 owner replay are not complete.
+
+## OrientedBox3D Viewer handles E-09 closure - 2026-07-28
+
+`E-09` is complete while R0 remains an external owner acceptance gate.
+
+- The persisted `OrientedBox3D` renders as a translucent oriented cuboid.
+- Fixed-screen-size handles support center move, local X/Y/Z half-extent
+  resize, visible volume height, and local-Y rotation.
+- Projected axes that collapse in Top or side views receive deterministic
+  screen-space fallback handles.
+- Viewer and numeric editing share one transient Review draft.
+- The global Review bar is the only visible Apply/Cancel owner; Enter and Esc
+  remain available.
+- Apply preserves selection identity and changes only the recipe.
+- Actual Windows pointer evidence passes Perspective move/X-Y-Z
+  resize/rotation, Top height resize, and side collapsed-axis resize.
+- Each gesture preserves camera state, authored selections, Preview, and
+  result evidence until Apply.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_ORIENTED_BOX_VIEWER_HANDLES_20260728.md`;
+- `artifacts/current/20260728-oriented-box-viewer-handles/`;
+- `src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.OrientedBox3D.cs`;
+- `src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.OrientedBox3DSmoke.cs`.
+
+Current evidence passes Release build `0/0`, actual pointer `7` gestures,
+Inspection Workspace `63/63`, shell options `22/22`, teaching `28/28`,
+height measurement `46/46`, docking `33/33`, display `103/103`, structure
+`17/17`, and current Wide/Compact/side screenshot quality.
+
+`D-04 Remove Outlier Pixels` is complete in the newer checkpoint above.
+`OrientedBox3D` still has no downstream inspection consumer; free local-X/Z
+rotation, linked Height Image volume editing, physical calibration, and
+metrology are not complete. Workspace v3 remains `7/8`; R0 is still external.
+
 ## Public-safe synthetic Thickness sample migration - 2026-07-28
 
 The prior captured C3D fixtures and all source-specific identifiers are
@@ -32,8 +109,8 @@ The current working tree is sanitized, but both remote `main` and
 `codex/3d-workbench-line-fit` still retain retired captured blobs in Git
 history. Removing those blobs requires an explicitly approved history rewrite
 and coordinated force-push. Do not mistake a normal deletion commit for
-history removal. After data-safety closure, product priority returns to
-`E-09 OrientedBox3D Viewer outline and pointer handles`.
+history removal. The later D-04 closure at the top of this handoff supersedes
+the former post-migration priority; `D-04` is complete.
 
 ## Public README user-facing closure - 2026-07-28
 
@@ -63,9 +140,10 @@ Preserve:
 
 The local-link check passes and browser evidence confirms all four badges and
 the GIF load. The public GitHub `main` README remains unchanged until the
-current branch is merged. Product implementation priority remains `E-09
-OrientedBox3D Viewer outline and pointer handles`; Workspace v3 remains `7/8`,
-and R0, physical calibration, and metrology remain external or unverified.
+current branch is merged. The later D-04 closure at the top of this handoff
+supersedes the former README-era priority. Workspace v3
+remains `7/8`, and R0, physical calibration, and metrology remain external or
+unverified.
 
 ## Dual-ROI role preservation closure - 2026-07-28
 
@@ -95,10 +173,11 @@ Manager/WPG `37/37`, docking `33/33`, repeat grid `20/20`, Artifact Navigator
 `31/31`, artifact-owned Runner `18/18`, structure `17/17`, parser `0` errors,
 and operator media verification.
 
-Immediate implementation priority is `E-09 OrientedBox3D Viewer outline and
-pointer handles`. Compact focused ROI authoring and mode-specific gesture
-instruction remain P1. Workspace v3 remains `7/8`; R0, physical calibration,
-and metrology remain external or unverified.
+That closure originally handed off to E-09. The newer top section records E-09
+complete and hands off to `D-04 Remove Outlier Pixels`. Compact focused ROI
+authoring and mode-specific gesture instruction remain P1. Workspace v3
+remains `7/8`; R0, physical calibration, and metrology remain external or
+unverified.
 
 ## Actual operator-video self-review - 2026-07-28
 
@@ -121,14 +200,14 @@ superseded by the closure above:
   disabled, consistent with stale shared capture/command state.
 
 It also confirmed that Height Image uses drag while the 3D workflow teaches
-two points, compact ROI precision remains weak, and OrientedBox3D has no
-Viewer geometry or handles. Read
+two points, compact ROI precision remains weak, and OrientedBox3D historically
+had no Viewer geometry or handles. Read
 `docs/OPENVISIONLAB_3D_OPERATOR_VIDEO_SELF_REVIEW_20260728.md` before further
 ROI or `E-09` work.
 
-Use this section as historical before evidence. The current priority is
-`E-09 OrientedBox3D Viewer outline and handles`. Workspace v3 remains `7/8`;
-R0, physical calibration, and metrology remain external or unverified.
+Use this section as historical before evidence. The newer top section closes
+E-09 and sets `D-04` as the current priority. Workspace v3 remains `7/8`; R0,
+physical calibration, and metrology remain external or unverified.
 
 ## OrientedBox3D E-07/E-08 closure - 2026-07-28
 
@@ -155,8 +234,8 @@ Preserve:
 - `docs/OPENVISIONLAB_3D_ORIENTED_BOX_CONTRACT_AND_NUMERIC_EDITOR_20260728.md`;
 - `artifacts/current/20260728-oriented-box-contract/`.
 
-This closure does not render or pointer-edit the box and adds no downstream
-inspection consumer. `E-09 OrientedBox3D Viewer outline and 3D handles` is
+This historical closure did not render or pointer-edit the box and added no
+downstream inspection consumer. The newer top section closes E-09; `D-04` is
 next. R0, physical calibration, and metrology remain external or unverified.
 
 ## Visible invalid/missing-cell overlay C-11 closure - 2026-07-28

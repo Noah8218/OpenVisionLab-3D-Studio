@@ -376,6 +376,7 @@ public partial class MainWindow : Window
         var planeFlatnessLiveA3PointerReportPath = smoke.PlaneFlatnessLiveA3PointerReportPath;
         var planeFlatnessLiveA3PointerSavePath = smoke.PlaneFlatnessLiveA3PointerSavePath;
         var profilePointerSmokeReportPath = smoke.ProfilePointerSmokeReportPath;
+        var orientedBoxPointerSmokeReportPath = smoke.OrientedBoxPointerSmokeReportPath;
         var smokeSelectToolId = smoke.SmokeSelectToolId;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
@@ -386,6 +387,7 @@ public partial class MainWindow : Window
         var datumPlaneDeviationPublishSmoke = smoke.DatumPlaneDeviationPublishSmoke;
         var datumPlaneDeviationPreviewSmoke = smoke.DatumPlaneDeviationPreviewSmoke;
         var filterPreviewSmoke = smoke.FilterPreviewSmoke;
+        var removeOutlierPreviewSmoke = smoke.RemoveOutlierPreviewSmoke;
         var measurementPreviewSmoke = smoke.MeasurementPreviewSmoke;
         var edgePublishSmoke = smoke.EdgePublishSmoke;
         var lineFitPreviewSmoke = smoke.LineFitPreviewSmoke;
@@ -523,6 +525,16 @@ public partial class MainWindow : Window
                     && !await _viewModel.Workbench.PreviewSelectedFilterAsync())
                 {
                     _viewModel.SetViewerSmokeFailed(_viewModel.Workbench.FilterExecutionSummary);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (removeOutlierPreviewSmoke
+                    && !await _viewModel.Workbench
+                        .PreviewSelectedRemoveOutlierPixelsAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        _viewModel.Workbench.RemoveOutlierExecutionSummary);
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -879,6 +891,16 @@ public partial class MainWindow : Window
                     && !await _viewer.RunProfilePointerSmokeAsync(profilePointerSmokeReportPath))
                 {
                     _viewModel.SetViewerSmokeFailed("Interactive height-profile pointer smoke failed.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (orientedBoxPointerSmokeReportPath is not null
+                    && !await _viewer.RunTeachingOrientedBoxPointerSmokeAsync(
+                        orientedBoxPointerSmokeReportPath))
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "OrientedBox3D actual-pointer editing did not preserve the Review/Apply boundary.");
                     Application.Current.Shutdown(1);
                     return;
                 }

@@ -74,6 +74,10 @@ public sealed partial class ToolWorkbenchViewModel
             ? [publishedFilter, gridSelection]
             : []);
         AddCompatibleTool(suggestions, "filter", source is null ? [] : [source]);
+        AddCompatibleTool(
+            suggestions,
+            "remove-outlier-pixels",
+            source is null ? [] : [source]);
         AddCompatibleTool(suggestions, "roi-crop", source is null ? [] : [source]);
         AddCompatibleTool(suggestions, "two-point-line", source is null ? [] : [source]);
         AddCompatibleTool(suggestions, "three-point-plane", source is null ? [] : [source]);

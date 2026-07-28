@@ -833,15 +833,47 @@ internal static class InspectionWorkspaceSelectionVerification
                 $"source={boxWorkbench.OrientedBoxEditor.SourceFrameSummary};dirty={boxWorkbench.IsDirty}");
 
             boxWorkbench.OrientedBoxEditor.NewCommand.Execute(null);
+            var initialBoxDraft = boxWorkbench.OrientedBoxEditor.CurrentDraftSelection;
             Check(
                 "new OrientedBox3D opens a valid identity-axis draft without recipe mutation",
                 boxWorkbench.OrientedBoxEditor.IsDraftOpen
                 && boxWorkbench.OrientedBoxEditor.IsDraftValid
                 && boxWorkbench.OrientedBoxEditor.ApplyCommand.CanExecute(null)
+                && boxWorkbench.IsSelectionCandidateActive
+                && boxWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null)
+                && boxWorkbench.CancelTeachingSelectionCaptureCommand.CanExecute(null)
                 && boxWorkbench.Selections.Count == 0
                 && !boxWorkbench.IsDirty
                 && boxWorkbench.CurrentMeasurementOutput is null,
                 $"valid={boxWorkbench.OrientedBoxEditor.IsDraftValid};selections={boxWorkbench.Selections.Count};dirty={boxWorkbench.IsDirty}");
+
+            var pointerDraft = initialBoxDraft is null
+                ? null
+                : initialBoxDraft with
+                {
+                    OrientedBox3D = initialBoxDraft.OrientedBox3D! with
+                    {
+                        Center = initialBoxDraft.OrientedBox3D.Center with
+                        {
+                            X = initialBoxDraft.OrientedBox3D.Center.X + 10
+                        },
+                        HalfExtents = initialBoxDraft.OrientedBox3D.HalfExtents with
+                        {
+                            Y = initialBoxDraft.OrientedBox3D.HalfExtents.Y + 2
+                        }
+                    }
+                };
+            Check(
+                "Viewer pointer draft updates numeric values with the same identity and no recipe mutation",
+                pointerDraft is not null
+                && boxWorkbench.OrientedBoxEditor.TryUpdateDraftFromViewer(pointerDraft)
+                && boxWorkbench.OrientedBoxEditor.DraftSelectionId == initialBoxDraft?.Id
+                && boxWorkbench.OrientedBoxEditor.CenterX == pointerDraft.OrientedBox3D?.Center.X
+                && boxWorkbench.OrientedBoxEditor.HalfExtentY == pointerDraft.OrientedBox3D?.HalfExtents.Y
+                && boxWorkbench.Selections.Count == 0
+                && !boxWorkbench.IsDirty
+                && boxWorkbench.CurrentMeasurementOutput is null,
+                $"selection={boxWorkbench.OrientedBoxEditor.DraftSelectionId};centerX={boxWorkbench.OrientedBoxEditor.CenterX};halfY={boxWorkbench.OrientedBoxEditor.HalfExtentY};dirty={boxWorkbench.IsDirty}");
 
             boxWorkbench.OrientedBoxEditor.AxisYX = 1;
             boxWorkbench.OrientedBoxEditor.AxisYY = 0;
@@ -860,7 +892,7 @@ internal static class InspectionWorkspaceSelectionVerification
             boxWorkbench.OrientedBoxEditor.AxisYY = 1;
             boxWorkbench.OrientedBoxEditor.CenterY = 25;
             boxWorkbench.OrientedBoxEditor.HalfExtentY = 4;
-            boxWorkbench.OrientedBoxEditor.ApplyCommand.Execute(null);
+            boxWorkbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
             var appliedBox = boxWorkbench.Selections.SingleOrDefault(selection =>
                 selection.Kind == ToolRecipeSelectionKinds.OrientedBox3D);
             Check(
@@ -898,8 +930,20 @@ internal static class InspectionWorkspaceSelectionVerification
                     : $"{boxSaveMessage} | {boxReopenMessage}");
 
             reopenedBoxWorkbench.OrientedBoxEditor.SelectedSelection = reopenedBox;
+            reopenedBoxWorkbench.OrientedBoxEditor.CenterY = 31;
+            reopenedBoxWorkbench.CancelTeachingSelectionCaptureCommand.Execute(null);
+            Check(
+                "global Esc/Cancel owner discards an OrientedBox3D Review draft without recipe mutation",
+                !reopenedBoxWorkbench.OrientedBoxEditor.IsDraftOpen
+                && reopenedBoxWorkbench.Selections.Single(selection =>
+                    selection.Id == reopenedBox?.Id).OrientedBox3D?.Center.Y == 25
+                && !reopenedBoxWorkbench.IsDirty
+                && reopenedBoxWorkbench.CurrentMeasurementOutput is null,
+                $"draftOpen={reopenedBoxWorkbench.OrientedBoxEditor.IsDraftOpen};centerY={reopenedBoxWorkbench.Selections.Single(selection => selection.Id == reopenedBox?.Id).OrientedBox3D?.Center.Y};dirty={reopenedBoxWorkbench.IsDirty}");
+
+            reopenedBoxWorkbench.OrientedBoxEditor.SelectedSelection = reopenedBox;
             reopenedBoxWorkbench.OrientedBoxEditor.CenterY = 30;
-            reopenedBoxWorkbench.OrientedBoxEditor.ApplyCommand.Execute(null);
+            reopenedBoxWorkbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
             Check(
                 "numeric reapply preserves OrientedBox3D identity",
                 reopenedBoxWorkbench.Selections.Count(selection =>

@@ -25,6 +25,8 @@ internal static class RunnerCommandRouter
         var toolRecipePath = ReadOption(args, "--tool-recipe");
         var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
+        var toolTeachingRemoveOutliersPath =
+            ReadOption(args, "--tool-teaching-remove-outliers");
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
         var toolTeachingTwoPointLinePath = ReadOption(args, "--tool-teaching-two-point-line");
@@ -47,6 +49,9 @@ internal static class RunnerCommandRouter
         var verifyPlaneFlatness = args.Contains("--verify-plane-flatness", StringComparer.OrdinalIgnoreCase);
         var verifyC3DThickness = args.Contains("--verify-c3d-thickness", StringComparer.OrdinalIgnoreCase);
         var verifyC3DFilter = args.Contains("--verify-c3d-filter", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRemoveOutliers = args.Contains(
+            "--verify-c3d-remove-outliers",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DTwoPointLine = args.Contains("--verify-c3d-two-point-line", StringComparer.OrdinalIgnoreCase);
@@ -142,6 +147,24 @@ internal static class RunnerCommandRouter
             return ToolRecipeFilterRunnerExecution.Run(toolTeachingFilterPath, toolTeachingStepId, outputC3DPath, reportPath);
         }
 
+        if (toolTeachingRemoveOutliersPath is not null)
+        {
+            if (toolTeachingStepId is null
+                || outputC3DPath is null
+                || reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-remove-outliers <recipe> --tool-teaching-step <id> --output-c3d <path> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(
+                toolTeachingRemoveOutliersPath,
+                toolTeachingStepId,
+                outputC3DPath,
+                reportPath);
+        }
+
         if (toolTeachingEdgePath is not null)
         {
             if (toolTeachingStepId is null || reportPath is null)
@@ -228,6 +251,18 @@ internal static class RunnerCommandRouter
             }
 
             return C3DMedianFilterGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRemoveOutliers)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
+                return 2;
+            }
+
+            return C3DRemoveOutlierPixelsGoldenVerification.Run(reportPath);
         }
 
         if (verifyArtifactOwnedRoiRunner)
@@ -695,6 +730,7 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");

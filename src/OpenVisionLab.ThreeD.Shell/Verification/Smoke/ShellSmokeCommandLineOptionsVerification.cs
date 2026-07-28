@@ -42,13 +42,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ThicknessRepeatGridLoadedHandler", VerifyThicknessRepeatGridLoadedHandler()),
             ("ViewerLayout", VerifyViewerLayout()),
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
+            ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
             ("SourceQuality", VerifySourceQuality()),
             ("SourceQualityLoadedHandler", VerifySourceQualityLoadedHandler()),
             ("HeightImageDisplayRange", VerifyHeightImageDisplayRange()),
             ("HeightImageDisplayRangeLoadedHandler", VerifyHeightImageDisplayRangeLoadedHandler()),
             ("SharedHeightHover", VerifySharedHeightHover()),
             ("SharedHeightHoverLoadedHandler", VerifySharedHeightHoverLoadedHandler()),
-            ("HeightImageRoiPointer", VerifyHeightImageRoiPointer())
+            ("HeightImageRoiPointer", VerifyHeightImageRoiPointer()),
+            ("OrientedBoxPointer", VerifyOrientedBoxPointer())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -173,6 +175,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
             && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
+    private static bool VerifyRemoveOutlierPreviewLoadedHandler()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-tool-remove-outlier-preview"]);
+        return options.RemoveOutlierPreviewSmoke
+               && options.NeedsCompactWorkbench
+               && options.ShouldAttachLoadedHandler(false);
+    }
+
     private static bool VerifyHeightImageRoiPointer()
     {
         var options = ShellSmokeCommandLineOptions.Parse(
@@ -188,6 +199,18 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.HeightImageRoiPointerSmoke == "review"
                && options.HeightImageRoiPointerSmokeReportPath == "roi-pointer.txt"
                && options.HeightImageRoiPointerSmokeSavePath == "roi-pointer.ov3d-recipe.json"
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyOrientedBoxPointer()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-oriented-box-pointer-report",
+            "oriented-box-pointer.txt"
+        ]);
+        return options.OrientedBoxPointerSmokeReportPath == "oriented-box-pointer.txt"
                && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 

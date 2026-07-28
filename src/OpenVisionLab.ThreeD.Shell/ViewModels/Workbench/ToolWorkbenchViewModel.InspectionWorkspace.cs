@@ -191,6 +191,21 @@ public sealed partial class ToolWorkbenchViewModel
 
     private SelectedToolOutputEvidence CreateSelectedToolOutputEvidence()
     {
+        if (IsSelectedStepRemoveOutlierPixels
+            && removeOutlierPreview is
+            {
+                Result.Status: var outlierStatus,
+                OutlierMask: { } outlierMask
+            })
+        {
+            return new SelectedToolOutputEvidence(
+                "Removed outliers",
+                outlierMask.OutlierCellCount.ToString(
+                    CultureInfo.InvariantCulture),
+                "count",
+                outlierStatus.ToString());
+        }
+
         if (SelectedPipelineStep is not { } step
             || measurementPreviewOutput is null
             || !string.Equals(

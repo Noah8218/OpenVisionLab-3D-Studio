@@ -87,6 +87,35 @@ internal static class ShellVerificationCommandRouter
             return;
         }
 
+        const string removeOutlierPixelsWorkbenchVerificationOption =
+            "--verify-remove-outlier-pixels-workbench";
+        var removeOutlierPixelsWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                removeOutlierPixelsWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (removeOutlierPixelsWorkbenchVerificationIndex >= 0)
+        {
+            if (removeOutlierPixelsWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{removeOutlierPixelsWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = RemoveOutlierPixelsWorkbenchVerification.Verify(
+                    args[removeOutlierPixelsWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (ShellSmokeCommandLineOptionsVerification.TryRun(args, out var smokeOptionsPassed, out var smokeOptionsSummary))
         {
             Console.WriteLine(smokeOptionsSummary);

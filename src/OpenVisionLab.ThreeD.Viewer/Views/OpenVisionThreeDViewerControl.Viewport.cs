@@ -239,6 +239,15 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (e.ChangedButton == MouseButton.Left && !panRequested)
         {
+            if (TryBeginTeachingOrientedBoxEdit(lastMousePosition))
+            {
+                isPanning = false;
+                isOrbiting = false;
+                Viewport.CaptureMouse();
+                e.Handled = true;
+                return;
+            }
+
             if (TryBeginTeachingGridRectangleEdit(lastMousePosition))
             {
                 isPanning = false;
@@ -249,6 +258,15 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             if (TrySelectAppliedTeachingGridRectangle(lastMousePosition))
+            {
+                isPanning = false;
+                isOrbiting = false;
+                RenderNow();
+                e.Handled = true;
+                return;
+            }
+
+            if (TrySelectAppliedTeachingOrientedBox(lastMousePosition))
             {
                 isPanning = false;
                 isOrbiting = false;
@@ -428,6 +446,21 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void HandleViewportMouseMove(MouseEventArgs e)
     {
+        if (teachingOrientedBoxEditMode != TeachingOrientedBox3DEditMode.None)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            if (TryUpdateTeachingOrientedBoxEdit(e.GetPosition(Viewport)))
+            {
+                RequestInteractiveRender();
+            }
+
+            return;
+        }
+
         if (teachingGridRectangleEditMode != TeachingGridRectangleEditMode.None)
         {
             if (e.LeftButton != MouseButtonState.Pressed)
@@ -481,6 +514,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             && e.RightButton != MouseButtonState.Pressed)
         {
             UpdateTeachingGridRectangleHover(e.GetPosition(Viewport));
+        }
+
+        if (HasVisibleTeachingOrientedBoxDraft
+            && e.LeftButton != MouseButtonState.Pressed
+            && e.MiddleButton != MouseButtonState.Pressed
+            && e.RightButton != MouseButtonState.Pressed)
+        {
+            UpdateTeachingOrientedBoxHover(e.GetPosition(Viewport));
         }
 
         if (e.LeftButton != MouseButtonState.Pressed
@@ -627,15 +668,19 @@ public sealed partial class OpenVisionThreeDViewerControl
         var teachingCapturePointsBefore = viewModel.TeachingCaptureSnapshot.CapturedPointCount;
         var completedGridRectangleEditMode = teachingGridRectangleEditMode;
         var wasEditingGridRectangle = teachingGridRectangleEditMode != TeachingGridRectangleEditMode.None;
+        var wasEditingOrientedBox =
+            teachingOrientedBoxEditMode != TeachingOrientedBox3DEditMode.None;
         var captureClick = viewModel.IsTeachingCaptureActive
             && e.ChangedButton == MouseButton.Left
             && teachingCaptureStart is not null
             && !wasEditingGridRectangle
+            && !wasEditingOrientedBox
             && !teachingCaptureDragExceeded;
         var captureRectangleDrag = IsTeachingGridRectangleCapture
             && e.ChangedButton == MouseButton.Left
             && teachingCaptureStart is not null
             && !wasEditingGridRectangle
+            && !wasEditingOrientedBox
             && teachingCaptureDragExceeded;
         var profileClick = viewModel.SelectedSelectionMode == MainWindowViewModel.ProfileSelectionMode
             && e.ChangedButton == MouseButton.Left
@@ -662,6 +707,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             TryUpdateTeachingGridRectangleEdit(capturePoint);
         }
+        if (wasEditingOrientedBox && e.ChangedButton == MouseButton.Left)
+        {
+            TryUpdateTeachingOrientedBoxEdit(
+                capturePoint,
+                "Viewer pointer completed");
+        }
         Viewport.ReleaseMouseCapture();
         ClearTeachingGridRectangleEdit();
         teachingCapturePointerDownPosition = null;
@@ -670,7 +721,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         profilePointerDownPosition = null;
         profilePointerDragExceeded = false;
 
-        if (wasEditingGridRectangle)
+        if (wasEditingOrientedBox)
+        {
+            CompleteTeachingOrientedBoxEdit();
+        }
+        else if (wasEditingGridRectangle)
         {
             if (completedGridRectangleEditMode == TeachingGridRectangleEditMode.Height)
             {

@@ -61,3 +61,12 @@ public sealed class TeachingRoiDisplayHeightChangedEventArgs(
 
     public string Source { get; } = source;
 }
+
+public sealed class TeachingOrientedBox3DDraftChangedEventArgs(
+    ToolRecipeSelection selection,
+    string source) : EventArgs
+{
+    public ToolRecipeSelection Selection { get; } = selection;
+
+    public string Source { get; } = source;
+}

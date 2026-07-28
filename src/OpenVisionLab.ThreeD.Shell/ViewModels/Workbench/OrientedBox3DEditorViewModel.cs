@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -18,6 +19,7 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
     private readonly RelayCommand applyCommand;
     private readonly RelayCommand cancelCommand;
     private readonly RelayCommand deleteCommand;
+    private bool suppressDraftChanged;
     private ToolRecipeSource? source;
     private ToolRecipeSelectionSourceBinding? sourceBinding;
     private ToolRecipeSelection? selectedSelection;
@@ -54,6 +56,7 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<OrientedBox3DApplyRequestedEventArgs>? ApplyRequested;
     public event EventHandler<OrientedBox3DDeleteRequestedEventArgs>? DeleteRequested;
+    public event EventHandler<OrientedBox3DDraftChangedEventArgs>? DraftChanged;
 
     public ObservableCollection<ToolRecipeSelection> Selections { get; } = [];
 
@@ -121,6 +124,13 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
         IsDraftOpen
         && !string.IsNullOrWhiteSpace(Name)
         && ToolRecipeOrientedBox3DGeometry.Validate(CreateGeometry()).Count == 0;
+
+    public string? DraftSelectionId =>
+        IsDraftOpen && !string.IsNullOrWhiteSpace(draftId)
+            ? draftId
+            : null;
+
+    public ToolRecipeSelection? CurrentDraftSelection => CreateDraftSelection();
 
     public string ValidationSummary
     {
@@ -203,6 +213,41 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
         SelectedSelection = null;
         Status = "OrientedBox3D deleted from the recipe. Inspection was not run.";
         RaiseAllDraftProperties();
+        RaiseDraftChanged();
+    }
+
+    public bool TryUpdateDraftFromViewer(ToolRecipeSelection selection)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        if (!IsDraftOpen
+            || source is null
+            || sourceBinding is null
+            || selection.Kind != ToolRecipeSelectionKinds.OrientedBox3D
+            || selection.OrientedBox3D is null
+            || !string.Equals(selection.Id, draftId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(selection.RootSourceId, source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(selection.FrameId, source.FrameId, StringComparison.Ordinal)
+            || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(
+                selection.SourceBinding,
+                sourceBinding)
+            || ToolRecipeOrientedBox3DGeometry.Validate(selection.OrientedBox3D).Count > 0)
+        {
+            return false;
+        }
+
+        suppressDraftChanged = true;
+        try
+        {
+            LoadDraft(selection.Id, selection.Name, selection.OrientedBox3D);
+            Status = "Viewer box candidate changed. Review the numeric values and Apply explicitly.";
+        }
+        finally
+        {
+            suppressDraftChanged = false;
+        }
+
+        RaiseDraftChanged();
+        return true;
     }
 
     private void BeginNew()
@@ -252,6 +297,7 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
         halfExtentZ = box.HalfExtents.Z;
         IsDraftOpen = true;
         RaiseAllDraftProperties();
+        RaiseDraftChanged();
     }
 
     private void RequestApply()
@@ -261,21 +307,13 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
             return;
         }
 
-        ApplyRequested?.Invoke(
-            this,
-            new OrientedBox3DApplyRequestedEventArgs(
-                new ToolRecipeSelection(
-                    draftId,
-                    Name.Trim(),
-                    ToolRecipeSelectionKinds.OrientedBox3D,
-                    source.Id,
-                    source.FrameId,
-                    sourceBinding,
-                    null,
-                    null,
-                    null,
-                    null,
-                    CreateGeometry())));
+        var selection = CreateDraftSelection();
+        if (selection is not null)
+        {
+            ApplyRequested?.Invoke(
+                this,
+                new OrientedBox3DApplyRequestedEventArgs(selection));
+        }
     }
 
     private void RequestDelete()
@@ -295,6 +333,30 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
         SelectedSelection = null;
         Status = "Numeric box draft cancelled; the recipe remains unchanged.";
         RaiseAllDraftProperties();
+        RaiseDraftChanged();
+    }
+
+    private ToolRecipeSelection? CreateDraftSelection()
+    {
+        if (source is null
+            || sourceBinding is null
+            || !IsDraftValid)
+        {
+            return null;
+        }
+
+        return new ToolRecipeSelection(
+            draftId,
+            Name.Trim(),
+            ToolRecipeSelectionKinds.OrientedBox3D,
+            source.Id,
+            source.FrameId,
+            sourceBinding,
+            null,
+            null,
+            null,
+            null,
+            CreateGeometry());
     }
 
     private ToolRecipeOrientedBox3D CreateGeometry() =>
@@ -333,7 +395,9 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
         OnPropertyChanged(propertyName);
         OnPropertyChanged(nameof(IsDraftValid));
         OnPropertyChanged(nameof(ValidationSummary));
+        OnPropertyChanged(nameof(CurrentDraftSelection));
         applyCommand.RaiseCanExecuteChanged();
+        RaiseDraftChanged();
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -358,13 +422,26 @@ public sealed class OrientedBox3DEditorViewModel : INotifyPropertyChanged
                      nameof(AxisYX), nameof(AxisYY), nameof(AxisYZ),
                      nameof(AxisZX), nameof(AxisZY), nameof(AxisZZ),
                      nameof(HalfExtentX), nameof(HalfExtentY), nameof(HalfExtentZ),
-                     nameof(IsDraftValid), nameof(ValidationSummary)
+                     nameof(IsDraftValid), nameof(ValidationSummary),
+                     nameof(DraftSelectionId), nameof(CurrentDraftSelection)
                  })
         {
             OnPropertyChanged(propertyName);
         }
 
         RaiseCommandState();
+    }
+
+    private void RaiseDraftChanged()
+    {
+        if (suppressDraftChanged)
+        {
+            return;
+        }
+
+        DraftChanged?.Invoke(
+            this,
+            new OrientedBox3DDraftChangedEventArgs(CurrentDraftSelection));
     }
 
     private void RaiseCommandState()
@@ -387,4 +464,9 @@ public sealed class OrientedBox3DApplyRequestedEventArgs(ToolRecipeSelection sel
 public sealed class OrientedBox3DDeleteRequestedEventArgs(string selectionId) : EventArgs
 {
     public string SelectionId { get; } = selectionId;
+}
+
+public sealed class OrientedBox3DDraftChangedEventArgs(ToolRecipeSelection? selection) : EventArgs
+{
+    public ToolRecipeSelection? Selection { get; } = selection;
 }
