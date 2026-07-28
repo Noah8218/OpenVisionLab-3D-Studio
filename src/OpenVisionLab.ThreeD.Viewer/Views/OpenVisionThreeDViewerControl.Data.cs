@@ -856,7 +856,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var mean = samples.Average(point => point.RawValue);
         var rowIndex = EstimateProfileRowIndex(centerZ);
         viewModel.SetSectionProfile(
-            "Synthetic Thickness Coupon v1",
+            "Thickness Coupon v1",
             rowIndex,
             samples.Length,
             min,

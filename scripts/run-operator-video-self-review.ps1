@@ -3,7 +3,8 @@ param(
     [string]$ReadmeGifPath = "docs\assets\openvisionlab-3d-roi-workflow.gif",
     [switch]$SkipBuild,
     [switch]$SkipWideReplay,
-    [switch]$CompactOnly
+    [switch]$CompactOnly,
+    [switch]$WideOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,10 +14,14 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $artifactRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $ArtifactDirectory))
 $readmeGif = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $ReadmeGifPath))
 $shellExe = Join-Path $repoRoot "src\OpenVisionLab.ThreeD.Shell\bin\Release\net10.0-windows10.0.19041\OpenVisionLab.ThreeD.Shell.exe"
-$thicknessBaseline = Join-Path $repoRoot "3D\SyntheticValidation\ThicknessCouponV1\inspection-recipe.ov3d-recipe.json"
-$boxBaseline = Join-Path $repoRoot "3D\SyntheticValidation\ThicknessCouponV1\oriented-box-demo.ov3d-recipe.json"
+$thicknessBaseline = Join-Path $repoRoot "3D\Samples\ThicknessCouponV1\inspection-recipe.ov3d-recipe.json"
+$boxBaseline = Join-Path $repoRoot "3D\Samples\ThicknessCouponV1\oriented-box-demo.ov3d-recipe.json"
 $ffmpeg = (Get-Command ffmpeg -ErrorAction Stop).Source
 $ffprobe = (Get-Command ffprobe -ErrorAction Stop).Source
+
+if ($CompactOnly -and $WideOnly) {
+    throw "CompactOnly and WideOnly cannot be used together."
+}
 
 New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $artifactRoot "keyframes") | Out-Null
@@ -529,7 +534,7 @@ function Invoke-ThicknessScenario {
     try {
         $application = Start-OperatorApplication `
             -RecipePath $RecipePath `
-            -StepId "step.synthetic-pad-thickness.01" `
+            -StepId "step.pad-thickness.01" `
             -Language "ko" `
             -Width $Width `
             -Height $Height
@@ -581,10 +586,10 @@ function Invoke-ThicknessScenario {
             -Event "reference-drawing"
         Drag-OperatorRegion `
             -Surface $pixels `
-            -StartRelativeX 0.35 `
-            -StartRelativeY 0.20 `
-            -EndRelativeX 0.55 `
-            -EndRelativeY 0.42 `
+            -StartRelativeX 0.10 `
+            -StartRelativeY 0.186 `
+            -EndRelativeX 0.139 `
+            -EndRelativeY 0.357 `
             -Event "reference-region-drag"
         Assert-Lifecycle `
             -Root $application.Root `
@@ -620,10 +625,10 @@ function Invoke-ThicknessScenario {
             -Event "measurement-drawing"
         Drag-OperatorRegion `
             -Surface $pixels `
-            -StartRelativeX 0.57 `
-            -StartRelativeY 0.48 `
-            -EndRelativeX 0.77 `
-            -EndRelativeY 0.70 `
+            -StartRelativeX 0.153 `
+            -StartRelativeY 0.186 `
+            -EndRelativeX 0.223 `
+            -EndRelativeY 0.357 `
             -Event "measurement-region-drag"
         Assert-Lifecycle `
             -Root $application.Root `
@@ -652,7 +657,7 @@ function Invoke-ThicknessScenario {
         $savedRecipe = Get-Content -LiteralPath $RecipePath -Raw |
             ConvertFrom-Json
         $savedStep = $savedRecipe.steps |
-            Where-Object id -eq "step.synthetic-pad-thickness.01"
+            Where-Object id -eq "step.pad-thickness.01"
         $savedRoleContractPassed =
             $savedRecipe.schemaVersion -eq "1.5" -and
             $savedStep.inputEntityIds.Count -eq 3 -and
@@ -669,7 +674,7 @@ function Invoke-ThicknessScenario {
         Stop-OperatorApplication -Application $application -UseKeyboard
         $application = Start-OperatorApplication `
             -RecipePath $RecipePath `
-            -StepId "step.synthetic-pad-thickness.01" `
+            -StepId "step.pad-thickness.01" `
             -Language "ko" `
             -Width $Width `
             -Height $Height
@@ -877,14 +882,14 @@ function New-ReadmeGif {
 
     $palette = Join-Path $artifactRoot "readme-gif-palette.png"
     & $ffmpeg -hide_banner -loglevel error -y `
-        -ss 42 -t 28 -i $Video `
+        -ss 24 -t 25.5 -i $Video `
         -vf "fps=8,scale=960:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" `
         $palette
     if ($LASTEXITCODE -ne 0) {
         throw "README GIF palette generation failed."
     }
     & $ffmpeg -hide_banner -loglevel error -y `
-        -ss 42 -t 28 -i $Video -i $palette `
+        -ss 24 -t 25.5 -i $Video -i $palette `
         -lavfi "fps=8,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle" `
         $Output
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $Output)) {
@@ -893,11 +898,11 @@ function New-ReadmeGif {
 
     if ((Get-Item -LiteralPath $Output).Length -gt 10MB) {
         & $ffmpeg -hide_banner -loglevel error -y `
-            -ss 42 -t 22 -i $Video `
+            -ss 24 -t 22 -i $Video `
             -vf "fps=6,scale=800:-1:flags=lanczos,palettegen=max_colors=96:stats_mode=diff" `
             $palette
         & $ffmpeg -hide_banner -loglevel error -y `
-            -ss 42 -t 22 -i $Video -i $palette `
+            -ss 24 -t 22 -i $Video -i $palette `
             -lavfi "fps=6,scale=800:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" `
             $Output
     }
@@ -910,29 +915,33 @@ $wideRecipe = Join-Path $artifactRoot "wide-thickness-replay.ov3d-recipe.json"
 $compactRecipe = Join-Path $artifactRoot "compact-thickness-replay.ov3d-recipe.json"
 $boxRecipe = Join-Path $artifactRoot "oriented-box-replay.ov3d-recipe.json"
 
-function Copy-SyntheticThicknessRecipe {
+function Copy-ThicknessSampleRecipe {
     param([Parameter(Mandatory)][string]$Destination)
 
     Copy-Item -LiteralPath $thicknessBaseline -Destination $Destination -Force
     $document = Get-Content -LiteralPath $Destination -Raw | ConvertFrom-Json
     $document.source.path = Join-Path $repoRoot `
-        "3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D"
+        "3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D"
     $document |
         ConvertTo-Json -Depth 32 |
         Set-Content -LiteralPath $Destination -Encoding UTF8
 }
 
 if (-not $CompactOnly) {
-    Copy-SyntheticThicknessRecipe -Destination $wideRecipe
+    Copy-ThicknessSampleRecipe -Destination $wideRecipe
+}
+if (-not $CompactOnly -and -not $WideOnly) {
     Copy-Item -LiteralPath $boxBaseline -Destination $boxRecipe -Force
     $boxDocument = Get-Content -LiteralPath $boxRecipe -Raw | ConvertFrom-Json
     $boxDocument.source.path = Join-Path $repoRoot `
-        "3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D"
+        "3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D"
     $boxDocument |
         ConvertTo-Json -Depth 32 |
         Set-Content -LiteralPath $boxRecipe -Encoding UTF8
 }
-Copy-SyntheticThicknessRecipe -Destination $compactRecipe
+if (-not $WideOnly) {
+    Copy-ThicknessSampleRecipe -Destination $compactRecipe
+}
 
 if (-not $CompactOnly -and -not $SkipWideReplay) {
     Invoke-ThicknessScenario `
@@ -943,31 +952,40 @@ if (-not $CompactOnly -and -not $SkipWideReplay) {
         -DurationSeconds 100
 }
 
-if (-not $CompactOnly) {
+if (-not $CompactOnly -and -not $WideOnly) {
     Invoke-OrientedBoxScenario `
         -Name "02-oriented-box-numeric-replay" `
         -RecipePath $boxRecipe
 }
 
-Invoke-ThicknessScenario `
-    -Name "03-compact-thickness-roi-replay" `
-    -RecipePath $compactRecipe `
-    -Width 1280 `
-    -Height 760 `
-    -DurationSeconds 100 `
-    -Compact
+if (-not $WideOnly) {
+    Invoke-ThicknessScenario `
+        -Name "03-compact-thickness-roi-replay" `
+        -RecipePath $compactRecipe `
+        -Width 1280 `
+        -Height 760 `
+        -DurationSeconds 100 `
+        -Compact
+}
 
 $wideVideo = Join-Path $artifactRoot "01-wide-thickness-roi-replay.mp4"
 $boxVideo = Join-Path $artifactRoot "02-oriented-box-numeric-replay.mp4"
 $compactVideo = Join-Path $artifactRoot "03-compact-thickness-roi-replay.mp4"
-Trim-Video -Video $wideVideo -DurationSeconds 90
-Trim-Video -Video $compactVideo -DurationSeconds 90
-New-ContactSheet -Video $wideVideo -Output (Join-Path $artifactRoot "01-wide-contact-sheet.png")
-New-ContactSheet -Video $boxVideo -Output (Join-Path $artifactRoot "02-oriented-box-contact-sheet.png")
-New-ContactSheet -Video $compactVideo -Output (Join-Path $artifactRoot "03-compact-contact-sheet.png")
-New-ReadmeGif -Video $wideVideo -Output $readmeGif
+if (Test-Path -LiteralPath $wideVideo -PathType Leaf) {
+    Trim-Video -Video $wideVideo -DurationSeconds 90
+    New-ContactSheet -Video $wideVideo -Output (Join-Path $artifactRoot "01-wide-contact-sheet.png")
+    New-ReadmeGif -Video $wideVideo -Output $readmeGif
+}
+if (Test-Path -LiteralPath $boxVideo -PathType Leaf) {
+    New-ContactSheet -Video $boxVideo -Output (Join-Path $artifactRoot "02-oriented-box-contact-sheet.png")
+}
+if (Test-Path -LiteralPath $compactVideo -PathType Leaf) {
+    Trim-Video -Video $compactVideo -DurationSeconds 90
+    New-ContactSheet -Video $compactVideo -Output (Join-Path $artifactRoot "03-compact-contact-sheet.png")
+}
 
-$videoFiles = @($wideVideo, $boxVideo, $compactVideo)
+$videoFiles = @($wideVideo, $boxVideo, $compactVideo) |
+    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
 $mediaReport = Join-Path $artifactRoot "media-verification.txt"
 $mediaLines = [System.Collections.Generic.List[string]]::new()
 $mediaLines.Add("OpenVisionLab 3D operator video media verification")
@@ -998,7 +1016,7 @@ $environmentReport = Join-Path $artifactRoot "environment.txt"
     "ShellExeSha256=$((Get-FileHash -LiteralPath $shellExe -Algorithm SHA256).Hash)"
     "Ffmpeg=$ffmpeg"
     "FfmpegVersion=$((& $ffmpeg -version | Select-Object -First 1))"
-    "ThicknessSourceSha256=$((Get-FileHash -LiteralPath (Join-Path $repoRoot '3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D') -Algorithm SHA256).Hash)"
+    "ThicknessSourceSha256=$((Get-FileHash -LiteralPath (Join-Path $repoRoot '3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D') -Algorithm SHA256).Hash)"
     "InputBoundary=actual Release WPF window, external UI Automation lookup, user32 pointer input, SendKeys keyboard input"
     "ClaimBoundary=no physical calibration, metrology, first-time-human, camera, PLC, robot, or production-platform claim"
 ) | Set-Content -LiteralPath $environmentReport -Encoding UTF8

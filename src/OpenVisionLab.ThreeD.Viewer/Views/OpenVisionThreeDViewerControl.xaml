@@ -420,7 +420,7 @@
                           Content="Generated Point Cloud"
                           IsChecked="{Binding PointCloudVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
-                          Content="Synthetic Thickness Coupon v1"
+                          Content="Thickness Coupon v1"
                           IsChecked="{Binding C3DSampleVisible, Mode=TwoWay}" />
                 <CheckBox Margin="0,8,0,0"
                           Content="{Binding ImportedMeshLayerLabel}"

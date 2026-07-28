@@ -36,7 +36,7 @@ frame receives the magenta pixels.
 
 Source:
 
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 | Fact | Value |
 | --- | --- |
@@ -46,8 +46,8 @@ Source:
 | Missing / visible overlay cells | `166,764` (`15.5%`) |
 | Packed mask bytes | `134,400` |
 | Mask SHA-256 | `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358` |
-| Native Height Image pixel SHA-256 | `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A` |
-| Visible-overlay display SHA-256 | `9A072A7F4074DCBFC693C31F3096C1427D1D0A1EFC4C13A79FFD9F33E7178BE6` |
+| Native Height Image pixel SHA-256 | `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087` |
+| Visible-overlay display SHA-256 | `B0F467BF10BB5EF8CEE9F6CEB932B052416CF898AD5D907E5B5F6D3E0A1B4192` |
 
 The overlay count and mask SHA match `SourceQualityReport`. Coordinate mapping
 remains:

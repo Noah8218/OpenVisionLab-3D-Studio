@@ -412,7 +412,7 @@ based on changed responsibility owners and call paths.
   - Actual Release complete load: pass; the `240 x 160` synthetic C3D became
     the current Viewer source, `DispatcherTicksDuringLoad=1`, state cleared,
     one render execution, and all existing report fields were written.
-  - Actual Release cancellation: pass; a `15.6 MB` Synthetic Thickness Coupon v1 target was
+  - Actual Release cancellation: pass; a `15.6 MB` Thickness Coupon v1 target was
     cancelled at `1.0%`, the previous Thickness source remained current, and
     source-load state cleared.
   - Evidence:

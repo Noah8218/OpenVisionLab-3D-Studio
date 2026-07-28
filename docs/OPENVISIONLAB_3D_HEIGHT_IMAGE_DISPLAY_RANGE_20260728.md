@@ -33,7 +33,7 @@ Preview, Publish, Run, Validation Set, or Save.
 6. Read the active range in the toolbar and the color legend.
 7. Select `Auto range` to restore the source minimum and maximum.
 
-Example using the owner Synthetic Thickness Coupon v1 source:
+Example using the owner Thickness Coupon v1 source:
 
 ```text
 Palette: Thermal
@@ -89,7 +89,7 @@ It does not clamp or replace the stored raw height.
 Source:
 
 ```text
-3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
+3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
 ```
 
 Native source/display foundation:
@@ -98,7 +98,7 @@ Native source/display foundation:
 | --- | ---: |
 | Grid | `1280 x 840` |
 | Native range | `-1179.4000244140625 … 2348.60009765625 raw-height` |
-| Auto Height pixel SHA-256 | `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A` |
+| Auto Height pixel SHA-256 | `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087` |
 | Invalid-map SHA-256 | `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358` |
 
 Applied display:

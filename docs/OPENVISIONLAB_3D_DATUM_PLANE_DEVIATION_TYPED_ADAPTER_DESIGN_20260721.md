@@ -251,8 +251,8 @@ This turn rechecked the two user-designated C3D files:
 
 | Path | Bytes | Current SHA-256 | Consequence |
 | --- | ---: | --- | --- |
-| `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D` | `4,300,808` | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` | Eligible only as one named local raw-height source. |
-| `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D` | `4,300,808` | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` | Byte-identical alias; not a second acquisition or independent sample. |
+| `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D` | `4,300,808` | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` | Eligible only as one named local raw-height source. |
+| `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D` | `4,300,808` | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` | Byte-identical alias; not a second acquisition or independent sample. |
 
 The prior C3D input preflight records a `1280 x 840` float grid and no
 embedded sensor, unit, calibration, reference-plane, or acquisition identity.

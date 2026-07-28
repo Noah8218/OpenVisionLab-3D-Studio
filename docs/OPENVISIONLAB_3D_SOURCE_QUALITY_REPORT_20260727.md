@@ -83,9 +83,9 @@ Identified C3D report:
 dotnet run --no-build `
   --project src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj `
   -c Release -- `
-  --source-quality-c3d 3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D `
-  --entity-id source.synthetic-thickness-coupon-v1 `
-  --unit synthetic-height-unit `
+  --source-quality-c3d 3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D `
+  --entity-id source.thickness-coupon-v1 `
+  --unit raw-height `
   --frame frame.c3d-grid-index `
   --report artifacts/current/20260727-source-quality-report/synthetic-thickness-coupon-v1.source-quality.json
 ```
@@ -125,7 +125,7 @@ Exact owner source:
 
 | Field | Evidence |
 | --- | ---: |
-| Source | `synthetic-thickness-coupon-v1.C3D` |
+| Source | `thickness-coupon-v1.C3D` |
 | Grid | `1280 x 840` |
 | Cells/samples | `1,075,200` |
 | Valid | `908,436` |

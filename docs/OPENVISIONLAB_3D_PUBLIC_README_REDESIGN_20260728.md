@@ -2,6 +2,14 @@
 
 Date: 2026-07-28
 
+> Superseded public-copy policy: the root README is now English, leads with
+> supported inspection workflows, does not market the product through lists of
+> unsupported industrial systems, names the included example by inspection
+> task, and links to the Apache-2.0 license. README media must contain only the
+> application window and a geometrically valid same-part Thickness ROI pair.
+> Preserve the current contract in
+> `docs/OPENVISIONLAB_3D_PUBLIC_README_AND_MEDIA_POLICY.md`.
+
 ## 문제
 
 기존 공개 README는 `548`줄, `64,167`바이트였고 첫 화면부터 Viewer 단계,
@@ -33,7 +41,7 @@ NIST/CloudCompare 수치, schema, SHA-256, Smoke 명령과 내부 검증 상태�
 
 상단 순서:
 
-1. 제품 이름과 한국어 한 줄 설명
+1. 제품 이름과 영어 한 줄 설명
 2. CI, Windows, .NET 10, active development 배지
 3. 사용자 가치 문장
 4. 현재 ROI teaching GIF
@@ -68,18 +76,15 @@ NIST/CloudCompare 수치, schema, SHA-256, Smoke 명령과 내부 검증 상태�
 - Windows CI 범위
 - 완료 전 체크리스트와 상세 검증 문서 탐색
 
-## 정확성 경계
+## 개발 증거의 소유 위치
 
 - `.C3D` 값은 현재 `raw-height`이며 교정된 mm 두께가 아닙니다.
 - `GridRectangle`은 X/Z footprint이고 Viewer 오버레이 Y 위치는 보기
   전용입니다.
 - `OrientedBox3D` Viewer outline/handle은 아직 다음 제품 우선순위입니다.
-- 카메라, PLC, 로봇, 현장 I/O, 클라우드, 계정과 생산 데이터베이스는
-  현재 범위가 아닙니다.
-- `v0.1.0-rc.1`은 Viewer DLL 번들이며 전체 Studio 설치 프로그램이
-  아닙니다.
-- 저장소에 프로젝트 전체 `LICENSE` 파일이 없으므로 MIT나 다른 재사용
-  권한을 추정하지 않았습니다.
+- 데이터 생성 방식, 해시, 내부 범위 경계와 재현 절차는 개발 증거 문서가
+  소유하며 사용자 README의 제품 소개 문구로 사용하지 않습니다.
+- 프로젝트 라이선스는 루트 `LICENSE`와 `NOTICE`가 소유합니다.
 
 ## 검증
 

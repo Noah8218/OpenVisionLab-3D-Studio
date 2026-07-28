@@ -149,8 +149,8 @@ public sealed partial class MainWindowViewModel
     [
         new SourceEntity(CubeEntityId, "Generated Unit Cube", EntityKind.Mesh, "unitless", null, ModelTransform.Identity),
         new SourceEntity(PointCloudEntityId, "Generated Point Cloud", EntityKind.PointCloud, "unitless", null, ModelTransform.Identity),
-        new SourceEntity(C3DEntityId, "Synthetic Thickness Coupon v1", EntityKind.HeightGrid, "synthetic-height-unit", @"3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D", c3DTransform),
-        new SourceEntity(C3DWarpageEntityId, "Synthetic Thickness Coupon v1", EntityKind.HeightGrid, "synthetic-height-unit", @"3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D", c3DTransform),
+        new SourceEntity(C3DEntityId, "Thickness Coupon v1", EntityKind.HeightGrid, "raw-height", @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D", c3DTransform),
+        new SourceEntity(C3DWarpageEntityId, "Thickness Coupon v1", EntityKind.HeightGrid, "raw-height", @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D", c3DTransform),
         new SourceEntity(GlbEntityId, glbName, EntityKind.Mesh, "unitless", glbSourcePath, ModelTransform.Identity),
         new SourceEntity(LazEntityId, lazName, EntityKind.PointCloud, "source-units", lazSourcePath, ModelTransform.Identity)
     ];

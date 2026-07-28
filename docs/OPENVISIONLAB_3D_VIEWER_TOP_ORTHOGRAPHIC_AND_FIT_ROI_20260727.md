@@ -84,13 +84,13 @@ replace, resize, or save an ROI.
 The exact current input and recipe:
 
 - recipe:
-  `3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`;
+  `3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`;
 - recipe SHA-256:
   `D0DEDF827985BFCC8EF5AC37777E22442222ECE6DE6101F02E475123D2C191A1`;
 - C3D:
-  `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`;
+  `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`;
 - C3D SHA-256:
-  `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937`;
+  `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8`;
 - selected step: `step.tab-thickness.01`;
 - selected ROI: Tab 1 Reference ROI;
 - language: Korean.

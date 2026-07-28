@@ -101,13 +101,13 @@ synchronous render or enter the camera interaction scheduler.
 
 Source:
 
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 Identity and test point:
 
 | Field | Value |
 | --- | --- |
-| Source SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
+| Source SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
 | Grid | `1280 x 840` |
 | Test column | `593` |
 | Test row | `800` |

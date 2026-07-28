@@ -3,9 +3,9 @@
   "version": "1.0",
   "source": {
     "entityId": "source.c3d-warpage",
-    "name": "Synthetic Thickness Coupon v1",
-    "path": "../3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D",
-    "unit": "synthetic-height-unit"
+    "name": "Thickness Coupon v1",
+    "path": "../3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D",
+    "unit": "raw-height"
   },
   "step": {
     "id": "step.c3d-warpage",
@@ -22,7 +22,7 @@
       "maximumPeakToValley": 10.0,
       "maximumRms": null
     },
-    "unit": "synthetic-height-unit",
+    "unit": "raw-height",
     "frameId": "frame.c3d-grid-index",
     "minimumValidSamples": 3,
     "enabled": true

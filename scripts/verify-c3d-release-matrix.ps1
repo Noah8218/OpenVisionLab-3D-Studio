@@ -41,7 +41,7 @@ $sources = @(
     },
     [pscustomobject]@{
         Id = "synthetic-thickness"
-        Path = Join-Path $repoRoot "3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D"
+        Path = Join-Path $repoRoot "3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D"
         OriginalPath = $null
     }
 )

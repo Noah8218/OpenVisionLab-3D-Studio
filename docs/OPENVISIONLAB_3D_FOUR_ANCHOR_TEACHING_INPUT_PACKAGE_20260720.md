@@ -23,9 +23,9 @@ It must not calculate or apply XYZ Affine, re-grid, Thickness, or Warpage.
 
 | Field | Required value |
 | --- | --- |
-| Recipe source path | `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D` |
+| Recipe source path | `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D` |
 | Source entity | `source.c3d.height-map` |
-| Recorded source SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
+| Recorded source SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
 | Recorded grid | `1280 x 840` |
 | Source unit / frame | `raw-height` / `frame.c3d-grid-index` |
 | Source convention | `column-rawHeight-row` |

@@ -61,7 +61,7 @@ The sample's declared scalar unit is `raw-height`; it is not a calibrated physic
 ## Next Functional Priority
 
 The bounded local raw-height `c3d-warpage` slice is now implemented under the
-user-designated `3D/SyntheticValidation/ThicknessCouponV1` input path. It reuses the same typed C3D grid-ROI
+user-designated `3D/Samples/ThicknessCouponV1` input path. It reuses the same typed C3D grid-ROI
 teaching interaction and the existing Library-Noah plane-fit tool, but its
 result is explicitly a local display-frame/raw-height result, not a physical
 warpage, datum, GD&T, or independently acquired part claim. See

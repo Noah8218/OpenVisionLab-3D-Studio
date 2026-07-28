@@ -36,7 +36,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
             new PropertyMetadata(true, OnSidePanelsVisibleChanged));
 
     private const float FieldOfViewDegrees = 45.0f;
-    private const string DefaultC3DSamplePath = @"3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D";
+    private const string DefaultC3DSamplePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
     private const string DefaultGlbSamplePath = @"3D\PublicSamples\glTF\Box.glb";
     private const string DefaultLazSamplePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
     private const double DefaultC3DHeightDeviationTolerance = 1200.0;

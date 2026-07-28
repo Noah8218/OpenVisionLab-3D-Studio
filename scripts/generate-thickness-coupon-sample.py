@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the public Synthetic Thickness Coupon v1 C3D validation package.
-
-The source is intentionally fictional and deterministic.  It is not derived
-from a scan, customer part, company fixture, or previously captured C3D file.
-"""
+"""Generate the bundled Thickness Coupon v1 C3D example package."""
 
 from __future__ import annotations
 
@@ -20,13 +16,13 @@ from PIL import Image, ImageDraw, ImageFont
 RESOLUTION_SCALE = 2
 WIDTH = 640 * RESOLUTION_SCALE
 HEIGHT = 420 * RESOLUTION_SCALE
-SOURCE_NAME = "Synthetic Thickness Coupon v1"
-SOURCE_FILE = "synthetic-thickness-coupon-v1.C3D"
+SOURCE_NAME = "Thickness Coupon v1"
+SOURCE_FILE = "thickness-coupon-v1.C3D"
 RECIPE_FILE = "inspection-recipe.ov3d-recipe.json"
 TRUTH_FILE = "ground-truth.json"
 PREVIEW_FILE = "source-height-preview.png"
-SOURCE_ID = "source.synthetic-thickness-coupon-v1"
-SOURCE_UNIT = "synthetic-height-unit"
+SOURCE_ID = "source.thickness-coupon-v1"
+SOURCE_UNIT = "raw-height"
 SOURCE_FRAME = "frame.c3d-grid-index"
 
 PAD_THICKNESSES = (8.0, 12.0, 16.0, 20.0, 10.0, 14.0, 18.0, 22.0)
@@ -81,15 +77,15 @@ def pad_geometry(index: int) -> dict:
         "right": left + PAD_WIDTH - 1,
         "referenceRoi": {
             "row": top + 20 * RESOLUTION_SCALE,
-            "column": left + 7 * RESOLUTION_SCALE,
+            "column": left + 10 * RESOLUTION_SCALE,
             "rowCount": 72 * RESOLUTION_SCALE,
-            "columnCount": 16 * RESOLUTION_SCALE,
+            "columnCount": 25 * RESOLUTION_SCALE,
         },
         "measurementRoi": {
             "row": top + 20 * RESOLUTION_SCALE,
-            "column": left + 35 * RESOLUTION_SCALE,
+            "column": left + 44 * RESOLUTION_SCALE,
             "rowCount": 72 * RESOLUTION_SCALE,
-            "columnCount": 55 * RESOLUTION_SCALE,
+            "columnCount": 45 * RESOLUTION_SCALE,
         },
         "thickness": PAD_THICKNESSES[index],
     }
@@ -100,6 +96,25 @@ def in_rectangle(row: int, column: int, rectangle: dict) -> bool:
         rectangle["row"] <= row < rectangle["row"] + rectangle["rowCount"]
         and rectangle["column"] <= column < rectangle["column"] + rectangle["columnCount"]
     )
+
+
+def validate_pad_roi_pairing(pads: list[dict]) -> None:
+    for pad in pads:
+        plateau_start = pad["left"] + 40 * RESOLUTION_SCALE
+        reference = pad["referenceRoi"]
+        measurement = pad["measurementRoi"]
+        for role, roi in (("reference", reference), ("measurement", measurement)):
+            if not (
+                pad["top"] <= roi["row"]
+                and roi["row"] + roi["rowCount"] - 1 <= pad["bottom"]
+                and pad["left"] <= roi["column"]
+                and roi["column"] + roi["columnCount"] - 1 <= pad["right"]
+            ):
+                raise ValueError(f"Pad {pad['index']} {role} ROI leaves the pad footprint")
+        if reference["column"] + reference["columnCount"] > plateau_start:
+            raise ValueError(f"Pad {pad['index']} reference ROI overlaps the raised plateau")
+        if measurement["column"] < plateau_start:
+            raise ValueError(f"Pad {pad['index']} measurement ROI leaves the raised plateau")
 
 
 def rounded_rectangle_contains(
@@ -120,6 +135,7 @@ def rounded_rectangle_contains(
 
 def create_values() -> tuple[list[float], list[dict]]:
     pads = [pad_geometry(index) for index in range(8)]
+    validate_pad_roi_pairing(pads)
     values = [0.0] * (WIDTH * HEIGHT)
     fiducials = tuple(
         tuple(value * RESOLUTION_SCALE for value in fiducial)
@@ -153,10 +169,9 @@ def create_values() -> tuple[list[float], list[dict]]:
                 ):
                     continue
 
-                # The narrow left ledge remains on the exact affine datum and
-                # supplies the taught reference plane.  The large plateau is
-                # separated from that plane by one known synthetic thickness.
-                if column >= pad["left"] + 29 * RESOLUTION_SCALE:
+                # Each pad contains its own datum strip and raised measurement
+                # plateau, keeping both taught ROIs inside one visible part.
+                if column >= pad["left"] + 40 * RESOLUTION_SCALE:
                     value = base_height(row, column) + pad["thickness"]
                 else:
                     value = base_height(row, column)
@@ -197,8 +212,8 @@ def create_recipe(content_sha256: str, byte_length: int, pads: list[dict]) -> di
 
     for pad in pads:
         number = pad["index"]
-        reference_id = f"selection.synthetic-pad-{number:02d}.reference-roi"
-        measurement_id = f"selection.synthetic-pad-{number:02d}.measurement-roi"
+        reference_id = f"selection.pad-{number:02d}.reference-roi"
+        measurement_id = f"selection.pad-{number:02d}.measurement-roi"
         selections.extend(
             [
                 {
@@ -224,12 +239,12 @@ def create_recipe(content_sha256: str, byte_length: int, pads: list[dict]) -> di
         thickness = pad["thickness"]
         steps.append(
             {
-                "id": f"step.synthetic-pad-thickness.{number:02d}",
+                "id": f"step.pad-thickness.{number:02d}",
                 "toolId": "thickness",
                 "toolName": f"Pad {number} Thickness",
                 "minimumInputCount": 3,
                 "inputEntityIds": [SOURCE_ID, reference_id, measurement_id],
-                "outputEntityId": f"derived.synthetic-pad-thickness.{number:02d}",
+                "outputEntityId": f"derived.pad-thickness.{number:02d}",
                 "parameters": [
                     {"name": "MinimumThickness", "value": f"{thickness - 0.25:g}"},
                     {"name": "MaximumThickness", "value": f"{thickness + 0.25:g}"},
@@ -244,7 +259,7 @@ def create_recipe(content_sha256: str, byte_length: int, pads: list[dict]) -> di
 
     return {
         "schemaVersion": "1.5",
-        "name": "Synthetic Thickness Coupon v1 - 8 Pad",
+        "name": "Thickness Coupon v1 - 8 Pad",
         "source": {
             "id": SOURCE_ID,
             "name": SOURCE_NAME,
@@ -302,7 +317,7 @@ def draw_preview(output: Path, values: list[float], pads: list[dict], content_sh
     draw.text((margin_left, 20), SOURCE_NAME, fill=(238, 244, 252), font=font(28, True))
     draw.text(
         (margin_left, 58),
-        "Deterministic fictional C3D | cyan reference ROI | orange measurement ROI",
+        "Reference and measurement ROI are paired inside each thickness pad",
         fill=(145, 165, 190),
         font=font(16),
     )
@@ -333,7 +348,7 @@ def draw_preview(output: Path, values: list[float], pads: list[dict], content_sh
         )
 
     sidebar_x = margin_left + map_width + 28
-    draw.text((sidebar_x, margin_top), "KNOWN-GROUND-TRUTH", fill=(225, 235, 248), font=font(17, True))
+    draw.text((sidebar_x, margin_top), "THICKNESS EXAMPLE", fill=(225, 235, 248), font=font(17, True))
     lines = [
         f"Grid  {WIDTH} x {HEIGHT}",
         f"Valid  {len(finite):,}",
@@ -346,8 +361,7 @@ def draw_preview(output: Path, values: list[float], pads: list[dict], content_sh
         "P5  10   P6  14",
         "P7  18   P8  22",
         "",
-        "Unit: synthetic-height-unit",
-        "Not calibrated metrology",
+        "Unit: raw-height",
         "",
         f"SHA-256",
         content_sha256[:16],
@@ -373,7 +387,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("3D/SyntheticValidation/ThicknessCouponV1"),
+        default=Path("3D/Samples/ThicknessCouponV1"),
         help="Package directory",
     )
     args = parser.parse_args()
@@ -392,12 +406,12 @@ def main() -> int:
     valid_values = [value for value in values if value != 0.0 and math.isfinite(value)]
     truth = {
         "schemaVersion": "1.0",
-        "assetId": "synthetic-thickness-coupon-v1",
+        "assetId": "thickness-coupon-v1",
         "origin": {
             "kind": "procedurally-generated",
             "derivedFromCapturedData": False,
-            "generator": "scripts/generate-synthetic-thickness-coupon.py",
-            "designNote": "Fictional eight-pad coupon; AI concept art guided only the non-sensitive visual layout.",
+            "generator": "scripts/generate-thickness-coupon-sample.py",
+            "designNote": "Eight-pad example with a datum strip and raised measurement plateau inside each pad.",
         },
         "source": {
             "path": SOURCE_FILE,

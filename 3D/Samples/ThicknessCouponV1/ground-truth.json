@@ -1,24 +1,24 @@
 {
   "schemaVersion": "1.0",
-  "assetId": "synthetic-thickness-coupon-v1",
+  "assetId": "thickness-coupon-v1",
   "origin": {
     "kind": "procedurally-generated",
     "derivedFromCapturedData": false,
-    "generator": "scripts/generate-synthetic-thickness-coupon.py",
-    "designNote": "Fictional eight-pad coupon; AI concept art guided only the non-sensitive visual layout."
+    "generator": "scripts/generate-thickness-coupon-sample.py",
+    "designNote": "Eight-pad example with a datum strip and raised measurement plateau inside each pad."
   },
   "source": {
-    "path": "synthetic-thickness-coupon-v1.C3D",
+    "path": "thickness-coupon-v1.C3D",
     "format": "C3D",
     "width": 1280,
     "height": 840,
     "byteLength": 4300808,
-    "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+    "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
     "validCellCount": 908436,
     "missingCellCount": 166764,
     "minimumRawHeight": 93.34125,
     "maximumRawHeight": 127.56625,
-    "unit": "synthetic-height-unit",
+    "unit": "raw-height",
     "frameId": "frame.c3d-grid-index"
   },
   "measurements": [
@@ -26,15 +26,15 @@
       "pad": 1,
       "referenceRoi": {
         "row": 156,
-        "column": 122,
+        "column": 128,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 156,
-        "column": 178,
+        "column": 196,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 8.0,
       "acceptance": {
@@ -46,15 +46,15 @@
       "pad": 2,
       "referenceRoi": {
         "row": 156,
-        "column": 410,
+        "column": 416,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 156,
-        "column": 466,
+        "column": 484,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 12.0,
       "acceptance": {
@@ -66,15 +66,15 @@
       "pad": 3,
       "referenceRoi": {
         "row": 156,
-        "column": 698,
+        "column": 704,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 156,
-        "column": 754,
+        "column": 772,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 16.0,
       "acceptance": {
@@ -86,15 +86,15 @@
       "pad": 4,
       "referenceRoi": {
         "row": 156,
-        "column": 986,
+        "column": 992,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 156,
-        "column": 1042,
+        "column": 1060,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 20.0,
       "acceptance": {
@@ -106,15 +106,15 @@
       "pad": 5,
       "referenceRoi": {
         "row": 492,
-        "column": 122,
+        "column": 128,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 492,
-        "column": 178,
+        "column": 196,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 10.0,
       "acceptance": {
@@ -126,15 +126,15 @@
       "pad": 6,
       "referenceRoi": {
         "row": 492,
-        "column": 410,
+        "column": 416,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 492,
-        "column": 466,
+        "column": 484,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 14.0,
       "acceptance": {
@@ -146,15 +146,15 @@
       "pad": 7,
       "referenceRoi": {
         "row": 492,
-        "column": 698,
+        "column": 704,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 492,
-        "column": 754,
+        "column": 772,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 18.0,
       "acceptance": {
@@ -166,15 +166,15 @@
       "pad": 8,
       "referenceRoi": {
         "row": 492,
-        "column": 986,
+        "column": 992,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       },
       "measurementRoi": {
         "row": 492,
-        "column": 1042,
+        "column": 1060,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       },
       "expectedSignedSeparation": 22.0,
       "acceptance": {

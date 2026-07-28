@@ -76,7 +76,7 @@ losing a verifiable linkage.
 Source:
 
 ```text
-3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
+3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
 ```
 
 | Field | Value |
@@ -87,8 +87,8 @@ Source:
 | Valid cells | 908,436 |
 | Missing cells | 166,764 |
 | Packed mask bytes | 134,400 |
-| Source SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
-| Height Image pixel SHA-256 | `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A` |
+| Source SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
+| Height Image pixel SHA-256 | `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087` |
 | Invalid-cell map SHA-256 | `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358` |
 | Source Quality mask SHA-256 | `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358` |
 | Parity | `True` |
@@ -117,7 +117,7 @@ dotnet run --no-build -c Release `
 
 dotnet run --no-build -c Release `
   --project src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj -- `
-  --height-image-c3d 3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D `
+  --height-image-c3d 3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D `
   --entity-id source.c3d.height-map `
   --unit raw-height `
   --frame frame.c3d-grid-index `

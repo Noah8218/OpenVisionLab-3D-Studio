@@ -16,23 +16,42 @@ This file defines the working agreement for Codex in this repository.
 - The 2D reference product validates image layers with tools, metrics, overlays, acceptance rules, recipes, and repeatable runner checks. The 3D product should keep that operating model, but use 3D entities instead of images.
 - Early scope is local desktop work: load 3D data, inspect it, show overlays/measurements, and build repeatable rule-based validation. Do not start with camera, PLC, robot, cloud, or production-line integration.
 
+## Public README And Product Documentation
+
+- Write the root `README.md` in English.
+- Lead with supported inspection workflows and user value. Do not use lists of
+  unsupported camera, lighting, PLC, industrial I/O, robot, cloud, or production
+  systems as README or public product-documentation copy.
+- Name bundled examples by their inspection task, such as `Thickness Coupon`,
+  rather than by how the data was produced. Keep generation provenance,
+  reproducibility details, and data-safety evidence in development evidence
+  documents rather than the user-facing README.
+- README GIFs and screenshots must show only the application window. They must
+  not expose the operator desktop, taskbar, unrelated applications, file paths,
+  account information, or notifications.
+- Inspection demonstrations must teach geometrically meaningful regions. A
+  Thickness example must keep its paired Reference and Measurement ROI on the
+  intended surfaces of the same visible part.
+- The repository root must include the approved project license and attribution
+  notice. The README must identify the license and link to it.
+
 ## Current Product Target
 
 - Public-safe synthetic Thickness sample migration (2026-07-28): the former
   non-public company-derived C3D fixture, generated recipe, identifiers,
   source-specific hashes/statistics, and README GIF are retired from the
   current tree. The replacement is the deterministic fictional
-  `3D/SyntheticValidation/ThicknessCouponV1` package: an AI-concept-guided but
+  `3D/Samples/ThicknessCouponV1` package: an AI-concept-guided but
   procedurally generated `1280 x 840` C3D, ground-truth JSON, preview, and
   schema `1.5` eight-pad Thickness recipe with 16 independent
   `GridRectangle` selections. Source SHA-256 is
-  `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937`;
+  `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8`;
   the source has `908,436` valid and `166,764` missing cells. Production
   Runner replay passes `8/8`, with signed means matching the authored
-  `8, 12, 16, 20, 10, 14, 18, 22` synthetic-height-unit separations within
+  `8, 12, 16, 20, 10, 14, 18, 22` raw-height separations within
   float32 tolerance. Preserve
   `docs/OPENVISIONLAB_3D_SYNTHETIC_THICKNESS_SAMPLE_MIGRATION_20260728.md`,
-  `scripts/generate-synthetic-thickness-coupon.py`, and
+  `scripts/generate-thickness-coupon-sample.py`, and
   `artifacts/current/20260728-synthetic-thickness-coupon/`. Historical
   private-derived performance evidence is not valid public evidence and must
   not be restored. The remote feature branch still requires an explicitly
@@ -123,7 +142,7 @@ This file defines the working agreement for Codex in this repository.
   default with one direct view-only toggle, color swatch, exact count, and
   percentage. Valid palette pixels and native `pixel X=column / pixel Y=row`
   mapping remain unchanged. The exact
-  `synthetic-thickness-coupon-v1.C3D` source displays
+  `thickness-coupon-v1.C3D` source displays
   `166,764` overlay cells (`15.5%`) and retains Source Quality / Height
   Image mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
@@ -192,7 +211,7 @@ This file defines the working agreement for Codex in this repository.
   native pixel as a full Height Image crosshair. Missing Height Image cells
   remain explicitly missing and never fabricate a 3D marker. Source mismatch
   and stale leave events fail closed. The exact
-  `synthetic-thickness-coupon-v1.C3D` source proves
+  `thickness-coupon-v1.C3D` source proves
   `column 593 / row 800 / H 633.4000244140625 raw-height` in both directions
   while preserving recipe, execution, current output, and camera state.
   Current Release evidence passes build `0/0`, Inspection Workspace `42/42`,
@@ -216,9 +235,9 @@ This file defines the working agreement for Codex in this repository.
   `pixel X=column / pixel Y=row` mapping, invalid cells, recipe, Preview,
   Publish, Run, Validation Set, and Save remain unchanged. Invalid or inverted
   ranges fail closed and retain the last valid display. The exact
-  `synthetic-thickness-coupon-v1.C3D` source changes from the
+  `thickness-coupon-v1.C3D` source changes from the
   Auto Height pixel SHA-256
-  `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A`
+  `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087`
   to Thermal `0..1200 raw-height` display SHA-256
   `49FE0B0009CDE14BEE44C40C99F7EC0A6571BBC3DCDF8EDA168943E418F531BF`
   while preserving invalid-map SHA-256
@@ -246,7 +265,7 @@ This file defines the working agreement for Codex in this repository.
   distribution, invalid-map identity, frame/unit/provenance, and explicit
   available/unavailable channel evidence without running inspection or
   changing the recipe. The exact
-  `synthetic-thickness-coupon-v1.C3D` source displays
+  `thickness-coupon-v1.C3D` source displays
   `1280 x 840`, `908,436` valid (`84.5%`), `166,764` missing (`15.5%`),
   and mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
@@ -269,7 +288,7 @@ This file defines the working agreement for Codex in this repository.
   `C3DSourceQualityAnalyzer` publishes that identity and
   `C3DHeightImageFrame` exposes and consumes the same typed map, removing the
   prior duplicate missing-cell paths. The exact
-  `synthetic-thickness-coupon-v1.C3D` source produces
+  `thickness-coupon-v1.C3D` source produces
   `1,075,200` cells, `166,764` missing cells, `134,400` packed bytes, and
   identical Source Quality / Height Image mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
@@ -290,10 +309,10 @@ This file defines the working agreement for Codex in this repository.
   Image while retaining real source/Filter C3D candidates. Fit, 1:1, zoom,
   pan, and row/column/raw-height hover are view-only and never dirty or
   execute the recipe. The exact
-  `synthetic-thickness-coupon-v1.C3D` source produces
+  `thickness-coupon-v1.C3D` source produces
   `1280 x 840`, `1,075,200` pixels, `908,436` valid, `166,764` missing,
   and pixel SHA-256
-  `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A`.
+  `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087`.
   Current evidence passes native mapping `11/11`, Workspace `30/30`, Artifact
   Navigator `31/31`, docking `33/33`, Source Quality `12/12`, structure
   `17/17`, and current Release inline/pop-out capture quality. Preserve
@@ -313,7 +332,7 @@ This file defines the working agreement for Codex in this repository.
   verifies the contract `12/12`. Unsupported C3D
   intensity/color/depth/normal/confidence/SNR channels are explicitly
   unavailable and never fabricated. The exact
-  `synthetic-thickness-coupon-v1.C3D` source reports
+  `thickness-coupon-v1.C3D` source reports
   `1280 x 840`, `908,436` valid, and `166,764` missing cells. Preserve
   `docs/OPENVISIONLAB_3D_SOURCE_QUALITY_REPORT_20260727.md` and
   `artifacts/current/20260727-source-quality-report/`. This is not the
@@ -549,7 +568,7 @@ This file defines the working agreement for Codex in this repository.
   expansion, or physical-metrology claim.
 
 - Eight-Tab Thickness self-test integration (2026-07-26): the exact
-  `synthetic-thickness-coupon-v1.C3D` source is now covered by
+  `thickness-coupon-v1.C3D` source is now covered by
   one reproducible schema `1.3` model containing eight independently named
   Thickness steps and 16 artifact-owned GridRectangle selections. Each Tab
   retains its instance name after save/reopen and remains editable through the
@@ -561,7 +580,7 @@ This file defines the working agreement for Codex in this repository.
   height measurement `44/44`, Recipe Manager/WPG `37/37`, docking `29/29`,
   actual Runner `8/8`, and current before/after screenshot quality. Preserve
   `docs/OPENVISIONLAB_3D_TAB_THICKNESS_SELF_TEST_DESIGN_20260726.md`,
-  `scripts/generate-synthetic-thickness-coupon.py`, and
+  `scripts/generate-thickness-coupon-sample.py`, and
   `artifacts/current/20260726-tab-thickness-model/`. The starter limits are
   deliberately broad software-connectivity limits in `raw-height`; the owner
   must confirm the physical datum, calibration, units, and production
@@ -916,8 +935,8 @@ For C3D map fidelity work:
 
 ```powershell
 dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\map_fidelity\c3d_map_fidelity_golden.txt
-dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
-python scripts\verify-c3d-map-ply.py --source 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 85,1190 --second-cell 10,995
+dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_actual.txt --max-sampled-points 140000
+python scripts\verify-c3d-map-ply.py --source 3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 85,1190 --second-cell 10,995
 python scripts\ply-coordinate-signature.py --ply artifacts\map_fidelity\openvision_c3d_detailed.ply --report artifacts\map_fidelity\openvision_c3d_detailed_signature.txt
 ```
 

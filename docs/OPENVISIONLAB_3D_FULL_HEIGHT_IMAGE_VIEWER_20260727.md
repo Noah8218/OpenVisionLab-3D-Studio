@@ -80,7 +80,7 @@ diagnostic Height Image and renderable 3D artifacts.
 Source:
 
 ```text
-3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
+3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
 ```
 
 Recorded by the headless Height Image probe:
@@ -93,8 +93,8 @@ Recorded by the headless Height Image probe:
 | BGRA bytes | 13,305,416 |
 | Valid cells | 908,436 |
 | Missing cells | 166,764 |
-| Source SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
-| Height Image pixel SHA-256 | `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A` |
+| Source SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
+| Height Image pixel SHA-256 | `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087` |
 
 The valid/missing counts agree with the existing `SourceQualityReport`
 evidence. `B-09` must next prove invalid-mask byte/pixel identity, not merely
@@ -112,7 +112,7 @@ dotnet run --no-build --project src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.Th
   --report artifacts/current/20260727-full-height-image-viewer/verify-height-image.txt
 
 dotnet run --no-build --project src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj -c Release -- `
-  --height-image-c3d 3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D `
+  --height-image-c3d 3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D `
   --entity-id source.c3d.height-map `
   --unit raw-height `
   --frame frame.c3d-grid-index `

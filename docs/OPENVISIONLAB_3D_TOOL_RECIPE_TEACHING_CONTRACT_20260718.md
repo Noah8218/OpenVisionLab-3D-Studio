@@ -37,7 +37,7 @@ C3D source
   -> Overlay / Control Review
 ```
 
-The template is [c3d-xyz-affine-teaching-template.ov3d-teach.json](../recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json). Its relative source path resolves to the user-designated `3D/SyntheticValidation/ThicknessCouponV1` C3D file when opened from the recipe.
+The template is [c3d-xyz-affine-teaching-template.ov3d-teach.json](../recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json). Its relative source path resolves to the user-designated `3D/Samples/ThicknessCouponV1` C3D file when opened from the recipe.
 
 ## User Interface Contract
 
@@ -79,7 +79,7 @@ dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug -p:Platform='Any CPU'
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug -- --verify-tool-recipe-teaching artifacts\ui\20260718-modern-teach-workbench\tool-recipe-teaching-verification.txt
 ```
 
-The verification creates a graph through the ViewModel, saves and reloads it, confirms parameter/reference persistence, confirms an invalid entity route blocks saving, and confirms the shipped template resolves its relative `3D/SyntheticValidation/ThicknessCouponV1` C3D source.
+The verification creates a graph through the ViewModel, saves and reloads it, confirms parameter/reference persistence, confirms an invalid entity route blocks saving, and confirms the shipped template resolves its relative `3D/Samples/ThicknessCouponV1` C3D source.
 
 The current UI evidence is [after-template-open.png](../artifacts/ui/20260718-modern-teach-workbench/after-template-open.png). It is a current-build Shell capture with the template open, the teaching-only boundary visible, and the Affine warning preserved.
 

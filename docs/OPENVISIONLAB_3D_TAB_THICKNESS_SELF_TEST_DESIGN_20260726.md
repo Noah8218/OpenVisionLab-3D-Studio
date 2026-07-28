@@ -1,7 +1,7 @@
 # Tab Thickness Self-Test Design
 
 Date: 2026-07-26
-Source: `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+Source: `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 ## Outcome
 
@@ -32,7 +32,7 @@ The exact source identity is:
 |---|---|
 | Grid | `1466 columns x 2269 rows` |
 | Bytes | `13,305,424` |
-| SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
+| SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
 | Valid samples | `908,436` |
 | Unit | `raw-height` |
 | Frame | `frame.c3d-grid-index` |
@@ -138,7 +138,7 @@ recipe source as a pending sample only; it does not execute anything.
 
 The generated model is:
 
-`3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
+`3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
 
 Actual ordered Runner output:
 

@@ -215,7 +215,7 @@ and `artifacts/current/20260728-height-image-roi-editing/`.
 - the legend reports the exact missing count and percentage;
 - valid palette pixels remain unchanged and hiding/re-enabling the overlay is
   deterministic;
-- the exact Synthetic Thickness Coupon v1 source shows `166,764` overlay pixels (`15.5%`) and
+- the exact Thickness Coupon v1 source shows `166,764` overlay pixels (`15.5%`) and
   retains mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`;
 - focused evidence passes build `0/0`, Height Image `25/25`, exact-source
@@ -237,7 +237,7 @@ Preserve
 - 3D hover renders the same picked C3D point as a Height Image crosshair;
 - source mismatch, missing cells, and stale leave events fail closed;
 - recipe, execution, output, and camera state remain unchanged;
-- the exact Synthetic Thickness Coupon v1 source proves
+- the exact Thickness Coupon v1 source proves
   `column 593 / row 800 / H 633.4000244140625 raw-height` in both directions;
 - focused evidence passes Inspection Workspace `42/42`, smoke options
   `20/20`, and wide/compact actual-window bidirectional smoke.
@@ -255,8 +255,8 @@ Preserve
   `1280 x 760` widths;
 - palette/range changes regenerate only immutable display pixels and preserve
   native coordinates, raw heights, invalid cells, recipe, and execution;
-- the exact Synthetic Thickness Coupon v1 source changes from Auto Height SHA-256
-  `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A`
+- the exact Thickness Coupon v1 source changes from Auto Height SHA-256
+  `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087`
   to Thermal `0..1200 raw-height` SHA-256
   `49FE0B0009CDE14BEE44C40C99F7EC0A6571BBC3DCDF8EDA168943E418F531BF`;
 - focused evidence passes Height Image `21/21`, Inspection Workspace `36/36`,
@@ -290,7 +290,7 @@ invalid-cell map` is complete:
 - Source Quality and Height Image consume the same map owner;
 - synthetic invalid-map verification passes `15/15`, Source Quality
   regression `13/13`, and Height Image regression `14/14`;
-- the exact Synthetic Thickness Coupon v1 Thickness source has `1,075,200` cells, `166,764`
+- the exact Thickness Coupon v1 Thickness source has `1,075,200` cells, `166,764`
   missing cells, `134,400` packed bytes, and identical Source Quality / Height
   Image mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
@@ -308,7 +308,7 @@ coordinate-true Height Image Viewer` is complete:
   existing real source/Filter C3D candidates;
 - Fit, 1:1, wheel zoom, middle-drag pan, and exact row/column/raw-height hover
   are view-only;
-- the exact Synthetic Thickness Coupon v1 Thickness source produces `1280 x 840`,
+- the exact Thickness Coupon v1 Thickness source produces `1280 x 840`,
   `1,075,200` pixels, `908,436` valid, and `166,764` missing cells;
 - focused mapping passes `11/11`, Workspace non-execution `30/30`, Artifact
   Navigator `31/31`, docking `33/33`, Source Quality `12/12`, and structure
@@ -326,7 +326,7 @@ Preserve
 - unsupported C3D intensity/color/depth/normal/confidence/SNR channels are
   explicit and never fabricated;
 - Runner verification passes `12/12`;
-- the exact Synthetic Thickness Coupon v1 Thickness source produces a `1280 x 840` report with
+- the exact Thickness Coupon v1 Thickness source produces a `1280 x 840` report with
   `908,436` valid and `166,764` missing cells.
 
 Preserve
@@ -338,7 +338,7 @@ Preserve
 Prerequisite:
 
 - the owner is available at the running current Release application;
-- the exact Synthetic Thickness Coupon v1 C3D and documented 12-step workflow are used;
+- the exact Thickness Coupon v1 C3D and documented 12-step workflow are used;
 - no assistant guidance is supplied during the replay.
 
 Pass:
@@ -692,7 +692,7 @@ renderer, or cross-module state changes
 | M-05 | C | Current C3D GPU VBO/IBO and staged LOD performance baseline | None | Release matrix and pointer verification |
 | M-06 | C | Current-source before/after screenshot discipline | None | Existing artifact checkpoints |
 | M-07 | C | Deterministic synthetic whole-chain fixture | None | Synthetic Affine Plate verification |
-| M-08 | C | Exact Synthetic Thickness Coupon v1 Tab Thickness self-test | None | Generated model/Runner `8/8` |
+| M-08 | C | Exact Thickness Coupon v1 Tab Thickness self-test | None | Generated model/Runner `8/8` |
 | M-09 | N | SourceQualityReport malformed/edge-case fixture suite | B-07 | Finite/missing/topology cases |
 | M-10 | C | Height Image coordinate and pointer verification suite | C-06 | Native-grid/hover checks, actual Windows pointer Review, 2D/3D edit parity, Apply/save/reopen, and Wide/Compact current-source evidence pass |
 | M-11 | N | Cross-view selection atomicity suite | C-09 | No duplicate selection or execution |

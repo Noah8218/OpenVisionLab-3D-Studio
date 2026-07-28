@@ -52,7 +52,7 @@ The Viewer command/status strip now keeps Geometry/HUD and the independent
 no-wrap `R-drag: Pan`/View controls on the first row. Viewer status occupies a
 separate full-width row with intentional ellipsis, a full-value tooltip, and
 an accessible name. The selected 3-Point Plane fixture now shows the complete
-`C3D source loaded for teaching: synthetic-thickness-coupon-v1.C3D` status at both
+`C3D source loaded for teaching: thickness-coupon-v1.C3D` status at both
 `1280 x 760` and `1920 x 1080`; Viewer interaction, selection,
 Preview/Publish/Run, and rendering bindings were not changed.
 

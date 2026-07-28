@@ -104,7 +104,7 @@ Use the smallest redistributable asset that proves the pipeline:
 
 - A cube or bracket mesh generated locally, if no external sample is needed.
 - A `.glb` or `.obj` sample only if the license is clear and stored with attribution.
-- Local sample data is available under `3D/SyntheticValidation/ThicknessCouponV1` and `3D/SyntheticValidation/ThicknessCouponV1`; see `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`.
+- Local sample data is available under `3D/Samples/ThicknessCouponV1` and `3D/Samples/ThicknessCouponV1`; see `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md`.
 
 The sample must have known dimensions so the first measurement check can assert expected values.
 

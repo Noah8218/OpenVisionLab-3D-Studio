@@ -75,7 +75,7 @@ recalculate measurement statistics in WPF and does not own recipe execution.
 Source:
 
 ```text
-3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
+3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
 ```
 
 | Field | Value |
@@ -124,7 +124,7 @@ dotnet run --no-build -c Release `
 Exact-source UI smoke adds:
 
 ```text
---smoke-async-c3d-load 3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
+--smoke-async-c3d-load 3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
 --smoke-source-quality
 --smoke-source-quality-report <report>
 --shell-smoke-screenshot <png>

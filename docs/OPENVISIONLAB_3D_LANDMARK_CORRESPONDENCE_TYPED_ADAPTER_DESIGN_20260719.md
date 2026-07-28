@@ -387,7 +387,7 @@ four-anchor packet:
    are intentionally non-coplanar. If either set is planar, choose a separately
    designed constrained transform instead.
 3. **Threshold:** one explicit `MinimumNormalizedTetrahedronVolume` value.
-   It cannot be inferred from the current `3D/SyntheticValidation/ThicknessCouponV1` sample.
+   It cannot be inferred from the current `3D/Samples/ThicknessCouponV1` sample.
 
 Use `docs/OPENVISIONLAB_3D_FOUR_ANCHOR_TEACHING_INPUT_PACKAGE_20260720.md` to
 capture those inputs. Then run the real Runner parity gate. XYZ Affine remains

@@ -6,11 +6,11 @@ The prior captured C3D fixtures and all source-specific identifiers are
 retired from the current tree. Do not restore them from historical commits.
 
 - Primary source:
-  `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`.
+  `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`.
 - Native grid: `1280 x 840`; C3D bytes: `4,300,808`.
 - Valid/missing: `908,436 / 166,764`.
 - C3D SHA-256:
-  `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937`.
+  `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8`.
 - Schema `1.5` model: eight Thickness steps, 16 independent ROI selections,
   explicit Reference/Measurement routing.
 - Production Runner: `Pass (8/8)`, with means matching
@@ -23,8 +23,8 @@ retired from the current tree. Do not restore them from historical commits.
 Preserve:
 
 - `docs/OPENVISIONLAB_3D_SYNTHETIC_THICKNESS_SAMPLE_MIGRATION_20260728.md`;
-- `scripts/generate-synthetic-thickness-coupon.py`;
-- `3D/SyntheticValidation/ThicknessCouponV1/`;
+- `scripts/generate-thickness-coupon-sample.py`;
+- `3D/Samples/ThicknessCouponV1/`;
 - `artifacts/current/20260728-synthetic-thickness-coupon/`;
 - `docs/assets/openvisionlab-3d-roi-workflow.gif`.
 
@@ -169,7 +169,7 @@ next. R0, physical calibration, and metrology remain external or unverified.
 - The visible legend shows the exact count and percentage.
 - Valid palette/range pixels, native coordinates, raw heights, ROI, recipe,
   execution state, current output, and camera remain unchanged.
-- The exact Synthetic Thickness Coupon v1 source shows `166,764` missing/overlay cells (`15.5%`)
+- The exact Thickness Coupon v1 source shows `166,764` missing/overlay cells (`15.5%`)
   with mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
 - Current evidence passes Release build `0/0`, Height Image `25/25`,
@@ -272,7 +272,7 @@ unverified.
 - Origin-aware leave handling prevents a stale leave from one view from
   clearing a newer cursor from the other.
 - Source mismatch fails closed.
-- The exact Synthetic Thickness Coupon v1 Thickness source proves
+- The exact Thickness Coupon v1 Thickness source proves
   `column 593 / row 800 / H 633.4000244140625 raw-height` in both directions.
 - Recipe dirty state, steps, selections, Run log, Preview state, current
   output, and camera remain unchanged.
@@ -305,8 +305,8 @@ remains open for one shared 2D/3D display range.
 - Palette/range changes regenerate only immutable display pixels. Native
   coordinates, raw heights, invalid cells, recipe, Preview, Publish, Run,
   Validation Set, and Save remain unchanged.
-- The exact Synthetic Thickness Coupon v1 Thickness source changes from Auto Height pixel SHA-256
-  `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A`
+- The exact Thickness Coupon v1 Thickness source changes from Auto Height pixel SHA-256
+  `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087`
   to Thermal `0..1200 raw-height` pixel SHA-256
   `49FE0B0009CDE14BEE44C40C99F7EC0A6571BBC3DCDF8EDA168943E418F531BF`
   while retaining invalid-map SHA-256
@@ -341,7 +341,7 @@ open for one shared manual/auto range across both linked views.
   frame/unit/provenance, and explicit channel availability.
 - Opening or selecting it is read-only and does not dirty the recipe or invoke
   Preview, Publish, Run, Validation Set, or Save.
-- The exact Synthetic Thickness Coupon v1 Thickness source shows `1280 x 840`, `908,436`
+- The exact Thickness Coupon v1 Thickness source shows `1280 x 840`, `908,436`
   valid (`84.5%`), `166,764` missing (`15.5%`), and invalid-mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
 - Current evidence passes Source Quality `18/18`, smoke options `16/16`,
@@ -370,7 +370,7 @@ are now complete.
   owner; Height Image validity no longer has a separate missing-cell path.
 - Synthetic evidence passes invalid-map `15/15`, Source Quality `13/13`, and
   Height Image `14/14`.
-- The exact Synthetic Thickness Coupon v1 Thickness source produces `1,075,200` cells,
+- The exact Thickness Coupon v1 Thickness source produces `1,075,200` cells,
   `166,764` missing cells, `134,400` packed bytes, and identical Source
   Quality / Height Image SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
@@ -395,10 +395,10 @@ overlay.
   Image; real source/Filter C3D candidates remain selectable.
 - Fit, 1:1, zoom, pan, and exact row/column/raw-height hover are view-only and
   do not dirty or execute the recipe.
-- The exact Synthetic Thickness Coupon v1 Thickness source produces `1280 x 840`,
+- The exact Thickness Coupon v1 Thickness source produces `1280 x 840`,
   `1,075,200` pixels, `908,436` valid, `166,764` missing, and pixel
   SHA-256
-  `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A`.
+  `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087`.
 - Current evidence passes mapping `11/11`, Workspace `30/30`, Artifact
   Navigator `31/31`, docking `33/33`, Source Quality `12/12`, and structure
   `17/17`, with current Release inline and pop-out captures.
@@ -425,7 +425,7 @@ Preserve:
   channels are explicit and no normals/confidence/acquisition values are
   fabricated.
 - Runner writes JSON; focused verification passes `12/12`.
-- The exact Synthetic Thickness Coupon v1 Thickness source reports `1280 x 840`,
+- The exact Thickness Coupon v1 Thickness source reports `1280 x 840`,
   `908,436` valid, `166,764` missing, and invalid-mask SHA-256
   `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358`.
 
@@ -940,7 +940,7 @@ claims.
 ## Eight-Tab Thickness self-test integration - 2026-07-26
 
 The exact
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 source now has one reproducible schema `1.3` self-test model:
 
 - eight independently named `Tab 1 Thickness` through `Tab 8 Thickness`
@@ -954,11 +954,11 @@ source now has one reproducible schema `1.3` self-test model:
 
 The generated owner model is:
 
-- `3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
+- `3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
 
 It is reproducible only after exact grid, byte-length, and SHA-256 validation:
 
-- `scripts/generate-synthetic-thickness-coupon.py`
+- `scripts/generate-thickness-coupon-sample.py`
 
 Current Release evidence passes build `0/0`, structure `15/15`, recipe
 teaching `28/28`, Validation Set `25/25`, height measurement `44/44`, Recipe
@@ -2212,7 +2212,7 @@ engineering-unit tolerance or production acceptance result.
 Do not refit the plane, mutate C3D, apply affine, re-grid, connect this result
 to Thickness/Warpage, or make calibration/metrology claims under this slice.
 Thickness and Warpage remain byte-identical (`4,300,808` bytes; SHA-256
-`5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937`). A
+`D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8`). A
 distinct acquired source with source unit/frame/alignment provenance and an
 independent expected datum/ROI/result is required before physical validation.
 Read `docs/OPENVISIONLAB_3D_DATUM_PLANE_DEVIATION_TYPED_ADAPTER_DESIGN_20260721.md`
@@ -2673,7 +2673,7 @@ Commercial 3D-inspection tools distinguish a controlled authoring workbench from
 
 The user selected feature-first inspection development over additional repeatability work. The active workflow is C3D data load -> ROI teaching -> explicit Preview -> Publish -> typed recipe -> Runner replay -> shared Viewer and Shell result surfaces. `C3D Thickness Teaching v1` is implemented in the current local working tree: one C3D grid ROI can be taught by a Viewer pick or edited numerically, `LibraryNoahHeightMapInspection.EvaluateThickness` executes it, and mean/minimum/maximum/range/valid-sample/tolerance state appears in the standalone Viewer, Shell Data & Layers, Tool / Inspector, Evidence Workbench, entity/result layers, and Runner JSON/HTML/CSV. Local Tool golden passes `5/5`; the fixed sample's ROI `(900,570,160,160)` yields Pass with mean `1649.236 raw-height` and `24,201` valid samples. This is an uncalibrated scalar result, not physical thickness, repeatability, uncertainty, or Gauge R&R evidence. See `docs/OPENVISIONLAB_3D_C3D_THICKNESS_TEACHING_20260717.md`.
 
-Generic Tool Recipe Teaching v1 is also complete as a non-executing authoring slice: the default Workbench can load a C3D source, declare references, compose and reorder typed tool rows, route earlier entities, edit parameters, validate, save, and reopen `*.ov3d-teach.json` documents. `recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json` demonstrates the user-requested `3D/SyntheticValidation/ThicknessCouponV1` feature-first sequence and resolves its source path relative to the document. The `XYZ Affine Transform` row remains a warning-only taught declaration; it has no executor until four affine-independent correspondence evidence or an approved fixture-constrained contract exists. The focused Shell verifier records save/reopen/routing-rejection/template-source coverage. See `docs/OPENVISIONLAB_3D_TOOL_RECIPE_TEACHING_CONTRACT_20260718.md`.
+Generic Tool Recipe Teaching v1 is also complete as a non-executing authoring slice: the default Workbench can load a C3D source, declare references, compose and reorder typed tool rows, route earlier entities, edit parameters, validate, save, and reopen `*.ov3d-teach.json` documents. `recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json` demonstrates the user-requested `3D/Samples/ThicknessCouponV1` feature-first sequence and resolves its source path relative to the document. The `XYZ Affine Transform` row remains a warning-only taught declaration; it has no executor until four affine-independent correspondence evidence or an approved fixture-constrained contract exists. The focused Shell verifier records save/reopen/routing-rejection/template-source coverage. See `docs/OPENVISIONLAB_3D_TOOL_RECIPE_TEACHING_CONTRACT_20260718.md`.
 
 ## Current State
 
@@ -2811,7 +2811,7 @@ Completed in the first implementation slice:
 - SharpGL WPF dependency.
 - Generated unit cube render.
 - Generated point-cloud render.
-- Local `3D/SyntheticValidation/ThicknessCouponV1` C3D sample render as a downsampled height-grid point cloud.
+- Local `3D/Samples/ThicknessCouponV1` C3D sample render as a downsampled height-grid point cloud.
 - Public `3D/PublicSamples/glTF/Box.glb` render as the first external GLB mesh import baseline.
 - Public `3D/PublicSamples/glTF/BoxVertexColors.glb` render with GLB `COLOR_0` vertex colors as the second external GLB import baseline.
 - Public `3D/PublicSamples/glTF/BoxTextured.glb` render with GLB `TEXCOORD_0` and embedded PNG base-color texture as the third external GLB import baseline.
@@ -2864,7 +2864,7 @@ Completed in the first implementation slice:
 - Dev's WPF UI library boundary is mirrored: `src/OpenVisionLab.ThreeD.Shell` owns `WPF-UI` and app theme resources, while `OpenVisionLab.ThreeD.Viewer` keeps SharpGL/viewer concerns and `OpenVisionLab.ThreeD.Docking.Controls` keeps AvalonDock concerns.
 - Shell smoke now delegates to the embedded `OpenVisionThreeDViewerControl`, so Shell can exercise the same C3D/result overlay smoke scenes as the standalone Studio host.
 - First rule-tool library is in place: `src/OpenVisionLab.ThreeD.Tools` owns `HeightDeviationRule` and `HeightDeviationRecipe`, and does not depend on WPF or SharpGL.
-- The C3D height deviation rule evaluates the local `3D/SyntheticValidation/ThicknessCouponV1` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
+- The C3D height deviation rule evaluates the local `3D/Samples/ThicknessCouponV1` sample from loaded height-grid statistics, produces a failing `ToolResult` with 6 metrics and 3 overlays, and keeps source geometry separate from preview/result layers.
 - First recipe and runner path are in place: `recipes/c3d-height-deviation.recipe.json` and `src/OpenVisionLab.ThreeD.Runner` replay the rule outside the UI and write `artifacts/runner_c3d_height_rule_after.txt`.
 - Viewer and Shell smoke can load the JSON recipe with `--smoke-recipe`; the shared Viewer toolbar exposes `Open Recipe` for manual JSON selection; Runner can compare its result against UI contracts with `--compare-contract`.
 - Shell now has a docked `Recipe Comparison` pane. It reads persisted UI contract and runner report artifacts, shows status/peak-deviation comparison, and can be refreshed without coupling Shell to Runner internals.
@@ -2896,10 +2896,10 @@ Completed in the first implementation slice:
 
 Local sample data now exists:
 
-- `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
-- `3D/SyntheticValidation/ThicknessCouponV1/source-height-preview.png`
-- `3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
-- `3D/SyntheticValidation/ThicknessCouponV1/source-height-preview.png`
+- `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
+- `3D/Samples/ThicknessCouponV1/source-height-preview.png`
+- `3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
+- `3D/Samples/ThicknessCouponV1/source-height-preview.png`
 - `3D/PublicSamples/glTF/Box.glb`
 - `3D/PublicSamples/glTF/BoxTextured.glb`
 - `3D/PublicSamples/glTF/BoxVertexColors.glb`

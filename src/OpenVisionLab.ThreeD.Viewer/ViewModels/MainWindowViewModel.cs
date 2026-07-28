@@ -95,10 +95,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private bool selectionOverlayVisible = true;
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
-    private string recipeSummary = "Recipe: current C3D height deviation\nSource: Synthetic Thickness Coupon v1\nTolerance: 1200.000 synthetic-height-unit";
+    private string recipeSummary = "Recipe: current C3D height deviation\nSource: Thickness Coupon v1\nTolerance: 1200.000 raw-height";
     private string recipeFileName = "(current)";
-    private string recipeSourceName = "Synthetic Thickness Coupon v1";
-    private string recipeSourcePath = @"3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D";
+    private string recipeSourceName = "Thickness Coupon v1";
+    private string recipeSourcePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
     private string recipeSourceUnit = "raw-height";
     private double recipePeakTolerance = 1200.0;
     private string recipeSaveSummary = "Recipe save: not saved";
@@ -969,7 +969,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         get => recipeSourceName;
         set
         {
-            if (SetField(ref recipeSourceName, string.IsNullOrWhiteSpace(value) ? "Synthetic Thickness Coupon v1" : value))
+            if (SetField(ref recipeSourceName, string.IsNullOrWhiteSpace(value) ? "Thickness Coupon v1" : value))
             {
                 RefreshRecipeSummary();
             }
@@ -981,7 +981,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         get => recipeSourcePath;
         set
         {
-            if (SetField(ref recipeSourcePath, string.IsNullOrWhiteSpace(value) ? @"3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D" : value))
+            if (SetField(ref recipeSourcePath, string.IsNullOrWhiteSpace(value) ? @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D" : value))
             {
                 RefreshRecipeSummary();
             }

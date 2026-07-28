@@ -90,14 +90,14 @@ surface visible for screenshot evidence; it is not a new inspection adapter.
 
 Source:
 
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 | Fact | Value |
 | --- | --- |
 | Native grid | `1280 x 840` |
 | Source frame | `frame.c3d-grid-index` |
 | Declared unit | `raw-height` |
-| Source SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
+| Source SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
 | Fixture selection | `selection.oriented-box.01` |
 | Fixture center | `(732.5, 664.5, 1134)` |
 | Fixture axes | identity/right-handed |

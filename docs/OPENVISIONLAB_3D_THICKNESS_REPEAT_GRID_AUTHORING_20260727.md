@@ -17,7 +17,7 @@ execution.
 
 The verified source is:
 
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 The verified default request is:
 

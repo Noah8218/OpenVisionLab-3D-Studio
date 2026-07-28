@@ -1,31 +1,31 @@
 {
   "schemaVersion": "1.5",
-  "name": "Synthetic Thickness Coupon v1 - 8 Pad",
+  "name": "Thickness Coupon v1 - 8 Pad",
   "source": {
-    "id": "source.synthetic-thickness-coupon-v1",
-    "name": "Synthetic Thickness Coupon v1",
+    "id": "source.thickness-coupon-v1",
+    "name": "Thickness Coupon v1",
     "format": "C3D",
-    "unit": "synthetic-height-unit",
+    "unit": "raw-height",
     "frameId": "frame.c3d-grid-index",
-    "path": "synthetic-thickness-coupon-v1.C3D",
+    "path": "thickness-coupon-v1.C3D",
     "byteLength": 4300808,
-    "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+    "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
     "gridWidth": 1280,
     "gridHeight": 840
   },
   "references": [],
   "steps": [
     {
-      "id": "step.synthetic-pad-thickness.01",
+      "id": "step.pad-thickness.01",
       "toolId": "thickness",
       "toolName": "Pad 1 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-01.reference-roi",
-        "selection.synthetic-pad-01.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-01.reference-roi",
+        "selection.pad-01.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.01",
+      "outputEntityId": "derived.pad-thickness.01",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -41,21 +41,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-01.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-01.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-01.reference-roi",
+        "secondRegionSelectionId": "selection.pad-01.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.02",
+      "id": "step.pad-thickness.02",
       "toolId": "thickness",
       "toolName": "Pad 2 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-02.reference-roi",
-        "selection.synthetic-pad-02.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-02.reference-roi",
+        "selection.pad-02.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.02",
+      "outputEntityId": "derived.pad-thickness.02",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -71,21 +71,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-02.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-02.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-02.reference-roi",
+        "secondRegionSelectionId": "selection.pad-02.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.03",
+      "id": "step.pad-thickness.03",
       "toolId": "thickness",
       "toolName": "Pad 3 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-03.reference-roi",
-        "selection.synthetic-pad-03.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-03.reference-roi",
+        "selection.pad-03.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.03",
+      "outputEntityId": "derived.pad-thickness.03",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -101,21 +101,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-03.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-03.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-03.reference-roi",
+        "secondRegionSelectionId": "selection.pad-03.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.04",
+      "id": "step.pad-thickness.04",
       "toolId": "thickness",
       "toolName": "Pad 4 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-04.reference-roi",
-        "selection.synthetic-pad-04.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-04.reference-roi",
+        "selection.pad-04.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.04",
+      "outputEntityId": "derived.pad-thickness.04",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -131,21 +131,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-04.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-04.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-04.reference-roi",
+        "secondRegionSelectionId": "selection.pad-04.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.05",
+      "id": "step.pad-thickness.05",
       "toolId": "thickness",
       "toolName": "Pad 5 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-05.reference-roi",
-        "selection.synthetic-pad-05.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-05.reference-roi",
+        "selection.pad-05.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.05",
+      "outputEntityId": "derived.pad-thickness.05",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -161,21 +161,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-05.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-05.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-05.reference-roi",
+        "secondRegionSelectionId": "selection.pad-05.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.06",
+      "id": "step.pad-thickness.06",
       "toolId": "thickness",
       "toolName": "Pad 6 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-06.reference-roi",
-        "selection.synthetic-pad-06.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-06.reference-roi",
+        "selection.pad-06.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.06",
+      "outputEntityId": "derived.pad-thickness.06",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -191,21 +191,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-06.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-06.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-06.reference-roi",
+        "secondRegionSelectionId": "selection.pad-06.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.07",
+      "id": "step.pad-thickness.07",
       "toolId": "thickness",
       "toolName": "Pad 7 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-07.reference-roi",
-        "selection.synthetic-pad-07.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-07.reference-roi",
+        "selection.pad-07.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.07",
+      "outputEntityId": "derived.pad-thickness.07",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -221,21 +221,21 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-07.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-07.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-07.reference-roi",
+        "secondRegionSelectionId": "selection.pad-07.measurement-roi"
       }
     },
     {
-      "id": "step.synthetic-pad-thickness.08",
+      "id": "step.pad-thickness.08",
       "toolId": "thickness",
       "toolName": "Pad 8 Thickness",
       "minimumInputCount": 3,
       "inputEntityIds": [
-        "source.synthetic-thickness-coupon-v1",
-        "selection.synthetic-pad-08.reference-roi",
-        "selection.synthetic-pad-08.measurement-roi"
+        "source.thickness-coupon-v1",
+        "selection.pad-08.reference-roi",
+        "selection.pad-08.measurement-roi"
       ],
-      "outputEntityId": "derived.synthetic-pad-thickness.08",
+      "outputEntityId": "derived.pad-thickness.08",
       "parameters": [
         {
           "name": "MinimumThickness",
@@ -251,314 +251,314 @@
         }
       ],
       "dualRoiRouting": {
-        "firstRegionSelectionId": "selection.synthetic-pad-08.reference-roi",
-        "secondRegionSelectionId": "selection.synthetic-pad-08.measurement-roi"
+        "firstRegionSelectionId": "selection.pad-08.reference-roi",
+        "secondRegionSelectionId": "selection.pad-08.measurement-roi"
       }
     }
   ],
   "selections": [
     {
-      "id": "selection.synthetic-pad-01.reference-roi",
+      "id": "selection.pad-01.reference-roi",
       "name": "Pad 1 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 122,
+        "column": 128,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-01.measurement-roi",
+      "id": "selection.pad-01.measurement-roi",
       "name": "Pad 1 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 178,
+        "column": 196,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-02.reference-roi",
+      "id": "selection.pad-02.reference-roi",
       "name": "Pad 2 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 410,
+        "column": 416,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-02.measurement-roi",
+      "id": "selection.pad-02.measurement-roi",
       "name": "Pad 2 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 466,
+        "column": 484,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-03.reference-roi",
+      "id": "selection.pad-03.reference-roi",
       "name": "Pad 3 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 698,
+        "column": 704,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-03.measurement-roi",
+      "id": "selection.pad-03.measurement-roi",
       "name": "Pad 3 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 754,
+        "column": 772,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-04.reference-roi",
+      "id": "selection.pad-04.reference-roi",
       "name": "Pad 4 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 986,
+        "column": 992,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-04.measurement-roi",
+      "id": "selection.pad-04.measurement-roi",
       "name": "Pad 4 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 156,
-        "column": 1042,
+        "column": 1060,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-05.reference-roi",
+      "id": "selection.pad-05.reference-roi",
       "name": "Pad 5 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 122,
+        "column": 128,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-05.measurement-roi",
+      "id": "selection.pad-05.measurement-roi",
       "name": "Pad 5 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 178,
+        "column": 196,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-06.reference-roi",
+      "id": "selection.pad-06.reference-roi",
       "name": "Pad 6 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 410,
+        "column": 416,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-06.measurement-roi",
+      "id": "selection.pad-06.measurement-roi",
       "name": "Pad 6 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 466,
+        "column": 484,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-07.reference-roi",
+      "id": "selection.pad-07.reference-roi",
       "name": "Pad 7 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 698,
+        "column": 704,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-07.measurement-roi",
+      "id": "selection.pad-07.measurement-roi",
       "name": "Pad 7 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 754,
+        "column": 772,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     },
     {
-      "id": "selection.synthetic-pad-08.reference-roi",
+      "id": "selection.pad-08.reference-roi",
       "name": "Pad 8 Reference ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 986,
+        "column": 992,
         "rowCount": 144,
-        "columnCount": 32
+        "columnCount": 50
       }
     },
     {
-      "id": "selection.synthetic-pad-08.measurement-roi",
+      "id": "selection.pad-08.measurement-roi",
       "name": "Pad 8 Measurement ROI",
       "kind": "grid-rectangle",
-      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "rootSourceId": "source.thickness-coupon-v1",
       "frameId": "frame.c3d-grid-index",
       "sourceBinding": {
         "format": "C3D",
-        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
         "gridWidth": 1280,
         "gridHeight": 840
       },
       "gridRectangle": {
         "row": 492,
-        "column": 1042,
+        "column": 1060,
         "rowCount": 144,
-        "columnCount": 110
+        "columnCount": 90
       }
     }
   ]

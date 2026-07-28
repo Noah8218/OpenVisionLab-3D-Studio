@@ -554,10 +554,10 @@ jobs:
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\ci\c3d_map_fidelity_golden.txt
 
       - name: Verify actual C3D viewer-frame roundtrip
-        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000 --point-only
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000 --point-only
 
       - name: Verify C3D map with independent Python implementation
-        run: python scripts\verify-c3d-map-ply.py --source 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 198,198 --second-cell 198,468
+        run: python scripts\verify-c3d-map-ply.py --source 3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 198,198 --second-cell 198,468
 
       - name: Generate PLY coordinate signature
         run: python scripts\ply-coordinate-signature.py --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_reference_signature.txt

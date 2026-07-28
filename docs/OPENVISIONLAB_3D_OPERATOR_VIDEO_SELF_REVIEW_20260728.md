@@ -2,9 +2,9 @@
 
 > Data-safety correction, 2026-07-28: source-specific historical media from
 > captured company data is retired. The current README GIF and Wide dual-ROI
-> replay were recaptured with `Synthetic Thickness Coupon v1` at
+> replay were recaptured with `Thickness Coupon v1` at
 > `1280 x 840`. Current evidence is under
-> `artifacts/current/20260728-synthetic-thickness-ui-replay/`. Do not restore
+> `artifacts/current/20260728-readme-license-roi-gif/`. Do not restore
 > older captured-source screenshots or GIFs from Git history.
 
 > Superseding correction, 2026-07-28: the two P0 findings in this historical
@@ -31,7 +31,7 @@ input boundary available to an operator:
 - `SendKeys` generated Enter, Escape, and Ctrl+S;
 - FFmpeg `gdigrab` recorded the visible desktop and cursor;
 - the exact
-  `synthetic-thickness-coupon-v1.C3D` source was used;
+  `thickness-coupon-v1.C3D` source was used;
 - source recipes were copied into the evidence folder before mutation.
 
 The replay was not an in-process ViewModel command test. It also was not an
@@ -44,7 +44,7 @@ unaided first-time human replay, physical calibration, or metrology evidence.
 | Wide Thickness ROI | `01-wide-thickness-roi-replay.mp4`, 1920 x 1040, 46.13 s | Reference ROI delete, fresh drag, Review, and Enter Apply passed; Measurement ROI continuation remained disabled. |
 | OrientedBox3D numeric authoring | `02-oriented-box-numeric-replay.mp4`, 1920 x 1040, 55.00 s | Invalid axes disabled Apply; valid edit, Apply, Ctrl+S, reopen, and exact name restoration passed. |
 | Compact Thickness ROI | `03-compact-thickness-roi-replay.mp4`, 1280 x 760, 33.13 s | Fresh Reference ROI drag, Review, and Enter Apply passed at compact width. |
-| README preview | `docs/assets/openvisionlab-3d-roi-workflow.gif`, 1,283,380 bytes | Synthetic-only `960 x 520`, 28-second ROI workflow excerpt; under the 10 MiB gate. |
+| README preview | `docs/assets/openvisionlab-3d-roi-workflow.gif`, 1,325,086 bytes | Application-only `960 x 520`, 25.51-second same-pad Thickness ROI workflow; no desktop or unrelated application is exposed. |
 
 Preserve the full evidence under
 `artifacts/current/20260728-operator-video-self-review/`, including JSONL

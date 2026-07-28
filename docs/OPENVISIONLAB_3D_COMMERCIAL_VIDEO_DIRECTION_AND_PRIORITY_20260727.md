@@ -480,7 +480,7 @@ Outcome:
 
 First acceptance:
 
-- the exact Synthetic Thickness Coupon v1 C3D shows a coordinate-true invalid/valid mask plus the
+- the exact Thickness Coupon v1 C3D shows a coordinate-true invalid/valid mask plus the
   current histogram and identity;
 - Viewer and headless verification agree on counts and SHA-256;
 - unsupported normals, confidence, or acquisition fields remain explicitly
@@ -574,7 +574,7 @@ Outcome:
 
 First acceptance:
 
-- the Synthetic Thickness Coupon v1 Tab layout or a deterministic synthetic fixture produces
+- the Thickness Coupon v1 Tab layout or a deterministic synthetic fixture produces
   named cell results with known expected Pass/Fail;
 - every failed cell is selectable and visible in both height image and 3D;
 - Workbench and Runner results match.

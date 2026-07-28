@@ -8,17 +8,17 @@ The previously used Thickness C3D originated from non-public company work.
 It and all source-specific derived identities are therefore not acceptable as
 public demo or regression material.
 
-The public replacement is `Synthetic Thickness Coupon v1`, a wholly fictional
+The public replacement is `Thickness Coupon v1`, a wholly fictional
 inspection coupon. AI image generation was used only to choose a generic
 non-sensitive visual layout. The C3D values, missing-cell mask, ROI locations,
 recipe, and expected measurements are generated deterministically by code.
 
 ## Package
 
-`3D/SyntheticValidation/ThicknessCouponV1/`
+`3D/Samples/ThicknessCouponV1/`
 
 - `ai-concept.png`: visual ideation; never used as numeric input.
-- `synthetic-thickness-coupon-v1.C3D`: deterministic `1280 x 840` C3D.
+- `thickness-coupon-v1.C3D`: deterministic `1280 x 840` C3D.
 - `source-height-preview.png`: generated height-map and ROI review image.
 - `ground-truth.json`: provenance, hashes, coverage, ROI coordinates, and
   eight expected signed separations.
@@ -29,8 +29,8 @@ recipe, and expected measurements are generated deterministically by code.
 Generator:
 
 ```powershell
-python scripts/generate-synthetic-thickness-coupon.py `
-  --output 3D/SyntheticValidation/ThicknessCouponV1
+python scripts/generate-thickness-coupon-sample.py `
+  --output 3D/Samples/ThicknessCouponV1
 ```
 
 ## AI concept prompt
@@ -54,11 +54,11 @@ not a metrology source and contributes no height value to the C3D.
 | Valid | `908,436` (`84.5%`) |
 | Missing | `166,764` (`15.5%`) |
 | C3D bytes | `4,300,808` |
-| C3D SHA-256 | `5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937` |
+| C3D SHA-256 | `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` |
 | Invalid-map bytes | `134,400` |
 | Invalid-map SHA-256 | `44EDC44DEE6D0193DCCF22130487DC3CF80CCE2F68BDAA854A1D16FAA4BDC358` |
-| Height Image pixel SHA-256 | `D6B402B870622F25C73C10C6D312DF1BB8EC837BC3EFC7A9B5BA8FB8EF432C4A` |
-| Unit | `synthetic-height-unit` |
+| Height Image pixel SHA-256 | `6A6C12F7A729ABF49830F07CBB868FCCCB94C987584856128662109BA377B087` |
+| Unit | `raw-height` |
 | Frame | `frame.c3d-grid-index` |
 
 The datum is an affine height plane. Each reference ROI samples that plane and
@@ -83,7 +83,7 @@ Commands:
 dotnet run --no-build `
   --project src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj `
   -c Release -- `
-  --tool-recipe 3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json `
+  --tool-recipe 3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json `
   --report artifacts/current/20260728-synthetic-thickness-coupon/runner.txt `
   --run-record artifacts/current/20260728-synthetic-thickness-coupon/run-record.json `
   --html-report artifacts/current/20260728-synthetic-thickness-coupon/run-report.html `
@@ -107,7 +107,7 @@ and display-pixel identity.
 - A new commit that deletes a file does not remove it from older Git commits.
   The remote feature branch requires a separately approved history rewrite or
   branch replacement before its old blobs are actually removed.
-- `synthetic-height-unit` proves software behavior only. It is not millimetres,
+- `raw-height` proves software behavior only. It is not millimetres,
   calibrated depth, certified thickness, or production metrology.
 
 ## Remote Git exposure audit

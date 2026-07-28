@@ -10,9 +10,9 @@ namespace OpenVisionLab.ThreeD.Shell;
 internal static class ThicknessRepeatGridAuthoringVerification
 {
     private const string ExactRecipeRelativePath =
-        "3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json";
+        "3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json";
     private const string ExactSourceRelativePath =
-        "3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D";
+        "3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D";
 
     public static bool Verify(string reportPath, out string summary)
     {
@@ -46,12 +46,12 @@ internal static class ThicknessRepeatGridAuthoringVerification
 
             var exactDocument = ToolRecipeDocumentStore.Load(exactRecipePath);
             var firstStep = exactDocument.Steps.Single(step =>
-                string.Equals(step.Id, "step.synthetic-pad-thickness.01", StringComparison.OrdinalIgnoreCase));
+                string.Equals(step.Id, "step.pad-thickness.01", StringComparison.OrdinalIgnoreCase));
             var firstSelectionIds = firstStep.InputEntityIds.Skip(1).ToHashSet(
                 StringComparer.OrdinalIgnoreCase);
             var starter = exactDocument with
             {
-                Name = "Synthetic Thickness Coupon v1 Repeat Starter",
+                Name = "Thickness Coupon v1 Repeat Starter",
                 Source = exactDocument.Source with { Path = exactSourcePath },
                 Steps = [firstStep],
                 Selections = (exactDocument.Selections ?? [])
@@ -64,7 +64,7 @@ internal static class ThicknessRepeatGridAuthoringVerification
             ToolRecipeDocumentStore.Save(starterPath, starter);
 
             Check(
-                "starter fixture uses the deterministic synthetic C3D and one complete Thickness",
+                "starter fixture uses the bundled Thickness C3D and one complete Thickness",
                 File.Exists(exactSourcePath)
                 && starter.Steps.Count == 1
                 && starter.Selections?.Count == 2
@@ -97,8 +97,8 @@ internal static class ThicknessRepeatGridAuthoringVerification
                     .SequenceEqual(Enumerable.Range(1, 8).Select(index => $"Pad {index} Thickness")),
                 string.Join(", ", authored.Candidates.Select(candidate => candidate.ToolName)));
 
-            var expectedReferenceColumns = new[] { 122, 410, 698, 986, 122, 410, 698, 986 };
-            var expectedMeasurementColumns = new[] { 178, 466, 754, 1042, 178, 466, 754, 1042 };
+            var expectedReferenceColumns = new[] { 128, 416, 704, 992, 128, 416, 704, 992 };
+            var expectedMeasurementColumns = new[] { 196, 484, 772, 1060, 196, 484, 772, 1060 };
             var expectedRows = new[] { 156, 156, 156, 156, 492, 492, 492, 492 };
             Check(
                 "candidate ROI coordinates use the requested X and Z pitches",
@@ -119,12 +119,12 @@ internal static class ThicknessRepeatGridAuthoringVerification
             Check(
                 "translated ROI dimensions and Thickness parameters remain unchanged",
                 authored.Candidates.All(candidate =>
-                    candidate.ReferenceSelection.GridRectangle!.ColumnCount == 32
+                    candidate.ReferenceSelection.GridRectangle!.ColumnCount == 50
                     && candidate.ReferenceSelection.GridRectangle.RowCount == 144
-                    && candidate.MeasurementSelection.GridRectangle!.ColumnCount == 110
+                    && candidate.MeasurementSelection.GridRectangle!.ColumnCount == 90
                     && candidate.MeasurementSelection.GridRectangle.RowCount == 144
                     && candidate.Step.Parameters.SequenceEqual(firstStep.Parameters)),
-                $"reference=32x144; measurement=110x144; parameters={firstStep.Parameters.Count}");
+                $"reference=50x144; measurement=90x144; parameters={firstStep.Parameters.Count}");
 
             var generatedIds = authored.Draft!.CandidateDocument.Steps
                 .SelectMany(step => new[] { step.Id, step.OutputEntityId })
@@ -195,7 +195,7 @@ internal static class ThicknessRepeatGridAuthoringVerification
             workbench.ThicknessRepeatGridPreviewChanged += (_, args) =>
                 previewSelections = args.Selections.ToArray();
             Check(
-                "Workbench opens the one-step synthetic-source starter ready for repetition",
+                "Workbench opens the one-step Thickness starter ready for repetition",
                 opened
                 && workbench.PipelineSteps.Count == 1
                 && workbench.Selections.Count == 2
@@ -292,7 +292,7 @@ internal static class ThicknessRepeatGridAuthoringVerification
 
             lines.Add($"Evidence | starter={starterPath}");
             lines.Add($"Evidence | applied={appliedPath}");
-            lines.Add($"Evidence | syntheticSource={exactSourcePath}");
+            lines.Add($"Evidence | source={exactSourcePath}");
         }
         catch (Exception exception)
         {

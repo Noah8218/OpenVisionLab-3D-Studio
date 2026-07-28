@@ -90,8 +90,8 @@ proprietary correction behavior, and equipment scope are not copied.
 The user-designated Warpage source was inspected without changing it:
 
 ```text
-Path:   3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D
-SHA-256: 5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937
+Path:   3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D
+SHA-256: D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8
 Grid:   1301 columns x 1967 rows
 Valid:  1,653,562
 Missing: 905,505

@@ -10,7 +10,7 @@ OpenVisionLab-owned interaction contract. It is the required design gate before
 changing the current default Workbench.
 
 The first implementation target is the exact
-`synthetic-thickness-coupon-v1.C3D` eight-Tab Thickness workflow.
+`thickness-coupon-v1.C3D` eight-Tab Thickness workflow.
 No other tool UI should expand the default path until this slice passes owner
 acceptance.
 

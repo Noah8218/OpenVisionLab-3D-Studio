@@ -223,7 +223,7 @@ The corrective Viewer checkpoint is recorded in
 - Session start: `2026-07-26T20:15:40.7767437+09:00`
 - Process: PID `27588`, responsive visible window `OpenVisionLab 3D Studio`
 - Recipe:
-  `C:\Git\OpenVisionLab-3D-Studio\3D\Synthetic Thickness Coupon v1\new-inspection.ov3d-recipe.json`
+  `C:\Git\OpenVisionLab-3D-Studio\3D\Thickness Coupon v1\new-inspection.ov3d-recipe.json`
 - EXE SHA-256:
   `9F5288E9DF4EA840855B7259EA1F0F334EDBD54BD4E88C69EA5379F51FE6FB0C`
 - Shell DLL SHA-256:

@@ -187,8 +187,8 @@ public sealed partial class MainWindowViewModel
         {
             new EntityLayer("layer.source.generated-cube", "Generated Unit Cube", LayerKind.Source, CubeVisible, [CubeEntityId]),
             new EntityLayer("layer.source.generated-point-cloud", "Generated Point Cloud", LayerKind.Source, PointCloudVisible, [PointCloudEntityId]),
-            new EntityLayer("layer.source.c3d-thickness", "Synthetic Thickness Coupon v1", LayerKind.Source, C3DSampleVisible && inspectionSession.SourceEntityId != C3DWarpageEntityId, [C3DEntityId]),
-            new EntityLayer("layer.source.c3d-warpage", "Synthetic Thickness Coupon v1", LayerKind.Source, C3DSampleVisible && inspectionSession.SourceEntityId == C3DWarpageEntityId, [C3DWarpageEntityId]),
+            new EntityLayer("layer.source.c3d-thickness", "Thickness Coupon v1", LayerKind.Source, C3DSampleVisible && inspectionSession.SourceEntityId != C3DWarpageEntityId, [C3DEntityId]),
+            new EntityLayer("layer.source.c3d-warpage", "Thickness Coupon v1", LayerKind.Source, C3DSampleVisible && inspectionSession.SourceEntityId == C3DWarpageEntityId, [C3DWarpageEntityId]),
             new EntityLayer("layer.source.imported-mesh", GlbSampleName, LayerKind.Source, GlbSampleVisible, [GlbEntityId]),
             new EntityLayer("layer.source.public-laz-manuscript", "Public LAZ/LAS Point Cloud", LayerKind.Source, LazSampleVisible, [LazEntityId])
         };

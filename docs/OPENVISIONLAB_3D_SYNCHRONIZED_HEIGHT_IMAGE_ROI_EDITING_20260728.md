@@ -65,11 +65,11 @@ Only explicit ROI Apply/Delete changes the recipe.
 
 Source:
 
-`3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D`
+`3D/Samples/ThicknessCouponV1/thickness-coupon-v1.C3D`
 
 Recipe:
 
-`3D/SyntheticValidation/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
+`3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json`
 
 Actual Windows pointer editing of Tab 1 Measurement ROI produced:
 
