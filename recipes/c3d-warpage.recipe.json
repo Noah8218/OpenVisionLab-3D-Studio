@@ -1,0 +1,30 @@
+{
+  "recipeType": "c3d-warpage",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-warpage",
+    "name": "Synthetic Thickness Coupon v1",
+    "path": "../3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D",
+    "unit": "synthetic-height-unit"
+  },
+  "step": {
+    "id": "step.c3d-warpage",
+    "sourceEntityId": "source.c3d-warpage",
+    "referenceId": "reference.c3d-warpage-best-fit-roi",
+    "referenceMode": "BestFitInspectionRoi",
+    "roi": {
+      "row": 156,
+      "column": 178,
+      "rowCount": 144,
+      "columnCount": 110
+    },
+    "acceptance": {
+      "maximumPeakToValley": 10.0,
+      "maximumRms": null
+    },
+    "unit": "synthetic-height-unit",
+    "frameId": "frame.c3d-grid-index",
+    "minimumValidSamples": 3,
+    "enabled": true
+  }
+}

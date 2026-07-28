@@ -1,0 +1,337 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.SourceQualityWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             AutomationProperties.AutomationId="SourceQualityWorkspace">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="QualityCardStyle" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource ThreeD.PanelBrush}"
+          TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="10">
+                <Border Padding="10"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ui:SymbolIcon Width="20"
+                                           Height="20"
+                                           Margin="0,0,7,0"
+                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                           Symbol="DataHistogram24" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding Localization.SourceQuality}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="9.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding SourceName}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding Report.Source.Path}" />
+                            </StackPanel>
+                            <Border Grid.Column="2"
+                                    Margin="7,0,0,0"
+                                    Padding="6,2"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource ThreeD.CommandBarBrush}"
+                                    CornerRadius="2">
+                                <TextBlock FontSize="9"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                           Text="{Binding State}" />
+                            </Border>
+                        </Grid>
+                        <TextBlock Margin="0,7,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceQualityHint}"
+                                   TextWrapping="Wrap" />
+                        <Border Margin="0,7,0,0"
+                                Padding="7,4"
+                                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                                CornerRadius="2">
+                            <TextBlock FontSize="9"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.PassBrush}"
+                                       Text="{Binding Localization.SourceQualityViewOnly}" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,7,0,0"
+                        Padding="10"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Localization.SourceQualityLoading}" />
+                        <ProgressBar Height="6"
+                                     Margin="0,7,0,0"
+                                     IsIndeterminate="True" />
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,7,0,0"
+                        Padding="9"
+                        Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.WarningBrush}"
+                               Text="{Binding Error}"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <StackPanel Margin="0,8,0,0"
+                            Visibility="{Binding HasReport, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Text="{views:ThreeDText Key=ThreeD.SourceQuality.GridCoverage, Korean='그리드 및 유효성', English='Grid &amp; coverage'}" />
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border Style="{StaticResource QualityCardStyle}">
+                            <StackPanel>
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.SourceQuality.Grid, Korean='원본 그리드', English='Native grid'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding GridValue}" />
+                                <TextBlock FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}">
+                                    <Run Text="{Binding CellCountValue, Mode=OneWay}" />
+                                    <Run Text=" cells" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource QualityCardStyle}">
+                            <StackPanel>
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.SourceQuality.Valid, Korean='유효 셀', English='Valid cells'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.PassBrush}"
+                                           Text="{Binding ValidValue}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Style="{StaticResource QualityCardStyle}">
+                            <StackPanel>
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.SourceQuality.Missing, Korean='누락 셀', English='Missing cells'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                           Text="{Binding MissingValue}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource QualityCardStyle}">
+                            <StackPanel>
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.SourceQuality.Mask, Korean='누락 마스크', English='Missing mask'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding MaskSummary}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding MaskSha256}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <ProgressBar Height="7"
+                                 Margin="0,1,6,0"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding ValidPercent, Mode=OneWay}"
+                                 Foreground="{DynamicResource ThreeD.PassBrush}" />
+
+                    <TextBlock Margin="0,12,0,0"
+                               FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Text="{views:ThreeDText Key=ThreeD.SourceQuality.HeightStatistics, Korean='높이 통계 및 분포', English='Height statistics &amp; distribution'}" />
+                    <Border Margin="0,6,6,0"
+                            Padding="9"
+                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.SourceQuality.Range, Korean='원시 높이 범위', English='Raw-height range'}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding HeightRangeValue}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.SourceQuality.Mean, Korean='평균', English='Mean'}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding HeightMeanValue}" />
+                                </StackPanel>
+                            </Grid>
+                            <ItemsControl Height="48"
+                                          Margin="0,8,0,0"
+                                          ItemsSource="{Binding DistributionBins}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Width="5"
+                                                Margin="1,0"
+                                                Height="{Binding DisplayHeight}"
+                                                VerticalAlignment="Bottom"
+                                                Background="{DynamicResource ThreeD.AccentBrush}"
+                                                CornerRadius="1"
+                                                ToolTip="{Binding Count}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Margin="0,3,0,0"
+                                       FontSize="8.5"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding DistributionSummary}" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Margin="0,12,0,0"
+                               FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Text="{views:ThreeDText Key=ThreeD.SourceQuality.Channels, Korean='사용 가능한 채널', English='Available channels'}" />
+                    <ItemsControl Margin="0,6,6,0" ItemsSource="{Binding Channels}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,4"
+                                        Padding="7,5"
+                                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="82" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock FontSize="9.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding Name}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="6,0,0,0"
+                                                   FontSize="8.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding State}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsAvailable}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="2"
+                                                   Margin="8,0,0,0"
+                                                   FontSize="8.5"
+                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                   Text="{Binding Evidence}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Evidence}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Expander Margin="0,8,6,0"
+                              IsExpanded="False"
+                              Header="{views:ThreeDText Key=ThreeD.SourceQuality.Identity, Korean='식별·좌표·출처', English='Identity, coordinates &amp; provenance'}">
+                        <Border Margin="0,5,0,0"
+                                Padding="9"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <StackPanel>
+                                <TextBlock FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding SourceIdentitySummary}" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding SourceSha256}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,5,0,0"
+                                           FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding CoordinateSummary}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding CoordinateConvention}" />
+                                <TextBlock Margin="0,5,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding Provenance}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </Expander>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

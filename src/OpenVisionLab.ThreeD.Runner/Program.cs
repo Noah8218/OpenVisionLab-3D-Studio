@@ -1,0 +1,1 @@
+return RunnerCommandRouter.Run(args);

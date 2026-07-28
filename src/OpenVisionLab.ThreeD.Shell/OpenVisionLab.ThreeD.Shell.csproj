@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>OpenVisionLab.ThreeD.Shell</RootNamespace>
+    <AssemblyName>OpenVisionLab.ThreeD.Shell</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
+    <PackageReference Include="OpenVisionLab.WpfPropertyGrid.ThreeD" Version="[1.0.0-ovl3d.1]" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Tools\OpenVisionLab.ThreeD.Tools.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Logging\OpenVisionLab.Logging.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Logging.Controls\OpenVisionLab.Logging.Controls.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Localization\OpenVisionLab.Localization.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.Wpf.MessageDialogs\OpenVisionLab.Wpf.MessageDialogs.csproj"
+                      Aliases="OvlMessageDialogs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\OpenVisionLab.Logging\log4net.config"
+          Link="log4net.config"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

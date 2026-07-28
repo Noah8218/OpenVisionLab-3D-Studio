@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "synthetic-thickness-coupon-v1",
+  "origin": {
+    "kind": "procedurally-generated",
+    "derivedFromCapturedData": false,
+    "generator": "scripts/generate-synthetic-thickness-coupon.py",
+    "designNote": "Fictional eight-pad coupon; AI concept art guided only the non-sensitive visual layout."
+  },
+  "source": {
+    "path": "synthetic-thickness-coupon-v1.C3D",
+    "format": "C3D",
+    "width": 1280,
+    "height": 840,
+    "byteLength": 4300808,
+    "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+    "validCellCount": 908436,
+    "missingCellCount": 166764,
+    "minimumRawHeight": 93.34125,
+    "maximumRawHeight": 127.56625,
+    "unit": "synthetic-height-unit",
+    "frameId": "frame.c3d-grid-index"
+  },
+  "measurements": [
+    {
+      "pad": 1,
+      "referenceRoi": {
+        "row": 156,
+        "column": 122,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 156,
+        "column": 178,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 8.0,
+      "acceptance": {
+        "minimum": 7.75,
+        "maximum": 8.25
+      }
+    },
+    {
+      "pad": 2,
+      "referenceRoi": {
+        "row": 156,
+        "column": 410,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 156,
+        "column": 466,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 12.0,
+      "acceptance": {
+        "minimum": 11.75,
+        "maximum": 12.25
+      }
+    },
+    {
+      "pad": 3,
+      "referenceRoi": {
+        "row": 156,
+        "column": 698,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 156,
+        "column": 754,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 16.0,
+      "acceptance": {
+        "minimum": 15.75,
+        "maximum": 16.25
+      }
+    },
+    {
+      "pad": 4,
+      "referenceRoi": {
+        "row": 156,
+        "column": 986,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 156,
+        "column": 1042,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 20.0,
+      "acceptance": {
+        "minimum": 19.75,
+        "maximum": 20.25
+      }
+    },
+    {
+      "pad": 5,
+      "referenceRoi": {
+        "row": 492,
+        "column": 122,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 492,
+        "column": 178,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 10.0,
+      "acceptance": {
+        "minimum": 9.75,
+        "maximum": 10.25
+      }
+    },
+    {
+      "pad": 6,
+      "referenceRoi": {
+        "row": 492,
+        "column": 410,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 492,
+        "column": 466,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 14.0,
+      "acceptance": {
+        "minimum": 13.75,
+        "maximum": 14.25
+      }
+    },
+    {
+      "pad": 7,
+      "referenceRoi": {
+        "row": 492,
+        "column": 698,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 492,
+        "column": 754,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 18.0,
+      "acceptance": {
+        "minimum": 17.75,
+        "maximum": 18.25
+      }
+    },
+    {
+      "pad": 8,
+      "referenceRoi": {
+        "row": 492,
+        "column": 986,
+        "rowCount": 144,
+        "columnCount": 32
+      },
+      "measurementRoi": {
+        "row": 492,
+        "column": 1042,
+        "rowCount": 144,
+        "columnCount": 110
+      },
+      "expectedSignedSeparation": 22.0,
+      "acceptance": {
+        "minimum": 21.75,
+        "maximum": 22.25
+      }
+    }
+  ]
+}

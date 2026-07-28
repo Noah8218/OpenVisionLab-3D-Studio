@@ -1,0 +1,9 @@
+solid corrupt
+  facet normal 0 0 1
+    outer loop
+      vertex not-a-number 0 0
+      vertex 1 0 0
+      vertex 0 1 0
+    endloop
+  endfacet
+endsolid corrupt

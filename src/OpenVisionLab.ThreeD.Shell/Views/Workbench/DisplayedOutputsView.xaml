@@ -1,0 +1,187 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.DisplayedOutputsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             AutomationProperties.AutomationId="DisplayedOutputsView">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    <Border Background="{DynamicResource ThreeD.PanelBrush}"
+            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Width="18"
+                                   Height="18"
+                                   Margin="0,0,7,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Symbol="Document24" />
+                    <StackPanel>
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
+                                   Text="{Binding Localization.DisplayedOutputsTitle}" />
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.DisplayedOutputsDetail}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </StackPanel>
+                <Border Grid.Column="1"
+                        Margin="10,0,0,0"
+                        Padding="7,3"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                    <TextBlock FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding DisplayedOutputsSummary}" />
+                </Border>
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Padding="9,6"
+                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    AutomationProperties.Name="Current 3D viewer artifact">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontSize="10"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.InfoBrush}"
+                               Text="{Binding Localization.CurrentViewerDisplay}" />
+                    <TextBlock Margin="8,0,0,0"
+                               FontSize="10"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding CurrentViewerOutputSummary}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer Grid.Row="2"
+                          Margin="0,8,0,0"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding DisplayedOutputs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,6"
+                                    Padding="9,7"
+                                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="10.5"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                                       Text="{Binding DisplayName}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Border Margin="7,0,0,0"
+                                                    Padding="4,1"
+                                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                                    CornerRadius="2">
+                                                <TextBlock FontSize="9"
+                                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                           Text="{Binding State}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Margin="0,3,0,0"
+                                                   FontSize="9.5"
+                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                   Text="{Binding Contract}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding Detail}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1"
+                                                Margin="12,0,8,0"
+                                                VerticalAlignment="Center">
+                                        <TextBlock FontSize="9.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                   Text="{Binding Availability}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Margin="0,3,0,0" Orientation="Horizontal">
+                                            <Border Padding="4,1"
+                                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                                    CornerRadius="2"
+                                                    Visibility="{Binding IsShownInViewer, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock FontSize="9"
+                                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                           Text="{Binding DataContext.Localization.DisplayedInViewer, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            </Border>
+                                            <Border Margin="4,0,0,0"
+                                                    Padding="4,1"
+                                                    Background="{DynamicResource ThreeD.PassSurfaceBrush}"
+                                                    CornerRadius="2"
+                                                    Visibility="{Binding IsPinnedToCompare, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock FontSize="9"
+                                                           Foreground="{DynamicResource ThreeD.PassBrush}"
+                                                           Text="{Binding ComparePinsSummary}" />
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Orientation="Horizontal">
+                                        <ui:Button Padding="7,3"
+                                                   Content="{Binding DataContext.Localization.ShowInViewer, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   Icon="{ui:SymbolIcon Eye24}"
+                                                   Command="{Binding DataContext.ShowDisplayedOutputInViewerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}"
+                                                   ToolTip="Show only an existing C3D artifact in the main Viewer"
+                                                   Visibility="{Binding CanShowInViewer, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   AutomationProperties.Name="Show existing C3D output in Viewer" />
+                                        <ui:Button Margin="5,0,0,0"
+                                                   Padding="7,3"
+                                                   Content="{Binding DataContext.Localization.PinToCompare, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   Icon="{ui:SymbolIcon Document24}"
+                                                   Command="{Binding DataContext.PinDisplayedOutputToCompareCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}"
+                                                   ToolTip="Pin the existing C3D artifact to the first empty comparison slot"
+                                                   Visibility="{Binding CanPinToCompare, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   AutomationProperties.Name="Pin existing C3D output to comparison" />
+                                        <ui:Button Margin="5,0,0,0"
+                                                   Padding="7,3"
+                                                   Content="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   Icon="{ui:SymbolIcon FlowchartCircle24}"
+                                                   Command="{Binding DataContext.FocusDisplayedOutputStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                   CommandParameter="{Binding}"
+                                                   ToolTip="Focus the authored pipeline step; this does not execute it"
+                                                   Visibility="{Binding CanFocusStep, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   AutomationProperties.Name="Focus authored pipeline step" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

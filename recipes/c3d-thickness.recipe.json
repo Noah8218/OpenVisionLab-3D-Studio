@@ -1,0 +1,29 @@
+{
+  "recipeType": "c3d-thickness",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "Synthetic Thickness Coupon v1",
+    "path": "../3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D",
+    "unit": "synthetic-height-unit"
+  },
+  "step": {
+    "id": "step.c3d-thickness",
+    "sourceEntityId": "source.c3d-thickness",
+    "roiReferenceId": "reference.c3d-thickness-roi",
+    "roi": {
+      "row": 156,
+      "column": 178,
+      "rowCount": 144,
+      "columnCount": 110
+    },
+    "acceptance": {
+      "minimumThickness": 90.0,
+      "maximumThickness": 130.0
+    },
+    "unit": "synthetic-height-unit",
+    "frameId": "frame.c3d-grid-index",
+    "minimumValidSamples": 1,
+    "enabled": true
+  }
+}

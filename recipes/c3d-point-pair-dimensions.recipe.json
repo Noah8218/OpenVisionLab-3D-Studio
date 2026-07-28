@@ -1,0 +1,43 @@
+{
+  "recipeType": "c3d-point-pair-dimensions",
+  "version": "1.0",
+  "source": {
+    "entityId": "source.c3d-thickness",
+    "name": "Synthetic Thickness Coupon v1",
+    "path": "../3D/SyntheticValidation/ThicknessCouponV1/synthetic-thickness-coupon-v1.C3D",
+    "unit": "synthetic-height-unit"
+  },
+  "transform": {
+    "translateX": 0,
+    "translateY": 0,
+    "translateZ": 0,
+    "rotateXDegrees": 0,
+    "rotateYDegrees": 0,
+    "rotateZDegrees": 0,
+    "scale": 1
+  },
+  "step": {
+    "id": "step.c3d-point-pair-dimensions",
+    "sourceEntityId": "source.c3d-thickness",
+    "first": {
+      "id": "reference.point-a",
+      "row": 198,
+      "column": 198
+    },
+    "second": {
+      "id": "reference.point-b",
+      "row": 198,
+      "column": 468
+    },
+    "acceptance": {
+      "expectedDistance": 2.11102713790548,
+      "distanceTolerance": 0.001,
+      "expectedWidth": 2.11102437973022,
+      "widthTolerance": 0.001,
+      "expectedElevationAngleDegrees": 0.0926193434169234,
+      "elevationAngleToleranceDegrees": 0.01
+    },
+    "unit": "model",
+    "enabled": true
+  }
+}

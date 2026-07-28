@@ -1,0 +1,571 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and runner smoke
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Verify vendored Library-Noah package
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-library-noah-package.ps1 -ReportPath artifacts\ci\library-noah-package.txt
+
+      - name: Verify vendored WPG package
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-wpg-package.ps1 -ReportPath artifacts\ci\wpg-package.txt
+
+      - name: Restore
+        run: dotnet restore OpenVisionLab.ThreeDStudio.slnx
+
+      - name: Verify NuGet package-health verifier
+        run: python scripts\verify-nuget-package-health.py --self-test
+
+      - name: Verify NuGet package health
+        run: python scripts\verify-nuget-package-health.py --solution OpenVisionLab.ThreeDStudio.slnx --report artifacts\ci\nuget_package_health.txt --json-directory artifacts\ci\nuget-package-health
+
+      - name: Build
+        run: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
+
+      - name: Verify Library-Noah 3D package bridge
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-library-noah-3d --report artifacts\ci\library-noah-3d-package.txt
+
+      - name: Verify typed C3D Median Filter adapter
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-filter-adapter'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $golden = Join-Path $artifactDir 'golden.txt'
+          $output = Join-Path $artifactDir 'filtered.c3d'
+          $runnerReport = Join-Path $artifactDir 'runner.json'
+          $teachingReport = Join-Path $artifactDir 'teaching.txt'
+          $screenshot = Join-Path $artifactDir 'published.png'
+          $quality = Join-Path $artifactDir 'published-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-filter --report $golden
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Median Filter Golden verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --tool-teaching-filter recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.filter.01 --output-c3d $output --report $runnerReport
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Median Filter Runner execution failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-tool-recipe-teaching $teachingReport
+          if ($LASTEXITCODE -ne 0) { throw 'Tool Recipe teaching verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --tool-teaching-recipe recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.filter.01 --smoke-tool-filter-publish --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $quality
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Median Filter Workbench Preview/Publish smoke failed.' }
+          if (-not ((Get-Content $golden -Raw).Contains('C3DMedianFilterGoldenVerification|Pass|cases=13|passed=13|failed=0'))) { throw 'Filter Golden report is incomplete.' }
+          if (-not ((Get-Content $runnerReport -Raw).Contains('569436F1ED6DCB656862935A738FAB691D156BD7FBE1071962FB8DA290E400C6'))) { throw 'Filter Runner output SHA-256 changed.' }
+          if (-not ((Get-Content $quality -Raw).Contains('ShellScreenshotResult|accepted=True'))) { throw 'Filter Workbench screenshot quality was not accepted.' }
+
+      - name: Verify typed C3D Height Difference Edge adapter
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-height-difference-edge'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $golden = Join-Path $artifactDir 'golden.txt'
+          $workbench = Join-Path $artifactDir 'workbench.txt'
+          $screenshot = Join-Path $artifactDir 'preview.png'
+          $quality = Join-Path $artifactDir 'preview-quality.txt'
+          $smokeReport = Join-Path $artifactDir 'smoke-only.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-edge --report $golden
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Height Difference Edge Golden/Runner verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-tool-edge-workbench $workbench
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Height Difference Edge Workbench verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --tool-teaching-recipe recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.edge.ul.horizontal.01 --smoke-tool-edge-preview --smoke-tool-edge-report $smokeReport --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $quality
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Height Difference Edge Workbench Preview smoke failed.' }
+          if (-not ((Get-Content $golden -Raw).Contains('C3DHeightDifferenceEdgeGoldenVerification|Pass|cases=13|passed=13|failed=0'))) { throw 'Height Difference Edge Golden report is incomplete.' }
+          if (-not ((Get-Content $workbench -Raw).Contains('Workbench and headless share exact output hash'))) { throw 'Height Difference Edge Workbench/headless parity evidence is missing.' }
+          if (-not ((Get-Content $smokeReport -Raw).Contains('points=135'))) { throw 'Height Difference Edge smoke-only actual-source point evidence changed.' }
+          if (-not ((Get-Content $quality -Raw).Contains('ShellScreenshotResult|accepted=True'))) { throw 'Height Difference Edge Workbench screenshot quality was not accepted.' }
+
+      - name: Verify typed C3D Line Fit adapter
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-line-fit'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $golden = Join-Path $artifactDir 'golden.txt'
+          $workbench = Join-Path $artifactDir 'workbench.txt'
+          $edgeSmoke = Join-Path $artifactDir 'edge-smoke-only.txt'
+          $lineSmoke = Join-Path $artifactDir 'line-smoke-only.txt'
+          $screenshot = Join-Path $artifactDir 'preview.png'
+          $quality = Join-Path $artifactDir 'preview-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-line-fit --report $golden
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Fit Golden verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-tool-line-fit-workbench $workbench
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Fit Workbench verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --tool-teaching-recipe recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.edge.ul.horizontal.01 --smoke-tool-line-fit-preview --smoke-tool-edge-report $edgeSmoke --smoke-tool-line-fit-report $lineSmoke --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $quality
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Fit Workbench Preview smoke failed.' }
+          if (-not ((Get-Content $golden -Raw).Contains('C3DLineFitGoldenVerification|Pass|cases=9|passed=9|failed=0'))) { throw 'Line Fit Golden report is incomplete.' }
+          if (-not ((Get-Content $workbench -Raw).Contains('Workbench and headless share exact output hash'))) { throw 'Line Fit Workbench/headless parity evidence is missing.' }
+          if (-not ((Get-Content $lineSmoke -Raw).Contains('points=135|inliers=135|outliers=0'))) { throw 'Line Fit smoke-only actual-source inlier evidence changed.' }
+          if (-not ((Get-Content $lineSmoke -Raw).Contains('plotPoints=135'))) { throw 'Line Fit residual-plot evidence is missing.' }
+          if (-not ((Get-Content $quality -Raw).Contains('ShellScreenshotResult|accepted=True'))) { throw 'Line Fit Workbench screenshot quality was not accepted.' }
+
+      - name: Verify typed C3D Line Intersection adapter
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-line-intersection'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $golden = Join-Path $artifactDir 'golden.txt'
+          $workbench = Join-Path $artifactDir 'workbench.txt'
+          $toolLab = Join-Path $artifactDir 'tool-lab.png'
+          $quality = Join-Path $artifactDir 'tool-lab-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-line-intersection --report $golden
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Intersection Golden verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-tool-line-intersection-workbench $workbench
+          if ($LASTEXITCODE -ne 0) { throw 'C3D Line Intersection Workbench verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --tool-teaching-recipe recipes\c3d-xyz-affine-teaching-template.ov3d-teach.json --tool-teaching-step step.corner.ul.01 --line-intersection-tool-lab-screenshot $toolLab --line-intersection-tool-lab-screenshot-quality-report $quality
+          if ($LASTEXITCODE -ne 0) { throw 'Line Intersection Tool Lab screenshot smoke failed.' }
+          if (-not ((Get-Content $golden -Raw).Contains('C3DLineIntersectionGoldenVerification|Pass|cases=9|passed=9|failed=0'))) { throw 'Line Intersection Golden report is incomplete.' }
+          if (-not ((Get-Content $workbench -Raw).Contains('Workbench and headless share exact output hash'))) { throw 'Line Intersection Workbench/headless parity evidence is missing.' }
+          if (-not ((Get-Content $quality -Raw).Contains('LineIntersectionToolLabScreenshotResult|accepted=True'))) { throw 'Line Intersection Tool Lab screenshot quality was not accepted.' }
+
+      - name: Verify binary-only Viewer host
+        shell: pwsh
+        timeout-minutes: 5
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1 -Configuration Release -ArtifactDirectory artifacts\ci\viewer-dll-host
+
+      - name: Verify hosted Viewer and Shell screenshot quality
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\shell-screenshot-quality'
+          $viewerScreenshot = Join-Path $artifactDir 'viewer-c3d.png'
+          $viewerQualityReport = Join-Path $artifactDir 'viewer-c3d-quality.txt'
+          $viewerContract = Join-Path $artifactDir 'viewer-c3d-contract.txt'
+          $shellScreenshot = Join-Path $artifactDir 'shell-c3d.png'
+          $shellQualityReport = Join-Path $artifactDir 'shell-c3d-quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --smoke-screenshot $viewerScreenshot --smoke-screenshot-quality-report $viewerQualityReport --smoke-contracts $viewerContract --shell-smoke-screenshot $shellScreenshot --shell-screenshot-quality-report $shellQualityReport --smoke-c3d thickness --smoke-pick c3d
+          if ($LASTEXITCODE -ne 0) { throw "Hosted Viewer/Shell screenshot smoke failed with exit code $LASTEXITCODE." }
+          $viewerQuality = Get-Content $viewerQualityReport
+          $shellQuality = Get-Content $shellQualityReport
+          if (-not ($viewerQuality -match 'ViewerScreenshotResult\|accepted=True')) { throw 'Hosted Viewer screenshot quality was not accepted.' }
+          if (-not ($shellQuality -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell screenshot quality was not accepted.' }
+          if (-not ((Get-Content $viewerContract) -match 'C3DMap\|loaded=True')) { throw 'Hosted Viewer contract did not record the C3D map.' }
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Hosted Viewer and Shell screenshot quality`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $viewerQuality
+            Add-Content $env:GITHUB_STEP_SUMMARY $shellQuality
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
+      - name: Verify C3D grayscale and thermal color maps
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $artifactDir = 'artifacts\ci\c3d-color-maps'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $cases = @(
+            @{ Name = 'grayscale'; Label = 'Grayscale'; Action = 'color-grayscale' },
+            @{ Name = 'thermal'; Label = 'Thermal'; Action = 'color-thermal' }
+          )
+          $summary = New-Object System.Collections.Generic.List[string]
+          $imageHashes = New-Object System.Collections.Generic.List[string]
+          foreach ($case in $cases) {
+            $screenshot = Join-Path $artifactDir "$($case.Name).png"
+            $qualityReport = Join-Path $artifactDir "$($case.Name)-quality.txt"
+            $contract = Join-Path $artifactDir "$($case.Name)-contract.txt"
+            $dotnetArguments = @(
+              'run', '--project', 'src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj',
+              '-c', 'Debug', '--no-build', '--',
+              '--smoke-screenshot', $screenshot,
+              '--smoke-screenshot-quality-report', $qualityReport,
+              '--smoke-contracts', $contract,
+              '--smoke-c3d', 'thickness',
+              '--smoke-action', $case.Action
+            )
+            if ($case.Name -eq 'grayscale') {
+              $dotnetArguments += @(
+                '--verify-display-viewmodel',
+                (Join-Path $artifactDir 'display-viewmodel-verification.txt')
+              )
+            }
+
+            & dotnet @dotnetArguments
+            if ($LASTEXITCODE -ne 0) {
+              throw "$($case.Label) color-map smoke failed with exit code $LASTEXITCODE."
+            }
+
+            $quality = Get-Content $qualityReport -Raw
+            if ($quality -notmatch 'ViewerScreenshotResult\|accepted=True') {
+              throw "$($case.Label) screenshot quality was not accepted."
+            }
+
+            $contractText = Get-Content $contract -Raw
+            $requiredContractText = @(
+              "ColorMode|mode=$($case.Label)",
+              "colorMapId=$($case.Label)|colorMap=$($case.Label)",
+              'C3DHeightDistribution|visible=True|overlayVisible=True',
+              'availableColorMaps=Solid,Grayscale,Height,Thermal',
+              'fallbackApplied=False',
+              'C3DMap|loaded=True',
+              'renderCacheReady=True'
+            )
+            foreach ($required in $requiredContractText) {
+              if (-not $contractText.Contains($required)) {
+                throw "$($case.Label) contract is missing: $required"
+              }
+            }
+
+            $hash = (Get-FileHash -LiteralPath $screenshot -Algorithm SHA256).Hash
+            $imageHashes.Add($hash)
+            $summary.Add("ColorMap|name=$($case.Label)|quality=True|contract=True|sha256=$hash")
+          }
+
+          if ($imageHashes[0] -eq $imageHashes[1]) {
+            throw 'Grayscale and Thermal screenshots are byte-identical.'
+          }
+
+          $verification = Get-Content (Join-Path $artifactDir 'display-viewmodel-verification.txt') -Raw
+          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (82 checks)')) {
+            throw 'Display-settings ViewModel verification did not pass 82 checks.'
+          }
+
+          $distributionReport = Join-Path $artifactDir 'height-distribution-verification.txt'
+          & dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-c3d-height-distribution $distributionReport
+          if ($LASTEXITCODE -ne 0) {
+            throw "C3D height-distribution verification failed with exit code $LASTEXITCODE."
+          }
+
+          $distributionVerification = Get-Content $distributionReport -Raw
+          if (-not $distributionVerification.Contains('C3D height-distribution verification: Pass (20 checks)')) {
+            throw 'C3D height-distribution verification did not pass 20 checks.'
+          }
+
+          $summary.Add('DisplayViewModel|pass=True|checks=82')
+          $summary.Add('HeightDistribution|pass=True|checks=20|bins=32|scope=full-source')
+          $summary.Add('Gate|mandatory=True|scope=C3D Grayscale and Thermal display-only color maps')
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## C3D color-map gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
+      - name: Verify GLB and STL geometry styles
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\imported-mesh-geometry-styles'
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-imported-mesh-geometry-styles.ps1 -Configuration Debug -ArtifactDirectory $artifactDir -SkipBuild
+          if ($LASTEXITCODE -ne 0) {
+            throw "Imported-mesh Geometry Style verification failed with exit code $LASTEXITCODE."
+          }
+
+          $summaryPath = Join-Path $artifactDir 'summary.txt'
+          if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+            throw 'Imported-mesh Geometry Style summary was not created.'
+          }
+
+          $summary = Get-Content -LiteralPath $summaryPath -Raw
+          if (-not $summary.Contains('Imported-mesh Geometry Style verification: PASS (15/15 checks passed)')) {
+            throw 'Imported-mesh Geometry Style summary did not record 15/15 passing checks.'
+          }
+
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Imported-mesh Geometry Style gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
+      - name: Verify WPF pointer input
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $artifactDir = 'artifacts\ci\pointer-input-observation'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $viewerReport = Join-Path $artifactDir 'viewer-pointer.txt'
+          $shellReport = Join-Path $artifactDir 'shell-pointer.txt'
+          dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot (Join-Path $artifactDir 'viewer.png') --smoke-screenshot-quality-report (Join-Path $artifactDir 'viewer-quality.txt') --smoke-contracts (Join-Path $artifactDir 'viewer-contract.txt') --smoke-pointer-input-report $viewerReport
+          $viewerExitCode = $LASTEXITCODE
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --shell-smoke-screenshot (Join-Path $artifactDir 'shell.png') --shell-screenshot-quality-report (Join-Path $artifactDir 'shell-quality.txt') --smoke-pointer-input-report $shellReport
+          $shellExitCode = $LASTEXITCODE
+          $viewerReportExists = Test-Path $viewerReport
+          $shellReportExists = Test-Path $shellReport
+          $viewerPassed = $viewerReportExists -and ((Get-Content $viewerReport -Raw) -match 'Result\|pass=True')
+          $shellPassed = $shellReportExists -and ((Get-Content $shellReport -Raw) -match 'Result\|pass=True')
+          $summary = @(
+            'PointerInputObservation'
+            "Viewer|exitCode=$viewerExitCode|report=$viewerReportExists|pass=$viewerPassed"
+            "Shell|exitCode=$shellExitCode|report=$shellReportExists|pass=$shellPassed"
+            'Gate|mandatory=True|reason=Viewer and Shell foreground input passed Windows Actions observation'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## WPF pointer input gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+          if (-not $viewerPassed -or -not $shellPassed) {
+            throw "WPF pointer input failed. Viewer exit=$viewerExitCode pass=$viewerPassed; Shell exit=$shellExitCode pass=$shellPassed."
+          }
+
+      - name: Verify Phase 2 difficult-geometry goldens
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $artifactDir = 'artifacts\ci\phase2-difficult-geometry'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $meshReport = Join-Path $artifactDir 'mesh_deviation_golden.txt'
+          $nominalActualReport = Join-Path $artifactDir 'nominal_actual_golden.txt'
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-mesh-deviation --report $meshReport
+          if ($LASTEXITCODE -ne 0) {
+            throw "Phase 2 mesh-deviation golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-nominal-actual-comparison --report $nominalActualReport
+          if ($LASTEXITCODE -ne 0) {
+            throw "Phase 2 nominal/actual golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          $mesh = Get-Content -LiteralPath $meshReport -Raw
+          $requiredMeshEvidence = @(
+            'MeshDeviationGoldenVerification|Pass|cases=23|passed=23|failed=0',
+            'openSurfaceSign=oriented-local-normal-not-solid-inside-outside',
+            'Case|stream-reader-nonfinite-normal|Pass|',
+            'Case|duplicate-vertices-deterministic-tie|Pass|',
+            'Case|open-surface-local-normal-contract|Pass|',
+            'Case|edge-sign-is-explicitly-unresolved|Pass|',
+            'Case|edge-sign-robustly-resolved|Pass|',
+            'Case|vertex-sign-is-explicitly-unresolved|Pass|',
+            'Case|vertex-sign-robustly-resolved|Pass|',
+            'Case|empty-mesh-no-correspondence-rejected|Pass|'
+          )
+          foreach ($required in $requiredMeshEvidence) {
+            if (-not $mesh.Contains($required)) {
+              throw "Mesh-deviation report is missing required evidence: $required"
+            }
+          }
+
+          $nominalActual = Get-Content -LiteralPath $nominalActualReport -Raw
+          $requiredNominalActualEvidence = @(
+            'NominalActualComparisonVerification|Pass|cases=29|passed=29|failed=0',
+            'sampling=full-query|displaySampling=independent',
+            'Case|sparse-dense-full-query-outcomes|Pass|',
+            'Case|empty-query-no-correspondence-rejected|Pass|'
+          )
+          foreach ($required in $requiredNominalActualEvidence) {
+            if (-not $nominalActual.Contains($required)) {
+              throw "Nominal/actual report is missing required evidence: $required"
+            }
+          }
+
+          $summary = @(
+            'Phase2DifficultGeometry',
+            'MeshDeviation|pass=True|cases=23|report=mesh_deviation_golden.txt',
+            'NominalActual|pass=True|cases=29|report=nominal_actual_golden.txt',
+            'Gate|mandatory=True|scope=synthetic controlled outcomes; registration acceptance excluded'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Phase 2 difficult-geometry gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
+      - name: Verify registration acceptance contract
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          $artifactDir = 'artifacts\ci\registration-acceptance'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          $reportPath = Join-Path $artifactDir 'registration_acceptance_golden.txt'
+
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-registration-acceptance --report $reportPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "Registration acceptance golden verification failed with exit code $LASTEXITCODE."
+          }
+
+          $report = Get-Content -LiteralPath $reportPath -Raw
+          $requiredEvidence = @(
+            'RegistrationAcceptanceGoldenVerification|Pass|cases=20|passed=20|failed=0',
+            'Contract|order=CorrespondenceCount -> Fitness -> InlierRmse -> RigidTransform -> Translation -> Rotation|transform=row-major-float64-4x4|unit=explicit|thresholds=scenario-specific',
+            'FalseSuccessGuard|zeroCorrespondences=True|rmseZeroAccepted=False|fitnessCheckedBeforeRmse=True',
+            'Case|zero-correspondence-rmse-zero-rejected|Pass|',
+            'Case|minimum-correspondence-before-fitness|Pass|',
+            'Case|fitness-before-rmse|Pass|',
+            'Case|rmse-after-guards|Pass|',
+            'Case|nonhomogeneous-transform-rejected|Pass|',
+            'Case|scaled-transform-rejected|Pass|',
+            'Case|reflected-transform-rejected|Pass|',
+            'Case|translation-limit-rejected|Pass|',
+            'Case|rotation-limit-rejected|Pass|',
+            'Case|nonfinite-transform-rejected|Pass|',
+            'Case|unit-mismatch-rejected|Pass|',
+            'Case|invalid-policy-guards-rejected|Pass|'
+          )
+          foreach ($required in $requiredEvidence) {
+            if (-not $report.Contains($required)) {
+              throw "Registration acceptance report is missing required evidence: $required"
+            }
+          }
+
+          $summary = @(
+            'RegistrationAcceptance',
+            'Golden|pass=True|cases=20|report=registration_acceptance_golden.txt',
+            'Order|correspondence-count -> fitness -> RMSE -> rigid-transform -> translation -> rotation',
+            'FalseSuccessGuard|zero-correspondence-rmse-zero=Rejected',
+            'Gate|mandatory=True|scope=runtime-neutral policy; product runtime integration excluded'
+          )
+          $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Registration acceptance gate`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```text'
+            Add-Content $env:GITHUB_STEP_SUMMARY $summary
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
+
+      - name: Runner smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-height-deviation.recipe.json --report artifacts\ci\runner_c3d_height_rule.txt --expect-status Fail
+
+      - name: Runner plane flatness smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-plane-flatness.recipe.json --report artifacts\ci\runner_c3d_plane_flatness.txt --expect-status Fail
+
+      - name: Verify plane flatness golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-plane-flatness --report artifacts\ci\plane_flatness_golden.txt
+
+      - name: Verify Thickness Repeatability model golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability --report artifacts\ci\thickness_repeatability_golden.txt
+
+      - name: Verify aligned point repeatability model golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability --report artifacts\ci\aligned_point_repeatability_golden.txt
+
+      - name: Verify aligned point repeatability study loading and headless execution
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-aligned-point-repeatability-study --report artifacts\ci\aligned_point_repeatability_study_loader.txt
+
+      - name: Verify Thickness Repeatability study loading
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-thickness-repeatability-study --report artifacts\ci\thickness_repeatability_study_loader.txt
+
+      - name: Verify Calibration Center ViewModel workflow
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-calibration-viewmodel artifacts\ci\calibration_center_viewmodel.txt
+
+      - name: Runner point pair dimensions smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-point-pair-dimensions.recipe.json --report artifacts\ci\runner_c3d_point_pair_dimensions.txt --expect-status Pass
+
+      - name: Verify point pair dimensions golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-point-pair-dimensions --report artifacts\ci\point_pair_dimensions_golden.txt
+
+      - name: Runner Gap Flush smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-gap-flush.recipe.json --report artifacts\ci\runner_c3d_gap_flush.txt --expect-status Pass
+
+      - name: Verify Gap Flush golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-gap-flush --report artifacts\ci\gap_flush_golden.txt
+
+      - name: Runner Volume smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-volume.recipe.json --report artifacts\ci\runner_c3d_volume.txt --expect-status Pass
+
+      - name: Verify Volume golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-volume --report artifacts\ci\volume_golden.txt
+
+      - name: Viewer Cross-section Dimensions smoke
+        shell: pwsh
+        run: |
+          $qualityReport = 'artifacts\ci\cross_section_viewer_quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug --no-build -- --smoke-screenshot artifacts\ci\cross_section_viewer.png --smoke-screenshot-quality-report $qualityReport --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json --smoke-publish-result --smoke-contracts artifacts\ci\cross_section_viewer.txt
+          if ($LASTEXITCODE -ne 0) { throw "Viewer Cross-section screenshot smoke failed with exit code $LASTEXITCODE." }
+          $quality = Get-Content $qualityReport
+          if (-not ($quality -match 'ViewerScreenshotResult\|accepted=True')) { throw 'Viewer Cross-section screenshot quality was not accepted.' }
+
+      - name: Runner Cross-section Dimensions smoke
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --recipe recipes\c3d-cross-section-dimensions.recipe.json --report artifacts\ci\runner_c3d_cross_section_dimensions.txt --expect-status Pass --compare-contract artifacts\ci\cross_section_viewer.txt --viewer-screenshot artifacts\ci\cross_section_viewer.png --run-record artifacts\ci\cross_section_run.json --html-report artifacts\ci\cross_section_report.html --csv-report artifacts\ci\cross_section_metrics.csv
+
+      - name: Verify durable run bundle
+        shell: pwsh
+        run: |
+          [xml]$buildProperties = Get-Content Directory.Build.props -Raw
+          $productVersion = [string]$buildProperties.Project.PropertyGroup.OpenVisionLabProductVersion
+          $hostApiVersion = [string]$buildProperties.Project.PropertyGroup.OpenVisionLabViewerHostApiVersion
+          if ([string]$buildProperties.Project.PropertyGroup.Version -ne $productVersion) { throw 'Central product versions do not match.' }
+          $manifest = Get-Content artifacts\ci\viewer-dll-host\viewer-dll-manifest.json -Raw | ConvertFrom-Json
+          $record = Get-Content artifacts\ci\cross_section_run.json -Raw | ConvertFrom-Json
+          $recipePath = 'recipes\c3d-cross-section-dimensions.recipe.json'
+          $recipeBytes = [System.IO.File]::ReadAllBytes($recipePath)
+          if ($recipeBytes -contains [byte]13) { throw 'Tracked recipe JSON must use LF line endings for stable raw provenance hashes.' }
+          $recipeHash = (Get-FileHash $recipePath -Algorithm SHA256).Hash
+          if ($record.Recipe.Sha256 -ne $recipeHash) { throw 'Run record recipe hash does not match the executed recipe bytes.' }
+          if ($manifest.schemaVersion -ne '1.0' -or $manifest.applicationVersion -ne $productVersion -or $manifest.viewerHostApiVersion -ne $hostApiVersion) { throw 'Viewer manifest version contract mismatch.' }
+          if ($record.SchemaVersion -ne '1.2' -or $record.Status -ne 'Pass') { throw 'Run record identity or status mismatch.' }
+          if ($record.Step.Id -ne 'step.c3d-cross-section-dimensions' -or $record.Step.SourceEntityId -ne 'source.c3d-thickness') { throw 'Run record step identity mismatch.' }
+          if (@($record.Step.ReferenceIds).Count -ne 1 -or $record.Step.ReferenceIds[0] -ne 'reference.c3d-row-range' -or @($record.Step.MeasurementIds).Count -ne 0) { throw 'Run record step references mismatch.' }
+          if ($record.ExecutionEnvironment.ApplicationVersion -ne $productVersion -or $record.ExecutionEnvironment.ViewerHostApiVersion -ne $hostApiVersion) { throw 'Run record version contract mismatch.' }
+          if ($record.Metrics.Count -ne 5 -or $record.Overlays.Count -ne 3) { throw 'Run record result evidence mismatch.' }
+          if ($record.Recipe.Sha256.Length -ne 64 -or $record.Source.Sha256.Length -ne 64) { throw 'Run record provenance hash mismatch.' }
+          if ($record.ExecutionEnvironment.ApplicationVersion -eq 'unknown' -or $record.ExecutionEnvironment.ViewerHostApiVersion -eq 'unknown') { throw 'Run record application identity is missing.' }
+          if ($record.ExecutionEnvironment.GitCommit -ne $env:GITHUB_SHA -or $record.ExecutionEnvironment.GitWorkingTree -ne 'clean') { throw 'Run record Git identity mismatch.' }
+          if ($record.ExecutionEnvironment.DotNetRuntime -notlike '.NET 10.*' -or $record.ExecutionEnvironment.ProcessArchitecture -eq 'unknown') { throw 'Run record runtime identity is missing.' }
+          if ($record.ViewerRunnerMatchState -ne 'Matched') { throw 'Run record Viewer/Runner comparison did not match.' }
+          if (-not (Test-Path $record.Artifacts.ViewerContract) -or -not (Test-Path $record.Artifacts.ViewerScreenshot)) { throw 'Run record Viewer evidence is missing.' }
+          if (-not (Test-Path artifacts\ci\cross_section_report.html) -or -not (Test-Path artifacts\ci\cross_section_metrics.csv)) { throw 'Run report artifact is missing.' }
+          if ((Get-Content artifacts\ci\cross_section_report.html -Raw) -notlike '*step.c3d-cross-section-dimensions*') { throw 'HTML report step identity is missing.' }
+          $csvRows = @(Import-Csv artifacts\ci\cross_section_metrics.csv)
+          $csvStepIds = @($csvRows.stepId | Select-Object -Unique)
+          $csvReferenceIds = @($csvRows.stepReferenceIds | Select-Object -Unique)
+          if ($csvRows.Count -ne 5 -or $csvStepIds.Count -ne 1 -or $csvStepIds[0] -ne 'step.c3d-cross-section-dimensions' -or $csvReferenceIds.Count -ne 1 -or $csvReferenceIds[0] -ne 'reference.c3d-row-range') { throw 'CSV report step identity mismatch.' }
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content $env:GITHUB_STEP_SUMMARY "## Release identity`n"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Product: ``$productVersion``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer Host API: ``$hostApiVersion``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer manifest schema: ``$($manifest.schemaVersion)``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Run Record schema: ``$($record.SchemaVersion)``"
+            Add-Content $env:GITHUB_STEP_SUMMARY "- Viewer/Runner: ``$($record.ViewerRunnerMatchState)``"
+          }
+
+      - name: Verify Shell Run Record 1.2 compatibility
+        shell: pwsh
+        run: |
+          $screenshot = 'artifacts\ci\shell_run_record_1_2.png'
+          $qualityReport = 'artifacts\ci\shell_run_record_1_2_quality.txt'
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --run-record artifacts\ci\cross_section_run.json --shell-smoke-screenshot $screenshot --shell-screenshot-quality-report $qualityReport --shell-evidence-tab run-record --smoke-recipe recipes\c3d-cross-section-dimensions.recipe.json
+          if ($LASTEXITCODE -ne 0) { throw "Shell Run Record 1.2 smoke failed with exit code $LASTEXITCODE." }
+          if (-not ((Get-Content $qualityReport) -match 'ShellScreenshotResult\|accepted=True')) { throw 'Shell Run Record 1.2 screenshot quality was not accepted.' }
+
+      - name: Verify Cross-section Dimensions golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-cross-section --report artifacts\ci\cross_section_dimensions_golden.txt
+
+      - name: Verify C3D map fidelity golden cases
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-map-fidelity --report artifacts\ci\c3d_map_fidelity_golden.txt
+
+      - name: Verify actual C3D viewer-frame roundtrip
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --c3d-map-probe 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_actual.txt --max-sampled-points 140000 --point-only
+
+      - name: Verify C3D map with independent Python implementation
+        run: python scripts\verify-c3d-map-ply.py --source 3D\SyntheticValidation\ThicknessCouponV1\synthetic-thickness-coupon-v1.C3D --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_fidelity_python.txt --max-sampled-points 140000 --first-cell 198,198 --second-cell 198,468
+
+      - name: Generate PLY coordinate signature
+        run: python scripts\ply-coordinate-signature.py --ply artifacts\ci\c3d_map_reference.ply --report artifacts\ci\c3d_map_reference_signature.txt
+
+      - name: Upload CI artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: openvisionlab-3d-ci-artifacts
+          path: artifacts/ci/**
+          if-no-files-found: ignore

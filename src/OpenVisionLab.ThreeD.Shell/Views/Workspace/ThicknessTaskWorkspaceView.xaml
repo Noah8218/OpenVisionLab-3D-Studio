@@ -1,0 +1,492 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workspace.ThicknessTaskWorkspaceView"
+             x:Name="TaskWorkspaceRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workspace">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="ThicknessTeachPanelStyle" TargetType="{x:Type StackPanel}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.IsTeachWorkspaceSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsThicknessTaskSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ThicknessInspectPanelStyle" TargetType="{x:Type StackPanel}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.IsInspectWorkspaceSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsThicknessTaskSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WarpageTeachPanelStyle" TargetType="{x:Type StackPanel}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.IsTeachWorkspaceSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsWarpageTaskSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WarpageInspectPanelStyle" TargetType="{x:Type StackPanel}">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding DataContext.IsInspectWorkspaceSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                        <Condition Binding="{Binding DataContext.IsWarpageTaskSelected, ElementName=TaskWorkspaceRoot}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Visibility" Value="Visible" />
+                </MultiDataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#f3f4f6">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="286" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="304" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                Margin="10"
+                Padding="14"
+                Background="#ffffff"
+                BorderBrush="#d1d5db"
+                BorderThickness="1"
+                CornerRadius="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <StackPanel Visibility="{Binding DataContext.IsTaskWorkspaceSelected, ElementName=TaskWorkspaceRoot, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock FontWeight="SemiBold" Text="Inspection task" />
+                        <RadioButton Margin="0,7,0,0"
+                                     Content="Thickness"
+                                     GroupName="InspectionTask"
+                                     IsChecked="{Binding DataContext.IsThicknessTaskSelected, ElementName=TaskWorkspaceRoot, Mode=TwoWay}" />
+                        <RadioButton Margin="0,4,0,0"
+                                     Content="Warpage"
+                                     GroupName="InspectionTask"
+                                     IsChecked="{Binding DataContext.IsWarpageTaskSelected, ElementName=TaskWorkspaceRoot, Mode=TwoWay}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="#6b7280"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Text="Task changes load that task's explicit local recipe." />
+                        <Separator Margin="0,13,0,2" />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource ThicknessTeachPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Thickness Teach" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Choose the thickness ROI and acceptance limits. This slice stays in the declared raw-height frame." />
+
+                        <TextBlock Margin="0,18,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Source and frame" />
+                        <TextBlock TextWrapping="Wrap"
+                                   Text="{Binding RecipeSourceName}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding RecipeSourcePath}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   Text="{Binding RecipeSourceUnit, StringFormat=Unit: {0}}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   Text="{Binding ThicknessFrameId, StringFormat=Frame: {0}}" />
+
+                        <TextBlock Margin="0,18,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Thickness ROI" />
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                                <TextBox Text="{Binding ThicknessRoiRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Column" />
+                                <TextBox Text="{Binding ThicknessRoiColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Rows" />
+                                <TextBox Text="{Binding ThicknessRoiRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Columns" />
+                                <TextBox Text="{Binding ThicknessRoiColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Margin="0,10,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Acceptance" />
+                        <UniformGrid Columns="3">
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Lower" />
+                                <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Upper" />
+                                <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Min samples" />
+                                <TextBox Text="{Binding ThicknessMinimumValidSamples, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button Margin="0,0,7,7"
+                                    Content="Teach ROI"
+                                    Command="{Binding TeachThicknessRoiCommand}" />
+                            <Button Margin="0,0,0,7"
+                                    Content="Preview Thickness"
+                                    Command="{Binding PreviewThicknessCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource ThicknessInspectPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Thickness Inspect" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Run Preview explicitly, review the overlay and status, then publish the accepted result." />
+                        <TextBlock Margin="0,18,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Selected step" />
+                        <TextBlock Text="Thickness / C3D grid ROI" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ThicknessSummary}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ThicknessDetails}" />
+                        <Button Margin="0,18,0,7"
+                                Content="Preview Thickness"
+                                Command="{Binding PreviewThicknessCommand}" />
+                        <Button Content="Publish Result"
+                                Command="{Binding DataContext.PublishInspectionResultCommand, ElementName=TaskWorkspaceRoot}" />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource WarpageTeachPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Warpage Teach" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Teach one inspection ROI, fit one best-fit surface, and accept its residual peak-to-valley in the declared raw-height frame." />
+
+                        <Expander Margin="0,12,0,0" Header="Source and frame">
+                            <StackPanel Margin="0,5,0,0">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="{Binding RecipeSourceName}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding RecipeSourcePath}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           Text="{Binding WarpageUnit, StringFormat=Unit: {0}}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="#6b7280"
+                                           Text="{Binding WarpageFrameId, StringFormat=Frame: {0}}" />
+                            </StackPanel>
+                        </Expander>
+
+                        <TextBlock Margin="0,12,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Best-fit inspection ROI" />
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Row" />
+                                <TextBox Text="{Binding WarpageRoiRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Column" />
+                                <TextBox Text="{Binding WarpageRoiColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Rows" />
+                                <TextBox Text="{Binding WarpageRoiRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Columns" />
+                                <TextBox Text="{Binding WarpageRoiColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Margin="0,10,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Acceptance" />
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,7,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Maximum P2V" />
+                                <TextBox Text="{Binding WarpageMaximumPeakToValley, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,7">
+                                <TextBlock FontSize="11" Foreground="#6b7280" Text="Min samples" />
+                                <TextBox Text="{Binding WarpageMinimumValidSamples, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button Margin="0,0,7,7"
+                                    Content="Teach ROI"
+                                    Command="{Binding TeachWarpageRoiCommand}" />
+                            <Button Margin="0,0,0,7"
+                                    Content="Preview Warpage"
+                                    Command="{Binding PreviewWarpageCommand}" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,7,0,0"
+                                   Foreground="#6b7280"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Text="This is an uncalibrated best-fit residual check. It does not establish physical Warpage or GD&amp;T evidence." />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource WarpageInspectPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Warpage Inspect" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Run Preview explicitly, review best-fit residual P2V and RMS, then publish the accepted result." />
+                        <TextBlock Margin="0,18,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Selected step" />
+                        <TextBlock Text="Warpage / C3D best-fit ROI residual" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding WarpageSummary}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding WarpageDetails}" />
+                        <Button Margin="0,18,0,7"
+                                Content="Preview Warpage"
+                                Command="{Binding PreviewWarpageCommand}" />
+                        <Button Content="Publish Result"
+                                Command="{Binding DataContext.PublishInspectionResultCommand, ElementName=TaskWorkspaceRoot}" />
+                    </StackPanel>
+
+                    <StackPanel Visibility="{Binding DataContext.IsReviewWorkspaceSelected, ElementName=TaskWorkspaceRoot, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Result Review" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Published evidence is read-only here. Return to Teach or Inspect from the workspace navigation to edit a recipe." />
+                        <StackPanel Margin="0,18,0,0"
+                                    DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Current published state" />
+                            <TextBlock Margin="0,5,0,0"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding ViewerStatus}" />
+                        </StackPanel>
+                        <Separator Margin="0,14,0,12" />
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Runner and report evidence" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="This task view does not infer a Runner replay or report. Open Expert only when explicit run evidence is available." />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Column="1"
+                Margin="0,10"
+                Background="#111827"
+                BorderBrush="#d1d5db"
+                BorderThickness="1"
+                CornerRadius="4">
+            <ContentPresenter Content="{Binding ViewerContent, ElementName=TaskWorkspaceRoot}" />
+        </Border>
+
+        <Border Grid.Column="2"
+                Margin="0,10,10,10"
+                Padding="14"
+                Background="#ffffff"
+                BorderBrush="#d1d5db"
+                BorderThickness="1"
+                CornerRadius="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource ThicknessTeachPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Teach validation" />
+                        <TextBlock Margin="0,12,0,0"
+                                   Text="{Binding ThicknessConfigured, StringFormat=ROI configured: {0}}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ThicknessSummary}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ThicknessDetails}" />
+                        <Separator Margin="0,14,0,12" />
+                        <TextBlock FontWeight="SemiBold" Text="Recipe" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding RecipeSummary}" />
+                        <Button Margin="0,12,0,0"
+                                Content="Save Recipe"
+                                Command="{Binding DataContext.SaveRecipeCommand, ElementName=TaskWorkspaceRoot}" />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource ThicknessInspectPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Current result" />
+                        <TextBlock Margin="0,12,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ResultSummary}" />
+                        <TextBlock Margin="0,7,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ViewerStatus}" />
+                        <Separator Margin="0,14,0,12" />
+                        <TextBlock FontWeight="SemiBold" Text="Publish rule" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Publishing uses only the current explicit Preview result and then opens Result Review." />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource WarpageTeachPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Teach validation" />
+                        <TextBlock Margin="0,12,0,0"
+                                   Text="{Binding WarpageConfigured, StringFormat=ROI configured: {0}}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding WarpageSummary}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding WarpageDetails}" />
+                        <Separator Margin="0,14,0,12" />
+                        <TextBlock FontWeight="SemiBold" Text="Recipe" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding RecipeSummary}" />
+                        <Button Margin="0,12,0,0"
+                                Content="Save Recipe"
+                                Command="{Binding DataContext.SaveRecipeCommand, ElementName=TaskWorkspaceRoot}" />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Style="{StaticResource WarpageInspectPanelStyle}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Current result" />
+                        <TextBlock Margin="0,12,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ResultSummary}" />
+                        <TextBlock Margin="0,7,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ViewerStatus}" />
+                        <Separator Margin="0,14,0,12" />
+                        <TextBlock FontWeight="SemiBold" Text="Publish rule" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="#6b7280"
+                                   TextWrapping="Wrap"
+                                   Text="Publishing uses only the current explicit Preview result and then opens Result Review." />
+                    </StackPanel>
+
+                    <StackPanel DataContext="{Binding ViewerViewModel, ElementName=TaskWorkspaceRoot}"
+                                Visibility="{Binding DataContext.IsReviewWorkspaceSelected, ElementName=TaskWorkspaceRoot, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="#111827"
+                                   Text="Published result" />
+                        <TextBlock Margin="0,12,0,0"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding PublishedResultSummary}" />
+                        <TextBlock Margin="0,12,0,5"
+                                   FontWeight="SemiBold"
+                                   Text="Published entities" />
+                        <ItemsControl ItemsSource="{Binding ResultEntities}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6"
+                                            Padding="8"
+                                            Background="#f9fafb"
+                                            BorderBrush="#d1d5db"
+                                            BorderThickness="1">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <TextBlock Margin="0,3,0,0"
+                                                       Text="{Binding Status}" />
+                                            <TextBlock Margin="0,3,0,0"
+                                                       Foreground="#6b7280"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding Message}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

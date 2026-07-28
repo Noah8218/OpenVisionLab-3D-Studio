@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.1-dev</Version>
+    <OpenVisionLabProductVersion>0.1.1-dev</OpenVisionLabProductVersion>
+    <OpenVisionLabViewerHostApiVersion>1.0</OpenVisionLabViewerHostApiVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="OpenVisionLabProductVersion" Value="$(OpenVisionLabProductVersion)" />
+    <AssemblyMetadata Include="OpenVisionLabViewerHostApiVersion" Value="$(OpenVisionLabViewerHostApiVersion)" />
+  </ItemGroup>
+</Project>

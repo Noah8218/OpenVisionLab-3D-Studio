@@ -1,0 +1,376 @@
+using System.Text.Json;
+using OpenVisionLab.ThreeD.Core;
+
+namespace OpenVisionLab.ThreeD.Tools;
+
+public sealed record HeightDeviationRecipe(
+    string RecipeType,
+    string Version,
+    HeightDeviationRecipeSource Source,
+    HeightDeviationRecipeRule Rule,
+    ModelTransform? Transform = null,
+    HeightDeviationRecipeRoiStep? RoiStep = null,
+    HeightDeviationRecipePlaneFlatness? PlaneFlatness = null,
+    HeightDeviationRecipeVolume? Volume = null,
+    HeightDeviationRecipeCrossSection? CrossSection = null)
+{
+    public const string SupportedRecipeType = "c3d-height-deviation";
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    public static HeightDeviationRecipe Load(string path)
+    {
+        using var stream = File.OpenRead(path);
+        var recipe = JsonSerializer.Deserialize<HeightDeviationRecipe>(stream, JsonOptions)
+            ?? throw new InvalidDataException($"Recipe is empty: {path}");
+
+        if (string.IsNullOrWhiteSpace(recipe.RecipeType)
+            || !recipe.RecipeType.Equals(SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException($"Unsupported recipe type: {recipe.RecipeType}");
+        }
+
+        if (recipe.Source is null)
+        {
+            throw new InvalidDataException("Recipe source is required.");
+        }
+
+        if (recipe.Rule is null)
+        {
+            throw new InvalidDataException("Recipe rule is required.");
+        }
+
+        if (recipe.Rule.PeakTolerance <= 0.0 || !double.IsFinite(recipe.Rule.PeakTolerance))
+        {
+            throw new InvalidDataException("Peak tolerance must be a positive finite value.");
+        }
+
+        if (string.IsNullOrWhiteSpace(recipe.Source.Path))
+        {
+            throw new InvalidDataException("Recipe source path is required.");
+        }
+
+        if (recipe.Transform is { } transform)
+        {
+            ValidateTransform(transform);
+        }
+
+        if (recipe.RoiStep is { } roiStep)
+        {
+            ValidateRoiStep(roiStep);
+        }
+
+        if (recipe.PlaneFlatness is { } planeFlatness)
+        {
+            ValidatePlaneFlatness(planeFlatness, recipe.Source.EntityId);
+        }
+
+        if (recipe.Volume is { } volume)
+        {
+            ValidateVolume(volume, recipe.Source.EntityId);
+        }
+
+        if (recipe.CrossSection is { } crossSection)
+        {
+            ValidateCrossSection(crossSection, recipe.Source.EntityId);
+        }
+
+        return recipe;
+    }
+
+    public void Save(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        using var stream = File.Create(path);
+        JsonSerializer.Serialize(stream, this, JsonOptions);
+    }
+
+    private static void ValidateTransform(ModelTransform transform)
+    {
+        if (!double.IsFinite(transform.TranslateX)
+            || !double.IsFinite(transform.TranslateY)
+            || !double.IsFinite(transform.TranslateZ)
+            || !double.IsFinite(transform.RotateXDegrees)
+            || !double.IsFinite(transform.RotateYDegrees)
+            || !double.IsFinite(transform.RotateZDegrees)
+            || !double.IsFinite(transform.Scale)
+            || transform.Scale <= 0.0)
+        {
+            throw new InvalidDataException("Recipe transform values must be finite and scale must be positive.");
+        }
+    }
+
+    private static void ValidateRoiStep(HeightDeviationRecipeRoiStep roiStep)
+    {
+        if (string.IsNullOrWhiteSpace(roiStep.Mode))
+        {
+            throw new InvalidDataException("ROI step mode is required.");
+        }
+
+        if (roiStep.MaxSampledPoints <= 0)
+        {
+            throw new InvalidDataException("ROI step max sampled points must be positive.");
+        }
+
+        ValidateRoiRegion(roiStep.Left, "left");
+        ValidateRoiRegion(roiStep.Right, "right");
+    }
+
+    private static void ValidatePlaneFlatness(HeightDeviationRecipePlaneFlatness step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id))
+        {
+            throw new InvalidDataException("Plane flatness step ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("Plane flatness source entity ID must match the recipe source entity ID.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.ReferenceId))
+        {
+            throw new InvalidDataException("Plane flatness reference ID is required.");
+        }
+
+        if (!double.IsFinite(step.Tolerance) || step.Tolerance <= 0.0)
+        {
+            throw new InvalidDataException("Plane flatness tolerance must be a positive finite value.");
+        }
+
+        if (string.IsNullOrWhiteSpace(step.Unit))
+        {
+            throw new InvalidDataException("Plane flatness unit is required.");
+        }
+
+        if (step.MaxSampledPoints < 3)
+        {
+            throw new InvalidDataException("Plane flatness max sampled points must be at least three.");
+        }
+
+        ValidateRoiRegion(step.ReferenceRegion, "reference-plane");
+    }
+
+    private static void ValidateVolume(HeightDeviationRecipeVolume step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id)
+            || string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(step.ReferenceId)
+            || string.IsNullOrWhiteSpace(step.MeasurementId)
+            || !double.IsFinite(step.ExpectedNetVolume)
+            || !double.IsFinite(step.Tolerance)
+            || step.Tolerance < 0.0
+            || string.IsNullOrWhiteSpace(step.Unit)
+            || step.MaxSampledPoints < 3)
+        {
+            throw new InvalidDataException("Volume step IDs, finite acceptance, units, and sample budget are required.");
+        }
+
+        ValidateRoiRegion(step.ReferenceRegion, "volume-reference");
+        ValidateRoiRegion(step.MeasurementRegion, "volume-measurement");
+    }
+
+    private static void ValidateCrossSection(HeightDeviationRecipeCrossSection step, string sourceEntityId)
+    {
+        if (string.IsNullOrWhiteSpace(step.Id)
+            || string.IsNullOrWhiteSpace(step.SourceEntityId)
+            || !step.SourceEntityId.Equals(sourceEntityId, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(step.ReferenceId)
+            || step.Row < 0
+            || step.StartColumn < 0
+            || step.EndColumn <= step.StartColumn
+            || !double.IsFinite(step.ExpectedWidth)
+            || !double.IsFinite(step.WidthTolerance)
+            || step.WidthTolerance < 0.0
+            || !double.IsFinite(step.ExpectedHeightRange)
+            || !double.IsFinite(step.HeightTolerance)
+            || step.HeightTolerance < 0.0
+            || string.IsNullOrWhiteSpace(step.WidthUnit)
+            || string.IsNullOrWhiteSpace(step.HeightUnit))
+        {
+            throw new InvalidDataException("Cross-section IDs, ordered source selectors, finite acceptance, and units are required.");
+        }
+    }
+
+    private static void ValidateRoiRegion(HeightDeviationRecipeRoiRegion? region, string name)
+    {
+        if (region is null)
+        {
+            throw new InvalidDataException($"ROI step {name} region is required.");
+        }
+
+        if (!double.IsFinite(region.CenterX)
+            || !double.IsFinite(region.CenterZ)
+            || !double.IsFinite(region.HalfWidth)
+            || !double.IsFinite(region.HalfDepth)
+            || region.HalfWidth <= 0.0
+            || region.HalfDepth <= 0.0)
+        {
+            throw new InvalidDataException($"ROI step {name} region values must be finite and half sizes must be positive.");
+        }
+    }
+}
+
+public sealed record HeightDeviationRecipeSource(
+    string EntityId,
+    string Name,
+    string Path,
+    string Unit);
+
+public sealed record HeightDeviationRecipeRule(double PeakTolerance);
+
+public sealed record HeightDeviationRecipeRoiStep(
+    string Mode,
+    HeightDeviationRecipeRoiRegion Left,
+    HeightDeviationRecipeRoiRegion Right,
+    int MaxSampledPoints);
+
+public sealed record HeightDeviationRecipeRoiRegion(
+    double CenterX,
+    double CenterZ,
+    double HalfWidth,
+    double HalfDepth);
+
+public sealed record HeightDeviationRecipePlaneFlatness(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    HeightDeviationRecipeRoiRegion ReferenceRegion,
+    double Tolerance,
+    string Unit,
+    int MaxSampledPoints,
+    bool Enabled = true);
+
+public sealed record HeightDeviationRecipeVolume(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    string MeasurementId,
+    HeightDeviationRecipeRoiRegion ReferenceRegion,
+    HeightDeviationRecipeRoiRegion MeasurementRegion,
+    double ExpectedNetVolume,
+    double Tolerance,
+    string Unit,
+    int MaxSampledPoints,
+    bool Enabled = true);
+
+public sealed record HeightDeviationRecipeCrossSection(
+    string Id,
+    string SourceEntityId,
+    string ReferenceId,
+    int Row,
+    int StartColumn,
+    int EndColumn,
+    double ExpectedWidth,
+    double WidthTolerance,
+    double ExpectedHeightRange,
+    double HeightTolerance,
+    string WidthUnit,
+    string HeightUnit,
+    bool Enabled = true);
+
+public sealed record LazTwoPointMeasurementRecipe(
+    string RecipeType,
+    string Version,
+    HeightDeviationRecipeSource Source,
+    LazTwoPointMeasurementRecipeMeasurement Measurement,
+    LazTwoPointMeasurementRecipeAcceptance Acceptance)
+{
+    public const string SupportedRecipeType = "laz-two-point-measurement";
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    public static LazTwoPointMeasurementRecipe Load(string path)
+    {
+        using var stream = File.OpenRead(path);
+        var recipe = JsonSerializer.Deserialize<LazTwoPointMeasurementRecipe>(stream, JsonOptions)
+            ?? throw new InvalidDataException($"Recipe is empty: {path}");
+
+        if (string.IsNullOrWhiteSpace(recipe.RecipeType)
+            || !recipe.RecipeType.Equals(SupportedRecipeType, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException($"Unsupported recipe type: {recipe.RecipeType}");
+        }
+
+        if (recipe.Source is null)
+        {
+            throw new InvalidDataException("Recipe source is required.");
+        }
+
+        if (recipe.Measurement is null)
+        {
+            throw new InvalidDataException("LAZ/LAS two-point measurement settings are required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(recipe.Source.Path))
+        {
+            throw new InvalidDataException("Recipe source path is required.");
+        }
+
+        if (!recipe.Measurement.Selection.Equals("sample-extreme-x", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException("LAZ/LAS two-point recipe currently supports only sample-extreme-x selection.");
+        }
+
+        if (recipe.Measurement.MaxSampledPoints <= 1)
+        {
+            throw new InvalidDataException("LAZ/LAS two-point max sampled points must be greater than one.");
+        }
+
+        if (string.IsNullOrWhiteSpace(recipe.Measurement.HeightUnit))
+        {
+            throw new InvalidDataException("LAZ/LAS two-point height unit is required.");
+        }
+
+        ValidateAcceptance(recipe.Acceptance);
+        return recipe;
+    }
+
+    public void Save(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        using var stream = File.Create(path);
+        JsonSerializer.Serialize(stream, this, JsonOptions);
+    }
+
+    private static void ValidateAcceptance(LazTwoPointMeasurementRecipeAcceptance? acceptance)
+    {
+        if (acceptance is null)
+        {
+            throw new InvalidDataException("LAZ/LAS two-point acceptance criteria are required.");
+        }
+
+        if (!double.IsFinite(acceptance.ExpectedDistance)
+            || !double.IsFinite(acceptance.DistanceTolerance)
+            || acceptance.DistanceTolerance < 0.0
+            || !double.IsFinite(acceptance.ExpectedHeightDelta)
+            || !double.IsFinite(acceptance.HeightDeltaTolerance)
+            || acceptance.HeightDeltaTolerance < 0.0)
+        {
+            throw new InvalidDataException("LAZ/LAS two-point acceptance values must be finite and tolerances must be non-negative.");
+        }
+    }
+}
+
+public sealed record LazTwoPointMeasurementRecipeMeasurement(
+    string Selection,
+    int MaxSampledPoints,
+    string HeightUnit);
+
+public sealed record LazTwoPointMeasurementRecipeAcceptance(
+    double ExpectedDistance,
+    double DistanceTolerance,
+    double ExpectedHeightDelta,
+    double HeightDeltaTolerance);

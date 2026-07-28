@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "1.4",
+  "name": "Synthetic Thickness Coupon v1 OrientedBox3D Demo",
+  "source": {
+    "id": "source.synthetic-thickness-coupon-v1",
+    "name": "Synthetic Thickness Coupon v1",
+    "format": "C3D",
+    "unit": "synthetic-height-unit",
+    "frameId": "frame.c3d-grid-index",
+    "path": "synthetic-thickness-coupon-v1.C3D",
+    "byteLength": 4300808,
+    "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+    "gridWidth": 1280,
+    "gridHeight": 840
+  },
+  "references": [],
+  "steps": [
+    {
+      "id": "step.oriented-box-authoring.01",
+      "toolId": "oriented-box-authoring",
+      "toolName": "3D Region Authoring",
+      "minimumInputCount": 1,
+      "inputEntityIds": [
+        "source.synthetic-thickness-coupon-v1"
+      ],
+      "outputEntityId": "derived.oriented-box-authoring.01",
+      "parameters": []
+    }
+  ],
+  "selections": [
+    {
+      "id": "selection.oriented-box.01",
+      "name": "Synthetic coupon review volume",
+      "kind": "oriented-box-3d",
+      "rootSourceId": "source.synthetic-thickness-coupon-v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "5D3625B1A5A65EF8BEAB366FF7A007918D28FB614136414BBD30A441E85C8937",
+        "gridWidth": 1280,
+        "gridHeight": 840
+      },
+      "orientedBox3D": {
+        "center": {
+          "x": 640,
+          "y": 110,
+          "z": 420
+        },
+        "axisX": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        },
+        "halfExtents": {
+          "x": 260,
+          "y": 24,
+          "z": 130
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,385 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.ToolRecipeWorkbenchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dock="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls;assembly=OpenVisionLab.ThreeD.Docking.Controls"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             AutomationProperties.AutomationId="ToolRecipeWorkbench">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    <UserControl.InputBindings>
+        <KeyBinding Key="N"
+                    Modifiers="Control"
+                    Command="{Binding Workbench.NewTeachingRecipeCommand}" />
+        <KeyBinding Key="O"
+                    Modifiers="Control"
+                    Command="{Binding Workbench.OpenTeachingRecipeCommand}" />
+        <KeyBinding Key="S"
+                    Modifiers="Control"
+                    Command="{Binding Workbench.SaveTeachingRecipeCommand}" />
+        <KeyBinding Key="S"
+                    Modifiers="Control+Shift"
+                    Command="{Binding Workbench.SaveTeachingRecipeAsCommand}" />
+        <KeyBinding Key="Escape"
+                    Command="{Binding Workbench.CancelTeachingSelectionCaptureCommand}" />
+        <KeyBinding Key="Enter"
+                    Command="{Binding Workbench.ApplyTeachingSelectionCaptureCommand}" />
+        <KeyBinding Key="O"
+                    Modifiers="Control+Shift"
+                    Command="{Binding Workbench.LoadC3DSourceCommand}" />
+        <KeyBinding Key="F5"
+                    Command="{Binding Workbench.PreviewSelectedStepCommand}" />
+        <KeyBinding Key="F5"
+                    Modifiers="Control"
+                    Command="{Binding Workbench.RunTeachingRecipeCommand}" />
+    </UserControl.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Border x:Name="WorkspaceCommandBar"
+                Padding="10,5"
+                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.05*" MinWidth="150" />
+                    <ColumnDefinition Width="1.35*" MinWidth="175" />
+                    <ColumnDefinition Width="1.05*" MinWidth="155" />
+                    <ColumnDefinition Width="1.15*" MinWidth="170" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.RecipeNameLabel}" />
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Text="{Binding Workbench.RecipeName}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Workbench.RecipePathSummary}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.SourceLabel}" />
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="10.5"
+                               Text="{Binding Workbench.LocalizedSourceReadinessSummary}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Workbench.Source.Path}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.RecipeStatusLabel}" />
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="10.5"
+                               Text="{Binding Workbench.LocalizedRecipeStateSummary}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Workbench.ValidationSummary}" />
+                </StackPanel>
+                <StackPanel Grid.Column="3" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{views:ThreeDText Key=ThreeD.Workspace.SelectedToolState, Korean='선택 도구 상태', English='Selected tool state'}" />
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Text="{Binding Workbench.SelectedWorkspaceState}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding Workbench.SelectedWorkspaceTitle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="4"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="{Binding Localization.Preview}"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding Workbench.PreviewSelectedStepCommand}"
+                               Click="OpenPipelineReview_Click"
+                               ToolTip="F5"
+                               AutomationProperties.Name="Preview selected inspection step" />
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="{views:ThreeDText Key=ThreeD.Command.RunAll, Korean='전체 실행', English='Run all'}"
+                               Icon="{ui:SymbolIcon PlayCircle24}"
+                               Command="{Binding Workbench.RunTeachingRecipeCommand}"
+                               Click="OpenPipelineReview_Click"
+                               ToolTip="Ctrl+F5"
+                               AutomationProperties.Name="Run complete inspection recipe" />
+                    <ui:Button Padding="8,4"
+                               Appearance="Primary"
+                               Content="{Binding Localization.Save}"
+                               Icon="{ui:SymbolIcon DocumentCheckmark24}"
+                               Command="{Binding Workbench.SaveTeachingRecipeCommand}"
+                               ToolTip="Ctrl+S"
+                               AutomationProperties.AutomationId="SaveTeachingRecipe"
+                               AutomationProperties.Name="{Binding Localization.Save}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <dock:OpenVisionDockWorkspaceView Grid.Row="1"
+                                      x:Name="DockWorkspace"
+                                      ToolLibraryTitle="{Binding Localization.ToolLibrary}"
+                                      DataLayersTitle="{Binding Localization.RecipeFlow}"
+                                      ViewerTitle="{Binding Localization.Viewer}"
+                                      ToolInspectorTitle="{views:ThreeDText Key=ThreeD.Workspace.SelectedTool, Korean='선택 도구', English='Selected Tool'}"
+                                      EvidenceTitle="{Binding Localization.PipelineValidation}"
+                                      OutputCompareTitle="{Binding Localization.OutputCompare}"
+                                      DisplayedOutputsTitle="{Binding Localization.DisplayedOutputs}"
+                                      LinkedViewTitle="{Binding Localization.SessionLog}"
+                                      ProfileTitle="{Binding Localization.HeightProfile}"
+                                      FitDiagnosticsTitle="{Binding Localization.FitDiagnostics}"
+                                      IntersectionEvidenceTitle="{Binding Localization.IntersectionEvidence}"
+                                      CorrespondenceEvidenceTitle="{Binding Localization.CorrespondenceEvidence}"
+                                      IsBottomPaneExpanded="False">
+        <dock:OpenVisionDockWorkspaceView.ToolLibraryContent>
+            <workbench:ToolLibraryView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.ToolLibraryContent>
+        <dock:OpenVisionDockWorkspaceView.DataLayersContent>
+            <workbench:RecipeChainView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.DataLayersContent>
+
+        <dock:OpenVisionDockWorkspaceView.ViewerContent>
+            <Grid Background="{DynamicResource ThreeD.PanelBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border Padding="16,10"
+                        Background="{DynamicResource ThreeD.CommandBarBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button Margin="0,0,10,0"
+                                   Padding="9,4"
+                                   VerticalAlignment="Center"
+                                   Content="{Binding Localization.Open3DMap}"
+                                   Icon="{ui:SymbolIcon FolderOpen24}"
+                                   Command="{Binding Workbench.LoadC3DSourceCommand}"
+                                   ToolTip="{Binding Localization.Open3DMapToolTip}"
+                                   AutomationProperties.AutomationId="OpenViewer3DMapButton"
+                                   AutomationProperties.Name="{Binding Localization.Open3DMap}" />
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   FontSize="10.5"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Workbench.LocalizedSourceReadinessSummary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Workbench.LocalizedSourceReadinessSummary}" />
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Orientation="Horizontal"
+                                    AutomationProperties.Name="Selected output publication actions">
+                            <ui:Button Padding="8,3"
+                                       Content="{Binding Localization.Publish}"
+                                       Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                                       Command="{Binding Workbench.PublishSelectedStepCommand}"
+                                       Click="OpenPipelineReview_Click"
+                                       ToolTip="Publish the current non-stale Preview without re-running"
+                                       AutomationProperties.Name="Publish selected inspection output" />
+                            <ui:Button Margin="5,0,0,0"
+                                       Padding="8,3"
+                                       Content="{Binding Localization.Cancel}"
+                                       Icon="{ui:SymbolIcon ArrowUndo24}"
+                                       Command="{Binding Workbench.CancelSelectedPreviewCommand}"
+                                       Visibility="{Binding Workbench.IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       AutomationProperties.Name="Cancel selected Preview" />
+                        </StackPanel>
+                        <Border Grid.Row="1"
+                                Grid.ColumnSpan="3"
+                                Margin="0,7,0,0"
+                                Padding="9,7"
+                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Visibility="{Binding Workbench.IsC3DSourceLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                                AutomationProperties.AutomationId="C3DSourceLoadingRibbon">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="10.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                           Text="{Binding Workbench.C3DSourceLoadStatus}" />
+                                <ProgressBar Grid.Column="1"
+                                             Height="7"
+                                             Margin="12,0"
+                                             VerticalAlignment="Center"
+                                             Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding Workbench.C3DSourceLoadProgressPercent, Mode=OneWay}" />
+                                <ui:Button Grid.Column="2"
+                                           Padding="8,3"
+                                           Content="{Binding Localization.Cancel}"
+                                           Icon="{ui:SymbolIcon DismissCircle24}"
+                                           Command="{Binding Workbench.CancelC3DSourceLoadCommand}"
+                                           ToolTip="{Binding Localization.Cancel3DMapLoadToolTip}"
+                                           AutomationProperties.Name="{Binding Localization.Cancel}" />
+                            </Grid>
+                        </Border>
+                        <Border Grid.Row="2"
+                                Grid.ColumnSpan="3"
+                                Margin="0,7,0,0"
+                                Padding="9,7"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                AutomationProperties.Name="Selected step work context">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Workbench.HasSelectedPipelineStep}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel>
+                                <TextBlock FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding Localization.NoRecipeStepSelected}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="10"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding Localization.NoRecipeStepSelectedDetail}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Row="3"
+                                Grid.ColumnSpan="3"
+                                Margin="0,7,0,0"
+                                Padding="8,6"
+                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Visibility="{Binding Workbench.IsTeachingSelectionCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}"
+                                AutomationProperties.AutomationId="TeachingSelectionCaptureRibbon">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                               Text="{Binding Workbench.TeachingSelectionCaptureTitle}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               Text="{Binding Workbench.TeachingSelectionCaptureProgress}" />
+                                </StackPanel>
+                                <WrapPanel Grid.Column="1"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center">
+                                    <Button Margin="0,0,5,0"
+                                            Command="{Binding Workbench.UndoTeachingSelectionCaptureCommand}"
+                                            AutomationProperties.Name="Undo last teaching point">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="ArrowUndo24" />
+                                            <TextBlock Text="{Binding Workbench.Localization.UndoLastPoint}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Margin="0,0,5,0"
+                                            Command="{Binding Workbench.CancelTeachingSelectionCaptureCommand}"
+                                            AutomationProperties.Name="Cancel teaching selection capture">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Dismiss24" />
+                                            <TextBlock Text="{Binding Workbench.Localization.Cancel}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <ui:Button Appearance="Primary"
+                                               ToolTip="Enter"
+                                               Command="{Binding Workbench.ApplyTeachingSelectionCaptureCommand}"
+                                               AutomationProperties.Name="Apply teaching selection (Enter)">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Width="14" Height="14" Margin="0,0,5,0" Symbol="Checkmark24" />
+                                            <TextBlock Text="{Binding Workbench.Localization.ApplySelection}" />
+                                        </StackPanel>
+                                    </ui:Button>
+                                </WrapPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+                <workbench:ViewerWorkspaceView Grid.Row="1"
+                                               MainViewerContent="{Binding ViewerContent, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
+                                               DataContext="{Binding Workbench}"
+                                               Loaded="ViewerWorkspaceSurface_Loaded" />
+            </Grid>
+        </dock:OpenVisionDockWorkspaceView.ViewerContent>
+
+        <dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
+            <workbench:SelectedToolWorkspaceView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
+
+        <dock:OpenVisionDockWorkspaceView.EvidenceContent>
+            <workbench:RecipePipelineReviewView DataContext="{Binding Workbench}"
+                                                RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
+                                                RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
+                                                RunRecordContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=workbench:ToolRecipeWorkbenchView}}"
+                                                AutomationProperties.AutomationId="WorkbenchBottomPanel" />
+        </dock:OpenVisionDockWorkspaceView.EvidenceContent>
+
+        <dock:OpenVisionDockWorkspaceView.OutputCompareContent>
+            <workbench:OutputCompareView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.OutputCompareContent>
+
+        <dock:OpenVisionDockWorkspaceView.DisplayedOutputsContent>
+            <workbench:DisplayedOutputsView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.DisplayedOutputsContent>
+
+        <dock:OpenVisionDockWorkspaceView.LinkedViewContent>
+            <workbench:RunLogView DataContext="{Binding Workbench}" />
+        </dock:OpenVisionDockWorkspaceView.LinkedViewContent>
+
+        <dock:OpenVisionDockWorkspaceView.ProfileContent>
+            <workbench:HeightProfileView />
+        </dock:OpenVisionDockWorkspaceView.ProfileContent>
+
+        <dock:OpenVisionDockWorkspaceView.FitDiagnosticsContent>
+            <workbench:LineFitDiagnosticsView />
+        </dock:OpenVisionDockWorkspaceView.FitDiagnosticsContent>
+
+        <dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+            <workbench:LineIntersectionEvidenceView />
+        </dock:OpenVisionDockWorkspaceView.IntersectionEvidenceContent>
+        <dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
+            <workbench:LandmarkCorrespondenceEvidenceView />
+        </dock:OpenVisionDockWorkspaceView.CorrespondenceEvidenceContent>
+        </dock:OpenVisionDockWorkspaceView>
+    </Grid>
+</UserControl>
