@@ -28,6 +28,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly RelayCommand addReferenceCommand;
     private readonly RelayCommand removeSelectedReferenceCommand;
     private readonly RelayCommand beginTeachingSelectionCaptureCommand;
+    private readonly RelayCommand beginAdditionalLevelSurfaceReferenceCommand;
     private readonly RelayCommand undoTeachingSelectionCaptureCommand;
     private readonly RelayCommand cancelTeachingSelectionCaptureCommand;
     private readonly RelayCommand applyTeachingSelectionCaptureCommand;
@@ -68,6 +69,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private int teachingSelectionCapturedPointCount;
     private int teachingSelectionRequiredPointCount;
     private bool canApplyTeachingSelectionCapture;
+    private bool captureAdditionalLevelSurfaceReference;
     private string teachingSelectionCaptureMessage = "Capture is inactive.";
     private int teachingGridRectangleRow;
     private int teachingGridRectangleColumn;
@@ -98,6 +100,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         SelectedToolWorkspace = new SelectedToolWorkspaceViewModel(WorkspaceSelection);
         WorkspaceSelection.SelectionChanged += OnInspectionWorkspaceSelectionChanged;
         InitializeInspectionWorkspace();
+        InitializeCompletenessReview();
         InitializeThicknessRepeatGrid();
         this.recentRecipesPath = recentRecipesPath ?? Path.Combine(
             Path.GetTempPath(),
@@ -140,6 +143,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         beginTeachingSelectionCaptureCommand = new RelayCommand(
             _ => BeginTeachingSelectionCapture(),
             _ => CanBeginTeachingSelectionCapture);
+        beginAdditionalLevelSurfaceReferenceCommand = new RelayCommand(
+            _ => BeginAdditionalLevelSurfaceReferenceCapture(),
+            _ => IsSelectedStepLevelSurface
+                 && IsSourceReadyForRecipe
+                 && !IsTeachingSelectionCaptureActive);
         undoTeachingSelectionCaptureCommand = new RelayCommand(
             _ => UndoTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty),
             _ => IsTeachingSelectionCaptureActive && TeachingSelectionCapturedPointCount > 0);
@@ -179,6 +187,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         AddReferenceCommand = addReferenceCommand;
         RemoveSelectedReferenceCommand = removeSelectedReferenceCommand;
         BeginTeachingSelectionCaptureCommand = beginTeachingSelectionCaptureCommand;
+        BeginAdditionalLevelSurfaceReferenceCommand =
+            beginAdditionalLevelSurfaceReferenceCommand;
         UndoTeachingSelectionCaptureCommand = undoTeachingSelectionCaptureCommand;
         CancelTeachingSelectionCaptureCommand = cancelTeachingSelectionCaptureCommand;
         ApplyTeachingSelectionCaptureCommand = applyTeachingSelectionCaptureCommand;
@@ -292,6 +302,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ICommand AddReferenceCommand { get; }
     public ICommand RemoveSelectedReferenceCommand { get; }
     public ICommand BeginTeachingSelectionCaptureCommand { get; }
+    public ICommand BeginAdditionalLevelSurfaceReferenceCommand { get; }
     public ICommand UndoTeachingSelectionCaptureCommand { get; }
     public ICommand CancelTeachingSelectionCaptureCommand { get; }
     public ICommand ApplyTeachingSelectionCaptureCommand { get; }
@@ -672,7 +683,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 : storageValidation.IsValid
                     ? $"{validation.Errors.Count} execution requirement(s)"
                     : $"{storageValidation.Errors.Count} structural correction(s)";
-            var saveState = IsDirty
+            var saveState = IsDirty || IsValidationSetDefinitionDirty
                 ? "Modified"
                 : string.IsNullOrWhiteSpace(RecipePath) ? "Unsaved" : "Saved";
             return $"{validationState} | {saveState}";
@@ -1007,6 +1018,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ClearFilterPreview("Source changed; Preview is required.");
             ClearRemoveOutlierPreview(
                 "Source changed; Remove Outlier Pixels Preview is required.");
+            ClearLevelSurfacePreview(
+                "Source changed; Level Surface Preview is required.");
             ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
             ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
             ClearMeasurementPreview("Source changed; measurement Preview is required.");
@@ -1077,6 +1090,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             var fullPath = Path.GetFullPath(path);
             ToolRecipeDocumentStore.Save(fullPath, CreateDocument());
+            SaveValidationSetDefinition(fullPath);
+            SaveValidationThresholdCorrectionEvidence(fullPath);
             RecipePath = fullPath;
             SetDirty(false);
             RecordRecentRecipe(fullPath);
@@ -1104,6 +1119,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             BeginSourceQualityLoad();
             RefreshRecipeState();
             RecipePath = fullPath;
+            LoadValidationSetDefinition(fullPath, document);
+            LoadValidationThresholdCorrectionEvidence(fullPath, document);
             SetDirty(false);
             RecordRecentRecipe(fullPath);
             AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
@@ -1151,6 +1168,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             RecipePath = null;
         }, markDirty: false);
         SetDirty(false);
+        ClearValidationSet();
+        SetValidationSetDefinitionDirty(false);
         OnPropertyChanged(nameof(RecipeSchemaVersion));
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         AppendLog("Teach", "New empty teaching recipe created. Select a C3D source before adding an inspection step.");
@@ -1219,6 +1238,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             case "remove-outlier-pixels":
                 RefreshRemoveOutlierExecutionState();
                 break;
+            case "level-surface":
+                RefreshLevelSurfaceExecutionState();
+                break;
             case "height-difference-edge":
                 RefreshHeightDifferenceEdgeExecutionState();
                 break;
@@ -1256,6 +1278,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             case "gap-flush":
             case "volume":
             case "cross-section-dimensions":
+            case "completeness-grid":
                 RefreshMeasurementExecutionState();
                 break;
         }
@@ -1364,7 +1387,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             return;
         }
 
-        var existing = SelectedStepTeachingSelection;
+        var existing = captureAdditionalLevelSurfaceReference
+            ? null
+            : SelectedStepTeachingSelection;
         teachingSelectionCaptureStepId = step.Id;
         UpdateTeachingGridRectangleDraft(existing?.GridRectangle);
         SetTeachingSelectionCaptureState(
@@ -1378,9 +1403,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new ToolWorkbenchTeachingCaptureRequestEventArgs(
                 step.Id,
                 existing?.Id ?? CreateSelectionId(step, requirement),
-                existing?.Name ?? (IsSelectedStepDualRoiMeasurement
-                    ? CreatePlaneFlatnessSelectionName(step)
-                    : $"{step.ToolName} selection"),
+                existing?.Name ?? (captureAdditionalLevelSurfaceReference
+                    ? $"Level Surface reference {Math.Max(2, step.InputEntityIds.Count)}"
+                    : IsSelectedStepDualRoiMeasurement
+                        ? CreatePlaneFlatnessSelectionName(step)
+                        : $"{step.ToolName} selection"),
                 requirement.Kind,
                 requirement.RequiredPointCount,
                 Source.Id,
@@ -1409,6 +1436,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         CancelTeachingSelectionCaptureRequested?.Invoke(this, EventArgs.Empty);
         ClearTeachingSelectionCaptureState("Capture cancelled; no recipe geometry changed.");
         AppendLog("Teach", "Selection capture cancelled; authored recipe unchanged.");
+    }
+
+    private void BeginAdditionalLevelSurfaceReferenceCapture()
+    {
+        captureAdditionalLevelSurfaceReference = true;
+        BeginTeachingSelectionCapture();
     }
 
     public void UpdateTeachingSelectionCaptureState(
@@ -1796,6 +1829,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         ClearFilterPreview(previewStatus);
         ClearRemoveOutlierPreview(previewStatus);
+        ClearLevelSurfacePreview(previewStatus);
         if (markDirty)
         {
             ClearMeasurementPreview(previewStatus);
@@ -1973,6 +2007,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         stageStarted = Stopwatch.GetTimestamp();
         RefreshFilterExecutionState();
         RefreshRemoveOutlierExecutionState();
+        RefreshLevelSurfaceExecutionState();
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshTwoPointLineExecutionState();
         RefreshThreePointPlaneExecutionState();
@@ -2151,6 +2186,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(CorrespondenceSelectionSummary));
         beginTeachingSelectionCaptureCommand.RaiseCanExecuteChanged();
+        beginAdditionalLevelSurfaceReferenceCommand.RaiseCanExecuteChanged();
         removeSelectedTeachingSelectionCommand.RaiseCanExecuteChanged();
         useExistingTeachingSelectionCommand.RaiseCanExecuteChanged();
         addOrUpdateCorrespondenceRowCommand.RaiseCanExecuteChanged();
@@ -2220,7 +2256,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         out ToolRecipeSelectionSourceBinding binding,
         out string frameId)
     {
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions")
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
         {
             if (step.InputEntityIds.Count == 0)
             {
@@ -2288,12 +2324,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
         RefreshTeachingSelectionCaptureCommands();
+        beginAdditionalLevelSurfaceReferenceCommand.RaiseCanExecuteChanged();
         RefreshSelectedToolWorkspaceProjection();
     }
 
     private void ClearTeachingSelectionCaptureState(string message)
     {
         teachingSelectionCaptureStepId = null;
+        captureAdditionalLevelSurfaceReference = false;
         SetTeachingSelectionCaptureState(false, 0, 0, false, message);
         UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
     }
@@ -2425,6 +2463,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         "roi-crop" => new("Grid rectangle", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the crop ROI."),
         "height-difference-edge" => new("Edge search band", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the explicit edge search band."),
+        "level-surface" => new("Level reference ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners on a stable reference surface. Additional reference ROIs may be routed to the same step."),
         "thickness" => CreatePlaneFlatnessSelectionRequirement(),
         "warpage" => new("Warpage measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the measurement ROI."),
         "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
@@ -2432,6 +2471,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
         "volume" => CreatePlaneFlatnessSelectionRequirement(),
         "cross-section-dimensions" => new(Localization.CrossSectionSelection, ToolRecipeSelectionKinds.GridRectangle, 2, true, Localization.CrossSectionSelectionDetail),
+        "completeness-grid" => CreatePlaneFlatnessSelectionRequirement(),
         "two-point-line" => new("Line points", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct C3D grid cells."),
         "three-point-plane" => new("Plane points", ToolRecipeSelectionKinds.PointSet, 3, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
         "datum-plane-raw-height-deviation" => new("Datum measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
@@ -2465,7 +2505,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var suffix = IsSelectedStepDualRoiMeasurement
             ? IsSelectedStepGapFlush
                 ? (isPlaneFlatnessMeasurementRole ? "second-roi" : "first-roi")
-                : (isPlaneFlatnessMeasurementRole ? "measurement-roi" : "reference-roi")
+                : IsSelectedStepCompletenessGrid
+                    ? (isPlaneFlatnessMeasurementRole ? "inspection-grid-roi" : "reference-roi")
+                    : (isPlaneFlatnessMeasurementRole ? "measurement-roi" : "reference-roi")
             : requirement.Kind switch
         {
             ToolRecipeSelectionKinds.GridRectangle => "roi",
@@ -2473,7 +2515,26 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "correspondences",
             _ => "selection"
         };
-        return $"selection.{NormalizeId(step.Id.StartsWith("step.", StringComparison.OrdinalIgnoreCase) ? step.Id[5..] : step.Id)}.{suffix}";
+        var baseId =
+            $"selection.{NormalizeId(step.Id.StartsWith("step.", StringComparison.OrdinalIgnoreCase) ? step.Id[5..] : step.Id)}.{suffix}";
+        if (!captureAdditionalLevelSurfaceReference
+            || !string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal))
+        {
+            return baseId;
+        }
+
+        var ordinal = 2;
+        var candidate = $"{baseId}.{ordinal:D2}";
+        while (Selections.Any(selection => string.Equals(
+                   selection.Id,
+                   candidate,
+                   StringComparison.OrdinalIgnoreCase)))
+        {
+            ordinal++;
+            candidate = $"{baseId}.{ordinal:D2}";
+        }
+
+        return candidate;
     }
 
     private static string FormatTeachingSelection(ToolRecipeSelection selection)
@@ -2545,6 +2606,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         MarkFilterPreviewStaleIfNeeded(sender);
         MarkRemoveOutlierPreviewStaleIfNeeded(sender);
+        MarkLevelSurfacePreviewStaleIfNeeded(sender);
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkThreePointPlanePreviewStaleIfNeeded(sender);

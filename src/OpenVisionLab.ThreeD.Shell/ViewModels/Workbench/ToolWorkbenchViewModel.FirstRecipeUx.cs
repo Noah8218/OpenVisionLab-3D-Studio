@@ -43,7 +43,7 @@ public sealed partial class ToolWorkbenchViewModel
                         : storageValidation.IsValid
                             ? string.Format(Localization.ExecutionRequirementsFormat, validation.Errors.Count)
                             : string.Format(Localization.CorrectionsFormat, storageValidation.Errors.Count);
-            var saveState = IsDirty
+            var saveState = IsDirty || IsValidationSetDefinitionDirty
                 ? Localization.Modified
                 : string.IsNullOrWhiteSpace(RecipePath)
                     ? Localization.Unsaved

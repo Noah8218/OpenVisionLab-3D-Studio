@@ -1,0 +1,255 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.ResultsWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             AutomationProperties.AutomationId="ResultsWorkspace">
+    <Grid Background="{DynamicResource ThreeD.PanelBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Padding="16,10"
+                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="{Binding Localization.ResultsWorkspaceTitle}" />
+                    <TextBlock Margin="0,2,0,0"
+                               FontSize="10.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding Localization.ResultsWorkspaceDetail}" />
+                </StackPanel>
+                <ui:Button x:Name="AdvancedDiagnosticsButton"
+                           Grid.Column="1"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           Appearance="Secondary"
+                           Icon="{ui:SymbolIcon Settings24}"
+                           Content="{Binding Localization.ResultsWorkspaceAdvanced}"
+                           Command="{Binding SelectWorkspaceCommand}"
+                           CommandParameter="{x:Static views:ShellWorkspaceMode.Expert}"
+                           AutomationProperties.AutomationId="ResultsAdvancedDiagnostics"
+                           AutomationProperties.Name="{Binding Localization.ResultsWorkspaceAdvanced}" />
+            </Grid>
+        </Border>
+
+        <Border x:Name="OperatorResultSummary"
+                Grid.Row="1"
+                Margin="12,8,12,6"
+                Padding="12,9"
+                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                AutomationProperties.AutomationId="ResultsOperatorSummary"
+                AutomationProperties.Name="{Binding Localization.ResultsOperatorSummaryTitle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                               Text="{Binding Localization.ResultsOperatorSummaryTitle}" />
+                    <TextBlock Margin="0,5,0,0"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding Localization.ResultsOperatorDecision}" />
+                    <TextBlock x:Name="OperatorDecisionValue"
+                               Margin="0,1,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="{Binding RunSnapshotSummary}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,5,0,0"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding Localization.ResultsOperatorAffectedSteps}" />
+                    <TextBlock x:Name="OperatorAffectedStepsValue"
+                               Margin="0,1,0,0"
+                               FontSize="10"
+                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                               Text="{Binding InspectionStepSummary}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Width="260"
+                            Margin="18,0,0,0"
+                            VerticalAlignment="Center">
+                    <TextBlock FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding Localization.ResultsOperatorNextAction}"
+                               TextWrapping="Wrap" />
+                    <ui:Button x:Name="ResultsFixInTeachButton"
+                               Margin="0,7,0,0"
+                               HorizontalAlignment="Left"
+                               Appearance="Primary"
+                               Icon="{ui:SymbolIcon Edit24}"
+                               Content="{Binding Localization.ValidationWorkspaceOpenInTeach}"
+                               Command="{Binding OpenSelectedValidationIssueInTeachCommand}"
+                               ToolTip="{Binding Localization.ValidationWorkspaceOpenInTeachHint}"
+                               IsTabStop="True"
+                               AutomationProperties.AutomationId="ResultsFixInTeach"
+                               AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}"
+                               AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="184" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Padding="10"
+                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Top">
+                        <RadioButton x:Name="RunRecordNavigation"
+                                     Margin="0,0,0,6"
+                                     Padding="10,8"
+                                     GroupName="ResultsWorkspaceSection"
+                                     Content="{Binding Localization.ResultsWorkspaceRunRecord}"
+                                     IsChecked="True"
+                                     Click="RunRecordNavigation_Click"
+                                     AutomationProperties.AutomationId="ResultsRunRecordNavigation"
+                                     AutomationProperties.Name="{Binding Localization.ResultsWorkspaceRunRecord}" />
+                        <RadioButton x:Name="OutputCompareNavigation"
+                                     Margin="0,0,0,6"
+                                     Padding="10,8"
+                                     GroupName="ResultsWorkspaceSection"
+                                     Content="{Binding Localization.ResultsWorkspaceOutputCompare}"
+                                     Click="OutputCompareNavigation_Click"
+                                     AutomationProperties.AutomationId="ResultsOutputCompareNavigation"
+                                     AutomationProperties.Name="{Binding Localization.ResultsWorkspaceOutputCompare}" />
+                        <RadioButton x:Name="ReportsNavigation"
+                                     Padding="10,8"
+                                     GroupName="ResultsWorkspaceSection"
+                                     Content="{Binding Localization.ResultsWorkspaceReports}"
+                                     Click="ReportsNavigation_Click"
+                                     AutomationProperties.AutomationId="ResultsReportsNavigation"
+                                     AutomationProperties.Name="{Binding Localization.ResultsWorkspaceReports}" />
+                    </StackPanel>
+                    <Border DockPanel.Dock="Bottom"
+                            Margin="0,12,0,0"
+                            Padding="9"
+                            VerticalAlignment="Bottom"
+                            Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                            BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3">
+                        <TextBlock FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding Localization.ResultsWorkspaceImmutable}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <workbench:RecipePipelineReviewView x:Name="RunRecordReview"
+                                                    Margin="12,4,12,12"
+                                                    DataContext="{Binding Workbench}"
+                                                    RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
+                                                    RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
+                                                    RunRecordContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
+                                                    AutomationProperties.AutomationId="ResultsRunRecordWorkspace" />
+                <workbench:OutputCompareView x:Name="OutputCompareWorkspace"
+                                             Visibility="Collapsed"
+                                             DataContext="{Binding Workbench}" />
+                <ScrollViewer x:Name="ReportsWorkspace"
+                              Visibility="Collapsed"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ThreeD.TextBrush}"
+                                       Text="{Binding Localization.ResultsWorkspaceReports}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding Localization.ResultsWorkspaceReportsDetail}" />
+                        </StackPanel>
+                        <Border Grid.Row="1"
+                                Margin="0,14,0,0"
+                                Padding="14"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                           Text="{Binding RunSnapshotSummary}" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding RunSnapshotEvidence}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,8,0,0"
+                                           FontSize="10.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding InspectionStepSummary}" />
+                            </StackPanel>
+                        </Border>
+                        <WrapPanel Grid.Row="2" Margin="0,14,0,0">
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon FolderOpen24}"
+                                       Content="{Binding Localization.RunRecordOpen}"
+                                       Command="{Binding SelectRunRecordCommand}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon Document24}"
+                                       Content="{Binding Localization.RunRecordOpenCurrent}"
+                                       Command="{Binding OpenRunRecordCommand}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon DocumentText24}"
+                                       Content="{Binding Localization.RunRecordOpenHtml}"
+                                       Command="{Binding OpenHtmlReportCommand}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon Table24}"
+                                       Content="{Binding Localization.RunRecordOpenCsv}"
+                                       Command="{Binding OpenCsvReportCommand}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon SaveCopy24}"
+                                       Content="{Binding Localization.RunRecordExport}"
+                                       Command="{Binding ExportRunRecordCommand}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon Folder24}"
+                                       Content="{Binding Localization.RunRecordOpenFolder}"
+                                       Command="{Binding OpenRunRecordFolderCommand}" />
+                        </WrapPanel>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

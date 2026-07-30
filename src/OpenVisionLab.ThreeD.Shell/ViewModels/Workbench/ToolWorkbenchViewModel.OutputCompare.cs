@@ -121,6 +121,26 @@ public sealed partial class ToolWorkbenchViewModel
                 false));
         }
 
+        var levelSurfacePreviewPath = CurrentLevelSurfacePreviewPath;
+        if (HasCurrentLevelSurfacePreview
+            && !string.IsNullOrWhiteSpace(levelSurfacePreviewPath)
+            && File.Exists(levelSurfacePreviewPath)
+            && CurrentLevelSurfacePreviewOutput is { } leveledOutput
+            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
+                item.Id,
+                leveledOutput.EntityId,
+                StringComparison.OrdinalIgnoreCase)) is { } levelArtifact)
+        {
+            candidates.Add(new ToolWorkbenchCompareCandidateItem(
+                levelArtifact.Id,
+                levelArtifact.DisplayName,
+                levelArtifact.Contract,
+                levelArtifact.State,
+                levelSurfacePreviewPath,
+                levelArtifact.Detail,
+                false));
+        }
+
         outputCompareSession.ReplaceCandidates(candidates, Localization.OutputCompareNoSelection);
         ReconcileViewerWorkspaceContents();
     }

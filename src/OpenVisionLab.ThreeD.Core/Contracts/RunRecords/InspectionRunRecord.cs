@@ -18,7 +18,33 @@ public sealed record InspectionRunRecord(
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
     public InspectionRunStep? Step { get; init; }
     public IReadOnlyList<InspectionRunStepResult>? Steps { get; init; }
+    public InspectionRunThresholdCorrectionEvidence? ThresholdCorrectionEvidence
+    {
+        get;
+        init;
+    }
 }
+
+public enum InspectionRunThresholdCorrectionEvidenceState
+{
+    Unavailable,
+    Available,
+    Stale,
+    Mismatch,
+    Invalid
+}
+
+/// <summary>
+/// Read-only snapshot of the recipe-side threshold-correction sidecar at Run
+/// Record creation time. The reporting layer never creates, applies, or
+/// replays threshold evidence.
+/// </summary>
+public sealed record InspectionRunThresholdCorrectionEvidence(
+    InspectionRunThresholdCorrectionEvidenceState State,
+    string Message,
+    string SidecarPath,
+    string? SidecarSha256,
+    ToolRecipeThresholdCorrectionEvidence? Evidence);
 
 public sealed record InspectionRunEnvironment(
     string ApplicationName,

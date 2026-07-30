@@ -167,7 +167,8 @@
                         </StackPanel>
                     </Border>
                     <Grid Grid.Row="1">
-                        <ContentPresenter Content="{Binding MainViewerContent, ElementName=Root}" />
+                        <ContentPresenter x:Name="MainViewerPresenter"
+                                          Content="{Binding MainViewerContent, ElementName=Root}" />
                         <Border MaxWidth="560"
                                 Margin="14,14,14,30"
                                 Padding="9,6"

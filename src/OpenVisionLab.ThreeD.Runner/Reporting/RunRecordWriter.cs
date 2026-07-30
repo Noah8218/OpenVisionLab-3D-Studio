@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 internal sealed record RunArtifactOptions(
@@ -154,8 +155,12 @@ internal static class RunRecordWriter
                 step.OutputContentSha256)).ToArray();
         var metrics = steps.SelectMany(step => step.Metrics).ToArray();
         var overlays = steps.SelectMany(step => step.Overlays).ToArray();
+        var thresholdCorrectionEvidence =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                recipePath,
+                document);
         var record = new InspectionRunRecord(
-            "1.4",
+            "1.5",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
@@ -176,7 +181,8 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.CsvPath)))
         {
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
-            Steps = steps
+            Steps = steps,
+            ThresholdCorrectionEvidence = thresholdCorrectionEvidence
         };
 
         WriteOutputs(options, record);
@@ -236,6 +242,9 @@ internal static class RunRecordWriter
         var tableHeader = hasSteps
             ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
+        var thresholdCorrectionSection =
+            FormatThresholdCorrectionHtml(
+                record.ThresholdCorrectionEvidence);
         var html = $$"""
         <!doctype html>
         <html lang="en">
@@ -262,6 +271,7 @@ internal static class RunRecordWriter
             <dt>Platform</dt><dd>{{Encode(FormatPlatform(record.ExecutionEnvironment))}}</dd>
           </dl>
           <p>{{Encode(record.Message)}}</p>
+          {{thresholdCorrectionSection}}
           <table><thead>{{tableHeader}}</thead><tbody>
           {{rows}}
           </tbody></table>
@@ -270,6 +280,95 @@ internal static class RunRecordWriter
         """;
         File.WriteAllText(path, html, new UTF8Encoding(false));
     }
+
+    private static string FormatThresholdCorrectionHtml(
+        InspectionRunThresholdCorrectionEvidence? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return """
+            <section>
+              <h2>Threshold correction evidence</h2>
+              <p><strong>State:</strong> Unavailable</p>
+              <p>This legacy Run Record did not record threshold-correction evidence.</p>
+            </section>
+            """;
+        }
+
+        var evidence = snapshot.Evidence;
+        var identity = evidence is null
+            ? string.Empty
+            : $"""
+               <dt>Candidate</dt><dd>{Encode(evidence.Proposal.CandidateId)}</dd>
+               <dt>Step / Tool</dt><dd>{Encode(evidence.Proposal.StepId)} / {Encode(evidence.Proposal.ToolId)}</dd>
+               <dt>Metric / Limit</dt><dd>{Encode(evidence.Proposal.MetricName)} / {Encode(evidence.Proposal.LimitKind.ToString())}</dd>
+               """;
+        var parameters = evidence is null
+            ? string.Empty
+            : string.Join(
+                Environment.NewLine,
+                evidence.Proposal.Changes.Select(change =>
+                {
+                    var manual = evidence.ManualCorrection?.ParameterChanges
+                        .FirstOrDefault(item => string.Equals(
+                            item.ParameterName,
+                            change.ParameterName,
+                            StringComparison.Ordinal));
+                    return
+                        $"<tr><td>{Encode(change.ParameterName)}</td>"
+                        + $"<td>{Encode(change.BeforeValue)}</td>"
+                        + $"<td>{Encode(change.ProposedValue)}</td>"
+                        + $"<td>{Encode(manual?.ManualValue ?? change.ProposedValue)}</td></tr>";
+                }));
+        var development = evidence?.ManualCorrection is not { } correction
+            ? string.Empty
+            : $"""
+               <p><strong>Development mismatch:</strong> {correction.BeforeMismatchCount} -&gt; {correction.AfterMismatchCount}</p>
+               <p><strong>Before development identities:</strong> {Encode(FormatDevelopmentIdentities(correction.BeforeDevelopmentSamples))}</p>
+               <p><strong>Corrected development identities:</strong> {Encode(FormatDevelopmentIdentities(correction.AfterDevelopmentSamples))}</p>
+               """;
+        var heldOut = evidence is null
+            ? string.Empty
+            : $"<p><strong>Held-out identities:</strong> {Encode(FormatHeldOutIdentities(evidence.HeldOutSamples))}</p>";
+        var parameterTable = evidence is null
+            ? string.Empty
+            : $"""
+               <table>
+                 <thead><tr><th>Parameter</th><th>Before</th><th>Suggested</th><th>Committed</th></tr></thead>
+                 <tbody>{parameters}</tbody>
+               </table>
+               """;
+
+        return $"""
+               <section>
+                 <h2>Threshold correction evidence</h2>
+                 <dl>
+                   <dt>State</dt><dd>{Encode(snapshot.State.ToString())}</dd>
+                   <dt>Sidecar</dt><dd>{Encode(snapshot.SidecarPath)}</dd>
+                   <dt>Sidecar SHA-256</dt><dd>{Encode(snapshot.SidecarSha256 ?? "(unavailable)")}</dd>
+                   {identity}
+                 </dl>
+                 <p>{Encode(snapshot.Message)}</p>
+                 {parameterTable}
+                 {development}
+                 {heldOut}
+               </section>
+               """;
+    }
+
+    private static string FormatDevelopmentIdentities(
+        IReadOnlyList<ToolRecipeThresholdDevelopmentSampleEvidence> samples) =>
+        string.Join(
+            "; ",
+            samples.Select(sample =>
+                $"{sample.SampleOrder}:{sample.Role}:{sample.SampleIdentity}:{sample.Status}:expectedMatch={sample.ExpectedMatch}"));
+
+    private static string FormatHeldOutIdentities(
+        IReadOnlyList<ToolRecipeThresholdHeldOutSampleEvidence> samples) =>
+        string.Join(
+            "; ",
+            samples.Select(sample =>
+                $"{sample.SampleOrder}:{sample.SampleIdentity}:{sample.Status}"));
 
     private static void WriteCsv(string path, InspectionRunRecord record)
     {

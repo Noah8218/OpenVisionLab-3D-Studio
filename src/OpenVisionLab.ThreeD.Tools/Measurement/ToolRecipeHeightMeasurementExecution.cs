@@ -22,7 +22,8 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     string FrameId,
     string ContentSha256,
     ToolResult Result,
-    string EvidenceSummary);
+    string EvidenceSummary,
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
@@ -75,7 +76,56 @@ public static class ToolRecipeHeightMeasurementExecution
         var step = prepared!.Step;
         ToolResult result;
         string evidence;
-        if (string.Equals(step.ToolId, "thickness", StringComparison.Ordinal))
+        C3DCompletenessGridMetricOutput? completenessGrid = null;
+        if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
+        {
+            var profile = C3DCompletenessGridProfile.FromRecipeParameters(
+                step.Parameters ?? []);
+            var presencePolicy =
+                C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                    step.Parameters ?? []);
+            var evaluation = C3DCompletenessGridRule.Evaluate(
+                new C3DCompletenessGridInput(
+                    step.OutputEntityId,
+                    document.Source.Id,
+                    prepared.InputEntityId,
+                    prepared.InputContentSha256,
+                    prepared.Unit,
+                    prepared.FrameId,
+                    prepared.Width,
+                    prepared.Height,
+                    prepared.Values,
+                    prepared.Selections[0],
+                    prepared.Selections[1],
+                    profile,
+                    presencePolicy));
+            if (evaluation.Output is null)
+            {
+                return new ToolRecipeHeightMeasurementEvaluation(
+                    evaluation.Result,
+                    null);
+            }
+
+            completenessGrid = evaluation.Output;
+            result = evaluation.Result;
+            var minimumCoverage = completenessGrid.Cells.Min(
+                cell => cell.FiniteCoverageRatio);
+            var cellsWithMissing = completenessGrid.Cells.Count(
+                cell => cell.MissingCellCount > 0);
+            evidence = completenessGrid.PresencePolicy is null
+                ? $"{completenessGrid.Cells.Count} deterministic cells | "
+                  + $"minimum finite coverage {minimumCoverage:P1} | "
+                  + $"{cellsWithMissing} cell(s) contain missing samples | "
+                  + $"reference mean {completenessGrid.ReferenceMeanRawHeight:G6} {prepared.Unit} | "
+                  + "evidence only, no acceptance policy"
+                : $"{completenessGrid.Cells.Count} deterministic cells | "
+                  + $"pass {completenessGrid.PassedCellCount} | "
+                  + $"fail {completenessGrid.FailedCellCount} | "
+                  + $"aggregate {completenessGrid.AggregateStatus} | "
+                  + $"minimum finite coverage {minimumCoverage:P1} | "
+                  + $"reference mean {completenessGrid.ReferenceMeanRawHeight:G6} {prepared.Unit}";
+        }
+        else if (string.Equals(step.ToolId, "thickness", StringComparison.Ordinal))
         {
             var minimum = ParseFinite(Parameter(step, "MinimumThickness"), "MinimumThickness");
             var maximum = ParseFinite(Parameter(step, "MaximumThickness"), "MaximumThickness");
@@ -283,7 +333,8 @@ public static class ToolRecipeHeightMeasurementExecution
             }
         }
 
-        var hash = CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
+        var hash = completenessGrid?.ContentSha256
+            ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
         var output = new ToolRecipeHeightMeasurementOutput(
             step.OutputEntityId,
             document.Source.Id,
@@ -293,7 +344,8 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared.FrameId,
             hash,
             result,
-            evidence);
+            evidence,
+            completenessGrid);
         return new ToolRecipeHeightMeasurementEvaluation(result, output);
     }
 
@@ -323,11 +375,11 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions"))
+            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
-            var twoRoi = step.ToolId is "thickness" or "plane-flatness" or "gap-flush" or "volume";
+            var twoRoi = step.ToolId is "thickness" or "plane-flatness" or "gap-flush" or "volume" or "completeness-grid";
             var expectedInputCount = twoRoi ? 3 : 2;
             if (step.InputEntityIds.Count != expectedInputCount)
             {
@@ -337,7 +389,7 @@ public static class ToolRecipeHeightMeasurementExecution
                         "Legacy one-ROI Thickness keeps its existing ROI as the Measurement ROI, but Preview now requires a Reference ROI first. Teach the Reference ROI to upgrade this step.");
                 }
                 throw new InvalidDataException(twoRoi
-                    ? $"{step.ToolName} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then Measurement ROI."
+                    ? $"{step.ToolName} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then {(step.ToolId == "completeness-grid" ? "Inspection Grid ROI" : "Measurement ROI")}."
                     : $"{step.ToolName} v1 requires one HeightField first and one GridRectangle second.");
             }
             var selections = step.InputEntityIds.Skip(1).Select(inputId =>
@@ -446,10 +498,14 @@ public static class ToolRecipeHeightMeasurementExecution
             "gap-flush" => GapFlushParameterNames,
             "volume" => VolumeParameterNames,
             "cross-section-dimensions" => CrossSectionParameterNames,
+            "completeness-grid" => [],
             _ => PlaneFlatnessParameterNames
         };
         var parameters = step.Parameters ?? [];
-        if (parameters.Count != expected.Length || expected.Any(name => parameters.Count(parameter => parameter.Name == name) != 1))
+        if (step.ToolId != "completeness-grid"
+            && (parameters.Count != expected.Length
+                || expected.Any(name =>
+                    parameters.Count(parameter => parameter.Name == name) != 1)))
         {
             throw new InvalidDataException($"{step.ToolName} v1 requires exactly one value for every recognized parameter and no unknown parameters.");
         }
@@ -493,6 +549,13 @@ public static class ToolRecipeHeightMeasurementExecution
             _ = ParseNonNegative(Parameter(step, "WidthTolerance"), "WidthTolerance");
             _ = ParseNonNegative(Parameter(step, "ExpectedHeightRange"), "ExpectedHeightRange");
             _ = ParseNonNegative(Parameter(step, "HeightTolerance"), "HeightTolerance");
+        }
+        else if (step.ToolId == "completeness-grid")
+        {
+            _ = C3DCompletenessGridProfile.FromRecipeParameters(
+                step.Parameters ?? []);
+            _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                step.Parameters ?? []);
         }
         else
         {

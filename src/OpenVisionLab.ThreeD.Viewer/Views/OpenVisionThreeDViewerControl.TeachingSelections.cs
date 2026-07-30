@@ -178,6 +178,25 @@ public sealed partial class OpenVisionThreeDViewerControl
         RenderNow();
     }
 
+    public void SetCompletenessCellOverlays(
+        IReadOnlyList<C3DCompletenessCellOverlay> overlays)
+    {
+        ArgumentNullException.ThrowIfNull(overlays);
+        if (viewModel.CompletenessCellOverlays.SequenceEqual(overlays))
+        {
+            return;
+        }
+
+        viewModel.SetCompletenessCellOverlays(overlays);
+        RenderNow();
+    }
+
+    public void SetSelectedCompletenessCellId(string? cellId)
+    {
+        viewModel.SetSelectedCompletenessCellId(cellId);
+        RenderNow();
+    }
+
     public void SetSelectedTeachingSelection(string? selectionId)
     {
         viewModel.SetSelectedTeachingSelection(selectionId);
@@ -1151,6 +1170,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             DrawWorkbenchLineFit(gl);
             DrawWorkbenchLineIntersection(gl);
             DrawWorkbenchLandmarkCorrespondence(gl);
+            DrawCompletenessCellOverlays(gl);
 
             var capture = viewModel.TeachingCaptureSnapshot;
             if (capture.IsActive)
@@ -1167,6 +1187,44 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         gl.LineWidth(1.0f);
         gl.PointSize(1.0f);
+    }
+
+    private void DrawCompletenessCellOverlays(OpenGL gl)
+    {
+        foreach (var overlay in viewModel.CompletenessCellOverlays)
+        {
+            var (red, green, blue) = overlay.Status switch
+            {
+                ResultStatus.Pass => (0.12, 0.92, 0.36),
+                ResultStatus.Fail => (1.00, 0.18, 0.16),
+                _ => (1.00, 0.72, 0.12)
+            };
+            var isSelected = string.Equals(
+                overlay.CellId,
+                viewModel.SelectedCompletenessCellId,
+                StringComparison.OrdinalIgnoreCase);
+            if (isSelected)
+            {
+                DrawTeachingGridRectangle(
+                    gl,
+                    overlay.Region,
+                    1.0,
+                    1.0,
+                    1.0,
+                    showHandles: false,
+                    overlay.OverlayId,
+                    lineWidth: 7.0f);
+            }
+            DrawTeachingGridRectangle(
+                gl,
+                overlay.Region,
+                red,
+                green,
+                blue,
+                showHandles: false,
+                overlay.OverlayId,
+                lineWidth: isSelected ? 4.5f : 2.5f);
+        }
     }
 
     private void UpdateTeachingRoiHeightHandleOverlay()
@@ -1615,7 +1673,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         double green,
         double blue,
         bool showHandles = false,
-        string? teachingSelectionId = null)
+        string? teachingSelectionId = null,
+        float? lineWidth = null)
     {
         if (c3dSample is null
             || rectangle.Row < 0
@@ -1671,7 +1730,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             gl.Disable(OpenGL.GL_BLEND);
         }
 
-        gl.LineWidth(showHandles ? 4.0f : 2.5f);
+        gl.LineWidth(lineWidth ?? (showHandles ? 4.0f : 2.5f));
         gl.Color(red, green, blue);
         gl.Begin(OpenGL.GL_LINE_LOOP);
         gl.Vertex(topLeft.X, topLeft.Y, topLeft.Z);

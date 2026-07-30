@@ -31,6 +31,8 @@ public enum ShellInspectionTask
 
 public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 {
+    private readonly RelayCommand selectWorkspaceCommand;
+    private readonly RelayCommand openSelectedValidationIssueInTeachCommand;
     private bool c3DSampleVisible;
     private readonly string? comparisonContractPath;
     private readonly string? comparisonReportPath;
@@ -39,6 +41,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private readonly string? htmlReportPath;
     private readonly string? csvReportPath;
     private readonly string recentRunRecordsPath;
+    private readonly bool hasStartupEvidenceOverrides;
+    private bool startupEvidenceActive;
     private string? currentContractPath;
     private string? currentReportPath;
     private string? currentShellScreenshotPath;
@@ -52,6 +56,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string runSnapshotSummary = "No run snapshot evidence loaded.";
     private string runSnapshotEvidence = "(pending)";
     private string inspectionStepSummary = "No inspection steps loaded.";
+    private string thresholdCorrectionState = "Unavailable";
+    private string thresholdCorrectionSummary =
+        "No threshold-correction evidence was recorded.";
     private int selectedEvidenceTabIndex;
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
@@ -91,6 +98,13 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.runRecordPath = runRecordPath;
         this.htmlReportPath = htmlReportPath;
         this.csvReportPath = csvReportPath;
+        hasStartupEvidenceOverrides =
+            !string.IsNullOrWhiteSpace(comparisonContractPath)
+            || !string.IsNullOrWhiteSpace(comparisonReportPath)
+            || !string.IsNullOrWhiteSpace(shellScreenshotPath)
+            || !string.IsNullOrWhiteSpace(runRecordPath)
+            || !string.IsNullOrWhiteSpace(htmlReportPath)
+            || !string.IsNullOrWhiteSpace(csvReportPath);
         this.recentRunRecordsPath = recentRunRecordsPath
             ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -102,10 +116,16 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ?? languageOptions[0];
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
         Calibration = new CalibrationCenterViewModel();
-        SelectWorkspaceCommand = new RelayCommand(
+        selectWorkspaceCommand = new RelayCommand(
             parameter => SelectWorkspace(parameter),
-            parameter => parameter is ShellWorkspaceMode mode
-                && Enum.IsDefined(typeof(ShellWorkspaceMode), mode));
+            CanSelectWorkspace);
+        SelectWorkspaceCommand = selectWorkspaceCommand;
+        openSelectedValidationIssueInTeachCommand = new RelayCommand(
+            _ => OpenSelectedValidationIssueInTeach(),
+            _ => CanOpenSelectedValidationIssueInTeach());
+        OpenSelectedValidationIssueInTeachCommand =
+            openSelectedValidationIssueInTeachCommand;
+        Workbench.PropertyChanged += OnWorkbenchNavigationStateChanged;
         OpenVisionLanguageService.LanguageChanged += (_, _) => RefreshLocalizedPresentation();
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
@@ -135,11 +155,20 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             _ => ExportRunRecordRequested?.Invoke(this, EventArgs.Empty),
             _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
         LoadRecentRunRecords();
-        RefreshRecipeComparison(runRecordPath, useStartupOverrides: true);
+        if (hasStartupEvidenceOverrides)
+        {
+            startupEvidenceActive = true;
+            RefreshRecipeComparison(runRecordPath, useStartupOverrides: true);
+        }
+        else
+        {
+            ClearCurrentRunEvidenceForRecipeContext();
+        }
     }
 
     public ICommand ApplyRoiAlignmentCommand { get; }
     public ICommand SelectWorkspaceCommand { get; }
+    public ICommand OpenSelectedValidationIssueInTeachCommand { get; }
     public ICommand FitPlaneCommand { get; }
     public ICommand RefreshRecipeComparisonCommand { get; }
     public ICommand SaveRecipeCommand { get; }
@@ -185,7 +214,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             nameof(RecipeComparisonDetails),
             nameof(RunSnapshotSummary),
             nameof(RunSnapshotEvidence),
-            nameof(InspectionStepSummary)
+            nameof(InspectionStepSummary),
+            nameof(InspectionStageNavigationStatus)
         ];
 
         foreach (var propertyName in propertyNames)
@@ -207,11 +237,29 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             RaisePropertyChanged(nameof(IsInspectWorkspaceSelected));
             RaisePropertyChanged(nameof(IsTeachWorkspaceSelected));
             RaisePropertyChanged(nameof(IsReviewWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsSetupWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsValidateWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsResultsWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsInspectionWorkspaceSelected));
             RaisePropertyChanged(nameof(IsCalibrationWorkspaceSelected));
             RaisePropertyChanged(nameof(IsWorkbenchWorkspaceSelected));
             RaisePropertyChanged(nameof(IsExpertWorkspaceSelected));
             RaisePropertyChanged(nameof(IsTaskWorkspaceSelected));
             RaisePropertyChanged(nameof(WorkspaceSummary));
+            RaisePropertyChanged(nameof(InspectionStageNavigationStatus));
+            selectWorkspaceCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public bool IsSetupWorkspaceSelected
+    {
+        get => SelectedWorkspaceMode == ShellWorkspaceMode.Workbench;
+        set
+        {
+            if (value)
+            {
+                TrySelectWorkspace(ShellWorkspaceMode.Workbench);
+            }
         }
     }
 
@@ -222,7 +270,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Teach;
+                TrySelectWorkspace(ShellWorkspaceMode.Teach);
             }
         }
     }
@@ -237,10 +285,16 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Workbench;
+                TrySelectWorkspace(ShellWorkspaceMode.Workbench);
             }
         }
     }
+
+    public bool IsInspectionWorkspaceSelected =>
+        SelectedWorkspaceMode is ShellWorkspaceMode.Workbench
+            or ShellWorkspaceMode.Teach
+            or ShellWorkspaceMode.Inspect
+            or ShellWorkspaceMode.Review;
 
     public bool IsInspectWorkspaceSelected
     {
@@ -249,9 +303,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Inspect;
+                TrySelectWorkspace(ShellWorkspaceMode.Inspect);
             }
         }
+    }
+
+    public bool IsValidateWorkspaceSelected
+    {
+        get => IsInspectWorkspaceSelected;
+        set => IsInspectWorkspaceSelected = value;
     }
 
     public bool IsReviewWorkspaceSelected
@@ -261,9 +321,15 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Review;
+                TrySelectWorkspace(ShellWorkspaceMode.Review);
             }
         }
+    }
+
+    public bool IsResultsWorkspaceSelected
+    {
+        get => IsReviewWorkspaceSelected;
+        set => IsReviewWorkspaceSelected = value;
     }
 
     public bool IsCalibrationWorkspaceSelected
@@ -273,7 +339,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Calibrate;
+                TrySelectWorkspace(ShellWorkspaceMode.Calibrate);
             }
         }
     }
@@ -285,7 +351,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         {
             if (value)
             {
-                SelectedWorkspaceMode = ShellWorkspaceMode.Expert;
+                TrySelectWorkspace(ShellWorkspaceMode.Expert);
             }
         }
     }
@@ -342,14 +408,25 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public string WorkspaceSummary => SelectedWorkspaceMode switch
     {
-        ShellWorkspaceMode.Workbench => L("도구 워크벤치 | 정식 3D 검사 단계를 구성합니다", "Tool Workbench | Compose typed 3D inspection steps"),
-        ShellWorkspaceMode.Teach => L("레시피 워크벤치 | 순서가 있는 도구 단계와 정식 경로를 티칭합니다", "Recipe Workbench | Teach ordered tool steps and typed routes"),
-        ShellWorkspaceMode.Inspect => L("레시피 워크벤치 | 선택한 도구를 미리보고 출력을 게시합니다", "Recipe Workbench | Preview selected tools and publish outputs"),
-        ShellWorkspaceMode.Review => L("레시피 워크벤치 | 게시된 엔티티와 증거를 검토합니다", "Recipe Workbench | Review published entities and evidence"),
+        ShellWorkspaceMode.Workbench => L("검사 구성 | 도구와 검사 순서를 구성합니다", "Inspection Setup | Compose tools and inspection order"),
+        ShellWorkspaceMode.Teach => L("티칭 | 데이터, 영역, 파라미터와 검출 결과를 확인합니다", "Teach | Configure data, regions, parameters, and detection"),
+        ShellWorkspaceMode.Inspect => L("검증 | 샘플 실행과 실패 근거를 검토합니다", "Validate | Replay samples and inspect failures"),
+        ShellWorkspaceMode.Review => L("결과 | 실행 기록과 출력 증거를 검토합니다", "Results | Review run records and output evidence"),
         ShellWorkspaceMode.Calibrate => L("교정 작업공간 | 오프라인 데이터셋", "Calibration workspace | Offline datasets"),
         ShellWorkspaceMode.Expert => L("고급 작업공간 | 전체 검사 레이아웃", "Expert workspace | Full inspection layout"),
         _ => L("검사 작업공간", "Inspection workspace")
     };
+
+    public string InspectionStageNavigationStatus =>
+        Workbench.IsSelectionCandidateActive
+            ? L("ROI 검토를 적용하거나 취소한 후 화면을 이동하세요.", "Apply or cancel the ROI review before changing stages.")
+            : Workbench.HasPendingStepParameterChanges
+                ? L("파라미터 초안을 적용하거나 취소한 후 화면을 이동하세요.", "Apply or discard the parameter draft before changing stages.")
+                : Workbench.IsSelectedStepPreviewRunning
+                    ? L("미리보기가 끝나거나 취소된 후 화면을 이동하세요.", "Wait for Preview to finish or cancel it before changing stages.")
+                    : Workbench.IsValidationSetRunning
+                        ? L("검증 실행이 끝나거나 취소된 후 화면을 이동하세요.", "Wait for validation to finish or cancel it before changing stages.")
+                        : WorkspaceSummary;
 
     public string StatusText
     {
@@ -393,6 +470,18 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref inspectionStepSummary, value);
     }
 
+    public string ThresholdCorrectionState
+    {
+        get => thresholdCorrectionState;
+        private set => SetField(ref thresholdCorrectionState, value);
+    }
+
+    public string ThresholdCorrectionSummary
+    {
+        get => thresholdCorrectionSummary;
+        private set => SetField(ref thresholdCorrectionSummary, value);
+    }
+
     public int SelectedEvidenceTabIndex
     {
         get => selectedEvidenceTabIndex;
@@ -403,6 +492,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
     public ObservableCollection<InspectionStepItem> InspectionSteps { get; } = [];
 
+    public ObservableCollection<InspectionThresholdCorrectionItem>
+        ThresholdCorrectionItems { get; } = [];
+
     public ObservableCollection<RunRecordRecentItem> RecentRunRecords { get; } = [];
 
     public RunRecordRecentItem? SelectedRecentRunRecord
@@ -411,7 +503,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         set => SetField(ref selectedRecentRunRecord, value);
     }
 
-    public void ShowReviewWorkspace() => SelectedWorkspaceMode = ShellWorkspaceMode.Review;
+    public void ShowReviewWorkspace() => TrySelectWorkspace(ShellWorkspaceMode.Review);
 
     public void SelectInspectionTask(ShellInspectionTask task)
     {
@@ -426,7 +518,91 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         if (parameter is ShellWorkspaceMode mode
             && Enum.IsDefined(typeof(ShellWorkspaceMode), mode))
         {
-            SelectedWorkspaceMode = mode;
+            TrySelectWorkspace(mode);
+        }
+    }
+
+    private bool CanSelectWorkspace(object? parameter)
+    {
+        if (parameter is not ShellWorkspaceMode mode
+            || !Enum.IsDefined(typeof(ShellWorkspaceMode), mode))
+        {
+            return false;
+        }
+
+        return mode == SelectedWorkspaceMode
+            || !IsInspectionWorkspaceSelected
+            || (!Workbench.IsSelectionCandidateActive
+                && !Workbench.HasPendingStepParameterChanges
+                && !Workbench.IsSelectedStepPreviewRunning
+                && !Workbench.IsValidationSetRunning);
+    }
+
+    private void TrySelectWorkspace(ShellWorkspaceMode mode)
+    {
+        if (!CanSelectWorkspace(mode))
+        {
+            StatusText = InspectionStageNavigationStatus;
+            return;
+        }
+
+        SelectedWorkspaceMode = mode;
+    }
+
+    private bool CanOpenSelectedValidationIssueInTeach() =>
+        Workbench.SelectedValidationSetStep is { StepId.Length: > 0 } selected
+        && Workbench.PipelineSteps.Any(
+            step => string.Equals(
+                step.Id,
+                selected.StepId,
+                StringComparison.OrdinalIgnoreCase))
+        && CanSelectWorkspace(ShellWorkspaceMode.Teach);
+
+    private void OpenSelectedValidationIssueInTeach()
+    {
+        if (Workbench.SelectedValidationSetStep is not { StepId.Length: > 0 } selected
+            || !CanSelectWorkspace(ShellWorkspaceMode.Teach))
+        {
+            StatusText = InspectionStageNavigationStatus;
+            return;
+        }
+
+        if (!Workbench.SelectPipelineStep(selected.StepId))
+        {
+            StatusText = L(
+                $"\uC120\uD0DD\uD55C \uC2E4\uD328 \uB2E8\uACC4 '{selected.StepId}'\uB97C \uD604\uC7AC \uB808\uC2DC\uD53C\uC5D0\uC11C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+                $"The selected failed step '{selected.StepId}' is not available in the current recipe.");
+            return;
+        }
+
+        if (!Workbench.BeginValidationFailureCorrectionContext())
+        {
+            StatusText = L(
+                "\uC120\uD0DD\uD55C \uC2E4\uD328 \uC0D8\uD50C\uC758 \uD2F0\uCE6D \uCEE8\uD14D\uC2A4\uD2B8\uB97C \uC900\uBE44\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+                "The selected failure could not be prepared for correction in Teach.");
+            return;
+        }
+
+        TrySelectWorkspace(ShellWorkspaceMode.Teach);
+        StatusText = L(
+            $"\uD2F0\uCE6D\uC5D0\uC11C '{selected.StepId}' \uB2E8\uACC4\uB97C \uC5F4\uC5C8\uC2B5\uB2C8\uB2E4. \uB808\uC2DC\uD53C\uB294 \uBCC0\uACBD\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+            $"Opened step '{selected.StepId}' in Teach. The recipe was not changed.");
+    }
+
+    private void OnWorkbenchNavigationStateChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(ToolWorkbenchViewModel.IsSelectionCandidateActive)
+            or nameof(ToolWorkbenchViewModel.HasPendingStepParameterChanges)
+            or nameof(ToolWorkbenchViewModel.IsSelectedStepPreviewRunning)
+            or nameof(ToolWorkbenchViewModel.IsValidationSetRunning)
+            or nameof(ToolWorkbenchViewModel.SelectedValidationSetStep)
+            or nameof(ToolWorkbenchViewModel.SelectedPipelineStep))
+        {
+            RaisePropertyChanged(nameof(InspectionStageNavigationStatus));
+            selectWorkspaceCommand.RaiseCanExecuteChanged();
+            openSelectedValidationIssueInTeachCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -450,6 +626,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
         RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(root)} | Runner: not created | UI: viewer smoke output";
         InspectionStepSummary = "Viewer smoke: Failed";
+        RefreshThresholdCorrection(null);
         InspectionSteps.Clear();
         InspectionSteps.Add(new InspectionStepItem("1", "Viewer smoke", "Failed", string.IsNullOrWhiteSpace(viewerStatus) ? "Viewer smoke failed before recipe comparison." : viewerStatus));
         RecipeRunHistory.Clear();
@@ -461,8 +638,62 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             "(viewer smoke failure)"));
     }
 
-    public void RefreshRecipeComparison() =>
+    public void RefreshRecipeComparison()
+    {
+        if (string.IsNullOrWhiteSpace(currentRunRecordPath))
+        {
+            if (startupEvidenceActive)
+            {
+                RefreshRecipeComparison(
+                    selectedRunRecordPath: null,
+                    useStartupOverrides: true);
+            }
+            else
+            {
+                ClearCurrentRunEvidenceForRecipeContext();
+            }
+
+            return;
+        }
+
         RefreshRecipeComparison(currentRunRecordPath, useStartupOverrides: false);
+    }
+
+    public void ClearCurrentRunEvidenceForRecipeContext()
+    {
+        startupEvidenceActive = false;
+        currentContractPath = null;
+        currentReportPath = null;
+        currentShellScreenshotPath = null;
+        currentRunRecordPath = null;
+        currentHtmlReportPath = null;
+        currentCsvReportPath = null;
+        SelectedRecentRunRecord = null;
+        RefreshCommandCanExecute();
+
+        RecipeComparisonSummary = L(
+            "현재 레시피와 소스의 Run Record가 없습니다.",
+            "No Run Record is loaded for the current recipe and source.");
+        RecipeComparisonHistory = L(
+            "현재 레시피를 실행하거나 호환되는 최근 Run Record를 명시적으로 여세요.",
+            "Run the current recipe or explicitly open a compatible recent Run Record.");
+        RecipeComparisonDetails = L(
+            "최근 Run Record 목록은 유지되지만 자동으로 선택되지 않습니다.",
+            "Recent Run Records remain available but are never selected automatically.");
+        RunSnapshotSummary = L(
+            "현재 레시피의 실행 스냅샷이 없습니다.",
+            "No current recipe run snapshot is loaded.");
+        RunSnapshotEvidence = L(
+            "명시적으로 실행하거나 기록을 열기 전에는 현재 레시피/소스 증거가 없습니다.",
+            "Current recipe/source evidence is unavailable until an explicit run or record open.");
+        InspectionStepSummary = L(
+            "현재 레시피의 Run Record가 없습니다.",
+            "No current recipe Run Record is loaded.");
+        InspectionSteps.Clear();
+        RecipeRunHistory.Clear();
+        RefreshThresholdCorrection(null);
+        StatusText = "Viewer hosted | current recipe evidence cleared";
+    }
 
     private void RefreshRecipeComparison(string? selectedRunRecordPath, bool useStartupOverrides)
     {
@@ -543,6 +774,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         InspectionRunRecord? runRecord)
     {
         InspectionSteps.Clear();
+        RefreshThresholdCorrection(runRecord);
 
         var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
         var order = 1;
@@ -606,6 +838,89 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ? $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}"
             : $"Recipe steps: {recipeSteps.Length} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}";
     }
+
+    private void RefreshThresholdCorrection(InspectionRunRecord? runRecord)
+    {
+        ThresholdCorrectionItems.Clear();
+        var snapshot = runRecord?.ThresholdCorrectionEvidence;
+        if (snapshot is null)
+        {
+            ThresholdCorrectionState = "Unavailable";
+            ThresholdCorrectionSummary =
+                runRecord is null
+                    ? "No Run Record is loaded."
+                    : "This legacy Run Record did not record threshold-correction evidence.";
+            return;
+        }
+
+        ThresholdCorrectionState = snapshot.State.ToString();
+        ThresholdCorrectionSummary = snapshot.Message;
+        if (snapshot.Evidence is not { } evidence)
+        {
+            ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+                "Sidecar",
+                snapshot.SidecarSha256 is null
+                    ? snapshot.SidecarPath
+                    : $"{snapshot.SidecarPath} | SHA-256 {snapshot.SidecarSha256}"));
+            return;
+        }
+
+        var proposal = evidence.Proposal;
+        ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+            "Identity",
+            $"{proposal.CandidateId} | {proposal.StepId} / {proposal.ToolId} | {proposal.MetricName} {proposal.LimitKind}"));
+        ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+            "Before",
+            FormatThresholdParameters(
+                proposal.Changes.Select(change =>
+                    (change.ParameterName, change.BeforeValue)))));
+        ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+            "Suggested",
+            FormatThresholdParameters(
+                proposal.Changes.Select(change =>
+                    (change.ParameterName, change.ProposedValue)))));
+
+        if (evidence.ManualCorrection is { } manual)
+        {
+            ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+                "Manual",
+                FormatThresholdParameters(
+                    manual.ParameterChanges.Select(change =>
+                        (change.ParameterName, change.ManualValue)))));
+            ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+                "Development",
+                $"Mismatch {manual.BeforeMismatchCount}->{manual.AfterMismatchCount} | "
+                + $"before [{FormatDevelopmentSampleIdentities(manual.BeforeDevelopmentSamples)}] | "
+                + $"corrected [{FormatDevelopmentSampleIdentities(manual.AfterDevelopmentSamples)}]"));
+        }
+        else
+        {
+            ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+                "Committed",
+                "The deterministic suggestion was applied without a later manual correction."));
+        }
+
+        ThresholdCorrectionItems.Add(new InspectionThresholdCorrectionItem(
+            "Held-out",
+            string.Join(
+                "; ",
+                evidence.HeldOutSamples.Select(sample =>
+                    $"{sample.SampleOrder}:{sample.SampleIdentity}:{sample.Status}"))));
+    }
+
+    private static string FormatThresholdParameters(
+        IEnumerable<(string Name, string Value)> parameters) =>
+        string.Join(
+            ", ",
+            parameters.Select(parameter =>
+                $"{parameter.Name}={parameter.Value}"));
+
+    private static string FormatDevelopmentSampleIdentities(
+        IReadOnlyList<ToolRecipeThresholdDevelopmentSampleEvidence> samples) =>
+        string.Join(
+            "; ",
+            samples.Select(sample =>
+                $"{sample.SampleOrder}:{sample.Role}:{sample.SampleIdentity}:{sample.Status}:match={sample.ExpectedMatch}"));
 
     private void RefreshRunHistory(
         string root,
@@ -698,6 +1013,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
                 return false;
             }
 
+            startupEvidenceActive = false;
             RefreshRecipeComparison(fullPath, useStartupOverrides: false);
             message = fullPath;
             return true;
@@ -762,7 +1078,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
                 RecentRunRecords.Add(CreateRecentRunRecordItem(path, ReadRunRecord(path)));
             }
 
-            SelectedRecentRunRecord = RecentRunRecords.FirstOrDefault();
+            SelectedRecentRunRecord = null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -1197,6 +1513,10 @@ public sealed class InspectionStepItem
 
     public string Evidence { get; }
 }
+
+public sealed record InspectionThresholdCorrectionItem(
+    string Label,
+    string Evidence);
 
 public sealed record RunRecordRecentItem(
     string Path,

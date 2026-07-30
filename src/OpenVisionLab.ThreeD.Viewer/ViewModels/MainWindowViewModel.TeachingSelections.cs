@@ -9,6 +9,8 @@ public sealed partial class MainWindowViewModel
     private IReadOnlyList<ToolRecipeSelectionPoint> teachingCapturePoints = [];
     private IReadOnlyList<ToolRecipeSelection> appliedTeachingSelections = [];
     private IReadOnlyList<ToolRecipeSelection> repeatPreviewTeachingSelections = [];
+    private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
+    private string? selectedCompletenessCellId;
     private string? selectedTeachingSelectionId;
     private string teachingCaptureMessage = "No active teaching capture.";
     private readonly Dictionary<string, double> teachingRoiDisplayHeightOffsets = new(StringComparer.OrdinalIgnoreCase);
@@ -20,6 +22,9 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<ToolRecipeSelection> AppliedTeachingSelections => appliedTeachingSelections;
     public IReadOnlyList<ToolRecipeSelection> RepeatPreviewTeachingSelections =>
         repeatPreviewTeachingSelections;
+    public IReadOnlyList<C3DCompletenessCellOverlay> CompletenessCellOverlays =>
+        completenessCellOverlays;
+    public string? SelectedCompletenessCellId => selectedCompletenessCellId;
 
     public string? SelectedTeachingSelectionId => selectedTeachingSelectionId;
 
@@ -311,6 +316,28 @@ public sealed partial class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(selections);
         repeatPreviewTeachingSelections = selections.ToArray();
         OnPropertyChanged(nameof(RepeatPreviewTeachingSelections));
+    }
+
+    internal void SetCompletenessCellOverlays(
+        IReadOnlyList<C3DCompletenessCellOverlay> overlays)
+    {
+        ArgumentNullException.ThrowIfNull(overlays);
+        completenessCellOverlays = overlays.ToArray();
+        OnPropertyChanged(nameof(CompletenessCellOverlays));
+    }
+
+    internal void SetSelectedCompletenessCellId(string? cellId)
+    {
+        if (string.Equals(
+            selectedCompletenessCellId,
+            cellId,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        selectedCompletenessCellId = cellId;
+        OnPropertyChanged(nameof(SelectedCompletenessCellId));
     }
 
     internal void SetSelectedTeachingSelection(string? selectionId)

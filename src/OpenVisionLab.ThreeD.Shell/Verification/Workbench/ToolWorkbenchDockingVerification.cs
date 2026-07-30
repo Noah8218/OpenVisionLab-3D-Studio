@@ -1,5 +1,6 @@
 using System.IO;
 using System.Threading;
+using System.Windows;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
@@ -31,6 +32,9 @@ internal static class ToolWorkbenchDockingVerification
         "calibration-inspector",
         "calibration-evidence",
     ];
+
+    private const string ThicknessRecipeRelativePath =
+        "3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json";
 
     public static bool Verify(string reportPath, out string summary)
     {
@@ -120,6 +124,10 @@ internal static class ToolWorkbenchDockingVerification
                 "Workbench gives the default Viewer a dominant width",
                 workbench.HasDominantViewerWidth,
                 $"dominantViewer={workbench.HasDominantViewerWidth}");
+            Check(
+                "Workbench dock tabs use the top OpenVision themed strip",
+                workbench.HasTopThemedDockTabs,
+                $"topThemedTabs={workbench.HasTopThemedDockTabs}");
             Check("Workbench hosts all twelve dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));
             Check("Workbench required panes cannot close", workbenchContracts.All(contract => !contract.CanClose), Describe(workbenchContracts));
@@ -201,6 +209,370 @@ internal static class ToolWorkbenchDockingVerification
             workbench.ActivateCorrespondenceEvidencePane();
             Check("Workbench Correspondence Evidence command selects docked evidence pane", workbench.IsBottomPaneAttached && workbench.IsCorrespondenceEvidencePaneSelected, $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsCorrespondenceEvidencePaneSelected}");
 
+            var shell = new ShellMainWindowViewModel();
+            var recipePath = Path.Combine(FindRepositoryRoot(), ThicknessRecipeRelativePath);
+            Check(
+                "stage verification opens the current bundled Thickness recipe",
+                shell.Workbench.TryOpenTeachingRecipe(recipePath, out var openMessage)
+                && shell.Workbench.PipelineSteps.Count == 8
+                && shell.Workbench.SelectedPipelineStep is not null,
+                openMessage);
+            var selectedStep = shell.Workbench.SelectedPipelineStep;
+            var selectedStepState = selectedStep?.State;
+            var recipeStepCount = shell.Workbench.PipelineSteps.Count;
+            var recipeDirty = shell.Workbench.IsDirty;
+            var validationFixtureDirectory = Path.Combine(
+                FindRepositoryRoot(),
+                "artifacts",
+                "current",
+                "20260729-completeness-threshold-assistance",
+                "validation-set-fixture");
+            var validationSamplePaths = new[]
+            {
+                "completeness-good-low.C3D",
+                "completeness-good-high.C3D",
+                "completeness-bad-low.C3D",
+                "completeness-bad-high.C3D",
+                "completeness-held-out.C3D",
+            }
+                .Select(name => Path.Combine(validationFixtureDirectory, name))
+                .ToArray();
+            Check(
+                "stage verification fixture owns five readable Validation Set samples",
+                validationSamplePaths.All(File.Exists),
+                string.Join(", ", validationSamplePaths.Select(Path.GetFileName)));
+            shell.Workbench.SetValidationSetSources(validationSamplePaths);
+            var stageWorkbench = new ToolRecipeWorkbenchView
+            {
+                DataContext = shell,
+                ViewerContent = viewerOwner,
+            };
+            var stageHost = new Window
+            {
+                Content = stageWorkbench,
+                Width = 1600,
+                Height = 900,
+                Left = -10000,
+                Top = -10000,
+                ShowActivated = false,
+                ShowInTaskbar = false,
+                WindowStyle = WindowStyle.None,
+            };
+            stageHost.Show();
+            stageHost.UpdateLayout();
+            Check(
+                "Setup composes only Tool Library and full Recipe Chain",
+                stageWorkbench.OperatorStage == OpenVisionOperatorStage.Setup
+                && stageWorkbench.HasSetupStageComposition
+                && stageWorkbench.HasStableStageHostedDataContexts,
+                $"stage={stageWorkbench.OperatorStage}; setup={stageWorkbench.HasSetupStageComposition}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; bottom={stageWorkbench.IsBottomPaneAttached}");
+
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
+            stageHost.UpdateLayout();
+            Check(
+                "Teach composes the compact step rail, dominant Viewer, and Selected Tool",
+                shell.IsTeachWorkspaceSelected
+                && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Teach
+                && stageWorkbench.HasTeachStageComposition
+                && stageWorkbench.HasStableStageHostedDataContexts,
+                $"stage={stageWorkbench.OperatorStage}; teach={stageWorkbench.HasTeachStageComposition}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; bottom={stageWorkbench.IsBottomPaneAttached}");
+            Check(
+                "Setup to Teach navigation preserves recipe and selected-step identity",
+                ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == recipeStepCount
+                && shell.Workbench.IsDirty == recipeDirty
+                && string.Equals(selectedStepState, shell.Workbench.SelectedPipelineStep?.State, StringComparison.Ordinal),
+                $"selected={shell.Workbench.SelectedPipelineStep?.Id}; steps={shell.Workbench.PipelineSteps.Count}; dirty={shell.Workbench.IsDirty}");
+
+            Check(
+                "ROI capture can start for the selected Thickness step",
+                shell.Workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null),
+                shell.Workbench.TeachingSelectionCaptureInstruction);
+            shell.Workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            Check(
+                "active ROI Review blocks stage navigation",
+                shell.Workbench.IsSelectionCandidateActive
+                && !shell.SelectWorkspaceCommand.CanExecute(ShellWorkspaceMode.Inspect),
+                shell.InspectionStageNavigationStatus);
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
+            Check(
+                "blocked stage execution leaves Teach active",
+                shell.IsTeachWorkspaceSelected,
+                $"stage={shell.SelectedWorkspaceMode}; status={shell.StatusText}");
+            shell.Workbench.CancelTeachingSelectionCaptureCommand.Execute(null);
+
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
+            stageHost.UpdateLayout();
+            Check(
+                "Validate promotes validation evidence to the only full-height workspace",
+                shell.IsValidateWorkspaceSelected
+                && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Validate
+                && stageWorkbench.HasValidateStageComposition
+                && stageWorkbench.IsDedicatedValidationWorkspace
+                && stageWorkbench.HasStableStageHostedDataContexts
+                && stageWorkbench.HasLocalizedValidationNavigation
+                && stageWorkbench.ValidationSetSampleCount == 5
+                && stageWorkbench.CanRunValidationSet
+                && !stageWorkbench.IsBottomPaneAttached,
+                $"stage={stageWorkbench.OperatorStage}; validate={stageWorkbench.HasValidateStageComposition}; dedicated={stageWorkbench.IsDedicatedValidationWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedValidationNavigation}; samples={stageWorkbench.ValidationSetSampleCount}; canRun={stageWorkbench.CanRunValidationSet}; bottom={stageWorkbench.IsBottomPaneAttached}");
+            foreach (var section in Enum.GetValues<ValidationWorkspaceSection>())
+            {
+                stageWorkbench.SetValidationWorkspaceSection(section);
+            }
+            Check(
+                "Validate exposes five local drill-down sections without leaving the stage",
+                stageWorkbench.ActiveValidationWorkspaceSection == ValidationWorkspaceSection.HeldOut
+                && shell.IsValidateWorkspaceSelected,
+                $"section={stageWorkbench.ActiveValidationWorkspaceSection}; stage={shell.SelectedWorkspaceMode}");
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Review);
+            stageHost.UpdateLayout();
+            Check(
+                "Results promotes one dedicated read-only evidence workspace",
+                shell.IsResultsWorkspaceSelected
+                && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Results
+                && stageWorkbench.HasResultsStageComposition
+                && stageWorkbench.IsDedicatedResultsWorkspace
+                && stageWorkbench.HasStableStageHostedDataContexts
+                && stageWorkbench.HasLocalizedResultsNavigation
+                && !stageWorkbench.IsBottomPaneAttached,
+                $"stage={stageWorkbench.OperatorStage}; results={stageWorkbench.HasResultsStageComposition}; dedicated={stageWorkbench.IsDedicatedResultsWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedResultsNavigation}; bottom={stageWorkbench.IsBottomPaneAttached}");
+            var resultsSelectedStep = shell.Workbench.SelectedPipelineStep;
+            var resultsStepCount = shell.Workbench.PipelineSteps.Count;
+            var resultsDirty = shell.Workbench.IsDirty;
+            var resultsViewerOutput = shell.Workbench.CurrentViewerOutputSummary;
+            var resultsRunSummary = shell.RunSnapshotSummary;
+            foreach (var section in Enum.GetValues<ResultsWorkspaceSection>())
+            {
+                stageWorkbench.SetResultsWorkspaceSection(section);
+            }
+            Check(
+                "Results exposes Run Record, Output Compare, and Reports locally without mutation",
+                stageWorkbench.ActiveResultsWorkspaceSection == ResultsWorkspaceSection.Reports
+                && shell.IsResultsWorkspaceSelected
+                && ReferenceEquals(resultsSelectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == resultsStepCount
+                && shell.Workbench.IsDirty == resultsDirty
+                && string.Equals(resultsViewerOutput, shell.Workbench.CurrentViewerOutputSummary, StringComparison.Ordinal)
+                && string.Equals(resultsRunSummary, shell.RunSnapshotSummary, StringComparison.Ordinal),
+                $"section={stageWorkbench.ActiveResultsWorkspaceSection}; stage={shell.SelectedWorkspaceMode}; steps={shell.Workbench.PipelineSteps.Count}; dirty={shell.Workbench.IsDirty}; output={shell.Workbench.CurrentViewerOutputSummary}");
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Expert);
+            Check(
+                "Advanced diagnostics remain an explicit full-layout route",
+                shell.IsExpertWorkspaceSelected
+                && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Legacy
+                && stageWorkbench.GetDockingPaneContracts().Count == 12,
+                $"stage={stageWorkbench.OperatorStage}; mode={shell.SelectedWorkspaceMode}; panes={stageWorkbench.GetDockingPaneContracts().Count}");
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Review);
+            Check(
+                "Results and Advanced navigation preserve recipe, output, and run evidence",
+                ReferenceEquals(resultsSelectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == resultsStepCount
+                && shell.Workbench.IsDirty == resultsDirty
+                && string.Equals(resultsViewerOutput, shell.Workbench.CurrentViewerOutputSummary, StringComparison.Ordinal)
+                && string.Equals(resultsRunSummary, shell.RunSnapshotSummary, StringComparison.Ordinal),
+                $"stage={stageWorkbench.OperatorStage}; selected={shell.Workbench.SelectedPipelineStep?.Id}; dirty={shell.Workbench.IsDirty}; output={shell.Workbench.CurrentViewerOutputSummary}");
+            shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Workbench);
+            Check(
+                "all stage navigation is presentation-only",
+                stageWorkbench.HasSetupStageComposition
+                && ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == recipeStepCount
+                && shell.Workbench.IsDirty == recipeDirty
+                && string.Equals(selectedStepState, shell.Workbench.SelectedPipelineStep?.State, StringComparison.Ordinal),
+                $"stage={stageWorkbench.OperatorStage}; selected={shell.Workbench.SelectedPipelineStep?.Id}; state={shell.Workbench.SelectedPipelineStep?.State}; dirty={shell.Workbench.IsDirty}");
+            stageHost.Close();
+
+            var ownerPathShell = new ShellMainWindowViewModel();
+            var ownerPathRecipe = Path.Combine(
+                validationFixtureDirectory,
+                "completeness-threshold-fixture.ov3d-recipe.json");
+            var ownerPathRunRecord = Path.Combine(
+                FindRepositoryRoot(),
+                "artifacts",
+                "current",
+                "20260729-completeness-results-overlays",
+                "runner-record.json");
+            var ownerPathOpenMessage = string.Empty;
+            var ownerPathRunMessage = string.Empty;
+            Check(
+                "IA-4b owner path opens the controlled recipe, five labeled samples, and Fail Run Record",
+                ownerPathShell.Workbench.TryOpenTeachingRecipe(
+                    ownerPathRecipe,
+                    out ownerPathOpenMessage)
+                && ownerPathShell.Workbench.ValidationSetSamples.Count == 5
+                && ownerPathShell.LoadRunRecord(
+                    ownerPathRunRecord,
+                    out ownerPathRunMessage)
+                && ownerPathShell.InspectionSteps.Count == 1,
+                $"{ownerPathOpenMessage}; run={ownerPathRunMessage}; samples={ownerPathShell.Workbench.ValidationSetSamples.Count}; runSteps={ownerPathShell.InspectionSteps.Count}");
+            Task.Run(() =>
+                    ownerPathShell.Workbench.RunValidationSetAsync())
+                .GetAwaiter()
+                .GetResult();
+            ownerPathShell.SelectWorkspaceCommand.Execute(
+                ShellWorkspaceMode.Inspect);
+            var ownerPathWorkbench = new ToolRecipeWorkbenchView
+            {
+                DataContext = ownerPathShell,
+                ViewerContent = viewerOwner,
+            };
+            var ownerPathHost = new Window
+            {
+                Content = ownerPathWorkbench,
+                Width = 1600,
+                Height = 900,
+                Left = -10000,
+                Top = -10000,
+                ShowActivated = false,
+                ShowInTaskbar = false,
+                WindowStyle = WindowStyle.None,
+            };
+            ownerPathHost.Show();
+            ownerPathHost.UpdateLayout();
+            ownerPathWorkbench.SetValidationWorkspaceSection(
+                ValidationWorkspaceSection.Samples);
+            ownerPathHost.UpdateLayout();
+            Check(
+                "Validate exposes one stable keyboard-focusable sample-set action",
+                ownerPathWorkbench.HasAccessibleValidationSampleSetAction
+                && ownerPathShell.Workbench.RunValidationSetCommand
+                    .CanExecute(null),
+                $"accessible={ownerPathWorkbench.HasAccessibleValidationSampleSetAction}; canRun={ownerPathShell.Workbench.RunValidationSetCommand.CanExecute(null)}");
+            ownerPathWorkbench.SetValidationWorkspaceSection(
+                ValidationWorkspaceSection.Failures);
+            ownerPathHost.UpdateLayout();
+            var ownerFailureStepId =
+                ownerPathShell.Workbench.SelectedValidationSetStep?.StepId;
+            Check(
+                "Failure Analysis leads with selected sample rule and reason before technical evidence",
+                ownerPathWorkbench.HasValidationFailureOperatorSummary,
+                $"summary={ownerPathWorkbench.HasValidationFailureOperatorSummary}; sample={ownerPathShell.Workbench.SelectedValidationSetSample?.FileName}; rule={ownerPathShell.Workbench.SelectedValidationSetStep?.ToolName}; reason={ownerPathShell.Workbench.SelectedValidationSetStep?.Evidence}");
+            Check(
+                "IA-4b explicit sample-set execution exposes a real failure-to-Teach route",
+                ownerPathShell.Workbench.ValidationSetFailCount > 0
+                && ownerPathShell.Workbench.SelectedValidationSetSample
+                    ?.Status == "Fail"
+                && ownerPathShell
+                    .OpenSelectedValidationIssueInTeachCommand
+                    .CanExecute(null),
+                $"pass={ownerPathShell.Workbench.ValidationSetPassCount}; fail={ownerPathShell.Workbench.ValidationSetFailCount}; error={ownerPathShell.Workbench.ValidationSetErrorCount}; selected={ownerPathShell.Workbench.SelectedValidationSetSample?.Status}; step={ownerFailureStepId}");
+            var ownerRecipePath = ownerPathShell.Workbench.RecipePath;
+            var ownerSourcePath = ownerPathShell.Workbench.Source.Path;
+            var ownerStepCount = ownerPathShell.Workbench.PipelineSteps.Count;
+            var ownerDirty = ownerPathShell.Workbench.IsDirty;
+            var ownerValidationSummary =
+                ownerPathShell.Workbench.ValidationSetSummary;
+            var ownerRunSummary = ownerPathShell.RunSnapshotSummary;
+            var ownerInspectionSummary =
+                ownerPathShell.InspectionStepSummary;
+            ownerPathShell.OpenSelectedValidationIssueInTeachCommand
+                .Execute(null);
+            ownerPathHost.UpdateLayout();
+            var ownerSelectedStepId =
+                ownerPathShell.Workbench.SelectedPipelineStep?.Id;
+            Check(
+                "IA-4b failure opens its owning Teach step without mutation or hidden execution",
+                ownerPathShell.IsTeachWorkspaceSelected
+                && string.Equals(
+                    ownerSelectedStepId,
+                    ownerFailureStepId,
+                    StringComparison.OrdinalIgnoreCase)
+                && ownerPathShell.Workbench.IsDirty == ownerDirty
+                && !ownerPathShell.Workbench.IsValidationSetRunning
+                && !ownerPathShell.Workbench.IsSelectedStepPreviewRunning,
+                $"stage={ownerPathShell.SelectedWorkspaceMode}; selected={ownerSelectedStepId}; failureStep={ownerFailureStepId}; dirty={ownerDirty}->{ownerPathShell.Workbench.IsDirty}; validationRunning={ownerPathShell.Workbench.IsValidationSetRunning}; previewRunning={ownerPathShell.Workbench.IsSelectedStepPreviewRunning}");
+            var correctionContext =
+                ownerPathShell.Workbench.ActiveValidationFailureCorrectionContext;
+            Check(
+                "Teach correction carries the failed sample, owning rule, reason, and cell summary",
+                correctionContext is not null
+                && correctionContext.SampleName.Length > 0
+                && string.Equals(
+                    correctionContext.StepId,
+                    ownerFailureStepId,
+                    StringComparison.OrdinalIgnoreCase)
+                && correctionContext.ToolName.Length > 0
+                && correctionContext.Reason.Length > 0
+                && correctionContext.CellSummary.Contains(
+                    "failed cells",
+                    StringComparison.OrdinalIgnoreCase)
+                && ownerPathWorkbench.IsFailureCorrectionContextVisible,
+                $"sample={correctionContext?.SampleName}; step={correctionContext?.StepId}; rule={correctionContext?.ToolName}; reason={correctionContext?.Reason}; cells={correctionContext?.CellSummary}; card={ownerPathWorkbench.IsFailureCorrectionContextVisible}");
+            ownerPathShell.SelectWorkspaceCommand.Execute(
+                ShellWorkspaceMode.Inspect);
+            ownerPathHost.Width = 1100;
+            ownerPathHost.Height = 760;
+            ownerPathHost.UpdateLayout();
+            ownerPathShell.OpenSelectedValidationIssueInTeachCommand
+                .Execute(null);
+            ownerPathHost.UpdateLayout();
+            Check(
+                "Compact failure-to-Teach opens Selected Tool automatically without hidden execution",
+                ownerPathShell.IsTeachWorkspaceSelected
+                && ownerPathWorkbench.IsCompactDockLayout
+                && ownerPathWorkbench.IsToolInspectorPaneSelected
+                && ownerPathWorkbench.IsFailureCorrectionContextVisible
+                && ownerPathShell.Workbench.IsDirty == ownerDirty
+                && !ownerPathShell.Workbench.IsValidationSetRunning
+                && !ownerPathShell.Workbench.IsSelectedStepPreviewRunning,
+                $"stage={ownerPathShell.SelectedWorkspaceMode}; compact={ownerPathWorkbench.IsCompactDockLayout}; selectedTool={ownerPathWorkbench.IsToolInspectorPaneSelected}; card={ownerPathWorkbench.IsFailureCorrectionContextVisible}; dirty={ownerDirty}->{ownerPathShell.Workbench.IsDirty}; validationRunning={ownerPathShell.Workbench.IsValidationSetRunning}; previewRunning={ownerPathShell.Workbench.IsSelectedStepPreviewRunning}");
+            ownerPathShell.SelectWorkspaceCommand.Execute(
+                ShellWorkspaceMode.Review);
+            ownerPathWorkbench.SetResultsWorkspaceSection(
+                ResultsWorkspaceSection.RunRecord);
+            ownerPathHost.UpdateLayout();
+            Check(
+                "Results leads with operator decision steps and a keyboard-focusable correction route",
+                ownerPathWorkbench.HasResultsOperatorSummary
+                && ownerPathShell
+                    .OpenSelectedValidationIssueInTeachCommand
+                    .CanExecute(null),
+                $"summary={ownerPathWorkbench.HasResultsOperatorSummary}; decision={ownerPathShell.RunSnapshotSummary}; steps={ownerPathShell.InspectionStepSummary}; canFix={ownerPathShell.OpenSelectedValidationIssueInTeachCommand.CanExecute(null)}");
+            ownerPathShell.SelectWorkspaceCommand.Execute(
+                ShellWorkspaceMode.Expert);
+            ownerPathHost.UpdateLayout();
+            ownerPathShell.SelectWorkspaceCommand.Execute(
+                ShellWorkspaceMode.Review);
+            ownerPathWorkbench.SetResultsWorkspaceSection(
+                ResultsWorkspaceSection.RunRecord);
+            ownerPathHost.UpdateLayout();
+            Check(
+                "IA-4b Results to Advanced to Results preserves recipe, failure, validation, output, and Run Record evidence",
+                ownerPathShell.IsResultsWorkspaceSelected
+                && ownerPathWorkbench.HasResultsStageComposition
+                && ownerPathWorkbench.HasStableStageHostedDataContexts
+                && string.Equals(
+                    ownerPathShell.Workbench.RecipePath,
+                    ownerRecipePath,
+                    StringComparison.OrdinalIgnoreCase)
+                && string.Equals(
+                    ownerPathShell.Workbench.Source.Path,
+                    ownerSourcePath,
+                    StringComparison.OrdinalIgnoreCase)
+                && ownerPathShell.Workbench.PipelineSteps.Count
+                    == ownerStepCount
+                && string.Equals(
+                    ownerPathShell.Workbench.SelectedPipelineStep?.Id,
+                    ownerSelectedStepId,
+                    StringComparison.OrdinalIgnoreCase)
+                && ownerPathShell.Workbench.IsDirty == ownerDirty
+                && string.Equals(
+                    ownerPathShell.Workbench.ValidationSetSummary,
+                    ownerValidationSummary,
+                    StringComparison.Ordinal)
+                && ownerPathShell.Workbench.ValidationSetFailCount > 0
+                && string.Equals(
+                    ownerPathShell.RunSnapshotSummary,
+                    ownerRunSummary,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    ownerPathShell.InspectionStepSummary,
+                    ownerInspectionSummary,
+                    StringComparison.Ordinal)
+                && ownerPathShell.InspectionSteps.Count == 1,
+                $"stage={ownerPathShell.SelectedWorkspaceMode}; recipe={ownerPathShell.Workbench.RecipePath}; selected={ownerPathShell.Workbench.SelectedPipelineStep?.Id}; dirty={ownerPathShell.Workbench.IsDirty}; validation={ownerPathShell.Workbench.ValidationSetSummary}; run={ownerPathShell.RunSnapshotSummary}; runSteps={ownerPathShell.InspectionSteps.Count}");
+            ownerPathHost.Close();
+
             var advancedMarker = new object();
             var advanced = new OpenVisionDockWorkspaceView
             {
@@ -220,6 +592,11 @@ internal static class ToolWorkbenchDockingVerification
             var advancedContracts = advanced.GetDockingPaneContracts();
             Check("Advanced exposes twelve dock panes", advancedContracts.Count == 12 && HasExactIds(advancedContracts, WorkbenchContentIds), Describe(advancedContracts));
             Check("Advanced panes can float and remain required", advancedContracts.All(contract => contract.CanFloat && !contract.CanClose) && advancedContracts.Single(contract => contract.ContentId == "fit-diagnostics").CanHide == true, Describe(advancedContracts));
+            var reactivatedAdvancedViewer = new object();
+            Check(
+                "Advanced reactivation owns the requested Viewer in its live presenter",
+                advanced.ReactivateViewerContent(reactivatedAdvancedViewer),
+                $"viewer={ReferenceEquals(advanced.ViewerContent, reactivatedAdvancedViewer)}");
 
             var calibrationMarker = new object();
             var calibration = new OpenVisionCalibrationDockWorkspaceView
@@ -236,7 +613,7 @@ internal static class ToolWorkbenchDockingVerification
         }
         catch (Exception exception)
         {
-            lines.Add($"FAIL | unexpected exception | {exception.GetType().Name}: {exception.Message}");
+            lines.Add($"FAIL | unexpected exception | {exception}");
         }
 
         var reportDirectory = Path.GetDirectoryName(reportPath);
@@ -260,6 +637,25 @@ internal static class ToolWorkbenchDockingVerification
         contracts.Select(contract => contract.ContentId).Order(StringComparer.Ordinal)
             .SequenceEqual(expectedIds.Order(StringComparer.Ordinal), StringComparer.Ordinal)
         && contracts.Select(contract => contract.ContentId).Distinct(StringComparer.Ordinal).Count() == contracts.Count;
+
+    private static string FindRepositoryRoot()
+    {
+        foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        {
+            for (var directory = new DirectoryInfo(start);
+                 directory is not null;
+                 directory = directory.Parent)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, ThicknessRecipeRelativePath)))
+                {
+                    return directory.FullName;
+                }
+            }
+        }
+
+        throw new DirectoryNotFoundException(
+            $"Could not locate repository file {ThicknessRecipeRelativePath}.");
+    }
 
     private static string Describe(IEnumerable<DockingPaneContract> contracts) =>
         string.Join(

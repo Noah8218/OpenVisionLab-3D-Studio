@@ -1,5 +1,881 @@
 # OpenVisionLab 3D Next Session Handoff
 
+## Next-chat entry point - 2026-07-30
+
+Start a new development conversation with:
+
+- `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
+
+It records the current `104 C / 17 P / 88 N / 9 E / 16 O` inventory, the
+completed commercial-video-derived foundation, every remaining priority
+train, the completed Teach, Advanced Viewer, novice hierarchy/accessibility,
+and top dock-tab slices, the human-owner R0 prerequisite, the
+dirty-working-tree warning, and the user-owned untracked-folder boundary.
+
+The simulated-novice software route is complete for its current bounded
+contract. Because the visible dock strip changed on 2026-07-30, the immediate
+prerequisite is a fresh human-owner unaided Wide/Compact R0 on the binary
+hashes in `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
+After owner R0 passes, start `J-01/J-03/J-04 SurfaceModel` with
+`gpt-5.6-sol`, high.
+
+Do not reset the current uncommitted implementation. Do not touch
+`3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`. No commit or push is
+authorized by this handoff.
+
+## Validation top dock-tab closure - 2026-07-30
+
+The AvalonDock work-surface tabs now appear above Validate content instead of
+at the bottom window edge. The strip uses OpenVisionLab Command Bar, Divider,
+Selected Surface, Accent, Focus, and Disabled tokens. Multi-item panes use the
+top strip as their only title/navigation owner; single-item panes retain the
+normal pane title.
+
+Every dock TabItem exposes its localized title and stable ContentId. An actual
+UI Automation/pointer audit finds all eight tabs and selects Output Compare.
+Compact keeps all eight on one row with the final tab ending at x=667 inside
+the 1280-pixel window.
+
+Release build passes `0/0`, Workbench docking passes `59/59`, Validation Set
+passes `84/84`, and application-only captures pass Wide `1920 x 1040` and
+Compact `1280 x 760`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_VALIDATION_TOP_DOCK_TABS_20260730.md`;
+- `artifacts/current/20260730-validation-top-tabs/`;
+- `scripts/start-human-owner-r0.ps1`;
+- `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains Partial
+only for a fresh human-owner Wide/Compact R0 on this updated binary set.
+
+## Novice information hierarchy and live accessibility closure - 2026-07-29
+
+Failure Analysis now leads with failed sample, failed rule, reason, and next
+action. Results leads with decision, executed-step summary, and an explicit
+Fix in Teach route. Detailed sample/step/metric/overlay evidence, Run Record,
+sidecars, reports, export, and Advanced remain available below or through
+local navigation.
+
+The sample-set action now has one stable owner in the stage navigation surface
+and is keyboard-focusable. Both final actual-pointer timelines directly find:
+
+```text
+id=ValidationSetRunAllButton
+name=샘플 세트 실행
+```
+
+No missing-action or coordinate-fallback event remains. Both layouts preserve
+`3 Pass / 2 Fail / 0 Error`, Advanced geometry, and final Failure Analysis.
+Release build passes `0/0`, Workbench docking passes `58/58`, Validation Set
+passes `84/84`, and FFprobe verifies Wide `1920 x 1040` and Compact
+`1280 x 760`, 15 fps, 110 s.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_NOVICE_INFORMATION_HIERARCHY_AND_ACCESSIBILITY_20260729.md`;
+- `artifacts/current/20260729-novice-hierarchy-accessibility/before/`;
+- `artifacts/current/20260729-novice-hierarchy-accessibility/final/`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+Partial only for the human-owner unaided R0. After owner R0 passes, begin
+SurfaceModel. Physical calibration and certified metrology remain unverified.
+
+## Advanced Viewer reactivation closure - 2026-07-29
+
+The current Release explicitly releases the Viewer from Teach and reactivates
+the exact Viewer in both the Advanced workspace property and its live
+AvalonDock presenter. A post-layout frame request restores the C3D surface,
+ROI, Viewer controls, and HUD in Wide and Compact.
+
+The actual-pointer replay now rejects hidden/off-screen Automation matches and
+requires:
+
+- a visible `ViewerFitAll` control after entering Advanced;
+- a visible `OpenValidationIssueInTeach` action after the final return to
+  Failure Analysis.
+
+Both current videos execute `3 Pass / 2 Fail / 0 Error` and pass both visible
+postconditions. Release build passes `0/0`, Workbench docking passes `55/55`,
+and FFprobe verifies Wide `1920 x 1040` and Compact `1280 x 760`, 15 fps,
+110 s. Preserve:
+
+- `docs/OPENVISIONLAB_3D_ADVANCED_VIEWER_REACTIVATION_20260729.md`;
+- `artifacts/current/20260729-advanced-viewer-reactivation/`.
+
+The historical sample-set accessibility and technical-first hierarchy gaps
+are superseded by the novice information hierarchy closure above.
+
+## Superseded direct simulated-novice full-route repeat - 2026-07-29
+
+Fresh current Release application-only videos repeat the complete route in
+Wide and Compact with actual pointer clicks. They execute the controlled
+five-sample Completeness set (`3 Pass / 2 Fail / 0 Error`), open the selected
+failure in Teach, preserve the repaired source/ROI/correction card, open
+Results, enter Advanced, and return.
+
+The result is `Incomplete`:
+
+- Advanced's `3D 검사 보기` pane is dark and empty in both layouts even
+  though Teach rendered the same C3D source and ROI;
+- the contextual sample-set command cannot be found by its expected
+  AutomationId or accessible name, so the replay uses a layout-derived
+  pointer fallback;
+- Failure Analysis and Results remain clipped and technical-first,
+  especially in Compact;
+- Compact visibly proves final Failure Analysis preservation;
+- Wide's final click is logged inside the recording interval, but this
+  historical harness did not assert or retain the post-click visible state,
+  so the final Wide state is unproven rather than failed.
+
+Release build passes `0/0`; FFprobe verifies Wide `1920 x 1040` / 68 s and
+Compact `1280 x 760` / 68 s at 15 fps. Preserve:
+
+- `docs/OPENVISIONLAB_3D_DIRECT_NOVICE_REPEAT_ANALYSIS_20260729.md`;
+- `artifacts/current/20260729-direct-novice-r0-repeat/`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+Partial. This historical blocker is superseded by the Advanced Viewer
+reactivation closure above.
+
+## Teach failure-correction context closure - 2026-07-29
+
+Current Release app-only actual-pointer videos prove that
+`Failure Analysis -> Fix in Teach` now shows the source, ROI, failed sample,
+rule, reason, and exact failed/passed-cell summary. Compact temporarily
+focuses the left workspace on Selected Tool and requires no manual tab click;
+normal ownership returns on stage exit. No hidden Preview, Publish, Run, or
+recipe-semantic change occurs.
+
+Release build passes `0/0`, Workbench docking passes `54/54`, and FFprobe
+verifies Wide `1920 x 1040` / 42 s and Compact `1280 x 760` / 44 s at
+15 fps. Preserve:
+
+- `docs/OPENVISIONLAB_3D_TEACH_FAILURE_CORRECTION_CONTEXT_20260729.md`;
+- `artifacts/current/20260729-teach-failure-correction/`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+Partial only for the human-owner R0.
+
+## Superseded direct simulated-novice correction blocker - 2026-07-29
+
+Visible-coordinate operation of the current Release passes:
+
+- top-stage discovery;
+- explicit five-sample execution with `3 Pass / 2 Fail / 0 Error`;
+- Failure Analysis and `Fix in Teach`;
+- Results -> Advanced -> Results;
+- Validation and Run Record state preservation.
+
+It fails novice correction usability:
+
+- Wide and Compact Teach show a dark empty Viewer;
+- Advanced immediately renders the same source and ROI;
+- the failed sample, reason, failed-cell count, and overlay do not accompany
+  the selected step into Teach;
+- Compact hides Selected Tool behind a small bottom tab and compresses its
+  controls into a narrow scrolling column;
+- Failure Analysis and Results prioritize clipped technical identifiers over
+  an operator summary.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_DIRECT_NOVICE_REPLAY_FINDINGS_20260729.md`;
+- `artifacts/current/20260729-direct-novice-r0-replay/`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; the software blocker
+is superseded by the closure above. `A-01` remains Partial for human-owner
+R0. The first Wide video segment contains an unrelated 2D-app foreground
+interruption and is not app-only pass evidence.
+
+## IA-4b automated owner-path replay closure - 2026-07-29
+
+Current Release application-only Wide and Compact videos now complete:
+
+```text
+5-sample Run -> 3 Pass / 2 Fail / 0 Error
+-> Failure Analysis -> Fix in Teach
+-> selected Completeness Grid
+-> Results / one-step Fail Run Record
+-> Advanced -> Results
+-> preserved Validation failure evidence
+```
+
+The first recording exposed a real dock-boundary defect: `Fix in Teach` was
+visible but had no live Shell command owner. The hosted Validation view now
+receives an explicit `RunRecordContext` binding from
+`ToolRecipeWorkbenchView`. The accepted videos use the pointer click itself;
+the capture harness's keyboard fallback is not used.
+
+Release build passes `0/0`; the combined Window-hosted integration and
+state-preservation verification passes `52/52`; FFprobe verifies
+`1920 x 1040` and `1280 x 760` at 15 fps for 72 seconds. Preserve:
+
+- `docs/OPENVISIONLAB_3D_IA4B_OWNER_PATH_REPLAY_20260729.md`;
+- `artifacts/current/20260729-ia4b-owner-path-replay/`.
+
+Automated IA-4b is Complete. Human-owner R0 remains external, so `A-01`
+remains Partial and inventory remains
+`104 C / 17 P / 88 N / 9 E / 16 O`. The exact owner checklist is in the
+focused completion document. SurfaceModel remains paused until that replay
+passes.
+
+## IA-4a live stage-host integration repair closure - 2026-07-29
+
+Every dynamically recomposed stage surface now owns an explicit stable Shell
+or Workbench DataContext. Current actual Release Wide/Compact videos show:
+
+- Teach Selected Tool content and Preview;
+- five named Validate sections, five Pending rows, and
+  `Good 2 / Bad 2 / Held-out 1`;
+- three named Results sections, the supplied one-step Fail Run Record, and
+  report/export actions;
+- a visible Results -> Advanced transition.
+
+Validate's local command is now `샘플 세트 실행` / `Run sample set`, distinct
+from global recipe Run All. Release build passes `0/0`; the new actual
+Window-hosted stage integration verification passes `48/48`. `A-10` is
+Complete; `A-01` remains Partial. Inventory is
+`104 C / 17 P / 88 N / 9 E / 16 O`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_STAGE_HOST_INTEGRATION_REPAIR_20260729.md`;
+- `artifacts/current/20260729-stage-host-integration-repair/`;
+- historical before evidence under
+  `artifacts/current/20260729-novice-stage-navigation-video-review/`.
+
+At this earlier checkpoint, IA-4b still had to execute the sample set, open a
+failure in Teach, and prove
+Results -> Advanced -> Results state preservation, and completes the human
+owner's unaided R0. The Codex replay does not replace owner acceptance.
+
+## Superseded IA-4 simulated-novice actual-Release blocker - 2026-07-29
+
+Two clean application-only videos were captured with actual pointer input:
+
+- Wide `1920 x 1040`, 15 fps, 40 seconds;
+- Compact `1280 x 760`, 15 fps, 40 seconds.
+
+Setup renders and the five top-level stages are recognizable. Actual dock
+recomposition then loses the live context required by Teach Selected Tool,
+Validate, and Results:
+
+- Teach Selected Tool cards and evidence are blank.
+- Validate local labels/accessibility names are blank, its matching five
+  sample rows are absent, and Run All is disabled.
+- Results local labels/accessibility names, supplied one-step Fail record,
+  command labels, and immutable notice are blank.
+- The enabled Advanced gear produces no visible transition.
+
+The prior direct View captures and `44/44` / `47/47` structural checks did not
+assert live MainWindow child context, text/accessibility, row counts, command
+readiness, or visible navigation. `A-01` and `A-10` are Partial. Inventory is
+`103 C / 18 P / 88 N / 9 E / 16 O`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md`;
+- `artifacts/current/20260729-novice-stage-navigation-video-review/`;
+- `scripts/run-novice-stage-navigation-video-review.ps1`.
+
+Immediate: `IA-4a live stage-host ownership and MainWindow integration
+repair`. Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+Then repeat the application-only replay and the owner's unaided R0 before
+SurfaceModel. The Codex simulated-novice replay does not replace human-owner
+acceptance.
+
+## Superseded IA-3 dedicated Results workspace closure - 2026-07-29
+
+IA-3 structure exists in current source, but the newer actual-Release replay
+above invalidates its live integration closure.
+
+- Results is one full-height read-only workspace instead of a Viewer plus a
+  compressed lower Run Record.
+- Local navigation separates Run Record, Output Compare, and Reports/export.
+- Results no longer exposes Save, Tool Library, recipe mutation, ROI handles,
+  PropertyGrid Apply, sample roles, threshold Apply, Preview, Publish, or Run.
+- Run Record retains immutable source/recipe/run identity, ordered step
+  evidence, recent records, and JSON/HTML/CSV/export actions.
+- Output Compare remains a view-only three-slot typed-artifact surface.
+- Advanced diagnostics remains an explicit route; entering and returning
+  preserves recipe, selected step, output, and run evidence.
+- Current Release evidence passes build `0/0`,
+  docking/stage/non-mutation `47/47`, Run Record `10/10`, Artifact Navigator
+  `31/31`, Shell options `24/24`, structure `17/17`, and current
+  Wide/Compact/section capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_DEDICATED_RESULTS_WORKSPACE_20260729.md`;
+- `artifacts/current/20260729-results-workspace-extraction/`.
+
+The newer IA-4 checkpoint sets the authoritative inventory and priority.
+
+Next: see the IA-4 blocker above.
+
+## Superseded IA-2 dedicated Validate workspace closure - 2026-07-29
+
+`IA-2 / A-10` structure exists in current source, but the newer actual-Release
+replay above invalidates its live integration closure.
+
+- Validate is now one full-height task surface instead of a Viewer plus a
+  compressed lower Validation Set.
+- Local drill-down separates Samples, Run Results, Failure Analysis,
+  Threshold Review, and Held-out evidence.
+- Compact uses the same drill-down and no longer carries a permanent lower
+  validation table.
+- A selected Fail/Error opens its owning pipeline step in Teach without
+  dirtying or running the recipe.
+- Existing Good/Bad/Held-out roles, deterministic candidate/error tables,
+  Review/Cancel/Apply, development revalidation, and explicit Held-out replay
+  remain unchanged.
+- Results retains the Viewer plus explicit Run Record composition for the
+  next IA-3 extraction.
+- Current Release evidence passes build `0/0`, docking/stage `44/44`,
+  Validation Set `84/84`, Inspection Workspace `63/63`, teaching `28/28`,
+  Artifact Navigator `31/31`, Shell options `24/24`, structure `17/17`, and
+  current Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_DEDICATED_VALIDATE_WORKSPACE_20260729.md`;
+- `artifacts/current/20260729-validate-workspace-extraction/`.
+
+`A-10` is now Partial with `A-01`. See the newer IA-4 checkpoint for the
+authoritative inventory.
+
+The newer IA-3 closure above supersedes this historical next priority.
+
+## IA-1 Setup/Teach workspace separation closure - 2026-07-29
+
+IA-1 is complete in current Release source.
+
+- The top shell exposes real `검사 구성`, `티칭`, `검증`, `결과`, and `교정`
+  navigation.
+- Setup contains Tool Library and the full Recipe Chain; it does not contain
+  Viewer, Selected Tool, Validation Set, or Run Record.
+- Teach contains the compact step rail, dominant Viewer, and Selected Tool; it
+  does not contain Tool Library, tool-add commands, Validation Set, or Run
+  Record.
+- Wide and Compact use distinct compositions; Compact shows at most one
+  support tab beside the dominant task.
+- Setup/Teach/Validate/Results share recipe, source, selected step, Viewer
+  session, and output state.
+- Navigation never mutates or executes. Active ROI Review, PropertyGrid draft,
+  Preview, or Validation execution blocks stage changes.
+- Current Release evidence passes build `0/0`, docking/stage `43/43`, Shell
+  state `75/75`, Inspection Workspace `63/63`, teaching `28/28`, measurement
+  `54/54`, Recipe Manager/WPG `37/37`, Validation Set `82/82`, Shell options
+  `24/24`, Run Record `10/10`, structure `17/17`, and all fresh Setup/Teach
+  Wide/Compact capture-quality checks.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_SETUP_TEACH_WORKSPACE_SEPARATION_20260729.md`;
+- `docs/OPENVISIONLAB_3D_WORKSPACE_INFORMATION_ARCHITECTURE_REDESIGN_20260729.md`;
+- `artifacts/current/20260729-workspace-information-architecture/`.
+
+At this IA-1 checkpoint, `A-01` remained `Partial` and inventory was
+`103 C / 18 P / 88 N / 9 E / 16 O`. The newer IA-2 closure above supersedes
+this historical count and priority.
+
+## Workspace information-architecture redesign - 2026-07-29
+
+At this historical design checkpoint, the owner rejected the all-in-one
+default Workspace and requested design before further feature implementation.
+
+- Current source at that checkpoint mapped `Workbench`, `Teach`, `Inspect`, and `Review` to
+  the same `ToolRecipeWorkbenchView`.
+- Tool Library, Recipe Chain, Selected Tool teaching, Viewer, Validation Set,
+  threshold/error evidence, and Run Record concerns therefore compete in one
+  surface.
+- The approved target is real top-stage navigation:
+  `Setup -> Teach -> Validate -> Results`.
+- `Setup` owns source/recipe/tool composition.
+- `Teach` owns the teaching source, selected step, ROI/parameters, explicit
+  Preview, and selected-step detection overlay.
+- `Validate` owns Good/Bad/Held-out samples, explicit replay, failure
+  analysis, and threshold review.
+- `Results` owns read-only Run Records, output comparison, reports, and
+  export.
+- `Calibration` remains independent; Advanced diagnostics remain opt-in.
+- Compact mode shows one dominant task plus at most one support surface.
+- Existing explicit Apply/Preview/Publish/Run, source/output separation,
+  Viewer interaction, selection identity, save/reopen, and Runner parity
+  remain required.
+
+`A-01` is reopened as `Partial` because its previous all-in-one default
+composition is no longer the current acceptance criterion. Inventory is now
+`103 C / 18 P / 88 N / 9 E / 16 O`. This checkpoint changed documentation
+and priority only; the newer IA-1 closure above supersedes its UI status.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_WORKSPACE_INFORMATION_ARCHITECTURE_REDESIGN_20260729.md`.
+
+Next at this historical checkpoint was
+`IA-1 navigation shell and Setup/Teach separation`; it is now complete.
+
+`J-01/J-03/J-04 SurfaceModel preparation foundation` remains the next
+functional train but is paused behind the information-architecture sequence.
+Historical Workspace v3 remains
+`7/8`; its final owner replay must be replaced after implementation by the
+new stage-navigation replay.
+
+## Completeness Validation Set and threshold assistance H-11/H-12/I-14 closure - 2026-07-29
+
+`H-11`, `H-12`, and `I-14` are complete while R0 remains an external owner
+acceptance gate.
+
+- One controlled recipe replays two Good, two Bad, and one Held-out sample
+  with real `Pass/Fail/Pass` evidence.
+- Policy-equivalent observations use the worst cell per sample for minimum
+  finite coverage, minimum reference-relative mean, and maximum
+  reference-relative mean.
+- Shared threshold report contract `2.1` carries the exact `r###.c###` cell
+  locator through each sample decision.
+- Held-out remains visible but excluded from candidate boundaries, ranking,
+  confusion counts, and development decisions.
+- Three exact mappings target only the existing Completeness policy
+  parameters. Unsupported metrics remain review-only and fail closed.
+- Review/Cancel are non-mutating; candidate Apply changes only the
+  PropertyGrid draft.
+- Completeness candidate Apply locks Held-out until an explicit
+  development-only projected replay passes. Held-out replay remains a
+  separate explicit action.
+- Current Release evidence passes build `0/0`, Validation Set `82/82`,
+  Completeness golden `23/23`, Inspection Workspace `63/63`, Recipe
+  Manager/PropertyGrid `37/37`, docking `33/33`, Shell options `24/24`,
+  structure `17/17`, Runner schema `1.1`/threshold contract `2.1` with
+  `57` candidates, `4` development samples, `1` Held-out excluded,
+  `0` warnings, and `8` mappings, plus current Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_COMPLETENESS_VALIDATION_AND_THRESHOLD_ASSISTANCE_20260729.md`;
+- `artifacts/current/20260729-completeness-threshold-assistance/`.
+
+Historical next at this closure:
+`J-01/J-03/J-04 SurfaceModel preparation foundation`. The newer
+information-architecture checkpoint above supersedes the immediate priority.
+
+`H-09` detected/oriented-region routing remains blocked by `E-11/G-12`.
+Physical calibration and metrology remain external or unverified.
+
+## Completeness failure navigation and repeated-Tab mapping H-08/H-10 closure - 2026-07-29
+
+`H-08` and `H-10` are complete while R0 remains an external owner acceptance
+gate.
+
+- Previous/Next traverses failed cells in deterministic row-major order and
+  wraps at both ends.
+- An all-pass result retains visible cell evidence and disables both failure
+  navigation commands.
+- Workbench, Height Image, and 3D share the same selected stable cell ID.
+- Height Image uses a thicker outline/label and 3D uses a white outer emphasis
+  around the original status-colored cell.
+- Ordinary Thickness steps named `Tab 1..8 Thickness` map by ordinal to cell
+  presentation without changing the eight step or output identities.
+- Navigation is view-only: no dirty/save, Preview, Publish, Run, or Validation
+  Set execution.
+- Current Release evidence passes build `0/0`, height measurement Workbench
+  `54/54`, Completeness golden `23/23`, Inspection Workspace `63/63`, recipe
+  teaching `28/28`, Artifact Navigator `31/31`, docking `33/33`, Shell
+  options `24/24`, Viewer display `103/103`, structure `17/17`, and fresh
+  Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_COMPLETENESS_FAILURE_NAVIGATION_AND_TAB_MAPPING_20260729.md`;
+- `artifacts/current/20260729-completeness-failure-navigation/`.
+
+That historical next slice is complete in the newer H-11/H-12/I-14
+checkpoint above.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+`H-09` detected/oriented-region routing remains blocked by `E-11/G-12`.
+Physical calibration and metrology remain external or unverified.
+
+## Completeness result and overlays H-05/H-06/H-07 closure - 2026-07-29
+
+`H-05`, `H-06`, and `H-07` are complete while R0 remains an external owner
+acceptance gate.
+
+- An optional three-parameter typed policy adds inclusive finite-coverage and
+  reference-relative mean raw-height limits. Existing seven-parameter H-02
+  recipes remain evidence-only `Warning`.
+- Tools assigns deterministic Pass/Fail to every stable cell. A missing finite
+  mean fails closed.
+- Passed and failed counts are exact; aggregate Pass requires every child
+  status to be Pass.
+- Core owns stable coordinate-true descriptors; Height Image and 3D render the
+  same green/red overlay without owning policy.
+- The mixed `8 x 8` fixture produces `2` Pass, `2` Fail, aggregate `Fail`,
+  `4` overlays, and output SHA
+  `1B051233FFCCC65FD72A4CB50299C629C8BCE7929E7AC4CA3CA3F33653DBF8CE`.
+- An independent all-valid fixture produces aggregate Pass.
+- Current Release evidence passes build `0/0`, golden `23/23`, height
+  measurement Workbench `50/50`, Tool Recipe selections `29/29`, Inspection
+  Workspace `63/63`, recipe teaching `28/28`, Recipe Manager/PropertyGrid
+  `37/37`, docking `33/33`, Artifact Navigator `31/31`, Shell options
+  `24/24`, structure `17/17`, production Runner parity, and fresh
+  Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_COMPLETENESS_RESULTS_AND_OVERLAYS_20260729.md`;
+- `artifacts/current/20260729-completeness-results-overlays/`.
+
+That historical next slice is complete in the newer H-08/H-10 checkpoint
+above.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+`H-09` detected/oriented-region routing remains blocked by `E-11/G-12`.
+`H-11/H-12/I-14` is complete in the newest checkpoint. Physical calibration
+and metrology remain external or unverified.
+
+## Completeness Grid metrics H-02/H-03/H-04 closure - 2026-07-29
+
+`H-02`, `H-03`, and `H-04` are complete while R0 remains an external owner
+acceptance gate.
+
+- Core owns the typed rows, columns, native X-column/Z-row pitch, cell size,
+  `GridRectangle` shape, stable cell identity, finite coverage, and
+  reference-relative raw-height contracts.
+- Tools generates deterministic non-overlapping cell geometry inside one
+  explicit Inspection Grid ROI and fails closed when it does not fit.
+- Workbench preserves ordered Reference and Inspection Grid ROI roles, typed
+  PropertyGrid editing, and explicit Preview/Publish.
+- The result is deliberately `Warning`: it is evidence only and applies no
+  presence threshold, cell decision, aggregate result, or overlay.
+- The controlled `8 x 8` fixture produces coverage `1, 0.75, 0.5, 0` and
+  relative means `2, 4, -2, missing`.
+- Direct, repeated, ordered graph, and production Runner output identity is
+  `C535D7C8DF40C585E5A22EBF5594D48768A89A20DF257A82DE6F3E75752BED6C`.
+- Current Release evidence passes build `0/0`, golden `14/14`, height
+  measurement Workbench `50/50`, Inspection Workspace `63/63`, Recipe
+  Manager/PropertyGrid `37/37`, Shell options `24/24`, structure `17/17`,
+  production Runner parity, and fresh Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_COMPLETENESS_GRID_METRICS_20260729.md`;
+- `artifacts/current/20260729-completeness-grid-metrics/`.
+
+That historical next slice is complete in the newer H-05/H-06/H-07
+checkpoint above.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+## Threshold-correction Run Record L-11 closure - 2026-07-29
+
+`L-11` is complete while R0 remains an external owner acceptance gate.
+
+- Ordered graph Run Record schema is now `1.5`.
+- Core owns one typed reporting snapshot; Data reads and validates the existing
+  correction sidecar; Runner projects it without threshold calculation or
+  execution; Workbench reads the same JSON.
+- State is explicit: `Available`, `Unavailable`, `Stale`, `Mismatch`, or
+  `Invalid`.
+- Exact candidate, step, tool, metric, before, suggested, manual,
+  before/corrected development, and Held-out identities and values are
+  preserved.
+- JSON embeds the full typed evidence. HTML renders state, sidecar identity,
+  parameter history, development mismatch/identities, and Held-out identities.
+- Missing, changed, mismatched, malformed, and internally inconsistent
+  sidecars fail closed.
+- Report creation never runs inspection, applies parameters, or replays
+  development/Held-out samples.
+- Current Release evidence passes build `0/0`, Run Record `10/10`, Validation
+  Set `72/72`, Inspection Workspace `63/63`, Recipe Manager/PropertyGrid
+  `37/37`, code structure `17/17`, production Runner JSON/HTML parity, and
+  fresh Wide/Compact capture quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THRESHOLD_CORRECTION_RUN_RECORD_20260729.md`;
+- `artifacts/current/20260729-threshold-correction-run-record/`.
+
+The historical next `H-02/H-03/H-04` slice is complete in the newer
+checkpoint above.
+
+## Threshold assistant evidence hardening I-12/I-13/I-15 closure - 2026-07-29
+
+`I-12`, `I-13`, and `I-15` are complete while R0 remains an external owner
+acceptance gate.
+
+- Candidate report contract `2.0` owns typed missing-Good, missing-Bad,
+  insufficient-Good, insufficient-Bad, imbalanced, and inseparable
+  distribution warnings.
+- Every warning stores the exact supported step/metric owner, Good/Bad
+  counts, and development sample identities. Held-out is excluded.
+- Warning scope is limited to explicit Threshold Assistant metrics; unmapped
+  ROI statistics remain visible without creating misleading parameter
+  warnings.
+- Published fail-closed coverage is Thickness Mean
+  Minimum/Maximum/Range plus Warpage PeakToValley/Rms Maximum.
+- Unsupported scope/tool/metric/limit combinations fail closed.
+- Role edits remain sidecar-only and Pending; Review, draft Apply, manual
+  PropertyGrid edits/Apply, development replay, and Held-out replay preserve
+  their explicit command boundaries.
+- The controlled balanced, missing, imbalanced, and overlap fixtures pass.
+- Current Release evidence passes build `0/0`, Validation Set `72/72`,
+  Inspection Workspace `63/63`, Recipe Manager/PropertyGrid `37/37`, Shell
+  options `24/24`, structure `17/17`, Runner report schema `1.1`/threshold
+  contract `2.0` with five mappings, and fresh Wide/Compact capture quality.
+
+The earlier 11-video review is now explicitly retained as forward product
+direction in the commercial direction, master backlog, next-chat prompt, and
+focused completion record. Future work continues to trace to GoPxL
+responsibility separation, SICK threshold/completeness evidence, HALCON
+model/scene preparation and diagnostics, MERLIC Height Image cell inspection,
+and Zivid/Photoneo source-quality trust while leaving acquisition and factory
+platform scope out.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THRESHOLD_ASSISTANT_HARDENING_20260729.md`;
+- `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`;
+- `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`;
+- `artifacts/current/20260729-threshold-assistant-hardening/`.
+
+The historical next `L-11` slice is complete in the newer checkpoint above.
+
+## Threshold manual correction and failure record I-09/I-11 closure - 2026-07-28
+
+`I-09` and `I-11` are complete while R0 remains an external owner acceptance
+gate.
+
+- The controlled committed Thickness draft is `MinimumThickness=0`,
+  `MaximumThickness=20`.
+- Its explicit development Run produces one genuine expected-role mismatch:
+  Bad-high Mean `20` passes under the inclusive broad maximum.
+- The exact failed sample SHA-256 is
+  `6E00A03C6A901DFC39EBE41E7E14E3EC1FE8A3F4FBFBFECE9C1E8A5E6DCE9AD9`.
+- Candidate `threshold.0ad7b16eaa3d4362` suggests `2..4`.
+- Candidate Apply changes only the typed PropertyGrid draft.
+- The operator changes the suggestion to `1.5..4.5` and commits it with the
+  ordinary PropertyGrid Apply command.
+- No Review, draft Apply, manual edit, or PropertyGrid Apply invokes Preview,
+  Publish, Run All, save, development replay, or Held-out replay.
+- A separate explicit development replay uses Good/Bad only and changes the
+  same four exact sample decisions from mismatch `1` to mismatch `0`.
+- Held-out replay remains locked until that corrected development replay
+  passes, then executes only the Held-out role.
+- Held-out Mean `3`, SHA-256
+  `D9384A7B5A032D28E952E8742619EA224F2763FC5B5B3C431DC895544AA93C3B`
+  passes.
+- The existing correction sidecar remains schema `1.0` and carries an
+  optional typed manual-correction `1.0` extension. Legacy I-08 evidence
+  remains readable.
+- Runner report schema `2.0` independently reproduces the same before,
+  suggestion, manual values, corrected development decisions, and Held-out
+  result.
+
+Current evidence passes Release build `0/0`, Validation Set `66/66`,
+Inspection Workspace `63/63`, Recipe Manager/PropertyGrid `37/37`, Shell
+smoke options `24/24`, code structure `17/17`, exact Workbench/Runner parity,
+and fresh Wide/Compact screenshot quality on attempt `1`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THRESHOLD_MANUAL_CORRECTION_AND_FAILURE_RECORD_20260728.md`;
+- `artifacts/current/20260728-threshold-manual-correction/`;
+- `src/OpenVisionLab.ThreeD.Core/Contracts/Validation/ToolRecipeThresholdCorrectionContracts.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCorrectionEvidenceBuilder.cs`;
+- `src/OpenVisionLab.ThreeD.Data/Validation/ToolRecipeThresholdCorrectionEvidenceStore.cs`;
+- `src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.ValidationSet.cs`;
+- `src/OpenVisionLab.ThreeD.Runner/Application/ToolRecipeThresholdCorrectionRunnerExecution.cs`.
+
+The historical `I-12/I-13/I-15` and `L-11` priorities are complete in the
+newer checkpoints above.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+This is deterministic controlled software-workflow evidence. It is not a GPT
+transcript, physical calibration, production tolerance approval, or certified
+metrology evidence.
+
+## Threshold Review/Apply and Held-out replay I-08/I-10 closure - 2026-07-28
+
+`I-08` and `I-10` are complete while R0 remains an external owner acceptance
+gate.
+
+- The selected development-only candidate enters an explicit Review session.
+- Mapping is exact and fail-closed against typed Thickness/Warpage parameters;
+  region metrics and unsupported combinations remain non-applicable.
+- Review shows exact before/proposed values without editing or executing.
+- Cancel preserves the recipe, PropertyGrid draft, dirty state, and
+  Validation Set execution summary.
+- Candidate Apply changes the typed PropertyGrid draft only. The ordinary
+  PropertyGrid Apply remains a separate explicit command.
+- Candidate Apply does not invoke Preview, Publish, Run All, save, or replay.
+- Explicit Held-out replay projects the reviewed proposal onto an immutable
+  recipe copy and executes only samples with the `HeldOut` role.
+- Portable `<recipe>.threshold-correction.json` evidence preserves candidate,
+  development decisions, before/proposed values, Held-out identities,
+  metrics, status, and message.
+- Workbench save/reopen restores committed values and durable Held-out
+  evidence without executing.
+- Runner independently regenerates the development candidate and produces the
+  same projected Held-out evidence.
+
+The controlled Thickness fixture maps candidate
+`threshold.0ad7b16eaa3d4362` from `MinimumThickness 0->2` and
+`MaximumThickness 10->4`. Workbench and Runner agree on four development
+samples, one Held-out sample, Held-out `Pass`, and SHA-256
+`D9384A7B5A032D28E952E8742619EA224F2763FC5B5B3C431DC895544AA93C3B`.
+
+Current evidence passes Release build `0/0`, Validation Set `58/58`,
+Inspection Workspace `63/63`, recipe teaching `28/28`, Recipe
+Manager/PropertyGrid `37/37`, Artifact Navigator/Output Compare `31/31`,
+Shell smoke options `24/24`, code structure `17/17`, Runner parity, and
+current Wide/Compact screenshot quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THRESHOLD_REVIEW_APPLY_AND_HELD_OUT_REPLAY_20260728.md`;
+- `artifacts/current/20260728-threshold-review-heldout/`;
+- `src/OpenVisionLab.ThreeD.Core/Contracts/Validation/ToolRecipeThresholdCorrectionContracts.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateParameterMapper.cs`;
+- `src/OpenVisionLab.ThreeD.Data/Validation/ToolRecipeThresholdCorrectionEvidenceStore.cs`.
+
+The historical next item named here is complete in the newer I-09/I-11
+checkpoint above. The newer I-12/I-13/I-15 and L-11 checkpoints supersede
+this historical next item.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+
+## Threshold candidates and exact error table I-06/I-07 closure - 2026-07-28
+
+`I-06` and `I-07` are complete while R0 remains an external owner acceptance
+gate.
+
+- Explicit-run Good/Bad observations generate one deterministic Minimum,
+  Maximum, and Range candidate per eligible step/region metric.
+- Ranking minimizes total errors, false accepts, false rejects, then applies
+  a stable tightness rule.
+- Every candidate owns exact development-sample order, path, SHA identity,
+  expected/predicted role, decision, and value.
+- Aggregate correct/error, false-accept, and false-reject counts reproduce
+  from those decisions.
+- Held-out samples are listed as excluded and never enter boundaries,
+  ranking, counts, or decisions.
+- Workbench exposes a collapsed, read-only candidate/error panel. Selection
+  is view-only and never edits or executes.
+- Runner emits the same shared candidate contract.
+
+The controlled `2,4 / -10,20 / Held-out 3` Thickness fixture produces `48`
+candidates. `Mean Range 2..4` has `4` correct, `0` errors, and four exact
+development decisions. Each one-limit candidate exposes one false accept.
+
+Current evidence passes Release build `0/0`, Validation Set `45/45`,
+Inspection Workspace `63/63`, Shell smoke options `24/24`, recipe teaching
+`28/28`, Artifact Navigator/Output Compare `31/31`, code structure `17/17`,
+Runner candidate/development/Held-out counts `48/4/1`, exact
+`Mean Range 2..4`, zero Held-out decisions, and current
+default/expanded/compact screenshot quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THRESHOLD_CANDIDATES_AND_ERROR_TABLE_20260728.md`;
+- `artifacts/current/20260728-threshold-candidates/`;
+- `src/OpenVisionLab.ThreeD.Core/Contracts/Validation/ToolRecipeThresholdCandidateContracts.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateAnalyzer.cs`.
+
+Historical next item, now closed by the I-08/I-10 checkpoint above:
+Review/Cancel/draft Apply and Held-out replay. Physical calibration and
+metrology remain unverified.
+
+## Labeled sample evidence I-04/I-05 closure - 2026-07-28
+
+`I-04` and `I-05` are complete while R0 remains an external owner acceptance
+gate.
+
+- Every staged Validation Set sample has one `Good`, `Bad`, or `HeldOut`
+  role.
+- Roles persist in `<recipe>.validation-set.json`; the recipe graph and C3D
+  bytes remain unchanged.
+- Role edits mark the sidecar unsaved, participate in the normal save/close
+  guard, invalidate prior evidence, and never execute inspection.
+- Save/reopen restores ordered Pending rows without stale results.
+- Explicit Run produces reproducible distributions for every finite step
+  metric and for routed GridRectangle mean raw height and valid-cell ratio.
+- Held-out distributions remain visible but are always marked
+  `IncludedInDevelopment=false`.
+- The distribution panel is collapsed by default so the sample list, role
+  assignment, issue navigation, and comparison remain primary.
+- Production Runner loads the same sidecar and emits the same evidence
+  contract.
+
+Current evidence passes Release build `0/0`, Validation Set `35/35`, Runner
+role counts `1/1/1`, `16` direct-fixture distributions, Held-out exclusion,
+and current wide/compact screenshot quality.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_LABELED_SAMPLE_EVIDENCE_20260728.md`;
+- `artifacts/current/20260728-labeled-sample-evidence/`;
+- `src/OpenVisionLab.ThreeD.Core/Contracts/Validation/ToolRecipeLabeledValidationContracts.cs`;
+- `src/OpenVisionLab.ThreeD.Data/Validation/ToolRecipeValidationSetDefinitionStore.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs`;
+- `src/OpenVisionLab.ThreeD.Runner/Application/ToolRecipeLabeledValidationRunnerExecution.cs`.
+
+Immediate implementation priority is `I-06/I-07 deterministic candidate
+thresholds and an exact supporting-sample error table`.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high. Candidate
+generation must use Good/Bad observations only; Held-out data remains
+excluded until the later replay gate. Physical calibration and metrology
+remain unverified.
+
+## Level Surface D-05/D-06 closure - 2026-07-28
+
+`D-05` and `D-06` are complete while R0 remains an external owner acceptance
+gate.
+
+- One or more explicit `GridRectangle` reference ROIs feed one least-squares
+  raw-height plane; overlapping finite cells count once.
+- `Add reference ROI` starts a new Viewer candidate without replacing the
+  existing reference.
+- The derived C3D applies
+  `Y' = Y - fittedPlane(X,Z) + referenceMean`, preserving the source X/Z grid
+  and missing mask.
+- An authored reference-RMS gate fails closed without producing a derived
+  height field.
+- `C3DLevelingTransform` preserves source identity, reference regions,
+  residuals, coefficients, matrix, provenance, and deterministic SHA-256.
+- Typed PropertyGrid Apply changes only the recipe and marks prior Preview
+  stale.
+- Explicit Preview renders the exact derived C3D and exposes slope,
+  residual, transform, source, grid, and missing-cell evidence.
+- Publish reuses Preview without rerunning.
+- Save/reopen, Show/Pin/Compare, and production Runner share the typed output.
+
+The known `16 x 12` fixture recovers input slopes
+`0.7999617440/-0.3999192374` and reduces output reference slopes to
+`-4.2253E-08/1.61666E-07`. Valid/missing remains `191/1`. Output SHA-256 is
+`5BE202FAF610A7291CFD753837B2469A1C10A9F324A8216C4AB0D7CF8CE2A419`;
+transform SHA-256 is
+`F2E47D4BC0C3CEB7746A5453501430D27D2016726D2F480920656580AA2BA265`.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_LEVEL_SURFACE_20260728.md`;
+- `artifacts/current/20260728-level-surface/`;
+- `src/OpenVisionLab.ThreeD.Core/Contracts/Inspection/C3DLevelingTransformContracts.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Preparation/C3DLevelSurfaceRule.cs`;
+- `src/OpenVisionLab.ThreeD.Tools/Preparation/ToolRecipeLevelSurfaceExecution.cs`.
+
+Current evidence passes Release build `0/0`, golden `9/9`, Workbench
+`17/17`, Inspection Workspace `63/63`, shell options `24/24`, teaching
+`28/28`, Artifact Navigator `31/31`, structure `17/17`, production Runner,
+and current Wide/Compact screenshot quality.
+
+Immediate implementation priority is `I-04/I-05 labeled sample evidence`.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high. Level Surface is a
+grid-preserving raw-height detrend, not rigid pose/re-grid, physical
+calibration, or certified metrology.
+
 ## Remove Outlier Pixels D-04 closure - 2026-07-28
 
 `D-04` is complete while R0 remains an external owner acceptance gate.

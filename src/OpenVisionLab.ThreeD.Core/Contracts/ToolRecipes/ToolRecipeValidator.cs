@@ -258,6 +258,22 @@ public static class ToolRecipeValidator
                     warnings);
             }
 
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "level-surface",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateLevelSurfaceStep(
+                    step,
+                    inputs,
+                    source,
+                    selections,
+                    label,
+                    errors,
+                    warnings);
+            }
+
             if (string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
             {
                 warnings.Add($"{label} XYZ Affine is taught only: execution needs four affine-independent source/reference landmarks or a fixture-constrained contract.");
@@ -279,7 +295,7 @@ public static class ToolRecipeValidator
             }
 
             if (validateStepContract
-                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions")
+                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
             {
                 ValidateHeightMeasurementStep(
                     step,
@@ -599,6 +615,110 @@ public static class ToolRecipeValidator
         }
     }
 
+    private static void ValidateLevelSurfaceStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyList<ToolRecipeSelection> selections,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count < 2
+            || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} Level Surface v1 requires the recipe C3D source followed by one or more GridRectangle selections.");
+        }
+        else
+        {
+            foreach (var selectionId in inputs.Skip(1))
+            {
+                var selection = selections.SingleOrDefault(candidate =>
+                    string.Equals(candidate.Id, selectionId, StringComparison.OrdinalIgnoreCase));
+                if (selection?.GridRectangle is null
+                    || !string.Equals(
+                        selection.Kind,
+                        ToolRecipeSelectionKinds.GridRectangle,
+                        StringComparison.Ordinal))
+                {
+                    errors.Add(
+                        $"{label} Level Surface reference input '{selectionId}' must be a recipe-owned GridRectangle.");
+                }
+            }
+        }
+
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal)
+            || source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} Level Surface v1 requires a fully identified C3D raw-height source.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        var expectedNames = new HashSet<string>(
+            [
+                "ReferenceFitPolicy",
+                "LevelingPolicy",
+                "MissingValuePolicy",
+                "GridPolicy",
+                "MinimumValidSampleCount",
+                "MaximumReferenceRmsResidual"
+            ],
+            StringComparer.Ordinal);
+        if (expectedNames.Any(name => parameters.Count(
+                parameter => parameter is not null && parameter.Name == name) != 1))
+        {
+            errors.Add(
+                $"{label} Level Surface v1 requires exactly ReferenceFitPolicy, LevelingPolicy, MissingValuePolicy, GridPolicy, MinimumValidSampleCount, and MaximumReferenceRmsResidual.");
+            return;
+        }
+        var unknownNames = parameters
+            .Where(parameter => parameter is not null && !expectedNames.Contains(parameter.Name))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add(
+                $"{label} preserves unmapped Level Surface parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+        string Value(string name) =>
+            parameters.Single(parameter => parameter.Name == name).Value;
+        if (Value("ReferenceFitPolicy") != "LeastSquaresHeightPlane"
+            || Value("LevelingPolicy") != "HeightDetrendToReferenceMean"
+            || Value("MissingValuePolicy") != "PreserveMask"
+            || Value("GridPolicy") != "PreserveSourceGrid")
+        {
+            errors.Add($"{label} Level Surface v1 fixed policies are invalid.");
+        }
+        if (!int.TryParse(
+                Value("MinimumValidSampleCount"),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var minimumSamples)
+            || minimumSamples < 3)
+        {
+            errors.Add(
+                $"{label} Level Surface v1 MinimumValidSampleCount must be at least three.");
+        }
+        if (!double.TryParse(
+                Value("MaximumReferenceRmsResidual"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var maximumRms)
+            || !double.IsFinite(maximumRms)
+            || maximumRms <= 0)
+        {
+            errors.Add(
+                $"{label} Level Surface v1 MaximumReferenceRmsResidual must be finite and greater than zero.");
+        }
+    }
+
     private static void ValidateDualRoiRouting(
         ToolRecipeStep step,
         IReadOnlyList<string> inputs,
@@ -620,7 +740,7 @@ public static class ToolRecipeValidator
             return;
         }
 
-        if (step.ToolId is not ("thickness" or "plane-flatness" or "gap-flush" or "volume"))
+        if (step.ToolId is not ("thickness" or "plane-flatness" or "gap-flush" or "volume" or "completeness-grid"))
         {
             errors.Add($"{label} '{Clean(step.ToolName)}' cannot declare dual-ROI role routing.");
             return;
@@ -689,14 +809,15 @@ public static class ToolRecipeValidator
         var isGapFlush = step.ToolId == "gap-flush";
         var isVolume = step.ToolId == "volume";
         var isCrossSection = step.ToolId == "cross-section-dimensions";
-        var isDualRoi = isThickness || isPlaneFlatness || isGapFlush || isVolume;
+        var isCompleteness = step.ToolId == "completeness-grid";
+        var isDualRoi = isThickness || isPlaneFlatness || isGapFlush || isVolume || isCompleteness;
         var expectedInputCount = isDualRoi ? 3 : 2;
         if (inputs.Count != expectedInputCount)
         {
             errors.Add(isThickness && inputs.Count == 2 && !supportsArtifactOwnedSelections
                 ? $"{label} legacy one-ROI Thickness preserves its Measurement ROI but requires a Reference ROI first."
                 : isDualRoi
-                ? $"{label} {Clean(step.ToolName)} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then Measurement ROI."
+                ? $"{label} {Clean(step.ToolName)} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then {(isCompleteness ? "Inspection Grid ROI" : "Measurement ROI")}."
                 : isPointPair
                     ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
@@ -745,12 +866,32 @@ public static class ToolRecipeValidator
             "gap-flush" => new[] { "ExpectedGap", "GapTolerance", "ExpectedFlush", "FlushTolerance" },
             "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
             "cross-section-dimensions" => new[] { "ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance" },
+            "completeness-grid" => [],
             _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
         };
         var parameters = step.Parameters ?? [];
-        if (parameters.Count != expected.Length || expected.Any(name => parameters.Count(parameter => parameter.Name == name) != 1))
+        if (!isCompleteness
+            && (parameters.Count != expected.Length
+                || expected.Any(name =>
+                    parameters.Count(parameter => parameter.Name == name) != 1)))
         {
             errors.Add($"{label} {Clean(step.ToolName)} v1 requires exactly {string.Join(", ", expected)}.");
+        }
+        else if (isCompleteness)
+        {
+            try
+            {
+                _ = C3DCompletenessGridProfile.FromRecipeParameters(parameters);
+                _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                    parameters);
+            }
+            catch (Exception exception) when (
+                exception is InvalidDataException
+                or ArgumentException
+                or OverflowException)
+            {
+                errors.Add($"{label} {exception.Message}");
+            }
         }
     }
 

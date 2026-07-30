@@ -69,6 +69,158 @@ public sealed class ThicknessStepProperties
             ? value : 0;
 }
 
+[CategoryOrder("Grid layout", 0)]
+[CategoryOrder("Cell geometry", 1)]
+[CategoryOrder("Acceptance", 2)]
+[CategoryOrder("Compatibility", 3)]
+public sealed class CompletenessGridStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        C3DCompletenessGridProfile.ParameterNames
+            .Concat(C3DCompletenessPresencePolicy.ParameterNames)
+            .ToHashSet(StringComparer.Ordinal);
+
+    [Category("Grid layout")]
+    [DisplayName("Rows")]
+    [Description("Number of deterministic cell rows generated inside the Inspection Grid ROI.")]
+    [PropertyOrder(0)]
+    public int Rows { get; set; }
+
+    [Category("Grid layout")]
+    [DisplayName("Columns")]
+    [Description("Number of deterministic cell columns generated inside the Inspection Grid ROI.")]
+    [PropertyOrder(1)]
+    public int Columns { get; set; }
+
+    [Category("Grid layout")]
+    [DisplayName("X pitch (columns)")]
+    [Description("Native-grid column advance between cell origins. This is not a calibrated physical distance.")]
+    [PropertyOrder(2)]
+    public int XPitchColumns { get; set; }
+
+    [Category("Grid layout")]
+    [DisplayName("Z pitch (rows)")]
+    [Description("Native-grid row advance between cell origins. This is not a calibrated physical distance.")]
+    [PropertyOrder(3)]
+    public int ZPitchRows { get; set; }
+
+    [Category("Cell geometry")]
+    [DisplayName("Cell width (columns)")]
+    [Description("Native-grid column count in each generated cell.")]
+    [PropertyOrder(0)]
+    public int CellWidthColumns { get; set; }
+
+    [Category("Cell geometry")]
+    [DisplayName("Cell height (rows)")]
+    [Description("Native-grid row count in each generated cell.")]
+    [PropertyOrder(1)]
+    public int CellHeightRows { get; set; }
+
+    [Category("Cell geometry")]
+    [DisplayName("Cell shape")]
+    [Description("Typed v1 cell geometry. GridRectangle is the only supported shape.")]
+    [PropertyOrder(2)]
+    public C3DCompletenessCellShape CellShape { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Minimum finite coverage ratio")]
+    [Description("Inclusive minimum finite-cell ratio from 0 through 1. Missing samples never fabricate a height.")]
+    [PropertyOrder(0)]
+    public double MinimumFiniteCoverageRatio { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Minimum relative mean raw height")]
+    [Description("Inclusive lower limit for cell mean raw height relative to the Reference ROI mean.")]
+    [PropertyOrder(1)]
+    public double MinimumReferenceRelativeMeanRawHeight { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum relative mean raw height")]
+    [Description("Inclusive upper limit for cell mean raw height relative to the Reference ROI mean.")]
+    [PropertyOrder(2)]
+    public double MaximumReferenceRelativeMeanRawHeight { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static CompletenessGridStepProperties From(
+        ToolWorkbenchPipelineStepItem step)
+    {
+        var profile = C3DCompletenessGridProfile.FromRecipeParameters(
+            step.Parameters
+                .Select(parameter =>
+                    new ToolRecipeParameter(parameter.Name, parameter.Value))
+                .ToArray());
+        var policy =
+            C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                step.Parameters
+                    .Select(parameter =>
+                        new ToolRecipeParameter(parameter.Name, parameter.Value))
+                    .ToArray())
+            ?? new C3DCompletenessPresencePolicy(0.95d, -100000d, 100000d);
+        return new CompletenessGridStepProperties
+        {
+            Rows = profile.Rows,
+            Columns = profile.Columns,
+            XPitchColumns = profile.XPitchColumns,
+            ZPitchRows = profile.ZPitchRows,
+            CellWidthColumns = profile.CellWidthColumns,
+            CellHeightRows = profile.CellHeightRows,
+            CellShape = profile.CellShape,
+            MinimumFiniteCoverageRatio =
+                policy.MinimumFiniteCoverageRatio,
+            MinimumReferenceRelativeMeanRawHeight =
+                policy.MinimumReferenceRelativeMeanRawHeight,
+            MaximumReferenceRelativeMeanRawHeight =
+                policy.MaximumReferenceRelativeMeanRawHeight,
+            UnmappedParameters =
+                ToolWorkbenchStepPropertySession.GetUnmappedParameters(
+                    step,
+                    MappedNames)
+        };
+    }
+
+    internal bool TryCreateContracts(
+        out C3DCompletenessGridProfile? profile,
+        out C3DCompletenessPresencePolicy? policy,
+        out string message)
+    {
+        profile = null;
+        policy = null;
+        try
+        {
+            profile = C3DCompletenessGridProfile.FromRecipeParameters(
+                new C3DCompletenessGridProfile(
+                    Rows,
+                    Columns,
+                    XPitchColumns,
+                    ZPitchRows,
+                    CellWidthColumns,
+                    CellHeightRows,
+                    CellShape).ToRecipeParameters());
+            policy =
+                C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                    new C3DCompletenessPresencePolicy(
+                        MinimumFiniteCoverageRatio,
+                        MinimumReferenceRelativeMeanRawHeight,
+                        MaximumReferenceRelativeMeanRawHeight)
+                    .ToRecipeParameters());
+            message = string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+            or ArgumentException
+            or OverflowException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+}
+
 [CategoryOrder("Acceptance", 0)]
 [CategoryOrder("Sampling", 1)]
 [CategoryOrder("Compatibility", 2)]
@@ -681,6 +833,145 @@ public sealed class RemoveOutlierPixelsStepProperties
             return false;
         }
 
+        message = string.Empty;
+        return true;
+    }
+}
+
+public enum LevelSurfaceReferenceFitPolicy
+{
+    LeastSquaresHeightPlane
+}
+
+public enum LevelSurfaceLevelingPolicy
+{
+    HeightDetrendToReferenceMean
+}
+
+public enum LevelSurfaceMissingValuePolicy
+{
+    PreserveMask
+}
+
+public enum LevelSurfaceGridPolicy
+{
+    PreserveSourceGrid
+}
+
+[CategoryOrder("Leveling", 0)]
+[CategoryOrder("Preservation", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class LevelSurfaceStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "ReferenceFitPolicy",
+        "LevelingPolicy",
+        "MissingValuePolicy",
+        "GridPolicy",
+        "MinimumValidSampleCount",
+        "MaximumReferenceRmsResidual"
+    ];
+
+    [Category("Leveling")]
+    [DisplayName("Reference fit")]
+    [Description("Fits one least-squares raw-height plane across the unique finite cells of every authored reference ROI.")]
+    [PropertyOrder(0)]
+    public LevelSurfaceReferenceFitPolicy ReferenceFitPolicy { get; set; }
+
+    [Category("Leveling")]
+    [DisplayName("Leveling policy")]
+    [Description("Removes the fitted X/Z height trend while preserving the mean reference height.")]
+    [PropertyOrder(1)]
+    public LevelSurfaceLevelingPolicy LevelingPolicy { get; set; }
+
+    [Category("Leveling")]
+    [DisplayName("Minimum valid samples")]
+    [Description("Minimum unique finite samples required across all reference ROIs.")]
+    [PropertyOrder(2)]
+    [NumberRange(3, int.MaxValue, 1)]
+    public int MinimumValidSampleCount { get; set; }
+
+    [Category("Leveling")]
+    [DisplayName("Maximum reference RMS")]
+    [Description("Preview fails closed when the reference-plane vertical residual RMS exceeds this raw-height gate.")]
+    [PropertyOrder(3)]
+    [NumberRange(0.000001, double.MaxValue, 1)]
+    public double MaximumReferenceRmsResidual { get; set; }
+
+    [Category("Preservation")]
+    [DisplayName("Missing values")]
+    [Description("Source missing cells remain missing.")]
+    [PropertyOrder(4)]
+    public LevelSurfaceMissingValuePolicy MissingValuePolicy { get; set; }
+
+    [Category("Preservation")]
+    [DisplayName("Grid")]
+    [Description("Preserves source row/column coordinates without interpolation or re-gridding.")]
+    [PropertyOrder(5)]
+    public LevelSurfaceGridPolicy GridPolicy { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are retained unchanged when known parameters are applied.")]
+    [PropertyOrder(10)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static LevelSurfaceStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+    {
+        ReferenceFitPolicy = Enum.TryParse<LevelSurfaceReferenceFitPolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "ReferenceFitPolicy"),
+            out var fit)
+            ? fit
+            : LevelSurfaceReferenceFitPolicy.LeastSquaresHeightPlane,
+        LevelingPolicy = Enum.TryParse<LevelSurfaceLevelingPolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "LevelingPolicy"),
+            out var leveling)
+            ? leveling
+            : LevelSurfaceLevelingPolicy.HeightDetrendToReferenceMean,
+        MissingValuePolicy = Enum.TryParse<LevelSurfaceMissingValuePolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "MissingValuePolicy"),
+            out var missing)
+            ? missing
+            : LevelSurfaceMissingValuePolicy.PreserveMask,
+        GridPolicy = Enum.TryParse<LevelSurfaceGridPolicy>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "GridPolicy"),
+            out var grid)
+            ? grid
+            : LevelSurfaceGridPolicy.PreserveSourceGrid,
+        MinimumValidSampleCount = int.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "MinimumValidSampleCount"),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var minimum)
+            ? minimum
+            : 0,
+        MaximumReferenceRmsResidual = double.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "MaximumReferenceRmsResidual"),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var maximum)
+            ? maximum
+            : double.NaN,
+        UnmappedParameters =
+            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (MinimumValidSampleCount < 3)
+        {
+            message = "Minimum valid sample count must be at least three.";
+            return false;
+        }
+        if (!double.IsFinite(MaximumReferenceRmsResidual)
+            || MaximumReferenceRmsResidual <= 0)
+        {
+            message = "Maximum reference RMS must be finite and greater than zero.";
+            return false;
+        }
         message = string.Empty;
         return true;
     }

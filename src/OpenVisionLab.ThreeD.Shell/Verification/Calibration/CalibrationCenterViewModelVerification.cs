@@ -41,8 +41,8 @@ internal static class CalibrationCenterViewModelVerification
             shell.PropertyChanged += (_, args) => shellPropertyChanges.Add(args.PropertyName);
 
             Check("default workspace", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Workbench, shell.SelectedWorkspaceMode.ToString());
-            Check("default workspace flags", shell.IsWorkbenchWorkspaceSelected && !shell.IsTaskWorkspaceSelected && !shell.IsExpertWorkspaceSelected && !shell.IsCalibrationWorkspaceSelected, shell.WorkspaceSummary);
-            Check("default workspace summary", shell.WorkspaceSummary == "Tool Workbench | Compose typed 3D inspection steps", shell.WorkspaceSummary);
+            Check("default workspace flags", shell.IsSetupWorkspaceSelected && shell.IsInspectionWorkspaceSelected && shell.IsWorkbenchWorkspaceSelected && !shell.IsTaskWorkspaceSelected && !shell.IsExpertWorkspaceSelected && !shell.IsCalibrationWorkspaceSelected, shell.WorkspaceSummary);
+            Check("default workspace summary", shell.WorkspaceSummary == "Inspection Setup | Compose tools and inspection order", shell.WorkspaceSummary);
             Check(
                 "workbench catalog",
                 shell.Workbench.Tools.Any(tool => tool.Name == "Filter")
@@ -53,7 +53,7 @@ internal static class CalibrationCenterViewModelVerification
             Check(
                 "workbench selection",
                 shell.Workbench.SelectedToolTitle == "Transform / XYZ Affine Solve"
-                && shell.Workbench.RunLog.Count >= 3,
+                && shell.Workbench.SelectedTool?.Id == "xyz-affine-solve",
                 shell.Workbench.SelectedToolTitle);
             Check(
                 "workspace command accepts supported modes",
@@ -71,19 +71,21 @@ internal static class CalibrationCenterViewModelVerification
                 "inspection workspace selection",
                 shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect
                 && shell.IsInspectWorkspaceSelected
+                && shell.IsValidateWorkspaceSelected
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
-            Check("inspection workspace summary", shell.WorkspaceSummary == "Recipe Workbench | Preview selected tools and publish outputs", shell.WorkspaceSummary);
+            Check("inspection workspace summary", shell.WorkspaceSummary == "Validate | Replay samples and inspect failures", shell.WorkspaceSummary);
             shell.ShowReviewWorkspace();
             Check(
                 "review workspace selection",
                 shell.SelectedWorkspaceMode == ShellWorkspaceMode.Review
                 && shell.IsReviewWorkspaceSelected
+                && shell.IsResultsWorkspaceSelected
                 && shell.IsWorkbenchWorkspaceSelected
                 && !shell.IsTaskWorkspaceSelected,
                 shell.WorkspaceSummary);
-            Check("review workspace summary", shell.WorkspaceSummary == "Recipe Workbench | Review published entities and evidence", shell.WorkspaceSummary);
+            Check("review workspace summary", shell.WorkspaceSummary == "Results | Review run records and output evidence", shell.WorkspaceSummary);
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Expert);
             Check("expert workspace selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Expert && shell.IsExpertWorkspaceSelected && !shell.IsTaskWorkspaceSelected, shell.WorkspaceSummary);
             Check("expert workspace summary", shell.WorkspaceSummary == "Expert workspace | Full inspection layout", shell.WorkspaceSummary);
@@ -97,10 +99,15 @@ internal static class CalibrationCenterViewModelVerification
                 && shellPropertyChanges.Contains(nameof(shell.IsTeachWorkspaceSelected))
                 && shellPropertyChanges.Contains(nameof(shell.IsInspectWorkspaceSelected))
                 && shellPropertyChanges.Contains(nameof(shell.IsReviewWorkspaceSelected))
+                && shellPropertyChanges.Contains(nameof(shell.IsSetupWorkspaceSelected))
+                && shellPropertyChanges.Contains(nameof(shell.IsValidateWorkspaceSelected))
+                && shellPropertyChanges.Contains(nameof(shell.IsResultsWorkspaceSelected))
+                && shellPropertyChanges.Contains(nameof(shell.IsInspectionWorkspaceSelected))
                 && shellPropertyChanges.Contains(nameof(shell.IsCalibrationWorkspaceSelected))
                 && shellPropertyChanges.Contains(nameof(shell.IsExpertWorkspaceSelected))
                 && shellPropertyChanges.Contains(nameof(shell.IsTaskWorkspaceSelected))
-                && shellPropertyChanges.Contains(nameof(shell.WorkspaceSummary)),
+                && shellPropertyChanges.Contains(nameof(shell.WorkspaceSummary))
+                && shellPropertyChanges.Contains(nameof(shell.InspectionStageNavigationStatus)),
                 string.Join(',', shellPropertyChanges));
 
             shell.SelectWorkspaceCommand.Execute("Calibrate");
@@ -119,6 +126,13 @@ internal static class CalibrationCenterViewModelVerification
             Check("two-way Workbench selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Workbench, shell.WorkspaceSummary);
             shell.IsTeachWorkspaceSelected = true;
             Check("two-way Teach selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Teach, shell.WorkspaceSummary);
+            shell.IsValidateWorkspaceSelected = true;
+            Check("two-way Validate selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Inspect, shell.WorkspaceSummary);
+            shell.IsResultsWorkspaceSelected = true;
+            Check("two-way Results selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Review, shell.WorkspaceSummary);
+            shell.IsSetupWorkspaceSelected = true;
+            Check("two-way Setup selection", shell.SelectedWorkspaceMode == ShellWorkspaceMode.Workbench, shell.WorkspaceSummary);
+            shell.IsTeachWorkspaceSelected = true;
 
             var viewModel = shell.Calibration;
             var propertyChanges = new List<string?>();
@@ -163,7 +177,7 @@ internal static class CalibrationCenterViewModelVerification
                     $"{ThreeDLocalization.Shared.CalibrationOverview}|{ThreeDLocalization.Shared.CalibrationRepeatability}|{ThreeDLocalization.Shared.CalibrationComingSoon}");
                 Check(
                     "calibration state Korean localization",
-                    shell.WorkspaceSummary.StartsWith("\uB808\uC2DC\uD53C \uC6CC\uD06C\uBCA4\uCE58", StringComparison.Ordinal)
+                    shell.WorkspaceSummary.StartsWith("\uD2F0\uCE6D", StringComparison.Ordinal)
                     && viewModel.ActiveProfileStatus == "\uD65C\uC131 \uAD50\uC815 \uD504\uB85C\uD30C\uC77C \uC5C6\uC74C"
                     && viewModel.SelectedRepeatabilityMetric == "\uB450\uAED8",
                     $"{shell.WorkspaceSummary}|{viewModel.ActiveProfileStatus}|{viewModel.SelectedRepeatabilityMetric}");
@@ -176,7 +190,7 @@ internal static class CalibrationCenterViewModelVerification
                     $"{ThreeDLocalization.Shared.CalibrationOverview}|{ThreeDLocalization.Shared.CalibrationRepeatability}|{ThreeDLocalization.Shared.CalibrationComingSoon}");
                 Check(
                     "calibration state English localization",
-                    shell.WorkspaceSummary.StartsWith("Recipe Workbench", StringComparison.Ordinal)
+                    shell.WorkspaceSummary.StartsWith("Teach", StringComparison.Ordinal)
                     && viewModel.ActiveProfileStatus == "No active calibration profile"
                     && viewModel.SelectedRepeatabilityMetric == "Thickness",
                     $"{shell.WorkspaceSummary}|{viewModel.ActiveProfileStatus}|{viewModel.SelectedRepeatabilityMetric}");

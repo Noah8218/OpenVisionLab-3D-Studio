@@ -94,6 +94,66 @@
                     </Style>
                 </StackPanel.Style>
 
+                <Border x:Name="TeachFailureCorrectionContext"
+                        Margin="0,0,0,8"
+                        Padding="10"
+                        Background="#FFF7ED"
+                        BorderBrush="#F97316"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Visibility="{Binding HasActiveValidationFailureCorrectionContext, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="TeachFailureCorrectionContext">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#9A3412"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureInTeach, Korean='실패 샘플 수정', English='Fix failed sample in Teach'}" />
+                            <Border Grid.Column="1"
+                                    Margin="7,0,0,0"
+                                    Padding="6,2"
+                                    Background="#FFEDD5"
+                                    CornerRadius="8">
+                                <TextBlock FontSize="9"
+                                           FontWeight="SemiBold"
+                                           Foreground="#C2410C"
+                                           Text="{Binding ActiveValidationFailureCorrectionContext.SampleStatus}" />
+                            </Border>
+                        </Grid>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding ActiveValidationFailureCorrectionContext.SampleName}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding ActiveValidationFailureCorrectionContext.SourcePath}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding ActiveValidationFailureCorrectionContext.ToolName, StringFormat=Rule: {0}}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   Foreground="#9A3412"
+                                   Text="{Binding ActiveValidationFailureCorrectionContext.Reason}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="10"
+                                   FontWeight="SemiBold"
+                                   Foreground="#C2410C"
+                                   Text="{Binding ActiveValidationFailureCorrectionContext.CellSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureNextAction, Korean='ROI 또는 파라미터를 검토하고 Preview를 명시적으로 실행한 뒤 샘플 세트를 다시 실행하세요.', English='Review the ROI or parameters, run Preview explicitly, then rerun the sample set.'}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <Border Padding="9"
                         Margin="0,0,0,8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
@@ -125,6 +185,57 @@
                                    ToolTip="{Binding Localization.OpenSelectedToolLab}"
                                    AutomationProperties.Name="{Binding Localization.OpenSelectedToolLab}" />
                     </Grid>
+                </Border>
+
+                <Border Margin="0,0,0,7"
+                        Padding="8"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        Visibility="{Binding IsSelectedStepLevelSurface, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.LevelSurfaceEvidence, Korean='표면 레벨링 증거', English='Level Surface evidence'}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding LevelSurfaceReferenceSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   Text="{Binding LevelSurfaceExecutionSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding LevelSurfaceResidualSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding LevelSurfaceTransformSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding LevelSurfaceOutputSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.LevelSurfaceBoundary, Korean='원본 격자와 결측 셀은 유지되며 파생 C3D에만 높이 기울기 보정이 적용됩니다.', English='The source grid and missing cells are preserved; height detrending applies only to the derived C3D.'}"
+                                   TextWrapping="Wrap" />
+                        <ui:Button Margin="0,6,0,0"
+                                   Padding="7,3"
+                                   HorizontalAlignment="Left"
+                                   Content="{views:ThreeDText Key=ThreeD.Command.AddLevelReferenceRoi, Korean='기준 ROI 추가', English='Add reference ROI'}"
+                                   Icon="{ui:SymbolIcon AddCircle24}"
+                                   Command="{Binding BeginAdditionalLevelSurfaceReferenceCommand}"
+                                   AutomationProperties.Name="Add another Level Surface reference ROI" />
+                    </StackPanel>
                 </Border>
 
                 <Expander Style="{StaticResource WorkspaceSectionStyle}"
@@ -999,6 +1110,7 @@
                           IsExpanded="True"
                           Style="{StaticResource WorkspaceSectionStyle}"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Outputs, Korean='4  출력', English='4  Outputs'}">
+                    <StackPanel>
                     <ItemsControl Margin="0,5,0,0" ItemsSource="{Binding SelectedToolWorkspace.Outputs}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -1163,6 +1275,151 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <Border Margin="0,8,0,0"
+                            Padding="8"
+                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Visibility="{Binding HasCompletenessCellResults, Converter={StaticResource BoolToVisibilityConverter}}"
+                            AutomationProperties.Name="Completeness failed cell review">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ThreeD.TextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.Workspace.CompletenessReview, Korean='셀 결과 검토', English='Cell result review'}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               FontSize="9"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.Workspace.CompletenessReviewViewOnly, Korean='보기 전용 · 레시피 및 실행 상태 변경 없음', English='View only · recipe and execution state stay unchanged'}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Margin="8,0,0,0"
+                                           VerticalAlignment="Center"
+                                           FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.FailBrush}"
+                                           Text="{Binding CompletenessFailureNavigationSummary}" />
+                            </Grid>
+
+                            <Grid Margin="0,7,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ui:Button Margin="0,0,3,0"
+                                           Padding="6,3"
+                                           HorizontalAlignment="Stretch"
+                                           Command="{Binding PreviousCompletenessFailureCommand}"
+                                           ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviousFailedCellTip, Korean='이전 실패 셀을 2D/3D에서 함께 선택합니다.', English='Select the previous failed cell in both 2D and 3D.'}"
+                                           AutomationProperties.Name="Previous failed completeness cell">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="ArrowLeft24" />
+                                        <TextBlock Margin="5,0,0,0"
+                                                   Text="{views:ThreeDText Key=ThreeD.Command.PreviousFailedCell, Korean='이전 실패', English='Previous failure'}" />
+                                    </StackPanel>
+                                </ui:Button>
+                                <ui:Button Grid.Column="1"
+                                           Margin="3,0,0,0"
+                                           Padding="6,3"
+                                           HorizontalAlignment="Stretch"
+                                           Command="{Binding NextCompletenessFailureCommand}"
+                                           ToolTip="{views:ThreeDText Key=ThreeD.Command.NextFailedCellTip, Korean='다음 실패 셀을 2D/3D에서 함께 선택합니다.', English='Select the next failed cell in both 2D and 3D.'}"
+                                           AutomationProperties.Name="Next failed completeness cell">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Margin="0,0,5,0"
+                                                   Text="{views:ThreeDText Key=ThreeD.Command.NextFailedCell, Korean='다음 실패', English='Next failure'}" />
+                                        <ui:SymbolIcon Symbol="ArrowRight24" />
+                                    </StackPanel>
+                                </ui:Button>
+                            </Grid>
+
+                            <ItemsControl Margin="0,6,0,0"
+                                          ItemsSource="{Binding CompletenessCellResults}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="0,1"
+                                                Padding="0"
+                                                HorizontalContentAlignment="Stretch"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Command="{Binding DataContext.SelectCompletenessCellCommand, ElementName=SelectedToolRoot}"
+                                                CommandParameter="{Binding}"
+                                                AutomationProperties.Name="Select completeness cell">
+                                            <Border Padding="6,4"
+                                                    BorderThickness="1"
+                                                    CornerRadius="2">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="9.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                                                   Text="{Binding DisplayName}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Margin="0,1,0,0"
+                                                                   FontSize="8.5"
+                                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                                   Text="{Binding EvidenceSummary}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Margin="0,1,0,0"
+                                                                   FontSize="8"
+                                                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                                   Text="{Binding IdentitySummary}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Visibility="{Binding HasMappedThicknessIdentity, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="1"
+                                                               Margin="7,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               FontSize="9"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding StatusText}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding StatusText}" Value="Pass">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StatusText}" Value="Fail">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    </StackPanel>
                 </Expander>
 
                 <Expander Margin="0,0,0,7"

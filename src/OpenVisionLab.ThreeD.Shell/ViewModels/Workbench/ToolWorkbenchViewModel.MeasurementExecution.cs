@@ -33,7 +33,8 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepGapFlush => string.Equals(SelectedPipelineStep?.ToolId, "gap-flush", StringComparison.Ordinal);
     public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
     public bool IsSelectedStepCrossSectionDimensions => string.Equals(SelectedPipelineStep?.ToolId, "cross-section-dimensions", StringComparison.Ordinal);
-    public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume;
+    public bool IsSelectedStepCompletenessGrid => string.Equals(SelectedPipelineStep?.ToolId, "completeness-grid", StringComparison.Ordinal);
+    public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume || IsSelectedStepCompletenessGrid;
     public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
     public bool IsMeasurementPreviewRunning => isMeasurementPreviewRunning;
     public bool HasCurrentMeasurementPreview => measurementPreviewOutput is not null && !isMeasurementPreviewStale;
@@ -66,14 +67,26 @@ public sealed partial class ToolWorkbenchViewModel
         ? Localization.ThicknessRoiTeaching
         : IsSelectedStepGapFlush
         ? Localization.GapFlushRoiTeaching
-        : IsSelectedStepVolume ? Localization.VolumeRoiTeaching : Localization.PlaneFlatnessRoiTeaching;
+        : IsSelectedStepVolume
+        ? Localization.VolumeRoiTeaching
+        : IsSelectedStepCompletenessGrid
+        ? Localization.CompletenessRoiTeaching
+        : Localization.PlaneFlatnessRoiTeaching;
     public string DualRoiTeachingDetail => IsSelectedStepThickness
         ? Localization.ThicknessRoiTeachingDetail
         : IsSelectedStepGapFlush
         ? Localization.GapFlushRoiTeachingDetail
-        : IsSelectedStepVolume ? Localization.VolumeRoiTeachingDetail : Localization.PlaneFlatnessRoiTeachingDetail;
+        : IsSelectedStepVolume
+        ? Localization.VolumeRoiTeachingDetail
+        : IsSelectedStepCompletenessGrid
+        ? Localization.CompletenessRoiTeachingDetail
+        : Localization.PlaneFlatnessRoiTeachingDetail;
     public string DualRoiFirstLabel => IsSelectedStepGapFlush ? Localization.FirstRoi : Localization.ReferenceRoi;
-    public string DualRoiSecondLabel => IsSelectedStepGapFlush ? Localization.SecondRoi : Localization.MeasurementRoi;
+    public string DualRoiSecondLabel => IsSelectedStepGapFlush
+        ? Localization.SecondRoi
+        : IsSelectedStepCompletenessGrid
+        ? Localization.InspectionGridRoi
+        : Localization.MeasurementRoi;
     public string DualRoiFirstRequired => IsSelectedStepGapFlush ? Localization.FirstRoiRequiredFirst : Localization.ReferenceRoiRequiredFirst;
 
     private void InitializePlaneFlatnessTeaching()
@@ -298,6 +311,8 @@ public sealed partial class ToolWorkbenchViewModel
             if (evaluation.Output is null || evaluation.Result.Status == ResultStatus.Error)
             {
                 measurementPreviewOutput = null;
+                HeightImageViewer.SetCompletenessCellOverlays([]);
+                RefreshCompletenessCellReview();
                 step.State = "Error";
                 SetMeasurementSummary(evaluation.Result.Message);
                 AppendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
@@ -305,6 +320,10 @@ public sealed partial class ToolWorkbenchViewModel
             }
 
             measurementPreviewOutput = evaluation.Output;
+            HeightImageViewer.SetCompletenessCellOverlays(
+                evaluation.Output.CompletenessGrid?.CellOverlays ?? []);
+            SetSelectedCompletenessCellId(null);
+            RefreshCompletenessCellReview();
             step.State = "Preview ready";
             SetMeasurementSummary($"Preview ready | {evaluation.Output.EvidenceSummary} | {evaluation.Result.Status} | declared source units only.");
             AppendLog("Preview", $"{step.ToolName} Preview ready: {evaluation.Output.ContentSha256}.");
@@ -350,6 +369,8 @@ public sealed partial class ToolWorkbenchViewModel
     {
         measurementPreviewCancellation?.Cancel();
         measurementPreviewOutput = null;
+        HeightImageViewer.SetCompletenessCellOverlays([]);
+        RefreshCompletenessCellReview();
         isMeasurementPreviewStale = false;
         isMeasurementPreviewPublished = false;
         SetMeasurementSummary(summary);
@@ -369,6 +390,8 @@ public sealed partial class ToolWorkbenchViewModel
         }
         isMeasurementPreviewStale = true;
         isMeasurementPreviewPublished = false;
+        HeightImageViewer.SetCompletenessCellOverlays([]);
+        RefreshCompletenessCellReview();
         step.State = "Preview stale";
         SetMeasurementSummary("Source, route, ROI, output, or parameter changed. Preview again before Publish.");
     }
@@ -382,6 +405,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepGapFlush));
         OnPropertyChanged(nameof(IsSelectedStepVolume));
         OnPropertyChanged(nameof(IsSelectedStepCrossSectionDimensions));
+        OnPropertyChanged(nameof(IsSelectedStepCompletenessGrid));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();
@@ -408,6 +432,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(MeasurementEvidenceSummary));
         OnPropertyChanged(nameof(HasCurrentMeasurementPreview));
         OnPropertyChanged(nameof(IsMeasurementPreviewPublished));
+        RefreshCompletenessCellReview();
         RefreshMeasurementCommands();
     }
 

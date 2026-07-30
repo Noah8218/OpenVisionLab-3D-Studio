@@ -28,14 +28,21 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl
 {
+    private DispatcherTimer? visibleFrameRetryTimer;
+    private int visibleFrameRequestGeneration;
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         SubscribeViewModelEvents();
         UpdateOrientationTriad();
+        RequestVisibleFrame();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        visibleFrameRequestGeneration++;
+        visibleFrameRetryTimer?.Stop();
+        visibleFrameRetryTimer = null;
         StopInteractionWireframeLod();
         UnsubscribeViewModelEvents();
     }
@@ -126,6 +133,8 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public int SmokeExitCode => smokeExitCode;
 
+    public int VisibleFrameRequestCount { get; private set; }
+
     public string HostApiVersion => ViewerHostContract.ApiVersion;
 
     public ViewerHostState HostState => new(
@@ -153,6 +162,65 @@ public sealed partial class OpenVisionThreeDViewerControl
     public void UsePerspectiveView() => ExecuteHostCommand(viewModel.PerspectiveViewCommand);
 
     public void ResetView() => ExecuteHostCommand(viewModel.ResetCommand);
+
+    public void RequestVisibleFrame()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RequestVisibleFrame, DispatcherPriority.Loaded);
+            return;
+        }
+
+        visibleFrameRequestGeneration++;
+        visibleFrameRetryTimer?.Stop();
+        visibleFrameRetryTimer = null;
+        RequestVisibleFrameCore(visibleFrameRequestGeneration, attempt: 0);
+    }
+
+    private void RequestVisibleFrameCore(int generation, int attempt)
+    {
+        Dispatcher.BeginInvoke(
+            () =>
+            {
+                if (generation != visibleFrameRequestGeneration)
+                {
+                    return;
+                }
+
+                if (IsLoaded
+                    && IsVisible
+                    && Viewport.IsVisible
+                    && Viewport.ActualWidth >= 2
+                    && Viewport.ActualHeight >= 2)
+                {
+                    Viewport.UpdateLayout();
+                    Viewport.RenderTrigger = RenderTrigger.Manual;
+                    Viewport.DoRender();
+                    Viewport.RenderTrigger = RenderTrigger.TimerBased;
+                    Viewport.InvalidateVisual();
+                    VisibleFrameRequestCount++;
+                }
+
+                if (attempt >= 2)
+                {
+                    return;
+                }
+
+                visibleFrameRetryTimer?.Stop();
+                visibleFrameRetryTimer = new DispatcherTimer(
+                    TimeSpan.FromMilliseconds(attempt == 0 ? 160 : 360),
+                    DispatcherPriority.Background,
+                    (_, _) =>
+                    {
+                        visibleFrameRetryTimer?.Stop();
+                        visibleFrameRetryTimer = null;
+                        RequestVisibleFrameCore(generation, attempt + 1);
+                    },
+                    Dispatcher);
+                visibleFrameRetryTimer.Start();
+            },
+            DispatcherPriority.ContextIdle);
+    }
 
     public bool SaveRecipe(string path) => SaveCurrentRecipe(path, isSmoke: false);
 

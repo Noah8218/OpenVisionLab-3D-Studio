@@ -71,6 +71,7 @@
                           Grid.Row="1"
                           AutomationProperties.Name="Selected step parameters"
                           EditorColumnMinWidth="120"
+                          PreviewKeyDown="OnInnerGridPreviewKeyDown"
                           PropertyFilterVisibility="Collapsed"
                           PropertyNameColumnWidth="168"
                           ShowReadOnlyProperties="True" />

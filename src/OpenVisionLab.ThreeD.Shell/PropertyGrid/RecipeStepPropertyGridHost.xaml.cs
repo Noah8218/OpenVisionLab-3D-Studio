@@ -159,6 +159,80 @@ public partial class RecipeStepPropertyGridHost : UserControl
     private void OnPropertyFilterTextChanged(object sender, TextChangedEventArgs args) =>
         InnerGrid.PropertyFilter = PropertyFilterBox.Text;
 
+    private void OnInnerGridPreviewKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Tab || Keyboard.FocusedElement is not UIElement focusedElement)
+        {
+            return;
+        }
+
+        CommitFocusedEditor(focusedElement);
+
+        var direction = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)
+            ? FocusNavigationDirection.Previous
+            : FocusNavigationDirection.Next;
+
+        // The bundled PropertyGrid's own Tab traversal can dereference a missing
+        // visual child after the host has been scrolled or recomposed. Handle Tab
+        // here so an ordinary parameter edit cannot terminate the application.
+        if (!TryMoveFocusWithinPropertyGrid(focusedElement, direction))
+        {
+            focusedElement.MoveFocus(new TraversalRequest(direction));
+        }
+
+        args.Handled = true;
+    }
+
+    private bool TryMoveFocusWithinPropertyGrid(
+        UIElement focusedElement,
+        FocusNavigationDirection direction)
+    {
+        var editors = FindVisualChildren<Control>(InnerGrid)
+            .Where(control =>
+                control.IsVisible
+                && control.IsEnabled
+                && control.Focusable
+                && control switch
+                {
+                    TextBox textBox => !textBox.IsReadOnly,
+                    ComboBox => true,
+                    ToggleButton => true,
+                    _ => false
+                })
+            .ToList();
+
+        var currentIndex = editors.FindIndex(editor =>
+            ReferenceEquals(editor, focusedElement) || editor.IsKeyboardFocusWithin);
+        if (currentIndex < 0)
+        {
+            return false;
+        }
+
+        var targetIndex = direction == FocusNavigationDirection.Previous
+            ? currentIndex - 1
+            : currentIndex + 1;
+        return targetIndex >= 0
+            && targetIndex < editors.Count
+            && editors[targetIndex].Focus();
+    }
+
+    private static void CommitFocusedEditor(UIElement focusedElement)
+    {
+        if (focusedElement is TextBox textBox)
+        {
+            textBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        }
+        else if (focusedElement is ComboBox comboBox)
+        {
+            comboBox.GetBindingExpression(Selector.SelectedValueProperty)?.UpdateSource();
+            comboBox.GetBindingExpression(Selector.SelectedItemProperty)?.UpdateSource();
+        }
+        else if (focusedElement is ToggleButton toggle)
+        {
+            toggle.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateSource();
+        }
+    }
+
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)
         where T : DependencyObject
     {

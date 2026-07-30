@@ -62,6 +62,45 @@ public partial class ViewerWorkspaceView : UserControl
     public bool HasCoordinateTrueHeightImage =>
         heightImageViewer?.HasNativeCoordinateImage == true;
 
+    public bool ReactivateMainViewer(object? requestedContent)
+    {
+        var viewer = requestedContent as OpenVisionThreeDViewerControl;
+        if (viewer is null)
+        {
+            return false;
+        }
+
+        SetCurrentValue(MainViewerContentProperty, viewer);
+        AttachMainViewer(viewer);
+        viewer.RequestVisibleFrame();
+        return true;
+    }
+
+    public bool ReleaseMainViewer(object? requestedContent)
+    {
+        if (requestedContent is not OpenVisionThreeDViewerControl viewer)
+        {
+            return false;
+        }
+
+        var ownsViewer = ReferenceEquals(mainViewer, viewer)
+            || ReferenceEquals(MainViewerContent, viewer)
+            || ReferenceEquals(MainViewerPresenter.Content, viewer);
+        if (!ownsViewer)
+        {
+            return false;
+        }
+
+        SetCurrentValue(MainViewerContentProperty, null);
+        MainViewerPresenter.SetCurrentValue(
+            ContentPresenter.ContentProperty,
+            null);
+        AttachMainViewer(null);
+        return mainViewer is null
+            && MainViewerContent is null
+            && MainViewerPresenter.Content is null;
+    }
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs args)
     {
         DetachSubscriptions();
@@ -119,6 +158,11 @@ public partial class ViewerWorkspaceView : UserControl
     {
         if (ReferenceEquals(mainViewer, viewer))
         {
+            if (!ReferenceEquals(MainViewerPresenter.Content, viewer))
+            {
+                MainViewerPresenter.Content = viewer;
+            }
+
             ApplySharedHeightCursorToMainViewer();
             return;
         }
@@ -130,6 +174,7 @@ public partial class ViewerWorkspaceView : UserControl
         }
 
         mainViewer = viewer;
+        MainViewerPresenter.Content = viewer;
         if (mainViewer is not null)
         {
             mainViewer.C3DGridHoverChanged += OnMainViewerC3DGridHoverChanged;

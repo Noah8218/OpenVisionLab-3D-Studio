@@ -48,13 +48,40 @@
                 BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="150" />
                     <ColumnDefinition Width="1.05*" MinWidth="150" />
                     <ColumnDefinition Width="1.35*" MinWidth="175" />
-                    <ColumnDefinition Width="1.05*" MinWidth="155" />
-                    <ColumnDefinition Width="1.15*" MinWidth="170" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+                <StackPanel Width="150"
+                            Margin="0,0,14,0"
+                            VerticalAlignment="Center">
+                    <Grid>
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="검사 구성"
+                                   Visibility="{Binding IsSetupWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="티칭"
+                                   Visibility="{Binding IsTeachWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="검증"
+                                   Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="결과"
+                                   Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </Grid>
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="9.5"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding WorkspaceSummary}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding InspectionStageNavigationStatus}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center">
                     <TextBlock FontSize="9.5"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
@@ -66,7 +93,7 @@
                                TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding Workbench.RecipePathSummary}" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center">
                     <TextBlock FontSize="9.5"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
@@ -77,56 +104,97 @@
                                TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding Workbench.Source.Path}" />
                 </StackPanel>
-                <StackPanel Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center">
-                    <TextBlock FontSize="9.5"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding Localization.RecipeStatusLabel}" />
-                    <TextBlock Margin="0,1,0,0"
-                               FontSize="10.5"
-                               Text="{Binding Workbench.LocalizedRecipeStateSummary}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Workbench.ValidationSummary}" />
-                </StackPanel>
-                <StackPanel Grid.Column="3" Margin="0,0,10,0" VerticalAlignment="Center">
-                    <TextBlock FontSize="9.5"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{views:ThreeDText Key=ThreeD.Workspace.SelectedToolState, Korean='선택 도구 상태', English='Selected tool state'}" />
-                    <TextBlock Margin="0,1,0,0"
-                               FontSize="10.5"
-                               FontWeight="SemiBold"
-                               Text="{Binding Workbench.SelectedWorkspaceState}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding Workbench.SelectedWorkspaceTitle}" />
-                </StackPanel>
-                <StackPanel Grid.Column="4"
+                <StackPanel Grid.Column="3"
                             VerticalAlignment="Center"
-                            Orientation="Horizontal">
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsSetupWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
-                               Content="{Binding Localization.Preview}"
-                               Icon="{ui:SymbolIcon Eye24}"
-                               Command="{Binding Workbench.PreviewSelectedStepCommand}"
-                               Click="OpenPipelineReview_Click"
-                               ToolTip="F5"
-                               AutomationProperties.Name="Preview selected inspection step" />
-                    <ui:Button Margin="0,0,5,0"
-                               Padding="8,4"
-                               Content="{views:ThreeDText Key=ThreeD.Command.RunAll, Korean='전체 실행', English='Run all'}"
-                               Icon="{ui:SymbolIcon PlayCircle24}"
-                               Command="{Binding Workbench.RunTeachingRecipeCommand}"
-                               Click="OpenPipelineReview_Click"
-                               ToolTip="Ctrl+F5"
-                               AutomationProperties.Name="Run complete inspection recipe" />
-                    <ui:Button Padding="8,4"
                                Appearance="Primary"
+                               Content="선택 단계 티칭"
+                               Icon="{ui:SymbolIcon Edit24}"
+                               Command="{Binding SelectWorkspaceCommand}"
+                               CommandParameter="{x:Static views:ShellWorkspaceMode.Teach}"
+                               AutomationProperties.Name="Teach selected inspection step" />
+                    <ui:Button Padding="8,4"
                                Content="{Binding Localization.Save}"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
                                Command="{Binding Workbench.SaveTeachingRecipeCommand}"
                                ToolTip="Ctrl+S"
                                AutomationProperties.AutomationId="SaveTeachingRecipe"
                                AutomationProperties.Name="{Binding Localization.Save}" />
+                </StackPanel>
+                <StackPanel Grid.Column="3"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsTeachWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="{Binding Localization.Preview}"
+                               Icon="{ui:SymbolIcon Eye24}"
+                               Command="{Binding Workbench.PreviewSelectedStepCommand}"
+                               ToolTip="F5"
+                               AutomationProperties.AutomationId="PreviewTeachingToolButton"
+                               AutomationProperties.Name="Preview selected inspection step" />
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="{Binding Localization.Publish}"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding Workbench.PublishSelectedStepCommand}"
+                               ToolTip="Publish the current non-stale Preview without re-running"
+                               AutomationProperties.Name="Publish selected inspection output" />
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="{Binding Localization.Cancel}"
+                               Icon="{ui:SymbolIcon ArrowUndo24}"
+                               Command="{Binding Workbench.CancelSelectedPreviewCommand}"
+                               Visibility="{Binding Workbench.IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                               AutomationProperties.Name="Cancel selected Preview" />
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="검증으로"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                               Command="{Binding SelectWorkspaceCommand}"
+                               CommandParameter="{x:Static views:ShellWorkspaceMode.Inspect}"
+                               AutomationProperties.Name="Open validation workspace" />
+                    <ui:Button Padding="8,4"
+                               Content="{Binding Localization.Save}"
+                               Icon="{ui:SymbolIcon DocumentCheckmark24}"
+                               Command="{Binding Workbench.SaveTeachingRecipeCommand}"
+                               ToolTip="Ctrl+S"
+                               AutomationProperties.AutomationId="SaveTeachingRecipe"
+                               AutomationProperties.Name="{Binding Localization.Save}" />
+                </StackPanel>
+                <StackPanel Grid.Column="3"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Appearance="Primary"
+                               Content="{views:ThreeDText Key=ThreeD.Command.RunAll, Korean='전체 실행', English='Run all'}"
+                               Icon="{ui:SymbolIcon PlayCircle24}"
+                               Command="{Binding Workbench.RunTeachingRecipeCommand}"
+                               ToolTip="Ctrl+F5"
+                               AutomationProperties.Name="Run complete inspection recipe" />
+                    <ui:Button Padding="8,4"
+                               Content="결과 보기"
+                               Icon="{ui:SymbolIcon DataHistogram24}"
+                               Command="{Binding SelectWorkspaceCommand}"
+                               CommandParameter="{x:Static views:ShellWorkspaceMode.Review}"
+                               AutomationProperties.Name="Open inspection results workspace" />
+                </StackPanel>
+                <StackPanel Grid.Column="3"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ui:Button Margin="0,0,5,0"
+                               Padding="8,4"
+                               Content="티칭으로"
+                               Icon="{ui:SymbolIcon Edit24}"
+                               Command="{Binding SelectWorkspaceCommand}"
+                               CommandParameter="{x:Static views:ShellWorkspaceMode.Teach}"
+                               AutomationProperties.Name="Return to teaching workspace" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -136,6 +204,7 @@
                                       ToolLibraryTitle="{Binding Localization.ToolLibrary}"
                                       DataLayersTitle="{Binding Localization.RecipeFlow}"
                                       ViewerTitle="{Binding Localization.Viewer}"
+                                      ResultsTitle="{Binding Localization.ResultsWorkspaceTitle}"
                                       ToolInspectorTitle="{views:ThreeDText Key=ThreeD.Workspace.SelectedTool, Korean='선택 도구', English='Selected Tool'}"
                                       EvidenceTitle="{Binding Localization.PipelineValidation}"
                                       OutputCompareTitle="{Binding Localization.OutputCompare}"
@@ -191,25 +260,6 @@
                                    Text="{Binding Workbench.LocalizedSourceReadinessSummary}"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding Workbench.LocalizedSourceReadinessSummary}" />
-                        <StackPanel Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Orientation="Horizontal"
-                                    AutomationProperties.Name="Selected output publication actions">
-                            <ui:Button Padding="8,3"
-                                       Content="{Binding Localization.Publish}"
-                                       Icon="{ui:SymbolIcon CheckmarkCircle24}"
-                                       Command="{Binding Workbench.PublishSelectedStepCommand}"
-                                       Click="OpenPipelineReview_Click"
-                                       ToolTip="Publish the current non-stale Preview without re-running"
-                                       AutomationProperties.Name="Publish selected inspection output" />
-                            <ui:Button Margin="5,0,0,0"
-                                       Padding="8,3"
-                                       Content="{Binding Localization.Cancel}"
-                                       Icon="{ui:SymbolIcon ArrowUndo24}"
-                                       Command="{Binding Workbench.CancelSelectedPreviewCommand}"
-                                       Visibility="{Binding Workbench.IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
-                                       AutomationProperties.Name="Cancel selected Preview" />
-                        </StackPanel>
                         <Border Grid.Row="1"
                                 Grid.ColumnSpan="3"
                                 Margin="0,7,0,0"
@@ -344,6 +394,10 @@
                                                Loaded="ViewerWorkspaceSurface_Loaded" />
             </Grid>
         </dock:OpenVisionDockWorkspaceView.ViewerContent>
+
+        <dock:OpenVisionDockWorkspaceView.ResultsContent>
+            <workbench:ResultsWorkspaceView DataContext="{Binding}" />
+        </dock:OpenVisionDockWorkspaceView.ResultsContent>
 
         <dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
             <workbench:SelectedToolWorkspaceView DataContext="{Binding Workbench}" />

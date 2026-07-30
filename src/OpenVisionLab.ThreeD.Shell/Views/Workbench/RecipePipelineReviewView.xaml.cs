@@ -1,12 +1,32 @@
 using System.Collections;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
+public enum RecipeReviewPresentationMode
+{
+    Standard,
+    Validation,
+    Results
+}
+
+public enum ValidationWorkspaceSection
+{
+    Samples,
+    Results,
+    Failures,
+    Thresholds,
+    HeldOut
+}
+
 public partial class RecipePipelineReviewView : UserControl
 {
+    private readonly ControlTemplate standardReviewTabsTemplate;
+    private RecipeReviewPresentationMode presentationMode;
+
     public event EventHandler? ActiveReviewChanged;
 
     public static readonly DependencyProperty RunRecordStepsProperty = DependencyProperty.Register(
@@ -30,7 +50,69 @@ public partial class RecipePipelineReviewView : UserControl
     public RecipePipelineReviewView()
     {
         InitializeComponent();
+        standardReviewTabsTemplate = ReviewTabs.Template;
         ReviewTabs.SelectionChanged += ReviewTabs_SelectionChanged;
+    }
+
+    public RecipeReviewPresentationMode PresentationMode => presentationMode;
+
+    public bool IsDedicatedValidationWorkspace =>
+        presentationMode == RecipeReviewPresentationMode.Validation
+        && ValidationWorkspaceNavigation.Visibility == Visibility.Visible
+        && ReviewTabs.SelectedIndex == 4;
+
+    public ValidationWorkspaceSection ValidationSection { get; private set; } =
+        ValidationWorkspaceSection.Samples;
+
+    public bool HasLocalizedValidationNavigation =>
+        HasAccessibleText(ValidationSamplesNavigation)
+        && HasAccessibleText(ValidationResultsNavigation)
+        && HasAccessibleText(ValidationFailuresNavigation)
+        && HasAccessibleText(ValidationThresholdNavigation)
+        && HasAccessibleText(ValidationHeldOutNavigation);
+
+    public bool HasAccessibleValidationSampleSetAction =>
+        RunValidationSampleSetButton.Visibility == Visibility.Visible
+        && RunValidationSampleSetButton.IsTabStop
+        && RunValidationSampleSetButton.Focusable
+        && string.Equals(
+            AutomationProperties.GetAutomationId(RunValidationSampleSetButton),
+            "ValidationSetRunAllButton",
+            StringComparison.Ordinal)
+        && HasAccessibleText(RunValidationSampleSetButton);
+
+    public bool IsFailureOperatorSummaryVisible =>
+        ValidationFailureOperatorSummary.Visibility == Visibility.Visible
+        && !string.IsNullOrWhiteSpace(ValidationFailureSampleValue.Text)
+        && !string.IsNullOrWhiteSpace(ValidationFailureRuleValue.Text)
+        && !string.IsNullOrWhiteSpace(ValidationFailureReasonValue.Text);
+
+    public void SetPresentationMode(RecipeReviewPresentationMode mode)
+    {
+        presentationMode = mode;
+        ValidationWorkspaceNavigation.Visibility =
+            mode == RecipeReviewPresentationMode.Validation
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ReviewTabs.Template = mode is RecipeReviewPresentationMode.Validation
+            or RecipeReviewPresentationMode.Results
+            ? (ControlTemplate)FindResource("ContentOnlyTabControlTemplate")
+            : standardReviewTabsTemplate;
+
+        switch (mode)
+        {
+            case RecipeReviewPresentationMode.Validation:
+                SelectReviewTab(4);
+                SetValidationSection(ValidationWorkspaceSection.Samples);
+                break;
+            case RecipeReviewPresentationMode.Results:
+                RestoreStandardValidationLayout();
+                SelectReviewTab(3);
+                break;
+            default:
+                RestoreStandardValidationLayout();
+                break;
+        }
     }
 
     public void ActivateFlowMap() => SelectReviewTab(1);
@@ -93,12 +175,155 @@ public partial class RecipePipelineReviewView : UserControl
         ReviewTabs.SelectedIndex = index;
     }
 
+    private static bool HasAccessibleText(ContentControl control) =>
+        !string.IsNullOrWhiteSpace(control.Content?.ToString())
+        && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(control));
+
     private void ValidationSetStepsList_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (sender is ListBox { SelectedItem: { } selected } list)
         {
             list.ScrollIntoView(selected);
         }
+    }
+
+    private void ValidationSamplesNavigation_Click(object sender, RoutedEventArgs e) =>
+        SetValidationSection(ValidationWorkspaceSection.Samples);
+
+    private void ValidationResultsNavigation_Click(object sender, RoutedEventArgs e) =>
+        SetValidationSection(ValidationWorkspaceSection.Results);
+
+    private void ValidationFailuresNavigation_Click(object sender, RoutedEventArgs e) =>
+        SetValidationSection(ValidationWorkspaceSection.Failures);
+
+    private void ValidationThresholdNavigation_Click(object sender, RoutedEventArgs e) =>
+        SetValidationSection(ValidationWorkspaceSection.Thresholds);
+
+    private void ValidationHeldOutNavigation_Click(object sender, RoutedEventArgs e) =>
+        SetValidationSection(ValidationWorkspaceSection.HeldOut);
+
+    public void SetValidationSection(ValidationWorkspaceSection section)
+    {
+        ValidationSection = section;
+        ValidationSamplesNavigation.IsChecked = section == ValidationWorkspaceSection.Samples;
+        ValidationResultsNavigation.IsChecked = section == ValidationWorkspaceSection.Results;
+        ValidationFailuresNavigation.IsChecked = section == ValidationWorkspaceSection.Failures;
+        ValidationThresholdNavigation.IsChecked = section == ValidationWorkspaceSection.Thresholds;
+        ValidationHeldOutNavigation.IsChecked = section == ValidationWorkspaceSection.HeldOut;
+
+        var usesPrimaryReview = section is ValidationWorkspaceSection.Samples
+            or ValidationWorkspaceSection.Results
+            or ValidationWorkspaceSection.Failures;
+        ValidationSetFilterBar.Visibility = usesPrimaryReview
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ValidationSetPrimaryGrid.Visibility = usesPrimaryReview
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ValidationEvidenceExpander.Visibility =
+            section == ValidationWorkspaceSection.Results
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ValidationThresholdExpander.Visibility =
+            section is ValidationWorkspaceSection.Thresholds or ValidationWorkspaceSection.HeldOut
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ValidationEvidenceExpander.IsExpanded =
+            section == ValidationWorkspaceSection.Results;
+        ValidationThresholdExpander.IsExpanded =
+            section is ValidationWorkspaceSection.Thresholds or ValidationWorkspaceSection.HeldOut;
+        RunValidationSampleSetButton.Visibility =
+            section == ValidationWorkspaceSection.Samples
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        OpenValidationIssueInTeachButton.Visibility =
+            section == ValidationWorkspaceSection.Failures
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ValidationFailureOperatorSummary.Visibility =
+            section == ValidationWorkspaceSection.Failures
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        var samplesOnly = section == ValidationWorkspaceSection.Samples;
+        ValidationSamplesColumn.Width = new GridLength(
+            samplesOnly ? 1 : 1.35,
+            GridUnitType.Star);
+        ValidationPrimaryGapColumn.Width = samplesOnly
+            ? new GridLength(0)
+            : new GridLength(8);
+        ValidationRecordColumn.Width = samplesOnly
+            ? new GridLength(0)
+            : new GridLength(1.15, GridUnitType.Star);
+        ValidationRecordPane.Visibility = samplesOnly
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        ApplyThresholdSection(section);
+
+        if (section == ValidationWorkspaceSection.Failures
+            && DataContext is ToolWorkbenchViewModel workbench
+            && workbench.SelectedValidationSetSample?.Status is not ("Fail" or "Error"))
+        {
+            workbench.SelectedValidationSetSample =
+                workbench.ValidationSetSamples.FirstOrDefault(
+                    sample => sample.Status is "Fail" or "Error");
+        }
+    }
+
+    private void ApplyThresholdSection(ValidationWorkspaceSection section)
+    {
+        var heldOutOnly = section == ValidationWorkspaceSection.HeldOut;
+        ReviewValidationThresholdButton.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        CancelValidationThresholdReviewButton.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        ApplyValidationThresholdButton.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        RevalidateDevelopmentButton.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        ReplayHeldOutButton.Visibility =
+            heldOutOnly ? Visibility.Visible : Visibility.Collapsed;
+        ValidationThresholdParameterChangesGrid.MaxHeight = heldOutOnly ? 0 : 78;
+        ValidationThresholdDevelopmentGrid.MaxHeight = heldOutOnly ? 0 : 112;
+        ValidationThresholdCandidatesGrid.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        ValidationThresholdDecisionsGrid.Visibility =
+            heldOutOnly ? Visibility.Collapsed : Visibility.Visible;
+        Grid.SetColumn(
+            ValidationThresholdHeldOutGrid,
+            heldOutOnly ? 0 : 2);
+        Grid.SetColumnSpan(
+            ValidationThresholdHeldOutGrid,
+            heldOutOnly ? 3 : 1);
+        ValidationThresholdHeldOutGrid.MaxHeight = heldOutOnly ? 420 : 0;
+    }
+
+    private void RestoreStandardValidationLayout()
+    {
+        ValidationSetFilterBar.Visibility = Visibility.Visible;
+        ValidationSetPrimaryGrid.Visibility = Visibility.Visible;
+        ValidationEvidenceExpander.Visibility = Visibility.Visible;
+        ValidationThresholdExpander.Visibility = Visibility.Visible;
+        RunValidationSampleSetButton.Visibility = Visibility.Collapsed;
+        OpenValidationIssueInTeachButton.Visibility = Visibility.Collapsed;
+        ValidationFailureOperatorSummary.Visibility = Visibility.Collapsed;
+        ValidationSamplesColumn.Width = new GridLength(1.35, GridUnitType.Star);
+        ValidationPrimaryGapColumn.Width = new GridLength(8);
+        ValidationRecordColumn.Width = new GridLength(1.15, GridUnitType.Star);
+        ValidationRecordPane.Visibility = Visibility.Visible;
+        ValidationThresholdCandidatesGrid.Visibility = Visibility.Visible;
+        ValidationThresholdDecisionsGrid.Visibility = Visibility.Visible;
+        ReviewValidationThresholdButton.Visibility = Visibility.Visible;
+        CancelValidationThresholdReviewButton.Visibility = Visibility.Visible;
+        ApplyValidationThresholdButton.Visibility = Visibility.Visible;
+        RevalidateDevelopmentButton.Visibility = Visibility.Visible;
+        ReplayHeldOutButton.Visibility = Visibility.Visible;
+        ValidationThresholdParameterChangesGrid.MaxHeight = 78;
+        ValidationThresholdDevelopmentGrid.MaxHeight = 112;
+        Grid.SetColumn(ValidationThresholdHeldOutGrid, 2);
+        Grid.SetColumnSpan(ValidationThresholdHeldOutGrid, 1);
+        ValidationThresholdHeldOutGrid.MaxHeight = 78;
     }
 
 }

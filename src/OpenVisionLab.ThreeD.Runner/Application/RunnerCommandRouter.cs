@@ -23,10 +23,20 @@ internal static class RunnerCommandRouter
         var c3DMapPlyPath = ReadOption(args, "--ply");
         var recipePath = ReadOption(args, "--recipe");
         var toolRecipePath = ReadOption(args, "--tool-recipe");
+        var labeledValidationRecipePath =
+            ReadOption(args, "--labeled-validation-recipe");
+        var thresholdCorrectionRecipePath =
+            ReadOption(args, "--threshold-correction-recipe");
+        var thresholdCandidateId =
+            ReadOption(args, "--threshold-candidate-id");
+        var thresholdManualValues =
+            ReadOption(args, "--threshold-manual-values");
         var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
         var toolTeachingRemoveOutliersPath =
             ReadOption(args, "--tool-teaching-remove-outliers");
+        var toolTeachingLevelSurfacePath =
+            ReadOption(args, "--tool-teaching-level-surface");
         var toolTeachingEdgePath = ReadOption(args, "--tool-teaching-edge");
         var toolTeachingLineFitPath = ReadOption(args, "--tool-teaching-line-fit");
         var toolTeachingTwoPointLinePath = ReadOption(args, "--tool-teaching-two-point-line");
@@ -51,6 +61,9 @@ internal static class RunnerCommandRouter
         var verifyC3DFilter = args.Contains("--verify-c3d-filter", StringComparer.OrdinalIgnoreCase);
         var verifyC3DRemoveOutliers = args.Contains(
             "--verify-c3d-remove-outliers",
+            StringComparer.OrdinalIgnoreCase);
+        var verifyC3DLevelSurface = args.Contains(
+            "--verify-c3d-level-surface",
             StringComparer.OrdinalIgnoreCase);
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
@@ -81,6 +94,9 @@ internal static class RunnerCommandRouter
         var verifySourceQualityReport = args.Contains("--verify-source-quality-report", StringComparer.OrdinalIgnoreCase);
         var verifyC3DHeightImage = args.Contains("--verify-c3d-height-image", StringComparer.OrdinalIgnoreCase);
         var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DCompletenessGrid = args.Contains(
+            "--verify-c3d-completeness-grid",
+            StringComparer.OrdinalIgnoreCase);
         var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
         if (sourceQualityC3DPath is not null)
@@ -119,6 +135,37 @@ internal static class RunnerCommandRouter
                 stlStreamProbeUnit,
                 sourceQualityFrameId,
                 reportPath);
+        }
+
+        if (labeledValidationRecipePath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
+                return 2;
+            }
+
+            return ToolRecipeLabeledValidationRunnerExecution.Run(
+                labeledValidationRecipePath,
+                reportPath);
+        }
+
+        if (thresholdCorrectionRecipePath is not null)
+        {
+            if (string.IsNullOrWhiteSpace(thresholdCandidateId)
+                || reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");
+                return 2;
+            }
+
+            return ToolRecipeThresholdCorrectionRunnerExecution.Run(
+                thresholdCorrectionRecipePath,
+                thresholdCandidateId,
+                reportPath,
+                thresholdManualValues);
         }
 
         if (toolRecipePath is not null)
@@ -160,6 +207,24 @@ internal static class RunnerCommandRouter
 
             return ToolRecipeRemoveOutlierPixelsRunnerExecution.Run(
                 toolTeachingRemoveOutliersPath,
+                toolTeachingStepId,
+                outputC3DPath,
+                reportPath);
+        }
+
+        if (toolTeachingLevelSurfacePath is not null)
+        {
+            if (toolTeachingStepId is null
+                || outputC3DPath is null
+                || reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --tool-teaching-level-surface <recipe> --tool-teaching-step <id> --output-c3d <path> --report <path>");
+                return 2;
+            }
+
+            return ToolRecipeLevelSurfaceRunnerExecution.Run(
+                toolTeachingLevelSurfacePath,
                 toolTeachingStepId,
                 outputC3DPath,
                 reportPath);
@@ -263,6 +328,30 @@ internal static class RunnerCommandRouter
             }
 
             return C3DRemoveOutlierPixelsGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DLevelSurface)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
+                return 2;
+            }
+
+            return C3DLevelSurfaceGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DCompletenessGrid)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-completeness-grid --report <path>");
+                return 2;
+            }
+
+            return C3DCompletenessGridGoldenVerification.Run(reportPath);
         }
 
         if (verifyArtifactOwnedRoiRunner)
@@ -731,6 +820,7 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
@@ -744,6 +834,8 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");
             return 2;
         }
 

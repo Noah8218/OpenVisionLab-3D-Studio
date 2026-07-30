@@ -74,6 +74,7 @@ public sealed partial class ToolWorkbenchViewModel
             ? [publishedFilter, gridSelection]
             : []);
         AddCompatibleTool(suggestions, "filter", source is null ? [] : [source]);
+        AddCompatibleTool(suggestions, "level-surface", source is null ? [] : [source]);
         AddCompatibleTool(
             suggestions,
             "remove-outlier-pixels",

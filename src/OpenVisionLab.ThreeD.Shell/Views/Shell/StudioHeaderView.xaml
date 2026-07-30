@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:app="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell">
     <UserControl.Resources>
@@ -39,18 +40,61 @@
                     <StackPanel Orientation="Horizontal">
                         <RadioButton x:Name="WorkbenchModeButton"
                                      GroupName="WorkspaceMode"
-                                     IsChecked="{Binding IsWorkbenchWorkspaceSelected, Mode=TwoWay}"
+                                     IsChecked="{Binding IsSetupWorkspaceSelected, Mode=OneWay}"
+                                     Command="{Binding SelectWorkspaceCommand}"
+                                     CommandParameter="{x:Static app:ShellWorkspaceMode.Workbench}"
                                      Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
                                      AutomationProperties.AutomationId="WorkbenchModeButton"
-                                     AutomationProperties.Name="Inspection recipe workspace">
+                                     AutomationProperties.Name="Setup inspection workspace">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="WrenchScrewdriver24" />
-                                <TextBlock Text="{Binding Localization.RecipeWorkbench}" />
+                                <TextBlock Text="검사 구성" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="TeachModeButton"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsTeachWorkspaceSelected, Mode=OneWay}"
+                                     Command="{Binding SelectWorkspaceCommand}"
+                                     CommandParameter="{x:Static app:ShellWorkspaceMode.Teach}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="TeachModeButton"
+                                     AutomationProperties.Name="Teach inspection workspace">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="Edit24" />
+                                <TextBlock Text="티칭" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="ValidateModeButton"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsValidateWorkspaceSelected, Mode=OneWay}"
+                                     Command="{Binding SelectWorkspaceCommand}"
+                                     CommandParameter="{x:Static app:ShellWorkspaceMode.Inspect}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="ValidateModeButton"
+                                     AutomationProperties.Name="Validate inspection workspace">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="CheckmarkCircle24" />
+                                <TextBlock Text="검증" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="ResultsModeButton"
+                                     GroupName="WorkspaceMode"
+                                     IsChecked="{Binding IsResultsWorkspaceSelected, Mode=OneWay}"
+                                     Command="{Binding SelectWorkspaceCommand}"
+                                     CommandParameter="{x:Static app:ShellWorkspaceMode.Review}"
+                                     Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
+                                     AutomationProperties.AutomationId="ResultsModeButton"
+                                     AutomationProperties.Name="Inspection results workspace">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="DataHistogram24" />
+                                <TextBlock Text="결과" />
                             </StackPanel>
                         </RadioButton>
                         <RadioButton x:Name="CalibrateModeButton"
                                      GroupName="WorkspaceMode"
-                                     IsChecked="{Binding IsCalibrationWorkspaceSelected, Mode=TwoWay}"
+                                     IsChecked="{Binding IsCalibrationWorkspaceSelected, Mode=OneWay}"
+                                     Command="{Binding SelectWorkspaceCommand}"
+                                     CommandParameter="{x:Static app:ShellWorkspaceMode.Calibrate}"
                                      Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
                                      AutomationProperties.AutomationId="CalibrateModeButton"
                                      AutomationProperties.Name="Calibration workspace">
@@ -93,6 +137,17 @@
                         <ContextMenu Placement="Bottom"
                                      Background="{DynamicResource ThreeD.PanelBrush}"
                                      Foreground="{DynamicResource ThreeD.TextBrush}">
+                            <MenuItem Header="고급 레이아웃"
+                                      Command="{Binding PlacementTarget.DataContext.SelectWorkspaceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      CommandParameter="{x:Static app:ShellWorkspaceMode.Expert}"
+                                      ToolTip="{Binding PlacementTarget.DataContext.Localization.OpenAdvancedToolTip, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                      AutomationProperties.AutomationId="AdvancedModeButton"
+                                      AutomationProperties.Name="Advanced layout">
+                                <MenuItem.Icon>
+                                    <ui:SymbolIcon Width="16" Height="16" Symbol="SettingsCogMultiple24" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
                             <MenuItem Header="{Binding PlacementTarget.DataContext.Localization.Filter, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                       Click="OpenFilterToolLabButton_Click"
                                       ToolTip="Open the Filter input/output 3D comparison view"
@@ -188,20 +243,6 @@
                         </ContextMenu>
                     </ui:Button.ContextMenu>
                 </ui:Button>
-
-                <RadioButton x:Name="AdvancedModeButton"
-                             Grid.Column="4"
-                             GroupName="WorkspaceMode"
-                             IsChecked="{Binding IsExpertWorkspaceSelected, Mode=TwoWay}"
-                             Style="{DynamicResource ThreeD.ModeRadioButtonStyle}"
-                             ToolTip="{Binding Localization.OpenAdvancedToolTip}"
-                             AutomationProperties.AutomationId="AdvancedModeButton"
-                             AutomationProperties.Name="Advanced layout">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Width="16" Height="16" Margin="0,0,4,0" Symbol="SettingsCogMultiple24" />
-                        <TextBlock Text="{Binding Localization.AdvancedLayout}" />
-                    </StackPanel>
-                </RadioButton>
 
                 <ComboBox Grid.Column="5"
                           Width="106"

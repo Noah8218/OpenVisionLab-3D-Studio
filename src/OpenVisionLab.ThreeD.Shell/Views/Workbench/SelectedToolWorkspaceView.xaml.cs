@@ -11,6 +11,9 @@ public partial class SelectedToolWorkspaceView : UserControl
         InitializeComponent();
     }
 
+    public bool IsFailureCorrectionContextVisible =>
+        TeachFailureCorrectionContext.Visibility == Visibility.Visible;
+
     public bool CommitPendingParameterEdit(out string message) =>
         StepPropertyGrid.CommitPendingEdit(out message);
 

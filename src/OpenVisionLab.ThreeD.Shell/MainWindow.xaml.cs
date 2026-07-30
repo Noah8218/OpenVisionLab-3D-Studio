@@ -388,6 +388,7 @@ public partial class MainWindow : Window
         var datumPlaneDeviationPreviewSmoke = smoke.DatumPlaneDeviationPreviewSmoke;
         var filterPreviewSmoke = smoke.FilterPreviewSmoke;
         var removeOutlierPreviewSmoke = smoke.RemoveOutlierPreviewSmoke;
+        var levelSurfacePreviewSmoke = smoke.LevelSurfacePreviewSmoke;
         var measurementPreviewSmoke = smoke.MeasurementPreviewSmoke;
         var edgePublishSmoke = smoke.EdgePublishSmoke;
         var lineFitPreviewSmoke = smoke.LineFitPreviewSmoke;
@@ -419,6 +420,7 @@ public partial class MainWindow : Window
             _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
+                ConfigureResultsSectionFromCommandLine();
                 if (asyncC3DLoadSmokePath is not null
                     && !await ShellAsyncC3DLoadSmoke.RunAsync(
                         _viewer,
@@ -535,6 +537,16 @@ public partial class MainWindow : Window
                 {
                     _viewModel.SetViewerSmokeFailed(
                         _viewModel.Workbench.RemoveOutlierExecutionSummary);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (levelSurfacePreviewSmoke
+                    && !await _viewModel.Workbench
+                        .PreviewSelectedLevelSurfaceAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        _viewModel.Workbench.LevelSurfaceExecutionSummary);
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -1669,6 +1681,22 @@ public partial class MainWindow : Window
         {
             _viewModel.SelectWorkspaceCommand.Execute(workspace);
         }
+
+        ConfigureResultsSectionFromCommandLine();
+    }
+
+    private void ConfigureResultsSectionFromCommandLine()
+    {
+        var requestedResultsSection = GetCommandLineValue("--shell-results-section");
+        if (_viewModel.IsResultsWorkspaceSelected
+            && Enum.TryParse<ResultsWorkspaceSection>(
+                requestedResultsSection,
+                ignoreCase: true,
+                out var resultsSection)
+            && Enum.IsDefined(typeof(ResultsWorkspaceSection), resultsSection))
+        {
+            ToolWorkbench.SetResultsWorkspaceSection(resultsSection);
+        }
     }
 
     private void ConfigureViewerViewFromCommandLine(object sender, RoutedEventArgs e)
@@ -1719,16 +1747,175 @@ public partial class MainWindow : Window
             .Select(Path.GetFullPath)
             .ToArray();
         _viewModel.Workbench.SetValidationSetSources(sources);
+        var requestedRoles = GetCommandLineValue(
+            "--smoke-validation-set-roles");
+        if (!string.IsNullOrWhiteSpace(requestedRoles))
+        {
+            var roles = requestedRoles.Split(
+                ';',
+                StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries);
+            for (var index = 0;
+                 index < roles.Length
+                 && index < _viewModel.Workbench.ValidationSetSamples.Count;
+                 index++)
+            {
+                _viewModel.Workbench.SelectedValidationSetSample =
+                    _viewModel.Workbench.ValidationSetSamples[index];
+                _viewModel.Workbench.SetValidationSampleRoleCommand.Execute(
+                    roles[index]);
+            }
+        }
         ToolWorkbench.IsBottomPaneExpanded = true;
         ToolWorkbench.ActivateValidationSet();
+        if (Environment.GetCommandLineArgs().Contains(
+                "--smoke-validation-set-expand-evidence",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            _viewModel.Workbench.IsValidationEvidenceExpanded = true;
+        }
+        if (Environment.GetCommandLineArgs().Contains(
+                "--smoke-validation-set-expand-thresholds",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            _viewModel.Workbench.IsValidationThresholdExpanded = true;
+        }
         if (Environment.GetCommandLineArgs().Contains("--smoke-validation-set-run", StringComparer.OrdinalIgnoreCase))
         {
             _viewModel.Workbench.RunValidationSetCommand.Execute(null);
+            var thresholdMetric = GetCommandLineValue(
+                "--smoke-validation-threshold-metric");
+            var thresholdKind = GetCommandLineValue(
+                "--smoke-validation-threshold-kind");
+            if (!string.IsNullOrWhiteSpace(thresholdMetric)
+                || !string.IsNullOrWhiteSpace(thresholdKind))
+            {
+                _ = SelectValidationThresholdCandidateForSmokeAsync(
+                    thresholdMetric,
+                    thresholdKind);
+            }
             if (Environment.GetCommandLineArgs().Contains(
                     "--smoke-validation-set-open-compare",
                     StringComparer.OrdinalIgnoreCase))
             {
                 _ = OpenValidationSetComparisonForSmokeAsync();
+            }
+        }
+    }
+
+    private async Task SelectValidationThresholdCandidateForSmokeAsync(
+        string? metric,
+        string? kind)
+    {
+        while (_viewModel.Workbench.IsValidationSetRunning)
+        {
+            await Task.Delay(25);
+        }
+
+        var candidate =
+            _viewModel.Workbench.ValidationThresholdCandidates.FirstOrDefault(
+                item =>
+                    (string.IsNullOrWhiteSpace(metric)
+                     || string.Equals(
+                         item.MetricName,
+                         metric,
+                         StringComparison.OrdinalIgnoreCase))
+                    && (string.IsNullOrWhiteSpace(kind)
+                        || string.Equals(
+                            item.LimitKind,
+                            kind,
+                            StringComparison.OrdinalIgnoreCase)));
+        if (candidate is not null)
+        {
+            _viewModel.Workbench.SelectedValidationThresholdCandidate =
+                candidate;
+            var arguments = Environment.GetCommandLineArgs();
+            var shouldReview = arguments.Contains(
+                "--smoke-validation-threshold-review",
+                StringComparer.OrdinalIgnoreCase);
+            var shouldApply = arguments.Contains(
+                "--smoke-validation-threshold-apply",
+                StringComparer.OrdinalIgnoreCase);
+            var shouldReplay = arguments.Contains(
+                "--smoke-validation-threshold-replay-heldout",
+                StringComparer.OrdinalIgnoreCase);
+            var shouldRevalidate = arguments.Contains(
+                "--smoke-validation-threshold-revalidate-development",
+                StringComparer.OrdinalIgnoreCase);
+            var manualValues = GetCommandLineValue(
+                "--smoke-validation-threshold-manual-values");
+            if ((shouldReview || shouldApply || shouldReplay)
+                && _viewModel.Workbench
+                    .ReviewValidationThresholdCandidateCommand
+                    .CanExecute(null))
+            {
+                _viewModel.Workbench
+                    .ReviewValidationThresholdCandidateCommand
+                    .Execute(null);
+            }
+            if ((shouldApply || shouldReplay)
+                && _viewModel.Workbench
+                    .ApplyValidationThresholdCandidateCommand
+                    .CanExecute(null))
+            {
+                _viewModel.Workbench
+                    .ApplyValidationThresholdCandidateCommand
+                    .Execute(null);
+            }
+            if (!string.IsNullOrWhiteSpace(manualValues)
+                && _viewModel.Workbench.SelectedStepPropertyDraft
+                    is ThicknessStepProperties thickness)
+            {
+                var values = manualValues.Split(
+                    ';',
+                    StringSplitOptions.RemoveEmptyEntries
+                    | StringSplitOptions.TrimEntries)
+                    .Select(value => value.Split(
+                        '=',
+                        2,
+                        StringSplitOptions.TrimEntries))
+                    .Where(parts => parts.Length == 2)
+                    .ToDictionary(
+                        parts => parts[0],
+                        parts => double.Parse(
+                            parts[1],
+                            System.Globalization.CultureInfo.InvariantCulture),
+                        StringComparer.Ordinal);
+                if (values.TryGetValue(
+                        "MinimumThickness",
+                        out var minimum))
+                {
+                    thickness.MinimumThickness = minimum;
+                }
+                if (values.TryGetValue(
+                        "MaximumThickness",
+                        out var maximum))
+                {
+                    thickness.MaximumThickness = maximum;
+                }
+                _viewModel.Workbench.MarkSelectedStepParameterDraftDirty();
+                if (!_viewModel.Workbench.TryApplySelectedStepParameterDraft(
+                        out var manualApplyMessage))
+                {
+                    throw new InvalidDataException(
+                        $"Threshold manual-value smoke Apply failed: {manualApplyMessage}");
+                }
+            }
+            if (shouldRevalidate
+                && _viewModel.Workbench
+                    .RevalidateValidationThresholdCorrectionCommand
+                    .CanExecute(null))
+            {
+                await _viewModel.Workbench
+                    .RevalidateValidationThresholdCorrectionAsync();
+            }
+            if (shouldReplay
+                && _viewModel.Workbench
+                    .ReplayValidationThresholdHeldOutCommand
+                    .CanExecute(null))
+            {
+                await _viewModel.Workbench
+                    .ReplayValidationThresholdHeldOutAsync();
             }
         }
     }
@@ -2095,6 +2282,7 @@ public partial class MainWindow : Window
         }
 
         _viewModel.Workbench.CreateNewTeachingRecipe(GetRecipeNameFromPath(path));
+        _viewModel.ClearCurrentRunEvidenceForRecipeContext();
         if (!_viewModel.Workbench.TrySaveTeachingRecipe(path, out var message))
         {
             ShowRecipeSaveFailure(message);
@@ -2181,6 +2369,10 @@ public partial class MainWindow : Window
         }
 
         _viewModel.Workbench.SetC3DSourceFromLoadedViewer(path, sourceBinding, markDirty);
+        if (markDirty)
+        {
+            _viewModel.ClearCurrentRunEvidenceForRecipeContext();
+        }
         lastWorkbenchSourceBindingMilliseconds =
             Stopwatch.GetElapsedTime(sourceBindingStart).TotalMilliseconds;
     }
@@ -2331,6 +2523,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _viewModel.ClearCurrentRunEvidenceForRecipeContext();
         ActivateWorkbenchAfterRecipeLifecycle();
 
         var source = _viewModel.Workbench.Source;
@@ -2391,7 +2584,8 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (!_viewModel.Workbench.IsDirty)
+        if (!_viewModel.Workbench.IsDirty
+            && !_viewModel.Workbench.IsValidationSetDefinitionDirty)
         {
             return true;
         }
@@ -2583,14 +2777,23 @@ public partial class MainWindow : Window
 
         if (_viewModel.IsExpertWorkspaceSelected)
         {
+            ToolWorkbench.ReleaseMainViewer(_viewer);
             ToolWorkbench.ViewerContent = null;
             _viewer.ViewModel.HudDetailsVisible = true;
-            if (!ReferenceEquals(Workspace.ViewerContent, _viewer))
-            {
-                TaskWorkspace.ViewerContent = null;
-                Workspace.ViewerContent = _viewer;
-            }
+            TaskWorkspace.ViewerContent = null;
+            Workspace.ReactivateViewerContent(_viewer);
 
+            Dispatcher.BeginInvoke(
+                () =>
+                {
+                    if (_viewModel.IsExpertWorkspaceSelected
+                        && ReferenceEquals(Workspace.ViewerContent, _viewer))
+                    {
+                        Workspace.UpdateLayout();
+                        _viewer.RequestVisibleFrame();
+                    }
+                },
+                DispatcherPriority.ContextIdle);
             return;
         }
 

@@ -17,6 +17,7 @@ public sealed record ToolRecipeValidationSampleResult(
     int Order,
     string SourcePath,
     string SourceContentSha256,
+    ToolRecipeValidationSampleRole Role,
     ResultStatus Status,
     string Message,
     TimeSpan Duration,
@@ -34,6 +35,10 @@ public sealed record ToolRecipeValidationProgress(
     string CurrentSourcePath,
     ResultStatus? CompletedStatus);
 
+public sealed record ToolRecipeValidationSampleInput(
+    string SourcePath,
+    ToolRecipeValidationSampleRole Role);
+
 /// <summary>
 /// Executes a taught recipe against an explicit, ordered set of same-grid C3D
 /// samples without changing the authored recipe. Every sample goes through the
@@ -48,10 +53,25 @@ public static class ToolRecipeValidationSetExecution
         ToolRecipeDocument document,
         IReadOnlyList<string> sourcePaths,
         CancellationToken cancellationToken = default,
+        IProgress<ToolRecipeValidationProgress>? progress = null) =>
+        Execute(
+            document,
+            sourcePaths
+                .Select(path => new ToolRecipeValidationSampleInput(
+                    path,
+                    ToolRecipeValidationSampleRole.Good))
+                .ToArray(),
+            cancellationToken,
+            progress);
+
+    public static ToolRecipeValidationSetResult Execute(
+        ToolRecipeDocument document,
+        IReadOnlyList<ToolRecipeValidationSampleInput> sourceSamples,
+        CancellationToken cancellationToken = default,
         IProgress<ToolRecipeValidationProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ArgumentNullException.ThrowIfNull(sourcePaths);
+        ArgumentNullException.ThrowIfNull(sourceSamples);
 
         var stopwatch = Stopwatch.StartNew();
         if (!CanExecute(document, out var capabilityMessage))
@@ -63,12 +83,28 @@ public static class ToolRecipeValidationSetExecution
                 []);
         }
 
-        var orderedPaths = sourcePaths
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(Path.GetFullPath)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        var normalizedSamples = sourceSamples
+            .Where(sample => !string.IsNullOrWhiteSpace(sample.SourcePath))
+            .Select(sample => sample with
+            {
+                SourcePath = Path.GetFullPath(sample.SourcePath)
+            })
             .ToArray();
-        if (orderedPaths.Length == 0)
+        var conflictingRole = normalizedSamples
+            .GroupBy(sample => sample.SourcePath, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Select(item => item.Role).Distinct().Count() > 1);
+        if (conflictingRole is not null)
+        {
+            return new ToolRecipeValidationSetResult(
+                ResultStatus.Error,
+                $"Validation sample '{conflictingRole.Key}' has conflicting roles.",
+                stopwatch.Elapsed,
+                []);
+        }
+        var orderedSamples = normalizedSamples
+            .DistinctBy(sample => sample.SourcePath, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (orderedSamples.Length == 0)
         {
             return new ToolRecipeValidationSetResult(
                 ResultStatus.Error,
@@ -77,21 +113,27 @@ public static class ToolRecipeValidationSetExecution
                 []);
         }
 
-        var samples = new List<ToolRecipeValidationSampleResult>(orderedPaths.Length);
-        for (var sampleIndex = 0; sampleIndex < orderedPaths.Length; sampleIndex++)
+        var samples = new List<ToolRecipeValidationSampleResult>(orderedSamples.Length);
+        for (var sampleIndex = 0; sampleIndex < orderedSamples.Length; sampleIndex++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var sourcePath = orderedPaths[sampleIndex];
+            var sourceSample = orderedSamples[sampleIndex];
+            var sourcePath = sourceSample.SourcePath;
             progress?.Report(new ToolRecipeValidationProgress(
                 sampleIndex,
-                orderedPaths.Length,
+                orderedSamples.Length,
                 sourcePath,
                 null));
-            var sample = ExecuteSample(document, sourcePath, sampleIndex + 1, cancellationToken);
+            var sample = ExecuteSample(
+                document,
+                sourcePath,
+                sourceSample.Role,
+                sampleIndex + 1,
+                cancellationToken);
             samples.Add(sample);
             progress?.Report(new ToolRecipeValidationProgress(
                 sampleIndex + 1,
-                orderedPaths.Length,
+                orderedSamples.Length,
                 sourcePath,
                 sample.Status));
         }
@@ -111,6 +153,7 @@ public static class ToolRecipeValidationSetExecution
     private static ToolRecipeValidationSampleResult ExecuteSample(
         ToolRecipeDocument document,
         string sourcePath,
+        ToolRecipeValidationSampleRole role,
         int order,
         CancellationToken cancellationToken)
     {
@@ -137,6 +180,7 @@ public static class ToolRecipeValidationSetExecution
                 order,
                 sourcePath,
                 execution.SourceContentSha256,
+                role,
                 execution.Status,
                 execution.Message,
                 stopwatch.Elapsed,
@@ -159,6 +203,7 @@ public static class ToolRecipeValidationSetExecution
                 order,
                 sourcePath,
                 string.Empty,
+                role,
                 ResultStatus.Error,
                 exception.Message,
                 stopwatch.Elapsed,

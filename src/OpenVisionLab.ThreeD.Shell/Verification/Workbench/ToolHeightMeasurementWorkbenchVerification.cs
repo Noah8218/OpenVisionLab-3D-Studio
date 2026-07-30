@@ -354,6 +354,201 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && koreanCrossSectionTitle == "\uB2E8\uBA74 \uD589 \uAD6C\uAC04",
                 $"en={englishCrossSectionTitle}; ko={koreanCrossSectionTitle}");
 
+            var completenessWorkbench = new ToolWorkbenchViewModel(
+                Path.Combine(root, "recent-completeness.json"));
+            completenessWorkbench.SetC3DSource(sourcePath);
+            var completenessReference = thicknessReferenceSelection with
+            {
+                Id = "selection.completeness-reference",
+                Name = "Completeness reference"
+            };
+            var completenessGrid = selection with
+            {
+                Id = "selection.completeness-grid",
+                Name = "Completeness inspection grid",
+                GridRectangle = new ToolRecipeGridRectangle(0, 0, 4, 4)
+            };
+            completenessWorkbench.Selections.Add(completenessReference);
+            completenessWorkbench.Selections.Add(completenessGrid);
+            completenessWorkbench.SelectedTool = completenessWorkbench.Tools.Single(
+                tool => tool.Id == "completeness-grid");
+            completenessWorkbench.AddSelectedToolCommand.Execute(null);
+            var completenessStep = completenessWorkbench.SelectedPipelineStep!;
+            Check(
+                "Completeness Grid is a typed dual-ROI Measure tool",
+                completenessStep is
+                {
+                    ToolId: "completeness-grid",
+                    MinimumInputCount: 3
+                }
+                && completenessWorkbench.IsSelectedStepCompletenessGrid
+                && completenessWorkbench.IsSelectedStepDualRoiMeasurement
+                && completenessWorkbench.IsSelectedStepPropertyGridSupported
+                && completenessWorkbench.SelectedStepPropertyDraft
+                    is CompletenessGridStepProperties,
+                completenessWorkbench.SelectedStepAdapterStatus);
+            completenessWorkbench.SelectedCompatibleSelection =
+                completenessReference;
+            completenessWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(
+                null);
+            completenessWorkbench.SelectedCompatibleSelection = completenessGrid;
+            completenessWorkbench
+                .ReusePlaneFlatnessMeasurementRoiCommand.Execute(null);
+            Check(
+                "Completeness roles preserve Reference then Inspection Grid order",
+                completenessStep.InputEntityIds.SequenceEqual(
+                    [
+                        completenessWorkbench.Source.Id,
+                        completenessReference.Id,
+                        completenessGrid.Id
+                    ])
+                && completenessWorkbench.DualRoiSecondLabel
+                    == completenessWorkbench.Localization.InspectionGridRoi,
+                string.Join(" -> ", completenessStep.InputEntityIds));
+            var completenessPreview = completenessWorkbench
+                .PreviewSelectedMeasurementAsync()
+                .GetAwaiter()
+                .GetResult();
+            Check(
+                "Completeness Preview exposes typed cell, aggregate, and Height Image overlay evidence",
+                completenessPreview
+                && completenessWorkbench.CurrentMeasurementOutput
+                    ?.CompletenessGrid is
+                    {
+                        Cells.Count: 4,
+                        Profile.Rows: 2,
+                        Profile.Columns: 2
+                    } completenessOutput
+                && completenessOutput.Cells.All(cell =>
+                    cell.FiniteCoverageRatio == 1d)
+                && completenessOutput.Cells.All(cell =>
+                    cell.Decision == ResultStatus.Pass)
+                && completenessOutput is
+                {
+                    PassedCellCount: 4,
+                    FailedCellCount: 0,
+                    AggregateStatus: ResultStatus.Pass,
+                    CellOverlays.Count: 4
+                }
+                && completenessWorkbench.CurrentMeasurementOutput.Result.Status
+                    == ResultStatus.Pass
+                && completenessWorkbench.MeasurementEvidenceSummary.Contains(
+                    "pass 4 | fail 0 | aggregate Pass",
+                    StringComparison.Ordinal)
+                && completenessWorkbench.HeightImageViewer
+                    .CompletenessCellOverlays.Count == 4,
+                completenessWorkbench.MeasurementEvidenceSummary);
+            Check(
+                "All-pass Completeness review selects a visible cell but disables failed-cell navigation",
+                completenessWorkbench.HasCompletenessCellResults
+                && completenessWorkbench.CompletenessCellResults.Count == 4
+                && completenessWorkbench.SelectedCompletenessCellId
+                    == completenessWorkbench.CompletenessCellResults[0].CellId
+                && completenessWorkbench.HeightImageViewer
+                    .SelectedCompletenessCellId
+                    == completenessWorkbench.SelectedCompletenessCellId
+                && !completenessWorkbench.CanNavigateCompletenessFailures
+                && !completenessWorkbench.PreviousCompletenessFailureCommand
+                    .CanExecute(null)
+                && !completenessWorkbench.NextCompletenessFailureCommand
+                    .CanExecute(null),
+                completenessWorkbench.CompletenessFailureNavigationSummary);
+            completenessWorkbench.PublishSelectedStepCommand.Execute(null);
+            Check(
+                "Completeness publishes the exact Preview identity",
+                completenessStep.State == "Published"
+                && completenessWorkbench.IsMeasurementPreviewPublished
+                && completenessWorkbench.CurrentMeasurementOutput
+                    ?.ContentSha256
+                    == completenessWorkbench.CurrentMeasurementOutput
+                        ?.CompletenessGrid?.ContentSha256,
+                completenessWorkbench.CurrentMeasurementOutput
+                    ?.ContentSha256
+                    ?? "no output");
+
+            completenessStep.Parameters.Single(parameter =>
+                parameter.Name == "MinimumReferenceRelativeMeanRawHeight").Value = "-2";
+            completenessStep.Parameters.Single(parameter =>
+                parameter.Name == "MaximumReferenceRelativeMeanRawHeight").Value = "2";
+            var mixedPreview = completenessWorkbench
+                .PreviewSelectedMeasurementAsync()
+                .GetAwaiter()
+                .GetResult();
+            var mixedOutputSha =
+                completenessWorkbench.CurrentMeasurementOutput?.ContentSha256;
+            var mixedRecipeDirty = completenessWorkbench.IsDirty;
+            var mixedStepId = completenessStep.Id;
+            var mixedOutputId = completenessStep.OutputEntityId;
+            var firstFailedCell = completenessWorkbench
+                .CompletenessCellResults
+                .FirstOrDefault(item => item.Status == ResultStatus.Fail);
+            completenessWorkbench.NextCompletenessFailureCommand.Execute(null);
+            var secondFailedCellId =
+                completenessWorkbench.SelectedCompletenessCellId;
+            completenessWorkbench.NextCompletenessFailureCommand.Execute(null);
+            var wrappedFailedCellId =
+                completenessWorkbench.SelectedCompletenessCellId;
+            completenessWorkbench.PreviousCompletenessFailureCommand.Execute(
+                null);
+            Check(
+                "Failed-cell Previous/Next navigation is row-major, wraps, and synchronizes Height Image selection",
+                mixedPreview
+                && completenessWorkbench.CurrentMeasurementOutput
+                    ?.CompletenessGrid is
+                    {
+                        PassedCellCount: 2,
+                        FailedCellCount: 2,
+                        AggregateStatus: ResultStatus.Fail
+                    }
+                && firstFailedCell is not null
+                && firstFailedCell.CellId == "r002.c001"
+                && secondFailedCellId == "r002.c002"
+                && wrappedFailedCellId == "r002.c001"
+                && completenessWorkbench.SelectedCompletenessCellId == "r002.c002"
+                && completenessWorkbench.HeightImageViewer
+                    .SelectedCompletenessCellId == "r002.c002",
+                $"{completenessWorkbench.CompletenessFailureNavigationSummary}; selected={completenessWorkbench.SelectedCompletenessCellId}");
+            Check(
+                "Failed-cell review is presentation-only",
+                completenessWorkbench.IsDirty == mixedRecipeDirty
+                && completenessStep.Id == mixedStepId
+                && completenessStep.OutputEntityId == mixedOutputId
+                && completenessWorkbench.CurrentMeasurementOutput
+                    ?.ContentSha256 == mixedOutputSha,
+                $"dirty={completenessWorkbench.IsDirty}; step={completenessStep.Id}; output={completenessStep.OutputEntityId}; sha={mixedOutputSha}");
+
+            var thicknessTool = completenessWorkbench.Tools.Single(
+                tool => tool.Id == "thickness");
+            var tabSteps = Enumerable.Range(1, 8)
+                .Select(number => new ToolWorkbenchPipelineStepItem(
+                    $"step.tab-{number}",
+                    thicknessTool,
+                    completenessWorkbench.Source.Id,
+                    $"output.tab-{number}",
+                    toolName: $"Tab {number} Thickness"))
+                .ToArray();
+            var tabBefore = tabSteps
+                .Select(step => (step.Id, step.ToolName, step.OutputEntityId))
+                .ToArray();
+            var tabMap =
+                ToolWorkbenchViewModel.CreateTabThicknessIdentityMap(tabSteps);
+            var tabAfter = tabSteps
+                .Select(step => (step.Id, step.ToolName, step.OutputEntityId))
+                .ToArray();
+            Check(
+                "Tab 1..8 Thickness names map row-major to cell presentation with stable step and output identities",
+                tabMap.Count == 8
+                && Enumerable.Range(1, 8).All(number =>
+                    tabMap[number].DisplayName == $"Tab {number} Thickness"
+                    && tabMap[number].StepId == $"step.tab-{number}"
+                    && tabMap[number].OutputEntityId == $"output.tab-{number}")
+                && tabBefore.SequenceEqual(tabAfter),
+                string.Join(
+                    "; ",
+                    tabMap.OrderBy(pair => pair.Key)
+                        .Select(pair =>
+                            $"{pair.Key}:{pair.Value.StepId}->{pair.Value.OutputEntityId}")));
+
             var captureRecipePath = Path.Combine(root, "captured-plane.ov3d-recipe.json");
             var captureWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-captured-plane.json"));
             captureWorkbench.SetC3DSource(sourcePath);

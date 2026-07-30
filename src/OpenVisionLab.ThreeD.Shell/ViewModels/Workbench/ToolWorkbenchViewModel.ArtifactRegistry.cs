@@ -165,6 +165,32 @@ public sealed partial class ToolWorkbenchViewModel
 
     private ToolWorkbenchArtifactItem CreateStepArtifact(ToolWorkbenchPipelineStepItem step)
     {
+        if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
+            && levelSurfacePreview is
+            {
+                Output: { } leveledOutput,
+                Transform: { } levelingTransform
+            })
+        {
+            return new ToolWorkbenchArtifactItem(
+                leveledOutput.EntityId,
+                step.ToolName,
+                "LeveledHeightField + LevelingTransform",
+                isLevelSurfacePreviewStale
+                    ? "Stale"
+                    : isLevelSurfacePreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                Source.Id,
+                leveledOutput.Unit,
+                leveledOutput.FrameId,
+                leveledOutput.ContentSha256,
+                $"{leveledOutput.Width} x {leveledOutput.Height} | reference RMS {levelingTransform.ReferenceResidualRms:G6} | transform {levelingTransform.ContentSha256} | source unchanged",
+                step,
+                "LeveledHeightField");
+        }
+
         if (string.Equals(
                 step.ToolId,
                 "remove-outlier-pixels",
@@ -383,14 +409,16 @@ public sealed partial class ToolWorkbenchViewModel
                 "TransformedHeightField");
         }
 
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions"
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"
             && measurementPreviewOutput is not null
             && string.Equals(measurementPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
                 measurementPreviewOutput.OutputEntityId,
                 step.ToolName,
-                "MeasurementResult",
+                measurementPreviewOutput.CompletenessGrid is null
+                    ? "MeasurementResult"
+                    : "CompletenessGridMetrics",
                 isMeasurementPreviewStale ? "Stale" : isMeasurementPreviewPublished ? "Published" : "Preview",
                 measurementPreviewOutput.RootSourceEntityId,
                 $"{measurementPreviewOutput.InputEntityId}; {measurementPreviewOutput.SelectionId}",
@@ -399,7 +427,9 @@ public sealed partial class ToolWorkbenchViewModel
                 measurementPreviewOutput.ContentSha256,
                 $"{measurementPreviewOutput.Result.Status} | {measurementPreviewOutput.EvidenceSummary}",
                 step,
-                "MeasurementResult");
+                measurementPreviewOutput.CompletenessGrid is null
+                    ? "MeasurementResult"
+                    : "CompletenessGridMetrics");
         }
 
         return new ToolWorkbenchArtifactItem(

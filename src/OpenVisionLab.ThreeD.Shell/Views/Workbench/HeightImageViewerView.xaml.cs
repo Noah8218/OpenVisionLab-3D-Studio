@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 
@@ -82,7 +83,9 @@ public partial class HeightImageViewerView : UserControl
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(HeightImageViewerViewModel.Frame)
-            or nameof(HeightImageViewerViewModel.DisplayFrame))
+            or nameof(HeightImageViewerViewModel.DisplayFrame)
+            or nameof(HeightImageViewerViewModel.CompletenessCellOverlays)
+            or nameof(HeightImageViewerViewModel.SelectedCompletenessCellId))
         {
             RefreshFrame();
             UpdateRoiOverlay();
@@ -402,10 +405,77 @@ public partial class HeightImageViewerView : UserControl
 
         RoiOverlay.Width = HeightImage.Width;
         RoiOverlay.Height = HeightImage.Height;
+        foreach (var overlay in viewModel.CompletenessCellOverlays)
+        {
+            AddCompletenessCellOverlay(frame.Width, frame.Height, overlay);
+        }
         foreach (var overlay in viewModel.RoiWorkspace.VisibleOverlays)
         {
             AddRoiOverlay(frame.Width, frame.Height, overlay);
         }
+    }
+
+    private void AddCompletenessCellOverlay(
+        int frameWidth,
+        int frameHeight,
+        C3DCompletenessCellOverlay overlay)
+    {
+        var rectangle = overlay.Region;
+        var left = rectangle.Column / (double)frameWidth * HeightImage.Width;
+        var top = rectangle.Row / (double)frameHeight * HeightImage.Height;
+        var right = (rectangle.Column + rectangle.ColumnCount)
+                    / (double)frameWidth
+                    * HeightImage.Width;
+        var bottom = (rectangle.Row + rectangle.RowCount)
+                     / (double)frameHeight
+                     * HeightImage.Height;
+        var color = overlay.Status switch
+        {
+            ResultStatus.Pass => Color.FromRgb(31, 232, 92),
+            ResultStatus.Fail => Color.FromRgb(255, 46, 41),
+            _ => Color.FromRgb(255, 184, 31)
+        };
+        var brush = new SolidColorBrush(color);
+        var isSelected = string.Equals(
+            overlay.CellId,
+            viewModel?.SelectedCompletenessCellId,
+            StringComparison.OrdinalIgnoreCase);
+        var shape = new Rectangle
+        {
+            Width = Math.Max(1, right - left),
+            Height = Math.Max(1, bottom - top),
+            Fill = new SolidColorBrush(Color.FromArgb(
+                isSelected
+                    ? (byte)105
+                    : overlay.Status == ResultStatus.Fail ? (byte)70 : (byte)42,
+                color.R,
+                color.G,
+                color.B)),
+            Stroke = brush,
+            StrokeThickness = isSelected ? 5.0 : 3.0
+        };
+        Canvas.SetLeft(shape, left);
+        Canvas.SetTop(shape, top);
+        RoiOverlay.Children.Add(shape);
+
+        var label = new Border
+        {
+            Padding = new Thickness(4, 1, 4, 1),
+            Background = new SolidColorBrush(Color.FromArgb(220, 17, 24, 39)),
+            BorderBrush = brush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(2),
+            Child = new TextBlock
+            {
+                Text = $"{(isSelected ? "▶ " : string.Empty)}{overlay.CellId} {overlay.Status}",
+                FontSize = 9,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White
+            }
+        };
+        Canvas.SetLeft(label, Math.Max(0, left + 2));
+        Canvas.SetTop(label, Math.Max(0, top + 2));
+        RoiOverlay.Children.Add(label);
     }
 
     private void AddRoiOverlay(

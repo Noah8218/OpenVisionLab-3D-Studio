@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -40,6 +41,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         null => "No step selected",
         { ToolId: "filter" } => FormatAdapterStatus(step, FilterStepProperties.MappedNames),
         { ToolId: "remove-outlier-pixels" } => FormatAdapterStatus(step, RemoveOutlierPixelsStepProperties.MappedNames),
+        { ToolId: "level-surface" } => FormatAdapterStatus(step, LevelSurfaceStepProperties.MappedNames),
         { ToolId: "height-difference-edge" } => FormatAdapterStatus(step, HeightDifferenceEdgeStepProperties.MappedNames),
         { ToolId: "two-point-line" } => FormatAdapterStatus(step, TwoPointLineStepProperties.MappedNames),
         { ToolId: "three-point-plane" } => FormatAdapterStatus(step, ThreePointPlaneStepProperties.MappedNames),
@@ -57,6 +59,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         { ToolId: "gap-flush" } => FormatAdapterStatus(step, GapFlushStepProperties.MappedNames),
         { ToolId: "volume" } => FormatAdapterStatus(step, VolumeStepProperties.MappedNames),
         { ToolId: "cross-section-dimensions" } => FormatAdapterStatus(step, CrossSectionDimensionsStepProperties.MappedNames),
+        { ToolId: "completeness-grid" } => FormatAdapterStatus(step, CompletenessGridStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -67,6 +70,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         {
             "filter" => FilterStepProperties.From(step),
             "remove-outlier-pixels" => RemoveOutlierPixelsStepProperties.From(step),
+            "level-surface" => LevelSurfaceStepProperties.From(step),
             "height-difference-edge" => HeightDifferenceEdgeStepProperties.From(step),
             "two-point-line" => TwoPointLineStepProperties.From(step),
             "three-point-plane" => ThreePointPlaneStepProperties.From(step),
@@ -84,6 +88,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
             "gap-flush" => GapFlushStepProperties.From(step),
             "volume" => VolumeStepProperties.From(step),
             "cross-section-dimensions" => CrossSectionDimensionsStepProperties.From(step),
+            "completeness-grid" => CompletenessGridStepProperties.From(step),
             _ => null
         };
 
@@ -98,6 +103,171 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 
     public void MarkDirty() =>
         SetState(true, "Unapplied parameter changes. Apply or discard before changing recipe sessions.");
+
+    public bool TryApplyThresholdProposal(
+        ToolWorkbenchPipelineStepItem step,
+        ToolRecipeThresholdParameterProposal proposal,
+        out string message)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(proposal);
+        if (!string.Equals(step.Id, draftStepId, StringComparison.Ordinal)
+            || !string.Equals(step.Id, proposal.StepId, StringComparison.Ordinal)
+            || !string.Equals(step.ToolId, proposal.ToolId, StringComparison.Ordinal))
+        {
+            message =
+                "The selected step no longer matches the reviewed threshold proposal.";
+            SetStatus(message);
+            return false;
+        }
+
+        var changes = proposal.Changes.ToDictionary(
+            change => change.ParameterName,
+            change => change.ProposedValue,
+            StringComparer.Ordinal);
+        switch (step.ToolId)
+        {
+            case "thickness":
+            {
+                var thickness = ThicknessStepProperties.From(step);
+                if (!TryReadOptionalDouble(
+                        changes,
+                        "MinimumThickness",
+                        thickness.MinimumThickness,
+                        out var minimum,
+                        out message)
+                    || !TryReadOptionalDouble(
+                        changes,
+                        "MaximumThickness",
+                        thickness.MaximumThickness,
+                        out var maximum,
+                        out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                if (changes.Keys.Except(
+                        ["MinimumThickness", "MaximumThickness"],
+                        StringComparer.Ordinal).Any())
+                {
+                    message =
+                        "The reviewed Thickness proposal contains an unsupported parameter.";
+                    SetStatus(message);
+                    return false;
+                }
+
+                thickness.MinimumThickness = minimum;
+                thickness.MaximumThickness = maximum;
+                if (!thickness.TryValidate(out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                Draft = thickness;
+                break;
+            }
+            case "warpage":
+            {
+                var warpage = WarpageStepProperties.From(step);
+                if (!TryReadOptionalDouble(
+                        changes,
+                        "MaximumPeakToValley",
+                        warpage.MaximumPeakToValley,
+                        out var peakToValley,
+                        out message)
+                    || !TryReadOptionalDouble(
+                        changes,
+                        "MaximumRms",
+                        warpage.MaximumRms,
+                        out var rms,
+                        out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                if (changes.Keys.Except(
+                        ["MaximumPeakToValley", "MaximumRms"],
+                        StringComparer.Ordinal).Any())
+                {
+                    message =
+                        "The reviewed Warpage proposal contains an unsupported parameter.";
+                    SetStatus(message);
+                    return false;
+                }
+
+                warpage.MaximumPeakToValley = peakToValley;
+                warpage.MaximumRms = rms;
+                if (!warpage.TryValidate(out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                Draft = warpage;
+                break;
+            }
+            case "completeness-grid":
+            {
+                var completeness = CompletenessGridStepProperties.From(step);
+                if (!TryReadOptionalDouble(
+                        changes,
+                        "MinimumFiniteCoverageRatio",
+                        completeness.MinimumFiniteCoverageRatio,
+                        out var minimumCoverage,
+                        out message)
+                    || !TryReadOptionalDouble(
+                        changes,
+                        "MinimumReferenceRelativeMeanRawHeight",
+                        completeness.MinimumReferenceRelativeMeanRawHeight,
+                        out var minimumRelativeMean,
+                        out message)
+                    || !TryReadOptionalDouble(
+                        changes,
+                        "MaximumReferenceRelativeMeanRawHeight",
+                        completeness.MaximumReferenceRelativeMeanRawHeight,
+                        out var maximumRelativeMean,
+                        out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                if (changes.Keys.Except(
+                        C3DCompletenessPresencePolicy.ParameterNames,
+                        StringComparer.Ordinal).Any())
+                {
+                    message =
+                        "The reviewed Completeness proposal contains an unsupported parameter.";
+                    SetStatus(message);
+                    return false;
+                }
+
+                completeness.MinimumFiniteCoverageRatio = minimumCoverage;
+                completeness.MinimumReferenceRelativeMeanRawHeight =
+                    minimumRelativeMean;
+                completeness.MaximumReferenceRelativeMeanRawHeight =
+                    maximumRelativeMean;
+                if (!completeness.TryCreateContracts(
+                        out _,
+                        out _,
+                        out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+                Draft = completeness;
+                break;
+            }
+            default:
+                message =
+                    $"Tool '{step.ToolId}' has no typed threshold proposal adapter.";
+                SetStatus(message);
+                return false;
+        }
+
+        message =
+            "Candidate values applied to the PropertyGrid draft only. Use the normal parameter Apply command to change the recipe.";
+        SetState(true, message);
+        return true;
+    }
 
     public void SetStatus(string message)
     {
@@ -164,6 +334,28 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
                     ["MissingValuePolicy"] = outlier.MissingValuePolicy.ToString(),
                     ["BoundaryPolicy"] = outlier.BoundaryPolicy.ToString(),
                     ["OutlierPolicy"] = outlier.OutlierPolicy.ToString()
+                };
+                break;
+            case LevelSurfaceStepProperties level:
+                if (!level.TryValidate(out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+
+                values = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["ReferenceFitPolicy"] = level.ReferenceFitPolicy.ToString(),
+                    ["LevelingPolicy"] = level.LevelingPolicy.ToString(),
+                    ["MissingValuePolicy"] = level.MissingValuePolicy.ToString(),
+                    ["GridPolicy"] = level.GridPolicy.ToString(),
+                    ["MinimumValidSampleCount"] =
+                        level.MinimumValidSampleCount.ToString(
+                            CultureInfo.InvariantCulture),
+                    ["MaximumReferenceRmsResidual"] =
+                        level.MaximumReferenceRmsResidual.ToString(
+                            "G17",
+                            CultureInfo.InvariantCulture)
                 };
                 break;
             case HeightDifferenceEdgeStepProperties edge:
@@ -400,6 +592,25 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
                     ["HeightTolerance"] = crossSection.HeightTolerance.ToString("G17", CultureInfo.InvariantCulture)
                 };
                 break;
+            case CompletenessGridStepProperties completeness:
+                if (!completeness.TryCreateContracts(
+                        out var completenessProfile,
+                        out var completenessPolicy,
+                        out message)
+                    || completenessProfile is null
+                    || completenessPolicy is null)
+                {
+                    SetStatus(message);
+                    return false;
+                }
+
+                values = completenessProfile.ToRecipeParameters()
+                    .Concat(completenessPolicy.ToRecipeParameters())
+                    .ToDictionary(
+                        parameter => parameter.Name,
+                        parameter => parameter.Value,
+                        StringComparer.Ordinal);
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetStatus(message);
@@ -409,7 +620,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     }
 
     public static bool IsSupportedTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "remove-outlier-pixels" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions";
+        step.ToolId is "filter" or "remove-outlier-pixels" or "level-surface" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid";
 
     internal static string GetParameter(ToolWorkbenchPipelineStepItem step, string name) =>
         step.Parameters.FirstOrDefault(parameter =>
@@ -434,6 +645,35 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         return unmappedCount == 0
             ? "Typed adapter ready"
             : $"Typed adapter ready | {unmappedCount} unmapped preserved";
+    }
+
+    private static bool TryReadOptionalDouble(
+        IReadOnlyDictionary<string, string> changes,
+        string parameterName,
+        double currentValue,
+        out double value,
+        out string message)
+    {
+        if (!changes.TryGetValue(parameterName, out var text))
+        {
+            value = currentValue;
+            message = string.Empty;
+            return true;
+        }
+        if (double.TryParse(
+                text,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out value)
+            && double.IsFinite(value))
+        {
+            message = string.Empty;
+            return true;
+        }
+
+        message =
+            $"Threshold proposal parameter '{parameterName}' is not a finite number.";
+        return false;
     }
 
     private void SetState(bool pending, string message)

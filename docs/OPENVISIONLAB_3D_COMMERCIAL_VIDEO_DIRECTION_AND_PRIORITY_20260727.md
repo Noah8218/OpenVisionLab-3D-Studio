@@ -48,6 +48,59 @@ This document remains the source-by-source commercial-video analysis. The
 master backlog is the execution source of truth when selecting a development
 item.
 
+The review is also a durable forward product-direction contract. It is not
+retired when an individual implementation slice closes. Future work must
+trace to one or more recorded video lessons and one master-backlog item,
+adopt useful inspection workflow rather than vendor styling, and preserve
+the explicit file-first lifecycle and out-of-scope boundary.
+
+The Korean operator-focused companion audit is:
+
+- `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`.
+
+Together these documents define the commercial evidence behind the remaining
+Completeness, preparation, Presence, Surface Matching, diagnostics, and Run
+Record trains.
+
+## 2026-07-29 execution reconciliation
+
+The video-derived direction is unchanged, but implementation has advanced
+since the original review:
+
+The owner has additionally rejected the current all-in-one default Workspace.
+This reinforces, rather than changes, the commercial lesson: tool composition,
+teaching/detection, validation, and result review need distinct task contexts.
+The approved information architecture is now
+`Setup -> Teach -> Validate -> Results`, with independent Calibration and
+opt-in Advanced diagnostics. The design is recorded in
+`OPENVISIONLAB_3D_WORKSPACE_INFORMATION_ARCHITECTURE_REDESIGN_20260729.md`.
+IA-1 now implements the real navigation shell and distinct Setup/Teach
+compositions in current Release source. This directly applies the video lesson
+that job composition and visual teaching are separate operator tasks. `A-01`
+remains `Partial` until IA-2 through IA-4 complete dedicated Validate,
+Results/Advanced, responsive, and owner-replay gates.
+
+| Priority | Current state | Closed or remaining scope |
+| --- | --- | --- |
+| P0-A Source Quality | Complete | `B-07/B-08/B-09/C-11` report, workspace, coordinate-true invalid map, and visible overlay |
+| P0-B linked Height Image | Complete | `C-06` through `C-10` full-size image, range, hover, and synchronized ROI lifecycle |
+| P1-A `OrientedBox3D` | Complete | `E-07/E-08/E-09` schema, numeric editor, and Viewer handles |
+| P1-B threshold assistant | Complete | `I-04` through `I-15` include typed evidence warnings, explicit Thickness/Warpage/Completeness mappings, no-auto-run guards, development/Held-out gates, manual correction, and Run Record projection |
+| P1-C completeness | Complete | `H-02` through `H-12` typed cell geometry, finite coverage, reference-relative height, decisions, aggregate result, linked overlays, failed-cell review, repeated-Tab mapping, Good/Bad/Held-out examples, and worst-cell threshold assistance |
+| P2-A typed preparation | Partial | Median, Remove Outlier, Level Surface, affine, and re-grid complete; Reduce Domain/background/normal/downsample remain evidence-driven |
+| P2-B surface matching | New | `J-01/J-03/J-04` model foundation starts after nearer-term inspection priorities |
+| P3 matching diagnostics | New | `K` train follows a proven surface matcher |
+
+Current inventory is `103 Complete / 18 Partial / 88 New / 9 External /
+16 Out of scope`, total `234`. Inspection Workspace v3 remains `7/8`; the
+historical remaining gate was the owner's unaided replay. After the new
+stages are implemented, that path must be replaced by the
+Setup/Teach/Validate/Results owner replay.
+
+The next-chat continuation entry point is:
+
+- `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
+
 ## Scope and evidence
 
 All 11 supplied media files under `C:\Git\GoPxL_Video\3D` were checked with
@@ -418,15 +471,15 @@ The state labels mean:
 | X/Z height-field ROI | Implemented | `GridRectangle`, role-aware editing, numeric geometry, same-ID replacement |
 | Full-size interactive height image | Implemented | native-grid Height Image supports Fit/1:1/zoom/pan, palette/range, linked hover, and reusable split/pop-out presentation |
 | 2D/3D synchronized ROI editing | Implemented | shared ID/geometry/role colors, actual-pointer draw/move/resize, Review/Apply/Cancel/Delete, and reversible Height Image edit focus pass current evidence |
-| True XYZ/volume ROI | Missing | no `OrientedBox3D`; display-only ROI Y position is not geometry or measurement extent |
+| True XYZ/volume ROI | Implemented | persisted `OrientedBox3D` center/axes/half-extents, numeric editing, and Perspective/Top/side handles; GridRectangle display Y remains view-only |
 | Median denoise | Implemented | typed Filter creates `FilteredHeightField` and preserves the missing mask |
-| Source-quality dashboard and invalid map | Partial | valid/missing counts and height histogram exist; no unified preflight or invalid-pixel canvas |
-| Level surface and background preparation | Partial | plane/affine/re-grid primitives exist; no selected typed Level Surface or background-subtraction workflow |
+| Source-quality dashboard and invalid map | Implemented | typed report, unified preflight, coordinate-true invalid map, and visible Height Image overlay |
+| Level surface and background preparation | Partial | typed multi-ROI Level Surface and Remove Outlier pass; Reduce Domain and saved-background subtraction remain |
 | Deterministic measurement set | Implemented | Thickness, Warpage, Flatness, Point Pair, Gap/Flush, Volume, Cross-section, datum deviation |
 | Repeated Tab geometry authoring | Implemented | `4 x 2` display-only review then eight ordinary dual-ROI Thickness steps |
-| Presence/completeness cell inspection | Missing | repeat authoring does not calculate cell presence, height, or coverage |
+| Presence/completeness cell inspection | Partial | typed native-grid cells, finite coverage, and reference-relative height pass; presence limits, Pass/Fail, aggregate result, and overlays remain |
 | Sample-set replay and failure analysis | Implemented | Validation Set, filters, issue navigation, per-step metrics/overlays |
-| Good/bad threshold teaching | Missing | Validation Set does not label training roles or suggest/apply thresholds |
+| Good/bad threshold teaching | Implemented | durable roles, distributions, candidates, exact error table, warnings, fail-closed Thickness/Warpage mappings, explicit Review/draft Apply, genuine manual correction, corrected development/Held-out replay, no-auto-run guards, and Run Record projection pass |
 | Feature/datum chain | Implemented | edges, lines, intersection, landmarks, affine solve/apply, re-grid |
 | General surface matching | Missing | no surface-model artifact, pose search, coverage score, or matcher |
 | Matching preparation/debug | Missing | no normals/keypoints/symmetry/pose-range/edge-score matcher diagnostics |
@@ -444,10 +497,14 @@ Use separate denominators:
 - The local deterministic inspection foundation is operational: loading,
   recipe authoring, explicit execution, measurements, Validation Set, Runner,
   and Run Record all have focused evidence.
-- Linked Height Image/3D teaching is implemented for `GridRectangle`;
-  commercial-style source preparation and true XYZ region teaching remain
-  partial or missing.
-- Presence/completeness and evidence-based threshold teaching are missing.
+- Linked Height Image/3D teaching is implemented for `GridRectangle`, and
+  persisted `OrientedBox3D` volume teaching is implemented.
+- Source Quality, invalid overlay, Remove Outlier, and Level Surface are
+  implemented; additional preparation remains evidence-driven.
+- Presence/completeness has typed evidence-only cell metrics. Presence
+  decisions, aggregation, and overlays remain. The first Thickness/Warpage
+  evidence-based threshold-teaching train is complete through durable Run
+  Record projection.
 - General surface matching and its diagnostics are missing.
 - Live acquisition/factory-platform completeness is not a target and must not
   be included in a product-completeness percentage.
@@ -468,6 +525,8 @@ Action while unavailable: do not spend model tokens repeating implementation
 After that gate, proceed in this order.
 
 ### P0-A. Source Quality and Preparation contract
+
+Current status: Complete for `B-07/B-08/B-09/C-11`.
 
 Outcome:
 
@@ -491,6 +550,8 @@ Recommended model: `gpt-5.6-sol`
 Reasoning effort: `high`
 
 ### P0-B. Full-size linked Height Image workspace
+
+Current status: Complete for `C-06` through `C-10`.
 
 Outcome:
 
@@ -516,6 +577,8 @@ Reasoning effort: `high`
 
 ### P1-A. Typed `OrientedBox3D` selection
 
+Current status: Complete for `E-07/E-08/E-09`.
+
 Outcome:
 
 - add a new recipe selection kind with center, three orthonormal axes, and
@@ -536,6 +599,13 @@ Recommended model: `gpt-5.6-sol`
 Reasoning effort: `high`
 
 ### P1-B. Evidence-based threshold assistant
+
+Current status: Complete for the first Thickness/Warpage assistant.
+`I-04` through `I-13`, `I-15`, and `L-11` are complete.
+Typed evidence warnings now expose exact Good/Bad counts and development
+sample identities, Held-out remains excluded, and the explicit
+Thickness/Warpage mapping matrix fails closed. Run Record schema `1.5`
+preserves the exact correction evidence without execution.
 
 Outcome:
 
@@ -561,6 +631,8 @@ Reasoning effort: `high`
 
 ### P1-C. Completeness / cell-occupancy inspection
 
+Current status: New. Start after the remaining P1-B correction evidence train.
+
 Outcome:
 
 - add one deterministic tool that divides a taught region into rows and
@@ -585,6 +657,9 @@ Reasoning effort: `high`
 
 ### P2-A. Typed height-field preparation steps
 
+Current status: Partial. Median, Remove Outlier, Level Surface, affine, and
+re-grid are complete; select remaining items by concrete inspection evidence.
+
 Implement only as evidence requires:
 
 1. invalid/outlier mask handling;
@@ -602,6 +677,8 @@ Recommended model: `gpt-5.6-sol`
 Reasoning effort: `high`
 
 ### P2-B. Surface-matching foundation
+
+Current status: New.
 
 Outcome:
 
@@ -623,6 +700,8 @@ Recommended model: `gpt-5.6-sol`
 Reasoning effort: `high`
 
 ### P3. Matching optimization and debug evidence
+
+Current status: New and blocked on P2-B.
 
 Only after P2-B passes:
 
@@ -660,11 +739,11 @@ Do not implement these from the supplied videos in the current phase:
 ## Dependency sequence
 
 ```text
-Owner unaided Workspace v3 replay
-  -> P0-A Source Quality contract
-  -> P0-B linked Height Image workspace
-  -> P1-A OrientedBox3D
-  -> P1-B threshold assistant
+Owner unaided Workspace v3 replay (external)
+  -> P0-A Source Quality contract (complete)
+  -> P0-B linked Height Image workspace (complete)
+  -> P1-A OrientedBox3D (complete)
+  -> P1-B threshold assistant (complete for Thickness/Warpage/Completeness)
   -> P1-C completeness
   -> P2-A additional preparation tools
   -> P2-B surface matching foundation
@@ -679,7 +758,9 @@ not block the near-term height-field inspection workflow.
 
 Future chats must:
 
-1. read this document after `AGENTS.md` and the current next-session handoff;
+1. read this document after `AGENTS.md`,
+   `OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`, and the current
+   next-session handoff;
 2. preserve the current Inspection Workspace v3, explicit execution
    lifecycle, and rule-based product identity;
 3. check the owner replay prerequisite before selecting implementation;
@@ -706,6 +787,10 @@ Performed for this documentation checkpoint:
 - current source search for recipe selection kinds, tool catalog, Height Map,
   data-quality evidence, Validation Set, and absent commercial capability
   types.
+- 2026-07-29 reconciliation against the current `101 C / 17 P / 91 N /
+  9 E / 16 O` master inventory and focused Source Quality, Height Image,
+  synchronized ROI, OrientedBox3D, preparation, and threshold completion
+  records.
 
 No product code or UI behavior was changed by this research checkpoint, so a
 build or UI before/after capture is not a meaningful acceptance requirement.
@@ -740,7 +825,13 @@ Evidence:
 - `artifacts/current/20260727-commercial-video-direction/`;
 - the exact local media under `C:\Git\GoPxL_Video\3D`.
 
-Boundary / next dependency: The research and roadmap are complete. Product
-implementation remains gated first by the owner's unaided current Release
-replay. Physical calibration, traceability, uncertainty, GR&R, and production
-tolerances remain external prerequisites for certified measurement claims.
+Boundary / next dependency: The research and roadmap are complete.
+`H-02` through `H-12` and `I-14` completeness metrics, results, linked
+overlays, failed-cell review, repeated-Tab mapping, Validation Set examples,
+and threshold assistance are now complete. The next implementation slice is
+`IA-2 / A-10 dedicated Validate stage`; SurfaceModel
+`J-01/J-03/J-04` is paused behind the information-architecture sequence. The owner's unaided replay becomes a
+new stage-navigation acceptance gate after IA-1 through IA-3. Physical
+calibration, traceability,
+uncertainty, GR&R, and production tolerances remain external prerequisites
+for certified measurement claims.

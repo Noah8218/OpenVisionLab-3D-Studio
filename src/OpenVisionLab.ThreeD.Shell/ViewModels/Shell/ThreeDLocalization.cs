@@ -55,9 +55,18 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(PipelineValidation), nameof(RunRecord), nameof(RunRecordTitle), nameof(RunRecordDetail),
         nameof(RunRecordOpen), nameof(RunRecordOpenCurrent), nameof(RunRecordOpenHtml), nameof(RunRecordOpenCsv),
         nameof(RunRecordOpenFolder), nameof(RunRecordExport), nameof(RunRecordRecent), nameof(RunRecordOpenRecent),
-        nameof(RunRecordSummaryFormat), nameof(RunRecordOpenFailed), nameof(RunRecordExportedFormat),
+        nameof(RunRecordSummaryFormat), nameof(RunRecordThresholdCorrection),
+        nameof(RunRecordThresholdCorrectionDetail), nameof(RunRecordOpenFailed),
+        nameof(RunRecordExportedFormat), nameof(ResultsWorkspaceTitle),
+        nameof(ResultsWorkspaceDetail), nameof(ResultsWorkspaceRunRecord),
+        nameof(ResultsWorkspaceOutputCompare), nameof(ResultsWorkspaceReports),
+        nameof(ResultsWorkspaceReportsDetail), nameof(ResultsWorkspaceAdvanced),
+        nameof(ResultsWorkspaceImmutable), nameof(ResultsOperatorSummaryTitle),
+        nameof(ResultsOperatorDecision), nameof(ResultsOperatorAffectedSteps),
+        nameof(ResultsOperatorNextAction),
         nameof(ValidationSet), nameof(ValidationSetTitle), nameof(ValidationSetDetail),
-        nameof(ValidationSetAddSamples), nameof(ValidationSetAddCurrentInput), nameof(ValidationSetRunAll), nameof(ValidationSetClear),
+        nameof(ValidationSetAddSamples), nameof(ValidationSetAddCurrentInput), nameof(ValidationSetRunAll),
+        nameof(ValidationSetRunAllHint), nameof(ValidationSetClear),
         nameof(ValidationSetSamples), nameof(ValidationSetSelectedRecord), nameof(ValidationSetNoSamples),
         nameof(ValidationSetNoSelection), nameof(ValidationSetFile), nameof(ValidationSetDuration),
         nameof(ValidationSetCoverage), nameof(ValidationSetFilterAll), nameof(ValidationSetFilterPass),
@@ -65,6 +74,22 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ValidationSetNextIssue), nameof(ValidationSetOpenComparison), nameof(ValidationSetCancel),
         nameof(ValidationSetMetrics), nameof(ValidationSetOverlays), nameof(ValidationSetNoMetrics),
         nameof(ValidationSetNoOverlays), nameof(ValidationSetComparisonHint),
+        nameof(ValidationSetRole), nameof(ValidationSetLabeledEvidence),
+        nameof(ValidationSetScope), nameof(ValidationSetOwner), nameof(ValidationSetMetric),
+        nameof(ValidationSetThresholdCandidates), nameof(ValidationSetThresholdReadOnly),
+        nameof(ValidationSetThresholdReview), nameof(ValidationSetThresholdCancelReview),
+        nameof(ValidationSetThresholdApplyDraft), nameof(ValidationSetThresholdRevalidateDevelopment),
+        nameof(ValidationSetThresholdReplayHeldOut),
+        nameof(ValidationWorkspaceSamples), nameof(ValidationWorkspaceResults),
+        nameof(ValidationWorkspaceFailures), nameof(ValidationWorkspaceThresholds),
+        nameof(ValidationWorkspaceHeldOut), nameof(ValidationWorkspaceOpenInTeach),
+        nameof(ValidationWorkspaceOpenInTeachHint), nameof(ValidationFailureSummaryTitle),
+        nameof(ValidationFailureSample), nameof(ValidationFailureRule),
+        nameof(ValidationFailureReason), nameof(ValidationFailureNextAction),
+        nameof(ValidationFailureNextActionDetail),
+        nameof(ValidationSetLimits), nameof(ValidationSetCorrect), nameof(ValidationSetErrors),
+        nameof(ValidationSetFalseAccept), nameof(ValidationSetFalseReject),
+        nameof(ValidationSetExpected), nameof(ValidationSetPredicted), nameof(ValidationSetDecision),
         nameof(ColumnEvidence), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
         nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
         nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
@@ -109,6 +134,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(CaptureRoi), nameof(ReplaceRoi), nameof(DrawRoi), nameof(RedrawRoi), nameof(EditRoi), nameof(FitRoi), nameof(ReuseRoi), nameof(ExistingCompatibleRoi),
         nameof(ReferenceRoiRequiredFirst), nameof(NoRoiTaught), nameof(GapFlushRoiTeaching),
         nameof(GapFlushRoiTeachingDetail), nameof(VolumeRoiTeaching), nameof(VolumeRoiTeachingDetail),
+        nameof(CompletenessRoiTeaching), nameof(CompletenessRoiTeachingDetail), nameof(InspectionGridRoi),
         nameof(CrossSectionSelection), nameof(CrossSectionSelectionDetail),
         nameof(FirstRoi), nameof(SecondRoi), nameof(FirstRoiRequiredFirst),
         nameof(RecipeJourneyGuide), nameof(JourneyRecipe), nameof(JourneyInput), nameof(JourneyTools),
@@ -297,14 +323,38 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RunRecordRecent => T("ThreeD.Workbench.RunRecordRecent", "\uCD5C\uADFC \uC2E4\uD589 \uAE30\uB85D", "Recent Run Records");
     public string RunRecordOpenRecent => T("ThreeD.Command.RunRecordOpenRecent", "\uC120\uD0DD \uAE30\uB85D \uC5F4\uAE30", "Open selected");
     public string RunRecordSummaryFormat => T("ThreeD.Workbench.RunRecordSummaryFormat", "Run Record \uC2A4\uD0A4\uB9C8 {0} | \uC21C\uC11C\uD615 \uB2E8\uACC4 {1}\uAC1C | \uCD5C\uC885 {2}", "Run Record schema {0} | Ordered steps: {1} | Overall: {2}");
+    public string RunRecordThresholdCorrection => T("ThreeD.Workbench.RunRecordThresholdCorrection", "\uC784\uACC4\uAC12 \uAD50\uC815 \uC99D\uAC70", "Threshold correction evidence");
+    public string RunRecordThresholdCorrectionDetail => T("ThreeD.Workbench.RunRecordThresholdCorrectionDetail", "\uC2E4\uD589 \uC2DC\uC810\uC758 sidecar\uB97C \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC874\uD569\uB2C8\uB2E4. \uC2E4\uD589\u00B7\uC801\uC6A9\u00B7\uC7AC\uC0DD\uC740 \uC218\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only sidecar snapshot at run time; it never executes, applies, or replays inspection.");
     public string RunRecordOpenFailed => T("ThreeD.Message.RunRecordOpenFailed", "\uC2E4\uD589 \uAE30\uB85D\uC744 \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. JSON \uD30C\uC77C\uACFC \uC2A4\uD0A4\uB9C8\uB97C \uD655\uC778\uD558\uC138\uC694.", "The Run Record could not be read. Check the JSON file and schema.");
     public string RunRecordExportedFormat => T("ThreeD.Message.RunRecordExportedFormat", "\uC2E4\uD589 \uAE30\uB85D \uBB36\uC74C\uC744 \uB0B4\uBCF4\uB0C8\uC2B5\uB2C8\uB2E4: {0}", "Run Record bundle exported: {0}");
+    public string ResultsWorkspaceTitle => T("ThreeD.Results.Title", "\uACB0\uACFC \uAC80\uD1A0", "Results review");
+    public string ResultsWorkspaceDetail => T("ThreeD.Results.Detail", "\uAE30\uB85D\uB41C \uC2E4\uD589\u00B7\uCD9C\uB825\u00B7\uBCF4\uACE0\uC11C \uC99D\uAC70\uB97C \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uAC80\uD1A0\uD569\uB2C8\uB2E4.", "Review recorded run, output, and report evidence without changing the recipe.");
+    public string ResultsWorkspaceRunRecord => T("ThreeD.Results.RunRecord", "\uC2E4\uD589 \uAE30\uB85D", "Run record");
+    public string ResultsWorkspaceOutputCompare => T("ThreeD.Results.OutputCompare", "\uCD9C\uB825 \uBE44\uAD50", "Output compare");
+    public string ResultsWorkspaceReports => T("ThreeD.Results.Reports", "\uBCF4\uACE0\uC11C\u00B7\uB0B4\uBCF4\uB0B4\uAE30", "Reports & export");
+    public string ResultsWorkspaceReportsDetail => T("ThreeD.Results.ReportsDetail", "\uD604\uC7AC \uC2E4\uD589\uC758 JSON, HTML, CSV \uC99D\uAC70\uB97C \uC5F4\uAC70\uB098 \uACB0\uACFC \uBB36\uC74C\uC73C\uB85C \uB0B4\uBCF4\uB0C5\uB2C8\uB2E4.", "Open the current JSON, HTML, and CSV evidence or export the complete result bundle.");
+    public string ResultsWorkspaceAdvanced => T("ThreeD.Results.Advanced", "\uACE0\uAE09 \uC9C4\uB2E8", "Advanced diagnostics");
+    public string ResultsWorkspaceImmutable => T("ThreeD.Results.Immutable", "\uC774 \uD654\uBA74\uC758 \uC2E4\uD589 \uC99D\uAC70\uB294 \uC77D\uAE30 \uC804\uC6A9\uC785\uB2C8\uB2E4. \uD2F0\uCE6D\uACFC \uD30C\uB77C\uBBF8\uD130 \uC218\uC815\uC740 \uD2F0\uCE6D \uD654\uBA74\uC5D0\uC11C\uB9CC \uC218\uD589\uD558\uC138\uC694.", "Recorded evidence is read-only. Return to Teach to change regions or parameters.");
+    public string ResultsOperatorSummaryTitle => T("ThreeD.Results.OperatorSummaryTitle", "\uC791\uC5C5\uC790 \uACB0\uACFC \uC694\uC57D", "Operator result summary");
+    public string ResultsOperatorDecision => T("ThreeD.Results.OperatorDecision", "\uCD5C\uC885 \uD310\uC815\uACFC \uD575\uC2EC \uCE21\uC815\uAC12", "Decision and key measurement");
+    public string ResultsOperatorAffectedSteps => T("ThreeD.Results.OperatorAffectedSteps", "\uC2E4\uD589 \uB2E8\uACC4", "Executed steps");
+    public string ResultsOperatorNextAction => T(
+        "ThreeD.Results.OperatorNextAction",
+        "\uC2E4\uD328\uAC00 \uC788\uC73C\uBA74 \uC2E4\uD589 \uAE30\uB85D\uC744 \uD655\uC778\uD558\uACE0 \uD2F0\uCE6D\uC5D0\uC11C \uC218\uC815\uD558\uC138\uC694. \uACE0\uAE09 \uC9C4\uB2E8\uC740 \uCD94\uAC00 \uBD84\uC11D\uC774 \uD544\uC694\uD560 \uB54C\uB9CC \uC5FD\uB2C8\uB2E4.",
+        "If a step failed, review the Run Record and fix it in Teach. Open Advanced only when deeper diagnosis is needed.");
     public string ValidationSet => T("ThreeD.Workbench.ValidationSet", "\uBC18\uBCF5 \uAC80\uC99D", "Validation Set");
     public string ValidationSetTitle => T("ThreeD.Workbench.ValidationSetTitle", "\uB2E4\uC911 \uC0D8\uD50C \uBC18\uBCF5 \uAC80\uC99D", "Multi-sample repeat validation");
     public string ValidationSetDetail => T("ThreeD.Workbench.ValidationSetDetail", "\uD2F0\uCE6D\uB41C \uB808\uC2DC\uD53C\uB97C \uC120\uD0DD\uD55C C3D \uC0D8\uD50C\uC5D0 \uC21C\uC11C\uB300\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4. \uC0D8\uD50C \uC120\uD0DD\uC740 \uB808\uC2DC\uD53C\uB098 3D \uBDF0\uC5B4 \uC785\uB825\uC744 \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Run the taught recipe sequentially on selected C3D samples. Selecting samples never changes the recipe or 3D Viewer input.");
     public string ValidationSetAddSamples => T("ThreeD.Command.ValidationSetAddSamples", "\uC0D8\uD50C \uCD94\uAC00", "Add samples");
     public string ValidationSetAddCurrentInput => T("ThreeD.Command.ValidationSetAddCurrentInput", "\uD604\uC7AC \uC785\uB825 \uCD94\uAC00", "Add current input");
-    public string ValidationSetRunAll => T("ThreeD.Command.ValidationSetRunAll", "\uC804\uCCB4 \uC2E4\uD589", "Run all");
+    public string ValidationSetRunAll => T(
+        "ThreeD.Command.ValidationSetRunAll",
+        "\uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589",
+        "Run sample set");
+    public string ValidationSetRunAllHint => T(
+        "ThreeD.Command.ValidationSetRunAllHint",
+        "\uAC80\uC99D \uC0D8\uD50C \uC138\uD2B8\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4. Tab\uC73C\uB85C \uC774\uB3D9\uD55C \uB4A4 Space \uB610\uB294 Enter\uB85C \uC2E4\uD589\uD558\uC138\uC694.",
+        "Explicitly run the validation sample set. Focus it with Tab, then press Space or Enter.");
     public string ValidationSetClear => T("ThreeD.Command.ValidationSetClear", "\uBAA9\uB85D \uBE44\uC6B0\uAE30", "Clear list");
     public string ValidationSetSamples => T("ThreeD.Workbench.ValidationSetSamples", "\uAC80\uC99D \uC0D8\uD50C", "Validation samples");
     public string ValidationSetSelectedRecord => T("ThreeD.Workbench.ValidationSetSelectedRecord", "\uC120\uD0DD \uC0D8\uD50C \uC2E4\uD589 \uAE30\uB85D", "Selected sample record");
@@ -322,6 +372,63 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetOpenComparison => T("ThreeD.Command.ValidationSetOpenComparison", "3D \uBE44\uAD50 \uC5F4\uAE30", "Open 3D comparison");
     public string ValidationSetCancel => T("ThreeD.Command.ValidationSetCancel", "\uC2E4\uD589 \uCDE8\uC18C", "Cancel run");
     public string ValidationSetMetrics => T("ThreeD.Workbench.ValidationSetMetrics", "\uCE21\uC815\uAC12", "Metrics");
+    public string ValidationSetRole => T("ThreeD.Workbench.ValidationSetRole", "\uC5ED\uD560", "Role");
+    public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uB77C\uBCA8 \uC0D8\uD50C \uBD84\uD3EC \uC99D\uAC70", "Labeled sample distributions");
+    public string ValidationSetScope => T("ThreeD.Workbench.ValidationSetScope", "\uBC94\uC704", "Scope");
+    public string ValidationSetOwner => T("ThreeD.Workbench.ValidationSetOwner", "\uB2E8\uACC4 / ROI", "Step / ROI");
+    public string ValidationSetMetric => T("ThreeD.Workbench.ValidationSetMetric", "\uCE21\uC815\uAC12", "Metric");
+    public string ValidationSetThresholdCandidates => T("ThreeD.Workbench.ValidationSetThresholdCandidates", "\uC784\uACC4\uAC12 \uD6C4\uBCF4\uC640 \uC624\uB958\uD45C", "Threshold candidates and error table");
+    public string ValidationSetThresholdReadOnly => T("ThreeD.Workbench.ValidationSetThresholdReadOnly", "\uC120\uD0DD\uC740 \uC77D\uAE30 \uC804\uC6A9 \u00B7 \uC801\uC6A9\uC740 PropertyGrid \uCD08\uC548\uB9CC \uBCC0\uACBD", "Selection is read-only \u00B7 Apply changes the PropertyGrid draft only");
+    public string ValidationSetThresholdReview => T("ThreeD.Command.ValidationSetThresholdReview", "\uAC80\uD1A0", "Review");
+    public string ValidationWorkspaceSamples => T(
+        "ThreeD.Workbench.ValidationWorkspaceSamples",
+        "\uC0D8\uD50C",
+        "Samples");
+    public string ValidationWorkspaceResults => T(
+        "ThreeD.Workbench.ValidationWorkspaceResults",
+        "\uC2E4\uD589 \uACB0\uACFC",
+        "Run results");
+    public string ValidationWorkspaceFailures => T(
+        "ThreeD.Workbench.ValidationWorkspaceFailures",
+        "\uC2E4\uD328 \uBD84\uC11D",
+        "Failure analysis");
+    public string ValidationWorkspaceThresholds => T(
+        "ThreeD.Workbench.ValidationWorkspaceThresholds",
+        "\uC784\uACC4\uAC12 \uAC80\uD1A0",
+        "Threshold review");
+    public string ValidationWorkspaceHeldOut => T(
+        "ThreeD.Workbench.ValidationWorkspaceHeldOut",
+        "Held-out",
+        "Held-out");
+    public string ValidationWorkspaceOpenInTeach => T(
+        "ThreeD.Workbench.ValidationWorkspaceOpenInTeach",
+        "\uD2F0\uCE6D\uC5D0\uC11C \uC218\uC815",
+        "Fix in Teach");
+    public string ValidationWorkspaceOpenInTeachHint => T(
+        "ThreeD.Workbench.ValidationWorkspaceOpenInTeachHint",
+        "\uC120\uD0DD\uD55C \uC2E4\uD328 \uB2E8\uACC4\uB97C \uD2F0\uCE6D \uD654\uBA74\uC5D0\uC11C \uC5FD\uB2C8\uB2E4. \uB808\uC2DC\uD53C\uB97C \uBCC0\uACBD\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        "Open the selected failed step in Teach without changing or running the recipe.");
+    public string ValidationFailureSummaryTitle => T("ThreeD.Validation.FailureSummaryTitle", "\uC9C0\uAE08 \uC218\uC815\uD560 \uC2E4\uD328", "Failure to correct now");
+    public string ValidationFailureSample => T("ThreeD.Validation.FailureSample", "\uC2E4\uD328 \uC0D8\uD50C", "Failed sample");
+    public string ValidationFailureRule => T("ThreeD.Validation.FailureRule", "\uC2E4\uD328 \uADDC\uCE59", "Failed rule");
+    public string ValidationFailureReason => T("ThreeD.Validation.FailureReason", "\uC2E4\uD328 \uC774\uC720", "Reason");
+    public string ValidationFailureNextAction => T("ThreeD.Validation.FailureNextAction", "\uB2E4\uC74C \uC791\uC5C5", "Next action");
+    public string ValidationFailureNextActionDetail => T(
+        "ThreeD.Validation.FailureNextActionDetail",
+        "\uC601\uD5A5\uC744 \uBC1B\uC740 \uD615\uC0C1\uC744 \uD655\uC778\uD55C \uB4A4 '\uD2F0\uCE6D\uC5D0\uC11C \uC218\uC815'\uC744 \uC120\uD0DD\uD558\uC138\uC694. \uAE30\uC220 \uCE21\uC815\uAC12\uACFC \uC624\uBC84\uB808\uC774\uB294 \uC544\uB798\uC5D0\uC11C \uAC80\uD1A0\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+        "Review the affected geometry, then choose Fix in Teach. Technical metrics and overlays remain available below.");
+    public string ValidationSetThresholdCancelReview => T("ThreeD.Command.ValidationSetThresholdCancelReview", "\uAC80\uD1A0 \uCDE8\uC18C", "Cancel review");
+    public string ValidationSetThresholdApplyDraft => T("ThreeD.Command.ValidationSetThresholdApplyDraft", "\uCD08\uC548\uC5D0 \uC801\uC6A9", "Apply to draft");
+    public string ValidationSetThresholdRevalidateDevelopment => T("ThreeD.Command.ValidationSetThresholdRevalidateDevelopment", "\uAC1C\uBC1C \uC7AC\uAC80\uC99D", "Revalidate development");
+    public string ValidationSetThresholdReplayHeldOut => T("ThreeD.Command.ValidationSetThresholdReplayHeldOut", "Held-out \uC7AC\uC2E4\uD589", "Replay Held-out");
+    public string ValidationSetLimits => T("ThreeD.Workbench.ValidationSetLimits", "\uD55C\uACC4", "Limits");
+    public string ValidationSetCorrect => T("ThreeD.Workbench.ValidationSetCorrect", "\uC815\uB2F5", "Correct");
+    public string ValidationSetErrors => T("ThreeD.Workbench.ValidationSetErrors", "\uC624\uB958", "Errors");
+    public string ValidationSetFalseAccept => T("ThreeD.Workbench.ValidationSetFalseAccept", "\uC624\uD310\uC815 \uD1B5\uACFC", "False accept");
+    public string ValidationSetFalseReject => T("ThreeD.Workbench.ValidationSetFalseReject", "\uC815\uC0C1 \uAC70\uBD80", "False reject");
+    public string ValidationSetExpected => T("ThreeD.Workbench.ValidationSetExpected", "\uAE30\uB300", "Expected");
+    public string ValidationSetPredicted => T("ThreeD.Workbench.ValidationSetPredicted", "\uD310\uC815", "Predicted");
+    public string ValidationSetDecision => T("ThreeD.Workbench.ValidationSetDecision", "\uACB0\uACFC", "Decision");
     public string AdvancedIdentityAndOrder => T("ThreeD.Workbench.AdvancedIdentityAndOrder", "\uACE0\uAE09 \uC2DD\uBCC4\uC790 \uBC0F \uC21C\uC11C", "Advanced identity & order");
     public string StepName => T("ThreeD.Workbench.StepName", "\uAC80\uC0AC \uC774\uB984", "Inspection name");
     public string StepId => T("ThreeD.Workbench.StepId", "\uB2E8\uACC4 ID", "Step ID");
@@ -489,6 +596,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string GapFlushRoiTeachingDetail => T("ThreeD.Workbench.GapFlushRoiTeachingDetail", "1. \uCCAB \uBC88\uC9F8 ROI\uC640 2. \uB458\uC9F8 ROI\uB97C U\uCD95 \uBC29\uD5A5 \uC21C\uC11C\uB85C \uC9C0\uC815\uD558\uC138\uC694. ROI \uC21C\uC11C\uAC00 Gap\uACFC Flush\uC758 \uBD80\uD638\uB97C \uACB0\uC815\uD558\uBA70, \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. First ROI, then 2. Second ROI in U-axis order. ROI order defines the Gap/Flush sign; teaching never runs inspection.");
     public string VolumeRoiTeaching => T("ThreeD.Workbench.VolumeRoiTeaching", "\uCCB4\uC801 ROI \uD2F0\uCE6D \uC21C\uC11C", "Volume ROI teaching order");
     public string VolumeRoiTeachingDetail => T("ThreeD.Workbench.VolumeRoiTeachingDetail", "1. \uAE30\uC900 \uD3C9\uBA74 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uCCB4\uC801 \uCE21\uC815 ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Volume measurement ROI. Teaching never runs inspection.");
+    public string CompletenessRoiTeaching => T("ThreeD.Workbench.CompletenessRoiTeaching", "\uC644\uC804\uC131 \uC140 \uADF8\uB9AC\uB4DC ROI \uD2F0\uCE6D \uC21C\uC11C", "Completeness cell-grid ROI teaching order");
+    public string CompletenessRoiTeachingDetail => T("ThreeD.Workbench.CompletenessRoiTeachingDetail", "1. \uAE30\uC900 ROI\uB97C \uC9C0\uC815\uD55C \uB4A4 2. \uC140 \uADF8\uB9AC\uB4DC\uB97C \uBC30\uCE58\uD560 \uAC80\uC0AC ROI\uB97C \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uACC4\uC0B0\uC774\uB098 \uD310\uC815\uC744 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Teach 1. Reference ROI, then 2. Inspection Grid ROI. Teaching never calculates metrics or applies acceptance.");
+    public string InspectionGridRoi => T("ThreeD.Workbench.InspectionGridRoi", "\uAC80\uC0AC \uADF8\uB9AC\uB4DC ROI", "Inspection Grid ROI");
     public string CrossSectionSelection => T("ThreeD.Workbench.CrossSectionSelection", "\uB2E8\uBA74 \uD589 \uAD6C\uAC04", "Cross-section row segment");
     public string CrossSectionSelectionDetail => T("ThreeD.Workbench.CrossSectionSelectionDetail", "A3\uC758 \uAC19\uC740 \uD589\uC5D0\uC11C \uC2DC\uC791 \uC140\uACFC \uB05D \uC140\uC744 \uC9C0\uC815\uD558\uC138\uC694. \uD2F0\uCE6D\uC740 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Pick the start and end cells on the same A3 row. Teaching never runs inspection.");
     public string FirstRoi => T("ThreeD.Workbench.FirstRoi", "\uCCAB \uBC88\uC9F8 ROI", "First ROI");

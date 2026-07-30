@@ -44,6 +44,7 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepPreviewRunning =>
         IsSelectedStepFilter ? isFilterPreviewRunning
             : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
+            : IsSelectedStepLevelSurface ? IsLevelSurfacePreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
             : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
             : IsSelectedStepThreePointPlane ? IsThreePointPlanePreviewRunning
@@ -100,6 +101,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? PreviewSelectedMeasurementAsync()
         : IsSelectedStepRemoveOutlierPixels
         ? PreviewSelectedRemoveOutlierPixelsAsync()
+        : IsSelectedStepLevelSurface
+        ? PreviewSelectedLevelSurfaceAsync()
         : IsSelectedStepRegridHeightField
         ? PreviewSelectedRegridHeightFieldAsync()
         : IsSelectedStepXYZAffineApply
@@ -121,6 +124,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? CanPreviewSelectedMeasurement()
         : IsSelectedStepRemoveOutlierPixels
         ? CanPreviewSelectedRemoveOutlierPixels()
+        : IsSelectedStepLevelSurface
+        ? CanPreviewSelectedLevelSurface()
         : IsSelectedStepRegridHeightField
         ? CanPreviewSelectedRegridHeightField()
         : IsSelectedStepXYZAffineApply
@@ -147,6 +152,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepRemoveOutlierPixels)
         {
             PublishSelectedRemoveOutlierPixels();
+        }
+        else if (IsSelectedStepLevelSurface)
+        {
+            PublishSelectedLevelSurface();
         }
         else if (IsSelectedStepRegridHeightField)
         {
@@ -198,6 +207,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
         : IsSelectedStepRemoveOutlierPixels
         ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
+        : IsSelectedStepLevelSurface
+        ? HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished
         : IsSelectedStepRegridHeightField
         ? HasCurrentRegridHeightFieldPreview && !IsRegridHeightFieldPreviewPublished && regridHeightFieldPreviewOutput!.MeetsMinimumCoverage
         : IsSelectedStepXYZAffineApply
@@ -227,6 +238,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepRemoveOutlierPixels)
         {
             CancelRemoveOutlierPreview();
+        }
+        else if (IsSelectedStepLevelSurface)
+        {
+            CancelLevelSurfacePreview();
         }
         else if (IsSelectedStepRegridHeightField)
         {
@@ -345,12 +360,20 @@ public sealed partial class ToolWorkbenchViewModel
             ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
                 document,
                 out var message)
+            : IsSelectedStepLevelSurface
+            ? ToolRecipeLevelSurfaceExecution.CanRunWholeRecipe(
+                document,
+                out message)
             : ToolRecipeFilterExecution.CanRunWholeRecipe(document, out message);
         if (!canRun)
         {
             if (IsSelectedStepRemoveOutlierPixels)
             {
                 SetRemoveOutlierSummary(message);
+            }
+            else if (IsSelectedStepLevelSurface)
+            {
+                SetLevelSurfaceSummary(message);
             }
             else
             {
@@ -363,6 +386,10 @@ public sealed partial class ToolWorkbenchViewModel
         if (IsSelectedStepRemoveOutlierPixels)
         {
             await PreviewSelectedRemoveOutlierPixelsAsync();
+        }
+        else if (IsSelectedStepLevelSurface)
+        {
+            await PreviewSelectedLevelSurfaceAsync();
         }
         else
         {
@@ -416,9 +443,14 @@ public sealed partial class ToolWorkbenchViewModel
         && !HasPendingStepParameterChanges
         && !isFilterPreviewRunning
         && !isRemoveOutlierPreviewRunning
+        && !isLevelSurfacePreviewRunning
         && !IsEdgePreviewRunning
         && (IsSelectedStepRemoveOutlierPixels
             ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
+                CreateDocument(),
+                out _)
+            : IsSelectedStepLevelSurface
+            ? ToolRecipeLevelSurfaceExecution.CanRunWholeRecipe(
                 CreateDocument(),
                 out _)
             : ToolRecipeFilterExecution.CanRunWholeRecipe(CreateDocument(), out _));

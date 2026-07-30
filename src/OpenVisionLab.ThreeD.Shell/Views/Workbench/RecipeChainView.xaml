@@ -1,4 +1,5 @@
-<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.RecipeChainView"
+<UserControl x:Name="RecipeChainRoot"
+             x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.RecipeChainView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -171,8 +172,17 @@
                     Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                     BorderBrush="{DynamicResource ThreeD.InfoBrush}"
                     BorderThickness="1"
-                CornerRadius="3"
-                Visibility="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}">
+                    CornerRadius="3">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTeachingMode, ElementName=RecipeChainRoot}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <StackPanel>
                     <Border Margin="0,0,0,6"
                             Padding="7,5"
@@ -230,6 +240,16 @@
                       Margin="0,7,0,0"
                       IsExpanded="False"
                       Header="{views:ThreeDText Key=ThreeD.Workspace.AdvancedRecipeExplorer, Korean='고급 레시피 탐색기', English='Advanced recipe explorer'}">
+                <Expander.Style>
+                    <Style TargetType="Expander">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTeachingMode, ElementName=RecipeChainRoot}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Expander.Style>
                 <Border Margin="0,5,0,0"
                         MaxHeight="520"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"

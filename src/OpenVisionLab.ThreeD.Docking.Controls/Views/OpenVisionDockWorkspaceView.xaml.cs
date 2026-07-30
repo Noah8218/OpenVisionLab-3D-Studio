@@ -3,21 +3,39 @@ using System.Windows.Controls;
 
 namespace OpenVisionLab.ThreeD.Docking.Controls;
 
+public enum OpenVisionOperatorStage
+{
+    Legacy,
+    Setup,
+    Teach,
+    Validate,
+    Results,
+}
+
 public sealed partial class OpenVisionDockWorkspaceView : UserControl
 {
     private const double CompactWorkbenchWidth = 1500;
     private const double OutputCompareWorkbenchHeightRatio = 0.82;
-    private const double ValidationWorkbenchHeightRatio = 1.2;
+    private const double ValidationWorkbenchHeightRatio = 0.85;
     private const double CompactValidationWorkbenchHeightRatio = 0.72;
     private const double CompactValidationHeight = 750;
     private const double StandardWorkbenchHeightRatio = 2;
     private bool bottomPaneDetachedForFocus;
     private bool dataLayersTabbedForCompactLayout;
     private bool evidenceUsesAnalysisHeight;
+    private bool compactToolInspectorFocused;
+    private OpenVisionOperatorStage operatorStage = OpenVisionOperatorStage.Legacy;
 
     public static readonly DependencyProperty ViewerContentProperty =
         DependencyProperty.Register(
             nameof(ViewerContent),
+            typeof(object),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
+    public static readonly DependencyProperty ResultsContentProperty =
+        DependencyProperty.Register(
+            nameof(ResultsContent),
             typeof(object),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata(null));
@@ -42,6 +60,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(string),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("3D Inspection View", OnViewerTitleChanged));
+
+    public static readonly DependencyProperty ResultsTitleProperty =
+        DependencyProperty.Register(
+            nameof(ResultsTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Results", OnResultsTitleChanged));
 
     public static readonly DependencyProperty DataLayersTitleProperty =
         DependencyProperty.Register(
@@ -213,6 +238,32 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(ViewerContentProperty, value);
     }
 
+    public bool ReactivateViewerContent(object? requestedContent)
+    {
+        if (requestedContent is null)
+        {
+            return false;
+        }
+
+        SetCurrentValue(ViewerContentProperty, requestedContent);
+        viewerContentPresenter.SetCurrentValue(
+            ContentPresenter.ContentProperty,
+            requestedContent);
+        viewerAnchorable.IsSelected = true;
+        viewerAnchorable.IsActive = true;
+        UpdateLayout();
+        return ReferenceEquals(ViewerContent, requestedContent)
+            && ReferenceEquals(
+                viewerContentPresenter.Content,
+                requestedContent);
+    }
+
+    public object? ResultsContent
+    {
+        get => GetValue(ResultsContentProperty);
+        set => SetValue(ResultsContentProperty, value);
+    }
+
     public object? DataLayersContent
     {
         get => GetValue(DataLayersContentProperty);
@@ -229,6 +280,12 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         get => (string)GetValue(ViewerTitleProperty);
         set => SetValue(ViewerTitleProperty, value);
+    }
+
+    public string ResultsTitle
+    {
+        get => (string)GetValue(ResultsTitleProperty);
+        set => SetValue(ResultsTitleProperty, value);
     }
 
     public string DataLayersTitle
@@ -359,6 +416,80 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public bool IsCompactLayout => dataLayersTabbedForCompactLayout;
 
+    public OpenVisionOperatorStage OperatorStage => operatorStage;
+
+    public bool HasTopThemedDockTabs =>
+        ReferenceEquals(
+            workspaceDockingManager.AnchorablePaneControlStyle,
+            Resources["OpenVisionTopAnchorablePaneStyle"])
+        && workspaceDockingManager.AnchorablePaneControlStyle.Setters
+            .OfType<Setter>()
+            .Any(setter =>
+                setter.Property == TabControl.TabStripPlacementProperty
+                && Equals(setter.Value, Dock.Top));
+
+    public bool HasSetupStageComposition =>
+        operatorStage == OpenVisionOperatorStage.Setup
+        && !IsBottomPaneAttached
+        && (dataLayersTabbedForCompactLayout
+            ? workbenchPane.Children.Count == 1
+              && ReferenceEquals(workbenchPane.Children[0], toolLibraryPane)
+              && toolLibraryPane.Children.Contains(toolLibraryAnchorable)
+              && toolLibraryPane.Children.Contains(dataLayersAnchorable)
+            : workbenchPane.Children.Count == 2
+              && ReferenceEquals(workbenchPane.Children[0], toolLibraryPane)
+              && ReferenceEquals(workbenchPane.Children[1], dataLayersPane));
+
+    public bool HasTeachStageComposition =>
+        operatorStage == OpenVisionOperatorStage.Teach
+        && !IsBottomPaneAttached
+        && (dataLayersTabbedForCompactLayout
+            ? workbenchPane.Children.Count == 2
+              && ReferenceEquals(workbenchPane.Children[0], dataLayersPane)
+              && ReferenceEquals(workbenchPane.Children[1], primaryPane)
+              && (compactToolInspectorFocused
+                  ? dataLayersPane.Children.Count == 1
+                    && dataLayersPane.Children.Contains(toolInspectorAnchorable)
+                  : dataLayersPane.Children.Contains(dataLayersAnchorable)
+                    && dataLayersPane.Children.Contains(toolInspectorAnchorable))
+            : workbenchPane.Children.Count == 3
+              && ReferenceEquals(workbenchPane.Children[0], dataLayersPane)
+              && ReferenceEquals(workbenchPane.Children[1], primaryPane)
+              && ReferenceEquals(workbenchPane.Children[2], toolInspectorPane));
+
+    public bool HasValidateStageComposition =>
+        operatorStage == OpenVisionOperatorStage.Validate
+        && !IsBottomPaneAttached
+        && workbenchPane.Children.Count == 1
+        && ReferenceEquals(workbenchPane.Children[0], evidencePane);
+
+    public bool HasResultsStageComposition =>
+        operatorStage == OpenVisionOperatorStage.Results
+        && !IsBottomPaneAttached
+        && workbenchPane.Children.Count == 1
+        && ReferenceEquals(workbenchPane.Children[0], resultsPane);
+
+    public bool HasValidateOrResultsStageComposition =>
+        HasValidateStageComposition || HasResultsStageComposition;
+
+    public void SetOperatorStage(OpenVisionOperatorStage stage)
+    {
+        if (operatorStage == stage)
+        {
+            ApplyResponsiveDockLayout(ActualWidth);
+            return;
+        }
+
+        if (stage != OpenVisionOperatorStage.Teach)
+        {
+            compactToolInspectorFocused = false;
+        }
+
+        operatorStage = stage;
+        IsBottomPaneExpanded = stage == OpenVisionOperatorStage.Legacy;
+        ApplyResponsiveDockLayout(ActualWidth > 0 ? ActualWidth : CompactWorkbenchWidth);
+    }
+
     public bool HasRecipeFlowInspectorViewerOrder =>
         workbenchPane.Children.Count >= 4
         && ReferenceEquals(workbenchPane.Children[0], toolLibraryPane)
@@ -391,6 +522,27 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     }
 
     public bool IsToolLibraryPaneSelected => toolLibraryAnchorable.IsSelected && toolLibraryAnchorable.IsActive;
+
+    public void ActivateToolInspectorPane()
+    {
+        if (dataLayersPane.Children.Contains(toolInspectorAnchorable))
+        {
+            compactToolInspectorFocused = true;
+            FocusCompactToolInspector();
+        }
+        else if (toolInspectorPane.Children.Contains(toolInspectorAnchorable))
+        {
+            toolInspectorAnchorable.IsSelected = true;
+            toolInspectorPane.SelectedContentIndex =
+                toolInspectorPane.Children.IndexOf(toolInspectorAnchorable);
+        }
+
+        toolInspectorAnchorable.IsActive = true;
+        workspaceDockingManager.ActiveContent = toolInspectorAnchorable.Content;
+    }
+
+    public bool IsToolInspectorPaneSelected =>
+        toolInspectorAnchorable.IsSelected && toolInspectorAnchorable.IsActive;
 
     public IReadOnlyList<DockingPaneContract> GetDockingPaneContracts() =>
     [
@@ -571,6 +723,14 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         }
     }
 
+    private static void OnResultsTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.resultsAnchorable is not null)
+        {
+            view.resultsAnchorable.Title = args.NewValue as string ?? string.Empty;
+        }
+    }
+
     private static void OnToolInspectorTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
         if (owner is OpenVisionDockWorkspaceView view && view.toolInspectorAnchorable is not null)
@@ -656,6 +816,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         toolLibraryAnchorable.Title = ToolLibraryTitle;
         dataLayersAnchorable.Title = DataLayersTitle;
         viewerAnchorable.Title = ViewerTitle;
+        resultsAnchorable.Title = ResultsTitle;
         toolInspectorAnchorable.Title = ToolInspectorTitle;
         evidenceAnchorable.Title = EvidenceTitle;
         outputCompareAnchorable.Title = OutputCompareTitle;
@@ -685,34 +846,181 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         }
 
         var useCompactLayout = width < CompactWorkbenchWidth;
-        if (useCompactLayout && !dataLayersTabbedForCompactLayout)
+        dataLayersTabbedForCompactLayout = useCompactLayout;
+        RestoreAnchorableOwners();
+        DetachPrimaryPanes();
+
+        switch (operatorStage)
         {
-            dataLayersPane.Children.Remove(dataLayersAnchorable);
-            toolLibraryPane.Children.Add(dataLayersAnchorable);
-            workbenchPane.Children.Remove(dataLayersPane);
-        }
-        else if (!useCompactLayout && dataLayersTabbedForCompactLayout)
-        {
-            toolLibraryPane.Children.Remove(dataLayersAnchorable);
-            dataLayersPane.Children.Add(dataLayersAnchorable);
-            workbenchPane.Children.Insert(1, dataLayersPane);
+            case OpenVisionOperatorStage.Setup:
+                ComposeSetupStage(useCompactLayout);
+                break;
+            case OpenVisionOperatorStage.Teach:
+                ComposeTeachStage(useCompactLayout);
+                break;
+            case OpenVisionOperatorStage.Validate:
+                AttachPane(evidencePane, 0);
+                evidencePane.DockWidth = new GridLength(1, GridUnitType.Star);
+                break;
+            case OpenVisionOperatorStage.Results:
+                AttachPane(resultsPane, 0);
+                resultsPane.DockWidth = new GridLength(1, GridUnitType.Star);
+                break;
+            default:
+                ComposeLegacyLayout(useCompactLayout);
+                break;
         }
 
-        if (useCompactLayout)
+        if (operatorStage == OpenVisionOperatorStage.Teach
+            && useCompactLayout
+            && compactToolInspectorFocused)
         {
-            toolLibraryPane.DockWidth = new GridLength(1.00, GridUnitType.Star);
-            primaryPane.DockWidth = new GridLength(3.00, GridUnitType.Star);
-            toolInspectorPane.DockWidth = new GridLength(1.15, GridUnitType.Star);
+            FocusCompactToolInspector();
+        }
+
+        ApplyBottomPanePresentation();
+    }
+
+    private void FocusCompactToolInspector()
+    {
+        if (dataLayersPane.Children.Contains(dataLayersAnchorable))
+        {
+            MoveAnchorable(dataLayersAnchorable, toolInspectorPane);
+        }
+
+        if (!dataLayersPane.Children.Contains(toolInspectorAnchorable))
+        {
+            MoveAnchorable(toolInspectorAnchorable, dataLayersPane);
+        }
+
+        toolInspectorAnchorable.IsSelected = true;
+        toolInspectorAnchorable.IsActive = true;
+        dataLayersPane.SelectedContentIndex =
+            dataLayersPane.Children.IndexOf(toolInspectorAnchorable);
+        workspaceDockingManager.ActiveContent = toolInspectorAnchorable.Content;
+    }
+
+    private void ComposeSetupStage(bool compact)
+    {
+        if (compact)
+        {
+            MoveAnchorable(dataLayersAnchorable, toolLibraryPane);
+            AttachPane(toolLibraryPane, 0);
+            toolLibraryPane.DockWidth = new GridLength(1, GridUnitType.Star);
+            return;
+        }
+
+        AttachPane(toolLibraryPane, 0);
+        AttachPane(dataLayersPane, 1);
+        toolLibraryPane.DockWidth = new GridLength(1, GridUnitType.Star);
+        dataLayersPane.DockWidth = new GridLength(1.35, GridUnitType.Star);
+    }
+
+    private void ComposeTeachStage(bool compact)
+    {
+        if (compact)
+        {
+            MoveAnchorable(toolInspectorAnchorable, dataLayersPane);
+            AttachPane(dataLayersPane, 0);
+            AttachPane(primaryPane, 1);
+            dataLayersPane.DockWidth = new GridLength(1.05, GridUnitType.Star);
+            primaryPane.DockWidth = new GridLength(3.45, GridUnitType.Star);
+            return;
+        }
+
+        AttachPane(dataLayersPane, 0);
+        AttachPane(primaryPane, 1);
+        AttachPane(toolInspectorPane, 2);
+        dataLayersPane.DockWidth = new GridLength(0.82, GridUnitType.Star);
+        primaryPane.DockWidth = new GridLength(3.65, GridUnitType.Star);
+        toolInspectorPane.DockWidth = new GridLength(1.12, GridUnitType.Star);
+    }
+
+    private void ComposeLegacyLayout(bool compact)
+    {
+        AttachPane(toolLibraryPane, 0);
+        if (compact)
+        {
+            MoveAnchorable(dataLayersAnchorable, toolLibraryPane);
         }
         else
         {
-            toolLibraryPane.DockWidth = new GridLength(0.72, GridUnitType.Star);
-            dataLayersPane.DockWidth = new GridLength(0.90, GridUnitType.Star);
-            primaryPane.DockWidth = new GridLength(3.30, GridUnitType.Star);
-            toolInspectorPane.DockWidth = new GridLength(1.05, GridUnitType.Star);
+            AttachPane(dataLayersPane, 1);
         }
 
-        dataLayersTabbedForCompactLayout = useCompactLayout;
+        AttachPane(toolInspectorPane, compact ? 1 : 2);
+        AttachPane(primaryPane, compact ? 2 : 3);
+        toolLibraryPane.DockWidth = new GridLength(compact ? 1.00 : 0.72, GridUnitType.Star);
+        dataLayersPane.DockWidth = new GridLength(0.90, GridUnitType.Star);
+        primaryPane.DockWidth = new GridLength(compact ? 3.00 : 3.30, GridUnitType.Star);
+        toolInspectorPane.DockWidth = new GridLength(compact ? 1.15 : 1.05, GridUnitType.Star);
+    }
+
+    private void RestoreAnchorableOwners()
+    {
+        MoveAnchorable(toolLibraryAnchorable, toolLibraryPane);
+        MoveAnchorable(dataLayersAnchorable, dataLayersPane);
+        MoveAnchorable(toolInspectorAnchorable, toolInspectorPane);
+        MoveAnchorable(viewerAnchorable, primaryPane);
+        MoveAnchorable(resultsAnchorable, resultsPane);
+    }
+
+    private void DetachPrimaryPanes()
+    {
+        foreach (var pane in new[]
+                 {
+                     toolLibraryPane,
+                     dataLayersPane,
+                     toolInspectorPane,
+                     primaryPane,
+                     resultsPane,
+                     evidencePane,
+                 })
+        {
+            if (ReferenceEquals(pane.Parent, workbenchPane))
+            {
+                workbenchPane.Children.Remove(pane);
+            }
+        }
+    }
+
+    private void AttachPane(
+        AvalonDock.Layout.LayoutAnchorablePane pane,
+        int index)
+    {
+        if (ReferenceEquals(pane.Parent, workbenchPane))
+        {
+            var currentIndex = workbenchPane.Children.IndexOf(pane);
+            if (currentIndex == index)
+            {
+                return;
+            }
+
+            workbenchPane.Children.Remove(pane);
+        }
+        else if (pane.Parent is AvalonDock.Layout.LayoutPanel parent)
+        {
+            parent.Children.Remove(pane);
+        }
+
+        workbenchPane.Children.Insert(Math.Min(index, workbenchPane.Children.Count), pane);
+    }
+
+    private static void MoveAnchorable(
+        AvalonDock.Layout.LayoutAnchorable anchorable,
+        AvalonDock.Layout.LayoutAnchorablePane target)
+    {
+        if (ReferenceEquals(anchorable.Parent, target))
+        {
+            return;
+        }
+
+        if (anchorable.Parent is AvalonDock.Layout.LayoutAnchorablePane parent)
+        {
+            parent.Children.Remove(anchorable);
+        }
+
+        target.Children.Add(anchorable);
     }
 
     private void ApplyBottomPaneHeight() =>

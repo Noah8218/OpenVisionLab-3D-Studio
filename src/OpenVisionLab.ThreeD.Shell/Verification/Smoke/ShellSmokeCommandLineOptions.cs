@@ -103,6 +103,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool FilterPreviewSmoke => FilterPublishSmoke || HasFlag("--smoke-tool-filter-preview");
     public bool RemoveOutlierPreviewSmoke =>
         HasFlag("--smoke-tool-remove-outlier-preview");
+    public bool LevelSurfacePreviewSmoke =>
+        HasFlag("--smoke-tool-level-surface-preview");
     public bool MeasurementPreviewSmoke => HasFlag("--smoke-tool-measurement-preview");
     public bool TwoPointLinePublishSmoke => HasFlag("--smoke-tool-two-point-line-publish");
     public bool TwoPointLinePreviewSmoke => TwoPointLinePublishSmoke || HasFlag("--smoke-tool-two-point-line-preview");
@@ -131,6 +133,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || OrientedBoxPointerSmokeReportPath is not null
         || EdgePreviewSmoke
         || RemoveOutlierPreviewSmoke
+        || LevelSurfacePreviewSmoke
         || LineFitPreviewSmoke
         || TwoPointLinePreviewSmoke
         || ThreePointPlanePreviewSmoke
@@ -154,6 +157,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || NeedsCompactWorkbench
         || FilterPreviewSmoke
         || RemoveOutlierPreviewSmoke
+        || LevelSurfacePreviewSmoke
         || MeasurementPreviewSmoke
         || ViewerLayoutSmoke is not null
         || ThicknessRepeatGridSmoke is not null

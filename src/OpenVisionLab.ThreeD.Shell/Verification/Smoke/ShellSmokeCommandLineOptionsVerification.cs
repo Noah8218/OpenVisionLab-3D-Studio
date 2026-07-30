@@ -43,6 +43,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ViewerLayout", VerifyViewerLayout()),
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
             ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
+            ("LevelSurfacePreviewLoadedHandler", VerifyLevelSurfacePreviewLoadedHandler()),
             ("SourceQuality", VerifySourceQuality()),
             ("SourceQualityLoadedHandler", VerifySourceQualityLoadedHandler()),
             ("HeightImageDisplayRange", VerifyHeightImageDisplayRange()),
@@ -180,6 +181,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-tool-remove-outlier-preview"]);
         return options.RemoveOutlierPreviewSmoke
+               && options.NeedsCompactWorkbench
+               && options.ShouldAttachLoadedHandler(false);
+    }
+
+    private static bool VerifyLevelSurfacePreviewLoadedHandler()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-tool-level-surface-preview"]);
+        return options.LevelSurfacePreviewSmoke
                && options.NeedsCompactWorkbench
                && options.ShouldAttachLoadedHandler(false);
     }

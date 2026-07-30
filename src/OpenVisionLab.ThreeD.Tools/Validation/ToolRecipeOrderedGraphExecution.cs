@@ -50,7 +50,8 @@ public static class ToolRecipeOrderedGraphExecution
         "point-pair-dimensions",
         "gap-flush",
         "volume",
-        "cross-section-dimensions"
+        "cross-section-dimensions",
+        "completeness-grid"
     };
 
     private static readonly HashSet<string> MeasurementToolIds = new(StringComparer.Ordinal)
@@ -61,7 +62,8 @@ public static class ToolRecipeOrderedGraphExecution
         "point-pair-dimensions",
         "gap-flush",
         "volume",
-        "cross-section-dimensions"
+        "cross-section-dimensions",
+        "completeness-grid"
     };
 
     public static bool CanExecute(ToolRecipeDocument document, out string message)

@@ -42,8 +42,16 @@ internal static class RunRecordHistoryVerification
             var fixtureRoot = Path.Combine(reportDirectory, $"run-record-history-fixture-{Guid.NewGuid():N}");
             Directory.CreateDirectory(fixtureRoot);
             var recentPath = Path.Combine(fixtureRoot, "recent.json");
+            var thresholdFixture =
+                CreateThresholdCorrectionFixture(fixtureRoot);
 
-            var first = WriteFixture(fixtureRoot, "first", "1.4", ResultStatus.Pass, includeOutputHash: true);
+            var first = WriteFixture(
+                fixtureRoot,
+                "first",
+                "1.5",
+                ResultStatus.Pass,
+                includeOutputHash: true,
+                thresholdFixture.Available);
             var viewModel = new ShellMainWindowViewModel(
                 runRecordPath: first.Json,
                 htmlReportPath: first.Html,
@@ -51,11 +59,57 @@ internal static class RunRecordHistoryVerification
                 recentRunRecordsPath: recentPath);
 
             Check(
-                "schema 1.4 record loads into ordered Run Record view",
+                "schema 1.5 record loads into ordered Run Record view",
                 viewModel.InspectionSteps.Count == 1
-                && viewModel.InspectionStepSummary.Contains("1.4", StringComparison.Ordinal)
+                && viewModel.InspectionStepSummary.Contains("1.5", StringComparison.Ordinal)
                 && viewModel.InspectionStepSummary.Contains("Pass", StringComparison.Ordinal),
                 viewModel.InspectionStepSummary);
+            Check(
+                "available threshold correction preserves before suggested manual development and Held-out identities",
+                viewModel.ThresholdCorrectionState == "Available"
+                && viewModel.ThresholdCorrectionItems.Any(item =>
+                    item.Label == "Before"
+                    && item.Evidence.Contains(
+                        "MinimumThickness=0",
+                        StringComparison.Ordinal))
+                && viewModel.ThresholdCorrectionItems.Any(item =>
+                    item.Label == "Suggested"
+                    && item.Evidence.Contains(
+                        "MaximumThickness=4",
+                        StringComparison.Ordinal))
+                && viewModel.ThresholdCorrectionItems.Any(item =>
+                    item.Label == "Manual"
+                    && item.Evidence.Contains(
+                        "MinimumThickness=1.5",
+                        StringComparison.Ordinal))
+                && viewModel.ThresholdCorrectionItems.Any(item =>
+                    item.Label == "Development"
+                    && item.Evidence.Contains(
+                        "Mismatch 1->0",
+                        StringComparison.Ordinal)
+                    && item.Evidence.Contains(
+                        new string('D', 64),
+                        StringComparison.Ordinal))
+                && viewModel.ThresholdCorrectionItems.Any(item =>
+                    item.Label == "Held-out"
+                    && item.Evidence.Contains(
+                        new string('H', 64),
+                        StringComparison.Ordinal)),
+                string.Join(
+                    " | ",
+                    viewModel.ThresholdCorrectionItems.Select(item =>
+                        $"{item.Label}:{item.Evidence}")));
+            Check(
+                "projection states fail closed for missing stale mismatched and invalid sidecars",
+                thresholdFixture.Missing.State
+                    == InspectionRunThresholdCorrectionEvidenceState.Unavailable
+                && thresholdFixture.Stale.State
+                    == InspectionRunThresholdCorrectionEvidenceState.Stale
+                && thresholdFixture.Mismatch.State
+                    == InspectionRunThresholdCorrectionEvidenceState.Mismatch
+                && thresholdFixture.Invalid.State
+                    == InspectionRunThresholdCorrectionEvidenceState.Invalid,
+                $"missing={thresholdFixture.Missing.State}; stale={thresholdFixture.Stale.State}; mismatch={thresholdFixture.Mismatch.State}; invalid={thresholdFixture.Invalid.State}");
             Check(
                 "loaded record becomes the first persisted recent item",
                 viewModel.RecentRunRecords.Count == 1
@@ -87,7 +141,13 @@ internal static class RunRecordHistoryVerification
                 && File.ReadAllBytes(exportedCsv).SequenceEqual(File.ReadAllBytes(first.Csv)),
                 exportDirectory);
 
-            var second = WriteFixture(fixtureRoot, "second", "1.3", ResultStatus.Fail, includeOutputHash: false);
+            var second = WriteFixture(
+                fixtureRoot,
+                "second",
+                "1.3",
+                ResultStatus.Fail,
+                includeOutputHash: false,
+                thresholdCorrection: null);
             var loadedSecond = viewModel.LoadRunRecord(second.Json, out var secondMessage);
             Check(
                 "schema 1.3 record remains readable and moves to recent first",
@@ -95,6 +155,7 @@ internal static class RunRecordHistoryVerification
                 && viewModel.InspectionSteps.Count == 1
                 && viewModel.InspectionStepSummary.Contains("1.3", StringComparison.Ordinal)
                 && viewModel.InspectionStepSummary.Contains("Fail", StringComparison.Ordinal)
+                && viewModel.ThresholdCorrectionState == "Unavailable"
                 && viewModel.RecentRunRecords.Count == 2
                 && PathsEqual(viewModel.RecentRunRecords[0].Path, second.Json),
                 secondMessage);
@@ -115,7 +176,8 @@ internal static class RunRecordHistoryVerification
             Check(
                 "recent selection reopens the exact record without executing inspection",
                 PathsEqual(viewModel.SelectedRecentRunRecord?.Path, first.Json)
-                && viewModel.InspectionStepSummary.Contains("1.4", StringComparison.Ordinal)
+                && viewModel.InspectionStepSummary.Contains("1.5", StringComparison.Ordinal)
+                && viewModel.ThresholdCorrectionState == "Available"
                 && viewModel.RecentRunRecords.Count == 2,
                 viewModel.InspectionStepSummary);
             Check(
@@ -124,6 +186,28 @@ internal static class RunRecordHistoryVerification
                 && PathsEqual(RecipeRecentFileStore.Load(recentPath)[0], first.Json)
                 && RecipeRecentFileStore.Load(recentPath).Count <= RecipeRecentFileStore.MaximumEntries,
                 string.Join(";", RecipeRecentFileStore.Load(recentPath)));
+
+            var normalStartup = new ShellMainWindowViewModel(
+                recentRunRecordsPath: recentPath);
+            Check(
+                "normal startup keeps recent records available without selecting stale evidence",
+                normalStartup.RecentRunRecords.Count == 2
+                && normalStartup.SelectedRecentRunRecord is null
+                && normalStartup.InspectionSteps.Count == 0
+                && !normalStartup.OpenRunRecordCommand.CanExecute(null)
+                && normalStartup.ThresholdCorrectionState == "Unavailable",
+                normalStartup.InspectionStepSummary);
+
+            normalStartup.LoadRunRecord(first.Json, out _);
+            normalStartup.ClearCurrentRunEvidenceForRecipeContext();
+            Check(
+                "recipe or source context reset clears current evidence but preserves history",
+                normalStartup.RecentRunRecords.Count == 2
+                && normalStartup.SelectedRecentRunRecord is null
+                && normalStartup.InspectionSteps.Count == 0
+                && !normalStartup.OpenRunRecordCommand.CanExecute(null)
+                && !normalStartup.ExportRunRecordCommand.CanExecute(null),
+                $"recent={normalStartup.RecentRunRecords.Count}; steps={normalStartup.InspectionSteps.Count}");
         }
         catch (Exception exception)
         {
@@ -150,7 +234,8 @@ internal static class RunRecordHistoryVerification
         string name,
         string schema,
         ResultStatus status,
-        bool includeOutputHash)
+        bool includeOutputHash,
+        InspectionRunThresholdCorrectionEvidence? thresholdCorrection)
     {
         var json = Path.Combine(root, $"{name}.json");
         var html = Path.Combine(root, $"{name}.html");
@@ -194,10 +279,187 @@ internal static class RunRecordHistoryVerification
                 html,
                 csv))
         {
-            Steps = [step]
+            Steps = [step],
+            ThresholdCorrectionEvidence = thresholdCorrection
         };
         File.WriteAllText(json, JsonSerializer.Serialize(record, JsonOptions));
         return new FixturePaths(json, html, csv);
+    }
+
+    private static ThresholdFixture CreateThresholdCorrectionFixture(
+        string root)
+    {
+        var recipePath = Path.Combine(root, "threshold.recipe.json");
+        File.WriteAllText(recipePath, "{}");
+        var sourceHash = new string('S', 64);
+        var step = new ToolRecipeStep(
+            "step.thickness",
+            "thickness",
+            "Thickness",
+            2,
+            ["source", "reference", "measurement"],
+            "output.thickness",
+            [
+                new ToolRecipeParameter("MinimumThickness", "1.5"),
+                new ToolRecipeParameter("MaximumThickness", "4.5")
+            ]);
+        var document = new ToolRecipeDocument(
+            ToolRecipeDocument.CurrentSchemaVersion,
+            "Threshold fixture",
+            new ToolRecipeSource(
+                "source",
+                "Source",
+                "C3D",
+                "raw-height",
+                "frame",
+                Path.Combine(root, "source.C3D"),
+                ContentSha256: sourceHash,
+                GridWidth: 2,
+                GridHeight: 2),
+            [],
+            [step]);
+        var candidate = new ToolRecipeThresholdCandidate(
+            "candidate.fixture",
+            ToolRecipeEvidenceScope.StepMetric,
+            step.Id,
+            step.ToolName,
+            "Mean",
+            "raw-height",
+            ToolRecipeThresholdLimitKind.Range,
+            2,
+            4,
+            1,
+            0,
+            1,
+            0,
+            []);
+        var proposal = new ToolRecipeThresholdParameterProposal(
+            ToolRecipeThresholdParameterProposal.CurrentContractVersion,
+            candidate.CandidateId,
+            step.Id,
+            step.ToolId,
+            step.ToolName,
+            candidate.MetricName,
+            candidate.LimitKind,
+            [
+                new ToolRecipeThresholdParameterChange(
+                    "MinimumThickness",
+                    "0",
+                    "2"),
+                new ToolRecipeThresholdParameterChange(
+                    "MaximumThickness",
+                    "20",
+                    "4")
+            ],
+            candidate);
+        var developmentIdentity = new string('D', 64);
+        var developmentPath = Path.Combine(root, "development.C3D");
+        var before = new ToolRecipeThresholdDevelopmentSampleEvidence(
+            1,
+            developmentIdentity,
+            developmentPath,
+            ToolRecipeValidationSampleRole.Good,
+            ResultStatus.Fail,
+            false,
+            "Before correction",
+            []);
+        var after = before with
+        {
+            Status = ResultStatus.Pass,
+            ExpectedMatch = true,
+            Message = "Corrected development"
+        };
+        var evidence = new ToolRecipeThresholdCorrectionEvidence(
+            ToolRecipeThresholdCorrectionEvidence.CurrentContractVersion,
+            document.Name,
+            sourceHash,
+            proposal,
+            ResultStatus.Pass,
+            "Held-out replay passed.",
+            [
+                new ToolRecipeThresholdHeldOutSampleEvidence(
+                    1,
+                    new string('H', 64),
+                    Path.Combine(root, "held-out.C3D"),
+                    ResultStatus.Pass,
+                    "Held-out pass",
+                    [])
+            ],
+            new ToolRecipeThresholdManualCorrectionEvidence(
+                ToolRecipeThresholdManualCorrectionEvidence
+                    .CurrentContractVersion,
+                [
+                    new ToolRecipeThresholdManualParameterChange(
+                        "MinimumThickness",
+                        "2",
+                        "1.5"),
+                    new ToolRecipeThresholdManualParameterChange(
+                        "MaximumThickness",
+                        "4",
+                        "4.5")
+                ],
+                1,
+                [before],
+                0,
+                [after]));
+        ToolRecipeThresholdCorrectionEvidenceStore.SaveForRecipe(
+            recipePath,
+            evidence);
+
+        var available =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                recipePath,
+                document);
+        var stale =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                recipePath,
+                document with
+                {
+                    Steps =
+                    [
+                        step with
+                        {
+                            Parameters =
+                            [
+                                new ToolRecipeParameter(
+                                    "MinimumThickness",
+                                    "9"),
+                                new ToolRecipeParameter(
+                                    "MaximumThickness",
+                                    "4.5")
+                            ]
+                        }
+                    ]
+                });
+        var mismatch =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                recipePath,
+                document with { Name = "Different recipe" });
+
+        var missingPath = Path.Combine(root, "missing.recipe.json");
+        File.WriteAllText(missingPath, "{}");
+        var missing =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                missingPath,
+                document);
+
+        var invalidPath = Path.Combine(root, "invalid.recipe.json");
+        File.WriteAllText(invalidPath, "{}");
+        File.WriteAllText(
+            ToolRecipeThresholdCorrectionEvidenceStore.GetPathForRecipe(
+                invalidPath),
+            "{ invalid");
+        var invalid =
+            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
+                invalidPath,
+                document);
+
+        return new ThresholdFixture(
+            available,
+            missing,
+            stale,
+            mismatch,
+            invalid);
     }
 
     private static bool PathsEqual(string? left, string? right) =>
@@ -206,4 +468,11 @@ internal static class RunRecordHistoryVerification
         && string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), StringComparison.OrdinalIgnoreCase);
 
     private sealed record FixturePaths(string Json, string Html, string Csv);
+
+    private sealed record ThresholdFixture(
+        InspectionRunThresholdCorrectionEvidence Available,
+        InspectionRunThresholdCorrectionEvidence Missing,
+        InspectionRunThresholdCorrectionEvidence Stale,
+        InspectionRunThresholdCorrectionEvidence Mismatch,
+        InspectionRunThresholdCorrectionEvidence Invalid);
 }

@@ -42,6 +42,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
     public void SyncAppliedSelections()
     {
         viewer.SetAppliedTeachingSelections(workbench.GetCurrentAppliedTeachingSelections());
+        SyncCompletenessCellOverlays();
         SyncOrientedBoxDraft();
         SyncSelectedSelection();
     }
@@ -197,7 +198,30 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             or nameof(ToolWorkbenchViewModel.SelectedStepTeachingSelection))
         {
             SyncSelectedSelection();
+            SyncCompletenessCellOverlays();
         }
+
+        if (args.PropertyName is nameof(ToolWorkbenchViewModel.HasCurrentMeasurementPreview)
+            or nameof(ToolWorkbenchViewModel.IsSelectedStepCompletenessGrid)
+            or nameof(ToolWorkbenchViewModel.SelectedCompletenessCellId))
+        {
+            SyncCompletenessCellOverlays();
+        }
+    }
+
+    private void SyncCompletenessCellOverlays()
+    {
+        var overlays = workbench.IsSelectedStepCompletenessGrid
+            && workbench.HasCurrentMeasurementPreview
+            ? workbench.CurrentMeasurementOutput?.CompletenessGrid?.CellOverlays
+              ?? []
+            : [];
+        viewer.SetCompletenessCellOverlays(overlays);
+        viewer.SetSelectedCompletenessCellId(
+            overlays.Count > 0 ? workbench.SelectedCompletenessCellId : null);
+        workbench.HeightImageViewer.SetCompletenessCellOverlays(overlays);
+        workbench.HeightImageViewer.SetSelectedCompletenessCellId(
+            overlays.Count > 0 ? workbench.SelectedCompletenessCellId : null);
     }
 
     private void OnGridRectangleDraftChanged(

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -41,6 +42,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     private double activeRangeMaximum;
     private C3DHeightImagePalette selectedPalette = C3DHeightImagePalette.Height;
     private IReadOnlyList<HeightImagePaletteChoice> paletteChoices = [];
+    private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
+    private string? selectedCompletenessCellId;
     private int loadGeneration;
 
     public HeightImageViewerViewModel(
@@ -94,6 +97,9 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     public bool HasImage => Frame is not null;
     public ThreeDLocalization Localization => localization;
     public HeightImageRoiWorkspaceViewModel RoiWorkspace { get; }
+    public IReadOnlyList<C3DCompletenessCellOverlay> CompletenessCellOverlays =>
+        completenessCellOverlays;
+    public string? SelectedCompletenessCellId => selectedCompletenessCellId;
     public C3DHeightImageDisplayFrame? DisplayFrame
     {
         get => displayFrame;
@@ -110,6 +116,33 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(InvalidOverlayPixelCount));
             OnPropertyChanged(nameof(InvalidOverlaySummary));
         }
+    }
+
+    public void SetCompletenessCellOverlays(
+        IReadOnlyList<C3DCompletenessCellOverlay> overlays)
+    {
+        ArgumentNullException.ThrowIfNull(overlays);
+        if (completenessCellOverlays.SequenceEqual(overlays))
+        {
+            return;
+        }
+
+        completenessCellOverlays = overlays.ToArray();
+        OnPropertyChanged(nameof(CompletenessCellOverlays));
+    }
+
+    public void SetSelectedCompletenessCellId(string? cellId)
+    {
+        if (string.Equals(
+            selectedCompletenessCellId,
+            cellId,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        selectedCompletenessCellId = cellId;
+        OnPropertyChanged(nameof(SelectedCompletenessCellId));
     }
 
     public string DisplayPixelSha256 => DisplayFrame?.PixelSha256 ?? string.Empty;

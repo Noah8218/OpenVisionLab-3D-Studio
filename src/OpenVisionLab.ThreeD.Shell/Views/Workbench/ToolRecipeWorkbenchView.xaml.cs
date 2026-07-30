@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
@@ -10,6 +12,7 @@ namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 public sealed partial class ToolRecipeWorkbenchView : UserControl
 {
     private ViewerWorkspaceView? viewerWorkspaceSurface;
+    private ShellMainWindowViewModel? shell;
 
     public static readonly DependencyProperty ViewerContentProperty =
         DependencyProperty.Register(
@@ -21,6 +24,18 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public ToolRecipeWorkbenchView()
     {
         InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+        BindStageHostedContext(DockWorkspace.ToolLibraryContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.DataLayersContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.ViewerContent, "DataContext");
+        BindStageHostedContext(DockWorkspace.ResultsContent, "DataContext");
+        BindStageHostedContext(DockWorkspace.ToolInspectorContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.EvidenceContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.OutputCompareContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.DisplayedOutputsContent, "DataContext.Workbench");
+        BindStageHostedContext(DockWorkspace.LinkedViewContent, "DataContext.Workbench");
         if (DockWorkspace.FitDiagnosticsContent is LineFitDiagnosticsView fitDiagnosticsView)
         {
             fitDiagnosticsView.SetBinding(
@@ -41,9 +56,119 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         }
         if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
         {
+            review.SetBinding(
+                RecipePipelineReviewView.RunRecordContextProperty,
+                new Binding("DataContext") { Source = this });
             review.ActiveReviewChanged += (_, _) =>
                 DockWorkspace.SetEvidenceAnalysisHeight(review.IsValidationSetSelected);
             DockWorkspace.SetEvidenceAnalysisHeight(review.IsValidationSetSelected);
+        }
+    }
+
+    public OpenVisionOperatorStage OperatorStage => DockWorkspace.OperatorStage;
+
+    public bool HasSetupStageComposition => DockWorkspace.HasSetupStageComposition;
+
+    public bool HasTeachStageComposition => DockWorkspace.HasTeachStageComposition;
+
+    public bool HasValidateOrResultsStageComposition =>
+        DockWorkspace.HasValidateOrResultsStageComposition;
+
+    public bool HasValidateStageComposition =>
+        DockWorkspace.HasValidateStageComposition;
+
+    public bool HasResultsStageComposition =>
+        DockWorkspace.HasResultsStageComposition;
+
+    public bool HasStableStageHostedDataContexts =>
+        DataContext is ShellMainWindowViewModel currentShell
+        && HasDataContext(DockWorkspace.ToolLibraryContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.DataLayersContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.ViewerContent, currentShell)
+        && HasDataContext(DockWorkspace.ResultsContent, currentShell)
+        && HasDataContext(DockWorkspace.ToolInspectorContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.EvidenceContent, currentShell.Workbench)
+        && DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            RunRecordContext: not null
+        } review
+        && ReferenceEquals(review.RunRecordContext, currentShell)
+        && HasDataContext(DockWorkspace.OutputCompareContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.DisplayedOutputsContent, currentShell.Workbench)
+        && HasDataContext(DockWorkspace.LinkedViewContent, currentShell.Workbench);
+
+    public bool HasLocalizedValidationNavigation =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            HasLocalizedValidationNavigation: true
+        };
+
+    public bool HasLocalizedResultsNavigation =>
+        DockWorkspace.ResultsContent is ResultsWorkspaceView
+        {
+            HasLocalizedNavigationAndAdvancedRoute: true
+        };
+
+    public bool HasResultsOperatorSummary =>
+        DockWorkspace.ResultsContent is ResultsWorkspaceView
+        {
+            HasOperatorSummaryAndCorrectionRoute: true
+        };
+
+    public bool HasAccessibleValidationSampleSetAction =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            HasAccessibleValidationSampleSetAction: true
+        };
+
+    public bool HasValidationFailureOperatorSummary =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            IsFailureOperatorSummaryVisible: true
+        };
+
+    public int ValidationSetSampleCount =>
+        DataContext is ShellMainWindowViewModel currentShell
+            ? currentShell.Workbench.ValidationSetSamples.Count
+            : 0;
+
+    public bool CanRunValidationSet =>
+        DataContext is ShellMainWindowViewModel currentShell
+        && currentShell.Workbench.RunValidationSetCommand.CanExecute(null);
+
+    public bool IsDedicatedResultsWorkspace =>
+        DockWorkspace.ResultsContent is ResultsWorkspaceView
+        {
+            IsReadOnlyComposition: true
+        };
+
+    public ResultsWorkspaceSection ActiveResultsWorkspaceSection =>
+        DockWorkspace.ResultsContent is ResultsWorkspaceView results
+            ? results.ActiveSection
+            : ResultsWorkspaceSection.RunRecord;
+
+    public void SetResultsWorkspaceSection(ResultsWorkspaceSection section)
+    {
+        if (DockWorkspace.ResultsContent is ResultsWorkspaceView results)
+        {
+            results.SetSection(section);
+        }
+    }
+
+    public bool IsDedicatedValidationWorkspace =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView review
+        && review.IsDedicatedValidationWorkspace;
+
+    public ValidationWorkspaceSection ActiveValidationWorkspaceSection =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView review
+            ? review.ValidationSection
+            : ValidationWorkspaceSection.Samples;
+
+    public void SetValidationWorkspaceSection(ValidationWorkspaceSection section)
+    {
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView review)
+        {
+            review.SetValidationSection(section);
         }
     }
 
@@ -52,6 +177,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         get => GetValue(ViewerContentProperty);
         set => SetValue(ViewerContentProperty, value);
     }
+
+    public bool ReleaseMainViewer(object? requestedContent) =>
+        ViewerWorkspaceSurface?.ReleaseMainViewer(requestedContent) == true;
 
     public IReadOnlyList<DockingPaneContract> GetDockingPaneContracts() =>
         DockWorkspace.GetDockingPaneContracts();
@@ -69,6 +197,11 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool IsCompactDockLayout => DockWorkspace.IsCompactLayout;
 
+    public bool HasTopThemedDockTabs => DockWorkspace.HasTopThemedDockTabs;
+
+    public bool IsToolInspectorPaneSelected =>
+        DockWorkspace.IsToolInspectorPaneSelected;
+
     public bool HasRecipeFlowInspectorViewerOrder =>
         DockWorkspace.HasRecipeFlowInspectorViewerOrder;
 
@@ -82,6 +215,12 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
         {
             HasThicknessRepeatGridAuthoringControls: true
+        };
+
+    public bool IsFailureCorrectionContextVisible =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
+        {
+            IsFailureCorrectionContextVisible: true
         };
 
     public bool HasDominantViewerWidth => DockWorkspace.HasDominantViewerWidth;
@@ -177,6 +316,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public void ActivateFlowMap()
     {
+        NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
         if (DataContext is ShellMainWindowViewModel shell)
         {
@@ -193,6 +333,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public void ActivateProblems()
     {
+        NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
         if (DataContext is ShellMainWindowViewModel shell)
         {
@@ -209,7 +350,15 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public void ActivateRunRecord()
     {
-        DockWorkspace.ActivateEvidencePane();
+        NavigateToStage(ShellWorkspaceMode.Review);
+        if (OperatorStage == OpenVisionOperatorStage.Results)
+        {
+            SetResultsWorkspaceSection(ResultsWorkspaceSection.RunRecord);
+        }
+        else
+        {
+            DockWorkspace.ActivateEvidencePane();
+        }
         if (DataContext is ShellMainWindowViewModel shell)
         {
             shell.Workbench.SelectedReviewTabIndex = 3;
@@ -220,14 +369,18 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         }
     }
 
-    public bool IsRunRecordSelected => DockWorkspace.IsEvidencePaneSelected
-                                        && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsRunRecordSelected: true };
+    public bool IsRunRecordSelected =>
+        OperatorStage == OpenVisionOperatorStage.Results
+            ? ActiveResultsWorkspaceSection == ResultsWorkspaceSection.RunRecord
+            : DockWorkspace.IsEvidencePaneSelected
+              && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsRunRecordSelected: true };
 
     public bool HasRunRecordHistoryControls =>
-        DockWorkspace.EvidenceContent is RecipePipelineReviewView { HasRunRecordHistoryControls: true };
+        DockWorkspace.ResultsContent is ResultsWorkspaceView { HasRunRecordHistoryControls: true };
 
     public void ActivateValidationSet()
     {
+        NavigateToStage(ShellWorkspaceMode.Inspect);
         DockWorkspace.ActivateEvidencePane();
         if (DataContext is ShellMainWindowViewModel shell)
         {
@@ -242,17 +395,51 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool IsValidationSetSelected => DockWorkspace.IsEvidencePaneSelected
                                            && DockWorkspace.EvidenceContent is RecipePipelineReviewView { IsValidationSetSelected: true };
 
-    public void ActivateOutputComparePane() => DockWorkspace.ActivateOutputComparePane();
+    public void ActivateOutputComparePane()
+    {
+        NavigateToStage(ShellWorkspaceMode.Review);
+        if (OperatorStage == OpenVisionOperatorStage.Results)
+        {
+            SetResultsWorkspaceSection(ResultsWorkspaceSection.OutputCompare);
+        }
+        else
+        {
+            DockWorkspace.ActivateOutputComparePane();
+        }
+    }
 
-    public bool IsOutputComparePaneSelected => DockWorkspace.IsOutputComparePaneSelected;
+    public bool IsOutputComparePaneSelected =>
+        OperatorStage == OpenVisionOperatorStage.Results
+            ? ActiveResultsWorkspaceSection == ResultsWorkspaceSection.OutputCompare
+            : DockWorkspace.IsOutputComparePaneSelected;
 
-    public bool HasUsableOutputCompareDockHeight => DockWorkspace.HasUsableOutputCompareDockHeight;
+    public bool HasUsableOutputCompareDockHeight =>
+        OperatorStage == OpenVisionOperatorStage.Results
+            ? HasResultsStageComposition
+            : DockWorkspace.HasUsableOutputCompareDockHeight;
 
-    public void ActivateDisplayedOutputsPane() => DockWorkspace.ActivateDisplayedOutputsPane();
+    public void ActivateDisplayedOutputsPane()
+    {
+        NavigateToStage(ShellWorkspaceMode.Review);
+        if (OperatorStage == OpenVisionOperatorStage.Results)
+        {
+            SetResultsWorkspaceSection(ResultsWorkspaceSection.OutputCompare);
+        }
+        else
+        {
+            DockWorkspace.ActivateDisplayedOutputsPane();
+        }
+    }
 
-    public bool IsDisplayedOutputsPaneSelected => DockWorkspace.IsDisplayedOutputsPaneSelected;
+    public bool IsDisplayedOutputsPaneSelected =>
+        OperatorStage == OpenVisionOperatorStage.Results
+            ? ActiveResultsWorkspaceSection == ResultsWorkspaceSection.OutputCompare
+            : DockWorkspace.IsDisplayedOutputsPaneSelected;
 
-    public bool HasStandardBottomPaneHeight => DockWorkspace.HasStandardBottomPaneHeight;
+    public bool HasStandardBottomPaneHeight =>
+        OperatorStage == OpenVisionOperatorStage.Results
+            ? !DockWorkspace.IsBottomPaneAttached
+            : DockWorkspace.HasStandardBottomPaneHeight;
 
     public void ActivateProfilePane() => DockWorkspace.ActivateProfilePane();
 
@@ -274,6 +461,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         DockWorkspace.ToolLibraryContent is not null
         && DockWorkspace.DataLayersContent is not null
         && DockWorkspace.ViewerContent is not null
+        && DockWorkspace.ResultsContent is not null
         && DockWorkspace.ToolInspectorContent is not null
         && DockWorkspace.EvidenceContent is not null
         && DockWorkspace.OutputCompareContent is not null
@@ -316,8 +504,122 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         }
     }
 
-    private void OpenPipelineReview_Click(object sender, RoutedEventArgs args) =>
-        DockWorkspace.ActivateEvidencePane();
+    private void NavigateToStage(ShellWorkspaceMode mode)
+    {
+        if (shell?.SelectWorkspaceCommand.CanExecute(mode) == true)
+        {
+            shell.SelectWorkspaceCommand.Execute(mode);
+        }
+    }
+
+    private void OnDataContextChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs args)
+    {
+        DetachShell();
+        AttachShell(args.NewValue as ShellMainWindowViewModel);
+        ApplyOperatorStage();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs args)
+    {
+        AttachShell(DataContext as ShellMainWindowViewModel);
+        ApplyOperatorStage();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs args) =>
+        DetachShell();
+
+    private void AttachShell(ShellMainWindowViewModel? candidate)
+    {
+        if (candidate is null || ReferenceEquals(shell, candidate))
+        {
+            return;
+        }
+
+        shell = candidate;
+        shell.PropertyChanged += OnShellPropertyChanged;
+    }
+
+    private void DetachShell()
+    {
+        if (shell is not null)
+        {
+            shell.PropertyChanged -= OnShellPropertyChanged;
+            shell = null;
+        }
+    }
+
+    private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(ShellMainWindowViewModel.SelectedWorkspaceMode))
+        {
+            ApplyOperatorStage();
+        }
+    }
+
+    private void ApplyOperatorStage()
+    {
+        var stage = shell?.SelectedWorkspaceMode switch
+        {
+            ShellWorkspaceMode.Workbench => OpenVisionOperatorStage.Setup,
+            ShellWorkspaceMode.Teach => OpenVisionOperatorStage.Teach,
+            ShellWorkspaceMode.Inspect => OpenVisionOperatorStage.Validate,
+            ShellWorkspaceMode.Review => OpenVisionOperatorStage.Results,
+            _ => OpenVisionOperatorStage.Legacy,
+        };
+
+        DockWorkspace.SetOperatorStage(stage);
+        if (DockWorkspace.EvidenceContent is RecipePipelineReviewView pipelineReview)
+        {
+            pipelineReview.SetPresentationMode(stage switch
+            {
+                OpenVisionOperatorStage.Validate => RecipeReviewPresentationMode.Validation,
+                _ => RecipeReviewPresentationMode.Standard,
+            });
+        }
+        if (stage == OpenVisionOperatorStage.Results
+            && DockWorkspace.ResultsContent is ResultsWorkspaceView resultsWorkspace)
+        {
+            resultsWorkspace.SetSection(ResultsWorkspaceSection.RunRecord);
+        }
+        if (DockWorkspace.DataLayersContent is RecipeChainView recipeChain)
+        {
+            recipeChain.IsTeachingMode = stage == OpenVisionOperatorStage.Teach;
+        }
+
+        if (stage == OpenVisionOperatorStage.Teach)
+        {
+            var failureCorrection =
+                shell?.Workbench.HasActiveValidationFailureCorrectionContext == true;
+            if (failureCorrection)
+            {
+                DockWorkspace.ActivateToolInspectorPane();
+            }
+
+            Dispatcher.BeginInvoke(
+                () =>
+                {
+                    if (shell?.SelectedWorkspaceMode == ShellWorkspaceMode.Teach
+                        && shell.Workbench.HasActiveValidationFailureCorrectionContext)
+                    {
+                        DockWorkspace.ActivateToolInspectorPane();
+                    }
+
+                    ViewerWorkspaceSurface?.ReactivateMainViewer(ViewerContent);
+                },
+                DispatcherPriority.ContextIdle);
+        }
+
+        if (stage == OpenVisionOperatorStage.Validate)
+        {
+            shell!.Workbench.SelectedReviewTabIndex = 4;
+        }
+        else if (stage == OpenVisionOperatorStage.Results)
+        {
+            shell!.Workbench.SelectedReviewTabIndex = 3;
+        }
+    }
 
     private static void OnViewerContentChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
@@ -329,5 +631,19 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
             }
         }
     }
+
+    private void BindStageHostedContext(object? content, string path)
+    {
+        if (content is FrameworkElement element)
+        {
+            element.SetBinding(
+                FrameworkElement.DataContextProperty,
+                new Binding(path) { Source = this });
+        }
+    }
+
+    private static bool HasDataContext(object? content, object expected) =>
+        content is FrameworkElement element
+        && ReferenceEquals(element.DataContext, expected);
 
 }

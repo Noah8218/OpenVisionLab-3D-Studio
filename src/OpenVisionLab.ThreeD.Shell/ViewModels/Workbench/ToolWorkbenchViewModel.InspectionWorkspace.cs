@@ -182,6 +182,8 @@ public sealed partial class ToolWorkbenchViewModel
             IsTeachingSelectionCaptureActive,
             CanApplyTeachingSelectionCapture,
             Localization));
+        OnPropertyChanged(nameof(SelectedWorkspaceTitle));
+        OnPropertyChanged(nameof(SelectedWorkspaceState));
         RefreshHeightImageRoiProjection();
         fitWorkspaceRegionCommand?.RaiseCanExecuteChanged();
         showWorkspaceOutputCommand?.RaiseCanExecuteChanged();
@@ -204,6 +206,22 @@ public sealed partial class ToolWorkbenchViewModel
                     CultureInfo.InvariantCulture),
                 "count",
                 outlierStatus.ToString());
+        }
+
+        if (IsSelectedStepLevelSurface
+            && levelSurfacePreview is
+            {
+                Result.Status: var levelStatus,
+                Transform: { } transform
+            })
+        {
+            return new SelectedToolOutputEvidence(
+                "Reference RMS",
+                transform.ReferenceResidualRms.ToString(
+                    "G6",
+                    CultureInfo.InvariantCulture),
+                transform.SourceUnit,
+                levelStatus.ToString());
         }
 
         if (SelectedPipelineStep is not { } step

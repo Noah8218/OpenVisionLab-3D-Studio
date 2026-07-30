@@ -116,6 +116,35 @@ internal static class ShellVerificationCommandRouter
             return;
         }
 
+        const string levelSurfaceWorkbenchVerificationOption =
+            "--verify-level-surface-workbench";
+        var levelSurfaceWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                levelSurfaceWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (levelSurfaceWorkbenchVerificationIndex >= 0)
+        {
+            if (levelSurfaceWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{levelSurfaceWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = LevelSurfaceWorkbenchVerification.Verify(
+                    args[levelSurfaceWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (ShellSmokeCommandLineOptionsVerification.TryRun(args, out var smokeOptionsPassed, out var smokeOptionsSummary))
         {
             Console.WriteLine(smokeOptionsSummary);

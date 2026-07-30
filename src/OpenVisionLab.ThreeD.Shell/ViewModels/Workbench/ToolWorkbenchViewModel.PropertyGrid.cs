@@ -58,7 +58,10 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand RemoveRecentTeachingRecipeCommand { get; private set; } = null!;
 
-    public bool HasUncommittedRecipeChanges => IsDirty || HasPendingStepParameterChanges;
+    public bool HasUncommittedRecipeChanges =>
+        IsDirty
+        || IsValidationSetDefinitionDirty
+        || HasPendingStepParameterChanges;
 
     public bool IsSourceReadyForRecipe => sourceIdentityErrors.Count == 0
         && loadedSourceBinding is not null
@@ -128,6 +131,7 @@ public sealed partial class ToolWorkbenchViewModel
                 OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
                 applySelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
                 discardSelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
+                RefreshValidationThresholdCorrectionCommands();
                 RefreshStepCommands();
                 break;
             case nameof(ToolWorkbenchStepPropertySession.Status):
@@ -219,6 +223,7 @@ public sealed partial class ToolWorkbenchViewModel
         {
             MarkFilterPreviewStaleIfNeeded(step);
             MarkRemoveOutlierPreviewStaleIfNeeded(step);
+            MarkLevelSurfacePreviewStaleIfNeeded(step);
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkTwoPointLinePreviewStaleIfNeeded(step);
             MarkThreePointPlanePreviewStaleIfNeeded(step);
@@ -235,11 +240,17 @@ public sealed partial class ToolWorkbenchViewModel
             ? "Parameters applied to the recipe. Preview and Publish were not run."
             : "No committed parameter value changed.";
         stepPropertySession.Refresh(step, message);
+        NotifyValidationThresholdDraftCommitted(step, changed);
         return true;
     }
 
-    public void DiscardSelectedStepParameterDraft() =>
-        RefreshSelectedStepPropertyDraft("Unapplied changes discarded. Recipe parameters were not changed.");
+    public void DiscardSelectedStepParameterDraft()
+    {
+        var stepId = SelectedPipelineStep?.Id;
+        RefreshSelectedStepPropertyDraft(
+            "Unapplied changes discarded. Recipe parameters were not changed.");
+        NotifyValidationThresholdDraftDiscarded(stepId);
+    }
 
     private void RefreshSelectedStepPropertyDraft(string? status = null) =>
         stepPropertySession.Refresh(SelectedPipelineStep, status);
