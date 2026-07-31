@@ -22,4 +22,19 @@ public partial class RecipeChainView : UserControl
         get => (bool)GetValue(IsTeachingModeProperty);
         set => SetValue(IsTeachingModeProperty, value);
     }
+
+    public bool HasVisibleFirstActionGuide =>
+        AuthoringFirstActionGuide.Visibility == Visibility.Visible;
+
+    public int VisibleFirstActionCount =>
+        new[]
+        {
+            InputFirstActionText,
+            SelectToolFirstActionText,
+            RoiPreviewFirstActionText,
+        }.Count(text => text.Visibility == Visibility.Visible);
+
+    public bool HasSingleVisibleFirstAction =>
+        HasVisibleFirstActionGuide
+        && VisibleFirstActionCount == 1;
 }

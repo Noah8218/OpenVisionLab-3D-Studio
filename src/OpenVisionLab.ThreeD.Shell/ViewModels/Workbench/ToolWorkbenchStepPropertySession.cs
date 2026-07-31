@@ -52,6 +52,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         { ToolId: "xyz-affine-solve" } => FormatAdapterStatus(step, XYZAffineSolveStepProperties.MappedNames),
         { ToolId: "xyz-affine-apply" } => FormatAdapterStatus(step, XYZAffineApplyStepProperties.MappedNames),
         { ToolId: "re-grid-height-map" } => FormatAdapterStatus(step, RegridHeightMapStepProperties.MappedNames),
+        { ToolId: "surface-match" } => FormatAdapterStatus(step, SurfaceMatchStepProperties.MappedNames),
         { ToolId: "thickness" } => FormatAdapterStatus(step, ThicknessStepProperties.MappedNames),
         { ToolId: "warpage" } => FormatAdapterStatus(step, WarpageStepProperties.MappedNames),
         { ToolId: "plane-flatness" } => FormatAdapterStatus(step, PlaneFlatnessStepProperties.MappedNames),
@@ -81,6 +82,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
             "xyz-affine-solve" => XYZAffineSolveStepProperties.From(step),
             "xyz-affine-apply" => XYZAffineApplyStepProperties.From(step),
             "re-grid-height-map" => RegridHeightMapStepProperties.From(step),
+            "surface-match" => SurfaceMatchStepProperties.From(step),
             "thickness" => ThicknessStepProperties.From(step),
             "warpage" => WarpageStepProperties.From(step),
             "plane-flatness" => PlaneFlatnessStepProperties.From(step),
@@ -497,6 +499,18 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
 
                 values = profile.ToRecipeParameters().ToDictionary(parameter => parameter.Name, parameter => parameter.Value, StringComparer.Ordinal);
                 break;
+            case SurfaceMatchStepProperties surfaceMatch:
+                if (!surfaceMatch.TryCreateContracts(
+                        out _,
+                        out _,
+                        out message))
+                {
+                    SetStatus(message);
+                    return false;
+                }
+
+                values = surfaceMatch.ToRecipeParameters();
+                break;
             case ThicknessStepProperties thickness:
                 if (!thickness.TryValidate(out message))
                 {
@@ -620,7 +634,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     }
 
     public static bool IsSupportedTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "remove-outlier-pixels" or "level-surface" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid";
+        step.ToolId is "filter" or "remove-outlier-pixels" or "level-surface" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "surface-match" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid";
 
     internal static string GetParameter(ToolWorkbenchPipelineStepItem step, string name) =>
         step.Parameters.FirstOrDefault(parameter =>

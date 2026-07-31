@@ -59,6 +59,9 @@ public partial class ViewerWorkspaceView : UserControl
         AuxiliarySlot.Visibility == Visibility.Visible
         && workbench?.ViewerWorkspace.IsInlineSplit == true;
 
+    public bool IsInputFirstActionVisible =>
+        ViewerInputFirstAction.Visibility == Visibility.Visible;
+
     public bool HasCoordinateTrueHeightImage =>
         heightImageViewer?.HasNativeCoordinateImage == true;
 

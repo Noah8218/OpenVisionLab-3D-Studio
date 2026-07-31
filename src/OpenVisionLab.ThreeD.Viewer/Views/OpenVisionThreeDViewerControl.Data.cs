@@ -1003,6 +1003,21 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.SetC3DHeightDeviationPreview(result);
     }
 
+    private void DecreaseC3DHeightColorMaximum_Click(object sender, RoutedEventArgs e) =>
+        viewModel.ShiftC3DHeightColorMaximum(-1);
+
+    private void IncreaseC3DHeightColorMaximum_Click(object sender, RoutedEventArgs e) =>
+        viewModel.ShiftC3DHeightColorMaximum(1);
+
+    private void DecreaseC3DHeightColorMinimum_Click(object sender, RoutedEventArgs e) =>
+        viewModel.ShiftC3DHeightColorMinimum(-1);
+
+    private void IncreaseC3DHeightColorMinimum_Click(object sender, RoutedEventArgs e) =>
+        viewModel.ShiftC3DHeightColorMinimum(1);
+
+    private void ResetC3DHeightColorRange_Click(object sender, RoutedEventArgs e) =>
+        viewModel.ResetC3DHeightColorRange();
+
 }
 
 public sealed record C3DSourceLoadPerformance(

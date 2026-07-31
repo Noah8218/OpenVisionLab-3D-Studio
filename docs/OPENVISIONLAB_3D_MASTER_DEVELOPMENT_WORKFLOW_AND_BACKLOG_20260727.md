@@ -47,6 +47,13 @@ The operator:
 The Viewer is a synchronized teaching and evidence surface. It is not the
 entire product.
 
+Commercial products are benchmark evidence, not visual templates. Adapt
+principles such as current-task clarity, linked configuration/Viewer/evidence,
+progressive disclosure, and explicit status. Do not copy themes, exact panel
+geometry, screen topology, terminology, assets, or icon artwork. A
+benchmark-driven item closes against an OpenVisionLab operator problem and
+product contract, not screenshot similarity.
+
 ## Product workflow target
 
 ```text
@@ -98,9 +105,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 104 |
+| Complete `C` | 119 |
 | Partial `P` | 17 |
-| New `N` | 88 |
+| New `N` | 73 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 234 |
@@ -108,6 +115,20 @@ Current inventory count:
 ## Current maturity and first gate
 
 - Inspection Workspace v3 is `7/8` bounded slices (`87.5%`) complete.
+- GoPxL-inspired Workbench v4 is `3/3` delivery slices complete. Authoring,
+  evidence-linked Validate/Results, the graphite visual system, and safe
+  presentation-only layout persistence are closed. Preserve
+  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md` and
+  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md`.
+- The 2026-07-30 Viewer single-row and Height color-range slice is complete:
+  the loaded Single Viewer shares one common top row, the persistent left HUD
+  is removed, and the right legend remaps Height colors through display-only
+  low/high bounds. Preserve
+  `docs/OPENVISIONLAB_3D_VIEWER_SINGLE_ROW_AND_HEIGHT_COLOR_RANGE_20260730.md`.
+- The 2026-07-30 Viewer command-bar presentation slice is complete: current
+  Wide/Compact evidence uses compact icon commands without changing the
+  explicit Preview/Publish/Run contract. Preserve
+  `docs/OPENVISIONLAB_3D_VIEWER_COMMAND_BAR_SIMPLIFICATION_20260730.md`.
 - Its historical remaining gate was the owner's unaided exact-source replay.
   The 2026-07-29 information-architecture change reopens `A-01`; after the
   new stages are implemented, that replay must be replaced by the
@@ -120,9 +141,252 @@ Current inventory count:
   preparation, completeness cell metrics, deterministic cell acceptance,
   aggregate results, linked colored overlays, failed-cell review, and
   repeated-Tab result mapping, Validation Set examples, and Completeness
-  threshold assistance are complete. Surface matching remains incomplete.
+  threshold assistance are complete. Surface matching now has identified
+  pose, raw coverage, transformed-model Viewer evidence, and exact
+  Workbench/Runner parity, separate recipe-owned acceptance, authored finite
+  search bounds, rejection reasons, observational stage timing, identified
+  model/scene 3D-edge artifacts, and separate diagnostic edge scoring.
+  Edge-direction diagnostics, independent component thresholds,
+  false-positive review, production performance budgets, multiple matches,
+  and symmetry remain incomplete.
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
+
+### Current execution checkpoint - Surface-edge artifacts and separate score - 2026-07-31
+
+`K-02`, `K-03`, and `K-06` are Complete. Core owns schema-1 identified
+model-edge, complete-organized-scene-edge, and separate surface/edge score
+artifacts with fail-closed canonical identity and execution linkage. Data owns
+atomic validated JSON persistence. Tools owns deterministic topology
+boundary/crease extraction, organized adjacent-cell height-step extraction,
+and stable unique-nearest positional edge scoring at the immutable surface
+pose.
+
+The controlled raised-square and flat-background scenes both preserve
+`2/2 = 1.0` surface coverage. Their edge evidence separates to
+`4/4 = 1.0`, RMSE `0 mm`, versus `0/4 = 0.0`, RMSE unavailable. Incomplete
+organized grids, non-manifold topology, mismatched input identities, tampered
+content, and score/execution disagreement fail closed. Viewer evidence keeps
+Surface coverage/RMSE and 3D-edge score/RMSE distinct and explicitly labels
+edge evidence as diagnostic, not Pass/Fail policy.
+
+Release passes `0/0`; focused edge verification `21/21`; edge
+Workbench/Runner parity `12/12`; matching `34/34`; acceptance `14/14`;
+SurfaceModel `22/22`; source/normal `26/26`; Source Quality `18/18`; docking
+`76/76`; Inspection Workspace `63/63`; Validation Set `84/84`; height
+distribution `25/25`; WPG `38/38`; smoke options `26/26`; structure `17/17`.
+Current-build Wide `1920 x 1040` and Compact `1280 x 760` captures pass the
+explicit overlap/clipping review. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md`;
+- `artifacts/current/20260731-surface-edge-score/`.
+
+Inventory is `122 C / 17 P / 70 N / 9 E / 16 O`. Human-owner R0 remains an
+external `A-01` task. Next: `K-05/K-07/K-08` edge diagnostic overlay,
+independent score thresholds, and false-positive review. `K-04` remains
+blocked on `B-12`; do not merge the diagnostic edge score into the authored
+surface acceptance policy.
+
+### Earlier execution checkpoint - Surface-match acceptance, bounds, and goldens - 2026-07-31
+
+`F-14`, `J-11`, `J-14`, `J-15`, and `M-16` are Complete. Core owns the
+schema-1 identified acceptance policy and assessment, source-independent
+finite pose-search validation, typed decision/reason, and observational
+three-stage runtime report. Data owns fail-closed atomic assessment and
+runtime persistence. Tools owns the shared raw-match then separate-acceptance
+execution boundary used by Runner and Workbench.
+
+The `Surface Match` typed PropertyGrid separates acceptance limits from
+rotation/translation/search controls. Apply edits the recipe only, save and
+reopen restore the authored values without execution, and the Viewer shows
+raw state/coverage/RMSE beside the distinct decision, exact limits, reason,
+timing, and identities. Timing is excluded from deterministic hashes and is
+not a performance budget.
+
+The controlled goldens prove known-pose Pass, controlled-occlusion Fail, and
+out-of-domain Rejected with exact policy/assessment identities. Release
+passes `0/0`; acceptance passes `14/14`; matching passes `34/34`; parity
+passes `16/16`; SurfaceModel passes `22/22`; source/normal passes `26/26`;
+Source Quality passes `18/18`; Workbench docking passes `76/76`; Inspection
+Workspace passes `63/63`; Validation Set passes `84/84`; height distribution
+passes `25/25`; smoke options pass `25/25`; and structure passes `17/17`.
+Final current-build Wide `1920 x 1040` and Compact `1280 x 760` expanded
+parameter captures pass the explicit overlap/clipping review. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_ACCEPTANCE_BOUNDS_AND_GOLDENS_20260731.md`;
+- `artifacts/current/20260731-surface-match-acceptance-bounds-goldens/`.
+
+Inventory is `119 C / 17 P / 73 N / 9 E / 16 O`. The refreshed R0
+fixed-hash package passes Wide/Compact `-ValidateOnly`; human-owner R0 remains
+an external `A-01` task. The next dependency-ready software slice is
+`K-02/K-03/K-06` identified model/scene 3D-edge artifacts and separate
+surface/edge scores. Do not turn observational timing into a performance
+claim and do not merge the two score channels.
+
+### Earlier execution checkpoint - Surface-match overlay and parity - 2026-07-31
+
+`J-10` and `J-16` are Complete. Core owns the schema-1 identified
+transformed-model overlay and decision-free execution artifact. Data owns
+validated atomic JSON save/load. Tools owns the shared deterministic executor
+used by Runner and Workbench. Workbench owns evidence selection and explicit
+display/clear routing; Viewer owns display-frame mapping and renders neutral
+scene samples, the complete transformed SurfaceModel wireframe, raw
+correspondences, and compact coverage/RMSE/pose/hash evidence.
+
+The controlled fixture recovers the documented `30 degree` yaw and
+`(10, -4, 2) mm` translation with `5/5 = 1.0` coverage. Runner and Workbench
+match exactly on pose, coverage, overlay, and execution hashes. Version 1
+still does not define Pass/Fail limits, authored search UI, timing budgets,
+multiple matches, symmetry, or metrology. Release passes `0/0`; matching
+passes `34/34`; parity passes `10/10`; SurfaceModel regression passes
+`22/22`; source/normal regression passes `26/26`; Source Quality regression
+passes `18/18`; Workbench docking passes `76/76`; Inspection Workspace passes
+`63/63`; height distribution passes `25/25`; and structure passes `17/17`.
+Current-build Wide `1920 x 1040` and Compact `1280 x 760` captures pass the
+overlap/clipping review. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_OVERLAY_AND_PARITY_20260731.md`;
+- `artifacts/current/20260731-surface-match-overlay-parity/`.
+
+Inventory is `114 C / 17 P / 78 N / 9 E / 16 O`. The refreshed R0
+fixed-hash package passes Wide/Compact `-ValidateOnly`; human-owner R0 remains
+an external `A-01` task. The next dependency-ready software slice is
+`J-11/J-14/J-15/M-16` acceptance limits, authored search bounds,
+rejection/timing evidence, and matching goldens. Do not merge acceptance
+policy into the raw score or overlay contracts.
+
+### Earlier execution checkpoint - Prepared Scene, rigid pose, and coverage - 2026-07-31
+
+`J-06`, `J-08`, and `J-09` are Complete. Core owns the schema-1 identified
+Prepared Scene, canonical Source Quality and scene identities, rigid
+model-to-scene pose/result contract, and explicit one-way coverage evidence.
+Data owns fail-closed atomic Prepared Scene JSON save/load. Tools owns pure
+scene preparation, bounded deterministic Euler/centroid pose search, and
+decision-free unique-nearest surface coverage. Runner owns the known-pose,
+occluded-scene, invalid-input, persistence, and repeatability fixtures.
+
+Version 1 does not define Pass/Fail limits, transformed-model Viewer overlay,
+Workbench/Runner parity, timing limits, multiple matches, symmetry, or
+metrology. Release passes `0/0`; matching verification passes `28/28`;
+SurfaceModel regression passes `22/22`; source/normal regression passes
+`26/26`; Source Quality regression passes `18/18`; and structure passes
+`17/17`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_PREPARED_SCENE_RIGID_POSE_AND_COVERAGE_20260731.md`;
+- `artifacts/current/20260731-surface-matching-foundation/`.
+
+Inventory is `112 C / 17 P / 80 N / 9 E / 16 O`. The refreshed R0 fixed-hash
+package passes Wide/Compact `-ValidateOnly`; human-owner R0 remains an
+external `A-01` task. The next dependency-ready software slice is
+`J-10/J-16` transformed-model Viewer evidence and Workbench/Runner pose,
+coverage, overlay, and hash parity.
+
+### Earlier execution checkpoint - SurfaceModel preparation - 2026-07-31
+
+`J-01`, `J-03`, and `J-04` are Complete. Core owns the schema-1 identified
+`SurfaceModel`, canonical hash, deterministic triangle schedule, and typed
+validity report. Data owns fail-closed atomic JSON save/load. Tools converts
+an imported mesh into a full-geometry model plus deterministic
+triangle-centroid samples only after the existing `B-16` declared-normal
+contract passes. Runner owns known-valid and invalid closure fixtures.
+
+Version 1 does not remove geometry, repair input, search a pose, define a
+match score, or add UI. Release passes `0/0`; SurfaceModel verification passes
+`22/22`; existing source/normal verification passes `26/26`; Source Quality
+passes `18/18`; and structure passes `17/17`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_MODEL_PREPARATION_FOUNDATION_20260731.md`;
+- `artifacts/current/20260731-surface-model-foundation/`.
+
+At this checkpoint inventory was `109 C / 17 P / 83 N / 9 E / 16 O`.
+Human-owner R0 remained an external `A-01` task and `J-06/J-08/J-09` was
+next. The newer Prepared Scene, rigid pose, and coverage checkpoint above
+supersedes that inventory and priority.
+
+### Current execution checkpoint - source channels and dense normals - 2026-07-31
+
+`B-11` and `B-16` are Complete. The shared catalog reports exactly Height,
+Intensity, Color, Depth, Normal, Confidence, and SNR for C3D, GLB/STL, and
+LAS/LAZ. Unsupported channels remain unavailable with a source-specific
+reason. Viewer colors and calculated face normals never become source data.
+
+GLB and STL loaders preserve declared normals, including partial presence;
+LAS/LAZ sampled points retain intensity and RGB follows the declared LAS point
+format. The WPF-neutral schema-1 dense-normal report fails closed for missing,
+partial, non-finite, zero, non-unit, reversed, invalid-index, incomplete-index,
+and degenerate inputs.
+
+Release passes `0/0`; focused source/normal verification passes `26/26`,
+Source Quality passes `18/18`, the data-loading matrix passes `128/128`, and
+structure passes `17/17`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SOURCE_CHANNEL_AND_DENSE_NORMAL_QUALITY_20260731.md`;
+- `artifacts/current/20260731-source-channel-normal-quality/`.
+
+At this checkpoint inventory was `106 C / 17 P / 86 N / 9 E / 16 O` and
+`J-01/J-03/J-04 SurfaceModel` was next. The newer SurfaceModel checkpoint
+above supersedes that inventory and priority.
+
+### Current execution checkpoint - GoPxL-inspired Workbench v4 - 2026-07-30
+
+The Shell now owns one 56-pixel Job Bar and one responsive left
+responsibility rail. Workbench and Teach internal modes compose the same
+visible Authoring cockpit. Wide orders Tool Library/Recipe Chain, Selected
+Tool, and dominant Viewer/Displayed Outputs; Compact uses a 60-pixel icon
+rail and one support tab group beside the dominant Viewer. Selected Tool owns
+explicit Preview, Publish, Cancel, and Save actions.
+
+Validate and Results now compose their evidence beside the same Viewer.
+Staged-sample selection is presentation-only, Results remains read-only, and
+all execution/correction actions stay explicit. The graphite role system and
+schema-1 layout profile persist only allowlisted presentation state, validate
+restore values, fail safely for corrupt/incompatible input, and provide an
+explicit reset.
+
+Release passes `0/0`, Workbench docking `71/71`, Inspection Workspace
+`63/63`, Validation Set `84/84`, Height distribution `25` checks, and
+structure `17/17`. Application-only Wide `1920 x 1040` and Compact
+`1280 x 760` Validate/Results captures pass. Layout reopen passes
+Missing -> Restored and corrupt fallback without execution.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md`;
+- `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md`;
+- `artifacts/current/20260730-gopxl-workbench-v4-evidence-and-layout/`.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`. The refreshed fixed
+R0 hash package passes Wide/Compact `-ValidateOnly`. Immediate: the human
+owner's unaided Wide/Compact R0. SurfaceModel remains paused until it passes.
+
+### Current execution checkpoint - Viewer single row and Height color range - 2026-07-30
+
+The normal loaded Single Viewer no longer stacks a source-ready command row,
+an `A / Main` pane title, and a Viewer status text row above the model. The
+Shell layout commands now share the Viewer's single top row, and the
+persistent left measurement HUD is removed while the orientation gizmo
+remains.
+
+The right Height legend owns a display-only minimum and maximum interval with
+decrement, direct value, increment, and AUTO controls. Manual bounds clamp
+outside colors and linearly remap values inside the interval. AUTO restores
+the source bounds; the histogram continues to show the full source
+distribution. Source, ROI, measurement, recipe, threshold, Preview, Publish,
+Run, and routing state are unchanged.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_VIEWER_SINGLE_ROW_AND_HEIGHT_COLOR_RANGE_20260730.md`;
+- `artifacts/current/20260730-viewer-single-row-height-range/`.
+
+Release build passes `0/0`, height distribution `25/25`, Inspection Workspace
+`63/63`, Workbench docking `59/59`, Validation Set `84/84`, and structure
+`17/17`. Current application-only Wide, Compact, and manual-range captures
+pass on the first quality attempt.
+
+Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+`Partial` only for a fresh human-owner unaided R0 on this updated binary set.
+After owner R0 passes, begin `J-01/J-03/J-04 SurfaceModel`.
 
 ### Current execution checkpoint - Validation top dock tabs - 2026-07-30
 
@@ -985,12 +1249,12 @@ Reasoning effort: high
 | B-08 | C | Unified Source Quality workspace/panel | B-07 | Release build `0/0`, workspace `18/18`, exact-source wide/compact non-execution smoke and capture quality |
 | B-09 | C | Coordinate-true invalid-cell map and mask identity | B-07, C-06 | Release build `0/0`, map `15/15`, Source Quality `13/13`, Height Image `14/14`, exact-source pixel/cell/SHA parity |
 | B-10 | N | Grid monotonicity, duplicate locator, non-finite coordinate, and topology diagnostics | B-07 | Deterministic malformed fixtures |
-| B-11 | N | Available-channel catalog: height, intensity, color, depth, normal, confidence/SNR | B-07 | Unsupported channels visibly unavailable, never fabricated |
+| B-11 | C | Available-channel catalog: height, intensity, color, depth, normal, confidence/SNR | B-07 | Release build `0/0`; focused `26/26`; C3D, GLB/STL, LAS/LAZ exact seven-entry evidence |
 | B-12 | N | Acquisition/source provenance text and limitation notes | B-07 | Saved/reopened provenance without execution |
 | B-13 | N | Source quality gate consumed by compatible-tool suggestions | B-07 | Invalid source disables only unsupported tools with exact reason |
 | B-14 | N | Before/after quality delta for each preparation output | D-01 | Derived artifact report with valid/missing/outlier changes |
 | B-15 | P | Normal inspection for imported mesh pick exists only at one selected surface point | None | Current mesh pick normal overlay |
-| B-16 | N | Dense normal availability/consistency report when source supports normals | B-11 | Known-normal synthetic fixture |
+| B-16 | C | Dense normal availability/consistency report when source supports normals | B-11 | Release build `0/0`; known-valid and missing/partial/reversed/invalid/degenerate fixtures; public GLB/STL evidence |
 | B-17 | N | Source limitation flags for reflective, transparent, textureless, clipped, or low-coverage acquisition | B-12 | Operator-authored or imported flags persist in recipe/session evidence |
 
 ### C. Linked Height Image, 3D Viewer, and diagnostic views
@@ -1097,7 +1361,7 @@ Reasoning effort: high
 | F-11 | N | Alignment confidence/residual/coverage evidence | F-07 or F-10 | Explicit metric and acceptance state |
 | F-12 | N | Named coordinate-frame hierarchy and visible transform chain | F-07 | Source/reference/result frame display |
 | F-13 | N | Symmetry declaration for later matching | J-01 | Saved model contract and validation |
-| F-14 | N | Allowed pose/rotation/search range contract | J-01 | Invalid range rejection and saved parameters |
+| F-14 | C | Allowed pose/rotation/search range contract | J-01 | Invalid range rejection and saved parameters |
 | F-15 | E | Physical calibration frame and traceable unit validation | Trusted calibration artifact | Independent physical evidence |
 
 ### G. Deterministic measurement and inspection tools
@@ -1181,22 +1445,22 @@ Reasoning effort: high
 
 | ID | Status | Development item | Dependency | Closure evidence |
 | --- | --- | --- | --- | --- |
-| J-01 | N | Identified `SurfaceModel` artifact contract | B-05 | Save/load and content identity |
+| J-01 | C | Identified `SurfaceModel` artifact contract | B-05 | Save/load and content identity |
 | J-02 | P | Mesh import and fixed nominal/actual comparison exist, but are not a matching model | None | Current mesh/nominal evidence |
-| J-03 | N | Model preparation step with sampling parameters | J-01 | Deterministic sampled-model hash |
-| J-04 | N | Model point/triangle/normal validity checks | J-03, B-16 | Known-valid and invalid model fixtures |
+| J-03 | C | Model preparation step with sampling parameters | J-01 | Deterministic sampled-model hash |
+| J-04 | C | Model point/triangle/normal validity checks | J-03, B-16 | Known-valid and invalid model fixtures |
 | J-05 | N | Remove internal/redundant/unobservable model surfaces | J-03 | Controlled model-preparation comparison |
-| J-06 | N | Scene preparation contract tied to SourceQualityReport | B-07 | Explicit prepared-scene identity |
+| J-06 | C | Scene preparation contract tied to SourceQualityReport | B-07 | Explicit prepared-scene identity |
 | J-07 | N | Model key-point artifact and debug overlay | J-03 | Stable key-point count/identity |
-| J-08 | N | Pose-search executor returning rigid pose | J-03, J-06 | Known-pose synthetic fixture |
-| J-09 | N | Explicit surface-coverage score semantics | J-08 | Occluded fixture with documented expected range |
-| J-10 | N | Transformed-model scene overlay | J-08, C-19 | Workbench and screenshot evidence |
-| J-11 | N | Match Pass/Fail limits distinct from raw score display | J-09 | PropertyGrid/Runner evidence |
+| J-08 | C | Pose-search executor returning rigid pose | J-03, J-06 | Known-pose synthetic fixture |
+| J-09 | C | Explicit surface-coverage score semantics | J-08 | Occluded fixture with documented expected range |
+| J-10 | C | Transformed-model scene overlay | J-08, C-19 | Workbench and screenshot evidence |
+| J-11 | C | Match Pass/Fail limits distinct from raw score display | J-09 | PropertyGrid/Runner evidence |
 | J-12 | N | Multiple-match result collection with stable identities | J-08 | Known two-object fixture |
 | J-13 | N | Symmetry-aware pose equivalence | F-13, J-08 | Symmetric fixture |
-| J-14 | N | Bounded translation/rotation/search domain | F-14, J-08 | Runtime and false-positive comparison |
-| J-15 | N | Matcher runtime and rejection reason evidence | J-08 | Per-stage timing and fail-closed reason |
-| J-16 | N | Workbench/Runner pose, score, overlay, and hash parity | J-08 | Focused execution verification |
+| J-14 | C | Bounded translation/rotation/search domain | F-14, J-08 | Runtime and false-positive comparison |
+| J-15 | C | Matcher runtime and rejection reason evidence | J-08 | Per-stage timing and fail-closed reason |
+| J-16 | C | Workbench/Runner pose, score, overlay, and hash parity | J-08 | Focused execution verification |
 
 ### K. Edge-supported matching and advanced diagnostics
 
@@ -1207,11 +1471,11 @@ Reasoning effort: high
 | ID | Status | Development item | Dependency | Closure evidence |
 | --- | --- | --- | --- | --- |
 | K-01 | C | Height Difference Edge, Line Fit, and Line diagnostics exist as inspection features | None | Current feature evidence |
-| K-02 | N | Model 3D edge extraction for a SurfaceModel | J-03 | Stable model-edge artifact |
-| K-03 | N | Scene 3D edge extraction for matching | J-06 | Stable scene-edge artifact |
+| K-02 | C | Model 3D edge extraction for a SurfaceModel | J-03 | Stable topology boundary/crease artifact; non-manifold rejection; `21/21` focused fixture |
+| K-03 | C | Scene 3D edge extraction for matching | J-06 | Stable complete-organized-grid height-step artifact; incomplete grid rejection; `21/21` focused fixture |
 | K-04 | N | Acquisition viewpoint/direction metadata for edge orientation | B-12 | Explicit available/unavailable state |
 | K-05 | N | Normal/edge-direction diagnostic overlay | B-16, K-02 | Known outward-normal fixture |
-| K-06 | N | Separate surface and 3D-edge match scores | J-08, K-02, K-03 | False background match fixture |
+| K-06 | C | Separate surface and 3D-edge match scores | J-08, K-02, K-03 | Equal `100%` surface coverage separates to `100%` versus `0%` edge coverage; Runner `21/21`; parity `12/12` |
 | K-07 | N | Independent thresholds for score components | K-06 | PropertyGrid and Runner evidence |
 | K-08 | N | False-positive review with original scene, samples, model, pose, and scores | K-06 | One retained rejected/accepted comparison |
 | K-09 | N | Multiple-match issue navigation | J-12 | Previous/next match selection |
@@ -1271,7 +1535,7 @@ renderer, or cross-module state changes
 | M-13 | N | Preparation-tool before/after hash and source-immutability suite | D-04 | One suite per typed preparation tool |
 | M-14 | N | Good/Bad/Held-out split and no-leakage suite | I-04 | Held-out excluded from suggestions |
 | M-15 | N | Completeness known-cell golden suite | H-02 | Expected per-cell result matrix |
-| M-16 | N | Surface-matching known-pose and false-positive suite | J-08 | Pose/score/rejection goldens |
+| M-16 | C | Surface-matching known-pose and false-positive suite | J-08 | Pose/score/rejection goldens |
 | M-17 | N | Release performance matrix for full-size Height Image and matching | C-06 or J-08 | Fixed viewport/source repeated runs |
 | M-18 | N | Accessibility names/tooltips for new icon-only or ambiguous controls | Each UI item | Automation-name verification |
 | M-19 | N | Localization coverage for all new user-visible states | Each UI item | Korean/English current-source captures |
@@ -1457,30 +1721,34 @@ A slice is `Complete` only when:
 
 ## Current executable queue
 
-R0 remains an external owner acceptance gate. `B-07`, `C-06`, `B-09`,
-`B-08`, `C-07`, `C-08`, `C-09`, `C-10`, `C-11`, `E-07`, and `E-08` were
-completed ahead of that gate by explicit owner direction. The remaining order
-below follows typed dependencies; linked teaching can now consume the report,
-Height Image, coordinate-true invalid-cell overlay, explicit Height Image
-display range, shared native-grid cursor and ROI, and the persisted numeric
-volume contract.
+R0 remains an external owner acceptance gate. It is not a global software
+development pause after the owner's 2026-07-31 reprioritization. `B-07`,
+`C-06`, `B-09`, `B-08`, `C-07`, `C-08`, `C-09`, `C-10`, `C-11`, `E-07`,
+and `E-08` were completed ahead of that gate by explicit owner direction.
+`B-11`, `B-16`, `F-14`, `J-01`, `J-03`, `J-04`, `J-06`, `J-08`, `J-09`,
+`J-10`, `J-11`, `J-14`, `J-15`, `J-16`, `K-02`, `K-03`, `K-06`, and
+`M-16` are now also complete.
+The remaining order follows typed dependencies.
 
 Execute only one queue item at a time.
 
-1. Human-owner Wide/Compact R0 replay | Prerequisite: owner operates the
-   current Release unaided |
-   Recommended model: none until the owner evidence exists | Reasoning
-   effort: none
-2. `J-01/J-03/J-04 SurfaceModel preparation foundation` | Prerequisite:
-   owner R0 passes | Recommended model:
+Completed before this queue:
+
+- `Workbench v4-2 Validate/Results linked evidence composition` — Complete;
+- `Workbench v4-3 visual system and safe persisted layout` — Complete.
+
+External acceptance, in parallel with software work:
+
+- Human-owner Wide/Compact R0 replay | Prerequisite: product-owner operation
+  and evidence; refreshed fixed-hash package already passes both
+  `-ValidateOnly` checks | Recommended model: none until the owner evidence
+  exists | Reasoning effort: none
+
+Software queue:
+
+1. `K-05/K-07/K-08 edge diagnostics, independent thresholds, and false-positive review` | Recommended model:
    `gpt-5.6-sol` | Reasoning effort: `high`
-3. `J-06/J-08/J-09 scene matching, pose, and score` | Recommended model:
-   `gpt-5.6-sol` | Reasoning effort: `high`
-4. `J-10/J-16 overlay and Workbench/Runner parity` | Recommended model:
-   `gpt-5.6-sol` | Reasoning effort: `high`
-5. `K-02/K-03/K-06 edge-supported score components` | Recommended model:
-   `gpt-5.6-sol` | Reasoning effort: `high`
-6. `K-08/K-11 false-positive review and performance gate` | Recommended model:
+2. `K-11 fixed-fixture matching performance gate` | Recommended model:
    `gpt-5.6-sol` | Reasoning effort: `high`
 
 ## Documentation decision

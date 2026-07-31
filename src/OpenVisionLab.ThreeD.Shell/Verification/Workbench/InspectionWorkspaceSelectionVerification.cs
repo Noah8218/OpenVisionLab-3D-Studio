@@ -450,6 +450,10 @@ internal static class InspectionWorkspaceSelectionVerification
             Check(
                 "side-by-side layout defaults to the coordinate-true Height Image without recipe mutation",
                 workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical
+                && workbench.IsSplitVerticalViewerLayout
+                && !workbench.IsSingleViewerLayout
+                && !workbench.IsSplitHorizontalViewerLayout
+                && !workbench.IsPopOutViewerLayout
                 && workbench.ViewerWorkspace.AuxiliaryContentId == ToolWorkbenchViewModel.HeightImageViewerContentId
                 && !workbench.IsDirty
                 && thickness.InputEntityIdsText == routeBeforeSelectionOnlyChanges
@@ -468,6 +472,10 @@ internal static class InspectionWorkspaceSelectionVerification
             Check(
                 "stacked and pop-out commands reuse the same auxiliary pin",
                 workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.PopOut
+                && workbench.IsPopOutViewerLayout
+                && !workbench.IsSingleViewerLayout
+                && !workbench.IsSplitVerticalViewerLayout
+                && !workbench.IsSplitHorizontalViewerLayout
                 && workbench.ViewerWorkspace.AuxiliaryContentId == ToolWorkbenchViewModel.HeightImageViewerContentId
                 && !workbench.IsDirty
                 && workbench.CurrentMeasurementOutput is null,
@@ -476,6 +484,10 @@ internal static class InspectionWorkspaceSelectionVerification
             Check(
                 "single layout restores main focus and retains the reusable auxiliary pin",
                 workbench.ViewerWorkspace.Layout == ViewerWorkspaceLayout.Single
+                && workbench.IsSingleViewerLayout
+                && !workbench.IsSplitVerticalViewerLayout
+                && !workbench.IsSplitHorizontalViewerLayout
+                && !workbench.IsPopOutViewerLayout
                 && workbench.ViewerWorkspace.IsMainFocused
                 && workbench.WorkspaceSelection.FocusedViewerSlotId == ViewerWorkspaceSession.MainSlotId
                 && workbench.ViewerWorkspace.AuxiliaryContentId == ToolWorkbenchViewModel.HeightImageViewerContentId

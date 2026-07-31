@@ -264,6 +264,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.LazSampleVisible)
             or nameof(MainWindowViewModel.MeasurementVisible)
             or nameof(MainWindowViewModel.DisplaySettingsRevision)
+            or nameof(MainWindowViewModel.C3DHeightColorRangeRevision)
             or nameof(MainWindowViewModel.PointSize)
             or nameof(MainWindowViewModel.RecipePeakTolerance)
             or nameof(MainWindowViewModel.C3DModelTransform)
@@ -296,6 +297,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             or nameof(MainWindowViewModel.IsWorkbenchAffineApplyPublished)
             or nameof(MainWindowViewModel.WorkbenchRegridHeightField)
             or nameof(MainWindowViewModel.IsWorkbenchRegridHeightFieldPublished)
+            or nameof(MainWindowViewModel.WorkbenchSurfaceMatch)
             or nameof(MainWindowViewModel.ResultEntities))
         {
             if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))

@@ -13,6 +13,8 @@ public sealed class ImportedMesh
         string format,
         Vector3[] positions,
         int[] indices,
+        Vector3[] normals,
+        bool[] normalPresence,
         Vector4[] vertexColors,
         Vector2[] textureCoordinates,
         GlbTextureImage? baseColorTexture)
@@ -22,6 +24,8 @@ public sealed class ImportedMesh
         Format = format;
         Positions = positions;
         Indices = indices;
+        Normals = normals;
+        NormalPresence = normalPresence;
         VertexColors = vertexColors;
         TextureCoordinates = textureCoordinates;
         BaseColorTexture = baseColorTexture;
@@ -48,6 +52,20 @@ public sealed class ImportedMesh
     public Vector3[] Positions { get; }
 
     public int[] Indices { get; }
+
+    public Vector3[] Normals { get; }
+
+    public bool[] NormalPresence { get; }
+
+    public int DeclaredNormalCount => NormalPresence.Count(present => present);
+
+    public bool HasDeclaredNormals => DeclaredNormalCount > 0;
+
+    public bool HasDenseNormals =>
+        Positions.Length > 0
+        && Normals.Length == Positions.Length
+        && NormalPresence.Length == Positions.Length
+        && DeclaredNormalCount == Positions.Length;
 
     public Vector4[] VertexColors { get; }
 
@@ -120,6 +138,8 @@ public sealed class ImportedMesh
                 : Path.GetFileNameWithoutExtension(path);
             var positions = new List<Vector3>();
             var indices = new List<int>();
+            var normals = new List<Vector3>();
+            var normalPresence = new List<bool>();
             var vertexColors = new List<Vector4>();
             var textureCoordinates = new List<Vector2>();
             var keepVertexColors = true;
@@ -143,6 +163,8 @@ public sealed class ImportedMesh
                             Matrix4x4.Identity,
                             positions,
                             indices,
+                            normals,
+                            normalPresence,
                             vertexColors,
                             ref keepVertexColors,
                             textureCoordinates,
@@ -162,6 +184,8 @@ public sealed class ImportedMesh
                     Matrix4x4.Identity,
                     positions,
                     indices,
+                    normals,
+                    normalPresence,
                     vertexColors,
                     ref keepVertexColors,
                     textureCoordinates,
@@ -171,6 +195,14 @@ public sealed class ImportedMesh
 
             var meshPositions = positions.ToArray();
             var meshIndices = indices.ToArray();
+            var meshNormalPresence =
+                normalPresence.Count == meshPositions.Length
+                && normalPresence.Any(present => present)
+                    ? normalPresence.ToArray()
+                    : Array.Empty<bool>();
+            var meshNormals = meshNormalPresence.Length == meshPositions.Length
+                ? normals.ToArray()
+                : Array.Empty<Vector3>();
             var meshVertexColors = keepVertexColors && vertexColors.Count == meshPositions.Length
                 ? vertexColors.ToArray()
                 : Array.Empty<Vector4>();
@@ -191,11 +223,28 @@ public sealed class ImportedMesh
                 }
             }
 
-            return new ImportedMesh(path, meshName, "GLB", meshPositions, meshIndices, meshVertexColors, meshTextureCoordinates, texture);
+            return new ImportedMesh(
+                path,
+                meshName,
+                "GLB",
+                meshPositions,
+                meshIndices,
+                meshNormals,
+                meshNormalPresence,
+                meshVertexColors,
+                meshTextureCoordinates,
+                texture);
         }
     }
 
-    public static ImportedMesh CreateTriangleMesh(string path, string name, string format, Vector3[] positions, int[] indices)
+    public static ImportedMesh CreateTriangleMesh(
+        string path,
+        string name,
+        string format,
+        Vector3[] positions,
+        int[] indices,
+        Vector3[]? normals = null,
+        bool[]? normalPresence = null)
     {
         if (positions.Length == 0)
         {
@@ -215,7 +264,38 @@ public sealed class ImportedMesh
             }
         }
 
-        return new ImportedMesh(path, name, format, positions, indices, [], [], null);
+        var declaredNormals = normals ?? [];
+        var declaredNormalPresence = normalPresence is { Length: > 0 }
+            ? normalPresence
+            : (declaredNormals.Length == positions.Length
+                ? Enumerable.Repeat(true, positions.Length).ToArray()
+                : []);
+        if (declaredNormals.Length != 0
+            && declaredNormals.Length != positions.Length)
+        {
+            throw new InvalidDataException(
+                $"{format} normal count must be zero or match the position count: {path}");
+        }
+
+        if (declaredNormalPresence.Length != 0
+            && (declaredNormals.Length != positions.Length
+                || declaredNormalPresence.Length != positions.Length))
+        {
+            throw new InvalidDataException(
+                $"{format} normal-presence count must be zero or match the position count: {path}");
+        }
+
+        return new ImportedMesh(
+            path,
+            name,
+            format,
+            positions,
+            indices,
+            declaredNormals,
+            declaredNormalPresence,
+            [],
+            [],
+            null);
     }
 
     private static void AppendNodeMeshes(
@@ -226,6 +306,8 @@ public sealed class ImportedMesh
         Matrix4x4 parentTransform,
         List<Vector3> positions,
         List<int> indices,
+        List<Vector3> normals,
+        List<bool> normalPresence,
         List<Vector4> vertexColors,
         ref bool keepVertexColors,
         List<Vector2> textureCoordinates,
@@ -246,6 +328,8 @@ public sealed class ImportedMesh
                     instanceTransform,
                     positions,
                     indices,
+                    normals,
+                    normalPresence,
                     vertexColors,
                     ref keepVertexColors,
                     textureCoordinates,
@@ -269,6 +353,8 @@ public sealed class ImportedMesh
                 nodeTransform,
                 positions,
                 indices,
+                normals,
+                normalPresence,
                 vertexColors,
                 ref keepVertexColors,
                 textureCoordinates,
@@ -285,6 +371,8 @@ public sealed class ImportedMesh
         Matrix4x4 transform,
         List<Vector3> positions,
         List<int> indices,
+        List<Vector3> normals,
+        List<bool> normalPresence,
         List<Vector4> vertexColors,
         ref bool keepVertexColors,
         List<Vector2> textureCoordinates,
@@ -305,6 +393,9 @@ public sealed class ImportedMesh
             var primitiveIndices = primitive.TryGetProperty("indices", out var indexElement)
                 ? ReadIndexAccessor(root, binary.Span, indexElement.GetInt32())
                 : Enumerable.Range(0, primitivePositions.Length).ToArray();
+            var primitiveNormals = attributes.TryGetProperty("NORMAL", out var normalElement)
+                ? ReadVec3Accessor(root, binary.Span, normalElement.GetInt32())
+                : Array.Empty<Vector3>();
             var primitiveVertexColors = attributes.TryGetProperty("COLOR_0", out var colorElement)
                 ? ReadColorAccessor(root, binary.Span, colorElement.GetInt32())
                 : Array.Empty<Vector4>();
@@ -320,6 +411,13 @@ public sealed class ImportedMesh
             if (primitiveVertexColors.Length > 0 && primitiveVertexColors.Length != primitivePositions.Length)
             {
                 throw new InvalidDataException($"GLB COLOR_0 count must match POSITION count: {path}");
+            }
+
+            if (primitiveNormals.Length > 0
+                && primitiveNormals.Length != primitivePositions.Length)
+            {
+                throw new InvalidDataException(
+                    $"GLB NORMAL count must match POSITION count: {path}");
             }
 
             if (primitiveTextureCoordinates.Length > 0 && primitiveTextureCoordinates.Length != primitivePositions.Length)
@@ -338,9 +436,56 @@ public sealed class ImportedMesh
                 indices.Add(vertexOffset + index);
             }
 
+            AppendTransformedNormals(
+                primitiveNormals,
+                primitivePositions.Length,
+                transform,
+                normals,
+                normalPresence);
             AppendOptionalVertexData(primitiveVertexColors, primitivePositions.Length, vertexColors, ref keepVertexColors);
             AppendOptionalVertexData(primitiveTextureCoordinates, primitivePositions.Length, textureCoordinates, ref keepTextureCoordinates);
             texture ??= ReadBaseColorTexture(root, binary, primitive);
+        }
+    }
+
+    private static void AppendTransformedNormals(
+        Vector3[] source,
+        int positionCount,
+        Matrix4x4 transform,
+        List<Vector3> target,
+        List<bool> presence)
+    {
+        if (source.Length == 0)
+        {
+            for (var index = 0; index < positionCount; index++)
+            {
+                target.Add(default);
+                presence.Add(false);
+            }
+
+            return;
+        }
+
+        if (!Matrix4x4.Invert(transform, out var inverse))
+        {
+            throw new InvalidDataException(
+                "GLB node transform is singular and cannot transform normals.");
+        }
+
+        var normalTransform = Matrix4x4.Transpose(inverse);
+        var windingSign = transform.GetDeterminant() < 0.0f ? -1.0f : 1.0f;
+        foreach (var normal in source)
+        {
+            var transformed =
+                Vector3.TransformNormal(normal, normalTransform) * windingSign;
+            var sourceLength = normal.Length();
+            target.Add(
+                IsFinite(transformed)
+                && transformed.LengthSquared() > 1e-20f
+                && float.IsFinite(sourceLength)
+                    ? Vector3.Normalize(transformed) * sourceLength
+                    : transformed);
+            presence.Add(true);
         }
     }
 
@@ -480,7 +625,7 @@ public sealed class ImportedMesh
         if (accessor.GetProperty("componentType").GetInt32() != 5126
             || accessor.GetProperty("type").GetString() != "VEC3")
         {
-            throw new InvalidDataException("Only float VEC3 accessors are supported for GLB positions.");
+            throw new InvalidDataException("Only float VEC3 accessors are supported for GLB vector attributes.");
         }
 
         var count = accessor.GetProperty("count").GetInt32();
@@ -678,6 +823,11 @@ public sealed class ImportedMesh
 
     private static float ReadSingle(ReadOnlySpan<byte> bytes, int offset) => BitConverter.ToSingle(bytes.Slice(offset, 4));
 
+    private static bool IsFinite(Vector3 value) =>
+        float.IsFinite(value.X)
+        && float.IsFinite(value.Y)
+        && float.IsFinite(value.Z);
+
     private static int Pad4(int value) => (value + 3) & ~3;
 }
 
@@ -685,8 +835,22 @@ public static class GlbMesh
 {
     public static ImportedMesh Load(string path) => ImportedMesh.Load(path);
 
-    public static ImportedMesh CreateTriangleMesh(string path, string name, string format, Vector3[] positions, int[] indices) =>
-        ImportedMesh.CreateTriangleMesh(path, name, format, positions, indices);
+    public static ImportedMesh CreateTriangleMesh(
+        string path,
+        string name,
+        string format,
+        Vector3[] positions,
+        int[] indices,
+        Vector3[]? normals = null,
+        bool[]? normalPresence = null) =>
+        ImportedMesh.CreateTriangleMesh(
+            path,
+            name,
+            format,
+            positions,
+            indices,
+            normals,
+            normalPresence);
 }
 
 public sealed record GlbTextureImage(string Name, string MimeType, byte[] Bytes);

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Docking.Controls;
@@ -16,6 +17,7 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     private readonly ToolRecipeWorkbenchView workbenchView;
     private readonly OpenVisionDockWorkspaceView expertView;
     private readonly WorkbenchViewerTeachingCoordinator teaching;
+    private string? displayedEvidenceSamplePath;
 
     public WorkbenchViewerDisplayCoordinator(
         ShellMainWindowViewModel shell,
@@ -49,6 +51,10 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.LineIntersectionDisplayCleared += OnLineIntersectionDisplayCleared;
         workbench.LandmarkCorrespondenceDisplayRequested += OnLandmarkCorrespondenceDisplayRequested;
         workbench.LandmarkCorrespondenceDisplayCleared += OnLandmarkCorrespondenceDisplayCleared;
+        workbench.SurfaceMatchDisplayRequested += OnSurfaceMatchDisplayRequested;
+        workbench.SurfaceMatchDisplayCleared += OnSurfaceMatchDisplayCleared;
+        workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        shell.PropertyChanged += OnShellPropertyChanged;
         viewer.WorkbenchLineFitPointSelected += OnWorkbenchLineFitPointSelected;
     }
 
@@ -70,7 +76,96 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         workbench.LineIntersectionDisplayCleared -= OnLineIntersectionDisplayCleared;
         workbench.LandmarkCorrespondenceDisplayRequested -= OnLandmarkCorrespondenceDisplayRequested;
         workbench.LandmarkCorrespondenceDisplayCleared -= OnLandmarkCorrespondenceDisplayCleared;
+        workbench.SurfaceMatchDisplayRequested -= OnSurfaceMatchDisplayRequested;
+        workbench.SurfaceMatchDisplayCleared -= OnSurfaceMatchDisplayCleared;
+        workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+        shell.PropertyChanged -= OnShellPropertyChanged;
         viewer.WorkbenchLineFitPointSelected -= OnWorkbenchLineFitPointSelected;
+    }
+
+    private void OnWorkbenchPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(ToolWorkbenchViewModel.SelectedValidationSetSample)
+            or nameof(ToolWorkbenchViewModel.SelectedValidationSetStep))
+        {
+            ShowSelectedValidationEvidence();
+        }
+    }
+
+    private void OnShellPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(ShellMainWindowViewModel.IsValidateWorkspaceSelected)
+            or nameof(ShellMainWindowViewModel.IsResultsWorkspaceSelected))
+        {
+            ShowSelectedValidationEvidence();
+            return;
+        }
+
+        if (args.PropertyName is nameof(ShellMainWindowViewModel.IsAuthoringWorkspaceSelected)
+            && shell.IsAuthoringWorkspaceSelected)
+        {
+            RestoreAuthoredSourceDisplay();
+        }
+    }
+
+    private void ShowSelectedValidationEvidence()
+    {
+        if ((!shell.IsValidateWorkspaceSelected && !shell.IsResultsWorkspaceSelected)
+            || workbench.SelectedValidationSetSample is not { } sample
+            || !File.Exists(sample.SourcePath))
+        {
+            return;
+        }
+
+        var fullPath = Path.GetFullPath(sample.SourcePath);
+        if (string.Equals(
+                displayedEvidenceSamplePath,
+                fullPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var step = workbench.SelectedValidationSetStep;
+        var label = step is null
+            ? $"Evidence | {sample.Status} | {sample.FileName}"
+            : $"Evidence | {sample.Status} | {sample.FileName} | {step.ToolName}";
+        if (!viewer.ShowC3DWorkbenchResult(fullPath, label))
+        {
+            WriteViewerError();
+            return;
+        }
+
+        displayedEvidenceSamplePath = fullPath;
+        RefreshViewerSourceState(syncTeaching: true);
+        OVLog.Write(
+            LogCategory.UI,
+            LogLevel.Info,
+            $"Validation evidence displayed | sample={sample.FileName} | status={sample.Status} | recipeChanged=false | previewRun=false | validationRun=false");
+    }
+
+    private void RestoreAuthoredSourceDisplay()
+    {
+        if (displayedEvidenceSamplePath is null
+            || string.IsNullOrWhiteSpace(workbench.Source.Path)
+            || !File.Exists(workbench.Source.Path))
+        {
+            return;
+        }
+
+        var sourcePath = Path.GetFullPath(workbench.Source.Path);
+        if (viewer.ShowC3DWorkbenchResult(sourcePath, $"Taught source | {Path.GetFileName(sourcePath)}"))
+        {
+            displayedEvidenceSamplePath = null;
+            RefreshViewerSourceState(syncTeaching: true);
+            return;
+        }
+
+        WriteViewerError();
     }
 
     private void OnFilterDisplayRequested(
@@ -237,6 +332,36 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
         {
             workbenchView.ActivateCorrespondenceEvidencePane();
         }
+    }
+
+    private void OnSurfaceMatchDisplayRequested(
+        object? sender,
+        ToolWorkbenchSurfaceMatchDisplayRequestEventArgs args)
+    {
+        viewer.ShowWorkbenchSurfaceMatch(
+            args.Model,
+            args.Scene,
+            args.Execution,
+            args.Assessment,
+            args.Runtime,
+            args.EdgeScore);
+        RefreshViewerSourceState();
+        OVLog.Write(
+            LogCategory.UI,
+            LogLevel.Info,
+            $"Surface match evidence displayed | executionSha256={args.Execution.ContentSha256} | overlaySha256={args.Execution.Overlay?.ContentSha256 ?? "(none)"} | edgeScoreSha256={args.EdgeScore?.ContentSha256 ?? "(none)"} | assessment={args.Assessment?.Decision.ToString() ?? "none"} | recipeChanged=false | previewRun=false | validationRun=false");
+    }
+
+    private void OnSurfaceMatchDisplayCleared(
+        object? sender,
+        EventArgs args)
+    {
+        viewer.ClearWorkbenchSurfaceMatch();
+        RefreshViewerSourceState();
+        OVLog.Write(
+            LogCategory.UI,
+            LogLevel.Info,
+            "Surface match evidence cleared | recipeChanged=false | previewRun=false | validationRun=false");
     }
 
     private void RefreshViewerSourceState(bool syncTeaching = false)

@@ -455,6 +455,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dRenderPositionsTransform,
             geometryStyle,
             viewModel.Display.EffectiveSettings.ColorMap,
+            viewModel.C3DHeightColorMinimumRaw,
+            viewModel.C3DHeightColorMaximumRaw,
             viewModel.PointSize,
             wireframeLodLevel);
         if (wireframeLodLevel != C3DWireframeLodLevel.Precise)
@@ -590,6 +592,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             c3dSample!,
             c3dRenderPositionsTransform,
             viewModel.Display.EffectiveSettings.ColorMap,
+            viewModel.C3DHeightColorMinimumRaw,
+            viewModel.C3DHeightColorMaximumRaw,
             UsesDynamicC3DColor() ? planeFlatnessEvaluation : null);
         if (c3dGpuBuffers is null || c3dGpuBufferKey != bufferKey)
         {
@@ -683,13 +687,14 @@ public sealed partial class OpenVisionThreeDViewerControl
             return GetPlaneFlatnessColor(position, flatness);
         }
 
+        var heightColorScalar = viewModel.NormalizeC3DHeightColor(point.RawValue);
         return viewModel.Display.EffectiveSettings.ColorMap switch
         {
             ViewerColorMap.Solid => (0.62, 0.82, 1.0),
-            ViewerColorMap.Grayscale => ViewerColorMapPalette.Grayscale(point.HeightScalar),
-            ViewerColorMap.Thermal => ViewerColorMapPalette.Thermal(point.HeightScalar),
+            ViewerColorMap.Grayscale => ViewerColorMapPalette.Grayscale(heightColorScalar),
+            ViewerColorMap.Thermal => ViewerColorMapPalette.Thermal(heightColorScalar),
             ViewerColorMap.Deviation => DeviationColor(point.DeviationScalar),
-            _ => C3DPointMapPalette.Height(point.HeightScalar)
+            _ => C3DPointMapPalette.Height(heightColorScalar)
         };
     }
 
@@ -1408,13 +1413,14 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void ApplyPointColor(OpenGL gl, HeightGridPoint point)
     {
+        var heightColorScalar = viewModel.NormalizeC3DHeightColor(point.RawValue);
         var (r, g, b) = viewModel.SelectedColorMode switch
         {
             "Solid" => (0.62, 0.82, 1.0),
-            "Grayscale" => ViewerColorMapPalette.Grayscale(point.HeightScalar),
-            "Thermal" => ViewerColorMapPalette.Thermal(point.HeightScalar),
+            "Grayscale" => ViewerColorMapPalette.Grayscale(heightColorScalar),
+            "Thermal" => ViewerColorMapPalette.Thermal(heightColorScalar),
             "Deviation" => DeviationColor(point.DeviationScalar),
-            _ => C3DPointMapPalette.Height(point.HeightScalar)
+            _ => C3DPointMapPalette.Height(heightColorScalar)
         };
 
         gl.Color(r, g, b);

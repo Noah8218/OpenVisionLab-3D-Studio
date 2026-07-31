@@ -12,8 +12,93 @@ internal static class ShellVerificationCommandRouter
     public static void Run(string[] args)
     {
         var e = new VerificationArguments(args);
+        const string surfaceEdgeWorkbenchParityOption =
+            "--verify-surface-edge-workbench-parity";
+        var surfaceEdgeWorkbenchParityIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                surfaceEdgeWorkbenchParityOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (surfaceEdgeWorkbenchParityIndex >= 0)
+        {
+            if (surfaceEdgeWorkbenchParityIndex + 7 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{surfaceEdgeWorkbenchParityOption} requires model, scene, execution, model edge, scene edge, Runner score, and report paths.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = SurfaceEdgeWorkbenchParityVerification.Verify(
+                args[surfaceEdgeWorkbenchParityIndex + 1],
+                args[surfaceEdgeWorkbenchParityIndex + 2],
+                args[surfaceEdgeWorkbenchParityIndex + 3],
+                args[surfaceEdgeWorkbenchParityIndex + 4],
+                args[surfaceEdgeWorkbenchParityIndex + 5],
+                args[surfaceEdgeWorkbenchParityIndex + 6],
+                args[surfaceEdgeWorkbenchParityIndex + 7],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
+        const string surfaceMatchWorkbenchParityOption =
+            "--verify-surface-match-workbench-parity";
+        var surfaceMatchWorkbenchParityIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                surfaceMatchWorkbenchParityOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (surfaceMatchWorkbenchParityIndex >= 0)
+        {
+            if (surfaceMatchWorkbenchParityIndex + 4 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{surfaceMatchWorkbenchParityOption} requires model, scene, Runner execution, and report paths.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed =
+                SurfaceMatchWorkbenchParityVerification.Verify(
+                    args[surfaceMatchWorkbenchParityIndex + 1],
+                    args[surfaceMatchWorkbenchParityIndex + 2],
+                    args[surfaceMatchWorkbenchParityIndex + 3],
+                    args[surfaceMatchWorkbenchParityIndex + 4],
+                    out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
         const string sourceQualityWorkspaceVerificationOption =
             "--verify-source-quality-workspace";
+        const string sourceChannelNormalQualityVerificationOption =
+            "--verify-source-channel-normal-quality";
+        var sourceChannelNormalQualityVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                sourceChannelNormalQualityVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (sourceChannelNormalQualityVerificationIndex >= 0)
+        {
+            if (sourceChannelNormalQualityVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{sourceChannelNormalQualityVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = SourceChannelAndNormalQualityVerification.Verify(
+                args[sourceChannelNormalQualityVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
         var sourceQualityWorkspaceVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(

@@ -7,10 +7,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
 $workspaceRoot = Split-Path -Parent $PSScriptRoot
 $shellExe = Join-Path $workspaceRoot `
     "src\OpenVisionLab.ThreeD.Shell\bin\Release\net10.0-windows10.0.19041\OpenVisionLab.ThreeD.Shell.exe"
 $shellAssembly = [System.IO.Path]::ChangeExtension($shellExe, ".dll")
+$coreAssembly = Join-Path (Split-Path -Parent $shellExe) `
+    "OpenVisionLab.ThreeD.Core.dll"
+$dataAssembly = Join-Path (Split-Path -Parent $shellExe) `
+    "OpenVisionLab.ThreeD.Data.dll"
+$toolsAssembly = Join-Path (Split-Path -Parent $shellExe) `
+    "OpenVisionLab.ThreeD.Tools.dll"
+$viewerAssembly = Join-Path (Split-Path -Parent $shellExe) `
+    "OpenVisionLab.ThreeD.Viewer.dll"
 $dockingAssembly = Join-Path (Split-Path -Parent $shellExe) `
     "OpenVisionLab.ThreeD.Docking.Controls.dll"
 $recipePath = Join-Path $workspaceRoot `
@@ -21,6 +30,10 @@ $runRecordPath = Join-Path $workspaceRoot `
 foreach ($requiredPath in @(
         $shellExe,
         $shellAssembly,
+        $coreAssembly,
+        $dataAssembly,
+        $toolsAssembly,
+        $viewerAssembly,
         $dockingAssembly,
         $recipePath,
         $runRecordPath)) {
@@ -57,15 +70,56 @@ $layoutSize = if ($Layout -eq "Wide") {
 $inputHashes = @(
     Get-FileHash -Algorithm SHA256 -LiteralPath $shellExe
     Get-FileHash -Algorithm SHA256 -LiteralPath $shellAssembly
+    Get-FileHash -Algorithm SHA256 -LiteralPath $coreAssembly
+    Get-FileHash -Algorithm SHA256 -LiteralPath $dataAssembly
+    Get-FileHash -Algorithm SHA256 -LiteralPath $toolsAssembly
+    Get-FileHash -Algorithm SHA256 -LiteralPath $viewerAssembly
     Get-FileHash -Algorithm SHA256 -LiteralPath $dockingAssembly
     Get-FileHash -Algorithm SHA256 -LiteralPath $recipePath
     Get-FileHash -Algorithm SHA256 -LiteralPath $runRecordPath
 )
+$expectedHashes = @{}
+$expectedHashes[(Resolve-Path -LiteralPath $shellExe).Path] =
+    "01B857854B4E34D62E0E2C99EC523FA5BF81CCB6A7AD14173DBE5868F76C8719"
+$expectedHashes[(Resolve-Path -LiteralPath $shellAssembly).Path] =
+    "B7E26FE9F1E925D087145494E667FA72F046332FED51EA239983AAF6DD995172"
+$expectedHashes[(Resolve-Path -LiteralPath $coreAssembly).Path] =
+    "5BCCC08EB06C98152345932F096D73A0C4AC3CFDBF0056E6BF2C5ABDAD598EEC"
+$expectedHashes[(Resolve-Path -LiteralPath $dataAssembly).Path] =
+    "19CB1A34D64B5EC359BE92A353F0A256A43E74E0A2BD863E87D928F3D50F923D"
+$expectedHashes[(Resolve-Path -LiteralPath $toolsAssembly).Path] =
+    "A33463EA7103761AC2938ECF42777F189D450869F082777469348DB6B2C9020B"
+$expectedHashes[(Resolve-Path -LiteralPath $viewerAssembly).Path] =
+    "0DE4D5A5C419B6637EE61E80A491AD948FB8ED8CBC617FDEA8C4AA546955148A"
+$expectedHashes[(Resolve-Path -LiteralPath $dockingAssembly).Path] =
+    "A271EDD087D6598D5BB37CD16242A8390BFCEE1F7CC39F56317963F09F76D523"
+$expectedHashes[(Resolve-Path -LiteralPath $recipePath).Path] =
+    "0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461"
+$expectedHashes[(Resolve-Path -LiteralPath $runRecordPath).Path] =
+    "BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A"
+
+foreach ($hash in $inputHashes) {
+    $expectedHash = $expectedHashes[$hash.Path]
+    if (-not $expectedHash -or
+        -not $hash.Hash.Equals(
+            $expectedHash,
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw (
+            "R0 input hash mismatch. Rebuild and record a new fixed evidence " +
+            "set before launching. Expected=$expectedHash; " +
+            "Actual=$($hash.Hash); Path=$($hash.Path)"
+        )
+    }
+}
 
 Write-Output "OpenVisionLab 3D Studio human-owner R0"
 Write-Output "Layout: $Layout ($($layoutSize.Width) x $($layoutSize.Height))"
 Write-Output "Release: $shellExe"
 Write-Output "Shell assembly: $shellAssembly"
+Write-Output "Core assembly: $coreAssembly"
+Write-Output "Data assembly: $dataAssembly"
+Write-Output "Tools assembly: $toolsAssembly"
+Write-Output "Viewer assembly: $viewerAssembly"
 Write-Output "Docking assembly: $dockingAssembly"
 Write-Output "Recipe: $recipePath"
 Write-Output "Run Record: $runRecordPath"

@@ -1817,3 +1817,187 @@ public sealed class RegridHeightMapStepProperties
     private static int Integer(ToolWorkbenchPipelineStepItem step, string name, int fallback) =>
         int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 }
+
+[CategoryOrder("Acceptance decision", 0)]
+[CategoryOrder("Rotation search (deg)", 1)]
+[CategoryOrder("Translation bounds", 2)]
+[CategoryOrder("Search guard", 3)]
+public sealed class SurfaceMatchStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "MinimumCoverageRatio", "MaximumInlierRmse",
+        "MinimumRotationXDegrees", "MaximumRotationXDegrees", "RotationStepXDegrees",
+        "MinimumRotationYDegrees", "MaximumRotationYDegrees", "RotationStepYDegrees",
+        "MinimumRotationZDegrees", "MaximumRotationZDegrees", "RotationStepZDegrees",
+        "MinimumTranslationX", "MaximumTranslationX",
+        "MinimumTranslationY", "MaximumTranslationY",
+        "MinimumTranslationZ", "MaximumTranslationZ",
+        "MaximumCorrespondenceDistance", "MinimumMatchedSampleCount", "MaximumCandidateCount"
+    ];
+
+    [Category("Acceptance decision")]
+    [DisplayName("Minimum coverage ratio")]
+    [Description("Separate Pass/Fail limit over the raw one-way model coverage. It does not change pose search or the Viewer overlay.")]
+    [PropertyOrder(0)]
+    [NumberRange(0, 1, 0.01)]
+    public double MinimumCoverageRatio { get; set; } = 0.9;
+
+    [Category("Acceptance decision")]
+    [DisplayName("Maximum inlier RMSE")]
+    [Description("Separate Pass/Fail limit in the model/scene unit. It does not change the correspondence distance used by search.")]
+    [PropertyOrder(1)]
+    public double MaximumInlierRmse { get; set; } = 0.25;
+
+    [Category("Rotation search (deg)")] [DisplayName("X minimum")] [PropertyOrder(10)] public double MinimumRotationXDegrees { get; set; }
+    [Category("Rotation search (deg)")] [DisplayName("X maximum")] [PropertyOrder(11)] public double MaximumRotationXDegrees { get; set; }
+    [Category("Rotation search (deg)")] [DisplayName("X step")] [PropertyOrder(12)] public double RotationStepXDegrees { get; set; } = 1;
+    [Category("Rotation search (deg)")] [DisplayName("Y minimum")] [PropertyOrder(13)] public double MinimumRotationYDegrees { get; set; }
+    [Category("Rotation search (deg)")] [DisplayName("Y maximum")] [PropertyOrder(14)] public double MaximumRotationYDegrees { get; set; }
+    [Category("Rotation search (deg)")] [DisplayName("Y step")] [PropertyOrder(15)] public double RotationStepYDegrees { get; set; } = 1;
+    [Category("Rotation search (deg)")] [DisplayName("Z minimum")] [PropertyOrder(16)] public double MinimumRotationZDegrees { get; set; } = -45;
+    [Category("Rotation search (deg)")] [DisplayName("Z maximum")] [PropertyOrder(17)] public double MaximumRotationZDegrees { get; set; } = 45;
+    [Category("Rotation search (deg)")] [DisplayName("Z step")] [PropertyOrder(18)] public double RotationStepZDegrees { get; set; } = 15;
+
+    [Category("Translation bounds")] [DisplayName("X minimum")] [PropertyOrder(20)] public double MinimumTranslationX { get; set; } = -10;
+    [Category("Translation bounds")] [DisplayName("X maximum")] [PropertyOrder(21)] public double MaximumTranslationX { get; set; } = 10;
+    [Category("Translation bounds")] [DisplayName("Y minimum")] [PropertyOrder(22)] public double MinimumTranslationY { get; set; } = -10;
+    [Category("Translation bounds")] [DisplayName("Y maximum")] [PropertyOrder(23)] public double MaximumTranslationY { get; set; } = 10;
+    [Category("Translation bounds")] [DisplayName("Z minimum")] [PropertyOrder(24)] public double MinimumTranslationZ { get; set; } = -10;
+    [Category("Translation bounds")] [DisplayName("Z maximum")] [PropertyOrder(25)] public double MaximumTranslationZ { get; set; } = 10;
+
+    [Category("Search guard")]
+    [DisplayName("Maximum correspondence distance")]
+    [Description("Raw nearest-sample distance used by pose scoring. This is not the Pass/Fail RMSE limit.")]
+    [PropertyOrder(30)]
+    public double MaximumCorrespondenceDistance { get; set; } = 1;
+
+    [Category("Search guard")]
+    [DisplayName("Minimum matched samples")]
+    [PropertyOrder(31)]
+    public int MinimumMatchedSampleCount { get; set; } = 3;
+
+    [Category("Search guard")]
+    [DisplayName("Maximum candidates")]
+    [Description("Fail closed before execution when the authored rotation grid exceeds this budget.")]
+    [PropertyOrder(32)]
+    public int MaximumCandidateCount { get; set; } = 10000;
+
+    internal static SurfaceMatchStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+    {
+        MinimumCoverageRatio = Double(step, "MinimumCoverageRatio", 0.9),
+        MaximumInlierRmse = Double(step, "MaximumInlierRmse", 0.25),
+        MinimumRotationXDegrees = Double(step, "MinimumRotationXDegrees", 0),
+        MaximumRotationXDegrees = Double(step, "MaximumRotationXDegrees", 0),
+        RotationStepXDegrees = Double(step, "RotationStepXDegrees", 1),
+        MinimumRotationYDegrees = Double(step, "MinimumRotationYDegrees", 0),
+        MaximumRotationYDegrees = Double(step, "MaximumRotationYDegrees", 0),
+        RotationStepYDegrees = Double(step, "RotationStepYDegrees", 1),
+        MinimumRotationZDegrees = Double(step, "MinimumRotationZDegrees", -45),
+        MaximumRotationZDegrees = Double(step, "MaximumRotationZDegrees", 45),
+        RotationStepZDegrees = Double(step, "RotationStepZDegrees", 15),
+        MinimumTranslationX = Double(step, "MinimumTranslationX", -10),
+        MaximumTranslationX = Double(step, "MaximumTranslationX", 10),
+        MinimumTranslationY = Double(step, "MinimumTranslationY", -10),
+        MaximumTranslationY = Double(step, "MaximumTranslationY", 10),
+        MinimumTranslationZ = Double(step, "MinimumTranslationZ", -10),
+        MaximumTranslationZ = Double(step, "MaximumTranslationZ", 10),
+        MaximumCorrespondenceDistance = Double(step, "MaximumCorrespondenceDistance", 1),
+        MinimumMatchedSampleCount = Integer(step, "MinimumMatchedSampleCount", 3),
+        MaximumCandidateCount = Integer(step, "MaximumCandidateCount", 10000)
+    };
+
+    internal bool TryCreateContracts(
+        out RigidSurfacePoseSearchParameters? search,
+        out SurfaceMatchAcceptancePolicy? policy,
+        out string message)
+    {
+        search = new RigidSurfacePoseSearchParameters(
+            MinimumRotationXDegrees, MaximumRotationXDegrees, RotationStepXDegrees,
+            MinimumRotationYDegrees, MaximumRotationYDegrees, RotationStepYDegrees,
+            MinimumRotationZDegrees, MaximumRotationZDegrees, RotationStepZDegrees,
+            MinimumTranslationX, MaximumTranslationX,
+            MinimumTranslationY, MaximumTranslationY,
+            MinimumTranslationZ, MaximumTranslationZ,
+            MaximumCorrespondenceDistance,
+            MinimumMatchedSampleCount,
+            MaximumCandidateCount);
+        var validity =
+            RigidSurfacePoseSearchParameterValidator.Inspect(search);
+        if (!validity.IsValid)
+        {
+            policy = null;
+            message = string.Join(" ", validity.Errors);
+            return false;
+        }
+
+        try
+        {
+            policy = SurfaceMatchAcceptancePolicy.Create(
+                MinimumCoverageRatio,
+                MaximumInlierRmse);
+            message =
+                $"Finite search domain ready ({validity.CandidateCount} candidates). Parameter Apply will not execute Preview or Run.";
+            return true;
+        }
+        catch (InvalidDataException exception)
+        {
+            policy = null;
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    internal IReadOnlyDictionary<string, string> ToRecipeParameters() =>
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["MinimumCoverageRatio"] = Text(MinimumCoverageRatio),
+            ["MaximumInlierRmse"] = Text(MaximumInlierRmse),
+            ["MinimumRotationXDegrees"] = Text(MinimumRotationXDegrees),
+            ["MaximumRotationXDegrees"] = Text(MaximumRotationXDegrees),
+            ["RotationStepXDegrees"] = Text(RotationStepXDegrees),
+            ["MinimumRotationYDegrees"] = Text(MinimumRotationYDegrees),
+            ["MaximumRotationYDegrees"] = Text(MaximumRotationYDegrees),
+            ["RotationStepYDegrees"] = Text(RotationStepYDegrees),
+            ["MinimumRotationZDegrees"] = Text(MinimumRotationZDegrees),
+            ["MaximumRotationZDegrees"] = Text(MaximumRotationZDegrees),
+            ["RotationStepZDegrees"] = Text(RotationStepZDegrees),
+            ["MinimumTranslationX"] = Text(MinimumTranslationX),
+            ["MaximumTranslationX"] = Text(MaximumTranslationX),
+            ["MinimumTranslationY"] = Text(MinimumTranslationY),
+            ["MaximumTranslationY"] = Text(MaximumTranslationY),
+            ["MinimumTranslationZ"] = Text(MinimumTranslationZ),
+            ["MaximumTranslationZ"] = Text(MaximumTranslationZ),
+            ["MaximumCorrespondenceDistance"] = Text(MaximumCorrespondenceDistance),
+            ["MinimumMatchedSampleCount"] = MinimumMatchedSampleCount.ToString(CultureInfo.InvariantCulture),
+            ["MaximumCandidateCount"] = MaximumCandidateCount.ToString(CultureInfo.InvariantCulture)
+        };
+
+    private static double Double(
+        ToolWorkbenchPipelineStepItem step,
+        string name,
+        double fallback) =>
+        double.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var value)
+                ? value
+                : fallback;
+
+    private static int Integer(
+        ToolWorkbenchPipelineStepItem step,
+        string name,
+        int fallback) =>
+        int.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var value)
+                ? value
+                : fallback;
+
+    private static string Text(double value) =>
+        value.ToString("G17", CultureInfo.InvariantCulture);
+}

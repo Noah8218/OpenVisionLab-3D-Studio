@@ -6,29 +6,62 @@
              xmlns:wpg="clr-namespace:System.Windows.Controls.WpfPropertyGrid;assembly=OpenVisionLab.WpfPropertyGrid.ThreeD"
              AutomationProperties.AutomationId="RecipeStepPropertyGridHost">
     <UserControl.Resources>
-        <!-- These keys are local to this host. The package never changes App resources. -->
-        <SolidColorBrush x:Key="Ovl3D.Wpg.SurfaceBrush" Color="#FFF3F4F6" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.PanelBrush" Color="#FFFFFFFF" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.RowHoverBrush" Color="#FFEFF6FF" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.NameColumnBrush" Color="#FFF9FAFB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.NameColumnHoverBrush" Color="#FFDFF5F2" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.LineBrush" Color="#FFD1D5DB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.HeaderBrush" Color="#FFDFF5F2" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.TextBrush" Color="#FF111827" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.MutedTextBrush" Color="#FF6B7280" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.AccentBrush" Color="#FF0F766E" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorBorderBrush" Color="#FFD1D5DB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorFocusBrush" Color="#FF2563EB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorBackgroundBrush" Color="#FFFFFFFF" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorPanelBrush" Color="#FFF9FAFB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorReadOnlyBrush" Color="#FFF3F4F6" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorTextBrush" Color="#FF111827" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorMutedBrush" Color="#FF6B7280" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorHoverBrush" Color="#FFEFF6FF" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.EditorSelectedBrush" Color="#FFDFF5F2" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderTrackBrush" Color="#FFD1D5DB" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderFillBrush" Color="#FF0F766E" />
-        <SolidColorBrush x:Key="Ovl3D.Wpg.SliderThumbBrush" Color="#FFFFFFFF" />
+        <!-- The package reads these app-local keys. Alias them to the shared
+             OpenVision graphite roles so every PropertyGrid state follows the
+             owning product theme instead of introducing a private light theme. -->
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.SurfaceBrush" ResourceKey="ThreeD.PanelAlternateBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.PanelBrush" ResourceKey="ThreeD.PanelBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.RowHoverBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.NameColumnBrush" ResourceKey="ThreeD.CommandBarBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.NameColumnHoverBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.LineBrush" ResourceKey="ThreeD.DividerBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.HeaderBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.TextBrush" ResourceKey="ThreeD.TextBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.MutedTextBrush" ResourceKey="ThreeD.MutedTextBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.AccentBrush" ResourceKey="ThreeD.AccentBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBorderBrush" ResourceKey="ThreeD.DividerBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorFocusBrush" ResourceKey="ThreeD.FocusBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorBackgroundBrush" ResourceKey="ThreeD.ControlBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorPanelBrush" ResourceKey="ThreeD.PanelAlternateBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorReadOnlyBrush" ResourceKey="ThreeD.DisabledSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorTextBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorMutedBrush" ResourceKey="ThreeD.DisabledBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorHoverBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.EditorSelectedBrush" ResourceKey="ThreeD.SelectedSurfaceBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderTrackBrush" ResourceKey="ThreeD.DividerBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderFillBrush" ResourceKey="ThreeD.AccentBrush" />
+        <StaticResourceExtension x:Key="Ovl3D.Wpg.SliderThumbBrush" ResourceKey="ThreeD.PrimaryTextBrush" />
+
+        <Style x:Key="RecipeStepPropertySearchStyle"
+               TargetType="{x:Type TextBox}"
+               BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            <Setter Property="SelectionTextBrush" Value="{DynamicResource ThreeD.CommandBarBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                </Trigger>
+                <Trigger Property="IsReadOnly" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                </Trigger>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -39,7 +72,9 @@
             <TextBox x:Name="PropertyFilterBox"
                      MinHeight="28"
                      Padding="8,3,30,3"
+                     Style="{StaticResource RecipeStepPropertySearchStyle}"
                      VerticalContentAlignment="Center"
+                     AutomationProperties.AutomationId="RecipeStepPropertySearch"
                      AutomationProperties.Name="{shell:ThreeDText Key=ThreeD.PropertyGrid.Search, Korean='파라미터 검색', English='Search parameters'}"
                      TextChanged="OnPropertyFilterTextChanged" />
             <TextBlock Margin="10,0,32,0"
@@ -69,6 +104,10 @@
         </Grid>
         <wpg:PropertyGrid x:Name="InnerGrid"
                           Grid.Row="1"
+                          Background="{DynamicResource ThreeD.PanelBrush}"
+                          BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                          Foreground="{DynamicResource ThreeD.TextBrush}"
+                          AutomationProperties.AutomationId="RecipeStepPropertyGrid"
                           AutomationProperties.Name="Selected step parameters"
                           EditorColumnMinWidth="120"
                           PreviewKeyDown="OnInnerGridPreviewKeyDown"

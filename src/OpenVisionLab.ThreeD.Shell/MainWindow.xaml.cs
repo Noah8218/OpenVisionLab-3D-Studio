@@ -11,6 +11,7 @@ using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
+using OpenVisionLab.ThreeD.Shell.Layout;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Recipe;
 using OpenVisionLab.ThreeD.Shell.Views.Tooling;
@@ -61,6 +62,10 @@ public partial class MainWindow : Window
     private readonly WorkbenchViewerDisplayCoordinator _workbenchViewerDisplay;
     private readonly PropertyChangedEventHandler _viewModelPropertyChangedHandler;
     private readonly EventHandler _inspectionTaskChangedHandler;
+    private StudioLayoutProfileStore? studioLayoutStore;
+    private StudioLayoutProfile? pendingStudioLayoutProfile;
+    private bool canAutoSaveStudioLayout;
+    private StudioLayoutLoadStatus? studioLayoutLoadStatus;
     private RecipeManagerWindow? recipeManagerWindow;
     private readonly ToolLabWindowManager _toolLabWindows;
     private CancellationTokenSource? c3dSourceLoadCancellation;
@@ -180,13 +185,16 @@ public partial class MainWindow : Window
 
         ConfigureCalibrationStudyFromCommandLine();
         ConfigureToolTeachingRecipeFromCommandLine();
+        RestoreStartupRunRecordAfterRecipeLoad();
         RestoreMostRecentWorkbenchRecipe();
         ConfigureOutputCompareFromCommandLine();
         ConfigureWorkbenchBottomPaneFromCommandLine();
         ConfigureValidationSetFromCommandLine();
         ConfigureC3DSourceLoadProgressFromCommandLine();
         _workbenchViewerTeaching.SyncAppliedSelections();
+        ConfigureStudioLayoutPersistence();
         Loaded += ConfigureViewerViewFromCommandLine;
+        Loaded += RestoreStudioLayoutOnLoaded;
         Loaded += EnsureWorkbenchViewerSourceConsistency;
         EnableShellSmokeFromCommandLine();
     }
@@ -199,6 +207,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        SaveStudioLayout();
         base.OnClosing(e);
     }
 
@@ -315,6 +324,7 @@ public partial class MainWindow : Window
         _viewModel.InspectionTaskChanged -= _inspectionTaskChangedHandler;
         Loaded -= _shellSmokeLoadedHandler;
         Loaded -= EnsureWorkbenchViewerSourceConsistency;
+        Loaded -= RestoreStudioLayoutOnLoaded;
         c3dSourceLoadCancellation?.Cancel();
         c3dSourceLoadCancellation?.Dispose();
         c3dSourceLoadCancellation = null;
@@ -378,6 +388,10 @@ public partial class MainWindow : Window
         var profilePointerSmokeReportPath = smoke.ProfilePointerSmokeReportPath;
         var orientedBoxPointerSmokeReportPath = smoke.OrientedBoxPointerSmokeReportPath;
         var smokeSelectToolId = smoke.SmokeSelectToolId;
+        var expandSelectedToolParametersSmoke =
+            smoke.ExpandSelectedToolParametersSmoke;
+        var focusSelectedToolParameterSearchSmoke =
+            smoke.FocusSelectedToolParameterSearchSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
         var twoPointLinePublishSmoke = smoke.TwoPointLinePublishSmoke;
@@ -421,6 +435,28 @@ public partial class MainWindow : Window
             {
                 await Dispatcher.InvokeAsync(() => { });
                 ConfigureResultsSectionFromCommandLine();
+                if (!TryConfigureSurfaceMatchEvidenceFromCommandLine(
+                        out var surfaceMatchFailure))
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        surfaceMatchFailure);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+                if (Environment.GetCommandLineArgs().Contains(
+                        "--smoke-focus-selected-tool",
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    ToolWorkbench.ActivateSelectedToolPane();
+                }
+
+                if (Environment.GetCommandLineArgs().Contains(
+                        "--smoke-collapse-selected-tool",
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    ToolWorkbench.ToggleSelectedToolSideCollapse();
+                }
+
                 if (asyncC3DLoadSmokePath is not null
                     && !await ShellAsyncC3DLoadSmoke.RunAsync(
                         _viewer,
@@ -961,6 +997,51 @@ public partial class MainWindow : Window
                     _viewModel.Workbench.AddSelectedToolCommand.Execute(null);
                 }
 
+                if (expandSelectedToolParametersSmoke)
+                {
+                    ToolWorkbench.ActivateSelectedToolPane();
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Loaded);
+                    var parametersExpander =
+                        FindVisualDescendants<
+                                System.Windows.Controls.Expander>(
+                                ToolWorkbench)
+                            .FirstOrDefault(expander =>
+                                System.Windows.Automation
+                                    .AutomationProperties
+                                    .GetAutomationId(expander)
+                                == "SelectedToolParametersExpander");
+                    if (parametersExpander is null)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Selected Tool parameters expander was not found.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    parametersExpander.IsExpanded = true;
+                }
+
+                if (focusSelectedToolParameterSearchSmoke)
+                {
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Loaded);
+                    var parameterSearch =
+                        FindVisualDescendants<System.Windows.Controls.TextBox>(ToolWorkbench)
+                            .FirstOrDefault(textBox =>
+                                System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)
+                                == "RecipeStepPropertySearch");
+                    if (parameterSearch is null || !parameterSearch.Focus())
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Selected Tool parameter search could not receive keyboard focus.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
                 var workbenchUiApplyStarted = Stopwatch.GetTimestamp();
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
@@ -969,8 +1050,8 @@ public partial class MainWindow : Window
                 {
                     var fullReportPath = Path.GetFullPath(workbenchInteractionReportPath);
                     Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
-                    File.WriteAllLines(fullReportPath,
-                    [
+                    var reportLines = new List<string>
+                    {
                         "OpenVisionLab 3D Workbench interaction timing",
                         "Boundary|Local Release EXE smoke timing; this is not a broad hardware benchmark.",
                         $"Tool|id={smokeSelectToolId ?? "(none)"}|selected={_viewModel.Workbench.SelectedTool?.Id ?? "(none)"}|step={_viewModel.Workbench.SelectedPipelineStep?.Id ?? "(none)"}",
@@ -978,7 +1059,10 @@ public partial class MainWindow : Window
                         $"RecipeRefresh|totalMs={_viewModel.Workbench.LastRecipeRefreshMilliseconds:F3}|validationMs={_viewModel.Workbench.LastRecipeValidationMilliseconds:F3}|entityRebuildMs={_viewModel.Workbench.LastRecipeEntityRebuildMilliseconds:F3}|executionStateMs={_viewModel.Workbench.LastRecipeExecutionStateMilliseconds:F3}|notificationMs={_viewModel.Workbench.LastRecipeNotificationMilliseconds:F3}",
                         $"Budget|toolSelection50ms={_viewModel.Workbench.LastToolSelectionMilliseconds <= 50.0}|toolAdd150ms={_viewModel.Workbench.LastToolAddMilliseconds <= 150.0}|stepSelection150ms={_viewModel.Workbench.LastStepSelectionMilliseconds <= 150.0}|uiApply150ms={workbenchUiApplyMilliseconds <= 150.0}",
                         $"Recipe|steps={_viewModel.Workbench.PipelineSteps.Count}|state={_viewModel.Workbench.SelectedPipelineStep?.State ?? "(none)"}|publishAvailable={_viewModel.Workbench.PublishSelectedStepCommand.CanExecute(null)}"
-                    ]);
+                    };
+                    reportLines.AddRange(
+                        ToolWorkbench.GetSelectedToolVisibleTextLayout());
+                    File.WriteAllLines(fullReportPath, reportLines);
                 }
                 await Task.Delay(100);
                 if (shellScreenshotPath is not null
@@ -1069,6 +1153,82 @@ public partial class MainWindow : Window
         var args = Environment.GetCommandLineArgs();
         var index = Array.IndexOf(args, name);
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
+
+    private bool TryConfigureSurfaceMatchEvidenceFromCommandLine(
+        out string failure)
+    {
+        failure = string.Empty;
+        var modelPath =
+            GetCommandLineValue("--smoke-surface-match-model");
+        var scenePath =
+            GetCommandLineValue("--smoke-surface-match-scene");
+        var executionPath =
+            GetCommandLineValue("--smoke-surface-match-execution");
+        var assessmentPath =
+            GetCommandLineValue("--smoke-surface-match-assessment");
+        var runtimePath =
+            GetCommandLineValue("--smoke-surface-match-runtime");
+        var edgeScorePath =
+            GetCommandLineValue("--smoke-surface-edge-score");
+        if (modelPath is null
+            && scenePath is null
+            && executionPath is null
+            && assessmentPath is null
+            && runtimePath is null
+            && edgeScorePath is null)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(modelPath)
+            || string.IsNullOrWhiteSpace(scenePath)
+            || string.IsNullOrWhiteSpace(executionPath)
+            || edgeScorePath is not null
+                && string.IsNullOrWhiteSpace(edgeScorePath)
+            || runtimePath is not null
+                && string.IsNullOrWhiteSpace(assessmentPath))
+        {
+            failure =
+                "Surface match smoke requires model, scene, and execution paths; runtime also requires an assessment path.";
+            return false;
+        }
+
+        try
+        {
+            var model =
+                SurfaceModelArtifactStore.Load(modelPath);
+            var scene =
+                PreparedSceneArtifactStore.Load(scenePath);
+            var execution =
+                SurfaceMatchExecutionArtifactStore.Load(
+                    executionPath);
+            var assessment = string.IsNullOrWhiteSpace(assessmentPath)
+                ? null
+                : SurfaceMatchAssessmentArtifactStore.Load(
+                    assessmentPath);
+            var runtime = string.IsNullOrWhiteSpace(runtimePath)
+                ? null
+                : SurfaceMatchAssessmentArtifactStore.LoadRuntime(
+                    runtimePath);
+            var edgeScore = string.IsNullOrWhiteSpace(edgeScorePath)
+                ? null
+                : SurfaceEdgeArtifactStore.LoadScore(edgeScorePath);
+            _viewModel.Workbench.ShowSurfaceMatchEvidence(
+                model,
+                scene,
+                execution,
+                assessment,
+                runtime,
+                edgeScore);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            failure =
+                $"Surface match smoke evidence failed: {exception.Message}";
+            return false;
+        }
     }
 
     private static void ApplyCommandLineLanguage()
@@ -1194,6 +1354,21 @@ public partial class MainWindow : Window
         }
 
         OVLog.Write(LogCategory.UI, LogLevel.Error, $"Tool teaching recipe source load failed: {_viewer.HostState.ViewerStatus}");
+    }
+
+    private void RestoreStartupRunRecordAfterRecipeLoad()
+    {
+        var requestedRunRecord = GetCommandLineValue("--run-record");
+        if (string.IsNullOrWhiteSpace(requestedRunRecord)
+            || _viewModel.LoadRunRecord(requestedRunRecord, out var message))
+        {
+            return;
+        }
+
+        OVLog.Write(
+            LogCategory.UI,
+            LogLevel.Warning,
+            $"Startup Run Record could not be restored after recipe load: {message}");
     }
 
     private async Task<bool> RunSourceQualitySmokeAsync(string? reportPath)
@@ -1701,6 +1876,22 @@ public partial class MainWindow : Window
 
     private void ConfigureViewerViewFromCommandLine(object sender, RoutedEventArgs e)
     {
+        switch (GetCommandLineValue("--smoke-stage")?.Trim().ToLowerInvariant())
+        {
+            case "setup":
+                _viewModel.IsSetupWorkspaceSelected = true;
+                break;
+            case "teach":
+                _viewModel.IsTeachWorkspaceSelected = true;
+                break;
+            case "validate":
+                _viewModel.IsValidateWorkspaceSelected = true;
+                break;
+            case "results":
+                _viewModel.IsResultsWorkspaceSelected = true;
+                break;
+        }
+
         var requestedView = GetCommandLineValue("--smoke-view")?.Trim();
         if (string.Equals(requestedView, "top", StringComparison.OrdinalIgnoreCase))
         {
@@ -1715,6 +1906,24 @@ public partial class MainWindow : Window
             .Contains("--smoke-fit-roi", StringComparer.OrdinalIgnoreCase))
         {
             _viewer.FitRoi();
+        }
+
+        if (double.TryParse(
+                GetCommandLineValue("--smoke-height-color-min"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var requestedHeightColorMinimum))
+        {
+            _viewer.ViewModel.C3DHeightColorMinimumRaw = requestedHeightColorMinimum;
+        }
+
+        if (double.TryParse(
+                GetCommandLineValue("--smoke-height-color-max"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var requestedHeightColorMaximum))
+        {
+            _viewer.ViewModel.C3DHeightColorMaximumRaw = requestedHeightColorMaximum;
         }
     }
 
@@ -2653,6 +2862,172 @@ public partial class MainWindow : Window
         "OpenVisionLab",
         "ThreeDStudio",
         "recent-recipes.json");
+
+    private static string GetPersistentStudioLayoutPath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "OpenVisionLab",
+        "ThreeDStudio",
+        "studio-layout-v1.json");
+
+    private void ConfigureStudioLayoutPersistence()
+    {
+        var explicitPath = GetCommandLineValue("--smoke-layout-profile");
+        if (IsAutomatedShellRun() && string.IsNullOrWhiteSpace(explicitPath))
+        {
+            return;
+        }
+
+        studioLayoutStore = new StudioLayoutProfileStore(
+            string.IsNullOrWhiteSpace(explicitPath)
+                ? GetPersistentStudioLayoutPath()
+                : explicitPath);
+        var result = studioLayoutStore.Load();
+        studioLayoutLoadStatus = result.Status;
+        pendingStudioLayoutProfile = result.Profile;
+        canAutoSaveStudioLayout = result.CanAutoSave;
+        ApplyWindowPlacement(result.Profile.Window);
+        _viewModel.ReportLayoutStatus(result.Message);
+        OVLog.Write(
+            LogCategory.UI,
+            result.Status is StudioLayoutLoadStatus.Corrupt
+                or StudioLayoutLoadStatus.Incompatible
+                ? LogLevel.Warning
+                : LogLevel.Info,
+            $"Studio layout | status={result.Status} | path={studioLayoutStore.Path} | {result.Message}");
+    }
+
+    private void RestoreStudioLayoutOnLoaded(object sender, RoutedEventArgs args)
+    {
+        Loaded -= RestoreStudioLayoutOnLoaded;
+        if (pendingStudioLayoutProfile is not { } profile)
+        {
+            return;
+        }
+
+        ToolWorkbench.ApplyDockPresentationState(profile.Workbench);
+        Workspace.ApplyPresentationState(profile.Advanced);
+        WriteStudioLayoutSmokeReport(profile);
+        pendingStudioLayoutProfile = null;
+    }
+
+    private void WriteStudioLayoutSmokeReport(StudioLayoutProfile profile)
+    {
+        var reportPath = GetCommandLineValue("--smoke-layout-state-report");
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            return;
+        }
+
+        var fullPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(
+            Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
+        File.WriteAllLines(
+            fullPath,
+            [
+                "OpenVisionLab 3D Studio layout restore smoke",
+                $"LoadStatus={studioLayoutLoadStatus}",
+                $"SchemaVersion={profile.SchemaVersion}",
+                $"Stage={ToolWorkbench.OperatorStage}",
+                $"RecipeDirty={_viewModel.Workbench.IsDirty}",
+                $"ParameterDraft={_viewModel.Workbench.HasPendingStepParameterChanges}",
+                $"RoiCapture={_viewModel.Workbench.IsSelectionCandidateActive}",
+                $"PreviewRunning={_viewModel.Workbench.IsSelectedStepPreviewRunning}",
+                $"ValidationRunning={_viewModel.Workbench.IsValidationSetRunning}",
+                $"WorkbenchPrimary={profile.Workbench.PrimaryContentId}",
+                $"WorkbenchSupport={profile.Workbench.SupportContentId}",
+                "RestoreContract=presentation-only; recipeChanged=false; inspectionRun=false",
+            ]);
+    }
+
+    private void ApplyWindowPlacement(StudioWindowPlacement? placement)
+    {
+        if (placement is null)
+        {
+            return;
+        }
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        WindowState = WindowState.Normal;
+        Left = placement.Left;
+        Top = placement.Top;
+        Width = placement.Width;
+        Height = placement.Height;
+        if (placement.IsMaximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+    }
+
+    private void SaveStudioLayout()
+    {
+        if (studioLayoutStore is null || !canAutoSaveStudioLayout)
+        {
+            return;
+        }
+
+        try
+        {
+            var bounds = WindowState == WindowState.Normal
+                ? new Rect(Left, Top, Width, Height)
+                : RestoreBounds;
+            var placement = bounds.IsEmpty
+                ? null
+                : new StudioWindowPlacement(
+                    bounds.Left,
+                    bounds.Top,
+                    bounds.Width,
+                    bounds.Height,
+                    WindowState == WindowState.Maximized);
+            studioLayoutStore.Save(new StudioLayoutProfile(
+                StudioLayoutProfile.CurrentSchemaVersion,
+                placement,
+                ToolWorkbench.CaptureDockPresentationState(),
+                Workspace.CapturePresentationState()));
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Info,
+                $"Studio layout saved | path={studioLayoutStore.Path} | presentationOnly=true | inspectionRun=false");
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException)
+        {
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Warning,
+                $"Studio layout save failed | path={studioLayoutStore.Path} | {exception}");
+        }
+    }
+
+    private void ResetStudioLayoutRequested(object sender, EventArgs args)
+    {
+        ToolWorkbench.ResetDockPresentationState();
+        Workspace.ResetPresentationState();
+        WindowState = WindowState.Maximized;
+        canAutoSaveStudioLayout = true;
+        try
+        {
+            studioLayoutStore?.Reset();
+            _viewModel.ReportLayoutStatus(
+                "Saved layout reset to safe defaults. Recipe and run state were unchanged.");
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Info,
+                "Studio layout reset | presentationOnly=true | recipeChanged=false | inspectionRun=false");
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or NotSupportedException)
+        {
+            _viewModel.ReportLayoutStatus(
+                $"Layout defaults are active, but the saved file could not be removed: {exception.Message}");
+            OVLog.Write(
+                LogCategory.UI,
+                LogLevel.Warning,
+                $"Studio layout reset file removal failed | {exception}");
+        }
+    }
 
     private void SyncWorkbenchSourceFromViewer()
     {

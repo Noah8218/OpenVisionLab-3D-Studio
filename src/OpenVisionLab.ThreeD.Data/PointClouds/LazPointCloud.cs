@@ -13,6 +13,7 @@ public sealed class LazPointCloud
         ulong decodedPointCount,
         int sampleStride,
         LazPointCloudPoint[] sampledPoints,
+        bool hasIntensity,
         bool hasRgb,
         bool boundsMatch,
         double minX,
@@ -31,6 +32,7 @@ public sealed class LazPointCloud
         DecodedPointCount = decodedPointCount;
         SampleStride = sampleStride;
         SampledPoints = sampledPoints;
+        HasIntensity = hasIntensity;
         HasRgb = hasRgb;
         BoundsMatch = boundsMatch;
         MinX = minX;
@@ -55,6 +57,8 @@ public sealed class LazPointCloud
     public int SampleStride { get; }
 
     public LazPointCloudPoint[] SampledPoints { get; }
+
+    public bool HasIntensity { get; }
 
     public bool HasRgb { get; }
 
@@ -112,7 +116,8 @@ public sealed class LazPointCloud
             ulong redSum = 0;
             ulong greenSum = 0;
             ulong blueSum = 0;
-            var hasRgb = false;
+            const bool hasIntensity = true;
+            var hasRgb = SupportsRgb(metadata.PointDataFormat);
 
             for (ulong index = 0; index < decodedPointCount; index++)
             {
@@ -134,9 +139,8 @@ public sealed class LazPointCloud
                 var red = (ushort)0;
                 var green = (ushort)0;
                 var blue = (ushort)0;
-                if (point.rgb is { Length: >= 3 })
+                if (hasRgb && point.rgb is { Length: >= 3 })
                 {
-                    hasRgb = true;
                     red = point.rgb[0];
                     green = point.rgb[1];
                     blue = point.rgb[2];
@@ -147,7 +151,13 @@ public sealed class LazPointCloud
 
                 if (index % (ulong)sampleStride == 0 && sampledPoints.Count < maxSampledPoints)
                 {
-                    sampledPoints.Add(new LazPointCloudPoint(new Vector3((float)x, (float)y, (float)z), red, green, blue));
+                    sampledPoints.Add(
+                        new LazPointCloudPoint(
+                            new Vector3((float)x, (float)y, (float)z),
+                            point.intensity,
+                            red,
+                            green,
+                            blue));
                 }
             }
 
@@ -165,6 +175,7 @@ public sealed class LazPointCloud
                 decodedPointCount,
                 sampleStride,
                 sampledPoints.ToArray(),
+                hasIntensity,
                 hasRgb,
                 boundsMatch,
                 minX,
@@ -186,10 +197,18 @@ public sealed class LazPointCloud
     public string FormatContractLine() =>
         string.Create(
             CultureInfo.InvariantCulture,
-            $"LAZ|loaded=True|decoder=points-decoded|source={SourcePath}|compressed={IsCompressed}|pointFormat={Metadata.PointDataFormat}|decodedPoints={DecodedPointCount}|sampledPoints={SampledPoints.Length}|sampleStride={SampleStride}|rgb={HasRgb}|boundsX={MinX:F3}..{MaxX:F3}|boundsY={MinY:F3}..{MaxY:F3}|boundsZ={MinZ:F3}..{MaxZ:F3}|boundsMatch={BoundsMatch}|avgRgb={AverageRed:F3},{AverageGreen:F3},{AverageBlue:F3}");
+            $"LAZ|loaded=True|decoder=points-decoded|source={SourcePath}|compressed={IsCompressed}|pointFormat={Metadata.PointDataFormat}|decodedPoints={DecodedPointCount}|sampledPoints={SampledPoints.Length}|sampleStride={SampleStride}|intensity={HasIntensity}|rgb={HasRgb}|boundsX={MinX:F3}..{MaxX:F3}|boundsY={MinY:F3}..{MaxY:F3}|boundsZ={MinZ:F3}..{MaxZ:F3}|boundsMatch={BoundsMatch}|avgRgb={AverageRed:F3},{AverageGreen:F3},{AverageBlue:F3}");
+
+    private static bool SupportsRgb(byte pointDataFormat) =>
+        pointDataFormat is 2 or 3 or 5 or 7 or 8 or 10;
 
     private static bool NearlyEqual(double actual, double expected) =>
         Math.Abs(actual - expected) <= 0.001;
 }
 
-public readonly record struct LazPointCloudPoint(Vector3 Position, ushort Red, ushort Green, ushort Blue);
+public readonly record struct LazPointCloudPoint(
+    Vector3 Position,
+    ushort Intensity,
+    ushort Red,
+    ushort Green,
+    ushort Blue);

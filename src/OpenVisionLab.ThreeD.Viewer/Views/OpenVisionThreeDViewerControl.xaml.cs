@@ -204,6 +204,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         ModelTransform Transform,
         ViewerGeometryStyle GeometryStyle,
         ViewerColorMap ColorMap,
+        double HeightColorMinimumRaw,
+        double HeightColorMaximumRaw,
         double PointSize,
         C3DWireframeLodLevel WireframeLodLevel);
 
@@ -211,6 +213,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         C3DHeightGrid Source,
         ModelTransform Transform,
         ViewerColorMap ColorMap,
+        double HeightColorMinimumRaw,
+        double HeightColorMaximumRaw,
         PlaneFlatnessEvaluation? DynamicColorEvaluation);
 
     private sealed record PointerInputRegressionResult(

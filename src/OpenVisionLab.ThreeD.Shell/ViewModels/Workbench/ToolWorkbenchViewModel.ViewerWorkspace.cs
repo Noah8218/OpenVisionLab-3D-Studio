@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -14,6 +15,10 @@ public sealed partial class ToolWorkbenchViewModel
 {
     public const string HeightImageViewerContentId = "viewer.height-image";
 
+    private SurfaceMatchExecutionArtifact? surfaceMatchEvidence;
+    private SurfaceMatchAssessmentArtifact? surfaceMatchAssessment;
+    private SurfaceMatchRuntimeReport? surfaceMatchRuntime;
+    private SurfaceAndEdgeMatchScoreArtifact? surfaceEdgeScore;
     private RelayCommand setSingleViewerLayoutCommand = null!;
     private RelayCommand splitViewerVerticallyCommand = null!;
     private RelayCommand splitViewerHorizontallyCommand = null!;
@@ -28,6 +33,20 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand PopOutViewerCommand => popOutViewerCommand;
     public ICommand FocusViewerWorkspaceSlotCommand => focusViewerWorkspaceSlotCommand;
     public ICommand OpenHeightImageCommand => openHeightImageCommand;
+    public SurfaceMatchExecutionArtifact? SurfaceMatchEvidence =>
+        surfaceMatchEvidence;
+    public bool HasSurfaceMatchEvidence =>
+        surfaceMatchEvidence is not null;
+    public SurfaceMatchAssessmentArtifact? SurfaceMatchAssessment =>
+        surfaceMatchAssessment;
+    public SurfaceMatchRuntimeReport? SurfaceMatchRuntime =>
+        surfaceMatchRuntime;
+    public SurfaceAndEdgeMatchScoreArtifact? SurfaceEdgeScore =>
+        surfaceEdgeScore;
+    public event EventHandler<ToolWorkbenchSurfaceMatchDisplayRequestEventArgs>?
+        SurfaceMatchDisplayRequested;
+    public event EventHandler?
+        SurfaceMatchDisplayCleared;
     public IReadOnlyList<ViewerWorkspaceCandidateItem> ViewerWorkspaceCandidates
     {
         get
@@ -89,6 +108,10 @@ public sealed partial class ToolWorkbenchViewModel
         ViewerWorkspaceLayout.PopOut => Localization.ViewerPopOut,
         _ => Localization.ViewerSingle
     };
+    public bool IsSingleViewerLayout => ViewerWorkspace.Layout == ViewerWorkspaceLayout.Single;
+    public bool IsSplitVerticalViewerLayout => ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitVertical;
+    public bool IsSplitHorizontalViewerLayout => ViewerWorkspace.Layout == ViewerWorkspaceLayout.SplitHorizontal;
+    public bool IsPopOutViewerLayout => ViewerWorkspace.Layout == ViewerWorkspaceLayout.PopOut;
 
     public string AuxiliaryViewerSummary =>
         GetViewerWorkspaceCandidate(ViewerWorkspace.AuxiliaryContentId) is { } candidate
@@ -98,6 +121,118 @@ public sealed partial class ToolWorkbenchViewModel
     public ViewerWorkspaceCandidateItem? GetViewerWorkspaceCandidate(string? contentId) =>
         ViewerWorkspaceCandidates.FirstOrDefault(candidate =>
             string.Equals(candidate.Id, contentId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Routes already-executed surface-match evidence to the Viewer. This is
+    /// presentation-only and does not execute Preview, Publish, Run, or
+    /// Validation and does not edit recipe, source, or ROI state.
+    /// </summary>
+    public void ShowSurfaceMatchEvidence(
+        SurfaceModelArtifact model,
+        PreparedSceneArtifact scene,
+        SurfaceMatchExecutionArtifact execution,
+        SurfaceMatchAssessmentArtifact? assessment = null,
+        SurfaceMatchRuntimeReport? runtime = null,
+        SurfaceAndEdgeMatchScoreArtifact? edgeScore = null)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(scene);
+        ArgumentNullException.ThrowIfNull(execution);
+        var validity =
+            SurfaceMatchExecutionArtifactValidator.Inspect(execution);
+        if (!validity.IsValid
+            || !string.Equals(
+                model.ContentSha256,
+                execution.ModelContentSha256,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                scene.ContentSha256,
+                execution.SceneContentSha256,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "Workbench surface-match evidence is invalid or does not match the supplied model and scene.");
+        }
+
+        if (assessment is not null)
+        {
+            var assessmentValidity =
+                SurfaceMatchAssessmentArtifactValidator.Inspect(
+                    assessment);
+            if (!assessmentValidity.IsValid
+                || !string.Equals(
+                    assessment.ExecutionContentSha256,
+                    execution.ContentSha256,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    "Workbench surface-match assessment is invalid or linked to a different raw execution.");
+            }
+        }
+
+        if (runtime is not null
+            && (!SurfaceMatchAssessmentArtifactValidator
+                    .InspectRuntime(runtime, out _)
+                || assessment is null
+                || !string.Equals(
+                    runtime.ExecutionContentSha256,
+                    execution.ContentSha256,
+                    StringComparison.Ordinal)
+                || !string.Equals(
+                    runtime.AssessmentContentSha256,
+                    assessment.ContentSha256,
+                    StringComparison.Ordinal)))
+        {
+            throw new InvalidDataException(
+                "Workbench surface-match runtime is invalid or linked to different execution evidence.");
+        }
+
+        if (edgeScore is not null
+            && !SurfaceEdgeArtifactValidator
+                .Inspect(edgeScore, execution).IsValid)
+        {
+            throw new InvalidDataException(
+                "Workbench surface/edge score is invalid or linked to a different raw execution.");
+        }
+
+        surfaceMatchEvidence = execution;
+        surfaceMatchAssessment = assessment;
+        surfaceMatchRuntime = runtime;
+        surfaceEdgeScore = edgeScore;
+        OnPropertyChanged(nameof(SurfaceMatchEvidence));
+        OnPropertyChanged(nameof(HasSurfaceMatchEvidence));
+        OnPropertyChanged(nameof(SurfaceMatchAssessment));
+        OnPropertyChanged(nameof(SurfaceMatchRuntime));
+        OnPropertyChanged(nameof(SurfaceEdgeScore));
+        SurfaceMatchDisplayRequested?.Invoke(
+            this,
+            new ToolWorkbenchSurfaceMatchDisplayRequestEventArgs(
+                model,
+                scene,
+                execution,
+                assessment,
+                runtime,
+                edgeScore));
+    }
+
+    public void ClearSurfaceMatchEvidence()
+    {
+        if (surfaceMatchEvidence is null)
+        {
+            return;
+        }
+
+        surfaceMatchEvidence = null;
+        surfaceMatchAssessment = null;
+        surfaceMatchRuntime = null;
+        surfaceEdgeScore = null;
+        OnPropertyChanged(nameof(SurfaceMatchEvidence));
+        OnPropertyChanged(nameof(HasSurfaceMatchEvidence));
+        OnPropertyChanged(nameof(SurfaceMatchAssessment));
+        OnPropertyChanged(nameof(SurfaceMatchRuntime));
+        OnPropertyChanged(nameof(SurfaceEdgeScore));
+        SurfaceMatchDisplayCleared?.Invoke(this, EventArgs.Empty);
+    }
 
     private void InitializeViewerWorkspace()
     {
@@ -215,6 +350,10 @@ public sealed partial class ToolWorkbenchViewModel
     private void OnViewerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         OnPropertyChanged(nameof(ViewerWorkspaceLayoutSummary));
+        OnPropertyChanged(nameof(IsSingleViewerLayout));
+        OnPropertyChanged(nameof(IsSplitVerticalViewerLayout));
+        OnPropertyChanged(nameof(IsSplitHorizontalViewerLayout));
+        OnPropertyChanged(nameof(IsPopOutViewerLayout));
         if (args.PropertyName == nameof(ViewerWorkspaceSession.AuxiliaryContentId))
         {
             OnPropertyChanged(nameof(AuxiliaryViewerContentId));
@@ -261,3 +400,11 @@ public enum ViewerWorkspaceCandidateKind
     HeightImage,
     ThreeDArtifact
 }
+
+public sealed record ToolWorkbenchSurfaceMatchDisplayRequestEventArgs(
+    SurfaceModelArtifact Model,
+    PreparedSceneArtifact Scene,
+    SurfaceMatchExecutionArtifact Execution,
+    SurfaceMatchAssessmentArtifact? Assessment,
+    SurfaceMatchRuntimeReport? Runtime,
+    SurfaceAndEdgeMatchScoreArtifact? EdgeScore);

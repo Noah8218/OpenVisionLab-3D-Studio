@@ -94,6 +94,18 @@ internal static class RunnerCommandRouter
         var verifySourceQualityReport = args.Contains("--verify-source-quality-report", StringComparer.OrdinalIgnoreCase);
         var verifyC3DHeightImage = args.Contains("--verify-c3d-height-image", StringComparer.OrdinalIgnoreCase);
         var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceModelFoundation = args.Contains(
+            "--verify-surface-model-foundation",
+            StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceMatchingFoundation = args.Contains(
+            "--verify-surface-matching-foundation",
+            StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceMatchAcceptance = args.Contains(
+            "--verify-surface-match-acceptance",
+            StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceEdgeMatching = args.Contains(
+            "--verify-surface-edge-matching",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DCompletenessGrid = args.Contains(
             "--verify-c3d-completeness-grid",
             StringComparer.OrdinalIgnoreCase);
@@ -551,6 +563,55 @@ internal static class RunnerCommandRouter
             return NominalActualComparisonVerification.Run(reportPath);
         }
 
+        if (verifySurfaceModelFoundation)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
+                return 2;
+            }
+
+            return SurfaceModelFoundationVerification.Run(reportPath);
+        }
+
+        if (verifySurfaceMatchingFoundation)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
+                return 2;
+            }
+
+            return SurfaceMatchingFoundationVerification.Run(reportPath);
+        }
+
+        if (verifySurfaceMatchAcceptance)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
+                return 2;
+            }
+
+            return SurfaceMatchAcceptanceGoldenVerification.Run(
+                reportPath);
+        }
+
+        if (verifySurfaceEdgeMatching)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-matching --report <path>");
+                return 2;
+            }
+
+            return SurfaceEdgeMatchingVerification.Run(reportPath);
+        }
+
         if (verifyRegistrationAcceptance)
         {
             if (reportPath is null)
@@ -831,6 +892,9 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-invalid-cell-map --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");

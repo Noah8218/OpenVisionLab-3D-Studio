@@ -6,6 +6,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.WpfPropertyGrid;
+using System.Windows.Media;
 using OpenVisionLab;
 using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
 using WpfMessageDialogControl = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogControl;
@@ -392,6 +393,35 @@ internal static class RecipeManagerWpgVerification
                 "WPG theme keys stay view-local",
                 !appResourcesHadThemeKey && !Application.Current.Resources.Contains("Ovl3D.Wpg.SurfaceBrush"),
                 "Application resources contain no Ovl3D.Wpg.SurfaceBrush key before or after host creation.");
+            var themeResourcePairs = new (string LocalKey, string ProductKey)[]
+            {
+                ("Ovl3D.Wpg.SurfaceBrush", "ThreeD.PanelAlternateBrush"),
+                ("Ovl3D.Wpg.PanelBrush", "ThreeD.PanelBrush"),
+                ("Ovl3D.Wpg.RowHoverBrush", "ThreeD.SelectedSurfaceBrush"),
+                ("Ovl3D.Wpg.NameColumnBrush", "ThreeD.CommandBarBrush"),
+                ("Ovl3D.Wpg.LineBrush", "ThreeD.DividerBrush"),
+                ("Ovl3D.Wpg.TextBrush", "ThreeD.TextBrush"),
+                ("Ovl3D.Wpg.MutedTextBrush", "ThreeD.MutedTextBrush"),
+                ("Ovl3D.Wpg.AccentBrush", "ThreeD.AccentBrush"),
+                ("Ovl3D.Wpg.EditorFocusBrush", "ThreeD.FocusBrush"),
+                ("Ovl3D.Wpg.EditorBackgroundBrush", "ThreeD.ControlBrush"),
+                ("Ovl3D.Wpg.EditorReadOnlyBrush", "ThreeD.DisabledSurfaceBrush"),
+                ("Ovl3D.Wpg.EditorTextBrush", "ThreeD.PrimaryTextBrush"),
+                ("Ovl3D.Wpg.EditorMutedBrush", "ThreeD.DisabledBrush")
+            };
+            var themeMismatches = themeResourcePairs
+                .Where(pair =>
+                    host.TryFindResource(pair.LocalKey) is not SolidColorBrush localBrush
+                    || Application.Current.TryFindResource(pair.ProductKey) is not SolidColorBrush productBrush
+                    || localBrush.Color != productBrush.Color)
+                .Select(pair => $"{pair.LocalKey}->{pair.ProductKey}")
+                .ToArray();
+            Check(
+                "WPG surface, text, editor, focus, read-only, and disabled roles alias the product theme",
+                themeMismatches.Length == 0,
+                themeMismatches.Length == 0
+                    ? $"aliases={themeResourcePairs.Length}"
+                    : string.Join(",", themeMismatches));
 
             OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
             var localizedRegrid = LocalizedPropertyGridObject.Create(new RegridHeightMapStepProperties());

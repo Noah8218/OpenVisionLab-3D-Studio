@@ -66,9 +66,14 @@ public static class StlMesh
 
         var positions = new Vector3[checked((int)triangleCount * 3)];
         var indices = new int[positions.Length];
+        var normals = new Vector3[positions.Length];
         var offset = BinaryHeaderBytes + 4;
         for (var triangle = 0; triangle < triangleCount; triangle++)
         {
+            var storedNormal = new Vector3(
+                BitConverter.ToSingle(bytes, offset),
+                BitConverter.ToSingle(bytes, offset + 4),
+                BitConverter.ToSingle(bytes, offset + 8));
             offset += 12;
             for (var vertex = 0; vertex < 3; vertex++)
             {
@@ -78,24 +83,58 @@ public static class StlMesh
                     BitConverter.ToSingle(bytes, offset + 4),
                     BitConverter.ToSingle(bytes, offset + 8));
                 indices[index] = index;
+                normals[index] = storedNormal;
                 offset += 12;
             }
 
             offset += 2;
         }
 
-        mesh = ImportedMesh.CreateTriangleMesh(path, Path.GetFileNameWithoutExtension(path), "STL", positions, indices);
+        mesh = ImportedMesh.CreateTriangleMesh(
+            path,
+            Path.GetFileNameWithoutExtension(path),
+            "STL",
+            positions,
+            indices,
+            normals);
         return true;
     }
 
     private static ImportedMesh LoadAscii(string path, byte[] bytes)
     {
         var vertices = new List<Vector3>();
+        var normals = new List<Vector3>();
+        var normalPresence = new List<bool>();
+        Vector3? currentFacetNormal = null;
         using var reader = new StringReader(Encoding.UTF8.GetString(bytes));
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
             var trimmed = line.Trim();
+            if (trimmed.StartsWith("facet normal ", StringComparison.OrdinalIgnoreCase))
+            {
+                var normalParts = trimmed.Split(
+                    (char[]?)null,
+                    StringSplitOptions.RemoveEmptyEntries);
+                if (normalParts.Length != 5)
+                {
+                    throw new InvalidDataException(
+                        $"STL facet normal must have exactly 3 coordinates: {path}");
+                }
+
+                currentFacetNormal = new Vector3(
+                    ParseSingle(normalParts[2], path),
+                    ParseSingle(normalParts[3], path),
+                    ParseSingle(normalParts[4], path));
+                continue;
+            }
+
+            if (trimmed.StartsWith("endfacet", StringComparison.OrdinalIgnoreCase))
+            {
+                currentFacetNormal = null;
+                continue;
+            }
+
             if (!trimmed.StartsWith("vertex ", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
@@ -111,6 +150,16 @@ public static class StlMesh
                 ParseSingle(parts[1], path),
                 ParseSingle(parts[2], path),
                 ParseSingle(parts[3], path)));
+            if (currentFacetNormal is { } facetNormal)
+            {
+                normals.Add(facetNormal);
+                normalPresence.Add(true);
+            }
+            else
+            {
+                normals.Add(default);
+                normalPresence.Add(false);
+            }
         }
 
         if (vertices.Count == 0 || vertices.Count % 3 != 0)
@@ -123,7 +172,21 @@ public static class StlMesh
 
         var positions = vertices.ToArray();
         var indices = Enumerable.Range(0, positions.Length).ToArray();
-        return ImportedMesh.CreateTriangleMesh(path, Path.GetFileNameWithoutExtension(path), "STL", positions, indices);
+        var hasAnyDeclaredNormal = normalPresence.Any(present => present);
+        var declaredNormals = hasAnyDeclaredNormal
+            ? normals.ToArray()
+            : Array.Empty<Vector3>();
+        var declaredNormalPresence = hasAnyDeclaredNormal
+            ? normalPresence.ToArray()
+            : Array.Empty<bool>();
+        return ImportedMesh.CreateTriangleMesh(
+            path,
+            Path.GetFileNameWithoutExtension(path),
+            "STL",
+            positions,
+            indices,
+            declaredNormals,
+            declaredNormalPresence);
     }
 
     private static void ValidateTriangleCount(string path, long triangleCount)

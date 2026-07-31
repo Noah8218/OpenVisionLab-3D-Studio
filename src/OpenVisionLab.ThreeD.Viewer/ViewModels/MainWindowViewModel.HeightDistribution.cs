@@ -28,6 +28,10 @@ public sealed partial class MainWindowViewModel
     private string c3DHeightDistributionPeakPathData = "M 0,118 L 0,118";
     private string c3DHeightDistributionSourceSha256 = "not loaded";
     private LinearGradientBrush c3DHeightDistributionGradient = CreateHeightGradient("Height");
+    private double c3DHeightColorMinimumRaw = double.NaN;
+    private double c3DHeightColorMaximumRaw = double.NaN;
+    private bool c3DHeightColorRangeAuto = true;
+    private int c3DHeightColorRangeRevision;
 
     public bool C3DHeightDistributionVisible
     {
@@ -123,6 +127,48 @@ public sealed partial class MainWindowViewModel
 
     public bool C3DHeightDistributionIsConstant => c3DHeightDistribution?.IsConstant == true;
 
+    public double C3DHeightColorMinimumRaw
+    {
+        get => c3DHeightColorMinimumRaw;
+        set => SetC3DHeightColorRange(value, c3DHeightColorMaximumRaw);
+    }
+
+    public double C3DHeightColorMaximumRaw
+    {
+        get => c3DHeightColorMaximumRaw;
+        set => SetC3DHeightColorRange(c3DHeightColorMinimumRaw, value);
+    }
+
+    public bool C3DHeightColorRangeAuto
+    {
+        get => c3DHeightColorRangeAuto;
+        private set => SetField(ref c3DHeightColorRangeAuto, value);
+    }
+
+    public int C3DHeightColorRangeRevision
+    {
+        get => c3DHeightColorRangeRevision;
+        private set => SetField(ref c3DHeightColorRangeRevision, value);
+    }
+
+    public string C3DHeightColorRangeSummary
+    {
+        get
+        {
+            if (c3DHeightDistribution is null
+                || !double.IsFinite(C3DHeightColorMinimumRaw)
+                || !double.IsFinite(C3DHeightColorMaximumRaw))
+            {
+                return "Height color range: not loaded";
+            }
+
+            var span = c3DHeightDistribution.Maximum - c3DHeightDistribution.Minimum;
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"Height color range {FormatRawValue(C3DHeightColorMinimumRaw, span)}..{FormatRawValue(C3DHeightColorMaximumRaw, span)} raw-height · {(C3DHeightColorRangeAuto ? "Auto" : "Manual")} · view only");
+        }
+    }
+
     internal void SetC3DHeightDistribution(C3DHeightDistribution distribution, string sourceSha256)
     {
         ArgumentNullException.ThrowIfNull(distribution);
@@ -142,6 +188,7 @@ public sealed partial class MainWindowViewModel
             $"{FormatCompactCount(distribution.ValidSampleCount)} valid · {FormatCompactCount(distribution.MissingSampleCount)} missing";
         C3DHeightDistributionHistogramPathData = CreateHistogramPath(distribution, peakOnly: false);
         C3DHeightDistributionPeakPathData = CreateHistogramPath(distribution, peakOnly: true);
+        ResetC3DHeightColorRange();
         NotifyC3DHeightDistributionContractProperties();
         RefreshC3DHeightDistributionLegend();
     }
@@ -159,14 +206,165 @@ public sealed partial class MainWindowViewModel
         C3DHeightDistributionHistogramPathData = "M 0,118 L 0,118";
         C3DHeightDistributionPeakPathData = "M 0,118 L 0,118";
         C3DHeightDistributionSourceSha256 = "not loaded";
+        c3DHeightColorMinimumRaw = double.NaN;
+        c3DHeightColorMaximumRaw = double.NaN;
+        C3DHeightColorRangeAuto = true;
+        C3DHeightColorRangeRevision = unchecked(C3DHeightColorRangeRevision + 1);
+        NotifyHeightColorRangeProperties();
         NotifyC3DHeightDistributionContractProperties();
+    }
+
+    public void ResetC3DHeightColorRange()
+    {
+        if (c3DHeightDistribution is null)
+        {
+            return;
+        }
+
+        ApplyC3DHeightColorRange(
+            c3DHeightDistribution.Minimum,
+            c3DHeightDistribution.Maximum,
+            isAuto: true);
+    }
+
+    public void ShiftC3DHeightColorMinimum(int direction)
+    {
+        if (c3DHeightDistribution is null || direction == 0)
+        {
+            return;
+        }
+
+        SetC3DHeightColorRange(
+            C3DHeightColorMinimumRaw + Math.Sign(direction) * GetHeightColorRangeStep(),
+            C3DHeightColorMaximumRaw);
+    }
+
+    public void ShiftC3DHeightColorMaximum(int direction)
+    {
+        if (c3DHeightDistribution is null || direction == 0)
+        {
+            return;
+        }
+
+        SetC3DHeightColorRange(
+            C3DHeightColorMinimumRaw,
+            C3DHeightColorMaximumRaw + Math.Sign(direction) * GetHeightColorRangeStep());
+    }
+
+    public double NormalizeC3DHeightColor(double rawHeight)
+    {
+        if (!double.IsFinite(rawHeight)
+            || !double.IsFinite(C3DHeightColorMinimumRaw)
+            || !double.IsFinite(C3DHeightColorMaximumRaw)
+            || C3DHeightColorMaximumRaw <= C3DHeightColorMinimumRaw)
+        {
+            return 0.0;
+        }
+
+        return Math.Clamp(
+            (rawHeight - C3DHeightColorMinimumRaw)
+            / (C3DHeightColorMaximumRaw - C3DHeightColorMinimumRaw),
+            0.0,
+            1.0);
+    }
+
+    private void SetC3DHeightColorRange(double minimum, double maximum)
+    {
+        if (c3DHeightDistribution is null
+            || !double.IsFinite(minimum)
+            || !double.IsFinite(maximum))
+        {
+            return;
+        }
+
+        var sourceMinimum = c3DHeightDistribution.Minimum;
+        var sourceMaximum = c3DHeightDistribution.Maximum;
+        var gap = GetHeightColorRangeMinimumGap();
+        if (sourceMaximum - sourceMinimum <= gap)
+        {
+            ApplyC3DHeightColorRange(sourceMinimum, sourceMaximum, isAuto: true);
+            return;
+        }
+
+        minimum = Math.Clamp(minimum, sourceMinimum, sourceMaximum - gap);
+        maximum = Math.Clamp(maximum, sourceMinimum + gap, sourceMaximum);
+        if (minimum >= maximum)
+        {
+            if (!NearHeightColorValue(minimum, C3DHeightColorMinimumRaw))
+            {
+                minimum = maximum - gap;
+            }
+            else
+            {
+                maximum = minimum + gap;
+            }
+        }
+
+        ApplyC3DHeightColorRange(minimum, maximum, isAuto: false);
+    }
+
+    private void ApplyC3DHeightColorRange(double minimum, double maximum, bool isAuto)
+    {
+        var changed = !NearHeightColorValue(c3DHeightColorMinimumRaw, minimum)
+            || !NearHeightColorValue(c3DHeightColorMaximumRaw, maximum)
+            || C3DHeightColorRangeAuto != isAuto;
+        if (!changed)
+        {
+            return;
+        }
+
+        c3DHeightColorMinimumRaw = minimum;
+        c3DHeightColorMaximumRaw = maximum;
+        C3DHeightColorRangeAuto = isAuto;
+        C3DHeightColorRangeRevision = unchecked(C3DHeightColorRangeRevision + 1);
+        NotifyHeightColorRangeProperties();
+        RefreshC3DHeightDistributionLegend();
+        ViewerStatus = C3DHeightColorRangeSummary;
+    }
+
+    private double GetHeightColorRangeStep()
+    {
+        if (c3DHeightDistribution is null)
+        {
+            return 1.0;
+        }
+
+        var span = c3DHeightDistribution.Maximum - c3DHeightDistribution.Minimum;
+        return span > 0.0 && double.IsFinite(span)
+            ? Math.Max(span / 20.0, GetHeightColorRangeMinimumGap())
+            : Math.Max(Math.Abs(c3DHeightDistribution.Minimum) * 0.05, 1.0);
+    }
+
+    private double GetHeightColorRangeMinimumGap()
+    {
+        if (c3DHeightDistribution is null)
+        {
+            return 1e-9;
+        }
+
+        var span = Math.Abs(c3DHeightDistribution.Maximum - c3DHeightDistribution.Minimum);
+        return Math.Max(span * 1e-6, 1e-9);
+    }
+
+    private static bool NearHeightColorValue(double left, double right) =>
+        left.Equals(right)
+        || double.IsFinite(left)
+        && double.IsFinite(right)
+        && Math.Abs(left - right) <= Math.Max(Math.Abs(left), Math.Abs(right)) * 1e-12;
+
+    private void NotifyHeightColorRangeProperties()
+    {
+        OnPropertyChanged(nameof(C3DHeightColorMinimumRaw));
+        OnPropertyChanged(nameof(C3DHeightColorMaximumRaw));
+        OnPropertyChanged(nameof(C3DHeightColorRangeSummary));
     }
 
     private void RefreshC3DHeightDistributionLegend()
     {
         var palette = SelectedColorMode;
         var scalarPalette = palette is "Height" or "Grayscale" or "Thermal";
-        C3DHeightDistributionPaletteLabel = $"{palette} · full source";
+        C3DHeightDistributionPaletteLabel =
+            $"{palette} · {(C3DHeightColorRangeAuto ? "auto" : "manual")} range";
         if (scalarPalette)
         {
             C3DHeightDistributionGradient = CreateHeightGradient(palette);

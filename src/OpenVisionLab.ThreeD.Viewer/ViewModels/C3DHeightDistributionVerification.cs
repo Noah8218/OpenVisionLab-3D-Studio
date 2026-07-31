@@ -203,6 +203,12 @@ public static class C3DHeightDistributionVerification
                 && Near(viewModel.C3DHeightDistributionMinimumRaw, 10.0)
                 && Near(viewModel.C3DHeightDistributionMeanRaw, 30.0)
                 && Near(viewModel.C3DHeightDistributionMaximumRaw, 50.0)
+                && viewModel.C3DHeightColorRangeAuto
+                && Near(viewModel.C3DHeightColorMinimumRaw, 10.0)
+                && Near(viewModel.C3DHeightColorMaximumRaw, 50.0)
+                && Near(viewModel.NormalizeC3DHeightColor(10.0), 0.0)
+                && Near(viewModel.NormalizeC3DHeightColor(30.0), 0.5)
+                && Near(viewModel.NormalizeC3DHeightColor(50.0), 1.0)
                 && Near(viewModel.C3DHeightDistributionMeanLabelTop, 53.0),
                 $"visible={viewModel.C3DHeightDistributionVisible}|{viewModel.C3DHeightDistributionPeakLabel}");
             Check(
@@ -216,6 +222,37 @@ public static class C3DHeightDistributionVerification
                 && viewModel.C3DHeightDistributionGradient.GradientStops[0].Color == ToColor(C3DPointMapPalette.Height(0.0))
                 && viewModel.C3DHeightDistributionGradient.GradientStops[^1].Color == ToColor(C3DPointMapPalette.Height(1.0)),
                 DescribeStops(viewModel.C3DHeightDistributionGradient));
+
+            var rangeRevisionBefore = viewModel.C3DHeightColorRangeRevision;
+            viewModel.C3DHeightColorMinimumRaw = 20.0;
+            viewModel.C3DHeightColorMaximumRaw = 40.0;
+            Check(
+                "manual display range clamps endpoint colors and preserves linear color inside the selected heights",
+                !viewModel.C3DHeightColorRangeAuto
+                && viewModel.C3DHeightColorRangeRevision > rangeRevisionBefore
+                && Near(viewModel.C3DHeightColorMinimumRaw, 20.0)
+                && Near(viewModel.C3DHeightColorMaximumRaw, 40.0)
+                && Near(viewModel.NormalizeC3DHeightColor(10.0), 0.0)
+                && Near(viewModel.NormalizeC3DHeightColor(20.0), 0.0)
+                && Near(viewModel.NormalizeC3DHeightColor(30.0), 0.5)
+                && Near(viewModel.NormalizeC3DHeightColor(40.0), 1.0)
+                && Near(viewModel.NormalizeC3DHeightColor(50.0), 1.0),
+                viewModel.C3DHeightColorRangeSummary);
+
+            viewModel.ShiftC3DHeightColorMinimum(1);
+            viewModel.ShiftC3DHeightColorMaximum(-1);
+            Check(
+                "height range buttons move each endpoint by one twentieth of the source span",
+                Near(viewModel.C3DHeightColorMinimumRaw, 22.0)
+                && Near(viewModel.C3DHeightColorMaximumRaw, 38.0),
+                viewModel.C3DHeightColorRangeSummary);
+            viewModel.ResetC3DHeightColorRange();
+            Check(
+                "Auto restores the exact full-source display range",
+                viewModel.C3DHeightColorRangeAuto
+                && Near(viewModel.C3DHeightColorMinimumRaw, 10.0)
+                && Near(viewModel.C3DHeightColorMaximumRaw, 50.0),
+                viewModel.C3DHeightColorRangeSummary);
 
             viewModel.SelectedColorMode = "Grayscale";
             Check(
@@ -266,6 +303,9 @@ public static class C3DHeightDistributionVerification
                 "clear removes source identity, bins, and visibility",
                 !viewModel.C3DHeightDistributionVisible
                 && viewModel.C3DHeightDistributionBinCount == 0
+                && viewModel.C3DHeightColorRangeAuto
+                && double.IsNaN(viewModel.C3DHeightColorMinimumRaw)
+                && double.IsNaN(viewModel.C3DHeightColorMaximumRaw)
                 && viewModel.C3DHeightDistributionSourceSha256 == "not loaded",
                 $"visible={viewModel.C3DHeightDistributionVisible}|bins={viewModel.C3DHeightDistributionBinCount}|source={viewModel.C3DHeightDistributionSourceSha256}");
 

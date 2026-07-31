@@ -37,6 +37,79 @@
                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                            Text="{views:ThreeDText Key=ThreeD.Workspace.RecipeChainHint, Korean='검사 순서와 현재 선택을 한눈에 확인합니다.', English='Review inspection order and the current selection at a glance.'}"
                            TextWrapping="Wrap" />
+                <Border x:Name="AuthoringFirstActionGuide"
+                        Margin="0,7,0,0"
+                        Padding="7,5"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        AutomationProperties.AutomationId="AuthoringFirstActionGuide">
+                    <Grid>
+                        <TextBlock x:Name="InputFirstActionText"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.InputFirstAction, Korean='1 · 3D 입력 열기', English='1 · Open 3D input'}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.Name="Current action: open 3D input">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock x:Name="SelectToolFirstActionText"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.SelectToolFirstAction, Korean='2 · 검사 도구 선택', English='2 · Select inspection tool'}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.Name="Current action: select inspection tool">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsSourceReadyForRecipe}" Value="True" />
+                                                <Condition Binding="{Binding HasSelectedPipelineStep}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock x:Name="RoiPreviewFirstActionText"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RoiPreviewFirstAction, Korean='3 · ROI 설정  →  4 · 미리보기', English='3 · Set ROI  →  4 · Preview'}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.Name="Current actions: set ROI and preview">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsSourceReadyForRecipe}" Value="True" />
+                                                <Condition Binding="{Binding HasSelectedPipelineStep}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </StackPanel>
 
             <Border Grid.Row="1"
@@ -48,7 +121,11 @@
                     <Style TargetType="Border">
                         <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
                         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                        <Setter Property="Visibility" Value="Visible" />
                         <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding IsSourceQualityWorkspaceVisible}" Value="True">
                                 <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
                                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
@@ -82,6 +159,7 @@
                                Margin="7,0,0,0"
                                Padding="7,3"
                                VerticalAlignment="Center"
+                               Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}"
                                Icon="{ui:SymbolIcon DataHistogram24}"
                                Command="{Binding SelectSourceQualityCommand}"
                                ToolTip="{Binding Localization.OpenSourceQuality}"
@@ -90,6 +168,7 @@
                                Margin="7,0,0,0"
                                Padding="7,3"
                                VerticalAlignment="Center"
+                               Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}"
                                Icon="{ui:SymbolIcon FolderOpen24}"
                                Command="{Binding LoadC3DSourceCommand}"
                                ToolTip="{Binding Localization.Open3DMap}"

@@ -1,40 +1,44 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-    <!-- Workbench visual tokens: dark application chrome, cool light work surfaces, and teal state. -->
-    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#DDE7EE" />
-    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#F8FBFD" />
-    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#EEF4F8" />
-    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#F2F6F9" />
-    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#BAC9D4" />
-    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#132238" />
-    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#132238" />
-    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#3D5063" />
-    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#657789" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#14243A" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#243C56" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#F3F8FC" />
-    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#AABCCD" />
-    <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#087E8B" />
-    <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#056571" />
-    <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#D9F1EE" />
-    <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#0D8DA0" />
-    <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#15803D" />
-    <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#B45309" />
-    <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#B91C1C" />
-    <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#0369A1" />
-    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#9CA3AF" />
-    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#101A2A" />
+    <!--
+        Graphite workbench tokens. Semantic state colors are reserved for
+        selection, focus, pass/warning/fail, while the Viewer height map keeps
+        its independent scientific color scale.
+    -->
+    <SolidColorBrush x:Key="ThreeD.AppBackgroundBrush" Color="#090E15" />
+    <SolidColorBrush x:Key="ThreeD.PanelBrush" Color="#141B24" />
+    <SolidColorBrush x:Key="ThreeD.PanelAlternateBrush" Color="#1B2531" />
+    <SolidColorBrush x:Key="ThreeD.CommandBarBrush" Color="#0E151E" />
+    <SolidColorBrush x:Key="ThreeD.ControlBrush" Color="#202B38" />
+    <SolidColorBrush x:Key="ThreeD.DividerBrush" Color="#334155" />
+    <SolidColorBrush x:Key="ThreeD.TextBrush" Color="#E7EEF6" />
+    <SolidColorBrush x:Key="ThreeD.PrimaryTextBrush" Color="#F3F7FB" />
+    <SolidColorBrush x:Key="ThreeD.SecondaryTextBrush" Color="#BECADA" />
+    <SolidColorBrush x:Key="ThreeD.MutedTextBrush" Color="#8796A8" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBrush" Color="#080D14" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#27374A" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#F5F9FC" />
+    <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#A7B6C7" />
+    <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#39C6C1" />
+    <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#56D8D2" />
+    <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#15383D" />
+    <SolidColorBrush x:Key="ThreeD.FocusBrush" Color="#67E8F9" />
+    <SolidColorBrush x:Key="ThreeD.PassBrush" Color="#4ADE80" />
+    <SolidColorBrush x:Key="ThreeD.WarningBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="ThreeD.FailBrush" Color="#FB7185" />
+    <SolidColorBrush x:Key="ThreeD.InfoBrush" Color="#38BDF8" />
+    <SolidColorBrush x:Key="ThreeD.DisabledBrush" Color="#657487" />
+    <SolidColorBrush x:Key="ThreeD.ViewportBrush" Color="#070B11" />
     <SolidColorBrush x:Key="ThreeD.ViewportGridBrush" Color="#526B83" />
     <SolidColorBrush x:Key="ThreeD.AxisXBrush" Color="#E05252" />
     <SolidColorBrush x:Key="ThreeD.AxisYBrush" Color="#2F9D62" />
     <SolidColorBrush x:Key="ThreeD.AxisZBrush" Color="#3B82F6" />
-    <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#FFF6E8" />
-    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#E4F3F2" />
-    <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#EAF7EE" />
-    <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#FCEEEE" />
-    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#EDF1F4" />
+    <SolidColorBrush x:Key="ThreeD.WarningSurfaceBrush" Color="#3A2A12" />
+    <SolidColorBrush x:Key="ThreeD.InfoSurfaceBrush" Color="#12313E" />
+    <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#123322" />
+    <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#3A1C27" />
+    <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#222B36" />
 
     <Style x:Key="ThreeD.WorkflowStateBadgeStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
@@ -233,7 +237,7 @@
         <Setter Property="Cursor" Value="Hand" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="#203650" />
+                <Setter Property="Background" Value="#263749" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -310,7 +314,7 @@
                 <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="#DFF5F2" />
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                 <Setter Property="BorderThickness" Value="0,1,0,1" />
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />

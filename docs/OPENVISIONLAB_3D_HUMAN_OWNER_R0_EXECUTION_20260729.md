@@ -1,8 +1,8 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-07-30
-Status: Blocked — the current Release and inputs are ready, but the product
-owner has not yet completed the two unaided runs.
+Date: 2026-07-31
+Status: Blocked — the current Workbench v4 package and launcher are ready, but
+the product owner's unaided Wide and Compact runs are still required.
 
 ## Purpose
 
@@ -18,6 +18,14 @@ approved inputs, sizes the application window, and then stops intervening.
   `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Shell.exe`
 - Shell assembly:
   `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Shell.dll`
+- Core assembly:
+  `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Core.dll`
+- Data assembly:
+  `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Data.dll`
+- Tools assembly:
+  `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Tools.dll`
+- Viewer assembly:
+  `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Viewer.dll`
 - Docking assembly:
   `src/OpenVisionLab.ThreeD.Shell/bin/Release/net10.0-windows10.0.19041/OpenVisionLab.ThreeD.Docking.Controls.dll`
 - Completeness recipe:
@@ -30,18 +38,28 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `3219C29579F8F93F2D75491F94871CEA7A2FB0472C2A9DF7CF390812FFF70721` |
-| Shell assembly | `ED3A5BA964AD7C0FCF388B91524C25A056E7E24653F3A14BAB77D12BBF498782` |
-| Docking assembly | `0998512EF9DA6DBE0A1EFB1914736EF3B94907FDEC1ED840FA7FEF4DAF9CA34B` |
+| Release EXE | `01B857854B4E34D62E0E2C99EC523FA5BF81CCB6A7AD14173DBE5868F76C8719` |
+| Shell assembly | `B7E26FE9F1E925D087145494E667FA72F046332FED51EA239983AAF6DD995172` |
+| Core assembly | `5BCCC08EB06C98152345932F096D73A0C4AC3CFDBF0056E6BF2C5ABDAD598EEC` |
+| Data assembly | `19CB1A34D64B5EC359BE92A353F0A256A43E74E0A2BD863E87D928F3D50F923D` |
+| Tools assembly | `A33463EA7103761AC2938ECF42777F189D450869F082777469348DB6B2C9020B` |
+| Viewer assembly | `0DE4D5A5C419B6637EE61E80A491AD948FB8ED8CBC617FDEA8C4AA546955148A` |
+| Docking assembly | `A271EDD087D6598D5BB37CD16242A8390BFCEE1F7CC39F56317963F09F76D523` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
-The launcher fails closed if an input is missing or the Release EXE is older
-than current `.cs`, `.xaml`, or `.csproj` source.
+The launcher fails closed if an input is missing, any SHA-256 differs from
+the fixed table above, or the Release EXE is older than current `.cs`,
+`.xaml`, or `.csproj` source.
 
-The 2026-07-30 top dock-tab change supersedes the previously prepared UI
-binary set. R0 must use the hashes above and restart from Wide; no result from
-the earlier UI build can close this gate.
+The 2026-07-31 surface-edge artifacts and separate score closure supersedes
+the previous fixed binary set. R0 must use the hashes above and restart from
+Wide; no result from an earlier UI build can close this gate.
+
+The product owner's 2026-07-31 direction allows dependency-ready software
+development to continue before this R0 is performed. This sheet still gates
+only `A-01`, Workspace v3 `8/8`, and human-usability acceptance; automated
+software evidence does not close those claims.
 
 ## Owner task brief
 
@@ -135,7 +153,7 @@ When both layouts pass:
 - change `A-01` from Partial to Complete;
 - change Workspace v3 from `7/8` to `8/8`;
 - preserve the completed sheet and any app-only recordings as evidence;
-- begin `J-01/J-03/J-04 SurfaceModel`.
+- apply any observed usability findings to the then-current software package.
 
 If either layout fails, keep `A-01` Partial and create a concrete repair item
 from the first observed blocking behavior.
@@ -148,11 +166,16 @@ Wide/Compact R0 acceptance record.
 Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only launch checks ->
 Pass; Wide owner run -> Pending; Compact owner run -> Pending.
-Verification: both process-local `-ValidateOnly` commands passed on 2026-07-29,
-reported the fixed hashes above, confirmed the Release was newer than current
-source, and launched no application. A live Wide launcher check then opened the
-correct command-line inputs in a responding `1920 x 1040` application window;
-no UI action was automated.
-Evidence: this document and `scripts/start-human-owner-r0.ps1`.
+Verification: the current source was rebuilt in Release with `0` warnings and
+`0` errors on 2026-07-31. After the surface-match acceptance, authored bounds,
+and goldens closure,
+both
+process-local `-ValidateOnly` commands passed again, enforced the
+refreshed nine-input fixed hashes above, confirmed the Release was newer than
+current source, and launched no application.
+Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
+`artifacts/current/20260731-surface-match-acceptance-bounds-goldens/r0-*-validate-only.txt`.
 Boundary / next dependency: the product owner must personally complete both
-unaided runs before `A-01`, Workspace v3, or SurfaceModel can advance.
+unaided runs before `A-01` or Workspace v3 acceptance can advance. Surface
+matching software may proceed independently, but it cannot be used to claim
+that this human workflow passed.

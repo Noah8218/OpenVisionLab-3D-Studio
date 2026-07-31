@@ -16,6 +16,34 @@ This file defines the working agreement for Codex in this repository.
 - The 2D reference product validates image layers with tools, metrics, overlays, acceptance rules, recipes, and repeatable runner checks. The 3D product should keep that operating model, but use 3D entities instead of images.
 - Early scope is local desktop work: load 3D data, inspect it, show overlays/measurements, and build repeatable rule-based validation. Do not start with camera, PLC, robot, cloud, or production-line integration.
 
+## Commercial Benchmark Boundary
+
+- Commercial products, including GoPxL, are evidence for workflow principles,
+  not templates to reproduce.
+- Learn from current-task clarity, linked configuration/Viewer/evidence,
+  progressive disclosure, familiar purposeful icons, collapsible support
+  panes, and explicit status/next-action feedback.
+- Do not copy a competitor's theme, colors, exact panel proportions, screen
+  topology, names, assets, icon artwork, or code. Preserve an independent
+  OpenVisionLab visual system and terminology.
+- Every benchmark-driven change must name the OpenVisionLab operator problem,
+  the abstract principle being adapted, and why the resulting design fits this
+  product. Similarity to a competitor screenshot is not an acceptance gate.
+
+## Human R0 And Continued Software Development
+
+- The product owner's unaided Wide/Compact R0 remains required to close
+  `A-01`, Workspace v3 `8/8`, and any human-usability or release-acceptance
+  claim.
+- By explicit product-owner direction on 2026-07-31, missing R0 evidence is
+  not a global pause on software development. Continue with dependency-ready,
+  deterministic work that can be closed using source, fixtures, reports,
+  Runner parity, and current-build evidence.
+- Keep R0 listed as an external acceptance task and preserve its current
+  package. Do not imply that automated verification replaces human operation.
+- When a new software slice changes the R0 binary set, rebuild, refresh the
+  fixed hashes, and rerun both `-ValidateOnly` modes before handoff.
+
 ## Public README And Product Documentation
 
 - Write the root `README.md` in English.
@@ -35,7 +63,298 @@ This file defines the working agreement for Codex in this repository.
 - The repository root must include the approved project license and attribution
   notice. The README must identify the license and link to it.
 
+## UI Layout Integrity Gate
+
+- Every change that affects UI, UX, layout, visible text, navigation, docking,
+  or responsive behavior must be checked in a current build at both supported
+  `Wide 1920 x 1040` and `Compact 1280 x 760` sizes.
+- The check must explicitly look for overlapping controls, clipped or
+  truncated required labels/actions, controls rendered outside their pane,
+  unreachable controls, and unintended horizontal or nested scroll bars.
+- Required navigation, task, step, field, status, and command names must be
+  given enough space, wrap, or use an adaptive replacement. Do not use text
+  trimming to hide required meaning. Trimming is allowed only for secondary
+  identifiers such as paths or internal IDs, and the full value must remain
+  available through a tooltip or detail surface.
+- Docked, tabbed, expanded, collapsed, empty, loaded, and long localized-text
+  states that the change can affect must be included in the smallest practical
+  verification matrix. A panel collapse or restore must not execute Preview,
+  Publish, Run, Validation, or mutate recipe/source/ROI state.
+- A UI task is not `Complete` until fresh current-build before/after evidence
+  has been visually compared and the final supported-size captures contain no
+  unexplained overlap or required-text clipping. Record the checked sizes,
+  state, command or test, evidence paths, and any intentional adaptive
+  substitution in the closure document.
+
 ## Current Product Target
+
+- Surface-edge artifacts and separate score closure (2026-07-31): `K-02`,
+  `K-03`, and `K-06` are Complete. Core owns schema-1 identified model-edge,
+  complete-organized-scene-edge, and separate surface/edge score artifacts
+  with fail-closed identity and execution-link validation. Data owns atomic
+  JSON persistence. Tools owns deterministic topology boundary/crease
+  extraction, organized height-step extraction, and positional edge scoring
+  at the immutable surface pose. A controlled raised-square and flat-background
+  pair both retain `2/2 = 1.0` surface coverage while edge coverage separates
+  to `4/4 = 1.0` versus `0/4 = 0.0`. Runner focused verification passes
+  `21/21`; Workbench/Runner edge parity passes `12/12`; existing matching
+  passes `34/34`; acceptance `14/14`; SurfaceModel `22/22`; source/normal
+  `26/26`; Source Quality `18/18`; docking `76/76`; Inspection Workspace
+  `63/63`; Validation Set `84/84`; height distribution `25/25`; WPG `38/38`;
+  smoke options `26/26`; structure `17/17`; Release builds `0/0`. Current
+  application-only Wide `1920 x 1040` and Compact `1280 x 760` captures pass
+  the overlap/clipping review with separate Surface and 3D-edge rows. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md`
+  and `artifacts/current/20260731-surface-edge-score/`. Inventory is
+  `122 C / 17 P / 70 N / 9 E / 16 O`; human-owner R0 remains external for
+  `A-01`. Refreshed fixed hashes pass both Wide/Compact `-ValidateOnly`
+  modes. Next: `K-05/K-07/K-08` with `gpt-5.6-sol`, high. `K-04` remains
+  blocked on `B-12`; edge score is diagnostic and does not alter authored
+  surface acceptance.
+
+- PropertyGrid theme-consistency closure (2026-07-31): the Surface Match
+  parameter search, property-name cells, numeric editors, and interaction
+  states now use the existing OpenVision graphite semantic roles instead of a
+  view-local light palette. The package contract remains view-local, while 13
+  surface/text/editor/focus/read-only/disabled aliases are checked against the
+  owning product brushes. Search normal and keyboard-focus states have stable
+  automation IDs and current-build evidence. Release passes `0/0`; Recipe
+  Manager/WPG passes `38/38`; smoke options pass `26/26`; docking passes
+  `76/76`; Inspection Workspace passes `63/63`; Validation Set passes `84/84`;
+  height distribution passes `25/25`; and structure passes `17/17`. Current
+  application-only Wide `1920 x 1040`, Compact `1280 x 760`, and Compact
+  focused-search captures pass the overlap/clipping/theme review. Preserve
+  `docs/OPENVISIONLAB_3D_PROPERTY_GRID_THEME_CONSISTENCY_20260731.md` and
+  `artifacts/current/20260731-property-grid-theme-consistency/`. Inventory
+  remains `119 C / 17 P / 73 N / 9 E / 16 O`; human-owner R0 remains external
+  for `A-01`. Refreshed fixed hashes pass both `-ValidateOnly` modes. Next:
+  `K-02/K-03/K-06` with `gpt-5.6-sol`, high.
+
+- Surface-match acceptance, authored bounds, and goldens closure (2026-07-31):
+  `F-14`, `J-11`, `J-14`, `J-15`, and `M-16` are Complete. Core owns the
+  schema-1 identified acceptance policy and assessment, fail-closed authored
+  pose-search validation, typed decision/reason, and observational three-stage
+  runtime report. Data owns validated atomic assessment/runtime persistence;
+  Tools owns the shared raw-execution then separate-acceptance boundary used
+  by Runner and Workbench. The Surface Match PropertyGrid separates limits
+  from finite rotation/translation/search controls; Apply and reopen do not
+  execute. The Viewer keeps raw score/pose/overlay evidence distinct from
+  Pass/Fail/Rejected, authored limits, reason, and timing. Known pose passes,
+  controlled occlusion fails, and out-of-domain pose rejects with exact
+  assessment identities. Release passes `0/0`; acceptance passes `14/14`;
+  matching passes `34/34`; parity passes `16/16`; SurfaceModel passes `22/22`;
+  source/normal passes `26/26`; Source Quality passes `18/18`; docking passes
+  `76/76`; Inspection Workspace passes `63/63`; Validation Set passes
+  `84/84`; height distribution passes `25/25`; smoke options pass `25/25`;
+  and structure passes `17/17`. Current-build Wide `1920 x 1040` and Compact
+  `1280 x 760` expanded-parameter captures pass the overlap/clipping review.
+  Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MATCH_ACCEPTANCE_BOUNDS_AND_GOLDENS_20260731.md`
+  and
+  `artifacts/current/20260731-surface-match-acceptance-bounds-goldens/`.
+  Inventory is `119 C / 17 P / 73 N / 9 E / 16 O`; human-owner R0 remains
+  external for `A-01`, and refreshed fixed hashes pass both `-ValidateOnly`
+  modes. Next: `K-02/K-03/K-06` with `gpt-5.6-sol`, high. Keep surface and
+  edge scores separate and preserve raw evidence independent of acceptance.
+
+- Earlier surface-match overlay and Workbench/Runner parity closure (2026-07-31):
+  `J-10` and `J-16` are Complete. Core owns the schema-1 identified
+  transformed-model overlay and decision-free execution artifact; Data owns
+  validated atomic JSON persistence; Tools owns the shared deterministic
+  execution boundary used by Runner and Workbench. The Viewer renders neutral
+  Prepared Scene samples, the complete transformed model wireframe, raw
+  correspondences, and compact coverage/RMSE/pose/hash evidence without
+  defining Pass/Fail. The controlled fixture recovers the documented
+  `30 degree` yaw and `(10, -4, 2) mm` translation with `5/5 = 1.0`
+  coverage. Runner and Workbench match exactly on pose, coverage, overlay,
+  and execution hashes. Release passes `0/0`; matching passes `34/34`;
+  parity passes `10/10`; SurfaceModel regression passes `22/22`;
+  source/normal passes `26/26`; Source Quality passes `18/18`; docking passes
+  `76/76`; Inspection Workspace passes `63/63`; height distribution passes
+  `25/25`; and structure passes `17/17`. Current-build Wide `1920 x 1040`
+  and Compact `1280 x 760` captures pass the overlap/clipping review. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MATCH_OVERLAY_AND_PARITY_20260731.md` and
+  `artifacts/current/20260731-surface-match-overlay-parity/`. Inventory is
+  `114 C / 17 P / 78 N / 9 E / 16 O`. Human-owner R0 remains external for
+  `A-01`; refreshed fixed hashes pass both `-ValidateOnly` modes. Next:
+  `J-11/J-14/J-15/M-16` with `gpt-5.6-sol`, high. Keep acceptance policy
+  separate from the raw score and overlay contract.
+
+- Earlier Prepared Scene, rigid pose, and coverage closure (2026-07-31): `J-06`,
+  `J-08`, and `J-09` are Complete. Core owns the schema-1 identified
+  Prepared Scene, canonical Source Quality/scene identities, rigid
+  model-to-scene pose/result contract, and explicit decision-free one-way
+  coverage evidence. Data owns validated atomic Prepared Scene JSON
+  persistence. Tools owns pure scene preparation, bounded deterministic
+  Euler/centroid pose search, and unique-nearest coverage scoring. The
+  asymmetric five-sample fixture recovers the documented `30 degree` yaw and
+  `(10, -4, 2) mm` translation; full coverage is `5/5 = 1.0` and controlled
+  occlusion is `4/5 = 0.8`. Release passes `0/0`; matching passes `28/28`;
+  SurfaceModel regression passes `22/22`; source/normal passes `26/26`;
+  Source Quality passes `18/18`; and structure passes `17/17`. The refreshed
+  fixed-hash R0 package passes Wide/Compact `-ValidateOnly`. Preserve
+  `docs/OPENVISIONLAB_3D_PREPARED_SCENE_RIGID_POSE_AND_COVERAGE_20260731.md`,
+  `docs/OPENVISIONLAB_3D_GOPXL_BENCHMARK_APPROVED_DIRECTION_20260731.md`, and
+  `artifacts/current/20260731-surface-matching-foundation/`. Inventory is
+  `112 C / 17 P / 80 N / 9 E / 16 O`. Human-owner R0 remains external for
+  `A-01`. Next: `J-10/J-16` with `gpt-5.6-sol`, high. Do not combine that
+  Viewer/parity slice with Pass/Fail acceptance policy.
+
+- Earlier SurfaceModel preparation foundation closure (2026-07-31): `J-01`, `J-03`,
+  and `J-04` are Complete. Core owns the schema-1 identified artifact,
+  canonical SHA-256, deterministic even-index triangle schedule, and
+  fail-closed point/triangle/normal/sample report. Data owns atomic validated
+  JSON save/load. Tools preserves imported geometry and declared normals and
+  creates deterministic triangle-centroid samples only after `B-16` passes.
+  No repair, internal-surface removal, pose search, score, or UI is included.
+  Release passes `0/0`; SurfaceModel verification passes `22/22`; existing
+  source/normal verification passes `26/26`; Source Quality passes `18/18`;
+  and structure passes `17/17`. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MODEL_PREPARATION_FOUNDATION_20260731.md`
+  and
+  `artifacts/current/20260731-surface-model-foundation/`.
+  At this checkpoint inventory was `109 C / 17 P / 83 N / 9 E / 16 O`,
+  human-owner R0 remained external for `A-01`, and `J-06/J-08/J-09` was next.
+  The newer matching checkpoint above supersedes that inventory and priority.
+
+- Source-channel and dense-normal quality closure (2026-07-31): `B-11` and
+  `B-16` are Complete. C3D, GLB/STL, and LAS/LAZ now expose exactly seven
+  source-channel decisions with explicit evidence and never promote Viewer
+  colors or calculated normals to source data. GLB, ASCII STL, and binary STL
+  retain declared normals, including partial presence. LAS/LAZ sampled points
+  retain intensity and RGB availability follows the declared point format.
+  The WPF-neutral schema-1 normal report fails closed for missing, partial,
+  non-finite, zero, non-unit, reversed, invalid-index, and degenerate input.
+  Release passes `0/0`; focused source/normal verification passes `26/26`,
+  Source Quality passes `18/18`, the full loading matrix passes `128/128`,
+  and structure passes `17/17`. Preserve
+  `docs/OPENVISIONLAB_3D_SOURCE_CHANNEL_AND_DENSE_NORMAL_QUALITY_20260731.md`
+  and
+  `artifacts/current/20260731-source-channel-normal-quality/`.
+  At this checkpoint inventory was `106 C / 17 P / 86 N / 9 E / 16 O` and
+  `J-01/J-03/J-04` was next. The newer SurfaceModel checkpoint above
+  supersedes that inventory and priority.
+
+- GoPxL-inspired first-use Authoring clarity closure (2026-07-31): empty
+  Authoring now exposes one primary action in the Viewer, `Open 3D input`.
+  Recipe Chain shows only the current step rather than the complete four-step
+  sentence, and advances from `1 Open 3D input` to `2 Select inspection tool`
+  and then `3 Set ROI -> 4 Preview` from existing source/selection state.
+  Before input is ready, the duplicate source card, Viewer command row,
+  no-step ribbon, and Selected Tool waiting card stay hidden. After input is
+  ready, Source Quality and one tool-selection context return without
+  executing or mutating recipe, ROI, Preview, Publish, Run, or Validation.
+  Release passes `0/0`, Workbench docking `76/76`, Inspection Workspace
+  `63/63`, Validation Set `84/84`, and structure `17/17`. Current
+  application-only empty, input-ready, and selected-tool captures pass
+  first-attempt quality and visual overlap/clipping review at Wide
+  `1920 x 1040` and Compact `1280 x 760`. Preserve
+  `docs/OPENVISIONLAB_3D_GOPXL_FIRST_USE_AUTHORING_CLARITY_20260731.md`
+  and
+  `artifacts/current/20260731-gopxl-first-use-authoring-clarity/`.
+  Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+  Partial only for the human owner's unaided Wide/Compact R0. The refreshed
+  fixed-hash package and both `ValidateOnly` checks are current. After owner
+  R0 passes, begin `J-01/J-03/J-04 SurfaceModel` with `gpt-5.6-sol`, high.
+
+- Authoring panel integrity and side-collapse closure (2026-07-31): the loaded
+  Selected Tool now resolves Source Quality visibility through the Workbench
+  owner, so the two complete surfaces cannot overlap. Deterministic expanders,
+  one vertical scroll owner, a 140-pixel labeled Wide rail, and a compact
+  adaptive `한`/`EN` language value keep required labels and actions readable.
+  Authoring exposes `1 Input -> 2 Select tool -> 3 ROI -> 4 Preview`.
+  Workbench and Advanced task/support tabs can side-auto-hide while the
+  dominant Viewer remains fixed; collapse/restore is presentation-only.
+  Release passes `0/0`, Workbench docking `75/75`, Inspection Workspace
+  `63/63`, Validation Set `84/84`, Height distribution `25/25`, and structure
+  `17/17`. Current application-only Wide `1920 x 1040`, Compact
+  `1280 x 760`, and Selected Tool collapsed captures pass first-attempt quality
+  and visual overlap/clipping review. Preserve
+  `docs/OPENVISIONLAB_3D_AUTHORING_PANEL_INTEGRITY_AND_SIDE_COLLAPSE_20260731.md`
+  and
+  `artifacts/current/20260731-authoring-panel-integrity-and-collapse/`.
+  Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+  Partial only for the human owner's unaided Wide/Compact R0. The fixed-hash
+  package and both `ValidateOnly` checks are current. After owner R0 passes,
+  begin `J-01/J-03/J-04 SurfaceModel` with `gpt-5.6-sol`, high.
+
+- GoPxL-inspired Workbench v4 evidence and safe-layout closure (2026-07-30):
+  v4 is now `3/3` complete. Validate composes Samples, Run Results, Failure
+  Analysis, Threshold Review, and Held-out beside the same dominant Viewer;
+  staged-sample selection is presentation-only and explicit sample execution
+  remains unchanged. Results leads with decision/step/next-action evidence and
+  exposes read-only Run Record, Output Compare, and Reports beside the Viewer.
+  The Shell and Viewer now share a graphite role system while scientific
+  height colors remain independent. A schema-1 allowlisted profile persists
+  only safe Wide/Compact pane ratios, selected stable pane IDs, and valid
+  window placement. Atomic save, validation, corrupt/incompatible fallback,
+  no-auto-overwrite for unsafe profiles, and explicit Reset layout preserve
+  recipe/source/ROI/Preview/Run boundaries. Release passes `0/0`, Workbench
+  docking `71/71`, Validation Set `84/84`, Inspection Workspace `63/63`,
+  Height distribution `25` checks, and structure `17/17`. Current
+  application-only Validate/Results captures pass Wide `1920 x 1040` and
+  Compact `1280 x 760`; Missing -> Restored and corrupt-profile fallback
+  reopen evidence preserves no draft, ROI capture, Preview, or Validation run.
+  Preserve
+  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md`
+  and
+  `artifacts/current/20260730-gopxl-workbench-v4-evidence-and-layout/`.
+  Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains
+  Partial only for the human owner's unaided Wide/Compact R0. The fixed-hash
+  package and launcher validation are current. After owner R0 passes, begin
+  `J-01/J-03/J-04 SurfaceModel` with `gpt-5.6-sol`, high.
+
+- GoPxL-inspired Workbench v4-1 Shell and Authoring closure (2026-07-30):
+  the application now uses one 56-pixel Job Bar and a responsive left
+  responsibility rail instead of horizontal stage navigation plus a repeated
+  full-width workspace metadata/command row. Setup and Teach are one visible
+  Authoring entry while existing internal state and explicit action contracts
+  remain. Wide orders Tool Library/Recipe Chain, Selected Tool, and dominant
+  Viewer/Displayed Outputs; Compact uses a 60-pixel icon rail, one support tab
+  group, and dominant Viewer. Preview, Publish, Cancel, and Save now belong to
+  Selected Tool. Release passes `0/0`, Workbench docking `64/64`, Inspection
+  Workspace `63/63`, Validation Set `84/84`, and structure `17/17`. Current
+  application-only Wide `1920 x 1040` and Compact `1280 x 760` captures pass
+  on the first quality attempt. Preserve
+  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md` and
+  `artifacts/current/20260730-gopxl-workbench-v4-shell/`. Inventory remains
+  `104 C / 17 P / 88 N / 9 E / 16 O`. This v4-1 checkpoint and its former
+  v4-2/v4-3 priority are superseded by the complete v4 checkpoint above.
+
+- Viewer single-row and Height color-range closure (2026-07-30): the normal
+  loaded Single Viewer now uses one common top command row instead of stacked
+  source, pane-title, and Viewer-status rows. The persistent left measurement
+  HUD is removed while the orientation gizmo remains. The right Height legend
+  now exposes accessible low/high decrement, value, increment, and AUTO
+  controls. A manual interval clamps endpoint colors and linearly remaps
+  in-range raw heights without changing source data, ROI, measurement, recipe,
+  Preview, Publish, or Run state. Release build passes `0/0`; height
+  distribution passes `25/25`, Inspection Workspace `63/63`, Workbench
+  docking `59/59`, Validation Set `84/84`, and structure `17/17`. Current
+  application-only Wide `1920 x 1040`, Compact `1280 x 760`, and manual
+  `11.00..12.50` captures pass on the first quality attempt. Preserve
+  `docs/OPENVISIONLAB_3D_VIEWER_SINGLE_ROW_AND_HEIGHT_COLOR_RANGE_20260730.md`
+  and
+  `artifacts/current/20260730-viewer-single-row-height-range/`. Inventory
+  remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains Partial for a
+  new human-owner unaided R0 on this updated binary set. After owner R0 passes,
+  begin `J-01/J-03/J-04 SurfaceModel` with `gpt-5.6-sol`, high.
+
+- Viewer command-bar simplification closure (2026-07-30): the Shell
+  Viewer-layout bar and Viewer display bar now use compact, familiar icons for
+  Height Image, layout, HUD, projection, fit, overflow, and view-only ROI
+  display height. Current states remain visible, every icon-only control has a
+  tooltip, localized accessible name, and stable AutomationId, and Viewer
+  status feedback remains explicit. Release build passes `0/0`, Inspection
+  Workspace passes `63/63`, Workbench docking passes `59/59`, Validation Set
+  retains `84` PASS checks, structure passes `17/17`, and current-source Wide
+  `1920 x 1040` and Compact `1280 x 760` captures pass on the first quality
+  attempt. Preserve
+  `docs/OPENVISIONLAB_3D_VIEWER_COMMAND_BAR_SIMPLIFICATION_20260730.md` and
+  `artifacts/current/20260730-viewer-command-bar-simplification/`. Inventory
+  remains `104 C / 17 P / 88 N / 9 E / 16 O`; `A-01` remains Partial for a
+  new human-owner unaided R0 on this updated binary set. After owner R0 passes,
+  begin `J-01/J-03/J-04 SurfaceModel` with `gpt-5.6-sol`, high.
 
 - Validation top dock-tab closure (2026-07-30): the multi-pane AvalonDock
   work-surface strip now appears above Validate content instead of at the

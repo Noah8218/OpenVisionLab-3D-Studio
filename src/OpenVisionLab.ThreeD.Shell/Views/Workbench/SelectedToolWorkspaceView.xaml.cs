@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
@@ -22,6 +23,25 @@ public partial class SelectedToolWorkspaceView : UserControl
     public bool HasThicknessRepeatGridAuthoringControls =>
         ThicknessRepeatGridPanel is not null;
 
+    public bool HasExplicitAuthoringActions =>
+        SelectedToolActionBar is not null
+        && PreviewActionButton is not null
+        && PublishActionButton is not null
+        && CancelPreviewActionButton is not null
+        && SaveRecipeActionButton is not null;
+
+    public bool HasExclusiveWorkspaceSurface =>
+        !(SourceQualityWorkspace.IsVisible
+          && SelectedToolScrollViewer.IsVisible);
+
+    public IReadOnlyList<string> GetVisibleTextLayout()
+    {
+        UpdateLayout();
+        var lines = new List<string>();
+        CollectVisibleText(this, lines);
+        return lines;
+    }
+
     public void BringThicknessRepeatGridIntoView() =>
         ThicknessRepeatGridPanel.BringIntoView();
 
@@ -41,6 +61,27 @@ public partial class SelectedToolWorkspaceView : UserControl
         if (viewModel.ApplySelectedStepParameterDraftCommand.CanExecute(null))
         {
             viewModel.ApplySelectedStepParameterDraftCommand.Execute(null);
+        }
+    }
+
+    private void CollectVisibleText(
+        DependencyObject owner,
+        ICollection<string> lines)
+    {
+        if (owner is TextBlock textBlock
+            && textBlock.IsVisible
+            && !string.IsNullOrWhiteSpace(textBlock.Text))
+        {
+            var bounds = textBlock.TransformToAncestor(this).TransformBounds(
+                new Rect(textBlock.RenderSize));
+            lines.Add(
+                FormattableString.Invariant(
+                    $"SelectedToolText|x={bounds.X:F1}|y={bounds.Y:F1}|width={bounds.Width:F1}|height={bounds.Height:F1}|text={textBlock.Text.Replace(Environment.NewLine, " ", StringComparison.Ordinal)}"));
+        }
+
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(owner); index++)
+        {
+            CollectVisibleText(VisualTreeHelper.GetChild(owner, index), lines);
         }
     }
 }

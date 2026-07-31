@@ -39,11 +39,11 @@
                     Visibility="Collapsed"
                     AutomationProperties.AutomationId="ValidationWorkspaceNavigation">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel>
                         <RadioButton x:Name="ValidationSamplesNavigation"
                                      Margin="0,0,14,0"
                                      VerticalAlignment="Center"
@@ -84,9 +84,10 @@
                                      AutomationProperties.AutomationId="ValidationHeldOutNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceHeldOut}"
                                      Click="ValidationHeldOutNavigation_Click" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1"
-                                Margin="16,0,0,0"
+                    </WrapPanel>
+                    <StackPanel Grid.Row="1"
+                                Margin="0,6,0,0"
+                                HorizontalAlignment="Right"
                                 Orientation="Horizontal">
                         <Button x:Name="RunValidationSampleSetButton"
                                 Padding="10,4"

@@ -115,6 +115,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         selectedLanguageOption = languageOptions.FirstOrDefault(option => option.Language == OpenVisionLanguageService.CurrentLanguage)
             ?? languageOptions[0];
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
+        InspectionSteps.CollectionChanged += (_, _) =>
+            RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         Calibration = new CalibrationCenterViewModel();
         selectWorkspaceCommand = new RelayCommand(
             parameter => SelectWorkspace(parameter),
@@ -236,6 +238,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
 
             RaisePropertyChanged(nameof(IsInspectWorkspaceSelected));
             RaisePropertyChanged(nameof(IsTeachWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsAuthoringWorkspaceSelected));
             RaisePropertyChanged(nameof(IsReviewWorkspaceSelected));
             RaisePropertyChanged(nameof(IsSetupWorkspaceSelected));
             RaisePropertyChanged(nameof(IsValidateWorkspaceSelected));
@@ -274,6 +277,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             }
         }
     }
+
+    public bool IsAuthoringWorkspaceSelected =>
+        SelectedWorkspaceMode is ShellWorkspaceMode.Workbench or ShellWorkspaceMode.Teach;
 
     public bool IsWorkbenchWorkspaceSelected
     {
@@ -434,6 +440,14 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref statusText, value);
     }
 
+    public void ReportLayoutStatus(string message)
+    {
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            StatusText = message;
+        }
+    }
+
     public string RecipeComparisonSummary
     {
         get => recipeComparisonSummary;
@@ -467,7 +481,33 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public string InspectionStepSummary
     {
         get => inspectionStepSummary;
-        private set => SetField(ref inspectionStepSummary, value);
+        private set
+        {
+            if (SetField(ref inspectionStepSummary, value))
+            {
+                RaisePropertyChanged(nameof(ResultsOperatorDecisionSummary));
+            }
+        }
+    }
+
+    public string ResultsOperatorDecisionSummary => InspectionStepSummary;
+
+    public string ResultsOperatorAffectedStepsSummary
+    {
+        get
+        {
+            if (Workbench.SelectedValidationSetStep is { } selected)
+            {
+                return $"{selected.ToolName} \u00b7 {selected.StatusText}";
+            }
+
+            return InspectionSteps.Count == 0
+                ? L("실행 기록 없음", "No run record")
+                : string.Join(
+                    ", ",
+                    InspectionSteps.Take(3).Select(step =>
+                        $"{step.Stage} \u00b7 {step.Status}"));
+        }
     }
 
     public string ThresholdCorrectionState
@@ -603,6 +643,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             RaisePropertyChanged(nameof(InspectionStageNavigationStatus));
             selectWorkspaceCommand.RaiseCanExecuteChanged();
             openSelectedValidationIssueInTeachCommand.RaiseCanExecuteChanged();
+            RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         }
     }
 

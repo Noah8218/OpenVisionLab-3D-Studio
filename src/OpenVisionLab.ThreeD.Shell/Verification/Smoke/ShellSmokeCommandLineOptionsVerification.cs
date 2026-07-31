@@ -51,7 +51,9 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("SharedHeightHover", VerifySharedHeightHover()),
             ("SharedHeightHoverLoadedHandler", VerifySharedHeightHoverLoadedHandler()),
             ("HeightImageRoiPointer", VerifyHeightImageRoiPointer()),
-            ("OrientedBoxPointer", VerifyOrientedBoxPointer())
+            ("OrientedBoxPointer", VerifyOrientedBoxPointer()),
+            ("ExpandSelectedToolParameters", VerifyExpandSelectedToolParameters()),
+            ("FocusSelectedToolParameterSearch", VerifyFocusSelectedToolParameterSearch())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -221,6 +223,22 @@ internal static class ShellSmokeCommandLineOptionsVerification
             "oriented-box-pointer.txt"
         ]);
         return options.OrientedBoxPointerSmokeReportPath == "oriented-box-pointer.txt"
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyExpandSelectedToolParameters()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-expand-selected-tool-parameters"]);
+        return options.ExpandSelectedToolParametersSmoke
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyFocusSelectedToolParameterSearch()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-focus-selected-tool-parameter-search"]);
+        return options.FocusSelectedToolParameterSearchSmoke
                && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 

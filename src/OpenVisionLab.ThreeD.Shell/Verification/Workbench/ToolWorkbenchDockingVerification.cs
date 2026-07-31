@@ -1,8 +1,11 @@
 using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Docking.Controls;
+using OpenVisionLab.ThreeD.Shell.Layout;
+using OpenVisionLab.ThreeD.Shell.Views.Shell;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell;
@@ -102,7 +105,7 @@ internal static class ToolWorkbenchDockingVerification
                 && workbenchContracts[1].HasContent,
                 Describe(workbenchContracts));
             Check(
-                "Workbench orders Recipe Flow, Step Parameters, then 3D View",
+                "Workbench model preserves Recipe Flow, Selected Tool, then Viewer order",
                 workbench.HasRecipeFlowInspectorViewerOrder
                 && workbenchContracts[1].ContentId == "data-layers"
                 && workbenchContracts[2].ContentId == "tool-inspector"
@@ -113,9 +116,31 @@ internal static class ToolWorkbenchDockingVerification
                 workbench.UsesInspectionWorkspaceV3Composition,
                 $"v3Composition={workbench.UsesInspectionWorkspaceV3Composition}");
             Check(
+                "Authoring exposes exactly one current-action guide",
+                workbench.HasSingleVisibleAuthoringFirstAction,
+                $"firstActionGuide={workbench.HasVisibleAuthoringFirstActionGuide}; singleCurrentAction={workbench.HasSingleVisibleAuthoringFirstAction}");
+            Check(
+                "Empty Viewer keeps one primary input action without a duplicate context ribbon",
+                workbench.IsViewerInputFirstActionVisible
+                && !workbench.IsViewerContextRibbonVisible
+                && !workbench.IsNoRecipeStepBannerVisible,
+                $"inputAction={workbench.IsViewerInputFirstActionVisible}; contextRibbon={workbench.IsViewerContextRibbonVisible}; noStepBanner={workbench.IsNoRecipeStepBannerVisible}");
+            Check(
                 "Selected Tool workspace owns bounded Thickness repeat-grid authoring controls",
                 workbench.HasThicknessRepeatGridAuthoringControls,
                 $"repeatGrid={workbench.HasThicknessRepeatGridAuthoringControls}");
+            Check(
+                "Selected Tool owns explicit Preview, Publish, Cancel, and Save actions",
+                workbench.HasExplicitSelectedToolActions,
+                $"selectedToolActions={workbench.HasExplicitSelectedToolActions}");
+            Check(
+                "Source Quality and Selected Tool surfaces are mutually exclusive",
+                workbench.HasExclusiveSelectedToolWorkspaceSurface,
+                $"exclusiveWorkspace={workbench.HasExclusiveSelectedToolWorkspaceSurface}");
+            Check(
+                "Displayed Outputs is adjacent to Viewer",
+                workbench.HasAdjacentViewerOutputs,
+                $"viewerOutputs={workbench.HasAdjacentViewerOutputs}");
             Check(
                 "Workbench Viewer exposes one normal layout toolbar and two reusable slot hosts",
                 workbench.HasViewerWorkspaceLayoutToolbar,
@@ -125,9 +150,43 @@ internal static class ToolWorkbenchDockingVerification
                 workbench.HasDominantViewerWidth,
                 $"dominantViewer={workbench.HasDominantViewerWidth}");
             Check(
+                "Workbench removes the repeated full-width command and metadata row",
+                workbench.HasNoVisibleWorkspaceCommandBar,
+                $"commandBarHidden={workbench.HasNoVisibleWorkspaceCommandBar}");
+            Check(
                 "Workbench dock tabs use the top OpenVision themed strip",
                 workbench.HasTopThemedDockTabs,
                 $"topThemedTabs={workbench.HasTopThemedDockTabs}");
+            Check(
+                "Task panes expose side collapse while Viewer remains fixed",
+                workbench.HasSideCollapsibleTaskPanes,
+                $"sideCollapsible={workbench.HasSideCollapsibleTaskPanes}");
+            var autoHideRoundTrip = workbench.VerifySupportAutoHideRoundTrip();
+            Check(
+                "Support pane side collapse restores without changing composition",
+                autoHideRoundTrip.Collapsed
+                && autoHideRoundTrip.Restored
+                && workbench.HasRecipeFlowInspectorViewerOrder,
+                $"collapsed={autoHideRoundTrip.Collapsed}; restored={autoHideRoundTrip.Restored}; composition={workbench.HasRecipeFlowInspectorViewerOrder}");
+
+            var navigationRail = new StudioNavigationRailView
+            {
+                DataContext = new ShellMainWindowViewModel(),
+            };
+            navigationRail.ApplyResponsiveWidthForVerification(1920);
+            var wideRailWidth = navigationRail.Width;
+            navigationRail.ApplyResponsiveWidthForVerification(1280);
+            Check(
+                "Workbench v4 rail exposes accessible responsibility and utility routes",
+                navigationRail.HasAccessibleResponsibilityRoutes
+                && navigationRail.HasAccessibleUtilityRoutes,
+                $"responsibilities={navigationRail.HasAccessibleResponsibilityRoutes}; utilities={navigationRail.HasAccessibleUtilityRoutes}");
+            Check(
+                "Workbench v4 rail switches from labeled Wide to icon Compact width",
+                Math.Abs(wideRailWidth - 140) < 0.1
+                && navigationRail.IsCompact
+                && Math.Abs(navigationRail.Width - 60) < 0.1,
+                $"wide={wideRailWidth:F0}; compact={navigationRail.Width:F0}; isCompact={navigationRail.IsCompact}");
             Check("Workbench hosts all twelve dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));
             Check("Workbench required panes cannot close", workbenchContracts.All(contract => !contract.CanClose), Describe(workbenchContracts));
@@ -261,11 +320,13 @@ internal static class ToolWorkbenchDockingVerification
             stageHost.Show();
             stageHost.UpdateLayout();
             Check(
-                "Setup composes only Tool Library and full Recipe Chain",
-                stageWorkbench.OperatorStage == OpenVisionOperatorStage.Setup
-                && stageWorkbench.HasSetupStageComposition
+                "Initial Workbench mode composes the unified Authoring cockpit",
+                stageWorkbench.OperatorStage == OpenVisionOperatorStage.Teach
+                && stageWorkbench.HasTeachStageComposition
+                && stageWorkbench.HasAuthoringStageComposition
+                && stageWorkbench.HasAdjacentViewerOutputs
                 && stageWorkbench.HasStableStageHostedDataContexts,
-                $"stage={stageWorkbench.OperatorStage}; setup={stageWorkbench.HasSetupStageComposition}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; bottom={stageWorkbench.IsBottomPaneAttached}");
+                $"stage={stageWorkbench.OperatorStage}; authoring={stageWorkbench.HasAuthoringStageComposition}; outputs={stageWorkbench.HasAdjacentViewerOutputs}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; bottom={stageWorkbench.IsBottomPaneAttached}");
 
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Teach);
             stageHost.UpdateLayout();
@@ -277,7 +338,7 @@ internal static class ToolWorkbenchDockingVerification
                 && stageWorkbench.HasStableStageHostedDataContexts,
                 $"stage={stageWorkbench.OperatorStage}; teach={stageWorkbench.HasTeachStageComposition}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; bottom={stageWorkbench.IsBottomPaneAttached}");
             Check(
-                "Setup to Teach navigation preserves recipe and selected-step identity",
+                "Authoring entry normalization preserves recipe and selected-step identity",
                 ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
                 && shell.Workbench.PipelineSteps.Count == recipeStepCount
                 && shell.Workbench.IsDirty == recipeDirty
@@ -304,17 +365,18 @@ internal static class ToolWorkbenchDockingVerification
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Inspect);
             stageHost.UpdateLayout();
             Check(
-                "Validate promotes validation evidence to the only full-height workspace",
+                "Validate pairs full-height validation evidence with a dominant Viewer",
                 shell.IsValidateWorkspaceSelected
                 && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Validate
                 && stageWorkbench.HasValidateStageComposition
+                && stageWorkbench.HasEvidenceLinkedViewerComposition
                 && stageWorkbench.IsDedicatedValidationWorkspace
                 && stageWorkbench.HasStableStageHostedDataContexts
                 && stageWorkbench.HasLocalizedValidationNavigation
                 && stageWorkbench.ValidationSetSampleCount == 5
                 && stageWorkbench.CanRunValidationSet
                 && !stageWorkbench.IsBottomPaneAttached,
-                $"stage={stageWorkbench.OperatorStage}; validate={stageWorkbench.HasValidateStageComposition}; dedicated={stageWorkbench.IsDedicatedValidationWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedValidationNavigation}; samples={stageWorkbench.ValidationSetSampleCount}; canRun={stageWorkbench.CanRunValidationSet}; bottom={stageWorkbench.IsBottomPaneAttached}");
+                $"stage={stageWorkbench.OperatorStage}; validate={stageWorkbench.HasValidateStageComposition}; linkedViewer={stageWorkbench.HasEvidenceLinkedViewerComposition}; dedicated={stageWorkbench.IsDedicatedValidationWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedValidationNavigation}; samples={stageWorkbench.ValidationSetSampleCount}; canRun={stageWorkbench.CanRunValidationSet}; bottom={stageWorkbench.IsBottomPaneAttached}");
             foreach (var section in Enum.GetValues<ValidationWorkspaceSection>())
             {
                 stageWorkbench.SetValidationWorkspaceSection(section);
@@ -327,15 +389,16 @@ internal static class ToolWorkbenchDockingVerification
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Review);
             stageHost.UpdateLayout();
             Check(
-                "Results promotes one dedicated read-only evidence workspace",
+                "Results pairs one dedicated read-only evidence workspace with a dominant Viewer",
                 shell.IsResultsWorkspaceSelected
                 && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Results
                 && stageWorkbench.HasResultsStageComposition
+                && stageWorkbench.HasEvidenceLinkedViewerComposition
                 && stageWorkbench.IsDedicatedResultsWorkspace
                 && stageWorkbench.HasStableStageHostedDataContexts
                 && stageWorkbench.HasLocalizedResultsNavigation
                 && !stageWorkbench.IsBottomPaneAttached,
-                $"stage={stageWorkbench.OperatorStage}; results={stageWorkbench.HasResultsStageComposition}; dedicated={stageWorkbench.IsDedicatedResultsWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedResultsNavigation}; bottom={stageWorkbench.IsBottomPaneAttached}");
+                $"stage={stageWorkbench.OperatorStage}; results={stageWorkbench.HasResultsStageComposition}; linkedViewer={stageWorkbench.HasEvidenceLinkedViewerComposition}; dedicated={stageWorkbench.IsDedicatedResultsWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedResultsNavigation}; bottom={stageWorkbench.IsBottomPaneAttached}");
             var resultsSelectedStep = shell.Workbench.SelectedPipelineStep;
             var resultsStepCount = shell.Workbench.PipelineSteps.Count;
             var resultsDirty = shell.Workbench.IsDirty;
@@ -374,7 +437,8 @@ internal static class ToolWorkbenchDockingVerification
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Workbench);
             Check(
                 "all stage navigation is presentation-only",
-                stageWorkbench.HasSetupStageComposition
+                stageWorkbench.HasTeachStageComposition
+                && stageWorkbench.HasAuthoringStageComposition
                 && ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
                 && shell.Workbench.PipelineSteps.Count == recipeStepCount
                 && shell.Workbench.IsDirty == recipeDirty
@@ -571,7 +635,157 @@ internal static class ToolWorkbenchDockingVerification
                     StringComparison.Ordinal)
                 && ownerPathShell.InspectionSteps.Count == 1,
                 $"stage={ownerPathShell.SelectedWorkspaceMode}; recipe={ownerPathShell.Workbench.RecipePath}; selected={ownerPathShell.Workbench.SelectedPipelineStep?.Id}; dirty={ownerPathShell.Workbench.IsDirty}; validation={ownerPathShell.Workbench.ValidationSetSummary}; run={ownerPathShell.RunSnapshotSummary}; runSteps={ownerPathShell.InspectionSteps.Count}");
+
+            var beforeLayoutRecipePath = ownerPathShell.Workbench.RecipePath;
+            var beforeLayoutDirty = ownerPathShell.Workbench.IsDirty;
+            var beforeLayoutStepCount = ownerPathShell.Workbench.PipelineSteps.Count;
+            var beforeLayoutValidationSummary =
+                ownerPathShell.Workbench.ValidationSetSummary;
+            var customDockState = OpenVisionDockPresentationState.Default with
+            {
+                Wide = OpenVisionDockPresentationState.Default.Wide with
+                {
+                    ValidateEvidence = 1.25,
+                    ValidateViewer = 3.05,
+                    ResultsEvidence = 1.30,
+                    ResultsViewer = 3.00,
+                },
+                PrimaryContentId = "displayed-outputs",
+                SupportContentId = "tool-inspector",
+            };
+            ownerPathWorkbench.ApplyDockPresentationState(customDockState);
+            ownerPathWorkbench.ResetDockPresentationState();
+            Check(
+                "layout apply and reset are presentation-only",
+                string.Equals(
+                    ownerPathShell.Workbench.RecipePath,
+                    beforeLayoutRecipePath,
+                    StringComparison.OrdinalIgnoreCase)
+                && ownerPathShell.Workbench.IsDirty == beforeLayoutDirty
+                && ownerPathShell.Workbench.PipelineSteps.Count
+                    == beforeLayoutStepCount
+                && string.Equals(
+                    ownerPathShell.Workbench.ValidationSetSummary,
+                    beforeLayoutValidationSummary,
+                    StringComparison.Ordinal)
+                && !ownerPathShell.Workbench.IsValidationSetRunning
+                && !ownerPathShell.Workbench.IsSelectedStepPreviewRunning,
+                $"recipe={beforeLayoutRecipePath}; dirty={beforeLayoutDirty}->{ownerPathShell.Workbench.IsDirty}; steps={beforeLayoutStepCount}->{ownerPathShell.Workbench.PipelineSteps.Count}; validationRunning={ownerPathShell.Workbench.IsValidationSetRunning}; previewRunning={ownerPathShell.Workbench.IsSelectedStepPreviewRunning}");
             ownerPathHost.Close();
+
+            var layoutVerificationDirectory = Path.Combine(
+                Path.GetDirectoryName(Path.GetFullPath(reportPath))
+                    ?? Environment.CurrentDirectory,
+                $"layout-profile-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(layoutVerificationDirectory);
+            var layoutPath = Path.Combine(
+                layoutVerificationDirectory,
+                "studio-layout.json");
+            var layoutStore = new StudioLayoutProfileStore(layoutPath);
+            var savedProfile = StudioLayoutProfile.Default with
+            {
+                Workbench = customDockState,
+                Window = new StudioWindowPlacement(
+                    SystemParameters.VirtualScreenLeft + 20,
+                    SystemParameters.VirtualScreenTop + 20,
+                    1440,
+                    900,
+                    IsMaximized: false),
+            };
+            layoutStore.Save(savedProfile);
+            var restoredLayout = layoutStore.Load();
+            Check(
+                "safe layout profile save and reload round-trip preserves allowlisted presentation state",
+                restoredLayout.Status == StudioLayoutLoadStatus.Restored
+                && restoredLayout.Profile.Workbench.Wide.ValidateEvidence
+                    == 1.25
+                && restoredLayout.Profile.Workbench.Wide.ValidateViewer
+                    == 3.05
+                && restoredLayout.Profile.Workbench.PrimaryContentId
+                    == "displayed-outputs"
+                && restoredLayout.Profile.Workbench.SupportContentId
+                    == "tool-inspector",
+                $"status={restoredLayout.Status}; evidence={restoredLayout.Profile.Workbench.Wide.ValidateEvidence}; viewer={restoredLayout.Profile.Workbench.Wide.ValidateViewer}; primary={restoredLayout.Profile.Workbench.PrimaryContentId}; support={restoredLayout.Profile.Workbench.SupportContentId}");
+            Check(
+                "layout save is atomic and leaves no temporary sidecar",
+                !Directory.EnumerateFiles(
+                        layoutVerificationDirectory,
+                        "*.tmp",
+                        SearchOption.TopDirectoryOnly)
+                    .Any(),
+                layoutVerificationDirectory);
+
+            File.WriteAllText(layoutPath, "{ not-json");
+            var corruptLayout = layoutStore.Load();
+            Check(
+                "corrupt layout fails safely to defaults and disables automatic overwrite",
+                corruptLayout.Status == StudioLayoutLoadStatus.Corrupt
+                && !corruptLayout.CanAutoSave
+                && corruptLayout.Profile == StudioLayoutProfile.Default,
+                $"status={corruptLayout.Status}; canAutoSave={corruptLayout.CanAutoSave}; message={corruptLayout.Message}");
+
+            File.WriteAllText(
+                layoutPath,
+                JsonSerializer.Serialize(
+                    savedProfile with { SchemaVersion = 999 },
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    }));
+            var incompatibleLayout = layoutStore.Load();
+            Check(
+                "incompatible layout schema fails safely to defaults",
+                incompatibleLayout.Status
+                    == StudioLayoutLoadStatus.Incompatible
+                && !incompatibleLayout.CanAutoSave,
+                $"status={incompatibleLayout.Status}; canAutoSave={incompatibleLayout.CanAutoSave}; message={incompatibleLayout.Message}");
+
+            var unsafeDockState = customDockState with
+            {
+                Wide = customDockState.Wide with
+                {
+                    ValidateEvidence = 99,
+                },
+                PrimaryContentId = "unknown-content",
+                SupportContentId = "unknown-support",
+            };
+            File.WriteAllText(
+                layoutPath,
+                JsonSerializer.Serialize(
+                    savedProfile with
+                    {
+                        Workbench = unsafeDockState,
+                        Window = new StudioWindowPlacement(
+                            999999,
+                            999999,
+                            1200,
+                            800,
+                            IsMaximized: false),
+                    },
+                    new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    }));
+            var sanitizedLayout = layoutStore.Load();
+            Check(
+                "unknown IDs invalid ratios and off-screen bounds are sanitized",
+                sanitizedLayout.Status
+                    == StudioLayoutLoadStatus.RestoredWithFallback
+                && sanitizedLayout.Profile.Window is null
+                && sanitizedLayout.Profile.Workbench.Wide.ValidateEvidence
+                    == OpenVisionDockPresentationState.Default.Wide
+                        .ValidateEvidence
+                && sanitizedLayout.Profile.Workbench.PrimaryContentId
+                    == OpenVisionDockPresentationState.Default.PrimaryContentId
+                && sanitizedLayout.Profile.Workbench.SupportContentId
+                    == OpenVisionDockPresentationState.Default.SupportContentId,
+                $"status={sanitizedLayout.Status}; window={sanitizedLayout.Profile.Window}; evidence={sanitizedLayout.Profile.Workbench.Wide.ValidateEvidence}; primary={sanitizedLayout.Profile.Workbench.PrimaryContentId}; support={sanitizedLayout.Profile.Workbench.SupportContentId}");
+            layoutStore.Reset();
+            Check(
+                "explicit layout reset removes only the selected profile",
+                !File.Exists(layoutPath)
+                && Directory.Exists(layoutVerificationDirectory),
+                $"profileExists={File.Exists(layoutPath)}; directoryExists={Directory.Exists(layoutVerificationDirectory)}");
 
             var advancedMarker = new object();
             var advanced = new OpenVisionDockWorkspaceView

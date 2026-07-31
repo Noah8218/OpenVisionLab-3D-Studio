@@ -45,7 +45,8 @@
                 Padding="10,5"
                 Background="{DynamicResource ThreeD.CommandBarBrush}"
                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                BorderThickness="0,0,0,1">
+                BorderThickness="0,0,0,1"
+                Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" MinWidth="150" />
@@ -228,41 +229,41 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Border Padding="16,10"
-                        Background="{DynamicResource ThreeD.CommandBarBrush}"
+                <Border Background="{DynamicResource ThreeD.CommandBarBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                        BorderThickness="0,0,0,1">
+                        BorderThickness="0,0,0,1"
+                        AutomationProperties.AutomationId="ViewerContextRibbon">
+                    <Border.Style>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="Padding" Value="16,10" />
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Workbench.IsC3DSourceLoading}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Workbench.IsSelectionCandidateActive}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding Workbench.IsSourceReadyForRecipe}" Value="True" />
+                                        <Condition Binding="{Binding Workbench.HasSelectedPipelineStep}" Value="False" />
+                                        <Condition Binding="{Binding Workbench.IsC3DSourceLoading}" Value="False" />
+                                        <Condition Binding="{Binding Workbench.IsSelectionCandidateActive}" Value="False" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ui:Button Margin="0,0,10,0"
-                                   Padding="9,4"
-                                   VerticalAlignment="Center"
-                                   Content="{Binding Localization.Open3DMap}"
-                                   Icon="{ui:SymbolIcon FolderOpen24}"
-                                   Command="{Binding Workbench.LoadC3DSourceCommand}"
-                                   ToolTip="{Binding Localization.Open3DMapToolTip}"
-                                   AutomationProperties.AutomationId="OpenViewer3DMapButton"
-                                   AutomationProperties.Name="{Binding Localization.Open3DMap}" />
-                        <TextBlock Grid.Column="1"
-                                   VerticalAlignment="Center"
-                                   FontSize="10.5"
-                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                   Text="{Binding Workbench.LocalizedSourceReadinessSummary}"
-                                   TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Workbench.LocalizedSourceReadinessSummary}" />
-                        <Border Grid.Row="1"
-                                Grid.ColumnSpan="3"
-                                Margin="0,7,0,0"
+                        <Border Grid.Row="0"
+                                Margin="0"
                                 Padding="9,7"
                                 Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                 BorderBrush="{DynamicResource ThreeD.InfoBrush}"
@@ -297,22 +298,28 @@
                                            AutomationProperties.Name="{Binding Localization.Cancel}" />
                             </Grid>
                         </Border>
-                        <Border Grid.Row="2"
-                                Grid.ColumnSpan="3"
-                                Margin="0,7,0,0"
+                        <Border Grid.Row="1"
+                                Margin="0"
                                 Padding="9,7"
                                 Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3"
-                                AutomationProperties.Name="Selected step work context">
+                                AutomationProperties.AutomationId="NoRecipeStepBanner"
+                                AutomationProperties.Name="Select an inspection tool">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Workbench.HasSelectedPipelineStep}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Workbench.IsSourceReadyForRecipe}" Value="True" />
+                                                <Condition Binding="{Binding Workbench.HasSelectedPipelineStep}" Value="False" />
+                                                <Condition Binding="{Binding Workbench.IsC3DSourceLoading}" Value="False" />
+                                                <Condition Binding="{Binding Workbench.IsSelectionCandidateActive}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
@@ -327,9 +334,8 @@
                                            Text="{Binding Localization.NoRecipeStepSelectedDetail}" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Row="3"
-                                Grid.ColumnSpan="3"
-                                Margin="0,7,0,0"
+                        <Border Grid.Row="2"
+                                Margin="0"
                                 Padding="8,6"
                                 Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
                                 BorderBrush="{DynamicResource ThreeD.InfoBrush}"

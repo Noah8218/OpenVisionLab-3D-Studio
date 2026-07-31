@@ -10,9 +10,87 @@
              AutomationProperties.AutomationId="SelectedToolWorkspace">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <Style x:Key="WorkspaceSectionStyle" TargetType="Expander">
+        <Style x:Key="WorkspaceSectionStyle" TargetType="{x:Type Expander}">
             <Setter Property="Margin" Value="0,0,0,7" />
             <Setter Property="IsExpanded" Value="False" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Expander}">
+                        <StackPanel>
+                            <ToggleButton x:Name="SectionHeader"
+                                          MinHeight="28"
+                                          Padding="7,4"
+                                          HorizontalContentAlignment="Stretch"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                        <Border x:Name="HeaderSurface"
+                                                Padding="{TemplateBinding Padding}"
+                                                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="3">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="18" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock x:Name="Chevron"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                           Text="›" />
+                                                <ContentPresenter Grid.Column="1"
+                                                                  VerticalAlignment="Center"
+                                                                  ContentSource="Content"
+                                                                  RecognizesAccessKey="True" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chevron" Property="Text" Value="⌄" />
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="BorderBrush"
+                                                        Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="Background"
+                                                        Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="BorderBrush"
+                                                        Value="{DynamicResource ThreeD.FocusBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter Content="{TemplateBinding Header}" />
+                            </ToggleButton>
+                            <Border x:Name="SectionContent"
+                                    Visibility="Collapsed">
+                                <ContentPresenter ContentSource="Content" />
+                            </Border>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="SectionContent"
+                                        Property="Visibility"
+                                        Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="SectionHeader"
+                                        Property="IsEnabled"
+                                        Value="False" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="RegionCardStyle" TargetType="Border">
             <Setter Property="Margin" Value="0,0,0,6" />
@@ -65,6 +143,9 @@
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Visible" />
                     <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSourceReadyForRecipe}" Value="False">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding SelectedToolWorkspace.HasSelectedStep}" Value="True">
                             <Setter Property="Visibility" Value="Collapsed" />
                         </DataTrigger>
@@ -77,11 +158,15 @@
         </Border>
 
         <workbench:SourceQualityWorkspaceView
+            x:Name="SourceQualityWorkspace"
             DataContext="{Binding SourceQuality}"
-            Visibility="{Binding IsSourceQualityWorkspaceVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+            Visibility="{Binding DataContext.IsSourceQualityWorkspaceVisible, ElementName=SelectedToolRoot, Converter={StaticResource BoolToVisibilityConverter}}" />
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="SelectedToolScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.CanContentScroll="False"
+                      PanningMode="VerticalOnly">
             <StackPanel Margin="10">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
@@ -97,8 +182,8 @@
                 <Border x:Name="TeachFailureCorrectionContext"
                         Margin="0,0,0,8"
                         Padding="10"
-                        Background="#FFF7ED"
-                        BorderBrush="#F97316"
+                        Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.WarningBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Visibility="{Binding HasActiveValidationFailureCorrectionContext, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -111,16 +196,16 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock FontSize="11.5"
                                        FontWeight="SemiBold"
-                                       Foreground="#9A3412"
+                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Workspace.FixFailureInTeach, Korean='실패 샘플 수정', English='Fix failed sample in Teach'}" />
                             <Border Grid.Column="1"
                                     Margin="7,0,0,0"
                                     Padding="6,2"
-                                    Background="#FFEDD5"
+                                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                                     CornerRadius="8">
                                 <TextBlock FontSize="9"
                                            FontWeight="SemiBold"
-                                           Foreground="#C2410C"
+                                           Foreground="{DynamicResource ThreeD.WarningBrush}"
                                            Text="{Binding ActiveValidationFailureCorrectionContext.SampleStatus}" />
                             </Border>
                         </Grid>
@@ -137,13 +222,13 @@
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="9.5"
-                                   Foreground="#9A3412"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
                                    Text="{Binding ActiveValidationFailureCorrectionContext.Reason}"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="10"
                                    FontWeight="SemiBold"
-                                   Foreground="#C2410C"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
                                    Text="{Binding ActiveValidationFailureCorrectionContext.CellSummary}"
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,5,0,0"
@@ -185,6 +270,63 @@
                                    ToolTip="{Binding Localization.OpenSelectedToolLab}"
                                    AutomationProperties.Name="{Binding Localization.OpenSelectedToolLab}" />
                     </Grid>
+                </Border>
+
+                <Border x:Name="SelectedToolActionBar"
+                        Margin="0,0,0,8"
+                        Padding="6"
+                        Background="{DynamicResource ThreeD.CommandBarBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        AutomationProperties.AutomationId="SelectedToolActionBar">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:Button x:Name="PreviewActionButton"
+                                   Width="34"
+                                   Height="30"
+                                   Margin="0,0,5,0"
+                                   Padding="6"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon Eye24}"
+                                   Command="{Binding PreviewSelectedStepCommand}"
+                                   ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviewTip, Korean='선택 도구 미리보기 (F5)', English='Preview selected tool (F5)'}"
+                                   AutomationProperties.AutomationId="PreviewTeachingToolButton"
+                                   AutomationProperties.Name="Preview selected inspection step" />
+                        <ui:Button x:Name="PublishActionButton"
+                                   Width="34"
+                                   Height="30"
+                                   Margin="0,0,5,0"
+                                   Padding="6"
+                                   Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                                   Command="{Binding PublishSelectedStepCommand}"
+                                   ToolTip="{views:ThreeDText Key=ThreeD.Command.PublishTip, Korean='현재 미리보기 결과 게시', English='Publish the current Preview result'}"
+                                   AutomationProperties.AutomationId="PublishTeachingToolButton"
+                                   AutomationProperties.Name="Publish selected inspection output" />
+                        <ui:Button x:Name="CancelPreviewActionButton"
+                                   Width="34"
+                                   Height="30"
+                                   Margin="0,0,5,0"
+                                   Padding="6"
+                                   Icon="{ui:SymbolIcon ArrowUndo24}"
+                                   Command="{Binding CancelSelectedPreviewCommand}"
+                                   Visibility="{Binding IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   ToolTip="{views:ThreeDText Key=ThreeD.Command.CancelPreviewTip, Korean='실행 중인 미리보기 취소', English='Cancel the running Preview'}"
+                                   AutomationProperties.AutomationId="CancelTeachingPreviewButton"
+                                   AutomationProperties.Name="Cancel selected Preview" />
+                        <Border Width="1"
+                                Height="22"
+                                Margin="1,4,6,4"
+                                Background="{DynamicResource ThreeD.DividerBrush}" />
+                        <ui:Button x:Name="SaveRecipeActionButton"
+                                   Width="34"
+                                   Height="30"
+                                   Padding="6"
+                                   Icon="{ui:SymbolIcon DocumentCheckmark24}"
+                                   Command="{Binding SaveTeachingRecipeCommand}"
+                                   ToolTip="{views:ThreeDText Key=ThreeD.Command.SaveRecipeTip, Korean='검사 레시피 저장 (Ctrl+S)', English='Save inspection recipe (Ctrl+S)'}"
+                                   AutomationProperties.AutomationId="SaveTeachingRecipe"
+                                   AutomationProperties.Name="Save inspection recipe" />
+                    </StackPanel>
                 </Border>
 
                 <Border Margin="0,0,0,7"
@@ -307,7 +449,10 @@
                     </StackPanel>
                 </Expander>
 
-                <Expander Style="{StaticResource WorkspaceSectionStyle}"
+                <Expander x:Name="ParametersExpander"
+                          Style="{StaticResource WorkspaceSectionStyle}"
+                          AutomationProperties.AutomationId="SelectedToolParametersExpander"
+                          AutomationProperties.Name="Selected tool parameters"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Parameters, Korean='2  파라미터', English='2  Parameters'}">
                     <StackPanel Margin="0,5,0,0">
                         <Border Padding="8"

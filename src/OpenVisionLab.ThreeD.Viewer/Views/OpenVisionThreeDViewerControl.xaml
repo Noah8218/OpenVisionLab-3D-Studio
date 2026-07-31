@@ -4,35 +4,35 @@
              xmlns:sharpgl="clr-namespace:SharpGL.WPF;assembly=SharpGL.WPF"
              xmlns:localization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization"
              xmlns:viewModels="clr-namespace:OpenVisionLab.ThreeD.Viewer.ViewModels"
-             Background="#f3f4f6">
+             Background="#090E15">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <localization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
         <Style x:Key="ViewerToolbarComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
             <Setter Property="Padding" Value="10,6" />
-            <Setter Property="Foreground" Value="#1f2937" />
-            <Setter Property="Background" Value="#ffffff" />
+            <Setter Property="Foreground" Value="#E7EEF6" />
+            <Setter Property="Background" Value="#202B38" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#e6fffb" />
+                    <Setter Property="Background" Value="#1B3539" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#ccfbf1" />
+                    <Setter Property="Background" Value="#15383D" />
                     <Setter Property="FontWeight" Value="SemiBold" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="ViewerToolbarComboBoxStyle" TargetType="{x:Type ComboBox}">
-            <Setter Property="Width" Value="152" />
-            <Setter Property="Height" Value="32" />
-            <Setter Property="Padding" Value="10,0,8,0" />
+            <Setter Property="Width" Value="116" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="8,0,6,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="#1f2937" />
-            <Setter Property="Background" Value="#ffffff" />
-            <Setter Property="BorderBrush" Value="#94a3b8" />
+            <Setter Property="Foreground" Value="#E7EEF6" />
+            <Setter Property="Background" Value="#202B38" />
+            <Setter Property="BorderBrush" Value="#53657A" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="ItemContainerStyle" Value="{StaticResource ViewerToolbarComboBoxItemStyle}" />
             <Setter Property="Template">
@@ -66,14 +66,14 @@
                                                                   ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType=ComboBox}}"
                                                                   RecognizesAccessKey="True" />
                                                 <Border Grid.Column="1"
-                                                        BorderBrush="#cbd5e1"
+                                                        BorderBrush="#334155"
                                                         BorderThickness="1,0,0,0">
                                                     <Path Width="8"
                                                           Height="5"
                                                           HorizontalAlignment="Center"
                                                           VerticalAlignment="Center"
                                                           Data="M 0,0 L 4,4 L 8,0"
-                                                          Stroke="#475569"
+                                                          Stroke="#BECADA"
                                                           StrokeThickness="1.5" />
                                                 </Border>
                                             </Grid>
@@ -89,8 +89,8 @@
                                 <Border MinWidth="{TemplateBinding ActualWidth}"
                                         MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                         Margin="0,3,0,0"
-                                        Background="#ffffff"
-                                        BorderBrush="#94a3b8"
+                                        Background="#202B38"
+                                        BorderBrush="#53657A"
                                         BorderThickness="1"
                                         CornerRadius="2">
                                     <ScrollViewer Margin="2"
@@ -107,21 +107,21 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#f8fafc" />
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="Background" Value="#1B2531" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                 </Trigger>
                 <Trigger Property="IsDropDownOpen" Value="True">
-                    <Setter Property="Background" Value="#f0fdfa" />
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="Background" Value="#15383D" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                 </Trigger>
                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="BorderBrush" Value="#67E8F9" />
                     <Setter Property="BorderThickness" Value="2" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#94a3b8" />
-                    <Setter Property="Background" Value="#f1f5f9" />
-                    <Setter Property="BorderBrush" Value="#cbd5e1" />
+                    <Setter Property="Foreground" Value="#657487" />
+                    <Setter Property="Background" Value="#222B36" />
+                    <Setter Property="BorderBrush" Value="#334155" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -131,19 +131,19 @@
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#1f2937" />
-            <Setter Property="Background" Value="#ffffff" />
-            <Setter Property="BorderBrush" Value="#94a3b8" />
+            <Setter Property="Foreground" Value="#E7EEF6" />
+            <Setter Property="Background" Value="#202B38" />
+            <Setter Property="BorderBrush" Value="#53657A" />
             <Setter Property="BorderThickness" Value="1" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#f0fdfa" />
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="Background" Value="#15383D" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#94a3b8" />
-                    <Setter Property="Background" Value="#f8fafc" />
-                    <Setter Property="BorderBrush" Value="#cbd5e1" />
+                    <Setter Property="Foreground" Value="#657487" />
+                    <Setter Property="Background" Value="#222B36" />
+                    <Setter Property="BorderBrush" Value="#334155" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -153,35 +153,49 @@
             <Setter Property="Margin" Value="4,0,0,0" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#1f2937" />
-            <Setter Property="Background" Value="#ffffff" />
-            <Setter Property="BorderBrush" Value="#94a3b8" />
+            <Setter Property="Foreground" Value="#E7EEF6" />
+            <Setter Property="Background" Value="#202B38" />
+            <Setter Property="BorderBrush" Value="#53657A" />
             <Setter Property="BorderThickness" Value="1" />
             <Style.Triggers>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Foreground" Value="#0f766e" />
-                    <Setter Property="Background" Value="#ccfbf1" />
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="Foreground" Value="#39C6C1" />
+                    <Setter Property="Background" Value="#15383D" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                 </Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#f0fdfa" />
-                    <Setter Property="BorderBrush" Value="#0f766e" />
+                    <Setter Property="Background" Value="#15383D" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.72" />
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="ViewerToolbarIconButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource ViewerToolbarButtonStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+        </Style>
+        <Style x:Key="ViewerToolbarIconToggleStyle"
+               TargetType="{x:Type ToggleButton}"
+               BasedOn="{StaticResource ViewerToolbarToggleStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+        </Style>
     </UserControl.Resources>
 
     <DockPanel LastChildFill="True">
-        <Border DockPanel.Dock="Top" Background="#ffffff" BorderBrush="#d1d5db" BorderThickness="0,0,0,1">
-            <Grid Margin="10,8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <Border DockPanel.Dock="Top"
+                Background="#0E151E"
+                BorderBrush="#334155"
+                BorderThickness="0,0,0,1"
+                ToolTip="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                AutomationProperties.HelpText="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}">
+            <Grid Margin="8,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -189,12 +203,17 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock VerticalAlignment="Center"
-                               Margin="0,0,6,0"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Foreground="#6b7280"
-                               Text="{localization:ViewerText Key=ThreeD.Viewer.Geometry, Korean='형상', English='Geometry'}" />
+                    <Viewbox Width="18"
+                             Height="18"
+                             Margin="0,0,6,0"
+                             VerticalAlignment="Center">
+                        <Canvas Width="16" Height="16">
+                            <Path Data="M2,4 L8,1 L14,4 L8,7 Z M2,8 L8,11 L14,8 M2,12 L8,15 L14,12"
+                                  Stroke="#BECADA"
+                                  StrokeThickness="1.4"
+                                  StrokeLineJoin="Round" />
+                        </Canvas>
+                    </Viewbox>
                     <ComboBox Style="{StaticResource ViewerToolbarComboBoxStyle}"
                               ItemsSource="{Binding Display.AvailableGeometryStyles}"
                               SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
@@ -207,143 +226,88 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <CheckBox Margin="12,0,0,0"
-                              VerticalAlignment="Center"
-                              Content="{localization:ViewerText Key=ThreeD.Viewer.HudDetails, Korean='HUD 상세', English='HUD Details'}"
-                              IsChecked="{Binding HudDetailsVisible, Mode=TwoWay}" />
                 </StackPanel>
-
-                <Border Grid.Row="1"
-                        Grid.ColumnSpan="3"
-                        Margin="0,6,0,0"
-                        Padding="8,5"
-                        Background="#fffbeb"
-                        BorderBrush="#f59e0b"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Visibility="{Binding SelectedTeachingGridRectangleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <DockPanel LastChildFill="True">
-                        <StackPanel DockPanel.Dock="Right"
-                                    Margin="10,0,0,0"
-                                    Orientation="Horizontal">
-                            <Button Width="28"
-                                    Height="26"
-                                    Margin="0,0,4,0"
-                                    Click="DecreaseTeachingRoiDisplayHeight_Click"
-                                    Content="-"
-                                    FontSize="16"
-                                    FontWeight="Bold"
-                                    Foreground="#111827"
-                                    ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='ROI 오버레이 평면을 Y축 아래로 이동', English='Move the ROI overlay plane down the Y axis'}"
-                                    AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='ROI 오버레이 Y 위치 낮추기', English='Lower ROI overlay Y position'}" />
-                            <TextBox Width="88"
-                                     Height="26"
-                                     Padding="5,2"
-                                     HorizontalContentAlignment="Right"
-                                     VerticalContentAlignment="Center"
-                                     LostFocus="TeachingRoiDisplayHeightOffset_LostFocus"
-                                     Text="{Binding SelectedTeachingRoiDisplayHeightOffset, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                     ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightOffsetTip, Korean='보기 전용 Y축 위치 오프셋입니다. ROI 크기, 측정값, 레시피는 바뀌지 않습니다.', English='View-only Y-position offset. ROI size, measurement, and recipe are unchanged.'}"
-                                     AutomationProperties.AutomationId="TeachingRoiDisplayHeightOffset"
-                                     AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightOffset, Korean='ROI 오버레이 Y 위치 오프셋', English='ROI overlay Y-position offset'}" />
-                            <Button Width="28"
-                                    Height="26"
-                                    Margin="4,0,8,0"
-                                    Click="IncreaseTeachingRoiDisplayHeight_Click"
-                                    Content="+"
-                                    FontSize="16"
-                                    FontWeight="Bold"
-                                    Foreground="#111827"
-                                    ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='ROI 오버레이 평면을 Y축 위로 이동', English='Move the ROI overlay plane up the Y axis'}"
-                                    AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='ROI 오버레이 Y 위치 올리기', English='Raise ROI overlay Y position'}" />
-                            <Button Height="26"
-                                    Padding="9,1"
-                                    Click="ResetTeachingRoiDisplayHeight_Click"
-                                    Content="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='표면 위치', English='Surface position'}"
-                                    ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightResetTip, Korean='Y 위치 오프셋을 0으로 되돌려 오버레이를 로컬 표면 위치에 배치합니다.', English='Reset the Y-position offset and return the overlay to its local surface position.'}"
-                                    AutomationProperties.AutomationId="TeachingRoiDisplayHeightReset"
-                                    AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='ROI 오버레이를 표면 위치로', English='Return ROI overlay to surface position'}" />
-                        </StackPanel>
-                        <StackPanel VerticalAlignment="Center"
-                                    Orientation="Horizontal">
-                            <TextBlock Margin="0,0,10,0"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold"
-                                       Foreground="#92400e"
-                                       Text="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 Y 위치 · 보기 전용', English='ROI overlay Y position · view only'}" />
-                            <TextBlock VerticalAlignment="Center"
-                                       Foreground="#78350f"
-                                       Text="{Binding SelectedTeachingRoiDisplayHeightSummary}"
-                                       TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding SelectedTeachingRoiDisplayHeightSummary}" />
-                            <TextBlock Margin="10,0,0,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="#92400e"
-                                       Text="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightHint, Korean='평면만 이동 · ROI 크기와 측정값은 그대로', English='Moves the plane only · ROI size and measurement stay unchanged'}"
-                                       TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-
-                <TextBlock Grid.Row="2"
-                           Grid.ColumnSpan="3"
-                           Margin="0,5,0,0"
-                           VerticalAlignment="Center"
-                           Foreground="#374151"
-                           Text="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           TextTrimming="CharacterEllipsis"
-                           TextWrapping="NoWrap"
-                           ToolTip="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
-                           AutomationProperties.Name="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
 
                 <StackPanel Grid.Column="2"
                             VerticalAlignment="Center"
                             Orientation="Horizontal">
-                    <ToggleButton Style="{StaticResource ViewerToolbarToggleStyle}"
-                                  Content="{localization:ViewerText Key=ThreeD.Viewer.TopView, Korean='상단', English='Top'}"
+                    <ToggleButton Style="{StaticResource ViewerToolbarIconToggleStyle}"
                                   Command="{Binding TopViewCommand}"
                                   IsChecked="{Binding IsTopOrthographicView, Mode=OneWay}"
                                   ToolTip="{localization:ViewerText Key=ThreeD.Viewer.TopViewTip, Korean='ROI 배치를 위한 X/Z 정투영 상단 보기', English='True X/Z orthographic Top view for ROI placement'}"
                                   AutomationProperties.AutomationId="ViewerTopView"
-                                  AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.TopViewAccessible, Korean='상단 정투영 보기', English='Top orthographic view'}" />
-                    <ToggleButton Style="{StaticResource ViewerToolbarToggleStyle}"
-                                  Content="{localization:ViewerText Key=ThreeD.Viewer.PerspectiveView, Korean='원근', English='Perspective'}"
+                                  AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.TopViewAccessible, Korean='상단 정투영 보기', English='Top orthographic view'}">
+                        <Viewbox Width="17" Height="17">
+                            <Canvas Width="16" Height="16">
+                                <Path Data="M2,3 H14 V13 H2 Z M5,6 H11 M8,4 V9 M5.5,7 L8,10 L10.5,7"
+                                      Stroke="#BECADA"
+                                      StrokeThickness="1.35"
+                                      StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </ToggleButton>
+                    <ToggleButton Style="{StaticResource ViewerToolbarIconToggleStyle}"
                                   Command="{Binding PerspectiveViewCommand}"
                                   IsChecked="{Binding IsPerspectiveView, Mode=OneWay}"
                                   ToolTip="{localization:ViewerText Key=ThreeD.Viewer.PerspectiveViewTip, Korean='3D 원근 보기로 돌아갑니다', English='Return to the 3D perspective view'}"
                                   AutomationProperties.AutomationId="ViewerPerspectiveView"
-                                  AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.PerspectiveViewAccessible, Korean='원근 보기', English='Perspective view'}" />
+                                  AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.PerspectiveViewAccessible, Korean='원근 보기', English='Perspective view'}">
+                        <Viewbox Width="17" Height="17">
+                            <Canvas Width="16" Height="16">
+                                <Path Data="M8,1 L14,4.5 V11.5 L8,15 L2,11.5 V4.5 Z M2,4.5 L8,8 L14,4.5 M8,8 V15"
+                                      Stroke="#BECADA"
+                                      StrokeThickness="1.35"
+                                      StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </ToggleButton>
                     <Border Width="1"
                             Height="22"
-                            Margin="8,0,4,0"
+                            Margin="7,0,4,0"
                             VerticalAlignment="Center"
-                            Background="#cbd5e1" />
-                    <Button Style="{StaticResource ViewerToolbarButtonStyle}"
-                            Content="{localization:ViewerText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}"
+                            Background="#334155" />
+                    <Button Style="{StaticResource ViewerToolbarIconButtonStyle}"
                             Command="{Binding FitAllCommand}"
                             ToolTip="{localization:ViewerText Key=ThreeD.Viewer.FitAllTip, Korean='현재 보기 방식으로 전체 모델을 맞춥니다', English='Fit the full model in the current projection'}"
                             AutomationProperties.AutomationId="ViewerFitAll"
-                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}" />
-                    <Button Style="{StaticResource ViewerToolbarButtonStyle}"
-                            Content="{localization:ViewerText Key=ThreeD.Viewer.FitRoi, Korean='ROI 맞춤', English='Fit ROI'}"
+                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}">
+                        <Viewbox Width="17" Height="17">
+                            <Canvas Width="16" Height="16">
+                                <Path Data="M2,6 V2 H6 M10,2 H14 V6 M14,10 V14 H10 M6,14 H2 V10"
+                                      Stroke="#BECADA"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button Style="{StaticResource ViewerToolbarIconButtonStyle}"
                             Command="{Binding FitRoiCommand}"
                             ToolTip="{localization:ViewerText Key=ThreeD.Viewer.FitRoiTip, Korean='선택한 기준 또는 측정 ROI를 화면에 맞춥니다', English='Fit the selected Reference or Measurement ROI'}"
                             AutomationProperties.AutomationId="ViewerFitRoi"
-                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.FitRoi, Korean='ROI 맞춤', English='Fit ROI'}" />
-                    <TextBlock VerticalAlignment="Center"
-                               Visibility="Collapsed"
-                               Foreground="#6b7280"
-                               Text="{localization:ViewerText Key=ThreeD.Viewer.PointerHints, Korean='더블클릭: 맞춤 | 우클릭 드래그: 이동', English='Double-click: Fit | R-drag: Pan'}"
-                               TextWrapping="NoWrap"
-                               AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.PointerHintsAccessible, Korean='더블클릭하면 전체 맞춤하고 마우스 오른쪽 버튼을 드래그하면 3D 보기를 이동합니다.', English='Double-click fits the view and right drag pans the 3D view'}" />
-                    <Menu Margin="8,0,0,0"
+                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.FitRoi, Korean='ROI 맞춤', English='Fit ROI'}">
+                        <Viewbox Width="17" Height="17">
+                            <Canvas Width="16" Height="16">
+                                <Path Data="M2,6 V2 H6 M10,2 H14 V6 M14,10 V14 H10 M6,14 H2 V10 M5.5,5.5 H10.5 V10.5 H5.5 Z"
+                                      Stroke="#BECADA"
+                                      StrokeThickness="1.35"
+                                      StrokeLineJoin="Round" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Menu Margin="4,0,0,0"
                           Padding="0"
                           VerticalAlignment="Center"
-                          Background="#f8fafc"
-                          Foreground="#111827">
+                          Background="#1B2531"
+                          Foreground="#E7EEF6">
                         <MenuItem x:Name="ViewerViewMenuRoot"
-                                  Padding="7,3"
-                                  Header="{localization:ViewerText Key=ThreeD.Viewer.ViewMenu, Korean='보기 ▾', English='View ▾'}"
+                                  Width="32"
+                                  Height="30"
+                                  Padding="0"
+                                  HorizontalContentAlignment="Center"
+                                  VerticalContentAlignment="Center"
+                                  FontSize="18"
+                                  Header="⋯"
+                                  ToolTip="{localization:ViewerText Key=ThreeD.Viewer.ViewCommands, Korean='뷰어 보기 명령', English='Viewer view commands'}"
                                   AutomationProperties.AutomationId="ViewerViewOverflowMenu"
                                   AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.ViewCommands, Korean='뷰어 보기 명령', English='Viewer view commands'}">
                             <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.FitAll, Korean='전체 맞춤', English='Fit all'}"
@@ -362,6 +326,24 @@
                             <Separator />
                             <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.Screenshot, Korean='화면 캡처', English='Screenshot'}"
                                       Command="{Binding ScreenshotCommand}" />
+                            <Separator />
+                            <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 높이', English='ROI overlay height'}"
+                                      Visibility="{Binding SelectedTeachingGridRectangleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightOffsetTip, Korean='보기 전용 Y축 위치 오프셋입니다. ROI 크기, 측정값, 레시피는 바뀌지 않습니다.', English='View-only Y-position offset. ROI size, measurement, and recipe are unchanged.'}"
+                                      AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 높이 · 보기 전용', English='ROI overlay height · view only'}">
+                                <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='아래로', English='Lower'}"
+                                          Click="DecreaseTeachingRoiDisplayHeight_Click"
+                                          AutomationProperties.AutomationId="TeachingRoiDisplayHeightDecrease"
+                                          AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='ROI 오버레이 Y 위치 낮추기', English='Lower ROI overlay Y position'}" />
+                                <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='위로', English='Raise'}"
+                                          Click="IncreaseTeachingRoiDisplayHeight_Click"
+                                          AutomationProperties.AutomationId="TeachingRoiDisplayHeightIncrease"
+                                          AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightIncrease, Korean='ROI 오버레이 Y 위치 올리기', English='Raise ROI overlay Y position'}" />
+                                <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='표면 위치로 초기화', English='Reset to surface'}"
+                                          Click="ResetTeachingRoiDisplayHeight_Click"
+                                          AutomationProperties.AutomationId="TeachingRoiDisplayHeightReset"
+                                          AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightReset, Korean='ROI 오버레이를 표면 위치로', English='Return ROI overlay to surface position'}" />
+                            </MenuItem>
                             <Separator />
                             <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.Profile, Korean='높이 프로파일', English='Height profile'}"
                                       Command="{Binding ProfileCommand}"
@@ -1178,13 +1160,7 @@
                     IsHitTestVisible="False"
                     AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.OrientationAccessible, Korean='뷰어 XYZ 방향 표시', English='Viewer display XYZ orientation'}">
                 <Grid>
-                    <TextBlock Margin="6,4,0,0"
-                               HorizontalAlignment="Left"
-                               VerticalAlignment="Top"
-                               FontSize="8"
-                               Foreground="#cbd5e1"
-                               Text="{localization:ViewerText Key=ThreeD.Viewer.Orientation, Korean='방향 XYZ', English='VIEW XYZ'}" />
-                    <Canvas Width="78" Height="70" Margin="7,16,7,6">
+                    <Canvas Width="78" Height="70" Margin="7">
                         <Line x:Name="OrientationXAxis" X1="39" Y1="35" X2="67" Y2="35" Stroke="#ef4444" StrokeThickness="2.5" />
                         <Line x:Name="OrientationYAxis" X1="39" Y1="35" X2="39" Y2="7" Stroke="#22c55e" StrokeThickness="2.5" />
                         <Line x:Name="OrientationZAxis" X1="39" Y1="35" X2="39" Y2="35" Stroke="#60a5fa" StrokeThickness="2.5" />
@@ -1201,7 +1177,8 @@
                     </Canvas>
                 </Grid>
             </Border>
-            <Border HorizontalAlignment="Left"
+            <Border x:Name="ViewerMeasurementHudPanel"
+                    HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     Width="330"
                     Margin="12"
@@ -1210,7 +1187,8 @@
                     BorderBrush="#4b5563"
                     BorderThickness="1"
                     CornerRadius="4"
-                    IsHitTestVisible="False">
+                    IsHitTestVisible="False"
+                    Visibility="Collapsed">
                 <StackPanel>
                     <TextBlock FontSize="13"
                                FontWeight="SemiBold"
@@ -1507,8 +1485,172 @@
                                Text="{Binding LazSampleSummary}" />
                 </StackPanel>
             </Border>
+            <Border Width="228"
+                    Margin="0,8,8,0"
+                    Padding="9"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Background="#e6111827"
+                    BorderBrush="#2dd4bf"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    IsHitTestVisible="True"
+                    ToolTip="{Binding SurfaceMatchEvidenceToolTip}"
+                    AutomationProperties.AutomationId="SurfaceMatchEvidencePanel"
+                    AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchEvidence, Korean='변환 모델 정합 증거', English='Transformed model match evidence'}"
+                    Visibility="{Binding SurfaceMatchEvidenceVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock FontSize="9"
+                               FontWeight="SemiBold"
+                               Foreground="#f8fafc"
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchOverlay, Korean='변환 모델 오버레이', English='TRANSFORMED MODEL OVERLAY'}" />
+                    <Border Margin="0,7,0,0"
+                            Padding="7,5"
+                            Background="#1f2937"
+                            BorderBrush="#475569"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Visibility="{Binding SurfaceMatchDecisionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock FontSize="13"
+                                       FontWeight="Bold"
+                                       Foreground="#5eead4"
+                                       Text="{Binding SurfaceMatchDecisionLabel}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="9"
+                                       Foreground="#e2e8f0"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SurfaceMatchDecisionReasonLabel}" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Margin="0,7,0,0"
+                                Orientation="Horizontal">
+                        <Rectangle Width="18"
+                                   Height="3"
+                                   Margin="0,0,7,0"
+                                   VerticalAlignment="Center"
+                                   Fill="#2dd4bf" />
+                        <TextBlock FontSize="10"
+                                   Foreground="#ccfbf1"
+                                   Text="{Binding SurfaceMatchStateLabel}" />
+                    </StackPanel>
+                    <Grid Margin="0,7,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10"
+                                   Foreground="#94a3b8"
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchCoverage, Korean='표면 커버리지', English='Surface coverage'}" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#f8fafc"
+                                   Text="{Binding SurfaceMatchCoverageLabel}" />
+                    </Grid>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10"
+                                   Foreground="#94a3b8"
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchRmse, Korean='표면 RMSE', English='Surface RMSE'}" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#f8fafc"
+                                   Text="{Binding SurfaceMatchRmseLabel}" />
+                    </Grid>
+                    <Grid Margin="0,4,0,0"
+                          Visibility="{Binding SurfaceMatchEdgeScoreVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10"
+                                   Foreground="#94a3b8"
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchEdgeScore, Korean='3D 에지 점수', English='3D-edge score'}" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#f8fafc"
+                                   Text="{Binding SurfaceMatchEdgeCoverageLabel}" />
+                    </Grid>
+                    <Grid Margin="0,4,0,0"
+                          Visibility="{Binding SurfaceMatchEdgeScoreVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10"
+                                   Foreground="#94a3b8"
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.SurfaceMatchEdgeRmse, Korean='3D 에지 RMSE', English='3D-edge RMSE'}" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#f8fafc"
+                                   Text="{Binding SurfaceMatchEdgeRmseLabel}" />
+                    </Grid>
+                    <TextBlock Margin="0,5,0,0"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Foreground="#cbd5e1"
+                               TextWrapping="Wrap"
+                               Text="{Binding SurfaceMatchPoseLabel}" />
+                    <TextBlock Margin="0,7,0,0"
+                               FontSize="9"
+                               Foreground="#cbd5e1"
+                               TextWrapping="Wrap"
+                               Text="{Binding SurfaceMatchPolicyLabel}" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontFamily="Consolas"
+                               FontSize="9"
+                               Foreground="#94a3b8"
+                               Text="{Binding SurfaceMatchRuntimeLabel}" />
+                    <Grid Margin="0,7,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="9"
+                                   Foreground="#64748b"
+                                   Text="MODEL" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="9"
+                                   Foreground="#94a3b8"
+                                   Text="{Binding SurfaceMatchModelHashLabel}" />
+                    </Grid>
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="9"
+                                   Foreground="#64748b"
+                                   Text="OVERLAY" />
+                        <TextBlock Grid.Column="1"
+                                   HorizontalAlignment="Right"
+                                   FontFamily="Consolas"
+                                   FontSize="9"
+                                   Foreground="#94a3b8"
+                                   Text="{Binding SurfaceMatchOverlayHashLabel}" />
+                    </Grid>
+                    <TextBlock Margin="0,7,0,0"
+                               FontSize="9"
+                               Foreground="#fbbf24"
+                               TextWrapping="Wrap"
+                               Text="{Binding SurfaceMatchDecisionBoundaryLabel}" />
+                </StackPanel>
+            </Border>
             <Border x:Name="C3DHeightDistributionPanel"
-                    Width="140"
+                    Width="156"
                     Margin="0,8,8,0"
                     Padding="7"
                     HorizontalAlignment="Right"
@@ -1517,72 +1659,135 @@
                     BorderBrush="#64748b"
                     BorderThickness="1"
                     CornerRadius="4"
-                    IsHitTestVisible="False"
-                    AutomationProperties.Name="C3D full-source height color and distribution legend"
+                    IsHitTestVisible="True"
+                    ToolTip="{Binding C3DHeightColorRangeSummary}"
+                    AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRange, Korean='높이 색상 범위', English='Height color range'}"
+                    AutomationProperties.HelpText="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeHelp, Korean='표시 색상에만 적용됩니다. 원본 높이, ROI, 측정값과 레시피는 바뀌지 않습니다.', English='Applies to display colors only. Source heights, ROI, measurements, and recipe are unchanged.'}"
                     Visibility="{Binding C3DHeightDistributionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel>
                     <TextBlock FontSize="9"
                                FontWeight="SemiBold"
                                Foreground="#f8fafc"
-                               Text="HEIGHT / DISTRIBUTION" />
-                    <Grid Height="118" Margin="0,4,0,3">
+                               Text="HEIGHT COLOR" />
+                    <Grid Margin="0,5,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="5" />
-                            <ColumnDefinition Width="44" />
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="22" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="22" />
                         </Grid.ColumnDefinitions>
-                        <Canvas Grid.Column="0"
-                                Width="{x:Static viewModels:MainWindowViewModel.C3DHeightDistributionLabelColumnWidth}"
-                                Height="118">
-                            <TextBlock Canvas.Top="0"
-                                       Canvas.Right="0"
-                                       FontSize="9"
-                                       Foreground="#e2e8f0"
-                                       Text="{Binding C3DHeightDistributionHighLabel}" />
-                            <TextBlock Canvas.Top="{Binding C3DHeightDistributionMeanLabelTop}"
-                                       Canvas.Right="0"
-                                       FontSize="9"
-                                       Foreground="#cbd5e1"
-                                       Text="{Binding C3DHeightDistributionMeanLabel}" />
-                            <TextBlock Canvas.Right="0"
-                                       Canvas.Bottom="0"
-                                       FontSize="9"
-                                       Foreground="#e2e8f0"
-                                       Text="{Binding C3DHeightDistributionLowLabel}" />
-                        </Canvas>
-                        <Border Grid.Column="1"
-                                Background="{Binding C3DHeightDistributionGradient}"
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="#e2e8f0"
+                                   Text="H" />
+                        <Button Grid.Column="1"
+                                Height="22"
+                                Padding="0"
+                                Click="DecreaseC3DHeightColorMaximum_Click"
+                                Content="−"
+                                ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumDecrease, Korean='높이 색상 상한 낮추기', English='Lower the height-color maximum'}"
+                                AutomationProperties.AutomationId="HeightColorMaximumDecrease"
+                                AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumDecrease, Korean='높이 색상 상한 낮추기', English='Lower the height-color maximum'}" />
+                        <TextBox Grid.Column="2"
+                                 Height="22"
+                                 Margin="3,0"
+                                 Padding="3,1"
+                                 HorizontalContentAlignment="Right"
+                                 VerticalContentAlignment="Center"
+                                 FontFamily="Consolas"
+                                 FontSize="9"
+                                 Foreground="#f8fafc"
+                                 Background="#1e293b"
+                                 BorderBrush="#64748b"
+                                 Text="{Binding C3DHeightColorMaximumRaw, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F2}"
+                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximum, Korean='높이 색상 상한 · 보기 전용', English='Height-color maximum · view only'}"
+                                 AutomationProperties.AutomationId="HeightColorMaximum"
+                                 AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximum, Korean='높이 색상 상한', English='Height-color maximum'}" />
+                        <Button Grid.Column="3"
+                                Height="22"
+                                Padding="0"
+                                Click="IncreaseC3DHeightColorMaximum_Click"
+                                Content="+"
+                                ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumIncrease, Korean='높이 색상 상한 높이기', English='Raise the height-color maximum'}"
+                                AutomationProperties.AutomationId="HeightColorMaximumIncrease"
+                                AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMaximumIncrease, Korean='높이 색상 상한 높이기', English='Raise the height-color maximum'}" />
+                    </Grid>
+                    <Grid Height="94" Margin="18,4,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{Binding C3DHeightDistributionGradient}"
                                 BorderBrush="#94a3b8"
                                 BorderThickness="1"
                                 CornerRadius="2" />
-                        <Canvas Grid.Column="3"
-                                Width="44"
-                                Height="118"
+                        <Canvas Grid.Column="2"
+                                Height="94"
                                 ClipToBounds="True">
+                            <Canvas.RenderTransform>
+                                <ScaleTransform ScaleY="0.7966101695" />
+                            </Canvas.RenderTransform>
                             <Path Data="{Binding C3DHeightDistributionHistogramPathData}"
                                   Fill="#8be2e8f0" />
                             <Path Data="{Binding C3DHeightDistributionPeakPathData}"
                                   Fill="#fbbf24" />
                         </Canvas>
                     </Grid>
-                    <TextBlock FontSize="8"
-                               FontWeight="SemiBold"
-                               Foreground="#fbbf24"
-                               TextWrapping="Wrap"
-                               Text="{Binding C3DHeightDistributionPeakLabel}" />
-                    <TextBlock Margin="0,2,0,0"
-                               FontSize="7.5"
-                               Foreground="#cbd5e1"
-                               Text="{Binding C3DHeightDistributionCountLabel}" />
-                    <TextBlock Margin="0,1,0,0"
-                               FontSize="7.5"
-                               Foreground="#94a3b8"
-                               Text="{Binding C3DHeightDistributionPaletteLabel}" />
-                    <TextBlock Margin="0,1,0,0"
-                               FontSize="7.5"
-                               Foreground="#94a3b8"
-                               Text="raw-height · display only" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="22" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="22" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="#e2e8f0"
+                                   Text="L" />
+                        <Button Grid.Column="1"
+                                Height="22"
+                                Padding="0"
+                                Click="DecreaseC3DHeightColorMinimum_Click"
+                                Content="−"
+                                ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumDecrease, Korean='높이 색상 하한 낮추기', English='Lower the height-color minimum'}"
+                                AutomationProperties.AutomationId="HeightColorMinimumDecrease"
+                                AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumDecrease, Korean='높이 색상 하한 낮추기', English='Lower the height-color minimum'}" />
+                        <TextBox Grid.Column="2"
+                                 Height="22"
+                                 Margin="3,0"
+                                 Padding="3,1"
+                                 HorizontalContentAlignment="Right"
+                                 VerticalContentAlignment="Center"
+                                 FontFamily="Consolas"
+                                 FontSize="9"
+                                 Foreground="#f8fafc"
+                                 Background="#1e293b"
+                                 BorderBrush="#64748b"
+                                 Text="{Binding C3DHeightColorMinimumRaw, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat=F2}"
+                                 ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimum, Korean='높이 색상 하한 · 보기 전용', English='Height-color minimum · view only'}"
+                                 AutomationProperties.AutomationId="HeightColorMinimum"
+                                 AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimum, Korean='높이 색상 하한', English='Height-color minimum'}" />
+                        <Button Grid.Column="3"
+                                Height="22"
+                                Padding="0"
+                                Click="IncreaseC3DHeightColorMinimum_Click"
+                                Content="+"
+                                ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumIncrease, Korean='높이 색상 하한 높이기', English='Raise the height-color minimum'}"
+                                AutomationProperties.AutomationId="HeightColorMinimumIncrease"
+                                AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorMinimumIncrease, Korean='높이 색상 하한 높이기', English='Raise the height-color minimum'}" />
+                    </Grid>
+                    <Button Height="22"
+                            Margin="18,5,0,0"
+                            Padding="4,0"
+                            Click="ResetC3DHeightColorRange_Click"
+                            Content="AUTO"
+                            FontSize="8"
+                            ToolTip="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeReset, Korean='원본 전체 높이 범위로 초기화', English='Reset to the full source-height range'}"
+                            AutomationProperties.AutomationId="HeightColorRangeReset"
+                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.HeightColorRangeReset, Korean='높이 색상 범위 자동 초기화', English='Reset height-color range to auto'}" />
                 </StackPanel>
             </Border>
             <Border x:Name="PointCloudColorLegendPanel"

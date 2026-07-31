@@ -34,12 +34,15 @@
                 <ui:Button x:Name="AdvancedDiagnosticsButton"
                            Grid.Column="1"
                            Margin="12,0,0,0"
+                           Width="34"
+                           Height="32"
+                           Padding="0"
                            VerticalAlignment="Center"
                            Appearance="Secondary"
                            Icon="{ui:SymbolIcon Settings24}"
-                           Content="{Binding Localization.ResultsWorkspaceAdvanced}"
                            Command="{Binding SelectWorkspaceCommand}"
                            CommandParameter="{x:Static views:ShellWorkspaceMode.Expert}"
+                           ToolTip="{Binding Localization.ResultsWorkspaceAdvanced}"
                            AutomationProperties.AutomationId="ResultsAdvancedDiagnostics"
                            AutomationProperties.Name="{Binding Localization.ResultsWorkspaceAdvanced}" />
             </Grid>
@@ -56,10 +59,10 @@
                 AutomationProperties.AutomationId="ResultsOperatorSummary"
                 AutomationProperties.Name="{Binding Localization.ResultsOperatorSummaryTitle}">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="11"
                                FontWeight="SemiBold"
@@ -74,7 +77,7 @@
                                FontSize="11"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding RunSnapshotSummary}"
+                               Text="{Binding ResultsOperatorDecisionSummary}"
                                TextWrapping="Wrap" />
                     <TextBlock Margin="0,5,0,0"
                                FontSize="9"
@@ -84,12 +87,11 @@
                                Margin="0,1,0,0"
                                FontSize="10"
                                Foreground="{DynamicResource ThreeD.TextBrush}"
-                               Text="{Binding InspectionStepSummary}"
+                               Text="{Binding ResultsOperatorAffectedStepsSummary}"
                                TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Grid.Column="1"
-                            Width="260"
-                            Margin="18,0,0,0"
+                <StackPanel Grid.Row="1"
+                            Margin="0,8,0,0"
                             VerticalAlignment="Center">
                     <TextBlock FontSize="9.5"
                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
@@ -112,19 +114,19 @@
         </Border>
 
         <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="184" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
             <Border Padding="10"
                     Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="0,0,1,0">
                 <DockPanel LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Top">
+                    <WrapPanel DockPanel.Dock="Top">
                         <RadioButton x:Name="RunRecordNavigation"
-                                     Margin="0,0,0,6"
+                                     Margin="0,0,12,6"
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceRunRecord}"
@@ -133,7 +135,7 @@
                                      AutomationProperties.AutomationId="ResultsRunRecordNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceRunRecord}" />
                         <RadioButton x:Name="OutputCompareNavigation"
-                                     Margin="0,0,0,6"
+                                     Margin="0,0,12,6"
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceOutputCompare}"
@@ -141,13 +143,14 @@
                                      AutomationProperties.AutomationId="ResultsOutputCompareNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceOutputCompare}" />
                         <RadioButton x:Name="ReportsNavigation"
+                                     Margin="0,0,0,6"
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceReports}"
                                      Click="ReportsNavigation_Click"
                                      AutomationProperties.AutomationId="ResultsReportsNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceReports}" />
-                    </StackPanel>
+                    </WrapPanel>
                     <Border DockPanel.Dock="Bottom"
                             Margin="0,12,0,0"
                             Padding="9"
@@ -164,7 +167,7 @@
                 </DockPanel>
             </Border>
 
-            <Grid Grid.Column="1">
+            <Grid Grid.Row="1">
                 <workbench:RecipePipelineReviewView x:Name="RunRecordReview"
                                                     Margin="12,4,12,12"
                                                     DataContext="{Binding Workbench}"

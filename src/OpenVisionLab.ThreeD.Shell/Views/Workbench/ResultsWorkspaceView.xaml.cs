@@ -34,7 +34,7 @@ public partial class ResultsWorkspaceView : UserControl
         HasAccessibleText(RunRecordNavigation)
         && HasAccessibleText(OutputCompareNavigation)
         && HasAccessibleText(ReportsNavigation)
-        && HasAccessibleText(AdvancedDiagnosticsButton)
+        && HasAccessibleIconControl(AdvancedDiagnosticsButton)
         && AdvancedDiagnosticsButton.Command?.CanExecute(
             AdvancedDiagnosticsButton.CommandParameter) == true;
 
@@ -76,4 +76,9 @@ public partial class ResultsWorkspaceView : UserControl
     private static bool HasAccessibleText(ContentControl control) =>
         !string.IsNullOrWhiteSpace(control.Content?.ToString())
         && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(control));
+
+    private static bool HasAccessibleIconControl(FrameworkElement control) =>
+        !string.IsNullOrWhiteSpace(AutomationProperties.GetName(control))
+        && control.ReadLocalValue(ToolTipProperty)
+            != DependencyProperty.UnsetValue;
 }

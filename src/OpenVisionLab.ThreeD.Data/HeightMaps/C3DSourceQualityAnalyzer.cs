@@ -77,7 +77,7 @@ public static class C3DSourceQualityAnalyzer
                 CoordinateConvention),
             snapshot.Provenance,
             snapshot.IsDerived,
-            CreateC3DChannelAvailability());
+            SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid());
     }
 
     private static SourceQualityDistribution CreateDistribution(
@@ -125,36 +125,4 @@ public static class C3DSourceQualityAnalyzer
             Array.AsReadOnly(bins));
     }
 
-    private static IReadOnlyList<SourceQualityChannelAvailability> CreateC3DChannelAvailability() =>
-        Array.AsReadOnly<SourceQualityChannelAvailability>(
-        [
-            new(
-                SourceQualityChannel.Height,
-                SourceQualityChannelState.Available,
-                "Finite non-zero float32 grid samples are available as raw height."),
-            new(
-                SourceQualityChannel.Intensity,
-                SourceQualityChannelState.Unavailable,
-                "The supported C3D height-grid layout contains no intensity channel."),
-            new(
-                SourceQualityChannel.Color,
-                SourceQualityChannelState.Unavailable,
-                "The supported C3D height-grid layout contains no color channel."),
-            new(
-                SourceQualityChannel.Depth,
-                SourceQualityChannelState.Unavailable,
-                "The source declares raw height, not a separate calibrated depth channel."),
-            new(
-                SourceQualityChannel.Normal,
-                SourceQualityChannelState.Unavailable,
-                "The supported C3D height-grid layout stores no measured normal channel."),
-            new(
-                SourceQualityChannel.Confidence,
-                SourceQualityChannelState.Unavailable,
-                "The supported C3D height-grid layout stores no confidence channel."),
-            new(
-                SourceQualityChannel.SignalToNoiseRatio,
-                SourceQualityChannelState.Unavailable,
-                "The supported C3D height-grid layout stores no SNR channel.")
-        ]);
 }

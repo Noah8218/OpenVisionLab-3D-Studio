@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
@@ -71,6 +72,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool HasTeachStageComposition => DockWorkspace.HasTeachStageComposition;
 
+    public bool HasAuthoringStageComposition =>
+        DockWorkspace.HasAuthoringPaneComposition;
+
     public bool HasValidateOrResultsStageComposition =>
         DockWorkspace.HasValidateOrResultsStageComposition;
 
@@ -79,6 +83,9 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool HasResultsStageComposition =>
         DockWorkspace.HasResultsStageComposition;
+
+    public bool HasEvidenceLinkedViewerComposition =>
+        DockWorkspace.HasEvidenceLinkedViewerComposition;
 
     public bool HasStableStageHostedDataContexts =>
         DataContext is ShellMainWindowViewModel currentShell
@@ -187,6 +194,16 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public DockingFloatDockResult VerifyFirstPaneFloatDockRoundTrip() =>
         DockWorkspace.VerifyFirstPaneFloatDockRoundTrip();
 
+    public OpenVisionDockPresentationState CaptureDockPresentationState() =>
+        DockWorkspace.CapturePresentationState();
+
+    public void ApplyDockPresentationState(
+        OpenVisionDockPresentationState state) =>
+        DockWorkspace.ApplyPresentationState(state);
+
+    public void ResetDockPresentationState() =>
+        DockWorkspace.ResetPresentationState();
+
     public bool IsBottomPaneExpanded
     {
         get => DockWorkspace.IsBottomPaneExpanded;
@@ -199,11 +216,45 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
 
     public bool HasTopThemedDockTabs => DockWorkspace.HasTopThemedDockTabs;
 
+    public bool HasSideCollapsibleTaskPanes =>
+        DockWorkspace.HasSideCollapsibleTaskPanes;
+
+    public (bool Collapsed, bool Restored) VerifySupportAutoHideRoundTrip() =>
+        DockWorkspace.VerifySupportAutoHideRoundTrip();
+
+    public bool HasNoVisibleWorkspaceCommandBar =>
+        WorkspaceCommandBar.Visibility == Visibility.Collapsed;
+
     public bool IsToolInspectorPaneSelected =>
         DockWorkspace.IsToolInspectorPaneSelected;
 
     public bool HasRecipeFlowInspectorViewerOrder =>
         DockWorkspace.HasRecipeFlowInspectorViewerOrder;
+
+    public bool HasVisibleAuthoringFirstActionGuide =>
+        DockWorkspace.DataLayersContent is RecipeChainView
+        {
+            HasVisibleFirstActionGuide: true
+        };
+
+    public bool HasSingleVisibleAuthoringFirstAction =>
+        DockWorkspace.DataLayersContent is RecipeChainView
+        {
+            HasSingleVisibleFirstAction: true
+        };
+
+    public bool IsViewerContextRibbonVisible =>
+        FindLogicalChildByAutomationId<Border>(
+            DockWorkspace.ViewerContent,
+            "ViewerContextRibbon")?.Visibility == Visibility.Visible;
+
+    public bool IsNoRecipeStepBannerVisible =>
+        FindLogicalChildByAutomationId<Border>(
+            DockWorkspace.ViewerContent,
+            "NoRecipeStepBanner")?.Visibility == Visibility.Visible;
+
+    public bool IsViewerInputFirstActionVisible =>
+        ViewerWorkspaceSurface?.IsInputFirstActionVisible == true;
 
     public bool UsesInspectionWorkspaceV3Composition =>
         DockWorkspace.DataLayersContent is RecipeChainView
@@ -217,11 +268,40 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
             HasThicknessRepeatGridAuthoringControls: true
         };
 
+    public bool HasExplicitSelectedToolActions =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
+        {
+            HasExplicitAuthoringActions: true
+        };
+
+    public bool HasExclusiveSelectedToolWorkspaceSurface =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
+        {
+            HasExclusiveWorkspaceSurface: true
+        };
+
+    public bool HasAdjacentViewerOutputs =>
+        DockWorkspace.HasAdjacentViewerOutputs;
+
     public bool IsFailureCorrectionContextVisible =>
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
         {
             IsFailureCorrectionContextVisible: true
         };
+
+    public void ActivateSelectedToolPane() =>
+        DockWorkspace.ActivateToolInspectorPane();
+
+    public void ToggleSelectedToolSideCollapse() =>
+        DockWorkspace.ToggleToolInspectorAutoHide();
+
+    public bool IsSelectedToolSideCollapsed =>
+        DockWorkspace.IsToolInspectorAutoHidden;
+
+    public IReadOnlyList<string> GetSelectedToolVisibleTextLayout() =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView view
+            ? view.GetVisibleTextLayout()
+            : [];
 
     public bool HasDominantViewerWidth => DockWorkspace.HasDominantViewerWidth;
 
@@ -300,6 +380,36 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         foreach (var child in LogicalTreeHelper.GetChildren(dependencyObject))
         {
             if (FindLogicalChild<T>(child) is { } descendant)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
+    }
+
+    private static T? FindLogicalChildByAutomationId<T>(
+        object? parent,
+        string automationId)
+        where T : DependencyObject
+    {
+        if (parent is T match
+            && string.Equals(
+                AutomationProperties.GetAutomationId(match),
+                automationId,
+                StringComparison.Ordinal))
+        {
+            return match;
+        }
+
+        if (parent is not DependencyObject dependencyObject)
+        {
+            return null;
+        }
+
+        foreach (var child in LogicalTreeHelper.GetChildren(dependencyObject))
+        {
+            if (FindLogicalChildByAutomationId<T>(child, automationId) is { } descendant)
             {
                 return descendant;
             }
@@ -562,7 +672,7 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     {
         var stage = shell?.SelectedWorkspaceMode switch
         {
-            ShellWorkspaceMode.Workbench => OpenVisionOperatorStage.Setup,
+            ShellWorkspaceMode.Workbench => OpenVisionOperatorStage.Teach,
             ShellWorkspaceMode.Teach => OpenVisionOperatorStage.Teach,
             ShellWorkspaceMode.Inspect => OpenVisionOperatorStage.Validate,
             ShellWorkspaceMode.Review => OpenVisionOperatorStage.Results,

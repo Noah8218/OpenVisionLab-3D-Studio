@@ -134,6 +134,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
+        DrawWorkbenchSurfaceMatch(gl);
         DrawTeachingSelectionOverlays(gl);
         DrawLinkedHeightCursor(gl);
 

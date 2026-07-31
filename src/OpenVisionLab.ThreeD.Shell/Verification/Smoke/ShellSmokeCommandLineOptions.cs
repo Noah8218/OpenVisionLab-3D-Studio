@@ -118,6 +118,10 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool EdgePreviewSmoke => EdgePublishSmoke || LineFitPreviewSmoke || HasFlag("--smoke-tool-edge-preview");
     public bool InvalidEdgeDraftSmoke => HasFlag("--smoke-wpg-invalid-edge");
     public bool SmokePublishResult => HasFlag("--smoke-publish-result");
+    public bool ExpandSelectedToolParametersSmoke =>
+        HasFlag("--smoke-expand-selected-tool-parameters");
+    public bool FocusSelectedToolParameterSearchSmoke =>
+        HasFlag("--smoke-focus-selected-tool-parameter-search");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
 
     public (int Width, int Height)? WindowSize =>
@@ -170,6 +174,8 @@ internal sealed class ShellSmokeCommandLineOptions
         || SharedHeightHoverSmoke
         || HeightImageRoiPointerSmoke is not null
         || OrientedBoxPointerSmokeReportPath is not null
+        || ExpandSelectedToolParametersSmoke
+        || FocusSelectedToolParameterSearchSmoke
         || WorkbenchInteractionReportPath is not null;
 
     private bool HasFlag(string name) =>

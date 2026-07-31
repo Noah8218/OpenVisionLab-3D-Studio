@@ -20,6 +20,7 @@ internal static class ToolWorkbenchToolCatalog
         new("Transform", "XYZ Affine Solve", "xyz-affine-solve", 1, "Published CorrespondenceSet", "AffineTransform3D", "Solve one full XYZ source-to-reference matrix from exactly four published correspondence pairs. It does not move C3D points.", [new("SolvePolicy", "ExactFourPartialPivot"), new("MaximumConditionEstimate", "1000000"), new("ArithmeticResidualWarning", "0.001")]),
         new("Transform", "Apply XYZ Affine", "xyz-affine-apply", 2, "Verified raw C3D + Published AffineTransform3D", "TransformedPointCloud", "Transform each finite raw source-grid point once in full XYZ while preserving its row/column locator. It does not re-grid, interpolate, triangulate, or measure.", []),
         new("Transform", "Re-grid Height Map", "re-grid-height-map", 1, "Published TransformedPointCloud", "TransformedHeightField", "Project a published full-XYZ cloud into one explicit right-handed reference grid. Missing cells remain missing; Preview rejects out-of-bounds points and Publish requires authored coverage.", CreateDefaultRegridParameters()),
+        new("Match", "Surface Match", "surface-match", 2, "Published SurfaceModel + Prepared Scene", "SurfaceMatchAssessment", "Search only inside explicit pose bounds, preserve raw coverage and overlay, then apply separate authored Pass/Fail limits. Parameter Apply never executes Preview or Run.", CreateDefaultSurfaceMatchParameters()),
         new("Measure", "Thickness", "thickness", 3, "HeightField + Reference GridRectangle + Measurement GridRectangle", "MeasurementResult", "Fit a reference surface, then measure signed H-axis separation across a second recipe-owned ROI. Preview remains explicit.", [new("MinimumThickness", "0"), new("MaximumThickness", "100000"), new("MinimumValidSampleCount", "1")]),
         new("Measure", "Warpage", "warpage", 2, "HeightField + GridRectangle", "MeasurementResult", "Measure best-fit-plane residual warpage inside one recipe-owned grid ROI. This is one reusable measurement tool, not a product mode.", [new("MaximumPeakToValley", "100000"), new("MaximumRms", "100000"), new("MinimumValidSampleCount", "3")]),
         new("Measure", "Plane Flatness", "plane-flatness", 3, "TransformedHeightField + Reference GridRectangle + Measurement GridRectangle", "MeasurementResult", "Fit a reference plane in one artifact-owned ROI and measure signed-distance flatness in a second ROI. Preview and Publish remain explicit.", [new("MaximumFlatness", "100000"), new("MinimumReferenceSampleCount", "3"), new("MinimumMeasurementSampleCount", "3")]),
@@ -42,4 +43,29 @@ internal static class ToolWorkbenchToolCatalog
         .ToRecipeParameters()
         .Select(parameter => new ToolWorkbenchParameterSeed(parameter.Name, parameter.Value))
         .ToArray();
+
+    private static IReadOnlyList<ToolWorkbenchParameterSeed>
+        CreateDefaultSurfaceMatchParameters() =>
+    [
+        new("MinimumCoverageRatio", "0.9"),
+        new("MaximumInlierRmse", "0.25"),
+        new("MinimumRotationXDegrees", "0"),
+        new("MaximumRotationXDegrees", "0"),
+        new("RotationStepXDegrees", "1"),
+        new("MinimumRotationYDegrees", "0"),
+        new("MaximumRotationYDegrees", "0"),
+        new("RotationStepYDegrees", "1"),
+        new("MinimumRotationZDegrees", "-45"),
+        new("MaximumRotationZDegrees", "45"),
+        new("RotationStepZDegrees", "15"),
+        new("MinimumTranslationX", "-10"),
+        new("MaximumTranslationX", "10"),
+        new("MinimumTranslationY", "-10"),
+        new("MaximumTranslationY", "10"),
+        new("MinimumTranslationZ", "-10"),
+        new("MaximumTranslationZ", "10"),
+        new("MaximumCorrespondenceDistance", "1"),
+        new("MinimumMatchedSampleCount", "3"),
+        new("MaximumCandidateCount", "10000")
+    ];
 }
