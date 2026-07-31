@@ -106,6 +106,9 @@ internal static class RunnerCommandRouter
         var verifySurfaceEdgeMatching = args.Contains(
             "--verify-surface-edge-matching",
             StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceEdgeDiagnosticReview = args.Contains(
+            "--verify-surface-edge-diagnostic-review",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DCompletenessGrid = args.Contains(
             "--verify-c3d-completeness-grid",
             StringComparer.OrdinalIgnoreCase);
@@ -610,6 +613,18 @@ internal static class RunnerCommandRouter
             }
 
             return SurfaceEdgeMatchingVerification.Run(reportPath);
+        }
+
+        if (verifySurfaceEdgeDiagnosticReview)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-diagnostic-review --report <path>");
+                return 2;
+            }
+
+            return SurfaceEdgeDiagnosticReviewVerification.Run(reportPath);
         }
 
         if (verifyRegistrationAcceptance)

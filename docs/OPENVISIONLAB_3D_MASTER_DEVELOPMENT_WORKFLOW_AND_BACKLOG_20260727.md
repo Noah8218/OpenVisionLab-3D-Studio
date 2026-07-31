@@ -146,13 +146,47 @@ Current inventory count:
   Workbench/Runner parity, separate recipe-owned acceptance, authored finite
   search bounds, rejection reasons, observational stage timing, identified
   model/scene 3D-edge artifacts, and separate diagnostic edge scoring.
-  Edge-direction diagnostics, independent component thresholds,
-  false-positive review, production performance budgets, multiple matches,
-  and symmetry remain incomplete.
+  Direction diagnostics, independent component thresholds, and one retained
+  false-positive review are complete. Fixed-fixture production performance
+  budgets, multiple matches, acquisition direction, and symmetry remain
+  incomplete.
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Surface-edge artifacts and separate score - 2026-07-31
+### Current execution checkpoint - Surface-edge diagnostics, thresholds, and review - 2026-07-31
+
+`K-05`, `K-07`, and `K-08` are Complete. Core owns schema-1 identified
+direction-overlay, independent surface/edge assessment, and retained
+accepted/rejected review artifacts. Data owns validated atomic persistence.
+Tools uses canonical model-edge ordering and declared normals at the immutable
+surface pose, evaluates surface and edge components independently without a
+weighted score, and retains exact evidence references.
+
+The controlled accepted and rejected cases both retain `2/2 = 1.0` surface
+coverage while edge coverage separates to `4/4 = 1.0` Pass and `0/4 = 0.0`
+Fail. PropertyGrid authors and persists four independent limits without
+executing Preview, Publish, Run, or Validation. Viewer draws model, scene, and
+normal diagnostics above the base wireframe and links the current decision to
+the retained false-positive comparison.
+
+Release passes `0/0`; focused verification `20/20`; Workbench/Runner and
+PropertyGrid parity `13/13`; existing edge `21/21`; matching `34/34`;
+acceptance `14/14`; SurfaceModel `22/22`; source/normal `26/26`; Source
+Quality `18/18`; docking `76/76`; Inspection Workspace `63/63`; Validation
+Set `84/84`; height distribution `25/25`; WPG `38/38`; smoke options `26/26`;
+structure `17/17`. Accepted and rejected current-build captures pass Wide
+`1920 x 1040` and Compact `1280 x 760` overlap/clipping review. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`;
+- `artifacts/current/20260731-surface-edge-diagnostic-review/`.
+
+Inventory is `125 C / 17 P / 67 N / 9 E / 16 O`. Human-owner R0 remains an
+external `A-01` task. Next: `K-11` fixed-fixture matching performance gate.
+`K-04` remains blocked on `B-12`, `K-09` remains blocked on `J-12`, and no
+acquisition-direction, weighted-score, metrology, or production-performance
+claim is included in this closure.
+
+### Earlier execution checkpoint - Surface-edge artifacts and separate score - 2026-07-31
 
 `K-02`, `K-03`, and `K-06` are Complete. Core owns schema-1 identified
 model-edge, complete-organized-scene-edge, and separate surface/edge score
@@ -1474,10 +1508,10 @@ Reasoning effort: high
 | K-02 | C | Model 3D edge extraction for a SurfaceModel | J-03 | Stable topology boundary/crease artifact; non-manifold rejection; `21/21` focused fixture |
 | K-03 | C | Scene 3D edge extraction for matching | J-06 | Stable complete-organized-grid height-step artifact; incomplete grid rejection; `21/21` focused fixture |
 | K-04 | N | Acquisition viewpoint/direction metadata for edge orientation | B-12 | Explicit available/unavailable state |
-| K-05 | N | Normal/edge-direction diagnostic overlay | B-16, K-02 | Known outward-normal fixture |
+| K-05 | C | Normal/edge-direction diagnostic overlay | B-16, K-02 | Known outward-normal fixture; identified overlay and `20/20` focused verification |
 | K-06 | C | Separate surface and 3D-edge match scores | J-08, K-02, K-03 | Equal `100%` surface coverage separates to `100%` versus `0%` edge coverage; Runner `21/21`; parity `12/12` |
-| K-07 | N | Independent thresholds for score components | K-06 | PropertyGrid and Runner evidence |
-| K-08 | N | False-positive review with original scene, samples, model, pose, and scores | K-06 | One retained rejected/accepted comparison |
+| K-07 | C | Independent thresholds for score components | K-06 | Separate PropertyGrid persistence and exact Runner/Workbench assessment parity; no weighted score |
+| K-08 | C | False-positive review with original scene, samples, model, pose, and scores | K-06 | Retained `100/100` accepted versus `100/0` rejected comparison |
 | K-09 | N | Multiple-match issue navigation | J-12 | Previous/next match selection |
 | K-10 | N | Matching parameter experiment comparison without changing current published result | J-15 | Preview candidates and explicit Publish |
 | K-11 | N | Matching performance budget over fixed fixtures | J-15 | Release timing matrix |
@@ -1726,8 +1760,8 @@ development pause after the owner's 2026-07-31 reprioritization. `B-07`,
 `C-06`, `B-09`, `B-08`, `C-07`, `C-08`, `C-09`, `C-10`, `C-11`, `E-07`,
 and `E-08` were completed ahead of that gate by explicit owner direction.
 `B-11`, `B-16`, `F-14`, `J-01`, `J-03`, `J-04`, `J-06`, `J-08`, `J-09`,
-`J-10`, `J-11`, `J-14`, `J-15`, `J-16`, `K-02`, `K-03`, `K-06`, and
-`M-16` are now also complete.
+`J-10`, `J-11`, `J-14`, `J-15`, `J-16`, `K-02`, `K-03`, `K-05`, `K-06`,
+`K-07`, `K-08`, and `M-16` are now also complete.
 The remaining order follows typed dependencies.
 
 Execute only one queue item at a time.
@@ -1746,9 +1780,9 @@ External acceptance, in parallel with software work:
 
 Software queue:
 
-1. `K-05/K-07/K-08 edge diagnostics, independent thresholds, and false-positive review` | Recommended model:
+1. `K-11 fixed-fixture matching performance gate` | Recommended model:
    `gpt-5.6-sol` | Reasoning effort: `high`
-2. `K-11 fixed-fixture matching performance gate` | Recommended model:
+2. `K-10 matching experiment comparison with explicit Publish` | Recommended model:
    `gpt-5.6-sol` | Reasoning effort: `high`
 
 ## Documentation decision

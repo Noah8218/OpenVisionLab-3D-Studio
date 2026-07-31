@@ -15,6 +15,8 @@ public sealed partial class OpenVisionThreeDViewerControl
     private SurfaceModelTriangle[]? surfaceMatchOverlayTriangles;
     private Vector3[]? surfaceMatchScenePositions;
     private (Vector3 Model, Vector3 Scene)[]? surfaceMatchCorrespondences;
+    private SurfaceEdgeModelRenderSegment[]? surfaceEdgeModelSegments;
+    private SurfaceEdgeSceneRenderSegment[]? surfaceEdgeSceneSegments;
     private SurfaceMatchDisplayFrame surfaceMatchDisplayFrame;
 
     public void ShowWorkbenchSurfaceMatch(
@@ -23,7 +25,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         SurfaceMatchExecutionArtifact execution,
         SurfaceMatchAssessmentArtifact? assessment = null,
         SurfaceMatchRuntimeReport? runtime = null,
-        SurfaceAndEdgeMatchScoreArtifact? edgeScore = null)
+        SurfaceAndEdgeMatchScoreArtifact? edgeScore = null,
+        SurfaceEdgeDiagnosticOverlayArtifact? edgeDiagnosticOverlay = null,
+        SurfaceAndEdgeMatchAssessmentArtifact? edgeAssessment = null,
+        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(scene);
@@ -73,6 +78,49 @@ public sealed partial class OpenVisionThreeDViewerControl
                     surfaceMatchDisplayFrame.Map(sceneSample.Position));
             })
             .ToArray();
+        if (edgeDiagnosticOverlay is not null)
+        {
+            var edgeValidity =
+                SurfaceEdgeDiagnosticOverlayArtifactValidator.Inspect(
+                    edgeDiagnosticOverlay);
+            if (!edgeValidity.IsValid
+                || edgeScore is null
+                || edgeDiagnosticOverlay.SurfaceMatchExecutionContentSha256
+                    != execution.ContentSha256
+                || edgeDiagnosticOverlay.ModelContentSha256
+                    != model.ContentSha256
+                || edgeDiagnosticOverlay.SceneContentSha256
+                    != scene.ContentSha256
+                || edgeDiagnosticOverlay.ScoreContentSha256
+                    != edgeScore.ContentSha256)
+            {
+                throw new InvalidDataException(
+                    "Viewer edge diagnostic overlay is invalid or linked to different evidence.");
+            }
+
+            surfaceEdgeModelSegments = edgeDiagnosticOverlay.ModelSegments
+                .Select(segment => new SurfaceEdgeModelRenderSegment(
+                    surfaceMatchDisplayFrame.Map(segment.FirstPosition),
+                    surfaceMatchDisplayFrame.Map(segment.SecondPosition),
+                    surfaceMatchDisplayFrame.Map(segment.Anchor),
+                    surfaceMatchDisplayFrame.MapDirectionEnd(
+                        segment.Anchor,
+                        segment.DeclaredNormal,
+                        0.62f),
+                    segment.IsMatched))
+                .ToArray();
+            surfaceEdgeSceneSegments = edgeDiagnosticOverlay.SceneSegments
+                .Select(segment => new SurfaceEdgeSceneRenderSegment(
+                    surfaceMatchDisplayFrame.Map(segment.FirstPosition),
+                    surfaceMatchDisplayFrame.Map(segment.SecondPosition),
+                    segment.IsMatched))
+                .ToArray();
+        }
+        else
+        {
+            surfaceEdgeModelSegments = null;
+            surfaceEdgeSceneSegments = null;
+        }
         surfaceMatchRenderExecution = execution;
 
         viewModel.CubeVisible = false;
@@ -88,7 +136,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             execution,
             assessment,
             runtime,
-            edgeScore);
+            edgeScore,
+            edgeDiagnosticOverlay,
+            edgeAssessment,
+            falsePositiveReview);
         RenderNow();
     }
 
@@ -99,6 +150,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         surfaceMatchOverlayTriangles = null;
         surfaceMatchScenePositions = null;
         surfaceMatchCorrespondences = null;
+        surfaceEdgeModelSegments = null;
+        surfaceEdgeSceneSegments = null;
         surfaceMatchDisplayFrame = default;
         viewModel.ClearWorkbenchSurfaceMatch();
         RenderNow();
@@ -193,6 +246,66 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         gl.End();
+
+        if (surfaceEdgeSceneSegments is { Length: > 0 } sceneEdges)
+        {
+            gl.LineWidth(3.4f);
+            gl.Color(0.98, 0.72, 0.22);
+            gl.Begin(OpenGL.GL_LINES);
+            foreach (var edge in sceneEdges)
+            {
+                DrawSurfaceMatchEdge(gl, edge.First, edge.Second);
+            }
+
+            gl.End();
+        }
+
+        if (surfaceEdgeModelSegments is { Length: > 0 } modelEdges)
+        {
+            gl.LineWidth(4.6f);
+            gl.Begin(OpenGL.GL_LINES);
+            foreach (var edge in modelEdges)
+            {
+                if (edge.IsMatched)
+                {
+                    gl.Color(0.20, 0.96, 0.62);
+                }
+                else
+                {
+                    gl.Color(1.0, 0.34, 0.32);
+                }
+
+                DrawSurfaceMatchEdge(gl, edge.First, edge.Second);
+            }
+
+            gl.End();
+            gl.PointSize(8.0f);
+            gl.Begin(OpenGL.GL_POINTS);
+            foreach (var edge in modelEdges)
+            {
+                if (edge.IsMatched)
+                {
+                    gl.Color(0.20, 0.96, 0.62);
+                }
+                else
+                {
+                    gl.Color(1.0, 0.34, 0.32);
+                }
+
+                gl.Vertex(edge.Second.X, edge.Second.Y, edge.Second.Z);
+            }
+
+            gl.End();
+            gl.LineWidth(2.2f);
+            gl.Color(0.78, 0.48, 1.0);
+            gl.Begin(OpenGL.GL_LINES);
+            foreach (var edge in modelEdges)
+            {
+                DrawSurfaceMatchEdge(gl, edge.Anchor, edge.NormalEnd);
+            }
+
+            gl.End();
+        }
     }
 
     private static void DrawSurfaceMatchEdge(
@@ -203,6 +316,18 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(first.X, first.Y, first.Z);
         gl.Vertex(second.X, second.Y, second.Z);
     }
+
+    private readonly record struct SurfaceEdgeModelRenderSegment(
+        Vector3 First,
+        Vector3 Second,
+        Vector3 Anchor,
+        Vector3 NormalEnd,
+        bool IsMatched);
+
+    private readonly record struct SurfaceEdgeSceneRenderSegment(
+        Vector3 First,
+        Vector3 Second,
+        bool IsMatched);
 
     private readonly record struct SurfaceMatchDisplayFrame(
         double CenterX,
@@ -246,5 +371,17 @@ public sealed partial class OpenVisionThreeDViewerControl
                 (float)((point.X - CenterX) * Scale),
                 (float)((point.Y - CenterY) * Scale),
                 (float)((point.Z - CenterZ) * Scale));
+
+        public Vector3 MapDirectionEnd(
+            SurfaceModelPoint3 anchor,
+            SurfaceModelPoint3 direction,
+            float displayLength)
+        {
+            var mappedAnchor = Map(anchor);
+            return new Vector3(
+                mappedAnchor.X + (float)direction.X * displayLength,
+                mappedAnchor.Y + (float)direction.Y * displayLength,
+                mappedAnchor.Z + (float)direction.Z * displayLength);
+        }
     }
 }

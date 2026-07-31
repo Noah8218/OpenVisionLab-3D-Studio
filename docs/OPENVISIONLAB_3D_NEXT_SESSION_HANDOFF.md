@@ -6,7 +6,7 @@ Start a new development conversation with:
 
 - `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
 
-It records the current `122 C / 17 P / 70 N / 9 E / 16 O` inventory, the
+It records the current `125 C / 17 P / 67 N / 9 E / 16 O` inventory, the
 completed commercial-video-derived foundation, every remaining priority
 train, the completed Teach, Advanced Viewer, novice hierarchy/accessibility,
 top dock-tab, Viewer command-bar, and single-row Height color-range slices,
@@ -19,7 +19,9 @@ completed transformed-model overlay and Workbench/Runner parity slice, the
 completed separate acceptance, authored search bounds, rejection/runtime,
 and matching-golden slice, the completed PropertyGrid theme-consistency
 repair and reusable global control-theme gate, the completed identified
-model/scene 3D-edge artifacts and separate diagnostic score,
+model/scene 3D-edge artifacts and separate diagnostic score, the completed
+direction diagnostics, independent thresholds, and retained false-positive
+review,
 the human-owner R0 acceptance task, the
 dirty-working-tree warning, and the user-owned untracked-folder boundary.
 
@@ -34,8 +36,8 @@ the state-driven first-use action cleanup, and the current matching and
 acceptance assemblies. It passes Wide/Compact `-ValidateOnly`. Human-owner R0 remains
 external for `A-01`, but by explicit owner direction it no longer pauses
 dependency-ready software development. The immediate software priority is
-`K-05/K-07/K-08` edge diagnostics, independent component thresholds, and
-false-positive review. `K-04` remains blocked on `B-12`. The completed
+`K-11` fixed-fixture matching performance. `K-04` remains blocked on `B-12`
+and `K-09` remains blocked on `J-12`. The completed
 acceptance policy remains separate from the raw surface and diagnostic edge
 score contracts.
 
@@ -44,7 +46,42 @@ user-owned untracked `3D/TLB/` folder. Do not touch
 `3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`. No commit or push is
 authorized by this handoff.
 
-## Surface-edge artifacts and separate score closure - 2026-07-31
+## Surface-edge diagnostics, independent thresholds, and review closure - 2026-07-31
+
+`K-05`, `K-07`, and `K-08` are Complete. Core owns identified
+direction-overlay, independent surface/edge assessment, and retained
+accepted/rejected review artifacts. Data owns validated atomic persistence.
+Tools uses canonical edge order and declared model normals at the immutable
+pose, evaluates the two score channels independently without a weighted score,
+and retains exact source references.
+
+The accepted raised-square and rejected flat-background cases both preserve
+`2/2 = 100%` surface coverage while edge coverage separates to `4/4 = 100%`
+Pass and `0/4 = 0%` Fail. PropertyGrid persists the four independent limits
+without execution. Viewer presents the current decision, model/scene/normal
+diagnostics, and one retained accepted/rejected false-positive comparison.
+
+Release rebuilds `0/0`; focused verification passes `20/20`; Workbench/Runner
+and PropertyGrid parity `13/13`; existing edge `21/21`; matching `34/34`;
+acceptance `14/14`; SurfaceModel `22/22`; source/normal `26/26`; Source
+Quality `18/18`; docking `76/76`; Inspection Workspace `63/63`; Validation
+Set `84/84`; height distribution `25/25`; WPG `38/38`; smoke options `26/26`;
+structure `17/17`. Accepted and rejected current-build Wide `1920 x 1040` and
+Compact `1280 x 760` captures pass overlap/clipping review. Refreshed fixed
+hashes pass both R0 `-ValidateOnly` modes; unaided owner operation remains
+external.
+
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`;
+- `artifacts/current/20260731-surface-edge-diagnostic-review/`.
+
+Inventory is `125 C / 17 P / 67 N / 9 E / 16 O`. Immediate software priority
+is `K-11` with `gpt-5.6-sol`, high. Acquisition viewpoint `K-04` remains
+blocked on `B-12`; no weighted-score, metrology, or production-performance
+claim is included.
+
+## Earlier surface-edge artifacts and separate score closure - 2026-07-31
 
 `K-02`, `K-03`, and `K-06` are Complete. Core owns schema-1 identified
 model-edge, complete-organized-scene-edge, and separate surface/edge score

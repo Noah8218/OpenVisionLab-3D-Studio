@@ -500,7 +500,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
                 values = profile.ToRecipeParameters().ToDictionary(parameter => parameter.Name, parameter => parameter.Value, StringComparer.Ordinal);
                 break;
             case SurfaceMatchStepProperties surfaceMatch:
-                if (!surfaceMatch.TryCreateContracts(
+                if (!surfaceMatch.TryCreateIndependentContracts(
                         out _,
                         out _,
                         out message))

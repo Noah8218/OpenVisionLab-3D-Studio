@@ -12,6 +12,33 @@ internal static class ShellVerificationCommandRouter
     public static void Run(string[] args)
     {
         var e = new VerificationArguments(args);
+        const string surfaceEdgeDiagnosticReviewParityOption =
+            "--verify-surface-edge-diagnostic-review-workbench-parity";
+        var surfaceEdgeDiagnosticReviewParityIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                surfaceEdgeDiagnosticReviewParityOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (surfaceEdgeDiagnosticReviewParityIndex >= 0)
+        {
+            if (surfaceEdgeDiagnosticReviewParityIndex + 2 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{surfaceEdgeDiagnosticReviewParityOption} requires artifact-directory and report paths.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed =
+                SurfaceEdgeDiagnosticReviewWorkbenchParityVerification.Verify(
+                    args[surfaceEdgeDiagnosticReviewParityIndex + 1],
+                    args[surfaceEdgeDiagnosticReviewParityIndex + 2],
+                    out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
         const string surfaceEdgeWorkbenchParityOption =
             "--verify-surface-edge-workbench-parity";
         var surfaceEdgeWorkbenchParityIndex = Array.FindIndex(

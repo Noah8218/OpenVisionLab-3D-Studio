@@ -221,3 +221,28 @@ parameter captures pass the overlap and required-text clipping review.
 Next: `K-02/K-03/K-06` identified model and scene 3D-edge artifacts plus
 separate surface and edge scores. This continues the approved evidence model;
 it is not a GoPxL screen, theme, topology, or asset reproduction.
+
+## Surface-edge Evidence and Review Closure
+
+`K-02`, `K-03`, `K-05`, `K-06`, `K-07`, and `K-08` are Complete. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md`;
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`;
+- `artifacts/current/20260731-surface-edge-score/`;
+- `artifacts/current/20260731-surface-edge-diagnostic-review/`.
+
+Current inventory:
+
+```text
+125 Complete / 17 Partial / 67 Not started / 9 External / 16 Out of scope
+```
+
+OpenVisionLab now links the independently authored surface and edge limits to
+the same Viewer evidence, explains model/scene/declared-normal diagnostics,
+and retains one accepted/rejected surface-only false-positive comparison. It
+keeps its own graphite visual roles and information hierarchy. The adapted
+principle is evidence continuity, not a copied competitor layout or theme.
+
+Next: `K-11` fixed-fixture matching performance. Acquisition direction `K-04`
+remains blocked on `B-12`, and no camera, calibration, or metrology scope is
+implied.

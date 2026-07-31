@@ -32,6 +32,9 @@ Authoritative detail remains in:
 - `docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md`
   for the current identified model/scene 3D-edge artifacts, false-background
   fixture, separate score, and Viewer evidence closure.
+- `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`
+  for the current direction overlay, independent surface/edge limits, retained
+  false-positive comparison, and layout evidence closure.
 
 ## Paste this request into the next chat
 
@@ -73,6 +76,7 @@ Read, in order:
 12t. docs/OPENVISIONLAB_3D_SURFACE_MATCH_ACCEPTANCE_BOUNDS_AND_GOLDENS_20260731.md
 12u. docs/OPENVISIONLAB_3D_PROPERTY_GRID_THEME_CONSISTENCY_20260731.md
 12v. docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md
+12w. docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md
 13. docs/OPENVISIONLAB_3D_THRESHOLD_MANUAL_CORRECTION_AND_FAILURE_RECORD_20260728.md
 14. docs/OPENVISIONLAB_3D_THRESHOLD_ASSISTANT_HARDENING_20260729.md
 15. docs/OPENVISIONLAB_3D_THRESHOLD_CORRECTION_RUN_RECORD_20260729.md
@@ -242,10 +246,25 @@ channels separately and identifies edge evidence as diagnostic only. Preserve
 and `artifacts/current/20260731-surface-edge-score/`. Current inventory is
 `122 C / 17 P / 70 N / 9 E / 16 O`.
 
-Immediate software priority: `K-05/K-07/K-08` edge diagnostic overlay,
-independent component thresholds, and false-positive review. `K-04` remains
-blocked on `B-12`.
-Recommended model: gpt-5.6-sol. Reasoning effort: high.
+`K-05/K-07/K-08 direction diagnostics, independent thresholds, and retained
+false-positive review` is Complete. The overlay links the exact model, scene,
+pose, edge score, canonical edge direction, and declared model-normal evidence.
+PropertyGrid persists separate surface and edge coverage/RMSE limits without
+execution; the overall assessment requires both components and defines no
+weighted score. The controlled accepted and rejected cases both preserve
+Surface `100%` while Edge separates to `100%` Pass and `0%` Fail. The Viewer
+shows the current decision, model/scene/normal legend, and retained comparison.
+Release is `0/0`; focused verification is `20/20`; Workbench/Runner and
+PropertyGrid parity is `13/13`; edge regression is `21/21`; the existing full
+matrix passes. Current-build accepted and rejected Wide/Compact captures pass
+overlap/clipping review; both R0 `-ValidateOnly` modes pass. Preserve
+`docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`
+and `artifacts/current/20260731-surface-edge-diagnostic-review/`. Current
+inventory is `125 C / 17 P / 67 N / 9 E / 16 O`.
+
+Immediate software priority: `K-11` fixed-fixture matching performance gate.
+Recommended model: gpt-5.6-sol. Reasoning effort: high. `K-04` remains blocked
+on `B-12`; `K-09` remains blocked on `J-12`.
 
 Human-owner Wide/Compact R0 remains a parallel external acceptance task.
 Prerequisite: owner operation and evidence. Recommended model: none until the
@@ -453,10 +472,10 @@ Parallel external acceptance: human-owner unaided Wide/Compact R0.
 Prerequisite: owner operation and evidence. Recommended model: none until
 evidence exists. Reasoning effort: none.
 
-Immediate software priority: `K-05/K-07/K-08` edge diagnostic overlay,
-independent component thresholds, and false-positive review. Prerequisite:
-`B-16/K-02/K-06`, all Complete. Recommended model: `gpt-5.6-sol`.
-Reasoning effort: high.
+Immediate software priority: `K-11` fixed-fixture matching performance gate.
+Prerequisite: `J-15`, Complete. Recommended model: `gpt-5.6-sol`.
+Reasoning effort: high. Then consider `K-10` experiment comparison with
+explicit Publish; `K-04` and `K-09` remain dependency-blocked.
 
 Then:
 

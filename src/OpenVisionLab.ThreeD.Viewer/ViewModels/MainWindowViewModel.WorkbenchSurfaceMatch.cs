@@ -10,6 +10,9 @@ public sealed partial class MainWindowViewModel
     private SurfaceMatchAssessmentArtifact? workbenchSurfaceMatchAssessment;
     private SurfaceMatchRuntimeReport? workbenchSurfaceMatchRuntime;
     private SurfaceAndEdgeMatchScoreArtifact? workbenchSurfaceEdgeScore;
+    private SurfaceEdgeDiagnosticOverlayArtifact? workbenchSurfaceEdgeDiagnosticOverlay;
+    private SurfaceAndEdgeMatchAssessmentArtifact? workbenchSurfaceEdgeAssessment;
+    private SurfaceMatchFalsePositiveReviewArtifact? workbenchSurfaceMatchFalsePositiveReview;
 
     public SurfaceMatchExecutionArtifact? WorkbenchSurfaceMatch =>
         workbenchSurfaceMatch;
@@ -20,41 +23,77 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceMatchRuntime;
     public SurfaceAndEdgeMatchScoreArtifact? WorkbenchSurfaceEdgeScore =>
         workbenchSurfaceEdgeScore;
+    public SurfaceEdgeDiagnosticOverlayArtifact? WorkbenchSurfaceEdgeDiagnosticOverlay =>
+        workbenchSurfaceEdgeDiagnosticOverlay;
+    public SurfaceAndEdgeMatchAssessmentArtifact? WorkbenchSurfaceEdgeAssessment =>
+        workbenchSurfaceEdgeAssessment;
+    public SurfaceMatchFalsePositiveReviewArtifact? WorkbenchSurfaceMatchFalsePositiveReview =>
+        workbenchSurfaceMatchFalsePositiveReview;
     public bool SurfaceMatchEvidenceVisible =>
         workbenchSurfaceMatch?.Overlay is not null;
     public bool SurfaceMatchDecisionVisible =>
-        workbenchSurfaceMatchAssessment is not null;
+        workbenchSurfaceMatchAssessment is not null
+        || workbenchSurfaceEdgeAssessment is not null;
     public bool SurfaceMatchEdgeScoreVisible =>
         workbenchSurfaceEdgeScore is not null;
+    public bool SurfaceMatchEdgeDiagnosticVisible =>
+        workbenchSurfaceEdgeDiagnosticOverlay is not null;
+    public bool SurfaceMatchFalsePositiveReviewVisible =>
+        workbenchSurfaceMatchFalsePositiveReview is not null;
     public string SurfaceMatchStateLabel =>
         workbenchSurfaceMatch is null
             ? "Raw unavailable"
             : $"Raw {workbenchSurfaceMatch.PoseResult.State}";
     public string SurfaceMatchDecisionLabel =>
-        workbenchSurfaceMatchAssessment is { } assessment
-            ? assessment.Decision.ToString().ToUpperInvariant()
-            : "NO DECISION";
+        workbenchSurfaceEdgeAssessment is { } independent
+            ? independent.Decision.ToString().ToUpperInvariant()
+            : workbenchSurfaceMatchAssessment is { } assessment
+                ? assessment.Decision.ToString().ToUpperInvariant()
+                : "NO DECISION";
     public string SurfaceMatchDecisionReasonLabel =>
-        workbenchSurfaceMatchAssessment?.Reason switch
-        {
-            SurfaceMatchDecisionReason.MeetsAuthoredLimits =>
-                "Raw evidence meets both authored limits",
-            SurfaceMatchDecisionReason.PoseSearchNoMatch =>
-                "Pose search rejected the input",
-            SurfaceMatchDecisionReason.CoverageBelowMinimum =>
-                "Coverage is below the authored minimum",
-            SurfaceMatchDecisionReason.InlierRmseUnavailable =>
-                "Inlier RMSE is unavailable",
-            SurfaceMatchDecisionReason.InlierRmseAboveMaximum =>
-                "Inlier RMSE exceeds the authored maximum",
-            _ => "Display-only raw evidence"
-        };
+        workbenchSurfaceEdgeAssessment is { } independent
+            ? independent.Reason switch
+            {
+                SurfaceAndEdgeDecisionReason.BothComponentsMeetAuthoredLimits =>
+                    "Surface and 3D-edge evidence meet their independent limits",
+                SurfaceAndEdgeDecisionReason.SurfaceCoverageBelowMinimum =>
+                    "Surface coverage is below its authored minimum",
+                SurfaceAndEdgeDecisionReason.SurfaceInlierRmseUnavailable =>
+                    "Surface RMSE is unavailable",
+                SurfaceAndEdgeDecisionReason.SurfaceInlierRmseAboveMaximum =>
+                    "Surface RMSE exceeds its authored maximum",
+                SurfaceAndEdgeDecisionReason.EdgeCoverageBelowMinimum =>
+                    "3D-edge coverage exposes a surface-only false positive",
+                SurfaceAndEdgeDecisionReason.EdgeInlierRmseUnavailable =>
+                    "3D-edge RMSE is unavailable",
+                SurfaceAndEdgeDecisionReason.EdgeInlierRmseAboveMaximum =>
+                    "3D-edge RMSE exceeds its authored maximum",
+                _ => "Independent surface and 3D-edge evidence"
+            }
+            : workbenchSurfaceMatchAssessment?.Reason switch
+            {
+                SurfaceMatchDecisionReason.MeetsAuthoredLimits =>
+                    "Raw evidence meets both authored limits",
+                SurfaceMatchDecisionReason.PoseSearchNoMatch =>
+                    "Pose search rejected the input",
+                SurfaceMatchDecisionReason.CoverageBelowMinimum =>
+                    "Coverage is below the authored minimum",
+                SurfaceMatchDecisionReason.InlierRmseUnavailable =>
+                    "Inlier RMSE is unavailable",
+                SurfaceMatchDecisionReason.InlierRmseAboveMaximum =>
+                    "Inlier RMSE exceeds the authored maximum",
+                _ => "Display-only raw evidence"
+            };
     public string SurfaceMatchPolicyLabel =>
-        workbenchSurfaceMatchAssessment is { } assessment
+        workbenchSurfaceEdgeAssessment is { } independent
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"Coverage >= {assessment.Policy.MinimumCoverageRatio:P1} · RMSE <= {assessment.Policy.MaximumInlierRmse:G5}")
-            : "Acceptance limits not supplied";
+                $"Surface >= {independent.Policy.Surface.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Surface.MaximumInlierRmse:G5} | Edge >= {independent.Policy.Edge.MinimumCoverageRatio:P1}, RMSE <= {independent.Policy.Edge.MaximumInlierRmse:G5}")
+            : workbenchSurfaceMatchAssessment is { } assessment
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Coverage >= {assessment.Policy.MinimumCoverageRatio:P1} · RMSE <= {assessment.Policy.MaximumInlierRmse:G5}")
+                : "Acceptance limits not supplied";
     public string SurfaceMatchRuntimeLabel =>
         workbenchSurfaceMatchRuntime is { } runtime
             ? string.Create(
@@ -62,13 +101,35 @@ public sealed partial class MainWindowViewModel
                 $"{runtime.Stages.Length} stages · {runtime.TotalMilliseconds:F3} ms")
             : "Runtime not supplied";
     public string SurfaceMatchDecisionBoundaryLabel =>
-        workbenchSurfaceEdgeScore is not null
+        workbenchSurfaceEdgeAssessment is not null
+            ? "Independent surface + edge limits · no weighted score"
+            : workbenchSurfaceEdgeScore is not null
             ? workbenchSurfaceMatchAssessment is null
                 ? "Edge diagnostic only · no Pass/Fail decision"
                 : "Decision uses surface limits · edge diagnostic only"
             : workbenchSurfaceMatchAssessment is null
                 ? "View only · no Pass/Fail decision"
                 : "Decision uses separate authored limits · raw score unchanged";
+    public string SurfaceMatchEdgeDiagnosticLabel =>
+        workbenchSurfaceEdgeDiagnosticOverlay is { } overlay
+            ? $"Model edge {overlay.ModelSegments.Length} · scene step {overlay.SceneSegments.Length} · declared normals"
+            : "Edge directions unavailable";
+    public string SurfaceMatchAcceptedReviewLabel =>
+        workbenchSurfaceMatchFalsePositiveReview is { } review
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"ACCEPTED  Surface {review.Accepted.SurfaceCoverageRatio:P0} · Edge {review.Accepted.EdgeCoverageRatio:P0}")
+            : "Accepted reference unavailable";
+    public string SurfaceMatchRejectedReviewLabel =>
+        workbenchSurfaceMatchFalsePositiveReview is { } review
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"REJECTED  Surface {review.Rejected.SurfaceCoverageRatio:P0} · Edge {review.Rejected.EdgeCoverageRatio:P0}")
+            : "Rejected candidate unavailable";
+    public string SurfaceMatchReviewEvidenceLabel =>
+        workbenchSurfaceMatchFalsePositiveReview is { } review
+            ? $"Original scenes + samples retained · {ShortHash(review.ContentSha256)}"
+            : "Review evidence unavailable";
     public string SurfaceMatchCoverageLabel =>
         workbenchSurfaceMatch is { } execution
             ? string.Create(
@@ -115,6 +176,9 @@ public sealed partial class MainWindowViewModel
               + $"Model edge SHA-256: {workbenchSurfaceEdgeScore?.ModelEdgeContentSha256 ?? "(none)"}\n"
               + $"Scene edge SHA-256: {workbenchSurfaceEdgeScore?.SceneEdgeContentSha256 ?? "(none)"}\n"
               + $"Surface/edge score SHA-256: {workbenchSurfaceEdgeScore?.ContentSha256 ?? "(none)"}\n"
+              + $"Edge diagnostic overlay SHA-256: {workbenchSurfaceEdgeDiagnosticOverlay?.ContentSha256 ?? "(none)"}\n"
+              + $"Independent surface/edge assessment SHA-256: {workbenchSurfaceEdgeAssessment?.ContentSha256 ?? "(none)"}\n"
+              + $"False-positive review SHA-256: {workbenchSurfaceMatchFalsePositiveReview?.ContentSha256 ?? "(none)"}\n"
               + "Runtime is observational and excluded from deterministic identities."
             : "No surface-match evidence.";
 
@@ -122,7 +186,10 @@ public sealed partial class MainWindowViewModel
         SurfaceMatchExecutionArtifact execution,
         SurfaceMatchAssessmentArtifact? assessment,
         SurfaceMatchRuntimeReport? runtime,
-        SurfaceAndEdgeMatchScoreArtifact? edgeScore)
+        SurfaceAndEdgeMatchScoreArtifact? edgeScore,
+        SurfaceEdgeDiagnosticOverlayArtifact? edgeDiagnosticOverlay,
+        SurfaceAndEdgeMatchAssessmentArtifact? edgeAssessment,
+        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview)
     {
         ArgumentNullException.ThrowIfNull(execution);
         var validity =
@@ -164,15 +231,50 @@ public sealed partial class MainWindowViewModel
                 "Viewer requires surface/edge score evidence linked to the raw execution.");
         }
 
+        if (edgeDiagnosticOverlay is not null
+            && (edgeScore is null
+                || !SurfaceEdgeDiagnosticOverlayArtifactValidator
+                    .Inspect(edgeDiagnosticOverlay).IsValid
+                || edgeDiagnosticOverlay.SurfaceMatchExecutionContentSha256
+                    != execution.ContentSha256
+                || edgeDiagnosticOverlay.ScoreContentSha256
+                    != edgeScore.ContentSha256))
+        {
+            throw new InvalidDataException(
+                "Viewer requires edge diagnostic overlay evidence linked to the raw score.");
+        }
+
+        if (edgeAssessment is not null
+            && (edgeScore is null
+                || !SurfaceAndEdgeAssessmentArtifactValidator
+                    .Inspect(edgeAssessment, edgeScore).IsValid))
+        {
+            throw new InvalidDataException(
+                "Viewer requires independent surface/edge assessment evidence linked to the raw score.");
+        }
+
+        if (falsePositiveReview is not null
+            && !SurfaceMatchFalsePositiveReviewArtifactValidator
+                .Inspect(falsePositiveReview).IsValid)
+        {
+            throw new InvalidDataException(
+                "Viewer requires valid retained false-positive review evidence.");
+        }
+
         workbenchSurfaceMatch = execution;
         workbenchSurfaceMatchAssessment = assessment;
         workbenchSurfaceMatchRuntime = runtime;
         workbenchSurfaceEdgeScore = edgeScore;
+        workbenchSurfaceEdgeDiagnosticOverlay = edgeDiagnosticOverlay;
+        workbenchSurfaceEdgeAssessment = edgeAssessment;
+        workbenchSurfaceMatchFalsePositiveReview = falsePositiveReview;
         SelectionSummary =
             $"Surface match {SurfaceMatchDecisionLabel} | {SurfaceMatchCoverageLabel} | overlay {SurfaceMatchOverlayHashLabel}";
-        ViewerStatus = workbenchSurfaceMatchAssessment is null
-            ? "Identified transformed SurfaceModel overlay · view only · no Pass/Fail"
-            : $"Surface match {SurfaceMatchDecisionLabel} · separate authored limits · raw score unchanged";
+        ViewerStatus = workbenchSurfaceEdgeAssessment is not null
+            ? $"Surface/edge {SurfaceMatchDecisionLabel} · independent limits · raw scores unchanged"
+            : workbenchSurfaceMatchAssessment is null
+                ? "Identified transformed SurfaceModel overlay · view only · no Pass/Fail"
+                : $"Surface match {SurfaceMatchDecisionLabel} · separate authored limits · raw score unchanged";
         RaiseSurfaceMatchProperties();
     }
 
@@ -182,6 +284,9 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceMatchAssessment = null;
         workbenchSurfaceMatchRuntime = null;
         workbenchSurfaceEdgeScore = null;
+        workbenchSurfaceEdgeDiagnosticOverlay = null;
+        workbenchSurfaceEdgeAssessment = null;
+        workbenchSurfaceMatchFalsePositiveReview = null;
         RaiseSurfaceMatchProperties();
     }
 
@@ -191,9 +296,14 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(WorkbenchSurfaceMatchAssessment));
         OnPropertyChanged(nameof(WorkbenchSurfaceMatchRuntime));
         OnPropertyChanged(nameof(WorkbenchSurfaceEdgeScore));
+        OnPropertyChanged(nameof(WorkbenchSurfaceEdgeDiagnosticOverlay));
+        OnPropertyChanged(nameof(WorkbenchSurfaceEdgeAssessment));
+        OnPropertyChanged(nameof(WorkbenchSurfaceMatchFalsePositiveReview));
         OnPropertyChanged(nameof(SurfaceMatchEvidenceVisible));
         OnPropertyChanged(nameof(SurfaceMatchDecisionVisible));
         OnPropertyChanged(nameof(SurfaceMatchEdgeScoreVisible));
+        OnPropertyChanged(nameof(SurfaceMatchEdgeDiagnosticVisible));
+        OnPropertyChanged(nameof(SurfaceMatchFalsePositiveReviewVisible));
         OnPropertyChanged(nameof(SurfaceMatchStateLabel));
         OnPropertyChanged(nameof(SurfaceMatchDecisionLabel));
         OnPropertyChanged(nameof(SurfaceMatchDecisionReasonLabel));
@@ -204,6 +314,10 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(SurfaceMatchRmseLabel));
         OnPropertyChanged(nameof(SurfaceMatchEdgeCoverageLabel));
         OnPropertyChanged(nameof(SurfaceMatchEdgeRmseLabel));
+        OnPropertyChanged(nameof(SurfaceMatchEdgeDiagnosticLabel));
+        OnPropertyChanged(nameof(SurfaceMatchAcceptedReviewLabel));
+        OnPropertyChanged(nameof(SurfaceMatchRejectedReviewLabel));
+        OnPropertyChanged(nameof(SurfaceMatchReviewEvidenceLabel));
         OnPropertyChanged(nameof(SurfaceMatchPoseLabel));
         OnPropertyChanged(nameof(SurfaceMatchModelHashLabel));
         OnPropertyChanged(nameof(SurfaceMatchOverlayHashLabel));

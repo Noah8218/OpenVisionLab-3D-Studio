@@ -1171,12 +1171,21 @@ public partial class MainWindow : Window
             GetCommandLineValue("--smoke-surface-match-runtime");
         var edgeScorePath =
             GetCommandLineValue("--smoke-surface-edge-score");
+        var edgeOverlayPath =
+            GetCommandLineValue("--smoke-surface-edge-overlay");
+        var edgeAssessmentPath =
+            GetCommandLineValue("--smoke-surface-edge-assessment");
+        var falsePositiveReviewPath =
+            GetCommandLineValue("--smoke-surface-match-review");
         if (modelPath is null
             && scenePath is null
             && executionPath is null
             && assessmentPath is null
             && runtimePath is null
-            && edgeScorePath is null)
+            && edgeScorePath is null
+            && edgeOverlayPath is null
+            && edgeAssessmentPath is null
+            && falsePositiveReviewPath is null)
         {
             return true;
         }
@@ -1185,6 +1194,16 @@ public partial class MainWindow : Window
             || string.IsNullOrWhiteSpace(scenePath)
             || string.IsNullOrWhiteSpace(executionPath)
             || edgeScorePath is not null
+                && string.IsNullOrWhiteSpace(edgeScorePath)
+            || edgeOverlayPath is not null
+                && string.IsNullOrWhiteSpace(edgeOverlayPath)
+            || edgeAssessmentPath is not null
+                && string.IsNullOrWhiteSpace(edgeAssessmentPath)
+            || falsePositiveReviewPath is not null
+                && string.IsNullOrWhiteSpace(falsePositiveReviewPath)
+            || (edgeOverlayPath is not null
+                    || edgeAssessmentPath is not null
+                    || falsePositiveReviewPath is not null)
                 && string.IsNullOrWhiteSpace(edgeScorePath)
             || runtimePath is not null
                 && string.IsNullOrWhiteSpace(assessmentPath))
@@ -1214,13 +1233,28 @@ public partial class MainWindow : Window
             var edgeScore = string.IsNullOrWhiteSpace(edgeScorePath)
                 ? null
                 : SurfaceEdgeArtifactStore.LoadScore(edgeScorePath);
+            var edgeOverlay = string.IsNullOrWhiteSpace(edgeOverlayPath)
+                ? null
+                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadOverlay(
+                    edgeOverlayPath);
+            var edgeAssessment = string.IsNullOrWhiteSpace(edgeAssessmentPath)
+                ? null
+                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadAssessment(
+                    edgeAssessmentPath);
+            var falsePositiveReview = string.IsNullOrWhiteSpace(falsePositiveReviewPath)
+                ? null
+                : SurfaceEdgeDiagnosticReviewArtifactStore.LoadReview(
+                    falsePositiveReviewPath);
             _viewModel.Workbench.ShowSurfaceMatchEvidence(
                 model,
                 scene,
                 execution,
                 assessment,
                 runtime,
-                edgeScore);
+                edgeScore,
+                edgeOverlay,
+                edgeAssessment,
+                falsePositiveReview);
             return true;
         }
         catch (Exception exception)

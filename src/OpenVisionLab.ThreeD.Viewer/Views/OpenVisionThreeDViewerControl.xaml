@@ -1485,7 +1485,7 @@
                                Text="{Binding LazSampleSummary}" />
                 </StackPanel>
             </Border>
-            <Border Width="228"
+            <Border Width="252"
                     Margin="0,8,8,0"
                     Padding="9"
                     HorizontalAlignment="Right"
@@ -1596,6 +1596,56 @@
                                    Foreground="#f8fafc"
                                    Text="{Binding SurfaceMatchEdgeRmseLabel}" />
                     </Grid>
+                    <StackPanel Margin="0,7,0,0"
+                                Visibility="{Binding SurfaceMatchEdgeDiagnosticVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="#e2e8f0"
+                                   Text="{localization:ViewerText Key=ThreeD.Viewer.EdgeDirectionOverlay, Korean='에지 방향 진단', English='EDGE DIRECTION DIAGNOSTIC'}" />
+                        <WrapPanel Margin="0,3,0,0">
+                            <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#34f59e" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Model" />
+                            <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#fab838" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Scene" />
+                            <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#c77aff" />
+                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="Normal" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9"
+                                   Foreground="#94a3b8"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding SurfaceMatchEdgeDiagnosticLabel}" />
+                    </StackPanel>
+                    <Border Margin="0,7,0,0"
+                            Padding="7,5"
+                            Background="#172033"
+                            BorderBrush="#475569"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            Visibility="{Binding SurfaceMatchFalsePositiveReviewVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock FontSize="9"
+                                       FontWeight="SemiBold"
+                                       Foreground="#f8fafc"
+                                       Text="{localization:ViewerText Key=ThreeD.Viewer.FalsePositiveReview, Korean='오검출 비교', English='FALSE-POSITIVE REVIEW'}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       FontFamily="Consolas"
+                                       FontSize="9"
+                                       Foreground="#34f59e"
+                                       Text="{Binding SurfaceMatchAcceptedReviewLabel}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontFamily="Consolas"
+                                       FontSize="9"
+                                       FontWeight="SemiBold"
+                                       Foreground="#ff5752"
+                                       Text="{Binding SurfaceMatchRejectedReviewLabel}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       FontSize="8.5"
+                                       Foreground="#94a3b8"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding SurfaceMatchReviewEvidenceLabel}" />
+                        </StackPanel>
+                    </Border>
                     <TextBlock Margin="0,5,0,0"
                                FontFamily="Consolas"
                                FontSize="10"

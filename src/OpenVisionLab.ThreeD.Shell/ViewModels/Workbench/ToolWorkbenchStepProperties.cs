@@ -1818,15 +1818,17 @@ public sealed class RegridHeightMapStepProperties
         int.TryParse(ToolWorkbenchStepPropertySession.GetParameter(step, name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 }
 
-[CategoryOrder("Acceptance decision", 0)]
-[CategoryOrder("Rotation search (deg)", 1)]
-[CategoryOrder("Translation bounds", 2)]
-[CategoryOrder("Search guard", 3)]
+[CategoryOrder("Surface acceptance", 0)]
+[CategoryOrder("Edge acceptance", 1)]
+[CategoryOrder("Rotation search (deg)", 2)]
+[CategoryOrder("Translation bounds", 3)]
+[CategoryOrder("Search guard", 4)]
 public sealed class SurfaceMatchStepProperties
 {
     internal static readonly HashSet<string> MappedNames =
     [
         "MinimumCoverageRatio", "MaximumInlierRmse",
+        "MinimumEdgeCoverageRatio", "MaximumEdgeInlierRmse",
         "MinimumRotationXDegrees", "MaximumRotationXDegrees", "RotationStepXDegrees",
         "MinimumRotationYDegrees", "MaximumRotationYDegrees", "RotationStepYDegrees",
         "MinimumRotationZDegrees", "MaximumRotationZDegrees", "RotationStepZDegrees",
@@ -1836,18 +1838,31 @@ public sealed class SurfaceMatchStepProperties
         "MaximumCorrespondenceDistance", "MinimumMatchedSampleCount", "MaximumCandidateCount"
     ];
 
-    [Category("Acceptance decision")]
-    [DisplayName("Minimum coverage ratio")]
+    [Category("Surface acceptance")]
+    [DisplayName("Minimum surface coverage")]
     [Description("Separate Pass/Fail limit over the raw one-way model coverage. It does not change pose search or the Viewer overlay.")]
     [PropertyOrder(0)]
     [NumberRange(0, 1, 0.01)]
     public double MinimumCoverageRatio { get; set; } = 0.9;
 
-    [Category("Acceptance decision")]
-    [DisplayName("Maximum inlier RMSE")]
+    [Category("Surface acceptance")]
+    [DisplayName("Maximum surface RMSE")]
     [Description("Separate Pass/Fail limit in the model/scene unit. It does not change the correspondence distance used by search.")]
     [PropertyOrder(1)]
     public double MaximumInlierRmse { get; set; } = 0.25;
+
+    [Category("Edge acceptance")]
+    [DisplayName("Minimum 3D-edge coverage")]
+    [Description("Independent Pass/Fail limit over the raw 3D-edge score. It does not change surface coverage, pose search, or the Viewer overlay.")]
+    [PropertyOrder(2)]
+    [NumberRange(0, 1, 0.01)]
+    public double MinimumEdgeCoverageRatio { get; set; } = 0.9;
+
+    [Category("Edge acceptance")]
+    [DisplayName("Maximum 3D-edge RMSE")]
+    [Description("Independent 3D-edge RMSE limit in the model/scene unit. No weighted surface-edge score is created.")]
+    [PropertyOrder(3)]
+    public double MaximumEdgeInlierRmse { get; set; } = 0.25;
 
     [Category("Rotation search (deg)")] [DisplayName("X minimum")] [PropertyOrder(10)] public double MinimumRotationXDegrees { get; set; }
     [Category("Rotation search (deg)")] [DisplayName("X maximum")] [PropertyOrder(11)] public double MaximumRotationXDegrees { get; set; }
@@ -1888,6 +1903,8 @@ public sealed class SurfaceMatchStepProperties
     {
         MinimumCoverageRatio = Double(step, "MinimumCoverageRatio", 0.9),
         MaximumInlierRmse = Double(step, "MaximumInlierRmse", 0.25),
+        MinimumEdgeCoverageRatio = Double(step, "MinimumEdgeCoverageRatio", 0.9),
+        MaximumEdgeInlierRmse = Double(step, "MaximumEdgeInlierRmse", 0.25),
         MinimumRotationXDegrees = Double(step, "MinimumRotationXDegrees", 0),
         MaximumRotationXDegrees = Double(step, "MaximumRotationXDegrees", 0),
         RotationStepXDegrees = Double(step, "RotationStepXDegrees", 1),
@@ -1949,11 +1966,48 @@ public sealed class SurfaceMatchStepProperties
         }
     }
 
+    internal bool TryCreateIndependentContracts(
+        out RigidSurfacePoseSearchParameters? search,
+        out SurfaceAndEdgeMatchAcceptancePolicy? policy,
+        out string message)
+    {
+        if (!TryCreateContracts(
+                out search,
+                out var surfacePolicy,
+                out message)
+            || surfacePolicy is null)
+        {
+            policy = null;
+            return false;
+        }
+
+        try
+        {
+            var edgePolicy = SurfaceEdgeAcceptancePolicy.Create(
+                MinimumEdgeCoverageRatio,
+                MaximumEdgeInlierRmse);
+            policy = SurfaceAndEdgeMatchAcceptancePolicy.Create(
+                surfacePolicy,
+                edgePolicy);
+            message =
+                "Independent surface and 3D-edge limits ready. Parameter Apply will not execute Preview or Run.";
+            return true;
+        }
+        catch (InvalidDataException exception)
+        {
+            policy = null;
+            message = exception.Message;
+            return false;
+        }
+    }
+
     internal IReadOnlyDictionary<string, string> ToRecipeParameters() =>
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["MinimumCoverageRatio"] = Text(MinimumCoverageRatio),
             ["MaximumInlierRmse"] = Text(MaximumInlierRmse),
+            ["MinimumEdgeCoverageRatio"] = Text(MinimumEdgeCoverageRatio),
+            ["MaximumEdgeInlierRmse"] = Text(MaximumEdgeInlierRmse),
             ["MinimumRotationXDegrees"] = Text(MinimumRotationXDegrees),
             ["MaximumRotationXDegrees"] = Text(MaximumRotationXDegrees),
             ["RotationStepXDegrees"] = Text(RotationStepXDegrees),

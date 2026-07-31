@@ -75,6 +75,7 @@ internal static class SurfaceEdgeMatchingVerification
         var scenePath = Path.Combine(directory, "edge-score-height.prepared-scene.json");
         var flatScenePath = Path.Combine(directory, "edge-score-flat.prepared-scene.json");
         var executionPath = Path.Combine(directory, "edge-score.surface-match-execution.json");
+        var flatExecutionPath = Path.Combine(directory, "edge-score-flat.surface-match-execution.json");
         var modelEdgePath = Path.Combine(directory, "edge-score.model-edges.json");
         var sceneEdgePath = Path.Combine(directory, "edge-score.height-scene-edges.json");
         var flatSceneEdgePath = Path.Combine(directory, "edge-score.flat-scene-edges.json");
@@ -84,6 +85,7 @@ internal static class SurfaceEdgeMatchingVerification
         PreparedSceneArtifactStore.Save(scenePath, heightScene);
         PreparedSceneArtifactStore.Save(flatScenePath, flatScene);
         SurfaceMatchExecutionArtifactStore.Save(executionPath, execution);
+        SurfaceMatchExecutionArtifactStore.Save(flatExecutionPath, flatExecution);
         SurfaceEdgeArtifactStore.SaveModel(modelEdgePath, modelEdges);
         SurfaceEdgeArtifactStore.SaveScene(sceneEdgePath, heightSceneEdges);
         SurfaceEdgeArtifactStore.SaveScene(flatSceneEdgePath, flatSceneEdges);

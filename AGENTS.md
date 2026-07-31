@@ -88,6 +88,34 @@ This file defines the working agreement for Codex in this repository.
 
 ## Current Product Target
 
+- Surface-edge diagnostics, independent thresholds, and false-positive review
+  closure (2026-07-31): `K-05`, `K-07`, and `K-08` are Complete. Core owns
+  schema-1 identified direction-overlay, independent surface/edge assessment,
+  and retained comparison artifacts. Data owns validated atomic persistence.
+  Tools derives canonical model-edge direction and declared-normal evidence at
+  the immutable pose, evaluates the two score channels independently without a
+  weighted score, and retains the accepted/rejected references. PropertyGrid
+  persists four separate surface/edge limits without executing Preview,
+  Publish, Run, or Validation. The controlled cases both retain `2/2 = 1.0`
+  surface coverage while edge coverage separates to `4/4 = 1.0` Pass versus
+  `0/4 = 0.0` Fail. Viewer draws model, scene, and normal diagnostics above the
+  base wireframe and presents the current decision plus the retained
+  false-positive comparison. Release rebuild passes `0/0`; focused verification
+  `20/20`; Workbench/Runner and PropertyGrid parity `13/13`; existing edge
+  `21/21`; matching `34/34`; acceptance `14/14`; SurfaceModel `22/22`;
+  source/normal `26/26`; Source Quality `18/18`; docking `76/76`; Inspection
+  Workspace `63/63`; Validation Set `84/84`; height distribution `25/25`; WPG
+  `38/38`; smoke options `26/26`; structure `17/17`. Current-build accepted and
+  rejected captures pass Wide `1920 x 1040` and Compact `1280 x 760` overlap/
+  clipping review. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`
+  and `artifacts/current/20260731-surface-edge-diagnostic-review/`. Inventory
+  is `125 C / 17 P / 67 N / 9 E / 16 O`; human-owner R0 remains external for
+  `A-01`, and refreshed fixed hashes pass both `-ValidateOnly` modes. Next:
+  `K-11` with `gpt-5.6-sol`, high. `K-04` remains blocked on `B-12`; no
+  acquisition direction, weighted score, metrology, or production performance
+  claim is included.
+
 - Surface-edge artifacts and separate score closure (2026-07-31): `K-02`,
   `K-03`, and `K-06` are Complete. Core owns schema-1 identified model-edge,
   complete-organized-scene-edge, and separate surface/edge score artifacts

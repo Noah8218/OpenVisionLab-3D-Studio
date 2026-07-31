@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `01B857854B4E34D62E0E2C99EC523FA5BF81CCB6A7AD14173DBE5868F76C8719` |
-| Shell assembly | `B7E26FE9F1E925D087145494E667FA72F046332FED51EA239983AAF6DD995172` |
-| Core assembly | `5BCCC08EB06C98152345932F096D73A0C4AC3CFDBF0056E6BF2C5ABDAD598EEC` |
-| Data assembly | `19CB1A34D64B5EC359BE92A353F0A256A43E74E0A2BD863E87D928F3D50F923D` |
-| Tools assembly | `A33463EA7103761AC2938ECF42777F189D450869F082777469348DB6B2C9020B` |
-| Viewer assembly | `0DE4D5A5C419B6637EE61E80A491AD948FB8ED8CBC617FDEA8C4AA546955148A` |
-| Docking assembly | `A271EDD087D6598D5BB37CD16242A8390BFCEE1F7CC39F56317963F09F76D523` |
+| Release EXE | `398EF6BC81064120CE8BBB7221944B464BC788E72A840661683F64F9673B3129` |
+| Shell assembly | `86AAEDC1635205AC5599F84B516437272745D4B312CF8394DC9DF684C063C7F5` |
+| Core assembly | `570995ED1B7353C6783D38902BB3555F53141DA42AAA3668B85414596A1288CE` |
+| Data assembly | `94454ED8891FA86A6D2B25764D0DAD583CC0B032955EE82AC65486CE824E85CC` |
+| Tools assembly | `C0EECAC92156970B0606630A7F3950A0DB36818E7A9B895DD1310C5F8EC3C50C` |
+| Viewer assembly | `E0AC9BE4A9B29F7E8896382B8DBB698C684A262C9E1600950C03C5F07E88DD51` |
+| Docking assembly | `28888151D636DE94EE43DD18D7577D7DDDA1401AA2A506BBBA8EF8ABEAFA40CE` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,9 +52,10 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-07-31 surface-edge artifacts and separate score closure supersedes
-the previous fixed binary set. R0 must use the hashes above and restart from
-Wide; no result from an earlier UI build can close this gate.
+The 2026-07-31 surface-edge diagnostics, independent thresholds, and retained
+false-positive review closure supersedes the previous fixed binary set. R0
+must use the hashes above and restart from Wide; no result from an earlier UI
+build can close this gate.
 
 The product owner's 2026-07-31 direction allows dependency-ready software
 development to continue before this R0 is performed. This sheet still gates

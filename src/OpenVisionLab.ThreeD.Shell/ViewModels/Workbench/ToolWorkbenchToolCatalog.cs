@@ -49,6 +49,8 @@ internal static class ToolWorkbenchToolCatalog
     [
         new("MinimumCoverageRatio", "0.9"),
         new("MaximumInlierRmse", "0.25"),
+        new("MinimumEdgeCoverageRatio", "0.9"),
+        new("MaximumEdgeInlierRmse", "0.25"),
         new("MinimumRotationXDegrees", "0"),
         new("MaximumRotationXDegrees", "0"),
         new("RotationStepXDegrees", "1"),
