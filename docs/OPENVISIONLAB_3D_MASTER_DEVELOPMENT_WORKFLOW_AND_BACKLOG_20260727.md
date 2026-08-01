@@ -154,7 +154,32 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Declared-normal quality and Landmark Correspondence Noah migration - 2026-08-01
+### Current execution checkpoint - Repeatability-statistics Noah migration - 2026-08-01
+
+`AlignedPointRepeatabilityRule` and `ThicknessRepeatabilityRule` are strict
+adapters over committed public `RepeatabilityStatisticsTool`. Noah owns
+Welford accumulation, scalar mean/extrema, sample standard deviation,
+six-sigma, range, and explicit negative-variance round-off policy. Studio
+retains study/run/source/correspondence identity, unit/frame/alignment policy,
+authored acceptance, per-point aggregation, metrics, messages, and evidence.
+
+Committed Noah `20963c12b50dfc0658110e2037961d3224feb2d6` passes Release
+`0/0` and Smoke `101/101`. Vendored `Lib.ThreeD 2.8.7` has SHA-256
+`C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+Studio Release is `0/0`; bridge `17/17`; focused verification `34/34` and
+`33/33` with exact full-report parity; loaders `13/13` and `20/20`;
+Calibration ViewModel `75/75`; and structure `28/28` with `2` debt files and
+`28` reviewed boundaries. Preserve:
+
+- `docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`;
+- `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
+
+Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0 remains
+external. Immediate software priority: migrate the two validation-statistics
+analyzers before `J-12 Multiple-match result collection`. Recommended model:
+`gpt-5.6-sol`; reasoning effort: high.
+
+### Historical checkpoint - Declared-normal quality and Landmark Correspondence Noah migration - 2026-08-01
 
 Committed public `DeclaredMeshNormalQualityTool` owns normal length, mesh
 topology, degenerate-triangle, and corner-alignment evidence. Committed public

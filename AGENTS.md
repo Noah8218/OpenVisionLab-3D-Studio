@@ -42,7 +42,7 @@ This file defines the working agreement for Codex in this repository.
   commit the exact source, pack that committed version, vendor the package and
   checksum, then adapt Studio. Do not use an external `ProjectReference` or
   package an uncommitted Noah working tree.
-- `Lib.ThreeD 2.8.6` owns deterministic Surface Match pose-search and
+- `Lib.ThreeD 2.8.7` owns deterministic Surface Match pose-search and
   unique-nearest coverage, SurfaceModel/Prepared Scene sampling, model and
   organized-scene edge extraction, edge-domain coverage, center-excluded
   local-median outlier filtering, height-field surface leveling,
@@ -52,7 +52,9 @@ This file defines the working agreement for Codex in this repository.
   declared/reference-axis grid-point reconstruction, dual-surface thickness
   residual/statistical evaluation, height-summary peak-deviation decisions,
   declared mesh-normal topology/alignment quality, and four-point landmark
-  rank/normalized-volume validation.
+  rank/normalized-volume validation. It also owns scalar repeatability mean,
+  extrema, sample standard deviation, six-sigma spread, and range through
+  `RepeatabilityStatisticsTool`.
   `RigidSurfacePoseSearch`, `SurfaceCoverageScorer`,
   `SurfaceModelPreparation`, `PreparedScenePreparation`,
   `ModelSurfaceEdgeExtractor`, `SceneSurfaceEdgeExtractor`, and
@@ -135,6 +137,30 @@ This file defines the working agreement for Codex in this repository.
   substitution in the closure document.
 
 ## Current Product Target
+
+- Repeatability-statistics Library-Noah migration closure (2026-08-01):
+  `AlignedPointRepeatabilityRule` and `ThicknessRepeatabilityRule` are strict
+  adapters over public `RepeatabilityStatisticsTool`. Noah owns Welford
+  accumulation, scalar mean/extrema, sample standard deviation, six-sigma,
+  range, and explicit negative-variance round-off policy. Studio retains
+  study/run/source/correspondence identity, unit/frame/alignment validation,
+  authored acceptance, per-point aggregation, metrics, messages, and result
+  evidence. Committed Noah `20963c12b50dfc0658110e2037961d3224feb2d6`
+  passes Release `0/0` and Smoke `101/101`; vendored `Lib.ThreeD 2.8.7` has
+  SHA-256
+  `C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+  Studio Release passes `0/0`; bridge `17/17`; Thickness and Aligned Point
+  golden checks pass `34/34` and `33/33` with full-report differences `0/0`;
+  study loaders pass `13/13` and `20/20`; Calibration ViewModel passes
+  `75/75`; and structure passes `28/28`. The ledger is `2` debt files and
+  `28` reviewed Studio boundaries. Wide/Compact fixed inputs pass both
+  `-ValidateOnly` modes. No UI changed. Preserve
+  `docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
+  and
+  `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
+  Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0
+  remains external. Next: migrate the two validation-statistics analyzers
+  before `J-12`. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
 
 - Declared-normal quality and Landmark Correspondence Library-Noah migration
   closure (2026-08-01): public sealed `DeclaredMeshNormalQualityTool` owns

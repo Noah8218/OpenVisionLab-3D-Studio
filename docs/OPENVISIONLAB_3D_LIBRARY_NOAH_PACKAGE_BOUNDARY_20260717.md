@@ -15,11 +15,11 @@ hash.
 | Item | Value |
 | --- | --- |
 | Package ID | `Lib.ThreeD` |
-| Version | `2.8.6` |
-| Source commit | `3ef2f52546a9187df465bf8973e26426c30f7634` |
+| Version | `2.8.7` |
+| Source commit | `20963c12b50dfc0658110e2037961d3224feb2d6` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.6.nupkg` |
-| SHA-256 | `02E0D0B69F9D7CECBA958BF4BDC7F2999D0902539C33CD0F133C48C08C3A25B0` |
+| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.7.nupkg` |
+| SHA-256 | `C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B` |
 
 The current package includes the previously migrated inspection tools,
 Surface Match pose-search/coverage, deterministic SurfaceModel and Prepared
@@ -34,6 +34,8 @@ owns dual-surface thickness residual/statistical evaluation and height-summary
 peak-deviation decisions through two public sealed Tools. It also owns declared
 mesh-normal topology/alignment quality and four-point landmark rank/normalized-
 volume validation through two public sealed Tools.
+It additionally owns scalar repeatability accumulation and descriptive
+statistics through public sealed `RepeatabilityStatisticsTool`.
 Studio consumes them through strict adapters and retains product
 contracts, identities, unit/frame validation, acceptance, lifecycle,
 evidence, and UI.
@@ -64,8 +66,8 @@ the current package selection.
   declared source, grid ROI, unit, and frame into the package contract, then maps
   result status and metrics back to Studio `ToolResult`.
 - `OpenVisionLab.ThreeD.Runner`: verifies the package assembly identity, the
-  established inspection behaviors, and deterministic results from all seven
-  height-map/height-rule Tools (`14/14` current bridge cases).
+  established inspection behaviors, and deterministic results from the
+  current package surface (`17/17` current bridge cases).
 - View/ViewModel: the bounded Thickness and local raw-height Warpage task slices
   consume this bridge through typed recipes and explicit Preview/Publish commands.
   The Warpage source is user-designated and declares `raw-height` plus its display
@@ -126,7 +128,7 @@ Studio commit `c45ce78` passed Windows Actions run `29569056102` on 2026-07-17. 
 ## Historical 2.3.0 checkpoint — 2026-07-21
 
 Library-Noah commit `630e37b9111f3223217c815e19c480546fde8ad7` is the exact
-source of the current vendored package. It adds pure `LineIntersectionTool` to
+source of the then-vendored package. It adds pure `LineIntersectionTool` to
 the preceding `TwoPointLineTool` and `FullXyzAffineSolveTool`. Studio's A1 and
 Line Intersection rules adapt those algorithms and retain only C3D/recipe
 identity, Studio artifact hashing, and lifecycle evidence. Package integrity,
@@ -142,7 +144,7 @@ fixture, affine application, calibration, or metrology.
 ## Historical 2.8.0 checkpoint - 2026-08-01
 
 Library-Noah commit `7d1ad8721ca7aed9efa2a17beaa36409d7dbd718` is the exact
-source of the current vendored package. The committed source passes Release
+source of the then-vendored package. The committed source passes Release
 build `0/0` and full Smoke `69/69`. Package metadata records the same commit;
 the packed, vendored, and restored-cache artifacts share SHA-256
 `7378C02ABDED9C02F1448CDF80577B00A7AD99E78BC2B722E341DD7513CE754C`.
@@ -155,10 +157,28 @@ result is byte-identical before and after migration. Preserve
 `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
 `artifacts/current/20260801-surface-match-noah-migration/`.
 
-## Current 2.8.6 checkpoint - 2026-08-01
+## Current 2.8.7 checkpoint - 2026-08-01
+
+Library-Noah commit `20963c12b50dfc0658110e2037961d3224feb2d6` is the exact
+source of the current vendored package. It adds public sealed
+`RepeatabilityStatisticsTool` with explicit negative-variance round-off
+policy while retaining every prior 2.8.6 API.
+
+The committed source passes Release `0/0` and full Smoke `101/101`. Package
+metadata records the same commit; the package SHA-256 is
+`C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+Studio Release passes `0/0`; package integrity passes; direct bridge `17/17`;
+Thickness/Aligned Point golden `34/34` and `33/33` with exact report parity;
+study loaders `13/13` and `20/20`; Calibration ViewModel `75/75`; and
+structure `28/28`. Preserve
+`docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-repeatability-statistics-migration/`.
+
+## Earlier 2.8.6 checkpoint - 2026-08-01
 
 Library-Noah commit `3ef2f52546a9187df465bf8973e26426c30f7634` is the
-exact source of the current vendored package. It adds public sealed
+exact source of the then-vendored package. It adds public sealed
 `DeclaredMeshNormalQualityTool` and
 `LandmarkCorrespondenceValidationTool` while retaining every prior 2.8.5 API.
 
@@ -174,7 +194,7 @@ and
 ## Earlier 2.8.5 checkpoint - 2026-08-01
 
 Library-Noah commit `ec8f1b3db57bea0065cd82735acb08111f88f3c0` is the exact
-source of the current vendored package. It adds public sealed
+source of the then-vendored package. It adds public sealed
 `DualSurfaceThicknessInspectionTool` and `HeightDeviationInspectionTool`
 while retaining every prior 2.8.4 API.
 
@@ -193,7 +213,7 @@ and
 ## Historical 2.8.4 checkpoint - 2026-08-01
 
 Library-Noah commit `a64c31b1024f154e402d258ade4b70470ad50fb2` is the exact
-source of the current vendored package. It adds public sealed
+source of the then-vendored package. It adds public sealed
 `HeightGridSummaryTool`, `HeightDistributionStatisticsTool`,
 `HeightMapRegionStatisticsTool`, `CompletenessGridInspectionTool`, and
 `ReferenceGridPointReconstructionTool` while retaining every prior 2.8.3 API.
@@ -214,7 +234,7 @@ and
 ## Historical 2.8.3 checkpoint - 2026-08-01
 
 Library-Noah commit `4420c40d3179edc7703cfef6e0ea53ac898f8f3f` is the exact
-source of the current vendored package. It adds public sealed
+source of the then-vendored package. It adds public sealed
 `TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, and
 `RigidTransformDiagnosticsTool` while retaining every prior 2.8.2 API.
 
@@ -234,7 +254,7 @@ and
 ## Historical 2.8.2 checkpoint - 2026-08-01
 
 Library-Noah commit `3a2cbf8e7195d6f251dcafe6a9343b795d53fe79` is the exact
-source of the current vendored package. It adds public sealed
+source of the then-vendored package. It adds public sealed
 `DeterministicLocalMedianOutlierFilterTool` and `LevelSurfaceTool` while
 retaining every prior 2.8.1 API.
 
@@ -253,7 +273,7 @@ and
 ## Historical 2.8.1 checkpoint - 2026-08-01
 
 Library-Noah commit `46cfa0946bb4c23190b0dab75415ce2c637b4c41` is the exact
-source of the current vendored package. It adds public deterministic Tools for
+source of the then-vendored package. It adds public deterministic Tools for
 SurfaceModel and Prepared Scene sampling, mesh boundary/crease extraction,
 organized-scene height-step extraction, and edge-domain coverage. The latter
 reuses the shared unique-nearest coverage kernel and accepts an empty scene

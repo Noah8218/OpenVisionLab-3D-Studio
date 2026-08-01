@@ -4,18 +4,6 @@
   "signalPatternVersion": 1,
   "migrationDebt": [
     {
-      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs",
-      "maximumSignalCount": 5,
-      "targetNoahTool": "RepeatabilityStatisticsTool",
-      "scope": "Move per-correspondence sample statistics and repeatability calculations."
-    },
-    {
-      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs",
-      "maximumSignalCount": 4,
-      "targetNoahTool": "RepeatabilityStatisticsTool",
-      "scope": "Move sample standard deviation, range, and six-sigma calculations."
-    },
-    {
       "path": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs",
       "maximumSignalCount": 4,
       "targetNoahTool": "LabeledEvidenceStatisticsTool",
@@ -29,6 +17,16 @@
     }
   ],
   "studioBoundaries": [
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs",
+      "maximumSignalCount": 2,
+      "responsibility": "Strict RepeatabilityStatisticsTool adapter plus study/correspondence identity, source lineage, unit/frame/alignment policy, per-point acceptance, metrics, and result composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict RepeatabilityStatisticsTool adapter plus study/source identity, unit/frame policy, acceptance limits, decision, metrics, and same-setup evidence."
+    },
     {
       "path": "src/OpenVisionLab.ThreeD.Data/Quality/ImportedMeshNormalQualityAnalyzer.cs",
       "maximumSignalCount": 0,

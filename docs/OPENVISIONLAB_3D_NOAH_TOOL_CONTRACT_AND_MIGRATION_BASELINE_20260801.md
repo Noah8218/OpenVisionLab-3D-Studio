@@ -98,24 +98,26 @@ three-point plane, line fit/intersection, median filtering, height-difference
 edge extraction, reference-grid regridding, plane fitting, five additional
 measurement families, and Surface Match pose search/coverage.
 
-After the declared-normal quality and Landmark Correspondence migration, the
-machine-readable baseline records `4` Studio migration-debt files and `26`
+After the repeatability-statistics migration, the machine-readable baseline
+records `2` Studio migration-debt files and `28`
 reviewed Studio-boundary
 files:
 
 - `docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json`.
 
-The remaining debt includes repeatability and validation statistics.
+The remaining debt includes only labeled-evidence and threshold-candidate
+validation statistics.
 Nominal/actual mesh comparison, triangle-distance lookup, and registration
 transform diagnostics join SurfaceModel/PreparedScene preparation,
 model/scene edge extraction, edge coverage, local-median outlier filtering,
-and Level Surface as reviewed Studio adapters over `Lib.ThreeD 2.8.6`.
+and Level Surface as reviewed Studio adapters over `Lib.ThreeD 2.8.7`.
 Height-grid summary/distribution, Source Quality distribution, Completeness
 Grid, ROI statistics, and reference-grid reconstruction are also reviewed
 boundaries over public Noah Tools. Dual Surface Thickness and Height Deviation
 are reviewed strict adapters over their public Noah Tools. Declared mesh-normal
 quality and Landmark Correspondence are also strict adapters over their public
-Noah Tools.
+Noah Tools. Thickness and Aligned Point repeatability are strict adapters over
+`RepeatabilityStatisticsTool`.
 
 `Landmark Correspondence` has no numerical exception. Studio keeps its recipe
 and artifact identity; rank and normalized-volume calculation are owned by
@@ -199,11 +201,11 @@ Acceptance criteria: Tool contract is explicit; the prior Landmark numerical
 exception is removed; every audited debt item names a target Noah Tool; new or
 expanded Studio numerical ownership fails the structure guard.
 
-Verification: `scripts/verify-code-structure.ps1` passes `27/27`, including
+Verification: `scripts/verify-code-structure.ps1` passes `28/28`, including
 the contract, schema-1 inventory, and no-new-ownership checks. The vendored
-Library-Noah package boundary passes for `Lib.ThreeD 2.8.6`, source commit
-`3ef2f52546a9187df465bf8973e26426c30f7634`, package SHA-256
-`02E0D0B69F9D7CECBA958BF4BDC7F2999D0902539C33CD0F133C48C08C3A25B0`,
+Library-Noah package boundary passes for `Lib.ThreeD 2.8.7`, source commit
+`20963c12b50dfc0658110e2037961d3224feb2d6`, package SHA-256
+`C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`,
 and `netstandard2.0`.
 
 Evidence: this document, the schema-1 JSON baseline, and the current-task
@@ -211,7 +213,7 @@ reports under `artifacts/current/20260801-noah-tool-ownership-contract/`.
 
 Boundary / next dependency: Surface Match preparation/edge,
 filtering/leveling, nominal-comparison/transform-diagnostics, height-map
-inspection/preparation, and dependent height-rule families are migrated, but
-the contract does not close the `4` remaining debt files. The next
-implementation slice is the two repeatability rules in committed Library-Noah
-source, followed by the two validation-statistics analyzers.
+inspection/preparation, dependent height-rule families, geometry quality, and
+repeatability statistics are migrated, but the contract does not close the
+`2` remaining debt files. The next implementation slice is the two
+validation-statistics analyzers.

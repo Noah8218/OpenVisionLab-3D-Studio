@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 public static class ThicknessRepeatabilityRule
 {
+    private static readonly RepeatabilityStatisticsTool StatisticsTool = new();
+
     public const string ToolName = "Thickness Repeatability";
     public const string EvaluationOrder =
         "StudyIdentity -> UnitFrame -> AcceptancePolicy -> RunEvidence -> MinimumRunCount -> Statistics -> Acceptance";
@@ -282,55 +285,25 @@ public static class ThicknessRepeatabilityRule
 
     private static bool TryCalculateStatistics(
         IReadOnlyList<ThicknessRepeatabilityRun> runs,
-        out RepeatabilityStatistics statistics)
+        out RepeatabilityStatisticsResult statistics)
     {
-        var count = 0;
-        var mean = 0.0;
-        var sumSquaredDifferences = 0.0;
-        var minimum = double.PositiveInfinity;
-        var maximum = double.NegativeInfinity;
-        foreach (var run in runs)
+        var values = new double[runs.Count];
+        for (var index = 0; index < runs.Count; index++)
         {
-            count++;
-            var delta = run.Thickness - mean;
-            mean += delta / count;
-            var deltaAfterMean = run.Thickness - mean;
-            sumSquaredDifferences += delta * deltaAfterMean;
-            minimum = Math.Min(minimum, run.Thickness);
-            maximum = Math.Max(maximum, run.Thickness);
+            values[index] = runs[index].Thickness;
         }
 
-        var variance = Math.Max(0.0, sumSquaredDifferences / (count - 1));
-        var sampleStandardDeviation = Math.Sqrt(variance);
-        var sixSigmaSpread = 6.0 * sampleStandardDeviation;
-        var range = maximum - minimum;
-        if (!double.IsFinite(mean)
-            || !double.IsFinite(minimum)
-            || !double.IsFinite(maximum)
-            || !double.IsFinite(sumSquaredDifferences)
-            || !double.IsFinite(sampleStandardDeviation)
-            || !double.IsFinite(sixSigmaSpread)
-            || !double.IsFinite(range))
-        {
-            statistics = default;
-            return false;
-        }
-
-        statistics = new RepeatabilityStatistics(
-            mean,
-            minimum,
-            maximum,
-            sampleStandardDeviation,
-            sixSigmaSpread,
-            range);
-        return true;
+        statistics = StatisticsTool.Execute(
+            values,
+            RepeatabilityNegativeVariancePolicy.ClampAnyNegative);
+        return statistics.Success;
     }
 
     private static IReadOnlyList<Metric> CreateMetrics(
         int runCount,
         ThicknessRepeatabilityAcceptance acceptance,
         string unit,
-        RepeatabilityStatistics statistics,
+        RepeatabilityStatisticsResult statistics,
         ResultStatus standardDeviationStatus,
         ResultStatus rangeStatus) =>
     [
@@ -429,11 +402,4 @@ public static class ThicknessRepeatabilityRule
             "Sample standard deviation and thickness range exceed their limits. This same-setup study is not Gauge R&R."
     };
 
-    private readonly record struct RepeatabilityStatistics(
-        double Mean,
-        double Minimum,
-        double Maximum,
-        double SampleStandardDeviation,
-        double SixSigmaSpread,
-        double Range);
 }

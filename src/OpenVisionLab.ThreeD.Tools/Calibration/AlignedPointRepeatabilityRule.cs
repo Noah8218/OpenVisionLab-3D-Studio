@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 public static class AlignedPointRepeatabilityRule
 {
+    private static readonly RepeatabilityStatisticsTool StatisticsTool = new();
+
     public const string ToolName = "Aligned Point Repeatability";
     public const string EvaluationOrder =
         "StudyIdentity -> UnitFrameAlignment -> AcceptancePolicy -> SourceEvidence -> CorrespondenceCoverage -> MinimumCounts -> PerPointStatistics -> Acceptance";
@@ -518,63 +521,10 @@ public static class AlignedPointRepeatabilityRule
 
     private static bool TryCalculateStatistics(
         IReadOnlyList<double> values,
-        out RepeatabilityStatistics statistics)
+        out RepeatabilityStatisticsResult statistics)
     {
-        if (values.Count < 2)
-        {
-            statistics = default;
-            return false;
-        }
-
-        var count = 0;
-        var mean = 0.0;
-        var sumSquaredDelta = 0.0;
-        var minimum = double.PositiveInfinity;
-        var maximum = double.NegativeInfinity;
-        foreach (var value in values)
-        {
-            if (!double.IsFinite(value))
-            {
-                statistics = default;
-                return false;
-            }
-
-            count++;
-            var delta = value - mean;
-            mean += delta / count;
-            sumSquaredDelta += delta * (value - mean);
-            minimum = Math.Min(minimum, value);
-            maximum = Math.Max(maximum, value);
-        }
-
-        var variance = sumSquaredDelta / (count - 1);
-        if (variance < 0.0 && variance > -1e-12)
-        {
-            variance = 0.0;
-        }
-
-        var sampleStandardDeviation = Math.Sqrt(variance);
-        var sixSigmaSpread = 6.0 * sampleStandardDeviation;
-        var range = maximum - minimum;
-        if (!double.IsFinite(mean)
-            || !double.IsFinite(minimum)
-            || !double.IsFinite(maximum)
-            || !double.IsFinite(sampleStandardDeviation)
-            || !double.IsFinite(sixSigmaSpread)
-            || !double.IsFinite(range))
-        {
-            statistics = default;
-            return false;
-        }
-
-        statistics = new RepeatabilityStatistics(
-            mean,
-            minimum,
-            maximum,
-            sampleStandardDeviation,
-            sixSigmaSpread,
-            range);
-        return true;
+        statistics = StatisticsTool.Execute(values);
+        return statistics.Success;
     }
 
     private static IReadOnlyList<Metric> CreateMetrics(
@@ -712,11 +662,4 @@ public static class AlignedPointRepeatabilityRule
             "One or more aligned correspondence point sample standard deviations and ranges exceed their limits. This is not Gauge R&R, physical calibration, or metrology certification."
     };
 
-    private readonly record struct RepeatabilityStatistics(
-        double Mean,
-        double Minimum,
-        double Maximum,
-        double SampleStandardDeviation,
-        double SixSigmaSpread,
-        double Range);
 }

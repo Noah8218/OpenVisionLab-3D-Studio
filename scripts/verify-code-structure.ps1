@@ -166,6 +166,8 @@ $dualSurfaceThicknessAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD
 $heightDeviationAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Rules/HeightDeviationRule.cs"
 $declaredNormalQualityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Data/Quality/ImportedMeshNormalQualityAnalyzer.cs"
 $landmarkCorrespondenceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DLandmarkCorrespondenceRule.cs"
+$alignedPointRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs"
+$thicknessRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs"
 $noahToolContractPath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md"
 $noahToolBaselinePath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json"
 $appSource = [System.IO.File]::ReadAllText($appPath)
@@ -286,6 +288,14 @@ Add-Check "LibraryNoahGeometryQualityOwnership" (
     -not ([System.IO.File]::ReadAllText($declaredNormalQualityAdapterPath) -match "Math\.|Vector[234]?\.(?:Cross|Dot|Normalize)") -and
     -not ([System.IO.File]::ReadAllText($landmarkCorrespondenceAdapterPath) -match "Math\.|GetAugmentedRank|GetNormalizedTetrahedronVolume|RankRelativeTolerance")
 ) "Studio retains source/landmark identity, report/artifact policy, hashing, and lifecycle; vendored Library-Noah owns declared-normal geometry and four-point independence arithmetic"
+Add-Check "LibraryNoahRepeatabilityStatisticsOwnership" (
+    (Test-Path -LiteralPath $alignedPointRepeatabilityAdapterPath) -and
+    (Test-Path -LiteralPath $thicknessRepeatabilityAdapterPath) -and
+    ([System.IO.File]::ReadAllText($alignedPointRepeatabilityAdapterPath) -match "RepeatabilityStatisticsTool") -and
+    ([System.IO.File]::ReadAllText($thicknessRepeatabilityAdapterPath) -match "RepeatabilityStatisticsTool") -and
+    -not ([System.IO.File]::ReadAllText($alignedPointRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum") -and
+    -not ([System.IO.File]::ReadAllText($thicknessRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum")
+) "Studio retains study/source identity, unit/frame/alignment policy, acceptance, metrics, and evidence; vendored Library-Noah owns scalar repeatability statistics"
 
 $noahToolContractExists = Test-Path -LiteralPath $noahToolContractPath
 $noahToolBaselineExists = Test-Path -LiteralPath $noahToolBaselinePath

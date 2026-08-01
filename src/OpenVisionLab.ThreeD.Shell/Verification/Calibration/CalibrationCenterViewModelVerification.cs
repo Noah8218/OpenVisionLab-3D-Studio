@@ -26,6 +26,7 @@ internal static class CalibrationCenterViewModelVerification
             $"Generated: {DateTimeOffset.Now:O}"
         };
         var passed = 0;
+        OpenVisionLanguageService.Load();
         var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),

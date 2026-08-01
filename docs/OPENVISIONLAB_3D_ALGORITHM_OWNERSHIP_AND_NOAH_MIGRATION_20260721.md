@@ -5,14 +5,16 @@ Updated: 2026-08-01
 Status: **Owner-approved Tool-only numerical ownership contract; migration is
 phased, inventoried, and evidence-gated.**
 
-> 2026-08-01 current package update: `Lib.ThreeD 2.8.6` at
-> `3ef2f52546a9187df465bf8973e26426c30f7634` additionally owns declared
-> mesh-normal quality and four-point landmark independence validation. It
+> 2026-08-01 current package update: `Lib.ThreeD 2.8.7` at
+> `20963c12b50dfc0658110e2037961d3224feb2d6` additionally owns scalar
+> repeatability mean, extrema, sample standard deviation, six-sigma spread,
+> range, and explicit negative-variance round-off policy. It retains declared
+> mesh-normal quality and four-point landmark independence validation, plus
 > retains dual-surface thickness, height-deviation, height-map, filtering,
 > leveling, Surface
 > Match, mesh-comparison, and transform-diagnostic Tools.
 > The vendored package SHA-256 is
-> `02E0D0B69F9D7CECBA958BF4BDC7F2999D0902539C33CD0F133C48C08C3A25B0`.
+> `C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
 > Older package sections below remain migration history.
 
 ## Binding ownership rule
@@ -63,6 +65,7 @@ reusable by other OpenVisionLab products.
 | Nominal/actual mesh comparison | `Lib.ThreeD 2.8.4` deterministic source-neutral tools | Complete: Noah owns triangle-distance, sign recovery, streaming statistics, counts, and display sampling; Studio retains source/unit/frame identity, loaders, artifacts, progress adaptation, and UI. |
 | Registration transform diagnostics | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Noah owns homogeneous-row, orthogonality, determinant, translation, and rotation diagnostics; Studio retains authored limits, ordered acceptance, evidence, lifecycle, and UI. |
 | Landmark Correspondence | `Lib.ThreeD 2.8.6` `LandmarkCorrespondenceValidationTool` | Complete: Noah owns augmented rank and normalized tetrahedral volume; Studio retains identity, lineage, recipe, artifact, hashing, and lifecycle ownership. |
+| Thickness / aligned-point repeatability statistics | `Lib.ThreeD 2.8.7` `RepeatabilityStatisticsTool` | Complete: Noah owns scalar accumulation and descriptive statistics; Studio retains study/source/correspondence identity, unit/frame/alignment, acceptance, metrics, and evidence. |
 
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.

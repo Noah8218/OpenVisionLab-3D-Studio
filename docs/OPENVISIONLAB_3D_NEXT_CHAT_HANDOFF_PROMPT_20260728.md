@@ -52,6 +52,9 @@ Authoritative detail remains in:
 - `docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md`
   for the current two-Tool height-rule migration, exact parity, decreasing
   ledger, and next dependency.
+- `docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
+  for the current scalar repeatability Tool, exact Thickness/Aligned Point
+  parity, decreasing ledger, and next dependency.
 
 ## Paste this request into the next chat
 
@@ -391,9 +394,20 @@ debt files and `26` reviewed Studio boundaries. Preserve
 and
 `artifacts/current/20260801-noah-normal-quality-landmark-migration/`.
 
-Immediate software priority: migrate `AlignedPointRepeatabilityRule` and
-`ThicknessRepeatabilityRule` into a committed Noah `RepeatabilityStatisticsTool`,
-then migrate the two validation-statistics analyzers before
+The repeatability-statistics Noah migration is Complete. Committed Noah
+`20963c12b50dfc0658110e2037961d3224feb2d6` exposes public
+`RepeatabilityStatisticsTool` through vendored `Lib.ThreeD 2.8.7`, SHA-256
+`C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+Noah is `0/0` and `101/101`; Studio is `0/0`; bridge is `17/17`; Thickness
+and Aligned Point are `34/34` and `33/33` with exact report parity; loaders
+are `13/13` and `20/20`; Calibration ViewModel is `75/75`; structure is
+`28/28`. The ledger is `2` debt files and `28` reviewed boundaries. Preserve
+`docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-repeatability-statistics-migration/`.
+
+Immediate software priority: migrate `ToolRecipeLabeledEvidenceAnalyzer` and
+`ToolRecipeThresholdCandidateAnalyzer` into committed Noah Tools before
 `J-12 Multiple-match result collection`. Recommended
 model: gpt-5.6-sol. Reasoning effort: high. `K-09`
 remains blocked on `J-12`; `K-04` remains blocked on `B-12`; symmetry-aware

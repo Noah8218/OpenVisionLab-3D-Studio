@@ -29,7 +29,8 @@ internal static class LibraryNoahThreeDPackageVerification
             ("dual-surface-thickness-inspection-tool", VerifyDualSurfaceThicknessInspectionTool),
             ("height-deviation-inspection-tool", VerifyHeightDeviationInspectionTool),
             ("declared-mesh-normal-quality-tool", VerifyDeclaredMeshNormalQualityTool),
-            ("landmark-correspondence-validation-tool", VerifyLandmarkCorrespondenceValidationTool)
+            ("landmark-correspondence-validation-tool", VerifyLandmarkCorrespondenceValidationTool),
+            ("repeatability-statistics-tool", VerifyRepeatabilityStatisticsTool)
         };
 
         var results = cases
@@ -59,8 +60,8 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
             && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.6"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "3ef2f52546a9187df465bf8973e26426c30f7634";
+            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.7"
+            && LibraryNoahHeightMapInspection.PackageSourceCommit == "20963c12b50dfc0658110e2037961d3224feb2d6";
         return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
     }
 
@@ -291,6 +292,20 @@ internal static class LibraryNoahThreeDPackageVerification
             && !rejected.Success
             && rejected.SourceRank == 3;
         return (passed, $"valid={valid.Success},rank={valid.SourceRank}/{valid.ReferenceRank},volume={valid.SourceNormalizedTetrahedronVolume:R};coplanar={rejected.Success},rank={rejected.SourceRank}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyRepeatabilityStatisticsTool()
+    {
+        var result = new RepeatabilityStatisticsTool().Execute([10.0, 12.0, 14.0, 16.0]);
+        var passed = result.Success
+            && result.Count == 4
+            && Approximately(result.Mean, 13.0)
+            && Approximately(result.Minimum, 10.0)
+            && Approximately(result.Maximum, 16.0)
+            && Approximately(result.SampleStandardDeviation, 2.581988897471611)
+            && Approximately(result.SixSigmaSpread, 15.491933384829668)
+            && Approximately(result.Range, 6.0);
+        return (passed, $"success={result.Success},count={result.Count},mean={result.Mean:R},standardDeviation={result.SampleStandardDeviation:R},sixSigma={result.SixSigmaSpread:R},range={result.Range:R}");
     }
 
     private static (bool Passed, string Evidence) VerifyThicknessPass(LibraryNoahHeightMapInput source)

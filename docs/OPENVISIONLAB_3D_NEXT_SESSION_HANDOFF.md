@@ -36,6 +36,7 @@ the completed height-map inspection and preparation Noah Tool migration,
 the completed Dual Surface Thickness and Height Deviation Noah Tool migration,
 the completed declared-normal quality and Landmark Correspondence Noah Tool
 migration,
+the completed repeatability-statistics Noah Tool migration,
 the human-owner R0 acceptance task, the
 dirty-working-tree warning, and the user-owned untracked-folder boundary.
 
@@ -51,22 +52,45 @@ acceptance and experiment-comparison assemblies. It passes Wide/Compact
 `-ValidateOnly`. Human-owner R0 remains external for `A-01`, but by explicit
 owner direction it no longer pauses dependency-ready software development.
 The migrated active calculation chain now belongs to committed Noah
-`3ef2f52546a9187df465bf8973e26426c30f7634` through vendored
-`Lib.ThreeD 2.8.6`; the unrelated dirty main Noah checkout remains untouched.
-The immediate software priority is `AlignedPointRepeatabilityRule` and
-`ThicknessRepeatabilityRule` migration to a committed Noah statistics Tool,
-then the validation-statistics pair before `J-12`.
+`20963c12b50dfc0658110e2037961d3224feb2d6` through vendored
+`Lib.ThreeD 2.8.7`; the unrelated dirty main Noah checkout remains untouched.
+The immediate software priority is the validation-statistics pair before
+`J-12`.
 `K-04` remains blocked
 on `B-12` and `K-09`
 remains blocked on `J-12`. The completed
 acceptance policy remains separate from the raw surface and diagnostic edge
 score contracts.
 
-Do not reset the current uncommitted implementation. Also preserve the
-user-owned untracked `3D/TLB/` folder. Do not touch
-`3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`. No Studio commit or push is
-authorized by this handoff. The exact Noah source commit required for package
-provenance already exists on `codex/surface-match-kernel`.
+Do not reset unrelated work. Preserve the user-owned untracked `3D/TLB/`
+folder. Do not touch `3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`.
+Commit and push still require an explicit user request; the active 2026-08-01
+session received that authorization for this completed slice. The exact Noah
+source commit required for package provenance exists on
+`codex/surface-match-kernel`.
+
+## Repeatability-statistics Noah migration closure - 2026-08-01
+
+Public sealed `RepeatabilityStatisticsTool` owns Welford accumulation, mean,
+extrema, sample standard deviation, six-sigma spread, range, and an explicit
+source-neutral negative-variance round-off policy. Studio retains study, run,
+source, correspondence, unit, frame, alignment, acceptance, metrics, messages,
+and result evidence.
+
+Committed Noah `20963c12b50dfc0658110e2037961d3224feb2d6` passes Release
+`0/0` and Smoke `101/101`. Vendored `Lib.ThreeD 2.8.7` has SHA-256
+`C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+Studio Release passes `0/0`; bridge `17/17`; Thickness and Aligned Point
+goldens pass `34/34` and `33/33` with full-report differences `0/0`; study
+loaders pass `13/13` and `20/20`; Calibration ViewModel passes `75/75`; and
+structure passes `28/28`. The decreasing ledger is `2` debt files and `28`
+reviewed Studio boundaries. Both fixed R0 `-ValidateOnly` modes pass. No UI
+changed. Preserve
+`docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-repeatability-statistics-migration/`.
+Human-owner R0 remains external. Next migrate the two validation-statistics
+analyzers before `J-12`.
 
 ## Declared-normal quality and Landmark Correspondence Noah migration closure - 2026-08-01
 
