@@ -1,11 +1,14 @@
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
+using NoahEdgeAnchor = Lib.ThreeD.FeatureExtraction.SurfaceEdgeAnchorSample;
+using NoahEdgeCoverageResult = Lib.ThreeD.FeatureExtraction.DeterministicSurfaceEdgeCoverageResult;
+using NoahEdgeCoverageTool = Lib.ThreeD.FeatureExtraction.DeterministicSurfaceEdgeCoverageTool;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Decision-free positional score for identified model/scene edge anchors at
-/// an already-identified surface pose. It does not alter pose or acceptance.
+/// Strict product adapter for decision-free positional edge coverage at an
+/// already-identified surface pose. Library-Noah owns the matching kernel.
 /// </summary>
 public static class SurfaceAndEdgeMatchScorer
 {
@@ -41,54 +44,44 @@ public static class SurfaceAndEdgeMatchScorer
                 "Edge scoring requires at least one identified model edge.");
         }
 
-        var claimedSceneEdges = new bool[sceneEdges.Edges.Length];
-        var matches = new List<SurfaceEdgeCoverageMatch>();
-        var maximumDistanceSquared = maximumCorrespondenceDistance
-            * maximumCorrespondenceDistance;
-        var squaredErrorSum = 0.0;
-        foreach (var modelEdge in modelEdges.Edges)
+        var noahResult = new NoahEdgeCoverageTool().Execute(
+            modelEdges.Edges
+                .Select(edge => new NoahEdgeAnchor(
+                    edge.Order,
+                    LibraryNoahSurfaceMatching.Point(edge.Anchor)))
+                .ToArray(),
+            sceneEdges.Edges
+                .Select(edge => new NoahEdgeAnchor(
+                    edge.Order,
+                    LibraryNoahSurfaceMatching.Point(edge.Anchor)))
+                .ToArray(),
+            LibraryNoahSurfaceMatching.Pose(pose),
+            maximumCorrespondenceDistance);
+        if (!noahResult.Success)
         {
-            var transformedAnchor = pose.TransformPoint(modelEdge.Anchor);
-            var bestSceneOrder = -1;
-            var bestDistanceSquared = double.PositiveInfinity;
-            foreach (var sceneEdge in sceneEdges.Edges)
-            {
-                if (claimedSceneEdges[sceneEdge.Order])
-                {
-                    continue;
-                }
-
-                var distanceSquared = DistanceSquared(
-                    transformedAnchor,
-                    sceneEdge.Anchor);
-                if (distanceSquared < bestDistanceSquared
-                    || distanceSquared == bestDistanceSquared
-                    && sceneEdge.Order < bestSceneOrder)
-                {
-                    bestDistanceSquared = distanceSquared;
-                    bestSceneOrder = sceneEdge.Order;
-                }
-            }
-
-            if (bestSceneOrder < 0
-                || bestDistanceSquared > maximumDistanceSquared)
-            {
-                continue;
-            }
-
-            claimedSceneEdges[bestSceneOrder] = true;
-            squaredErrorSum += bestDistanceSquared;
-            matches.Add(new SurfaceEdgeCoverageMatch(
-                modelEdge.Order,
-                bestSceneOrder,
-                Math.Sqrt(bestDistanceSquared)));
+            throw new InvalidDataException(noahResult.Message);
         }
 
-        var matchedCount = matches.Count;
-        var coverageRatio = matchedCount / (double)modelEdges.Edges.Length;
-        double? inlierRmse = matchedCount == 0
-            ? null
-            : Math.Sqrt(squaredErrorSum / matchedCount);
+        if (!string.Equals(
+                NoahEdgeCoverageResult.Semantics,
+                SurfaceEdgeScoreComponent.CurrentSemantics,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "Library-Noah edge coverage semantics do not match the Studio contract.");
+        }
+
+        var matches = noahResult.Matches
+            .Select(match => new SurfaceEdgeCoverageMatch(
+                match.ModelEdgeOrder,
+                match.SceneEdgeOrder,
+                match.Distance))
+            .ToArray();
+        var matchedCount = noahResult.MatchedModelEdgeCount;
+        var coverageRatio = noahResult.CoverageRatio;
+        double? inlierRmse = noahResult.HasInlierRmse
+            ? noahResult.InlierRmse
+            : null;
         var evidence =
             $"semantics={SurfaceEdgeScoreComponent.CurrentSemantics};"
             + $"matched={matchedCount}/{modelEdges.Edges.Length};"
@@ -105,7 +98,7 @@ public static class SurfaceAndEdgeMatchScorer
             coverageRatio,
             inlierRmse,
             maximumCorrespondenceDistance,
-            matches.ToArray(),
+            matches,
             evidence);
         return SurfaceAndEdgeMatchScoreArtifact.Create(
             execution,
@@ -145,15 +138,5 @@ public static class SurfaceAndEdgeMatchScorer
             throw new InvalidDataException(
                 "Edge scoring input identities, units, or model-to-scene frames do not agree.");
         }
-    }
-
-    private static double DistanceSquared(
-        SurfaceModelPoint3 first,
-        SurfaceModelPoint3 second)
-    {
-        var x = first.X - second.X;
-        var y = first.Y - second.Y;
-        var z = first.Z - second.Z;
-        return x * x + y * y + z * z;
     }
 }

@@ -1,4 +1,5 @@
 using OpenVisionLab.ThreeD.Core;
+using Lib.ThreeD.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 
@@ -41,9 +42,7 @@ public static class C3DSourceQualityAnalyzer
         var distribution = snapshot.ValidCount == 0
             ? null
             : CreateDistribution(
-                values,
-                snapshot.Minimum,
-                snapshot.Maximum,
+                snapshot.ValueList,
                 snapshot.ValidCount,
                 distributionBinCount);
 
@@ -81,47 +80,36 @@ public static class C3DSourceQualityAnalyzer
     }
 
     private static SourceQualityDistribution CreateDistribution(
-        ReadOnlySpan<double> values,
-        double minimum,
-        double maximum,
+        IReadOnlyList<double> values,
         int expectedValidCount,
         int binCount)
     {
-        var bins = new long[binCount];
-        var observedValidCount = 0;
-        var span = maximum - minimum;
-        foreach (var value in values)
-        {
-            if (!double.IsFinite(value))
+        var result = new HeightDistributionStatisticsTool().Execute(
+            values,
+            new HeightDistributionStatisticsOptions
             {
-                continue;
-            }
-
-            observedValidCount++;
-            var binIndex = span == 0.0
-                ? 0
-                : Math.Min(binCount - 1, (int)((value - minimum) / span * binCount));
-            bins[binIndex]++;
-        }
-
-        if (observedValidCount != expectedValidCount)
+                BinCount = binCount,
+                ZeroIsMissing = false,
+                ExpectedValidSampleCount = expectedValidCount
+            });
+        if (!result.Success)
         {
             throw new InvalidDataException(
-                $"Source-quality distribution valid-count mismatch: expected {expectedValidCount}, observed {observedValidCount}.");
+                result.Message.Replace(
+                    "Height-distribution",
+                    "Source-quality distribution",
+                    StringComparison.Ordinal));
         }
 
-        var peakBinIndex = 0;
-        for (var index = 1; index < bins.Length; index++)
+        var bins = new long[result.Bins.Count];
+        for (var index = 0; index < bins.Length; index++)
         {
-            if (bins[index] > bins[peakBinIndex])
-            {
-                peakBinIndex = index;
-            }
+            bins[index] = result.Bins[index];
         }
 
         return new SourceQualityDistribution(
             binCount,
-            peakBinIndex,
+            result.PeakBinIndex,
             Array.AsReadOnly(bins));
     }
 

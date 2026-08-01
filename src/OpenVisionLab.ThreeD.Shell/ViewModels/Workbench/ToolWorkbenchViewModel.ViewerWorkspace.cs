@@ -249,33 +249,18 @@ public sealed partial class ToolWorkbenchViewModel
                 "Workbench false-positive review is invalid or does not contain the displayed case.");
         }
 
-        surfaceMatchEvidence = execution;
-        surfaceMatchAssessment = assessment;
-        surfaceMatchRuntime = runtime;
-        surfaceEdgeScore = edgeScore;
-        surfaceEdgeDiagnosticOverlay = edgeDiagnosticOverlay;
-        surfaceEdgeAssessment = edgeAssessment;
-        surfaceMatchFalsePositiveReview = falsePositiveReview;
-        OnPropertyChanged(nameof(SurfaceMatchEvidence));
-        OnPropertyChanged(nameof(HasSurfaceMatchEvidence));
-        OnPropertyChanged(nameof(SurfaceMatchAssessment));
-        OnPropertyChanged(nameof(SurfaceMatchRuntime));
-        OnPropertyChanged(nameof(SurfaceEdgeScore));
-        OnPropertyChanged(nameof(SurfaceEdgeDiagnosticOverlay));
-        OnPropertyChanged(nameof(SurfaceEdgeAssessment));
-        OnPropertyChanged(nameof(SurfaceMatchFalsePositiveReview));
-        SurfaceMatchDisplayRequested?.Invoke(
-            this,
-            new ToolWorkbenchSurfaceMatchDisplayRequestEventArgs(
-                model,
-                scene,
-                execution,
-                assessment,
-                runtime,
-                edgeScore,
-                edgeDiagnosticOverlay,
-                edgeAssessment,
-                falsePositiveReview));
+        var evidence = new SurfaceMatchExperimentEvidence(
+            model,
+            scene,
+            execution,
+            assessment,
+            runtime,
+            edgeScore,
+            edgeDiagnosticOverlay,
+            edgeAssessment,
+            falsePositiveReview);
+        LoadPublishedSurfaceMatchExperiment(evidence);
+        RaiseSurfaceMatchExperimentDisplay(evidence);
     }
 
     public void ClearSurfaceMatchEvidence()
@@ -285,6 +270,7 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
+        ClearSurfaceMatchExperiment();
         surfaceMatchEvidence = null;
         surfaceMatchAssessment = null;
         surfaceMatchRuntime = null;
@@ -292,14 +278,7 @@ public sealed partial class ToolWorkbenchViewModel
         surfaceEdgeDiagnosticOverlay = null;
         surfaceEdgeAssessment = null;
         surfaceMatchFalsePositiveReview = null;
-        OnPropertyChanged(nameof(SurfaceMatchEvidence));
-        OnPropertyChanged(nameof(HasSurfaceMatchEvidence));
-        OnPropertyChanged(nameof(SurfaceMatchAssessment));
-        OnPropertyChanged(nameof(SurfaceMatchRuntime));
-        OnPropertyChanged(nameof(SurfaceEdgeScore));
-        OnPropertyChanged(nameof(SurfaceEdgeDiagnosticOverlay));
-        OnPropertyChanged(nameof(SurfaceEdgeAssessment));
-        OnPropertyChanged(nameof(SurfaceMatchFalsePositiveReview));
+        RaisePublishedSurfaceMatchProperties();
         SurfaceMatchDisplayCleared?.Invoke(this, EventArgs.Empty);
     }
 

@@ -1,17 +1,20 @@
 using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
+using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using NoahQualityState = Lib.ThreeD.FeatureExtraction.DeclaredMeshNormalQualityState;
+using NoahQualityTool = Lib.ThreeD.FeatureExtraction.DeclaredMeshNormalQualityTool;
 
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
-/// Validates a declared per-position normal channel without repairing,
-/// generating, or mutating it.
+/// Adapts Studio source identity and report policy to the source-neutral Noah
+/// declared-normal quality Tool. It never repairs, generates, or mutates a
+/// normal channel.
 /// </summary>
 public static class ImportedMeshNormalQualityAnalyzer
 {
     public const double DefaultUnitLengthTolerance = 1e-3;
     public const double DefaultMinimumAlignmentCosine = 0.5;
-    private const double ZeroLengthSquared = 1e-20;
 
     public static SourceNormalQualityReport Create(
         ImportedMesh mesh,
@@ -52,7 +55,6 @@ public static class ImportedMeshNormalQualityAnalyzer
                 "Normal presence must be empty or match the normal storage count.",
                 nameof(normalPresence));
         }
-
         if (unitLengthTolerance < 0.0 || !double.IsFinite(unitLengthTolerance))
         {
             throw new ArgumentOutOfRangeException(
@@ -60,7 +62,6 @@ public static class ImportedMeshNormalQualityAnalyzer
                 unitLengthTolerance,
                 "Unit-length tolerance must be finite and non-negative.");
         }
-
         if (minimumAlignmentCosine is < -1.0 or > 1.0
             || !double.IsFinite(minimumAlignmentCosine))
         {
@@ -70,200 +71,73 @@ public static class ImportedMeshNormalQualityAnalyzer
                 "Minimum alignment cosine must be finite and between -1 and 1.");
         }
 
-        var triangleCount = indices.Count / 3;
-        var normalCount = normalPresence is { Count: > 0 }
-            ? normalPresence.Count(present => present)
-            : normals.Count;
-        if (normalCount == 0)
+        var evaluation = new NoahQualityTool().Execute(
+            positions.Select(ToNoahPoint).ToArray(),
+            indices,
+            normals.Select(ToNoahPoint).ToArray(),
+            normalPresence,
+            unitLengthTolerance,
+            minimumAlignmentCosine);
+        var state = evaluation.State switch
+        {
+            NoahQualityState.Unavailable => SourceNormalQualityState.Unavailable,
+            NoahQualityState.Valid => SourceNormalQualityState.Valid,
+            NoahQualityState.Invalid => SourceNormalQualityState.Invalid,
+            _ => throw new InvalidDataException(
+                $"Unsupported Noah declared-normal quality state: {evaluation.State}.")
+        };
+        if (state == SourceNormalQualityState.Unavailable)
         {
             return new SourceNormalQualityReport(
                 SourceNormalQualityReport.CurrentSchemaVersion,
                 sourceId,
                 format,
-                SourceNormalQualityState.Unavailable,
-                positions.Count,
-                triangleCount,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
+                state,
+                evaluation.PositionCount,
+                evaluation.TriangleCount,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
                 unitLengthTolerance,
                 minimumAlignmentCosine,
-                null,
-                null,
-                null,
-                null,
-                null,
+                null, null, null, null, null,
                 "No declared normal channel is available. Geometric face normals were not promoted to source data.");
         }
 
-        var finiteNormalCount = 0;
-        var nonZeroNormalCount = 0;
-        var unitLengthNormalCount = 0;
-        var minimumNormalLength = double.PositiveInfinity;
-        var maximumNormalLength = double.NegativeInfinity;
-        var normalLengthSum = 0.0;
-        for (var index = 0; index < normals.Count; index++)
-        {
-            if (!IsPresent(index))
-            {
-                continue;
-            }
-
-            var normal = normals[index];
-            if (!IsFinite(normal))
-            {
-                continue;
-            }
-
-            finiteNormalCount++;
-            var length = normal.Length();
-            minimumNormalLength = Math.Min(minimumNormalLength, length);
-            maximumNormalLength = Math.Max(maximumNormalLength, length);
-            normalLengthSum += length;
-            if (normal.LengthSquared() <= ZeroLengthSquared)
-            {
-                continue;
-            }
-
-            nonZeroNormalCount++;
-            if (Math.Abs(length - 1.0) <= unitLengthTolerance)
-            {
-                unitLengthNormalCount++;
-            }
-        }
-
-        var invalidIndexCount = 0;
-        var degenerateTriangleCount = 0;
-        var comparableCornerCount = 0;
-        var consistentCornerCount = 0;
-        var reversedCornerCount = 0;
-        var minimumAlignment = double.PositiveInfinity;
-        var alignmentSum = 0.0;
-        for (var offset = 0; offset + 2 < indices.Count; offset += 3)
-        {
-            var aIndex = indices[offset];
-            var bIndex = indices[offset + 1];
-            var cIndex = indices[offset + 2];
-            var triangleInvalidIndexCount =
-                (IsIndexInRange(aIndex, positions.Count) ? 0 : 1)
-                + (IsIndexInRange(bIndex, positions.Count) ? 0 : 1)
-                + (IsIndexInRange(cIndex, positions.Count) ? 0 : 1);
-            if (triangleInvalidIndexCount > 0)
-            {
-                invalidIndexCount += triangleInvalidIndexCount;
-                continue;
-            }
-
-            var geometric = Vector3.Cross(
-                positions[bIndex] - positions[aIndex],
-                positions[cIndex] - positions[aIndex]);
-            if (!IsFinite(geometric)
-                || geometric.LengthSquared() <= ZeroLengthSquared)
-            {
-                degenerateTriangleCount++;
-                continue;
-            }
-
-            geometric = Vector3.Normalize(geometric);
-            CompareCorner(aIndex, geometric);
-            CompareCorner(bIndex, geometric);
-            CompareCorner(cIndex, geometric);
-        }
-
-        var dense =
-            positions.Count > 0
-            && normals.Count == positions.Count
-            && normalCount == positions.Count;
-        var allComparable = comparableCornerCount == triangleCount * 3;
-        var valid =
-            indices.Count > 0
-            && indices.Count % 3 == 0
-            && dense
-            && finiteNormalCount == normalCount
-            && nonZeroNormalCount == normalCount
-            && unitLengthNormalCount == normalCount
-            && invalidIndexCount == 0
-            && degenerateTriangleCount == 0
-            && allComparable
-            && consistentCornerCount == comparableCornerCount;
-        var state = valid
-            ? SourceNormalQualityState.Valid
-            : SourceNormalQualityState.Invalid;
-        var evidence = valid
+        var dense = evaluation.PositionCount > 0
+            && normals.Count == evaluation.PositionCount
+            && evaluation.NormalCount == evaluation.PositionCount;
+        var evidence = state == SourceNormalQualityState.Valid
             ? $"Dense declared normals are finite, non-zero, unit length within {unitLengthTolerance:R}, and align with every referenced triangle corner at cosine >= {minimumAlignmentCosine:R}."
-            : $"Declared normals fail closed: dense={dense}; finite={finiteNormalCount}/{normalCount}; nonZero={nonZeroNormalCount}/{normalCount}; unit={unitLengthNormalCount}/{normalCount}; invalidIndices={invalidIndexCount}; degenerateTriangles={degenerateTriangleCount}; alignedCorners={consistentCornerCount}/{comparableCornerCount}.";
+            : $"Declared normals fail closed: dense={dense}; finite={evaluation.FiniteNormalCount}/{evaluation.NormalCount}; nonZero={evaluation.NonZeroNormalCount}/{evaluation.NormalCount}; unit={evaluation.UnitLengthNormalCount}/{evaluation.NormalCount}; invalidIndices={evaluation.InvalidIndexCount}; degenerateTriangles={evaluation.DegenerateTriangleCount}; alignedCorners={evaluation.ConsistentCornerCount}/{evaluation.ComparableCornerCount}.";
 
         return new SourceNormalQualityReport(
             SourceNormalQualityReport.CurrentSchemaVersion,
             sourceId,
             format,
             state,
-            positions.Count,
-            triangleCount,
-            normalCount,
-            finiteNormalCount,
-            nonZeroNormalCount,
-            unitLengthNormalCount,
-            invalidIndexCount,
-            degenerateTriangleCount,
-            comparableCornerCount,
-            consistentCornerCount,
-            reversedCornerCount,
+            evaluation.PositionCount,
+            evaluation.TriangleCount,
+            evaluation.NormalCount,
+            evaluation.FiniteNormalCount,
+            evaluation.NonZeroNormalCount,
+            evaluation.UnitLengthNormalCount,
+            evaluation.InvalidIndexCount,
+            evaluation.DegenerateTriangleCount,
+            evaluation.ComparableCornerCount,
+            evaluation.ConsistentCornerCount,
+            evaluation.ReversedCornerCount,
             unitLengthTolerance,
             minimumAlignmentCosine,
-            finiteNormalCount == 0 ? null : minimumNormalLength,
-            finiteNormalCount == 0 ? null : maximumNormalLength,
-            finiteNormalCount == 0 ? null : normalLengthSum / finiteNormalCount,
-            comparableCornerCount == 0 ? null : minimumAlignment,
-            comparableCornerCount == 0 ? null : alignmentSum / comparableCornerCount,
+            Nullable(evaluation.MinimumNormalLength),
+            Nullable(evaluation.MaximumNormalLength),
+            Nullable(evaluation.MeanNormalLength),
+            Nullable(evaluation.MinimumAlignment),
+            Nullable(evaluation.MeanAlignment),
             evidence);
-
-        void CompareCorner(int index, Vector3 geometric)
-        {
-            if (!IsPresent(index))
-            {
-                return;
-            }
-
-            var normal = normals[index];
-            if (!IsFinite(normal)
-                || normal.LengthSquared() <= ZeroLengthSquared)
-            {
-                return;
-            }
-
-            var alignment = Vector3.Dot(Vector3.Normalize(normal), geometric);
-            comparableCornerCount++;
-            minimumAlignment = Math.Min(minimumAlignment, alignment);
-            alignmentSum += alignment;
-            if (alignment >= minimumAlignmentCosine)
-            {
-                consistentCornerCount++;
-            }
-
-            if (alignment < 0.0)
-            {
-                reversedCornerCount++;
-            }
-        }
-
-        bool IsPresent(int index) =>
-            IsIndexInRange(index, normals.Count)
-            && (normalPresence is not { Count: > 0 }
-                || normalPresence[index]);
     }
 
-    private static bool IsIndexInRange(int index, int count) =>
-        (uint)index < (uint)count;
+    private static NoahPoint ToNoahPoint(Vector3 point) =>
+        new(point.X, point.Y, point.Z);
 
-    private static bool IsFinite(Vector3 value) =>
-        float.IsFinite(value.X)
-        && float.IsFinite(value.Y)
-        && float.IsFinite(value.Z);
+    private static double? Nullable(double value) =>
+        double.IsNaN(value) ? null : value;
 }

@@ -1,15 +1,18 @@
 # OpenVisionLab 3D Algorithm Ownership and Library-Noah Migration
 
-Updated: 2026-07-21
+Updated: 2026-08-01
 
-Status: **Owner-approved architecture direction; migration is phased and
-evidence-gated.**
+Status: **Owner-approved Tool-only numerical ownership contract; migration is
+phased, inventoried, and evidence-gated.**
 
-> 2026-07-22 current package update: `Lib.ThreeD 2.7.9` at
-> `e36d9c07baab967fd4252e7052345563f29872a3` additionally owns pure
-> Gap/Flush, Volume, and Cross-section Dimensions inspection arithmetic. The
-> vendored package SHA-256 is
-> `B21A6266AFD470B7EE8A4C857496E53561F4D399F2460FEE2939AAE85AD0FF92`.
+> 2026-08-01 current package update: `Lib.ThreeD 2.8.6` at
+> `3ef2f52546a9187df465bf8973e26426c30f7634` additionally owns declared
+> mesh-normal quality and four-point landmark independence validation. It
+> retains dual-surface thickness, height-deviation, height-map, filtering,
+> leveling, Surface
+> Match, mesh-comparison, and transform-diagnostic Tools.
+> The vendored package SHA-256 is
+> `02E0D0B69F9D7CECBA958BF4BDC7F2999D0902539C33CD0F133C48C08C3A25B0`.
 > Older package sections below remain migration history.
 
 ## Binding ownership rule
@@ -43,16 +46,158 @@ reusable by other OpenVisionLab products.
 | 2-Point Line | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(2) adapter and owns lifecycle/evidence only. |
 | 3-Point Plane | `Lib.ThreeD` pure construction | Complete: Studio is the strict raw-C3D/PointSet(3) datum-plane adapter and owns lifecycle/evidence only. |
 | Filter | `Lib.ThreeD` pure finite/NaN median filter | Complete: Studio retains the C3D-zero/derived-finite-zero boundary and typed lifecycle/evidence only. |
+| Raw height summary / distribution / Source Quality distribution | `Lib.ThreeD 2.8.4` deterministic source-neutral Tools | Complete: Studio retains C3D decoding, byte identity, report composition, load timing, and Viewer-only point projection. |
+| Completeness Grid | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Noah owns cell placement, finite coverage, reference-relative means, and typed cell/aggregate decisions; Studio retains recipe identity, canonical output hash, metrics, overlays, and lifecycle. |
+| Height-map ROI statistics / reference-grid reconstruction | `Lib.ThreeD 2.8.4` deterministic source-neutral Tools | Complete: Studio retains recipe routing and output evidence; Noah owns aggregation and declared/reference-axis coordinate reconstruction. |
+| Dual Surface Thickness | `Lib.ThreeD 2.8.5` `DualSurfaceThicknessInspectionTool` | Complete: Noah owns plane-relative residuals, statistics, and typed limits; Studio retains identity, lifecycle, metrics, and overlays. |
+| Height Deviation | `Lib.ThreeD 2.8.5` `HeightDeviationInspectionTool` | Complete: Noah owns low/high/peak calculation and typed decision; Studio retains source text, unit, lifecycle, metrics, and overlays. |
+| Declared mesh-normal quality | `Lib.ThreeD 2.8.6` `DeclaredMeshNormalQualityTool` | Complete: Noah owns normal length, topology, degenerate-triangle, and corner-alignment evidence; Studio retains source/format identity, admission evidence, and report composition. |
+| Local-median outlier removal | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Studio retains C3D identity, authored parameters, mask/artifact composition, lifecycle, metrics, and overlays. |
+| Level Surface | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Noah owns unique reference-cell selection, plane/residual statistics, detrending, and output-plane evidence; Studio retains source/ROI identity, authored RMS acceptance, transform/artifact composition, lifecycle, metrics, and overlays. |
 | Height Difference Edge | `Lib.ThreeD` pure adjacent-pair scan/selection | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
 | 3D Line Fit | `Lib.ThreeD` pure deterministic consensus/TLS | Complete: Studio is the strict C3D lineage/artifact adapter and owns lifecycle/evidence only. |
 | Line Intersection | `Lib.ThreeD` | Studio is a typed C3D lineage/artifact adapter; Noah owns closest-approach geometry. |
 | Plane Flatness / Point Pair / Gap-Flush / Volume / Cross-section Dimensions | `Lib.ThreeD` pure inspection tools | Complete for deterministic software evidence: Studio owns A3 identity, ROI/WPG/UI, metrics, overlays, hashes, and replay. |
-| Landmark Correspondence | Studio structural gate | Retain Studio identity/recipe ownership; extract only reusable rank/volume math if repeated external consumers require it. |
+| Surface Match pose search / unique-nearest coverage | `Lib.ThreeD 2.8.4` deterministic source-neutral tools | Complete: Studio retains identity/unit/frame validation, strict adapters, canonical artifacts, acceptance, lifecycle, evidence, and UI. |
+| SurfaceModel / Prepared Scene preparation and surface edges | `Lib.ThreeD 2.8.4` deterministic source-neutral tools | Complete: Studio retains admission, identities, canonical artifacts, separate diagnostic evidence, and UI. |
+| Nominal/actual mesh comparison | `Lib.ThreeD 2.8.4` deterministic source-neutral tools | Complete: Noah owns triangle-distance, sign recovery, streaming statistics, counts, and display sampling; Studio retains source/unit/frame identity, loaders, artifacts, progress adaptation, and UI. |
+| Registration transform diagnostics | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Noah owns homogeneous-row, orthogonality, determinant, translation, and rotation diagnostics; Studio retains authored limits, ordered acceptance, evidence, lifecycle, and UI. |
+| Landmark Correspondence | `Lib.ThreeD 2.8.6` `LandmarkCorrespondenceValidationTool` | Complete: Noah owns augmented rank and normalized tetrahedral volume; Studio retains identity, lineage, recipe, artifact, hashing, and lifecycle ownership. |
 
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.
 
-## Active package migration: Lib.ThreeD 2.7.4
+## Superseding Tool contract and full migration baseline
+
+The owner clarified on 2026-08-01 that inspection algorithms, filters, and
+their supporting reusable calculations must use the Library-Noah Tool form.
+The target is a public sealed `XxxTool` with source-neutral typed
+input/options, a typed controlled result, and one explicit `Execute(...)`
+entry point. The narrow `IThreeDInspectionTool` interface remains compatible
+for regular height-map inspection, but is not forced onto matching, mesh, or
+multi-input Tools.
+
+The current Studio audit is recorded in:
+
+- `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`;
+- `docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json`.
+
+The baseline contains `4` migration-debt files and `26` reviewed Studio
+boundaries. It is a decreasing migration ledger, not a permanent exception
+list. The structure verifier rejects new unclassified numerical owners and
+numerical-signal growth above the recorded baseline. A passing guard does not
+mean the remaining debt is migrated.
+
+Current verification passes structure `27/27`; the vendored `Lib.ThreeD
+2.8.6` package boundary also passes with source commit and SHA-256 agreement.
+Preserve
+`artifacts/current/20260801-noah-tool-ownership-contract/`.
+
+## Current declared-normal quality and Landmark Correspondence migration: Lib.ThreeD 2.8.6
+
+`DeclaredMeshNormalQualityTool` owns finite/non-zero/unit-length evidence,
+triangle index and degeneracy checks, and per-corner normal alignment.
+`LandmarkCorrespondenceValidationTool` owns exactly-four augmented rank and
+span-normalized tetrahedral volume. Studio retains source and landmark
+identity, lineage, report/artifact policy, canonical hashing, lifecycle,
+metrics, overlays, and Viewer presentation.
+
+Normalized baseline/current reports are exact for normal quality and Landmark
+Correspondence (`2/2`). Noah passes `0/0` and `98/98`; Studio passes `0/0`,
+bridge `16/16`, focused `26/26` and `5/5`, loading matrix `128/128`, and
+structure `27/27`. See
+`docs/OPENVISIONLAB_3D_DECLARED_NORMAL_QUALITY_AND_LANDMARK_CORRESPONDENCE_NOAH_MIGRATION_20260801.md`.
+
+## Current Dual Surface Thickness and Height Deviation migration: Lib.ThreeD 2.8.5
+
+`DualSurfaceThicknessInspectionTool` owns reference-plane residuals, mean/min/
+max/range/RMS statistics, limit counts, and typed decisions.
+`HeightDeviationInspectionTool` owns low/high/peak absolute deviation and typed
+decisions. Studio retains product identity, recipe lifecycle, elapsed time,
+ToolResult metrics, overlays, and Viewer presentation.
+
+Normalized current-Release parity is exact for the generic height-measurement
+Workbench and actual Height Deviation recipe (`2/2`). Noah passes `0/0` and
+`92/92`; Studio passes `0/0`, bridge `14/14`, Workbench `54/54`, Validation
+Set `84/84`, focused regressions, and structure `26/26`. See
+`docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md`.
+
+## Current height-map inspection and preparation migration: Lib.ThreeD 2.8.4
+
+Five public Tools now own raw height-grid summary/distribution calculation,
+rectangular finite-value statistics, Completeness Grid placement and typed
+decisions, and declared/reference-axis grid-point reconstruction. Studio
+retains C3D decoding, source/unit/frame/recipe identity, canonical hashes,
+metric/overlay composition, explicit lifecycle, and presentation-only Viewer
+projection.
+
+The five normalized pre/post reports are exact (`5/5`). Focused and expanded
+verification passes package bridge `12/12`, map fidelity `10/10`, Source
+Quality `13/13`, Completeness Grid `23/23`, Height distribution `25/25`,
+generic height-measurement Workbench `54/54`, Height Image `25/25`,
+artifact-owned ROI `18/18`, Validation Set `84/84`, and structure `25/25`.
+See
+`docs/OPENVISIONLAB_3D_HEIGHT_MAP_INSPECTION_PREPARATION_NOAH_MIGRATION_20260801.md`.
+
+## Earlier nominal comparison and transform diagnostics migration: Lib.ThreeD 2.8.3
+
+`TriangleMeshDistanceTool`, `NominalActualMeshComparisonTool`, and
+`RigidTransformDiagnosticsTool` now own the deterministic mesh-distance,
+signed-distance recovery, streaming comparison statistics, and rigid-matrix
+diagnostic calculations. Studio retains strict source/unit/frame/identity
+validation, file loading, canonical evidence, authored acceptance, lifecycle,
+and presentation.
+
+Focused Studio reports remain exact before and after migration: mesh deviation
+`25/25` lines, nominal/actual comparison `31/31` lines, and registration
+acceptance `23/23` lines, each with zero differences. See
+`docs/OPENVISIONLAB_3D_NOMINAL_COMPARISON_AND_TRANSFORM_DIAGNOSTICS_NOAH_MIGRATION_20260801.md`.
+
+## Earlier filtering and leveling migration: Lib.ThreeD 2.8.2
+
+`DeterministicLocalMedianOutlierFilterTool` now owns available-neighbor
+selection, center exclusion, deterministic median calculation, strict
+absolute-deviation comparison, and output/mask indices.
+
+`LevelSurfaceTool` owns unique finite reference-cell collection, the existing
+least-squares height-plane fit, raw-height residual RMS/P2V and reference
+mean, full-grid detrending with missing-mask preservation, and output-plane
+evidence. Studio still validates exact C3D and GridRectangle identity, maps
+region evidence, interprets the authored RMS limit, and creates the immutable
+OpenVisionLab transform, derived C3D, metrics, and overlays.
+
+The two focused Studio goldens pass `9/9` each. Excluding the intentionally
+different evidence-directory path line, all `28` comparable pre/post report
+lines are identical, including derived C3D, mask, and transform SHA-256.
+See
+`docs/OPENVISIONLAB_3D_OUTLIER_FILTER_AND_LEVELING_NOAH_MIGRATION_20260801.md`.
+
+## Earlier Surface Match migration: Lib.ThreeD 2.8.1
+
+Five additional public Tools now own deterministic SurfaceModel and Prepared
+Scene sampling, mesh boundary/crease extraction, organized height-step edge
+extraction, and edge-domain coverage. The seven Studio Surface Match
+compatibility entry points contain validation, mapping, artifact, and evidence
+composition only. Exact pre/post persisted parity passes `24/24`. See
+`docs/OPENVISIONLAB_3D_SURFACE_PREPARATION_EDGE_NOAH_MIGRATION_20260801.md`.
+
+The earlier pose/coverage foundation remains:
+
+`DeterministicRigidSurfacePoseSearchTool` and
+`DeterministicSurfaceCoverageTool` accept only finite, ordered, source-neutral
+XYZ samples plus explicit pure pose/search parameters. Noah owns candidate
+generation and order, centroid translation, bounds and budget rejection,
+unique-nearest correspondence, coverage/RMSE, and best-candidate ranking.
+
+Studio's `RigidSurfacePoseSearch` and `SurfaceCoverageScorer` retain their
+public compatibility names, but now validate Studio artifacts and delegate to
+Noah through `LibraryNoahSurfaceMatching`. A structure guard rejects the old
+rotation, centroid, distance, and claimed-scene helpers in those adapters.
+The controlled known-pose Studio result remains byte-identical at SHA-256
+`4D214BA3684162407332A69D95155C7FF7D780CC7C8B277795DB028619408B5F`.
+See `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md`.
+
+## Historical package migration: Lib.ThreeD 2.7.4
 
 The active package retains the source-neutral affine, common-line, plane,
 point-cloud-apply, and reference-grid tools, deterministic full-XYZ
@@ -136,6 +281,9 @@ so the same package boundary is tested locally and in CI.
   explicit lifecycle, and Runner behavior while the Noah tool owns all median
   windows, neighbor selection, missing-mask preservation, and changed-count
   arithmetic.
+- The schema-1 Noah Tool migration baseline parses, every entry resolves to a
+  current source file and target Tool, and no unclassified or expanded Studio
+  numerical owner is detected.
 
 ## Explicit boundaries
 

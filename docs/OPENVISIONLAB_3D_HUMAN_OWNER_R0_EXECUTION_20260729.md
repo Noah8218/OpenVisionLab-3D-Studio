@@ -1,7 +1,7 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-07-31
-Status: Blocked — the current Workbench v4 package and launcher are ready, but
+Date: 2026-08-01
+Status: Blocked - the current Workbench v4 package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
 ## Purpose
@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `398EF6BC81064120CE8BBB7221944B464BC788E72A840661683F64F9673B3129` |
-| Shell assembly | `86AAEDC1635205AC5599F84B516437272745D4B312CF8394DC9DF684C063C7F5` |
-| Core assembly | `570995ED1B7353C6783D38902BB3555F53141DA42AAA3668B85414596A1288CE` |
-| Data assembly | `94454ED8891FA86A6D2B25764D0DAD583CC0B032955EE82AC65486CE824E85CC` |
-| Tools assembly | `C0EECAC92156970B0606630A7F3950A0DB36818E7A9B895DD1310C5F8EC3C50C` |
-| Viewer assembly | `E0AC9BE4A9B29F7E8896382B8DBB698C684A262C9E1600950C03C5F07E88DD51` |
-| Docking assembly | `28888151D636DE94EE43DD18D7577D7DDDA1401AA2A506BBBA8EF8ABEAFA40CE` |
+| Release EXE | `6E09CC113CD4A52CEABB207062431552A50249BB25251605AAA45DCB7408D3F4` |
+| Shell assembly | `0F75A53EA17570E8A13CDB5EAFCEAFEB4C67B0577D25CFB9B20DEE33FEB060F8` |
+| Core assembly | `737D8289A40A27C0786FBEDDB0CD550789F628F842A242CC0EFA21A721F0136C` |
+| Data assembly | `96F93E52314FF08F9956B5152FD2C9BDDF9F0B339C3ED595FFA4132F8AFCD5D6` |
+| Tools assembly | `D136D2A5D2FB4DF89514B8075005F2D388740D542CE4F1A038294B6029254F73` |
+| Viewer assembly | `FC30B120D5DA0A7C85819FE8268CA07EF73CE58358C75BD57BDA0C5DFD479DEF` |
+| Docking assembly | `6939E69E0B87FF5A8DE8D8FA74E91C77B70A540DA1A8B282EFC0127EBF36D26A` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,10 +52,10 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-07-31 surface-edge diagnostics, independent thresholds, and retained
-false-positive review closure supersedes the previous fixed binary set. R0
-must use the hashes above and restart from Wide; no result from an earlier UI
-build can close this gate.
+The 2026-08-01 Library-Noah declared-normal quality and landmark-correspondence
+migration supersedes the previous fixed binary set. R0 must use
+the hashes above and restart from Wide; no result from an earlier binary set
+can close this gate.
 
 The product owner's 2026-07-31 direction allows dependency-ready software
 development to continue before this R0 is performed. This sheet still gates
@@ -168,14 +168,13 @@ Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only launch checks ->
 Pass; Wide owner run -> Pending; Compact owner run -> Pending.
 Verification: the current source was rebuilt in Release with `0` warnings and
-`0` errors on 2026-07-31. After the surface-match acceptance, authored bounds,
-and goldens closure,
-both
-process-local `-ValidateOnly` commands passed again, enforced the
+`0` errors on 2026-08-01. After the Library-Noah declared-normal quality and
+landmark-correspondence migration, both process-local `-ValidateOnly` commands
+passed again, enforced the
 refreshed nine-input fixed hashes above, confirmed the Release was newer than
 current source, and launched no application.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`artifacts/current/20260731-surface-match-acceptance-bounds-goldens/r0-*-validate-only.txt`.
+`artifacts/current/20260801-noah-normal-quality-landmark-migration/after/r0-*-validate-only.txt`.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. Surface
 matching software may proceed independently, but it cannot be used to claim

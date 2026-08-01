@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OpenVisionLab.ThreeD.Core;
+using Noah = Lib.ThreeD.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -53,6 +54,7 @@ public static class RegistrationAcceptanceRule
     private const string DeterminantMetric = "Rotation determinant";
     private const string TranslationMetric = "Translation magnitude";
     private const string RotationMetric = "Rotation angle";
+    private static readonly Noah.RigidTransformDiagnosticsTool TransformDiagnostics = new();
 
     public static RegistrationAcceptanceEvaluation Evaluate(
         RegistrationAcceptancePolicy? policy,
@@ -142,15 +144,15 @@ public static class RegistrationAcceptanceRule
                 metrics);
         }
 
-        SetValue(metrics, HomogeneousMetric, transform.HomogeneousRowMaxError);
-        SetValue(metrics, OrthogonalityMetric, transform.RotationOrthogonalityMaxError);
+        SetValue(metrics, HomogeneousMetric, transform.HomogeneousRowMaximumError);
+        SetValue(metrics, OrthogonalityMetric, transform.RotationOrthogonalityMaximumError);
         SetValue(metrics, DeterminantMetric, transform.RotationDeterminant);
         SetValue(metrics, TranslationMetric, transform.TranslationMagnitude);
         SetValue(metrics, RotationMetric, transform.RotationAngleDegrees);
 
-        var homogeneousStatus = Status(transform.HomogeneousRowMaxError, validatedPolicy.RigidTransformTolerance);
-        var orthogonalityStatus = Status(transform.RotationOrthogonalityMaxError, validatedPolicy.RigidTransformTolerance);
-        var determinantStatus = Status(Math.Abs(transform.RotationDeterminant - 1.0), validatedPolicy.RigidTransformTolerance);
+        var homogeneousStatus = Status(transform.HomogeneousRowMaximumError, validatedPolicy.RigidTransformTolerance);
+        var orthogonalityStatus = Status(transform.RotationOrthogonalityMaximumError, validatedPolicy.RigidTransformTolerance);
+        var determinantStatus = Status(transform.RotationDeterminantUnitError, validatedPolicy.RigidTransformTolerance);
         SetStatus(metrics, HomogeneousMetric, homogeneousStatus);
         SetStatus(metrics, OrthogonalityMetric, orthogonalityStatus);
         SetStatus(metrics, DeterminantMetric, determinantStatus);
@@ -281,69 +283,12 @@ public static class RegistrationAcceptanceRule
 
     private static bool TryMeasureTransform(
         IReadOnlyList<double>? values,
-        out TransformMeasures measures,
+        out Noah.RigidTransformDiagnosticsResult measures,
         out string message)
     {
-        measures = default;
-        if (values is null || values.Count != 16 || values.Any(value => !double.IsFinite(value)))
-        {
-            message = "Registration transform must contain 16 finite row-major float64 values.";
-            return false;
-        }
-
-        var homogeneousRowMaxError = new[]
-        {
-            Math.Abs(values[12]),
-            Math.Abs(values[13]),
-            Math.Abs(values[14]),
-            Math.Abs(values[15] - 1.0)
-        }.Max();
-        var rotationRows = new[]
-        {
-            new Vector3d(values[0], values[1], values[2]),
-            new Vector3d(values[4], values[5], values[6]),
-            new Vector3d(values[8], values[9], values[10])
-        };
-        var orthogonalityMaxError = 0.0;
-        for (var row = 0; row < 3; row++)
-        {
-            for (var column = 0; column < 3; column++)
-            {
-                var expected = row == column ? 1.0 : 0.0;
-                orthogonalityMaxError = Math.Max(
-                    orthogonalityMaxError,
-                    Math.Abs(rotationRows[row].Dot(rotationRows[column]) - expected));
-            }
-        }
-
-        var determinant =
-            values[0] * (values[5] * values[10] - values[6] * values[9])
-            - values[1] * (values[4] * values[10] - values[6] * values[8])
-            + values[2] * (values[4] * values[9] - values[5] * values[8]);
-        var translationMagnitude = Math.Sqrt(
-            values[3] * values[3]
-            + values[7] * values[7]
-            + values[11] * values[11]);
-        var cosine = Math.Clamp((values[0] + values[5] + values[10] - 1.0) / 2.0, -1.0, 1.0);
-        var rotationAngleDegrees = Math.Acos(cosine) * 180.0 / Math.PI;
-        if (!double.IsFinite(homogeneousRowMaxError)
-            || !double.IsFinite(orthogonalityMaxError)
-            || !double.IsFinite(determinant)
-            || !double.IsFinite(translationMagnitude)
-            || !double.IsFinite(rotationAngleDegrees))
-        {
-            message = "Registration transform produced non-finite plausibility metrics.";
-            return false;
-        }
-
-        measures = new TransformMeasures(
-            homogeneousRowMaxError,
-            orthogonalityMaxError,
-            determinant,
-            translationMagnitude,
-            rotationAngleDegrees);
-        message = string.Empty;
-        return true;
+        measures = TransformDiagnostics.Execute(values!);
+        message = measures.Message;
+        return measures.Success;
     }
 
     private static RegistrationAcceptanceEvaluation Create(
@@ -399,15 +344,4 @@ public static class RegistrationAcceptanceRule
     private static ResultStatus Status(double actual, double maximum) =>
         actual <= maximum ? ResultStatus.Pass : ResultStatus.Fail;
 
-    private readonly record struct Vector3d(double X, double Y, double Z)
-    {
-        public double Dot(Vector3d other) => X * other.X + Y * other.Y + Z * other.Z;
-    }
-
-    private readonly record struct TransformMeasures(
-        double HomogeneousRowMaxError,
-        double RotationOrthogonalityMaxError,
-        double RotationDeterminant,
-        double TranslationMagnitude,
-        double RotationAngleDegrees);
 }

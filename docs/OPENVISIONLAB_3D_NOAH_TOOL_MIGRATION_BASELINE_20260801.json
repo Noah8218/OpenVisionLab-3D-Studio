@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "contract": "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md",
+  "signalPatternVersion": 1,
+  "migrationDebt": [
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs",
+      "maximumSignalCount": 5,
+      "targetNoahTool": "RepeatabilityStatisticsTool",
+      "scope": "Move per-correspondence sample statistics and repeatability calculations."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs",
+      "maximumSignalCount": 4,
+      "targetNoahTool": "RepeatabilityStatisticsTool",
+      "scope": "Move sample standard deviation, range, and six-sigma calculations."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs",
+      "maximumSignalCount": 4,
+      "targetNoahTool": "LabeledEvidenceStatisticsTool",
+      "scope": "Move role-grouped descriptive statistics; retain evidence identity and routing in Studio."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateAnalyzer.cs",
+      "maximumSignalCount": 2,
+      "targetNoahTool": "ThresholdCandidateAnalysisTool",
+      "scope": "Move deterministic threshold generation, ranking, and error-count analysis."
+    }
+  ],
+  "studioBoundaries": [
+    {
+      "path": "src/OpenVisionLab.ThreeD.Data/Quality/ImportedMeshNormalQualityAnalyzer.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeclaredMeshNormalQualityTool adapter plus source identity, format, admission evidence, and immutable SourceNormalQualityReport composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DLandmarkCorrespondenceRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict LandmarkCorrespondenceValidationTool adapter plus landmark identity, lineage, recipe policy, output hashing, lifecycle, metrics, and overlays."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Rules/DualSurfaceThicknessRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DualSurfaceThicknessInspectionTool adapter plus source identity, unit, elapsed time, ToolResult metrics, overlays, and recipe lifecycle."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Rules/HeightDeviationRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict HeightDeviationInspectionTool adapter plus source identity, localized evidence formatting, ToolResult metrics, overlays, and lifecycle."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightGrid.cs",
+      "maximumSignalCount": 18,
+      "responsibility": "Strict HeightGridSummaryTool adapter plus C3D decoding, source identity, load timing, and Viewer-only point projection."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightDistribution.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Immutable Studio projection of Noah-owned distribution bins, bounds, peak evidence, and summary statistics."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict HeightDistributionStatisticsTool adapter plus C3D byte decoding, encoding, identity, and immutable value ownership."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DSourceQualityAnalyzer.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict HeightDistributionStatisticsTool adapter plus source identity, invalid-mask linkage, and Source Quality report composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Measurement/C3DCompletenessGridRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict CompletenessGridInspectionTool adapter plus recipe identity, canonical output hashing, metrics, and overlay composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Measurement/ToolRecipeHeightMeasurementExecution.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict HeightMapRegionStatisticsTool and ReferenceGridPointReconstructionTool adapter plus explicit recipe routing and evidence hashing."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Comparison/NominalActualComparisonExecutor.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict NominalActualMeshComparisonTool adapter plus file identity, unit/frame, progress, result-status, and evidence composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Comparison/RegistrationAcceptanceRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict RigidTransformDiagnosticsTool adapter plus authored policy validation, ordered acceptance, metrics, and result composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Comparison/TriangleMeshDistanceIndex.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Compatibility adapter over TriangleMeshDistanceTool with Studio Vector3 and enum mapping only."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DDatumPlaneDeviationRule.cs",
+      "maximumSignalCount": 4,
+      "responsibility": "Noah adapter plus bounded read-only overlay sampling and metric ordering."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Filtering/C3DRemoveOutlierPixelsRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicLocalMedianOutlierFilterTool adapter plus source identity, mask, derived C3D, metric, and overlay composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceEdgeDiagnosticOverlayBuilder.cs",
+      "maximumSignalCount": 1,
+      "responsibility": "Presentation-only diagnostic geometry composition from immutable Noah-owned evidence."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceMatchEvaluationExecutor.cs",
+      "maximumSignalCount": 1,
+      "responsibility": "Explicit execution, acceptance, and observational runtime composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DLevelSurfaceRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict LevelSurfaceTool adapter plus source and reference identity validation, authored RMS acceptance, transform/artifact, metric, and overlay composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceModelPreparation.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicSurfaceModelPreparationTool adapter plus source-normal admission and identified artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/PreparedScenePreparation.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicPreparedScenePreparationTool adapter plus Source Quality identity and artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/ModelSurfaceEdgeExtractor.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicModelSurfaceEdgeExtractionTool adapter plus identified model-edge artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SceneSurfaceEdgeExtractor.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicOrganizedSceneSurfaceEdgeExtractionTool adapter plus complete-grid identity checks and artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceAndEdgeMatchScorer.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicSurfaceEdgeCoverageTool adapter plus identity validation, evidence formatting, and score-artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Rules/C3DThicknessRule.cs",
+      "maximumSignalCount": 1,
+      "responsibility": "Noah result mapping, metric ordering, and display-safe count conversion."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Rules/C3DWarpageRule.cs",
+      "maximumSignalCount": 1,
+      "responsibility": "Noah result mapping, metric ordering, and display-safe count conversion."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Rules/PointPairDimensionsRule.cs",
+      "maximumSignalCount": 1,
+      "responsibility": "Noah result mapping and legacy-axis label selection."
+    }
+  ]
+}

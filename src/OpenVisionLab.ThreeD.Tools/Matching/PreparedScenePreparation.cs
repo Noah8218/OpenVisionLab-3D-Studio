@@ -1,3 +1,4 @@
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -11,8 +12,9 @@ public sealed record PreparedScenePreparationRequest(
     PreparedScenePreparationParameters Parameters);
 
 /// <summary>
-/// Pure measured-scene preparation. Version 1 admits only complete finite
-/// point evidence tied to SourceQualityReport and never repairs source data.
+/// Strict product adapter for measured-scene preparation. Library-Noah owns
+/// deterministic even-index sampling; Studio owns Source Quality identity,
+/// source preservation, and the persisted artifact.
 /// </summary>
 public static class PreparedScenePreparation
 {
@@ -39,24 +41,25 @@ public static class PreparedScenePreparation
         }
 
         var points = request.FinitePoints.ToArray();
-        var sampleCount = Math.Min(
-            request.Parameters.MaximumSampleCount,
-            points.Length);
-        var samples = new PreparedSceneSample[sampleCount];
-        for (var sampleOrder = 0;
-             sampleOrder < sampleCount;
-             sampleOrder++)
+        var noahResult = new DeterministicPreparedScenePreparationTool()
+            .Execute(
+                points.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
+                new DeterministicPreparedScenePreparationOptions
+                {
+                    MaximumSampleCount =
+                        request.Parameters.MaximumSampleCount
+                });
+        if (!noahResult.Success)
         {
-            var sourcePointIndex =
-                PreparedSceneSampling.GetEvenPointIndex(
-                    sampleOrder,
-                    sampleCount,
-                    points.Length);
-            samples[sampleOrder] = new PreparedSceneSample(
-                sampleOrder,
-                sourcePointIndex,
-                points[sourcePointIndex]);
+            throw new InvalidDataException(noahResult.Message);
         }
+
+        var samples = noahResult.Samples
+            .Select(sample => new PreparedSceneSample(
+                sample.Order,
+                sample.SourcePointIndex,
+                points[sample.SourcePointIndex]))
+            .ToArray();
 
         return PreparedSceneArtifact.Create(
             request.ArtifactId,

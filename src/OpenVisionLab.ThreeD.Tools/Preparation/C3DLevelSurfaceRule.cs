@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Numerics;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -37,20 +37,40 @@ public static class C3DLevelSurfaceRule
         try
         {
             ValidateInput(input);
-            var (samples, regions) = CollectReferenceSamples(input, cancellationToken);
-            if (samples.Count < input.MinimumValidSampleCount)
+            var numerical = new LevelSurfaceTool().Execute(
+                input.Source.Height,
+                input.Source.Width,
+                input.Source.Values.ToArray(),
+                input.ReferenceSelections.Select(selection =>
+                {
+                    var rectangle = selection.GridRectangle!;
+                    return new LevelSurfaceRegion(
+                        rectangle.Row,
+                        rectangle.Column,
+                        rectangle.RowCount,
+                        rectangle.ColumnCount);
+                }).ToArray(),
+                new LevelSurfaceOptions
+                {
+                    MinimumValidSampleCount = input.MinimumValidSampleCount
+                },
+                cancellationToken);
+            if (!numerical.Success)
             {
-                throw new InvalidDataException(
-                    $"Level Surface requires at least {input.MinimumValidSampleCount} unique finite reference samples; found {samples.Count}.");
+                throw new InvalidDataException(numerical.Message);
             }
 
-            var fit = HeightFieldPlaneFit.Fit(samples);
-            var residuals = samples
-                .Select(sample => sample.RawHeight - fit.EvaluateY(sample.Position.X, sample.Position.Z))
-                .ToArray();
-            var residualRms = RootMeanSquare(residuals);
-            var residualPeakToValley = residuals.Max() - residuals.Min();
-            var targetHeight = samples.Average(sample => sample.RawHeight);
+            var regions = input.ReferenceSelections.Select((selection, index) =>
+            {
+                var rectangle = selection.GridRectangle!;
+                return new C3DLevelingReferenceRegion(
+                    selection.Id,
+                    rectangle.Row,
+                    rectangle.Column,
+                    rectangle.RowCount,
+                    rectangle.ColumnCount,
+                    numerical.RegionEvidence[index].ValidSampleCount);
+            }).ToArray();
             var transform = C3DLevelingTransform.Create(
                 $"{input.OutputEntityId}.transform",
                 input.Source.EntityId,
@@ -59,17 +79,17 @@ public static class C3DLevelSurfaceRule
                 input.Source.FrameId,
                 input.Source.Width,
                 input.Source.Height,
-                fit.SlopeX,
-                fit.SlopeZ,
-                fit.Intercept,
-                targetHeight,
-                samples.Count,
-                residualRms,
-                residualPeakToValley,
+                numerical.FittedSlopeX,
+                numerical.FittedSlopeZ,
+                numerical.FittedIntercept,
+                numerical.TargetHeight,
+                numerical.ReferenceSampleCount,
+                numerical.ReferenceResidualRms,
+                numerical.ReferenceResidualPeakToValley,
                 regions,
                 $"{input.StepId}:{C3DLevelingTransform.ReferenceFitPolicy}:{C3DLevelingTransform.LevelingPolicy}:source={input.Source.ContentSha256}");
 
-            if (residualRms > input.MaximumReferenceRmsResidual)
+            if (numerical.ReferenceResidualRms > input.MaximumReferenceRmsResidual)
             {
                 stopwatch.Stop();
                 return new C3DLevelSurfaceEvaluation(
@@ -89,32 +109,10 @@ public static class C3DLevelSurfaceRule
                     double.NaN);
             }
 
-            var sourceValues = input.Source.Values.Span;
-            var outputValues = new double[sourceValues.Length];
-            for (var index = 0; index < sourceValues.Length; index++)
-            {
-                if ((index & 0x3fff) == 0) cancellationToken.ThrowIfCancellationRequested();
-                var value = sourceValues[index];
-                outputValues[index] = double.IsFinite(value)
-                    ? transform.TransformHeight(
-                        index / input.Source.Width,
-                        index % input.Source.Width,
-                        value)
-                    : double.NaN;
-            }
-
             var output = input.Source.CreateDerived(
                 input.OutputEntityId,
-                outputValues,
+                numerical.Values,
                 $"{input.StepId}:levelingTransform={transform.ContentSha256}:source={input.Source.ContentSha256}");
-            var outputSamples = samples.Select(sample =>
-            {
-                var row = (int)sample.Position.Z;
-                var column = (int)sample.Position.X;
-                var height = outputValues[checked(row * input.Source.Width + column)];
-                return new HeightFieldPlaneSample(new Vector3(column, (float)height, row), height);
-            }).ToArray();
-            var outputFit = HeightFieldPlaneFit.Fit(outputSamples);
             stopwatch.Stop();
             return new C3DLevelSurfaceEvaluation(
                 CreateResult(
@@ -125,12 +123,12 @@ public static class C3DLevelSurfaceRule
                     transform,
                     output.ValidCount,
                     output.MissingCount,
-                    outputFit.SlopeX,
-                    outputFit.SlopeZ),
+                    numerical.OutputReferenceSlopeX,
+                    numerical.OutputReferenceSlopeZ),
                 output,
                 transform,
-                outputFit.SlopeX,
-                outputFit.SlopeZ);
+                numerical.OutputReferenceSlopeX,
+                numerical.OutputReferenceSlopeZ);
         }
         catch (OperationCanceledException)
         {
@@ -209,48 +207,6 @@ public static class C3DLevelSurfaceRule
         }
     }
 
-    private static (IReadOnlyList<HeightFieldPlaneSample> Samples, IReadOnlyList<C3DLevelingReferenceRegion> Regions)
-        CollectReferenceSamples(C3DLevelSurfaceInput input, CancellationToken cancellationToken)
-    {
-        var unique = new HashSet<int>();
-        var samples = new List<HeightFieldPlaneSample>();
-        var regions = new List<C3DLevelingReferenceRegion>();
-        var values = input.Source.Values.Span;
-        foreach (var selection in input.ReferenceSelections)
-        {
-            var rectangle = selection.GridRectangle!;
-            var validInRegion = 0;
-            for (var row = rectangle.Row; row < rectangle.Row + rectangle.RowCount; row++)
-            {
-                for (var column = rectangle.Column; column < rectangle.Column + rectangle.ColumnCount; column++)
-                {
-                    var index = checked(row * input.Source.Width + column);
-                    if ((index & 0x3fff) == 0) cancellationToken.ThrowIfCancellationRequested();
-                    var value = values[index];
-                    if (!double.IsFinite(value))
-                    {
-                        continue;
-                    }
-                    validInRegion++;
-                    if (unique.Add(index))
-                    {
-                        samples.Add(new HeightFieldPlaneSample(
-                            new Vector3(column, (float)value, row),
-                            value));
-                    }
-                }
-            }
-            regions.Add(new C3DLevelingReferenceRegion(
-                selection.Id,
-                rectangle.Row,
-                rectangle.Column,
-                rectangle.RowCount,
-                rectangle.ColumnCount,
-                validInRegion));
-        }
-        return (samples, regions);
-    }
-
     private static ToolResult CreateResult(
         ResultStatus status,
         string message,
@@ -295,6 +251,4 @@ public static class C3DLevelSurfaceRule
                     input.OutputEntityId)
             ]);
 
-    private static double RootMeanSquare(IReadOnlyList<double> values) =>
-        Math.Sqrt(values.Sum(value => value * value) / values.Count);
 }

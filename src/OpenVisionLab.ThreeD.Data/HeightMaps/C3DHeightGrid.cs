@@ -2,6 +2,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Numerics;
 using System.Security.Cryptography;
+using Lib.ThreeD.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 
@@ -235,12 +236,6 @@ public sealed class C3DHeightGrid
         }
 
         var samples = new float[sampleCount];
-        var validCount = 0;
-        var zeroCount = 0;
-        var min = float.PositiveInfinity;
-        var max = float.NegativeInfinity;
-        var sum = 0.0;
-
         var readStart = Stopwatch.GetTimestamp();
         for (var i = 0; i < samples.Length; i++)
         {
@@ -252,40 +247,29 @@ public sealed class C3DHeightGrid
 
             var value = reader.ReadSingle();
             samples[i] = value;
-
-            if (!float.IsFinite(value))
-            {
-                continue;
-            }
-
-            if (value == 0.0f)
-            {
-                zeroCount++;
-                continue;
-            }
-
-            validCount++;
-            min = Math.Min(min, value);
-            max = Math.Max(max, value);
-            sum += value;
         }
         var readMilliseconds = Stopwatch.GetElapsedTime(readStart).TotalMilliseconds;
-
-        if (validCount == 0)
-        {
-            throw new InvalidDataException($"C3D contains no non-zero finite samples: {path}");
-        }
-
-        var mean = sum / validCount;
         progress?.Report(65.0);
         var distributionStart = Stopwatch.GetTimestamp();
-        var heightDistribution = C3DHeightDistribution.Create(
+        var summary = new HeightGridSummaryTool().Execute(
             samples,
-            min,
-            max,
-            mean,
-            validCount,
-            cancellationToken: cancellationToken);
+            new HeightGridSummaryOptions
+            {
+                ZeroIsMissing = true,
+                DistributionBinCount = C3DHeightDistribution.DefaultBinCount
+            },
+            cancellationToken);
+        if (!summary.Success)
+        {
+            throw new InvalidDataException(
+                $"C3D contains no non-zero finite samples: {path}");
+        }
+        var validCount = summary.ValidSampleCount;
+        var zeroCount = summary.ZeroSampleCount;
+        var min = checked((float)summary.Minimum);
+        var max = checked((float)summary.Maximum);
+        var mean = summary.Mean;
+        var heightDistribution = C3DHeightDistribution.Create(summary);
         var distributionMilliseconds = Stopwatch.GetElapsedTime(distributionStart).TotalMilliseconds;
         progress?.Report(78.0);
         var pointStride = maxRenderedPoints <= 0

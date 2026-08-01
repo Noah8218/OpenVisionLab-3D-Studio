@@ -232,6 +232,7 @@ public sealed partial class ToolWorkbenchViewModel
             MarkLineIntersectionPreviewStaleIfNeeded();
             MarkLandmarkCorrespondencePreviewStaleIfNeeded();
             MarkAffineSolvePreviewStaleIfNeeded();
+            MarkSurfaceMatchExperimentCandidateStaleIfNeeded(step);
             SetDirty(true);
             RefreshRecipeState();
         }

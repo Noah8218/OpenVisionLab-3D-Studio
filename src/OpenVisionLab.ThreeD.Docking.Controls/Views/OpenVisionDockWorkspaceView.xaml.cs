@@ -80,12 +80,26 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Data & Layers", OnDataLayersTitleChanged));
 
+    public static readonly DependencyProperty CompactDataLayersTitleProperty =
+        DependencyProperty.Register(
+            nameof(CompactDataLayersTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Flow", OnCompactAuthoringTitleChanged));
+
     public static readonly DependencyProperty ToolLibraryTitleProperty =
         DependencyProperty.Register(
             nameof(ToolLibraryTitle),
             typeof(string),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Tool Library", OnToolLibraryTitleChanged));
+
+    public static readonly DependencyProperty CompactToolLibraryTitleProperty =
+        DependencyProperty.Register(
+            nameof(CompactToolLibraryTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Tools", OnCompactAuthoringTitleChanged));
 
     public static readonly DependencyProperty ToolInspectorContentProperty =
         DependencyProperty.Register(
@@ -100,6 +114,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(string),
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Tool / Inspector", OnToolInspectorTitleChanged));
+
+    public static readonly DependencyProperty CompactToolInspectorTitleProperty =
+        DependencyProperty.Register(
+            nameof(CompactToolInspectorTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Selected", OnCompactAuthoringTitleChanged));
 
     public static readonly DependencyProperty EvidenceContentProperty =
         DependencyProperty.Register(
@@ -299,10 +320,22 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(DataLayersTitleProperty, value);
     }
 
+    public string CompactDataLayersTitle
+    {
+        get => (string)GetValue(CompactDataLayersTitleProperty);
+        set => SetValue(CompactDataLayersTitleProperty, value);
+    }
+
     public string ToolLibraryTitle
     {
         get => (string)GetValue(ToolLibraryTitleProperty);
         set => SetValue(ToolLibraryTitleProperty, value);
+    }
+
+    public string CompactToolLibraryTitle
+    {
+        get => (string)GetValue(CompactToolLibraryTitleProperty);
+        set => SetValue(CompactToolLibraryTitleProperty, value);
     }
 
     public object? ToolInspectorContent
@@ -315,6 +348,12 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         get => (string)GetValue(ToolInspectorTitleProperty);
         set => SetValue(ToolInspectorTitleProperty, value);
+    }
+
+    public string CompactToolInspectorTitle
+    {
+        get => (string)GetValue(CompactToolInspectorTitleProperty);
+        set => SetValue(CompactToolInspectorTitleProperty, value);
     }
 
     public object? EvidenceContent
@@ -861,7 +900,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         if (owner is OpenVisionDockWorkspaceView view && view.dataLayersAnchorable is not null)
         {
-            view.dataLayersAnchorable.Title = args.NewValue as string ?? string.Empty;
+            view.ApplyAdaptiveAuthoringTitles();
         }
     }
 
@@ -869,7 +908,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         if (owner is OpenVisionDockWorkspaceView view && view.toolLibraryAnchorable is not null)
         {
-            view.toolLibraryAnchorable.Title = args.NewValue as string ?? string.Empty;
+            view.ApplyAdaptiveAuthoringTitles();
         }
     }
 
@@ -893,7 +932,15 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         if (owner is OpenVisionDockWorkspaceView view && view.toolInspectorAnchorable is not null)
         {
-            view.toolInspectorAnchorable.Title = args.NewValue as string ?? string.Empty;
+            view.ApplyAdaptiveAuthoringTitles();
+        }
+    }
+
+    private static void OnCompactAuthoringTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.dataLayersAnchorable is not null)
+        {
+            view.ApplyAdaptiveAuthoringTitles();
         }
     }
 
@@ -971,11 +1018,9 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     private void ApplyDockTitles()
     {
-        toolLibraryAnchorable.Title = ToolLibraryTitle;
-        dataLayersAnchorable.Title = DataLayersTitle;
+        ApplyAdaptiveAuthoringTitles();
         viewerAnchorable.Title = ViewerTitle;
         resultsAnchorable.Title = ResultsTitle;
-        toolInspectorAnchorable.Title = ToolInspectorTitle;
         evidenceAnchorable.Title = EvidenceTitle;
         outputCompareAnchorable.Title = OutputCompareTitle;
         displayedOutputsAnchorable.Title = DisplayedOutputsTitle;
@@ -984,6 +1029,19 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         fitDiagnosticsAnchorable.Title = FitDiagnosticsTitle;
         intersectionEvidenceAnchorable.Title = IntersectionEvidenceTitle;
         correspondenceEvidenceAnchorable.Title = CorrespondenceEvidenceTitle;
+    }
+
+    private void ApplyAdaptiveAuthoringTitles()
+    {
+        toolLibraryAnchorable.Title = dataLayersTabbedForCompactLayout
+            ? CompactToolLibraryTitle
+            : ToolLibraryTitle;
+        dataLayersAnchorable.Title = dataLayersTabbedForCompactLayout
+            ? CompactDataLayersTitle
+            : DataLayersTitle;
+        toolInspectorAnchorable.Title = dataLayersTabbedForCompactLayout
+            ? CompactToolInspectorTitle
+            : ToolInspectorTitle;
     }
 
     private void ApplyInitialDockSizes()
@@ -1012,6 +1070,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
         var useCompactLayout = width < CompactWorkbenchWidth;
         dataLayersTabbedForCompactLayout = useCompactLayout;
+        ApplyAdaptiveAuthoringTitles();
         RestoreAnchorableOwners();
         DetachPrimaryPanes();
 

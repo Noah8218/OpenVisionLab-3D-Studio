@@ -57,8 +57,11 @@ public sealed partial class ToolWorkbenchViewModel
         OpenVisionLanguageService.LanguageChanged += OnFirstRecipeLanguageChanged;
     }
 
-    private void OnFirstRecipeLanguageChanged(object? sender, EventArgs args) =>
+    private void OnFirstRecipeLanguageChanged(object? sender, EventArgs args)
+    {
         NotifyFirstRecipeUx();
+        RefreshSurfaceMatchExperimentState();
+    }
 
     private void NotifyFirstRecipeUx()
     {

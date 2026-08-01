@@ -258,6 +258,10 @@ public partial class MainWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetCursorPos(int x, int y);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
     {
@@ -392,6 +396,10 @@ public partial class MainWindow : Window
             smoke.ExpandSelectedToolParametersSmoke;
         var focusSelectedToolParameterSearchSmoke =
             smoke.FocusSelectedToolParameterSearchSmoke;
+        var surfaceMatchExperimentPreviewSmoke =
+            smoke.SurfaceMatchExperimentPreviewSmoke;
+        var surfaceMatchExperimentFocusHoverSmoke =
+            smoke.SurfaceMatchExperimentFocusHoverSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
         var twoPointLinePublishSmoke = smoke.TwoPointLinePublishSmoke;
@@ -1042,9 +1050,56 @@ public partial class MainWindow : Window
                     }
                 }
 
+                if (surfaceMatchExperimentPreviewSmoke
+                    && !await _viewModel.Workbench
+                        .PreviewSelectedSurfaceMatchExperimentAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Surface Match experiment Preview did not produce a temporary candidate.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 var workbenchUiApplyStarted = Stopwatch.GetTimestamp();
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                if (surfaceMatchExperimentFocusHoverSmoke)
+                {
+                    var publishedButton =
+                        FindVisualDescendants<System.Windows.Controls.Button>(
+                                ToolWorkbench)
+                            .FirstOrDefault(button =>
+                                System.Windows.Automation.AutomationProperties
+                                    .GetAutomationId(button)
+                                == "SurfaceMatchExperimentShowPublishedButton");
+                    if (publishedButton is null
+                        || !publishedButton.Focus())
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match Published comparison button could not receive keyboard focus.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    var center = publishedButton.PointToScreen(
+                        new System.Windows.Point(
+                            publishedButton.ActualWidth / 2.0,
+                            publishedButton.ActualHeight / 2.0));
+                    if (!SetCursorPos(
+                            (int)Math.Round(center.X),
+                            (int)Math.Round(center.Y)))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match Published comparison button could not receive pointer hover.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Input);
+                    await Task.Delay(100);
+                }
                 var workbenchUiApplyMilliseconds = Stopwatch.GetElapsedTime(workbenchUiApplyStarted).TotalMilliseconds;
                 if (workbenchInteractionReportPath is not null)
                 {

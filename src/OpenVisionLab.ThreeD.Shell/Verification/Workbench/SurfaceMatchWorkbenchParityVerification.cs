@@ -211,6 +211,218 @@ internal static class SurfaceMatchWorkbenchParityVerification
                         == workbenchEvaluation.Assessment
                             .ContentSha256,
                     $"runnerTicks={runnerRuntime.TotalElapsedTicks};workbenchTicks={workbenchEvaluation.Runtime.TotalElapsedTicks};deterministicRuntimeParity=false");
+
+                var experiment = new ToolWorkbenchViewModel();
+                var experimentTool = experiment.Tools.Single(tool =>
+                    tool.Id == "surface-match");
+                experiment.SetC3DSource(
+                    FindRepoFile(
+                        "3D",
+                        "Samples",
+                        "ThicknessCouponV1",
+                        "thickness-coupon-v1.C3D"),
+                    markDirty: false);
+                experiment.AddSelectedToolCommand.Execute(
+                    experimentTool);
+                var experimentDraft =
+                    experiment.SelectedStepPropertyDraft
+                        as SurfaceMatchStepProperties;
+                ApplySurfaceMatchContracts(
+                    experimentDraft!,
+                    runnerExecution.PoseResult.Parameters,
+                    runnerAssessment.Policy);
+                experiment.MarkSelectedStepParameterDraftDirty();
+                var experimentApplied =
+                    experiment.TryApplySelectedStepParameterDraft(
+                        out var experimentApplyMessage);
+                var experimentDisplayRequests = 0;
+                ToolWorkbenchSurfaceMatchDisplayRequestEventArgs?
+                    experimentRequest = null;
+                experiment.SurfaceMatchDisplayRequested += (_, args) =>
+                {
+                    experimentDisplayRequests++;
+                    experimentRequest = args;
+                };
+                experiment.ShowSurfaceMatchEvidence(
+                    model,
+                    scene,
+                    runnerExecution,
+                    runnerAssessment,
+                    runnerRuntime);
+                var publishedBeforePreview =
+                    experiment.SurfaceMatchEvidence;
+                var dirtyBeforePreview = experiment.IsDirty;
+                var parametersBeforePreview = string.Join(
+                    "|",
+                    experiment.SelectedPipelineStep!.Parameters.Select(
+                        parameter =>
+                            $"{parameter.Name}={parameter.Value}"));
+                var displayCountBeforePreview =
+                    experimentDisplayRequests;
+                var previewed = Task.Run(
+                        experiment
+                            .PreviewSelectedSurfaceMatchExperimentAsync)
+                    .GetAwaiter()
+                    .GetResult();
+                var candidateExecution =
+                    experiment.SurfaceMatchExperimentCandidate;
+                var candidateRequest = experimentRequest;
+                Check(
+                    "experiment-preview-creates-one-temporary-candidate",
+                    experimentApplied
+                    && previewed
+                    && candidateExecution is not null
+                    && experiment.HasSurfaceMatchExperimentCandidate
+                    && !experiment.IsSurfaceMatchExperimentCandidateStale
+                    && experiment.IsSurfaceMatchExperimentCandidateDisplayed
+                    && experimentDisplayRequests
+                        == displayCountBeforePreview + 1
+                    && ReferenceEquals(
+                        candidateRequest?.Execution,
+                        candidateExecution),
+                    $"applied={experimentApplied};previewed={previewed};candidate={candidateExecution?.ContentSha256 ?? "(none)"};displayRequests={experimentDisplayRequests};apply={experimentApplyMessage}");
+                Check(
+                    "experiment-preview-preserves-published-and-recipe",
+                    ReferenceEquals(
+                        experiment.SurfaceMatchEvidence,
+                        publishedBeforePreview)
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchAssessment,
+                        runnerAssessment)
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchRuntime,
+                        runnerRuntime)
+                    && experiment.IsDirty == dirtyBeforePreview
+                    && parametersBeforePreview == string.Join(
+                        "|",
+                        experiment.SelectedPipelineStep.Parameters.Select(
+                            parameter =>
+                                $"{parameter.Name}={parameter.Value}")),
+                    $"published={experiment.SurfaceMatchEvidence?.ContentSha256};dirty={experiment.IsDirty};parametersUnchanged={parametersBeforePreview == string.Join("|", experiment.SelectedPipelineStep.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"))}");
+
+                var displayCountBeforeSwitch =
+                    experimentDisplayRequests;
+                experiment.ShowPublishedSurfaceMatchExperimentCommand
+                    .Execute(null);
+                var publishedRequest = experimentRequest;
+                experiment.ShowCandidateSurfaceMatchExperimentCommand
+                    .Execute(null);
+                Check(
+                    "experiment-view-switch-is-presentation-only",
+                    experimentDisplayRequests
+                        == displayCountBeforeSwitch + 2
+                    && ReferenceEquals(
+                        publishedRequest?.Execution,
+                        publishedBeforePreview)
+                    && ReferenceEquals(
+                        experimentRequest?.Execution,
+                        candidateExecution)
+                    && experiment.IsDirty == dirtyBeforePreview
+                    && experiment.HasSurfaceMatchExperimentCandidate,
+                    $"displayRequests={experimentDisplayRequests};dirty={experiment.IsDirty};candidate={experiment.HasSurfaceMatchExperimentCandidate}");
+
+                var candidateAssessment = candidateRequest?.Assessment;
+                var candidateRuntime = candidateRequest?.Runtime;
+                var displayCountBeforePublish =
+                    experimentDisplayRequests;
+                var canPublish = experiment.PublishSelectedStepCommand
+                    .CanExecute(null);
+                experiment.PublishSelectedStepCommand.Execute(null);
+                Check(
+                    "experiment-publish-promotes-exact-preview-without-rerun",
+                    canPublish
+                    && candidateExecution is not null
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchEvidence,
+                        candidateExecution)
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchAssessment,
+                        candidateAssessment)
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchRuntime,
+                        candidateRuntime)
+                    && !experiment.HasSurfaceMatchExperimentCandidate
+                    && experimentDisplayRequests
+                        == displayCountBeforePublish + 1
+                    && ReferenceEquals(
+                        experimentRequest?.Execution,
+                        candidateExecution),
+                    $"canPublish={canPublish};published={experiment.SurfaceMatchEvidence?.ContentSha256};candidateCleared={!experiment.HasSurfaceMatchExperimentCandidate};displayRequests={experimentDisplayRequests}");
+
+                var publishedAfterPublish =
+                    experiment.SurfaceMatchEvidence;
+                var secondPreviewed = Task.Run(
+                        experiment
+                            .PreviewSelectedSurfaceMatchExperimentAsync)
+                    .GetAwaiter()
+                    .GetResult();
+                var staleDraft =
+                    experiment.SelectedStepPropertyDraft
+                        as SurfaceMatchStepProperties;
+                staleDraft!.MinimumCoverageRatio =
+                    staleDraft.MinimumCoverageRatio >= 0.99
+                        ? 0.98
+                        : staleDraft.MinimumCoverageRatio + 0.01;
+                experiment.MarkSelectedStepParameterDraftDirty();
+                var staleApplied =
+                    experiment.TryApplySelectedStepParameterDraft(
+                        out var staleApplyMessage);
+                Check(
+                    "experiment-parameter-change-stales-candidate-and-restores-published",
+                    secondPreviewed
+                    && staleApplied
+                    && experiment.HasSurfaceMatchExperimentCandidate
+                    && experiment.IsSurfaceMatchExperimentCandidateStale
+                    && !experiment.IsSurfaceMatchExperimentCandidateDisplayed
+                    && !experiment.PublishSelectedStepCommand.CanExecute(null)
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchEvidence,
+                        publishedAfterPublish)
+                    && ReferenceEquals(
+                        experimentRequest?.Execution,
+                        publishedAfterPublish),
+                    $"secondPreviewed={secondPreviewed};applied={staleApplied};stale={experiment.IsSurfaceMatchExperimentCandidateStale};publishEnabled={experiment.PublishSelectedStepCommand.CanExecute(null)};message={staleApplyMessage}");
+
+                experiment.DiscardSurfaceMatchExperimentCommand.Execute(
+                    null);
+                Check(
+                    "experiment-discard-keeps-published-baseline",
+                    !experiment.HasSurfaceMatchExperimentCandidate
+                    && !experiment.IsSurfaceMatchExperimentCandidateStale
+                    && !experiment.IsSurfaceMatchExperimentCandidateDisplayed
+                    && ReferenceEquals(
+                        experiment.SurfaceMatchEvidence,
+                        publishedAfterPublish)
+                    && ReferenceEquals(
+                        experimentRequest?.Execution,
+                        publishedAfterPublish),
+                    $"candidate={experiment.HasSurfaceMatchExperimentCandidate};published={experiment.SurfaceMatchEvidence?.ContentSha256}");
+
+                var transientRecipePath = Path.Combine(
+                    Path.GetDirectoryName(
+                        Path.GetFullPath(reportPath))
+                    ?? Environment.CurrentDirectory,
+                    "surface-match-experiment-transient.ov3d-recipe.json");
+                var experimentSaved =
+                    experiment.TrySaveTeachingRecipe(
+                        transientRecipePath,
+                        out var experimentSaveMessage);
+                var experimentReopened = new ToolWorkbenchViewModel();
+                var reopenedExperimentDisplayRequests = 0;
+                experimentReopened.SurfaceMatchDisplayRequested +=
+                    (_, _) => reopenedExperimentDisplayRequests++;
+                var experimentOpened = experimentSaved
+                    && experimentReopened.TryOpenTeachingRecipe(
+                        transientRecipePath,
+                        out _);
+                Check(
+                    "experiment-evidence-is-not-persisted-or-auto-executed",
+                    experimentOpened
+                    && !experimentReopened.HasSurfaceMatchEvidence
+                    && !experimentReopened
+                        .HasSurfaceMatchExperimentCandidate
+                    && reopenedExperimentDisplayRequests == 0,
+                    $"saved={experimentSaved};opened={experimentOpened};hasEvidence={experimentReopened.HasSurfaceMatchEvidence};hasCandidate={experimentReopened.HasSurfaceMatchExperimentCandidate};displayRequests={reopenedExperimentDisplayRequests};save={experimentSaveMessage}");
             }
 
             var authoring = new ToolWorkbenchViewModel();
@@ -360,5 +572,34 @@ internal static class SurfaceMatchWorkbenchParityVerification
 
         throw new FileNotFoundException(
             $"Repository fixture was not found: {Path.Combine(segments)}");
+    }
+
+    private static void ApplySurfaceMatchContracts(
+        SurfaceMatchStepProperties target,
+        RigidSurfacePoseSearchParameters search,
+        SurfaceMatchAcceptancePolicy policy)
+    {
+        target.MinimumCoverageRatio = policy.MinimumCoverageRatio;
+        target.MaximumInlierRmse = policy.MaximumInlierRmse;
+        target.MinimumRotationXDegrees = search.MinimumRotationXDegrees;
+        target.MaximumRotationXDegrees = search.MaximumRotationXDegrees;
+        target.RotationStepXDegrees = search.RotationStepXDegrees;
+        target.MinimumRotationYDegrees = search.MinimumRotationYDegrees;
+        target.MaximumRotationYDegrees = search.MaximumRotationYDegrees;
+        target.RotationStepYDegrees = search.RotationStepYDegrees;
+        target.MinimumRotationZDegrees = search.MinimumRotationZDegrees;
+        target.MaximumRotationZDegrees = search.MaximumRotationZDegrees;
+        target.RotationStepZDegrees = search.RotationStepZDegrees;
+        target.MinimumTranslationX = search.MinimumTranslationX;
+        target.MaximumTranslationX = search.MaximumTranslationX;
+        target.MinimumTranslationY = search.MinimumTranslationY;
+        target.MaximumTranslationY = search.MaximumTranslationY;
+        target.MinimumTranslationZ = search.MinimumTranslationZ;
+        target.MaximumTranslationZ = search.MaximumTranslationZ;
+        target.MaximumCorrespondenceDistance =
+            search.MaximumCorrespondenceDistance;
+        target.MinimumMatchedSampleCount =
+            search.MinimumMatchedSampleCount;
+        target.MaximumCandidateCount = search.MaximumCandidateCount;
     }
 }

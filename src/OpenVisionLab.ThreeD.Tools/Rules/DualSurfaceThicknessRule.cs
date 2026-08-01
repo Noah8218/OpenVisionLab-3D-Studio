@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using NoahDecision = Lib.ThreeD.FeatureExtraction.DualSurfaceThicknessDecision;
+using NoahInspectionTool = Lib.ThreeD.FeatureExtraction.DualSurfaceThicknessInspectionTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -39,69 +41,37 @@ public static class DualSurfaceThicknessRule
         var stopwatch = Stopwatch.StartNew();
         if (string.IsNullOrWhiteSpace(input.SourceEntityId) || string.IsNullOrWhiteSpace(input.Unit))
             return Error(input, "Source entity ID and declared height unit are required.", stopwatch.Elapsed);
-        if (!double.IsFinite(input.MinimumThickness)
-            || !double.IsFinite(input.MaximumThickness)
-            || input.MinimumThickness > input.MaximumThickness)
-            return Error(input, "Thickness limits must be finite and ordered minimum to maximum.", stopwatch.Elapsed);
-        if (input.MinimumValidSamples < 1)
-            return Error(input, "Minimum valid measurement samples must be at least one.", stopwatch.Elapsed);
-        if (input.ReferenceSamples is null || input.ReferenceSamples.Count < 3)
-            return Error(input, "Reference ROI requires at least three finite height samples.", stopwatch.Elapsed);
-        if (input.MeasurementSamples is null || input.MeasurementSamples.Count < input.MinimumValidSamples)
-            return Error(input, $"Measurement ROI requires at least {input.MinimumValidSamples} finite height sample(s).", stopwatch.Elapsed);
+        var evaluation = new NoahInspectionTool().Execute(
+            input.ReferenceSamples?.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+            input.MeasurementSamples?.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+            input.MinimumThickness,
+            input.MaximumThickness,
+            input.MinimumValidSamples);
+        if (!evaluation.Success || evaluation.ReferencePlane is null)
+            return Error(input, evaluation.Message, stopwatch.Elapsed);
 
-        HeightFieldPlaneFitResult plane;
-        try
-        {
-            plane = HeightFieldPlaneFit.Fit(input.ReferenceSamples);
-        }
-        catch (ArgumentException exception)
-        {
-            return Error(input, $"Reference surface fit failed: {exception.Message}", stopwatch.Elapsed);
-        }
-
-        var values = input.MeasurementSamples
-            .Select(sample => sample.RawHeight - plane.EvaluateY(sample.Position.X, sample.Position.Z))
-            .Where(double.IsFinite)
-            .ToArray();
-        if (values.Length < input.MinimumValidSamples)
-            return Error(input, $"Measurement ROI contains {values.Length} usable height-axis sample(s); {input.MinimumValidSamples} required.", stopwatch.Elapsed);
-
-        var mean = values.Average();
-        var minimum = values.Min();
-        var maximum = values.Max();
-        var range = maximum - minimum;
-        var rmsSpread = Math.Sqrt(values.Average(value => (value - mean) * (value - mean)));
-        var referenceFitHeightRms = Math.Sqrt(input.ReferenceSamples.Average(sample =>
-        {
-            var residual = sample.RawHeight - plane.EvaluateY(sample.Position.X, sample.Position.Z);
-            return residual * residual;
-        }));
-        var below = values.Count(value => value < input.MinimumThickness);
-        var above = values.Count(value => value > input.MaximumThickness);
-        var status = below == 0 && above == 0 ? ResultStatus.Pass : ResultStatus.Fail;
+        var plane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
+        var status = evaluation.Decision == NoahDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
 
         var result = new ToolResult(
             ToolName,
             status,
-            status == ResultStatus.Pass
-                ? "All measured H-axis separations from the fitted reference surface are within limits."
-                : "One or more measured H-axis separations from the fitted reference surface exceed the limits.",
+            evaluation.Message,
             stopwatch.Elapsed,
             [
-                new Metric("Mean", MetricKind.Deviation, mean, input.Unit, status),
-                new Metric("Minimum", MetricKind.Deviation, minimum, input.Unit, below == 0 ? ResultStatus.Pass : ResultStatus.Fail),
-                new Metric("Maximum", MetricKind.Deviation, maximum, input.Unit, above == 0 ? ResultStatus.Pass : ResultStatus.Fail),
-                new Metric("Range", MetricKind.Deviation, range, input.Unit),
-                new Metric("RMS spread", MetricKind.Deviation, rmsSpread, input.Unit),
-                new Metric("Reference fit H RMS", MetricKind.Deviation, referenceFitHeightRms, input.Unit),
-                new Metric("Reference sample count", MetricKind.Count, input.ReferenceSamples.Count, "count"),
-                new Metric("ValidSampleCount", MetricKind.Count, values.Length, "count"),
+                new Metric("Mean", MetricKind.Deviation, evaluation.Mean, input.Unit, status),
+                new Metric("Minimum", MetricKind.Deviation, evaluation.Minimum, input.Unit, evaluation.BelowLowerLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
+                new Metric("Maximum", MetricKind.Deviation, evaluation.Maximum, input.Unit, evaluation.AboveUpperLimitCount == 0 ? ResultStatus.Pass : ResultStatus.Fail),
+                new Metric("Range", MetricKind.Deviation, evaluation.Range, input.Unit),
+                new Metric("RMS spread", MetricKind.Deviation, evaluation.RootMeanSquareSpread, input.Unit),
+                new Metric("Reference fit H RMS", MetricKind.Deviation, evaluation.ReferenceFitHeightRootMeanSquare, input.Unit),
+                new Metric("Reference sample count", MetricKind.Count, evaluation.ReferenceSampleCount, "count"),
+                new Metric("ValidSampleCount", MetricKind.Count, evaluation.MeasurementSampleCount, "count"),
                 new Metric("LowerLimit", MetricKind.Deviation, input.MinimumThickness, input.Unit),
                 new Metric("UpperLimit", MetricKind.Deviation, input.MaximumThickness, input.Unit),
-                new Metric("BelowLowerLimitCount", MetricKind.Count, below, "count"),
-                new Metric("AboveUpperLimitCount", MetricKind.Count, above, "count")
+                new Metric("BelowLowerLimitCount", MetricKind.Count, evaluation.BelowLowerLimitCount, "count"),
+                new Metric("AboveUpperLimitCount", MetricKind.Count, evaluation.AboveUpperLimitCount, "count")
             ],
             [
                 new Overlay("overlay.c3d-thickness-reference-roi", OverlayKind.Box, "Thickness reference surface ROI", status, input.SourceEntityId),
@@ -113,15 +83,15 @@ public static class DualSurfaceThicknessRule
         return new DualSurfaceThicknessEvaluation(
             result,
             plane,
-            mean,
-            minimum,
-            maximum,
-            range,
-            rmsSpread,
-            input.ReferenceSamples.Count,
-            values.Length,
-            below,
-            above);
+            evaluation.Mean,
+            evaluation.Minimum,
+            evaluation.Maximum,
+            evaluation.Range,
+            evaluation.RootMeanSquareSpread,
+            evaluation.ReferenceSampleCount,
+            evaluation.MeasurementSampleCount,
+            evaluation.BelowLowerLimitCount,
+            evaluation.AboveUpperLimitCount);
     }
 
     private static DualSurfaceThicknessEvaluation Error(

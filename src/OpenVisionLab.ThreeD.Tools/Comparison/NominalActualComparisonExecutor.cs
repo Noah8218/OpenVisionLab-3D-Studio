@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Numerics;
 using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using Noah = Lib.ThreeD.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -48,10 +50,14 @@ public sealed class NominalActualComparisonExecutor
         ValidateFileHash(input.ActualSource, cancellationToken);
         ValidateFileHash(input.QuerySource, cancellationToken);
 
-        var triangles = new List<MeshTriangle>();
+        var triangles = new List<Noah.MeshTriangle>();
         var nominalSummary = BinaryStlInspectionReader.Scan(
             input.NominalSource.Path,
-            (index, triangle) => triangles.Add(new MeshTriangle(index, triangle.A, triangle.B, triangle.C)));
+            (index, triangle) => triangles.Add(new Noah.MeshTriangle(
+                index,
+                ToNoah(triangle.A),
+                ToNoah(triangle.B),
+                ToNoah(triangle.C))));
         if (!nominalSummary.SourceSha256.Equals(input.NominalSource.Sha256, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
@@ -60,32 +66,66 @@ public sealed class NominalActualComparisonExecutor
 
         cancellationToken.ThrowIfCancellationRequested();
         Report(progress, "Indexing nominal mesh", 0, query.VertexCount, totalStopwatch.Elapsed);
-        var indexStopwatch = Stopwatch.StartNew();
-        var distanceIndex = new TriangleMeshDistanceIndex(triangles);
-        indexStopwatch.Stop();
+        var noahProgress = progress is null
+            ? null
+            : new ComparisonProgressAdapter(progress, totalStopwatch);
+        var comparison = new Noah.NominalActualMeshComparisonTool().Execute(
+            triangles,
+            ReadQueryPoints(query, cancellationToken),
+            new Noah.NominalActualMeshComparisonOptions(
+                query.VertexCount,
+                input.LowerTolerance,
+                input.UpperTolerance,
+                maximumDisplaySamples),
+            noahProgress,
+            cancellationToken);
+        if (!comparison.Success)
+        {
+            throw new InvalidDataException(comparison.Message);
+        }
 
-        var unsignedStatistics = new RunningStatistics();
-        var signedStatistics = new RunningStatistics();
-        long belowToleranceCount = 0;
-        long withinToleranceCount = 0;
-        long aboveToleranceCount = 0;
-        long directSignResolvedCount = 0;
-        long robustSignRecoveredCount = 0;
-        long unresolvedSignCount = 0;
-        long processedPointCount = 0;
-        var displayStride = CalculateDisplayStride(query.VertexCount, maximumDisplaySamples);
-        var displaySamples = maximumDisplaySamples == 0
-            ? []
-            : new List<NominalActualDeviationSample>(Math.Min(maximumDisplaySamples, 65_536));
+        if (!query.IsComplete || comparison.ProcessedPointCount != query.VertexCount)
+        {
+            throw new InvalidDataException("The measured validation query was not consumed completely.");
+        }
 
-        var calculationStopwatch = Stopwatch.StartNew();
+        totalStopwatch.Stop();
+        var outOfToleranceCount = comparison.BelowToleranceCount + comparison.AboveToleranceCount;
+        var status = outOfToleranceCount == 0 ? ResultStatus.Pass : ResultStatus.Fail;
+        var message = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{status}: {outOfToleranceCount:N0} of {comparison.ProcessedPointCount:N0} points outside [{input.LowerTolerance:G6}, {input.UpperTolerance:G6}] {input.Unit}.");
+
+        return new NominalActualComparisonResult(
+            input,
+            status,
+            message,
+            comparison.ProcessedPointCount,
+            ToStudio(comparison.UnsignedStatistics),
+            ToStudio(comparison.SignedStatistics),
+            comparison.BelowToleranceCount,
+            comparison.WithinToleranceCount,
+            comparison.AboveToleranceCount,
+            comparison.DirectSignResolvedCount,
+            comparison.RobustSignRecoveredCount,
+            comparison.DisplayStride,
+            comparison.DisplaySamples.Select(ToStudio).ToArray(),
+            comparison.IndexDuration,
+            comparison.CalculationDuration,
+            totalStopwatch.Elapsed);
+    }
+
+    private static IEnumerable<Noah.ThreeDPoint> ReadQueryPoints(
+        BinaryPlyVertexReader query,
+        CancellationToken cancellationToken)
+    {
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var chunkCount = query.ReadChunk();
             if (chunkCount == 0)
             {
-                break;
+                yield break;
             }
 
             for (var chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++)
@@ -95,109 +135,35 @@ public sealed class NominalActualComparisonExecutor
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                var pointIndex = processedPointCount + chunkIndex;
-                var point = query.GetPosition(chunkIndex);
-                var closest = distanceIndex.FindClosest(point);
-                unsignedStatistics.Add(closest.UnsignedDistance);
-
-                var signed = closest;
-                var robustSignRecovered = false;
-                if (closest.SignResolved)
-                {
-                    directSignResolvedCount++;
-                }
-                else
-                {
-                    signed = distanceIndex.ResolveRobustSign(point, closest.UnsignedDistance);
-                    if (signed.SignResolved)
-                    {
-                        robustSignRecoveredCount++;
-                        robustSignRecovered = true;
-                    }
-                }
-
-                if (signed.SignedDistance is not { } signedDistance || !signed.SignResolved)
-                {
-                    unresolvedSignCount++;
-                    continue;
-                }
-
-                signedStatistics.Add(signedDistance);
-                if (signedDistance < input.LowerTolerance)
-                {
-                    belowToleranceCount++;
-                }
-                else if (signedDistance > input.UpperTolerance)
-                {
-                    aboveToleranceCount++;
-                }
-                else
-                {
-                    withinToleranceCount++;
-                }
-
-                if (displayStride > 0
-                    && pointIndex % displayStride == 0
-                    && displaySamples.Count < maximumDisplaySamples)
-                {
-                    displaySamples.Add(new NominalActualDeviationSample(
-                        pointIndex,
-                        point,
-                        closest.ClosestPoint,
-                        closest.SourceTriangleIndex,
-                        closest.UnsignedDistance,
-                        signedDistance,
-                        robustSignRecovered));
-                }
+                yield return ToNoah(query.GetPosition(chunkIndex));
             }
-
-            processedPointCount += chunkCount;
-            Report(
-                progress,
-                "Comparing actual to nominal",
-                processedPointCount,
-                query.VertexCount,
-                totalStopwatch.Elapsed);
         }
-
-        calculationStopwatch.Stop();
-        if (!query.IsComplete || processedPointCount != query.VertexCount)
-        {
-            throw new InvalidDataException("The measured validation query was not consumed completely.");
-        }
-
-        if (unresolvedSignCount != 0)
-        {
-            throw new InvalidDataException(string.Create(
-                CultureInfo.InvariantCulture,
-                $"Signed deviation remained unresolved for {unresolvedSignCount:N0} of {processedPointCount:N0} points."));
-        }
-
-        totalStopwatch.Stop();
-        var outOfToleranceCount = belowToleranceCount + aboveToleranceCount;
-        var status = outOfToleranceCount == 0 ? ResultStatus.Pass : ResultStatus.Fail;
-        var message = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{status}: {outOfToleranceCount:N0} of {processedPointCount:N0} points outside [{input.LowerTolerance:G6}, {input.UpperTolerance:G6}] {input.Unit}.");
-
-        return new NominalActualComparisonResult(
-            input,
-            status,
-            message,
-            processedPointCount,
-            unsignedStatistics.ToContract(),
-            signedStatistics.ToContract(),
-            belowToleranceCount,
-            withinToleranceCount,
-            aboveToleranceCount,
-            directSignResolvedCount,
-            robustSignRecoveredCount,
-            displayStride,
-            displaySamples,
-            indexStopwatch.Elapsed,
-            calculationStopwatch.Elapsed,
-            totalStopwatch.Elapsed);
     }
+
+    private static Noah.ThreeDPoint ToNoah(Vector3 point) =>
+        new(point.X, point.Y, point.Z);
+
+    private static NominalActualDeviationStatistics ToStudio(Noah.MeshDeviationStatistics statistics) =>
+        new(
+            statistics.Count,
+            statistics.Minimum,
+            statistics.Maximum,
+            statistics.Mean,
+            statistics.StandardDeviationPopulation,
+            statistics.RootMeanSquare);
+
+    private static NominalActualDeviationSample ToStudio(Noah.NominalActualMeshDeviationSample sample) =>
+        new(
+            sample.PointIndex,
+            ToStudio(sample.Point),
+            ToStudio(sample.ClosestPoint),
+            sample.SourceTriangleIndex,
+            sample.UnsignedDistance,
+            sample.SignedDistance,
+            sample.RobustSignRecovered);
+
+    private static Vector3 ToStudio(Noah.ThreeDPoint point) =>
+        new((float)point.X, (float)point.Y, (float)point.Z);
 
     private static void ValidateInput(NominalActualComparisonInput input)
     {
@@ -303,17 +269,6 @@ public sealed class NominalActualComparisonExecutor
         }
     }
 
-    private static int CalculateDisplayStride(long pointCount, int maximumDisplaySamples)
-    {
-        if (maximumDisplaySamples == 0)
-        {
-            return 0;
-        }
-
-        var stride = Math.Max(1, (pointCount + maximumDisplaySamples - 1) / maximumDisplaySamples);
-        return (int)Math.Min(int.MaxValue, stride);
-    }
-
     private static void Report(
         IProgress<NominalActualComparisonProgress>? progress,
         string stage,
@@ -330,46 +285,15 @@ public sealed class NominalActualComparisonExecutor
         }
     }
 
-    private sealed class RunningStatistics
+    private sealed class ComparisonProgressAdapter(
+        IProgress<NominalActualComparisonProgress> progress,
+        Stopwatch totalStopwatch) : IProgress<Noah.NominalActualMeshComparisonProgress>
     {
-        private double mean;
-        private double sumSquaredDeviation;
-        private double sumSquares;
-
-        public long Count { get; private set; }
-        public double Minimum { get; private set; } = double.PositiveInfinity;
-        public double Maximum { get; private set; } = double.NegativeInfinity;
-
-        public void Add(double value)
-        {
-            if (!double.IsFinite(value))
-            {
-                throw new InvalidDataException("A mesh-deviation calculation produced a non-finite value.");
-            }
-
-            Count++;
-            Minimum = Math.Min(Minimum, value);
-            Maximum = Math.Max(Maximum, value);
-            var delta = value - mean;
-            mean += delta / Count;
-            sumSquaredDeviation += delta * (value - mean);
-            sumSquares += value * value;
-        }
-
-        public NominalActualDeviationStatistics ToContract()
-        {
-            if (Count == 0)
-            {
-                throw new InvalidDataException("The measured validation query produced no deviation values.");
-            }
-
-            return new NominalActualDeviationStatistics(
-                Count,
-                Minimum,
-                Maximum,
-                mean,
-                Math.Sqrt(Math.Max(0.0, sumSquaredDeviation / Count)),
-                Math.Sqrt(sumSquares / Count));
-        }
+        public void Report(Noah.NominalActualMeshComparisonProgress value) =>
+            progress.Report(new NominalActualComparisonProgress(
+                "Comparing actual to nominal",
+                value.ProcessedPointCount,
+                value.TotalPointCount,
+                totalStopwatch.Elapsed));
     }
 }

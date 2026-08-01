@@ -103,6 +103,9 @@ internal static class RunnerCommandRouter
         var verifySurfaceMatchAcceptance = args.Contains(
             "--verify-surface-match-acceptance",
             StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceMatchPerformanceBudget = args.Contains(
+            "--verify-surface-match-performance-budget",
+            StringComparer.OrdinalIgnoreCase);
         var verifySurfaceEdgeMatching = args.Contains(
             "--verify-surface-edge-matching",
             StringComparer.OrdinalIgnoreCase);
@@ -603,6 +606,19 @@ internal static class RunnerCommandRouter
                 reportPath);
         }
 
+        if (verifySurfaceMatchPerformanceBudget)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
+                return 2;
+            }
+
+            return SurfaceMatchPerformanceBudgetVerification.Run(
+                reportPath);
+        }
+
         if (verifySurfaceEdgeMatching)
         {
             if (reportPath is null)
@@ -910,6 +926,7 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");

@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next Chat Handoff Prompt
 
-Date: 2026-07-31
+Date: 2026-08-01
 
 Status: Current continuation entry point
 
@@ -35,6 +35,23 @@ Authoritative detail remains in:
 - `docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md`
   for the current direction overlay, independent surface/edge limits, retained
   false-positive comparison, and layout evidence closure.
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_PERFORMANCE_BUDGET_20260731.md` for the
+  current Release-only fixed-fixture matching timing matrix and budgets.
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_PARAMETER_EXPERIMENT_COMPARISON_20260801.md`
+  for the current Published/Candidate parameter comparison, exact no-rerun
+  Publish, responsive UI, and Library-Noah boundary closure.
+- `docs/OPENVISIONLAB_3D_SURFACE_PREPARATION_EDGE_NOAH_MIGRATION_20260801.md`
+  for the current SurfaceModel/Prepared Scene and surface-edge Noah Tool
+  migration, package provenance, and exact artifact parity closure.
+- `docs/OPENVISIONLAB_3D_OUTLIER_FILTER_AND_LEVELING_NOAH_MIGRATION_20260801.md`
+  for the current local-median outlier and Level Surface Noah Tool migration,
+  package provenance, and exact focused parity closure.
+- `docs/OPENVISIONLAB_3D_HEIGHT_MAP_INSPECTION_PREPARATION_NOAH_MIGRATION_20260801.md`
+  for the current five-Tool height-map migration, package provenance,
+  normalized parity, decreasing ledger, and next dependency.
+- `docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md`
+  for the current two-Tool height-rule migration, exact parity, decreasing
+  ledger, and next dependency.
 
 ## Paste this request into the next chat
 
@@ -76,7 +93,14 @@ Read, in order:
 12t. docs/OPENVISIONLAB_3D_SURFACE_MATCH_ACCEPTANCE_BOUNDS_AND_GOLDENS_20260731.md
 12u. docs/OPENVISIONLAB_3D_PROPERTY_GRID_THEME_CONSISTENCY_20260731.md
 12v. docs/OPENVISIONLAB_3D_SURFACE_EDGE_ARTIFACTS_AND_SEPARATE_SCORE_20260731.md
-12w. docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md
+  12w. docs/OPENVISIONLAB_3D_SURFACE_EDGE_DIAGNOSTICS_THRESHOLDS_AND_REVIEW_20260731.md
+  12x. docs/OPENVISIONLAB_3D_SURFACE_MATCH_PERFORMANCE_BUDGET_20260731.md
+  12y. docs/OPENVISIONLAB_3D_SURFACE_MATCH_PARAMETER_EXPERIMENT_COMPARISON_20260801.md
+  12z. docs/OPENVISIONLAB_3D_SURFACE_PREPARATION_EDGE_NOAH_MIGRATION_20260801.md
+  12aa. docs/OPENVISIONLAB_3D_OUTLIER_FILTER_AND_LEVELING_NOAH_MIGRATION_20260801.md
+  12ab. docs/OPENVISIONLAB_3D_NOMINAL_COMPARISON_AND_TRANSFORM_DIAGNOSTICS_NOAH_MIGRATION_20260801.md
+  12ac. docs/OPENVISIONLAB_3D_HEIGHT_MAP_INSPECTION_PREPARATION_NOAH_MIGRATION_20260801.md
+  12ad. docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md
 13. docs/OPENVISIONLAB_3D_THRESHOLD_MANUAL_CORRECTION_AND_FAILURE_RECORD_20260728.md
 14. docs/OPENVISIONLAB_3D_THRESHOLD_ASSISTANT_HARDENING_20260729.md
 15. docs/OPENVISIONLAB_3D_THRESHOLD_CORRECTION_RUN_RECORD_20260729.md
@@ -262,9 +286,118 @@ overlap/clipping review; both R0 `-ValidateOnly` modes pass. Preserve
 and `artifacts/current/20260731-surface-edge-diagnostic-review/`. Current
 inventory is `125 C / 17 P / 67 N / 9 E / 16 O`.
 
-Immediate software priority: `K-11` fixed-fixture matching performance gate.
-Recommended model: gpt-5.6-sol. Reasoning effort: high. `K-04` remains blocked
-on `B-12`; `K-09` remains blocked on `J-12`.
+`K-11 fixed-fixture matching performance` is Complete. The Release Runner
+measures fixed 256-sample, 11/61-candidate profiles with stable identities and
+passes `18/18`. Preserve
+`docs/OPENVISIONLAB_3D_SURFACE_MATCH_PERFORMANCE_BUDGET_20260731.md` and
+`artifacts/current/20260731-surface-match-performance-budget/`. Current
+inventory is `126 C / 17 P / 66 N / 9 E / 16 O`.
+
+`K-10 matching parameter experiment comparison` is Complete. One explicit
+Preview creates one temporary Candidate while Published evidence remains
+unchanged. Published/Candidate Viewer switching is presentation-only; explicit
+Publish promotes the exact Preview without re-running; Apply after Preview
+stales the candidate and restores Published; discard/save/reopen preserve the
+no-auto-execution boundary. Release is `0/0`; parity is `23/23`; matching
+`34/34`; acceptance `14/14`; isolated performance `18/18`; Noah package `7/7`;
+the complete UI/regression matrix passes. Preserve
+`docs/OPENVISIONLAB_3D_SURFACE_MATCH_PARAMETER_EXPERIMENT_COMPARISON_20260801.md`
+and `artifacts/current/20260731-surface-match-experiment-comparison/`. Current
+inventory is `127 C / 17 P / 65 N / 9 E / 16 O`.
+
+The Library-Noah Surface Match kernel migration is Complete. Committed Noah
+`7d1ad8721ca7aed9efa2a17beaa36409d7dbd718` owns deterministic pose search and
+one-way unique-nearest coverage through vendored `Lib.ThreeD 2.8.0`, SHA-256
+`7378C02ABDED9C02F1448CDF80577B00A7AD99E78BC2B722E341DD7513CE754C`.
+Noah Release is `0/0` and Smoke `69/69`; Studio Release Rebuild is `0/0`;
+matching `34/34`; acceptance `14/14`; performance `18/18`; parity `23/23`;
+structure `18/18`; NuGet health `12/0/0`; both R0 `-ValidateOnly` modes pass.
+Preserve `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
+`artifacts/current/20260801-surface-match-noah-migration/`.
+
+The Library-Noah Tool-only ownership contract is now active. After the current
+debt migrations its schema-1 decreasing baseline records `8` Studio
+migration-debt files and `22` reviewed Studio boundaries; structure passes
+`25/25` with no unclassified or expanded owner. Preserve
+`docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`,
+its adjacent JSON baseline, and
+`artifacts/current/20260801-noah-tool-ownership-contract/`.
+
+The Surface preparation and edge Noah migration is Complete. Committed Noah
+`46cfa0946bb4c23190b0dab75415ce2c637b4c41` exposes five public Tools through
+vendored `Lib.ThreeD 2.8.1`, SHA-256
+`3C908BB6671D2F89C7BC9DDEC601CD10A33A0905D78A8A24A276DA9BAAFF4445`.
+Noah is `0/0` and `75/75`; Studio is `0/0`; focused Runner, Workbench parity,
+package, and structure gates pass; and 24 pre/post JSON files are exact.
+Preserve
+`docs/OPENVISIONLAB_3D_SURFACE_PREPARATION_EDGE_NOAH_MIGRATION_20260801.md`
+and `artifacts/current/20260801-noah-surface-preparation-edge-migration/`.
+
+The local-median outlier filtering and Level Surface Noah migration is
+Complete. Committed Noah `3a2cbf8e7195d6f251dcafe6a9343b795d53fe79`
+exposes both public Tools through vendored `Lib.ThreeD 2.8.2`, SHA-256
+`EF397381CDD3344E3BAB7A7F29FF6124451DA6A1FCB1BC007B0BFDB284A0BFD7`.
+Noah is `0/0` and `78/78`; Studio Release, package, Runner/Workbench, and
+structure gates pass; and `28/28` comparable pre/post report lines are exact.
+Preserve
+`docs/OPENVISIONLAB_3D_OUTLIER_FILTER_AND_LEVELING_NOAH_MIGRATION_20260801.md`
+and `artifacts/current/20260801-noah-outlier-leveling-migration/`.
+
+The nominal/actual mesh comparison and rigid-transform diagnostics Noah
+migration is Complete. Committed Noah
+`4420c40d3179edc7703cfef6e0ea53ac898f8f3f` exposes three public Tools through
+vendored `Lib.ThreeD 2.8.3`, SHA-256
+`63F70F92354257E6E2975753BC17A76118478CB6AB0C77EB487C09F5A50F0C39`.
+Noah is `0/0` and `81/81`; Studio is `0/0`; focused Runner checks pass
+`23/23`, `29/29`, and `20/20`; bridge is `7/7`; structure is `24/24`; and
+all focused pre/post reports are exact. At that checkpoint the decreasing
+ledger was `12` debt files and `16` reviewed Studio boundaries. Preserve
+`docs/OPENVISIONLAB_3D_NOMINAL_COMPARISON_AND_TRANSFORM_DIAGNOSTICS_NOAH_MIGRATION_20260801.md`
+and `artifacts/current/20260801-noah-nominal-registration-migration/`.
+
+The height-map inspection and preparation Noah migration is Complete.
+Committed Noah `a64c31b1024f154e402d258ade4b70470ad50fb2` exposes five public
+Tools through vendored `Lib.ThreeD 2.8.4`, SHA-256
+`0F4FB2A1115C0247E03BA85D335BE40241FD02A6F5694FE6E36B872CB3A846F5`.
+Noah is `0/0` and `86/86`; Studio is `0/0`; bridge is `12/12`; focused
+checks pass `10/10`, `13/13`, `23/23`, `25/25`, and `54/54`; normalized
+parity is `5/5`; expanded regressions and structure `25/25` pass. The ledger
+is `8` debt files and `22` reviewed Studio boundaries. Preserve
+`docs/OPENVISIONLAB_3D_HEIGHT_MAP_INSPECTION_PREPARATION_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-height-map-inspection-preparation-migration/`.
+
+The Dual Surface Thickness and Height Deviation Noah migration is Complete.
+Committed Noah `ec8f1b3db57bea0065cd82735acb08111f88f3c0` exposes two public
+Tools through vendored `Lib.ThreeD 2.8.5`, SHA-256
+`3BE4E7F83CC4A9E3542C6FCA9C38C5F13D2BFEE703F78035CB9082DC0B5EBCDB`.
+Noah is `0/0` and `92/92`; Studio is `0/0`; bridge is `14/14`; Workbench is
+`54/54`; actual Height Deviation/Workbench parity is `2/2`; Validation Set is
+`84/84`; focused regressions and structure `26/26` pass. The ledger is `6`
+debt files and `24` reviewed Studio boundaries. Preserve
+`docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-dual-thickness-height-deviation-migration/`.
+
+The declared-normal quality and Landmark Correspondence Noah migration is
+Complete. Committed Noah `3ef2f52546a9187df465bf8973e26426c30f7634`
+exposes two public Tools through vendored `Lib.ThreeD 2.8.6`, SHA-256
+`02E0D0B69F9D7CECBA958BF4BDC7F2999D0902539C33CD0F133C48C08C3A25B0`.
+Noah is `0/0` and `98/98`; Studio is `0/0`; bridge is `16/16`; normal quality
+is `26/26`; Landmark Correspondence is `5/5`; exact normalized parity is
+`2/2`; expanded regressions and structure `27/27` pass. The ledger is `4`
+debt files and `26` reviewed Studio boundaries. Preserve
+`docs/OPENVISIONLAB_3D_DECLARED_NORMAL_QUALITY_AND_LANDMARK_CORRESPONDENCE_NOAH_MIGRATION_20260801.md`
+and
+`artifacts/current/20260801-noah-normal-quality-landmark-migration/`.
+
+Immediate software priority: migrate `AlignedPointRepeatabilityRule` and
+`ThicknessRepeatabilityRule` into a committed Noah `RepeatabilityStatisticsTool`,
+then migrate the two validation-statistics analyzers before
+`J-12 Multiple-match result collection`. Recommended
+model: gpt-5.6-sol. Reasoning effort: high. `K-09`
+remains blocked on `J-12`; `K-04` remains blocked on `B-12`; symmetry-aware
+`J-13` remains separate.
 
 Human-owner Wide/Compact R0 remains a parallel external acceptance task.
 Prerequisite: owner operation and evidence. Recommended model: none until the
@@ -472,10 +605,17 @@ Parallel external acceptance: human-owner unaided Wide/Compact R0.
 Prerequisite: owner operation and evidence. Recommended model: none until
 evidence exists. Reasoning effort: none.
 
-Immediate software priority: `K-11` fixed-fixture matching performance gate.
-Prerequisite: `J-15`, Complete. Recommended model: `gpt-5.6-sol`.
-Reasoning effort: high. Then consider `K-10` experiment comparison with
-explicit Publish; `K-04` and `K-09` remain dependency-blocked.
+Library-Noah Surface Match pose-search/coverage, preparation/edge,
+filtering/leveling, nominal-comparison/transform-diagnostics, height-map
+inspection/preparation, dependent height rules, declared-normal quality, and
+Landmark Correspondence migration is
+complete from clean worktree
+`C:\Git\Library-Noah-surface-match-kernel`; the unrelated dirty main Noah
+checkout remains untouched. The Tool-only contract next requires repeatability
+statistics, then validation statistics, before `J-12`. Implement source-neutral Tools
+in committed Noah first, then vendor the exact package before Studio
+adaptation. Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+`K-09` remains blocked on `J-12`; `K-04` remains blocked on `B-12`.
 
 Then:
 

@@ -122,6 +122,10 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-expand-selected-tool-parameters");
     public bool FocusSelectedToolParameterSearchSmoke =>
         HasFlag("--smoke-focus-selected-tool-parameter-search");
+    public bool SurfaceMatchExperimentPreviewSmoke =>
+        HasFlag("--smoke-surface-match-experiment-preview");
+    public bool SurfaceMatchExperimentFocusHoverSmoke =>
+        HasFlag("--smoke-surface-match-experiment-focus-hover");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
 
     public (int Width, int Height)? WindowSize =>
@@ -176,6 +180,8 @@ internal sealed class ShellSmokeCommandLineOptions
         || OrientedBoxPointerSmokeReportPath is not null
         || ExpandSelectedToolParametersSmoke
         || FocusSelectedToolParameterSearchSmoke
+        || SurfaceMatchExperimentPreviewSmoke
+        || SurfaceMatchExperimentFocusHoverSmoke
         || WorkbenchInteractionReportPath is not null;
 
     private bool HasFlag(string name) =>

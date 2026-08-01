@@ -42,7 +42,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool IsFilterPreviewRunning => isFilterPreviewRunning;
     public bool IsSelectedStepPreviewRunning =>
-        IsSelectedStepFilter ? isFilterPreviewRunning
+        IsSelectedStepSurfaceMatch ? IsSurfaceMatchExperimentRunning
+            : IsSelectedStepFilter ? isFilterPreviewRunning
             : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
             : IsSelectedStepLevelSurface ? IsLevelSurfacePreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
@@ -97,8 +98,9 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel7Command = setFilterKernel7Command;
     }
 
-    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepMeasurement
-        ? PreviewSelectedMeasurementAsync()
+    private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepSurfaceMatch
+        ? PreviewSelectedSurfaceMatchExperimentAsync()
+        : IsSelectedStepMeasurement ? PreviewSelectedMeasurementAsync()
         : IsSelectedStepRemoveOutlierPixels
         ? PreviewSelectedRemoveOutlierPixelsAsync()
         : IsSelectedStepLevelSurface
@@ -120,8 +122,9 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepMeasurement
-        ? CanPreviewSelectedMeasurement()
+    private bool CanPreviewSelectedStep() => IsSelectedStepSurfaceMatch
+        ? CanPreviewSelectedSurfaceMatchExperiment()
+        : IsSelectedStepMeasurement ? CanPreviewSelectedMeasurement()
         : IsSelectedStepRemoveOutlierPixels
         ? CanPreviewSelectedRemoveOutlierPixels()
         : IsSelectedStepLevelSurface
@@ -145,7 +148,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void PublishSelectedStep()
     {
-        if (IsSelectedStepMeasurement)
+        if (IsSelectedStepSurfaceMatch)
+        {
+            PublishSelectedSurfaceMatchExperiment();
+        }
+        else if (IsSelectedStepMeasurement)
         {
             PublishSelectedMeasurement();
         }
@@ -203,8 +210,9 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepMeasurement
-        ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
+    private bool CanPublishSelectedStep() => IsSelectedStepSurfaceMatch
+        ? CanPublishSelectedSurfaceMatchExperiment()
+        : IsSelectedStepMeasurement ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
         : IsSelectedStepRemoveOutlierPixels
         ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
         : IsSelectedStepLevelSurface
@@ -231,7 +239,11 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void CancelSelectedPreview()
     {
-        if (IsSelectedStepMeasurement)
+        if (IsSelectedStepSurfaceMatch)
+        {
+            CancelSurfaceMatchExperimentPreview();
+        }
+        else if (IsSelectedStepMeasurement)
         {
             CancelMeasurementPreview();
         }

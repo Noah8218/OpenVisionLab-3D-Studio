@@ -213,6 +213,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializeFilterExecution();
         InitializeOutputCompareSession();
         InitializeViewerWorkspace();
+        InitializeSurfaceMatchExperiment();
         InitializeDisplayedOutputs();
         Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
         InitializeFlowDiagnostics();
@@ -374,6 +375,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsSelectedToolLabAvailable));
             OnPropertyChanged(nameof(IsOrientedBoxEditorContextVisible));
             OnPropertyChanged(nameof(IsSelectedStepRegionSurfaceVisible));
+            OnPropertyChanged(nameof(IsSelectedStepSurfaceMatch));
+            OnPropertyChanged(nameof(IsSurfaceMatchExperimentVisible));
             NotifySourceQualityWorkspaceState();
             openSelectedToolLabCommand.RaiseCanExecuteChanged();
             RefreshSelectedStepPropertyDraft();
@@ -1271,6 +1274,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             case "re-grid-height-map":
                 RefreshRegridHeightFieldExecutionState();
                 break;
+            case "surface-match":
+                RefreshSurfaceMatchExperimentState();
+                break;
             case "thickness":
             case "warpage":
             case "plane-flatness":
@@ -2018,6 +2024,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshXYZAffineSolveExecutionState();
         RefreshXYZAffineApplyExecutionState();
         RefreshRegridHeightFieldExecutionState();
+        RefreshSurfaceMatchExperimentState();
         RefreshMeasurementExecutionState();
         RefreshAdapterCoverage();
         RefreshValidationSetCapability();

@@ -8,6 +8,13 @@ using NoahGapFlushRegionStatistics = Lib.ThreeD.Inspection.GapFlushRegionStatist
 using NoahCrossSectionDimensionsInspectionOptions = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionOptions;
 using NoahCrossSectionDimensionsInspectionTool = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionTool;
 using NoahCrossSectionDimensionsSample = Lib.ThreeD.Inspection.CrossSectionDimensionsSample;
+using NoahHeightGridRegion = Lib.ThreeD.FeatureExtraction.HeightGridRegion;
+using NoahHeightMapRegionStatisticsTool = Lib.ThreeD.FeatureExtraction.HeightMapRegionStatisticsTool;
+using NoahReferenceGridCoordinateMode = Lib.ThreeD.FeatureExtraction.ReferenceGridCoordinateMode;
+using NoahReferenceGridDefinition = Lib.ThreeD.FeatureExtraction.ReferenceGridDefinition;
+using NoahReferenceGridPointReconstructionOptions = Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionOptions;
+using NoahReferenceGridPointReconstructionTool = Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionTool;
+using NoahReferenceGridVector = Lib.ThreeD.FeatureExtraction.ReferenceGridVector;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -616,26 +623,22 @@ public static class ToolRecipeHeightMeasurementExecution
     {
         var profile = prepared.ReferenceGridProfile
             ?? throw new InvalidDataException("Plane Flatness requires a reference-grid profile.");
-        var samples = new List<HeightFieldPlaneSample>();
-        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+        var reconstruction = Reconstruct(
+            prepared,
+            roi,
+            profile,
+            NoahReferenceGridCoordinateMode.DeclaredFrame);
+        if (!reconstruction.Success)
         {
-            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
-            {
-                var height = prepared.Values[row * prepared.Width + column];
-                if (!double.IsFinite(height)) continue;
-                var u = (column + 0.5d) * profile.PitchU;
-                var v = (row + 0.5d) * profile.PitchV;
-                var x = profile.Origin.X + profile.UAxis.X * u + profile.VAxis.X * v + profile.HAxis.X * height;
-                var y = profile.Origin.Y + profile.UAxis.Y * u + profile.VAxis.Y * v + profile.HAxis.Y * height;
-                var z = profile.Origin.Z + profile.UAxis.Z * u + profile.VAxis.Z * v + profile.HAxis.Z * height;
-                if (x is < float.MinValue or > float.MaxValue || y is < float.MinValue or > float.MaxValue || z is < float.MinValue or > float.MaxValue)
-                {
-                    throw new InvalidDataException("Plane Flatness reconstructed point exceeds the supported single-precision geometry range.");
-                }
-                samples.Add(new HeightFieldPlaneSample(new Vector3((float)x, (float)y, (float)z), height));
-            }
+            throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
+                ? "Plane Flatness reconstructed point exceeds the supported single-precision geometry range."
+                : reconstruction.Message);
         }
-        return samples;
+        return reconstruction.Samples
+            .Select(sample => new HeightFieldPlaneSample(
+                new Vector3((float)sample.X, (float)sample.Y, (float)sample.Z),
+                sample.Height))
+            .ToArray();
     }
 
     private static IReadOnlyList<HeightFieldPlaneSample> CreateReferenceAxisPlaneSamples(
@@ -643,26 +646,23 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DGridRoi roi,
         string toolName)
     {
-        var pitchU = prepared.ReferenceGridProfile?.PitchU ?? 1d;
-        var pitchV = prepared.ReferenceGridProfile?.PitchV ?? 1d;
-        var samples = new List<HeightFieldPlaneSample>();
-        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+        var profile = prepared.ReferenceGridProfile;
+        var reconstruction = Reconstruct(
+            prepared,
+            roi,
+            profile,
+            NoahReferenceGridCoordinateMode.ReferenceAxes);
+        if (!reconstruction.Success)
         {
-            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
-            {
-                var height = prepared.Values[row * prepared.Width + column];
-                if (!double.IsFinite(height)) continue;
-                var u = (column + 0.5d) * pitchU;
-                var v = (row + 0.5d) * pitchV;
-                if (u is < float.MinValue or > float.MaxValue || v is < float.MinValue or > float.MaxValue
-                    || height is < float.MinValue or > float.MaxValue)
-                {
-                    throw new InvalidDataException($"{toolName} reference-axis sample exceeds the supported single-precision geometry range.");
-                }
-                samples.Add(new HeightFieldPlaneSample(new Vector3((float)u, (float)height, (float)v), height));
-            }
+            throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
+                ? $"{toolName} reference-axis sample exceeds the supported single-precision geometry range."
+                : reconstruction.Message);
         }
-        return samples;
+        return reconstruction.Samples
+            .Select(sample => new HeightFieldPlaneSample(
+                new Vector3((float)sample.U, (float)sample.Height, (float)sample.V),
+                sample.Height))
+            .ToArray();
     }
 
     private static IReadOnlyList<NoahCrossSectionDimensionsSample> CreateCrossSectionSamples(
@@ -671,34 +671,47 @@ public static class ToolRecipeHeightMeasurementExecution
     {
         var profile = prepared.ReferenceGridProfile
             ?? throw new InvalidDataException("Cross-section Dimensions requires a reference-grid profile.");
-        var samples = new List<NoahCrossSectionDimensionsSample>();
-        for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
+        var firstRow = new C3DGridRoi(roi.Row, roi.Column, 1, roi.ColumnCount);
+        var reconstruction = Reconstruct(
+            prepared,
+            firstRow,
+            profile,
+            NoahReferenceGridCoordinateMode.ReferenceAxes,
+            double.MinValue,
+            double.MaxValue);
+        if (!reconstruction.Success)
         {
-            var height = prepared.Values[roi.Row * prepared.Width + column];
-            if (!double.IsFinite(height)) continue;
-            var u = (column + 0.5d) * profile.PitchU;
-            samples.Add(new NoahCrossSectionDimensionsSample(column, u, height));
+            throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
+                ? "Cross-section Dimensions reference-axis sample exceeds the supported single-precision geometry range."
+                : reconstruction.Message);
         }
-        return samples;
+        return reconstruction.Samples
+            .Select(sample => new NoahCrossSectionDimensionsSample(
+                sample.Column,
+                sample.U,
+                sample.Height))
+            .ToArray();
     }
 
     private static NoahGapFlushRegionStatistics? CreateGapFlushRegionStatistics(
         PreparedHeightMeasurement prepared,
         C3DGridRoi roi)
     {
-        var count = 0;
-        var sum = 0d;
-        for (var row = roi.Row; row < roi.Row + roi.RowCount; row++)
+        var statistics = new NoahHeightMapRegionStatisticsTool().Execute(
+            prepared.Height,
+            prepared.Width,
+            prepared.Values,
+            ToNoahRegion(roi));
+        if (!statistics.Success)
         {
-            for (var column = roi.Column; column < roi.Column + roi.ColumnCount; column++)
-            {
-                var value = prepared.Values[row * prepared.Width + column];
-                if (!double.IsFinite(value)) continue;
-                count++;
-                sum += value;
-            }
+            throw new InvalidDataException(statistics.Message);
         }
-        return count == 0 ? null : new NoahGapFlushRegionStatistics(count, sum / count, sum / count);
+        return !statistics.HasFiniteSamples
+            ? null
+            : new NoahGapFlushRegionStatistics(
+                statistics.FiniteCellCount,
+                statistics.Mean,
+                statistics.Mean);
     }
 
     private static (Vector3 Position, double Height) ReconstructPoint(
@@ -713,17 +726,70 @@ public static class ToolRecipeHeightMeasurementExecution
         if (!double.IsFinite(height)) throw new InvalidDataException("Point Pair locator resolves to a missing height cell.");
         var profile = prepared.ReferenceGridProfile
             ?? throw new InvalidDataException("Point Pair requires a reference-grid profile.");
-        var u = (locator.Column + 0.5d) * profile.PitchU;
-        var v = (locator.Row + 0.5d) * profile.PitchV;
-        var x = profile.Origin.X + profile.UAxis.X * u + profile.VAxis.X * v + profile.HAxis.X * height;
-        var y = profile.Origin.Y + profile.UAxis.Y * u + profile.VAxis.Y * v + profile.HAxis.Y * height;
-        var z = profile.Origin.Z + profile.UAxis.Z * u + profile.VAxis.Z * v + profile.HAxis.Z * height;
-        if (x is < float.MinValue or > float.MaxValue || y is < float.MinValue or > float.MaxValue || z is < float.MinValue or > float.MaxValue)
+        var reconstruction = Reconstruct(
+            prepared,
+            new C3DGridRoi(locator.Row, locator.Column, 1, 1),
+            profile,
+            NoahReferenceGridCoordinateMode.DeclaredFrame);
+        if (!reconstruction.Success)
         {
-            throw new InvalidDataException("Point Pair reconstructed point exceeds the supported single-precision geometry range.");
+            throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
+                ? "Point Pair reconstructed point exceeds the supported single-precision geometry range."
+                : reconstruction.Message);
         }
-        return (new Vector3((float)x, (float)y, (float)z), height);
+        var sample = reconstruction.Samples.Single();
+        return (new Vector3((float)sample.X, (float)sample.Y, (float)sample.Z), sample.Height);
     }
+
+    private static Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionResult Reconstruct(
+        PreparedHeightMeasurement prepared,
+        C3DGridRoi roi,
+        C3DReferenceGridProfile? profile,
+        NoahReferenceGridCoordinateMode coordinateMode,
+        double minimumSupportedCoordinate = float.MinValue,
+        double maximumSupportedCoordinate = float.MaxValue) =>
+        new NoahReferenceGridPointReconstructionTool().Execute(
+            prepared.Height,
+            prepared.Width,
+            prepared.Values,
+            ToNoahRegion(roi),
+            ToNoahDefinition(profile),
+            new NoahReferenceGridPointReconstructionOptions
+            {
+                CoordinateMode = coordinateMode,
+                MinimumSupportedCoordinate = minimumSupportedCoordinate,
+                MaximumSupportedCoordinate = maximumSupportedCoordinate
+            });
+
+    private static NoahHeightGridRegion ToNoahRegion(C3DGridRoi roi) =>
+        new(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);
+
+    private static NoahReferenceGridDefinition ToNoahDefinition(C3DReferenceGridProfile? profile) =>
+        profile is null
+            ? new NoahReferenceGridDefinition
+            {
+                Origin = new NoahReferenceGridVector(0d, 0d, 0d),
+                UAxis = new NoahReferenceGridVector(1d, 0d, 0d),
+                VAxis = new NoahReferenceGridVector(0d, 0d, 1d),
+                HAxis = new NoahReferenceGridVector(0d, 1d, 0d),
+                PitchU = 1d,
+                PitchV = 1d
+            }
+            : new NoahReferenceGridDefinition
+            {
+                Origin = ToNoahVector(profile.Origin),
+                UAxis = ToNoahVector(profile.UAxis),
+                VAxis = ToNoahVector(profile.VAxis),
+                HAxis = ToNoahVector(profile.HAxis),
+                PitchU = profile.PitchU,
+                PitchV = profile.PitchV
+            };
+
+    private static NoahReferenceGridVector ToNoahVector(C3DReferenceGridVector vector) =>
+        new(vector.X, vector.Y, vector.Z);
+
+    private static bool IsCoordinateRangeFailure(string message) =>
+        message.Contains("exceeds the supported range", StringComparison.Ordinal);
 
     private static string CalculateHash(ToolRecipeStep step, string inputHash, IReadOnlyList<ToolRecipeSelection> selections)
     {

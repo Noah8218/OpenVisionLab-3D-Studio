@@ -1,10 +1,11 @@
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Deterministic height-step extraction over one complete organized XYZ
-/// grid. Missing cells and ambiguous point-to-cell mappings fail closed.
+/// Strict product adapter for height-step extraction over one complete
+/// organized XYZ grid. Library-Noah owns the neighbor calculation.
 /// </summary>
 public static class SceneSurfaceEdgeExtractor
 {
@@ -22,15 +23,11 @@ public static class SceneSurfaceEdgeExtractor
         }
 
         if (parameters.Method
-                != SceneSurfaceEdgeExtractionParameters
-                    .OrganizedHeightStepMethod
-            || !double.IsFinite(parameters.MinimumAbsoluteHeightStep)
-            || parameters.MinimumAbsoluteHeightStep <= 0.0
-            || !parameters.IncludeColumnNeighbors
-                && !parameters.IncludeRowNeighbors)
+            != SceneSurfaceEdgeExtractionParameters
+                .OrganizedHeightStepMethod)
         {
             throw new InvalidDataException(
-                "Scene edge extraction parameters are invalid.");
+                "Scene edge extraction method is unsupported.");
         }
 
         var grid = scene.SourceQuality.Grid;
@@ -45,90 +42,45 @@ public static class SceneSurfaceEdgeExtractor
                 "Scene edge extraction version 1 requires a complete organized XYZ grid.");
         }
 
-        var candidates = new List<SceneEdgeCandidate>();
-        for (var row = 0; row < grid.Height; row++)
+        var noahResult =
+            new DeterministicOrganizedSceneSurfaceEdgeExtractionTool()
+                .Execute(
+                    scene.Points
+                        .Select(LibraryNoahSurfaceMatching.Point)
+                        .ToArray(),
+                    new DeterministicOrganizedSceneSurfaceEdgeExtractionOptions
+                    {
+                        Width = grid.Width,
+                        Height = grid.Height,
+                        MinimumAbsoluteHeightStep =
+                            parameters.MinimumAbsoluteHeightStep,
+                        IncludeColumnNeighbors =
+                            parameters.IncludeColumnNeighbors,
+                        IncludeRowNeighbors =
+                            parameters.IncludeRowNeighbors
+                    });
+        if (!noahResult.Success)
         {
-            for (var column = 0; column < grid.Width; column++)
-            {
-                var firstIndex = checked(row * grid.Width + column);
-                if (parameters.IncludeColumnNeighbors
-                    && column + 1 < grid.Width)
-                {
-                    AddCandidate(
-                        scene.Points,
-                        firstIndex,
-                        firstIndex + 1,
-                        SceneSurfaceEdgeAxis.AcrossColumns,
-                        parameters.MinimumAbsoluteHeightStep,
-                        candidates);
-                }
-
-                if (parameters.IncludeRowNeighbors
-                    && row + 1 < grid.Height)
-                {
-                    AddCandidate(
-                        scene.Points,
-                        firstIndex,
-                        firstIndex + grid.Width,
-                        SceneSurfaceEdgeAxis.AcrossRows,
-                        parameters.MinimumAbsoluteHeightStep,
-                        candidates);
-                }
-            }
+            throw new InvalidDataException(noahResult.Message);
         }
 
-        var edges = candidates
-            .OrderBy(candidate => candidate.FirstPointIndex)
-            .ThenBy(candidate => candidate.SecondPointIndex)
-            .Select((candidate, order) => new SceneSurfaceEdgeSample(
-                order,
-                candidate.FirstPointIndex,
-                candidate.SecondPointIndex,
-                candidate.AnchorPointIndex,
-                candidate.FirstPosition,
-                candidate.SecondPosition,
-                candidate.Anchor,
-                candidate.AbsoluteHeightStep,
-                candidate.Axis))
+        var edges = noahResult.Edges
+            .Select(edge => new SceneSurfaceEdgeSample(
+                edge.Order,
+                edge.FirstPointIndex,
+                edge.SecondPointIndex,
+                edge.AnchorPointIndex,
+                Point(edge.FirstPosition),
+                Point(edge.SecondPosition),
+                Point(edge.Anchor),
+                edge.AbsoluteHeightStep,
+                edge.Axis == ExtractedSceneSurfaceEdgeAxis.AcrossColumns
+                    ? SceneSurfaceEdgeAxis.AcrossColumns
+                    : SceneSurfaceEdgeAxis.AcrossRows))
             .ToArray();
         return SceneSurfaceEdgeArtifact.Create(scene, parameters, edges);
     }
 
-    private static void AddCandidate(
-        IReadOnlyList<SurfaceModelPoint3> points,
-        int firstIndex,
-        int secondIndex,
-        SceneSurfaceEdgeAxis axis,
-        double threshold,
-        ICollection<SceneEdgeCandidate> candidates)
-    {
-        var first = points[firstIndex];
-        var second = points[secondIndex];
-        var step = Math.Abs(first.Z - second.Z);
-        if (step < threshold)
-        {
-            return;
-        }
-
-        var anchorIndex = first.Z > second.Z ? firstIndex : secondIndex;
-        candidates.Add(new SceneEdgeCandidate(
-            firstIndex,
-            secondIndex,
-            anchorIndex,
-            first,
-            second,
-            anchorIndex == firstIndex ? first : second,
-            step,
-            axis));
-    }
-
-    private sealed record SceneEdgeCandidate(
-        int FirstPointIndex,
-        int SecondPointIndex,
-        int AnchorPointIndex,
-        SurfaceModelPoint3 FirstPosition,
-        SurfaceModelPoint3 SecondPosition,
-        SurfaceModelPoint3 Anchor,
-        double AbsoluteHeightStep,
-        SceneSurfaceEdgeAxis Axis);
+    private static SurfaceModelPoint3 Point(ThreeDPoint point) =>
+        new(point.X, point.Y, point.Z);
 }

@@ -1,3 +1,5 @@
+using Lib.ThreeD.FeatureExtraction;
+
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
@@ -15,7 +17,12 @@ public sealed class C3DHeightDistribution
         int validSampleCount,
         int missingSampleCount,
         int[] bins,
-        int peakBinIndex)
+        int peakBinIndex,
+        double[] binLowerBounds,
+        double[] binUpperBounds,
+        double peakFraction,
+        bool isConstant,
+        double peakCenter)
     {
         Minimum = minimum;
         Maximum = maximum;
@@ -24,7 +31,15 @@ public sealed class C3DHeightDistribution
         MissingSampleCount = missingSampleCount;
         Bins = Array.AsReadOnly(bins);
         PeakBinIndex = peakBinIndex;
+        this.binLowerBounds = binLowerBounds;
+        this.binUpperBounds = binUpperBounds;
+        PeakFraction = peakFraction;
+        IsConstant = isConstant;
+        PeakCenter = peakCenter;
     }
+
+    private readonly double[] binLowerBounds;
+    private readonly double[] binUpperBounds;
 
     public double Minimum { get; }
 
@@ -44,103 +59,55 @@ public sealed class C3DHeightDistribution
 
     public int PeakSampleCount => Bins[PeakBinIndex];
 
-    public double PeakFraction => PeakSampleCount / (double)ValidSampleCount;
+    public double PeakFraction { get; }
 
-    public bool IsConstant => Minimum == Maximum;
+    public bool IsConstant { get; }
 
     public double PeakLowerBound => GetBinLowerBound(PeakBinIndex);
 
     public double PeakUpperBound => GetBinUpperBound(PeakBinIndex);
 
-    public double PeakCenter => IsConstant
-        ? Minimum
-        : (PeakLowerBound + PeakUpperBound) * 0.5;
+    public double PeakCenter { get; }
 
     public double GetBinLowerBound(int index)
     {
         ValidateBinIndex(index);
-        return IsConstant
-            ? Minimum
-            : Minimum + (Maximum - Minimum) * index / BinCount;
+        return binLowerBounds[index];
     }
 
     public double GetBinUpperBound(int index)
     {
         ValidateBinIndex(index);
-        return IsConstant
-            ? Maximum
-            : Minimum + (Maximum - Minimum) * (index + 1) / BinCount;
+        return binUpperBounds[index];
     }
 
     internal static C3DHeightDistribution Create(
-        ReadOnlySpan<float> samples,
-        float minimum,
-        float maximum,
-        double mean,
-        int validSampleCount,
-        int binCount = DefaultBinCount,
-        CancellationToken cancellationToken = default)
+        HeightGridSummaryResult summary)
     {
-        if (binCount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(binCount), binCount, "C3D height-distribution bin count must be positive.");
-        }
-
-        if (validSampleCount <= 0
-            || !float.IsFinite(minimum)
-            || !float.IsFinite(maximum)
-            || !double.IsFinite(mean)
-            || maximum < minimum)
-        {
-            throw new ArgumentException("C3D height distribution requires finite full-source statistics and at least one valid sample.");
-        }
-
-        var bins = new int[binCount];
-        var observedValidCount = 0;
-        var span = (double)maximum - minimum;
-        for (var sampleIndex = 0; sampleIndex < samples.Length; sampleIndex++)
-        {
-            if ((sampleIndex & 0x3fff) == 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            var value = samples[sampleIndex];
-            if (!float.IsFinite(value) || value == 0.0f)
-            {
-                continue;
-            }
-
-            observedValidCount++;
-            var index = span == 0.0
-                ? 0
-                : Math.Min(binCount - 1, (int)(((double)value - minimum) / span * binCount));
-            bins[index]++;
-        }
-
-        if (observedValidCount != validSampleCount)
+        ArgumentNullException.ThrowIfNull(summary);
+        if (!summary.Success
+            || !summary.HasFiniteSamples
+            || summary.Bins.Count == 0
+            || summary.BinLowerBounds.Count != summary.Bins.Count
+            || summary.BinUpperBounds.Count != summary.Bins.Count)
         {
             throw new InvalidDataException(
-                $"C3D height-distribution valid-count mismatch: expected {validSampleCount}, observed {observedValidCount}.");
-        }
-
-        var peakBinIndex = 0;
-        for (var index = 1; index < bins.Length; index++)
-        {
-            if (bins[index] > bins[peakBinIndex])
-            {
-                peakBinIndex = index;
-            }
+                "C3D height distribution requires a completed Library-Noah height-grid summary.");
         }
 
         return new C3DHeightDistribution(
-            minimum,
-            maximum,
-            mean,
-            validSampleCount,
-            samples.Length - validSampleCount,
-            bins,
-            peakBinIndex);
+            summary.Minimum,
+            summary.Maximum,
+            summary.Mean,
+            summary.ValidSampleCount,
+            summary.MissingSampleCount,
+            summary.Bins.ToArray(),
+            summary.PeakBinIndex,
+            summary.BinLowerBounds.ToArray(),
+            summary.BinUpperBounds.ToArray(),
+            summary.PeakFraction,
+            summary.IsConstant,
+            summary.PeakCenter);
     }
 
     private void ValidateBinIndex(int index)

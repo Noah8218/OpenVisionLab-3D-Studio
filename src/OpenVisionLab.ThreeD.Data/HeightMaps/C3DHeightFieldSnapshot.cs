@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using Lib.ThreeD.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 
@@ -38,12 +39,22 @@ public sealed class C3DHeightFieldSnapshot
         Provenance = provenance;
         IsDerived = isDerived;
 
-        var valid = values.Where(double.IsFinite).ToArray();
-        ValidCount = valid.Length;
-        MissingCount = values.Length - valid.Length;
-        Minimum = valid.Length == 0 ? double.NaN : valid.Min();
-        Maximum = valid.Length == 0 ? double.NaN : valid.Max();
-        Mean = valid.Length == 0 ? double.NaN : valid.Average();
+        var summary = new HeightDistributionStatisticsTool().Execute(
+            values,
+            new HeightDistributionStatisticsOptions
+            {
+                BinCount = 1,
+                ZeroIsMissing = false
+            });
+        if (!summary.Success)
+        {
+            throw new InvalidDataException(summary.Message);
+        }
+        ValidCount = summary.ValidSampleCount;
+        MissingCount = summary.MissingSampleCount;
+        Minimum = summary.Minimum;
+        Maximum = summary.Maximum;
+        Mean = summary.Mean;
     }
 
     public string EntityId { get; }
@@ -56,6 +67,7 @@ public sealed class C3DHeightFieldSnapshot
     public int Width { get; }
     public int Height { get; }
     public ReadOnlyMemory<double> Values => values;
+    internal IReadOnlyList<double> ValueList => values;
     public int ValidCount { get; }
     public int MissingCount { get; }
     public double Minimum { get; }

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using OpenVisionLab.ThreeD.Core;
+using NoahLandmarkTool = Lib.ThreeD.FeatureExtraction.LandmarkCorrespondenceValidationTool;
+using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -23,7 +25,6 @@ public sealed record C3DLandmarkCorrespondenceEvaluation(
 public static class C3DLandmarkCorrespondenceRule
 {
     private const int RequiredPairCount = 4;
-    private const double RankRelativeTolerance = 1e-12;
 
     public static C3DLandmarkCorrespondenceEvaluation Evaluate(
         C3DLandmarkCorrespondenceInput input,
@@ -49,20 +50,26 @@ public static class C3DLandmarkCorrespondenceRule
                     references[index].Y,
                     references[index].Z))
                 .ToArray();
-            var sourceCoordinates = pairs.Select(pair => new Point(pair.SourceX, pair.SourceY, pair.SourceZ)).ToArray();
-            var referenceCoordinates = pairs.Select(pair => new Point(pair.ReferenceX, pair.ReferenceY, pair.ReferenceZ)).ToArray();
-            var sourceRank = GetAugmentedRank(sourceCoordinates);
-            var referenceRank = GetAugmentedRank(referenceCoordinates);
-            var sourceVolume = GetNormalizedTetrahedronVolume(sourceCoordinates);
-            var referenceVolume = GetNormalizedTetrahedronVolume(referenceCoordinates);
-            if (sourceRank < RequiredPairCount || sourceVolume <= input.MinimumNormalizedTetrahedronVolume)
+            var independence = new NoahLandmarkTool().Execute(
+                pairs.Select(pair => new NoahPoint(
+                    pair.SourceX,
+                    pair.SourceY,
+                    pair.SourceZ)).ToArray(),
+                pairs.Select(pair => new NoahPoint(
+                    pair.ReferenceX,
+                    pair.ReferenceY,
+                    pair.ReferenceZ)).ToArray(),
+                input.MinimumNormalizedTetrahedronVolume,
+                cancellationToken);
+            if (!independence.Success)
             {
-                throw new InvalidDataException($"Source landmark tetrahedron is not affine-independent (rank {sourceRank}/4, normalized volume {sourceVolume:G8}, taught minimum {input.MinimumNormalizedTetrahedronVolume:G8}).");
+                throw new InvalidDataException(independence.Message);
             }
-            if (referenceRank < RequiredPairCount || referenceVolume <= input.MinimumNormalizedTetrahedronVolume)
-            {
-                throw new InvalidDataException($"Reference landmark tetrahedron is not affine-independent (rank {referenceRank}/4, normalized volume {referenceVolume:G8}, taught minimum {input.MinimumNormalizedTetrahedronVolume:G8}).");
-            }
+
+            var sourceRank = independence.SourceRank;
+            var referenceRank = independence.ReferenceRank;
+            var sourceVolume = independence.SourceNormalizedTetrahedronVolume;
+            var referenceVolume = independence.ReferenceNormalizedTetrahedronVolume;
 
             var first = anchors[0];
             var provenance = $"{input.StepId}:LandmarkCorrespondence:{C3DLandmarkCorrespondenceSet.ContractVersion}:pairs=ExactlyFour:source=CurrentPublishedCornerAnchor:reference={input.ReferenceProvenance}@{input.ReferenceRevision}";
@@ -167,54 +174,6 @@ public static class C3DLandmarkCorrespondenceRule
         }
     }
 
-    private static int GetAugmentedRank(IReadOnlyList<Point> points)
-    {
-        var matrix = points.Select(point => new[] { point.X, point.Y, point.Z, 1d }).ToArray();
-        var maximum = matrix.SelectMany(row => row).Select(Math.Abs).DefaultIfEmpty(0d).Max();
-        var tolerance = Math.Max(1d, maximum) * RankRelativeTolerance;
-        var rank = 0;
-        for (var column = 0; column < 4 && rank < matrix.Length; column++)
-        {
-            var pivot = Enumerable.Range(rank, matrix.Length - rank)
-                .Select(row => (Row: row, Absolute: Math.Abs(matrix[row][column])))
-                .OrderByDescending(item => item.Absolute)
-                .First();
-            if (pivot.Absolute <= tolerance) continue;
-            (matrix[rank], matrix[pivot.Row]) = (matrix[pivot.Row], matrix[rank]);
-            var divisor = matrix[rank][column];
-            for (var target = rank + 1; target < matrix.Length; target++)
-            {
-                var factor = matrix[target][column] / divisor;
-                for (var entry = column; entry < 4; entry++) matrix[target][entry] -= factor * matrix[rank][entry];
-            }
-            rank++;
-        }
-        return rank;
-    }
-
-    private static double GetNormalizedTetrahedronVolume(IReadOnlyList<Point> points)
-    {
-        var a = Subtract(points[1], points[0]);
-        var b = Subtract(points[2], points[0]);
-        var c = Subtract(points[3], points[0]);
-        var volume6 = Math.Abs(Dot(a, Cross(b, c)));
-        var span = 0d;
-        for (var first = 0; first < points.Count; first++)
-        {
-            for (var second = first + 1; second < points.Count; second++)
-            {
-                span = Math.Max(span, Length(Subtract(points[second], points[first])));
-            }
-        }
-        return span <= 0d || !double.IsFinite(span) ? 0d : volume6 / (span * span * span);
-    }
-
     private static bool Finite(params double[] values) => values.All(double.IsFinite);
     private static bool Same(string first, string second) => string.Equals(first, second, StringComparison.Ordinal);
-    private static Point Subtract(Point left, Point right) => new(left.X - right.X, left.Y - right.Y, left.Z - right.Z);
-    private static Point Cross(Point left, Point right) => new(left.Y * right.Z - left.Z * right.Y, left.Z * right.X - left.X * right.Z, left.X * right.Y - left.Y * right.X);
-    private static double Dot(Point left, Point right) => left.X * right.X + left.Y * right.Y + left.Z * right.Z;
-    private static double Length(Point point) => Math.Sqrt(Dot(point, point));
-    private readonly record struct Point(double X, double Y, double Z);
 }
-

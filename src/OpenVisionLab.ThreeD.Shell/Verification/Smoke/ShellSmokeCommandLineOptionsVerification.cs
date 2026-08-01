@@ -53,7 +53,9 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("HeightImageRoiPointer", VerifyHeightImageRoiPointer()),
             ("OrientedBoxPointer", VerifyOrientedBoxPointer()),
             ("ExpandSelectedToolParameters", VerifyExpandSelectedToolParameters()),
-            ("FocusSelectedToolParameterSearch", VerifyFocusSelectedToolParameterSearch())
+            ("FocusSelectedToolParameterSearch", VerifyFocusSelectedToolParameterSearch()),
+            ("SurfaceMatchExperimentPreview", VerifySurfaceMatchExperimentPreview()),
+            ("SurfaceMatchExperimentFocusHover", VerifySurfaceMatchExperimentFocusHover())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -108,6 +110,27 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--shell-smoke-width", "1280", "--shell-smoke-height", "760"]);
         return options.WindowSize is { Width: 1280, Height: 760 };
+    }
+
+    private static bool VerifySurfaceMatchExperimentPreview()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-surface-match-experiment-preview"]);
+        return options.SurfaceMatchExperimentPreviewSmoke
+            && options.ShouldAttachLoadedHandler(
+                hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifySurfaceMatchExperimentFocusHover()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-surface-match-experiment-focus-hover"
+        ]);
+
+        return options.SurfaceMatchExperimentFocusHoverSmoke
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifyCompactWorkbench()

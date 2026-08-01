@@ -1,4 +1,4 @@
-using System.Numerics;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -14,9 +14,9 @@ public sealed record SurfaceModelPreparationRequest(
     SurfaceModelPreparationParameters Parameters);
 
 /// <summary>
-/// Pure, deterministic conversion from an imported triangle mesh to an
-/// identified SurfaceModel. Version 1 preserves all source geometry and
-/// declared normals; removal of redundant/internal surfaces belongs to J-05.
+/// Strict product adapter from an imported triangle mesh to an identified
+/// SurfaceModel. Library-Noah owns deterministic sampling, centroids, and
+/// sample-normal calculation. Studio preserves source identity and artifacts.
 /// </summary>
 public static class SurfaceModelPreparation
 {
@@ -65,36 +65,33 @@ public static class SurfaceModelPreparation
                 mesh.Indices[offset + 2]);
         }
 
-        var sampleCount = Math.Min(
-            request.Parameters.MaximumSampleCount,
-            triangles.Length);
-        var samples = new SurfaceModelSample[sampleCount];
-        for (var sampleOrder = 0;
-             sampleOrder < sampleCount;
-             sampleOrder++)
+        var noahResult = new DeterministicSurfaceModelPreparationTool()
+            .Execute(
+                points.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
+                triangles
+                    .Select(triangle => new SurfaceModelTriangleInput(
+                        triangle.FirstPointIndex,
+                        triangle.SecondPointIndex,
+                        triangle.ThirdPointIndex))
+                    .ToArray(),
+                normals.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
+                new DeterministicSurfaceModelPreparationOptions
+                {
+                    MaximumSampleCount =
+                        request.Parameters.MaximumSampleCount
+                });
+        if (!noahResult.Success)
         {
-            var triangleIndex = SurfaceModelSampling.GetEvenTriangleIndex(
-                sampleOrder,
-                sampleCount,
-                triangles.Length);
-            var triangle = triangles[triangleIndex];
-            var first = points[triangle.FirstPointIndex];
-            var second = points[triangle.SecondPointIndex];
-            var third = points[triangle.ThirdPointIndex];
-            var centroid = new SurfaceModelPoint3(
-                (first.X + second.X + third.X) / 3.0,
-                (first.Y + second.Y + third.Y) / 3.0,
-                (first.Z + second.Z + third.Z) / 3.0);
-            var sampleNormal = Vector3.Normalize(
-                mesh.Normals[triangle.FirstPointIndex]
-                + mesh.Normals[triangle.SecondPointIndex]
-                + mesh.Normals[triangle.ThirdPointIndex]);
-            samples[sampleOrder] = new SurfaceModelSample(
-                sampleOrder,
-                triangleIndex,
-                centroid,
-                ToPoint(sampleNormal));
+            throw new InvalidDataException(noahResult.Message);
         }
+
+        var samples = noahResult.Samples
+            .Select(sample => new SurfaceModelSample(
+                sample.Order,
+                sample.SourceTriangleIndex,
+                ToPoint(sample.Position),
+                ToPoint(sample.Normal)))
+            .ToArray();
 
         return SurfaceModelArtifact.Create(
             request.ArtifactId,
@@ -111,6 +108,9 @@ public static class SurfaceModelPreparation
             samples);
     }
 
-    private static SurfaceModelPoint3 ToPoint(Vector3 value) =>
+    private static SurfaceModelPoint3 ToPoint(System.Numerics.Vector3 value) =>
+        new(value.X, value.Y, value.Z);
+
+    private static SurfaceModelPoint3 ToPoint(ThreeDPoint value) =>
         new(value.X, value.Y, value.Z);
 }

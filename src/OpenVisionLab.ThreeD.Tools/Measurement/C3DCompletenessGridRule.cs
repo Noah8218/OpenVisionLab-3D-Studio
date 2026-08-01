@@ -1,5 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+using NoahCompletenessCellDecision = Lib.ThreeD.FeatureExtraction.CompletenessCellDecision;
+using NoahCompletenessCoverageDisposition = Lib.ThreeD.FeatureExtraction.CompletenessCoverageDisposition;
+using NoahCompletenessGridInspectionTool = Lib.ThreeD.FeatureExtraction.CompletenessGridInspectionTool;
+using NoahCompletenessGridProfile = Lib.ThreeD.FeatureExtraction.CompletenessGridProfile;
+using NoahCompletenessHeightDisposition = Lib.ThreeD.FeatureExtraction.CompletenessHeightDisposition;
+using NoahCompletenessPresencePolicy = Lib.ThreeD.FeatureExtraction.CompletenessPresencePolicy;
+using NoahHeightGridRegion = Lib.ThreeD.FeatureExtraction.HeightGridRegion;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -33,74 +40,76 @@ public static class C3DCompletenessGridRule
         ArgumentNullException.ThrowIfNull(input);
         try
         {
-            Validate(input);
+            ValidateStudioContract(input);
             var reference = input.ReferenceSelection.GridRectangle!;
             var inspection = input.InspectionGridSelection.GridRectangle!;
-            var referenceValues = FiniteValues(input, reference).ToArray();
-            if (referenceValues.Length == 0)
+            var inspectionResult = new NoahCompletenessGridInspectionTool().Execute(
+                input.GridHeight,
+                input.GridWidth,
+                input.Values,
+                ToNoahRegion(reference),
+                ToNoahRegion(inspection),
+                new NoahCompletenessGridProfile
+                {
+                    Rows = input.Profile.Rows,
+                    Columns = input.Profile.Columns,
+                    XPitchColumns = input.Profile.XPitchColumns,
+                    ZPitchRows = input.Profile.ZPitchRows,
+                    CellWidthColumns = input.Profile.CellWidthColumns,
+                    CellHeightRows = input.Profile.CellHeightRows
+                },
+                input.PresencePolicy is null
+                    ? null
+                    : new NoahCompletenessPresencePolicy
+                    {
+                        MinimumFiniteCoverageRatio = input.PresencePolicy.MinimumFiniteCoverageRatio,
+                        MinimumReferenceRelativeMeanHeight = input.PresencePolicy.MinimumReferenceRelativeMeanRawHeight,
+                        MaximumReferenceRelativeMeanHeight = input.PresencePolicy.MaximumReferenceRelativeMeanRawHeight
+                    });
+            if (!inspectionResult.Success)
             {
-                throw new InvalidDataException(
-                    "Completeness Grid v1 requires at least one finite cell in the explicit Reference ROI.");
+                throw new InvalidDataException(inspectionResult.Message);
             }
 
-            var referenceMean = referenceValues.Average();
-            var cells = new List<C3DCompletenessCellMetric>(
-                checked(input.Profile.Rows * input.Profile.Columns));
-            for (var gridRow = 0; gridRow < input.Profile.Rows; gridRow++)
-            {
-                for (var gridColumn = 0;
-                     gridColumn < input.Profile.Columns;
-                     gridColumn++)
+            var referenceMean = inspectionResult.ReferenceMeanHeight;
+            var cells = inspectionResult.Cells
+                .Select(cell =>
                 {
-                    var region = new ToolRecipeGridRectangle(
-                        inspection.Row + gridRow * input.Profile.ZPitchRows,
-                        inspection.Column + gridColumn * input.Profile.XPitchColumns,
-                        input.Profile.CellHeightRows,
-                        input.Profile.CellWidthColumns);
-                    var finite = FiniteValues(input, region).ToArray();
-                    var total = checked(region.RowCount * region.ColumnCount);
-                    var mean = finite.Length == 0 ? (double?)null : finite.Average();
-                    var coverage = finite.Length / (double)total;
-                    double? relative = mean is null
-                        ? null
-                        : mean.Value - referenceMean;
-                    var decision = input.PresencePolicy is null
-                        ? (ResultStatus?)null
-                        : coverage >= input.PresencePolicy.MinimumFiniteCoverageRatio
-                          && relative is { } value
-                          && value >= input.PresencePolicy.MinimumReferenceRelativeMeanRawHeight
-                          && value <= input.PresencePolicy.MaximumReferenceRelativeMeanRawHeight
-                            ? ResultStatus.Pass
-                            : ResultStatus.Fail;
-                    cells.Add(new C3DCompletenessCellMetric(
-                        $"r{gridRow + 1:D3}.c{gridColumn + 1:D3}",
-                        gridRow,
-                        gridColumn,
-                        region,
-                        total,
-                        finite.Length,
-                        total - finite.Length,
-                        coverage,
-                        mean,
-                        referenceMean,
-                        relative,
+                    var decision = ToStudioDecision(cell.Decision);
+                    return new C3DCompletenessCellMetric(
+                        $"r{cell.GridRow + 1:D3}.c{cell.GridColumn + 1:D3}",
+                        cell.GridRow,
+                        cell.GridColumn,
+                        new ToolRecipeGridRectangle(
+                            cell.Region.Row,
+                            cell.Region.Column,
+                            cell.Region.RowCount,
+                            cell.Region.ColumnCount),
+                        cell.TotalCellCount,
+                        cell.FiniteCellCount,
+                        cell.MissingCellCount,
+                        cell.FiniteCoverageRatio,
+                        cell.MeanHeight,
+                        cell.ReferenceMeanHeight,
+                        cell.ReferenceRelativeMeanHeight,
                         decision,
                         CreateDecisionReason(
-                            coverage,
-                            relative,
+                            cell.CoverageDisposition,
+                            cell.HeightDisposition,
                             input.PresencePolicy,
-                            decision)));
-                }
-            }
+                            decision));
+                })
+                .ToArray();
 
             var hash = CalculateContentSha256(input, referenceMean, cells);
-            var passedCellCount = cells.Count(cell => cell.Decision == ResultStatus.Pass);
-            var failedCellCount = cells.Count(cell => cell.Decision == ResultStatus.Fail);
-            var aggregateStatus = input.PresencePolicy is null
-                ? ResultStatus.Warning
-                : failedCellCount == 0
-                    ? ResultStatus.Pass
-                    : ResultStatus.Fail;
+            var passedCellCount = inspectionResult.PassedCellCount;
+            var failedCellCount = inspectionResult.FailedCellCount;
+            var aggregateStatus = inspectionResult.AggregateDecision switch
+            {
+                NoahCompletenessCellDecision.Pass => ResultStatus.Pass,
+                NoahCompletenessCellDecision.Fail => ResultStatus.Fail,
+                _ => ResultStatus.Warning
+            };
             var cellOverlays = input.PresencePolicy is null
                 ? []
                 : cells.Select(cell => new C3DCompletenessCellOverlay(
@@ -117,7 +126,7 @@ public static class C3DCompletenessGridRule
                 input.FrameId,
                 input.ReferenceSelection.Id,
                 reference,
-                referenceValues.Length,
+                inspectionResult.ReferenceFiniteCellCount,
                 referenceMean,
                 input.InspectionGridSelection.Id,
                 inspection,
@@ -134,11 +143,11 @@ public static class C3DCompletenessGridRule
                 new(
                     input.PresencePolicy is null ? "Cell count" : "Passed cells",
                     MetricKind.Count,
-                    input.PresencePolicy is null ? cells.Count : passedCellCount,
+                    input.PresencePolicy is null ? cells.Length : passedCellCount,
                     "cells",
                     aggregateStatus),
                 new("Reference mean raw height", MetricKind.Number, referenceMean, input.Unit),
-                new("Reference finite cells", MetricKind.Count, referenceValues.Length, "cells")
+                new("Reference finite cells", MetricKind.Count, inspectionResult.ReferenceFiniteCellCount, "cells")
             };
             if (input.PresencePolicy is not null)
             {
@@ -173,8 +182,8 @@ public static class C3DCompletenessGridRule
                 ToolName,
                 aggregateStatus,
                 input.PresencePolicy is null
-                    ? $"Calculated {cells.Count} deterministic cell metrics; no acceptance policy was applied."
-                    : $"Completeness Grid {aggregateStatus}: {passedCellCount} passed, {failedCellCount} failed, {cells.Count} total cells.",
+                    ? $"Calculated {cells.Length} deterministic cell metrics; no acceptance policy was applied."
+                    : $"Completeness Grid {aggregateStatus}: {passedCellCount} passed, {failedCellCount} failed, {cells.Length} total cells.",
                 TimeSpan.Zero,
                 metrics,
                 cellOverlays.Select(overlay => new Overlay(
@@ -203,7 +212,7 @@ public static class C3DCompletenessGridRule
         }
     }
 
-    private static void Validate(C3DCompletenessGridInput input)
+    private static void ValidateStudioContract(C3DCompletenessGridInput input)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(input.OutputEntityId);
         ArgumentException.ThrowIfNullOrWhiteSpace(input.RootSourceEntityId);
@@ -232,29 +241,6 @@ public static class C3DCompletenessGridRule
             throw new InvalidDataException(
                 "Completeness Grid v1 supports only the typed GridRectangle cell shape.");
         }
-        if (input.Profile.Rows < 1 || input.Profile.Columns < 1
-            || input.Profile.XPitchColumns < input.Profile.CellWidthColumns
-            || input.Profile.ZPitchRows < input.Profile.CellHeightRows
-            || input.Profile.CellWidthColumns < 1
-            || input.Profile.CellHeightRows < 1)
-        {
-            throw new InvalidDataException(
-                "Completeness Grid profile requires positive non-overlapping rows, columns, pitch, and cell size.");
-        }
-
-        var requiredRows = checked(
-            (input.Profile.Rows - 1) * input.Profile.ZPitchRows
-            + input.Profile.CellHeightRows);
-        var requiredColumns = checked(
-            (input.Profile.Columns - 1) * input.Profile.XPitchColumns
-            + input.Profile.CellWidthColumns);
-        if (requiredRows > inspection.RowCount
-            || requiredColumns > inspection.ColumnCount)
-        {
-            throw new InvalidDataException(
-                $"Completeness Grid extent {requiredColumns} x {requiredRows} cells does not fit "
-                + $"inside the authored Inspection Grid ROI {inspection.ColumnCount} x {inspection.RowCount}.");
-        }
     }
 
     private static void ValidateRegion(
@@ -270,25 +256,6 @@ public static class C3DCompletenessGridRule
         {
             throw new InvalidDataException(
                 $"{label} is outside the {width} x {height} source grid.");
-        }
-    }
-
-    private static IEnumerable<double> FiniteValues(
-        C3DCompletenessGridInput input,
-        ToolRecipeGridRectangle region)
-    {
-        for (var row = region.Row; row < region.Row + region.RowCount; row++)
-        {
-            for (var column = region.Column;
-                 column < region.Column + region.ColumnCount;
-                 column++)
-            {
-                var value = input.Values[row * input.GridWidth + column];
-                if (double.IsFinite(value))
-                {
-                    yield return value;
-                }
-            }
         }
     }
 
@@ -359,8 +326,8 @@ public static class C3DCompletenessGridRule
     }
 
     private static string CreateDecisionReason(
-        double finiteCoverageRatio,
-        double? referenceRelativeMeanRawHeight,
+        NoahCompletenessCoverageDisposition coverageDisposition,
+        NoahCompletenessHeightDisposition heightDisposition,
         C3DCompletenessPresencePolicy? policy,
         ResultStatus? decision)
     {
@@ -369,18 +336,29 @@ public static class C3DCompletenessGridRule
             return "No acceptance policy was authored.";
         }
 
-        var coverage = finiteCoverageRatio >= policy.MinimumFiniteCoverageRatio
+        var coverage = coverageDisposition == NoahCompletenessCoverageDisposition.Accepted
             ? "coverage accepted"
             : "coverage below minimum";
-        var height = referenceRelativeMeanRawHeight is null
-            ? "finite mean missing"
-            : referenceRelativeMeanRawHeight < policy.MinimumReferenceRelativeMeanRawHeight
-                ? "relative mean below minimum"
-                : referenceRelativeMeanRawHeight > policy.MaximumReferenceRelativeMeanRawHeight
-                    ? "relative mean above maximum"
-                    : "relative mean accepted";
+        var height = heightDisposition switch
+        {
+            NoahCompletenessHeightDisposition.Missing => "finite mean missing",
+            NoahCompletenessHeightDisposition.BelowMinimum => "relative mean below minimum",
+            NoahCompletenessHeightDisposition.AboveMaximum => "relative mean above maximum",
+            _ => "relative mean accepted"
+        };
         return $"{decision}: {coverage}; {height}.";
     }
+
+    private static NoahHeightGridRegion ToNoahRegion(ToolRecipeGridRectangle region) =>
+        new(region.Row, region.Column, region.RowCount, region.ColumnCount);
+
+    private static ResultStatus? ToStudioDecision(NoahCompletenessCellDecision decision) =>
+        decision switch
+        {
+            NoahCompletenessCellDecision.Pass => ResultStatus.Pass,
+            NoahCompletenessCellDecision.Fail => ResultStatus.Fail,
+            _ => null
+        };
 
     private static void Write(
         BinaryWriter writer,

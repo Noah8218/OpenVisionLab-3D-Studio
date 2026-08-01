@@ -20,7 +20,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(OpenAdvancedToolTip), nameof(Filter), nameof(HeightDifferenceEdge), nameof(TwoPointLine),
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
         nameof(XYZAffineSolve), nameof(XYZAffineApply), nameof(ToolboxAndEntities), nameof(ToolLibrary), nameof(ToolLibraryHint),
-        nameof(ToolSearch), nameof(AllTools), nameof(RecipeFlow), nameof(RecipeFlowHint), nameof(FilterOptionalHint),
+        nameof(ToolSearch), nameof(AllTools), nameof(CompactToolLibrary), nameof(RecipeFlow), nameof(CompactRecipeFlow), nameof(RecipeFlowHint), nameof(FilterOptionalHint),
         nameof(AddSelectedStep), nameof(AddToolFromCatalog), nameof(AddToolFromCatalogToolTip), nameof(Viewer),
         nameof(ViewerLayout), nameof(ViewerSingle), nameof(ViewerSplitVertical), nameof(ViewerSplitHorizontal),
         nameof(ViewerPopOut), nameof(ViewerMainSlot), nameof(ViewerAuxiliarySlot), nameof(ViewerAuxiliaryOutput),
@@ -235,10 +235,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RegridHeightMap => T("ThreeD.Tool.RegridHeightMap", "\uB192\uC774 \uB9F5 \uC7AC\uACA9\uC790\uD654", "Re-grid Height Map");
     public string ToolboxAndEntities => T("ThreeD.Workbench.ToolboxAndEntities", "\uD234\uBC15\uC2A4 \uBC0F \uC5D4\uD2F0\uD2F0", "Toolbox & Entities");
     public string ToolLibrary => T("ThreeD.Workbench.ToolLibrary", "\uAC80\uC0AC \uB3C4\uAD6C", "Inspection Tools");
+    public string CompactToolLibrary => T("ThreeD.Workbench.CompactToolLibrary", "\uAC80\uC0AC \uB3C4\uAD6C", "Tools");
     public string ToolLibraryHint => T("ThreeD.Workbench.ToolLibraryHint", "3D \uC785\uB825\uC774 \uC900\uBE44\uB418\uBA74 \uD638\uD658\uB418\uB294 \uAC80\uC0AC \uB3C4\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "After 3D input is ready, add a compatible inspection tool.");
     public string ToolSearch => T("ThreeD.Workbench.ToolSearch", "\uB3C4\uAD6C \uAC80\uC0C9", "Search tools");
     public string AllTools => T("ThreeD.Workbench.AllTools", "\uC804\uCCB4 \uB3C4\uAD6C", "All tools");
     public string RecipeFlow => T("ThreeD.Workbench.RecipeFlow", "\uAC80\uC0AC \uAD6C\uC131", "Inspection Flow");
+    public string CompactRecipeFlow => T("ThreeD.Workbench.CompactRecipeFlow", "\uAC80\uC0AC \uAD6C\uC131", "Flow");
     public string RecipeFlowHint => T("ThreeD.Workbench.RecipeFlowHint", "\uB2E8\uACC4\uB97C \uC120\uD0DD\uD558\uBA74 \uC624\uB978\uCABD\uC5D0\uC11C \uC124\uC815\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC120\uD0DD\uD55C \uB2E8\uACC4\uB294 \uC774\uB3D9\uD558\uAC70\uB098 \uC0AD\uC81C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Select a step to edit it on the right. The selected step can also be reordered or removed here.");
     public string FilterOptionalHint => T("ThreeD.Workbench.FilterOptionalHint", "\uD544\uD130\uB294 \uC120\uD0DD \uC0AC\uD56D\uC785\uB2C8\uB2E4. \uD604\uC7AC \uC785\uB825\uC774 \uD638\uD658\uB418\uBA74 \uCE21\uC815 \uB3C4\uAD6C\uB97C \uBC14\uB85C \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.", "Filter is optional. Add a measurement tool directly when the current input is compatible.");
     public string AddSelectedStep => T("ThreeD.Command.AddSelectedStep", "\uC120\uD0DD \uB2E8\uACC4 \uCD94\uAC00", "Add selected step");

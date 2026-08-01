@@ -329,6 +329,94 @@
                     </StackPanel>
                 </Border>
 
+                <Border Margin="0,0,0,8"
+                        Padding="8"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Visibility="{Binding IsSurfaceMatchExperimentVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="SurfaceMatchExperimentComparison"
+                        AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchExperimentAccessible, Korean='Surface Match 게시 결과와 후보 비교', English='Surface Match published and candidate comparison'}">
+                    <StackPanel>
+                        <StackPanel>
+                            <TextBlock FontSize="10.5"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchExperiment, Korean='정합 파라미터 실험', English='Match parameter experiment'}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="8.5"
+                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                       Text="{Binding SurfaceMatchExperimentViewSummary}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchPublished, Korean='게시 결과', English='Published'}" />
+                            <TextBlock Grid.Column="1"
+                                       FontFamily="Consolas"
+                                       FontSize="9"
+                                       Text="{Binding SurfaceMatchPublishedSummary}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,3,0,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchCandidate, Korean='후보', English='Candidate'}" />
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="1"
+                                       Margin="0,3,0,0"
+                                       FontFamily="Consolas"
+                                       FontSize="9"
+                                       Text="{Binding SurfaceMatchCandidateSummary}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="8.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding SurfaceMatchExperimentDeltaSummary}"
+                                   TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Margin="0,0,5,0"
+                                    Padding="7,3"
+                                    Content="{views:ThreeDText Key=ThreeD.Command.ShowPublishedMatch, Korean='게시 결과', English='Published'}"
+                                    Command="{Binding ShowPublishedSurfaceMatchExperimentCommand}"
+                                    AutomationProperties.AutomationId="SurfaceMatchExperimentShowPublishedButton"
+                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.ShowPublishedMatchTip, Korean='변경되지 않은 게시 결과를 뷰어에 표시', English='Show the unchanged published surface-match result in the Viewer'}"
+                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.ShowPublishedMatchAccessible, Korean='게시된 Surface Match 결과 보기', English='Show published surface-match result'}" />
+                            <Button Margin="0,0,5,0"
+                                    Padding="7,3"
+                                    Content="{views:ThreeDText Key=ThreeD.Command.ShowCandidateMatch, Korean='후보', English='Candidate'}"
+                                    Command="{Binding ShowCandidateSurfaceMatchExperimentCommand}"
+                                    AutomationProperties.AutomationId="SurfaceMatchExperimentShowCandidateButton"
+                                    ToolTip="{views:ThreeDText Key=ThreeD.Command.ShowCandidateMatchTip, Korean='임시 후보 Preview를 뷰어에 표시', English='Show the temporary candidate Preview in the Viewer'}"
+                                    AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.ShowCandidateMatchAccessible, Korean='Surface Match 후보 Preview 보기', English='Show candidate surface-match Preview'}" />
+                            <ui:Button Width="30"
+                                       Height="26"
+                                       Padding="5"
+                                       Icon="{ui:SymbolIcon ArrowUndo24}"
+                                       Command="{Binding DiscardSurfaceMatchExperimentCommand}"
+                                       AutomationProperties.AutomationId="SurfaceMatchExperimentDiscardButton"
+                                       ToolTip="{views:ThreeDText Key=ThreeD.Command.DiscardCandidateMatchTip, Korean='임시 후보를 폐기하고 게시 결과 복원', English='Discard the temporary candidate and restore Published'}"
+                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.DiscardCandidateMatchAccessible, Korean='Surface Match 후보 폐기', English='Discard surface-match candidate'}" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="8.5"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding SurfaceMatchExperimentStatus}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <Border Margin="0,0,0,7"
                         Padding="8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
@@ -1385,35 +1473,32 @@
                                             <ui:Button Margin="0,0,3,0"
                                                        Padding="5,3"
                                                        HorizontalAlignment="Stretch"
-                                                       Content="{views:ThreeDText Key=ThreeD.Workspace.OutputShow, Korean='보기', English='Show'}"
                                                        Icon="{ui:SymbolIcon Eye24}"
                                                        Command="{Binding DataContext.ShowWorkspaceOutputCommand, ElementName=SelectedToolRoot}"
                                                        CommandParameter="{Binding}"
-                                                       ToolTip="{Binding Availability}"
+                                                       ToolTip="{views:ThreeDText Key=ThreeD.Command.ShowOutputInViewerTip, Korean='선택한 출력을 뷰어에 표시', English='Show selected output in Viewer'}"
                                                        ToolTipService.ShowOnDisabled="True"
-                                                       AutomationProperties.Name="Show selected output in Viewer" />
+                                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.ShowOutputInViewerAccessible, Korean='선택한 출력을 뷰어에 표시', English='Show selected output in Viewer'}" />
                                             <ui:Button Grid.Column="1"
                                                        Margin="3,0"
                                                        Padding="5,3"
                                                        HorizontalAlignment="Stretch"
-                                                       Content="{views:ThreeDText Key=ThreeD.Workspace.OutputPin, Korean='고정', English='Pin'}"
                                                        Icon="{ui:SymbolIcon Document24}"
                                                        Command="{Binding DataContext.PinWorkspaceOutputCommand, ElementName=SelectedToolRoot}"
                                                        CommandParameter="{Binding}"
-                                                       ToolTip="{Binding Availability}"
+                                                       ToolTip="{views:ThreeDText Key=ThreeD.Command.PinOutputTip, Korean='선택한 출력을 비교 대상으로 고정', English='Pin selected output for comparison'}"
                                                        ToolTipService.ShowOnDisabled="True"
-                                                       AutomationProperties.Name="Pin selected output to comparison" />
+                                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.PinOutputAccessible, Korean='선택한 출력을 비교 대상으로 고정', English='Pin selected output to comparison'}" />
                                             <ui:Button Grid.Column="2"
                                                        Margin="3,0,0,0"
                                                        Padding="5,3"
                                                        HorizontalAlignment="Stretch"
-                                                       Content="{views:ThreeDText Key=ThreeD.Workspace.OutputCompare, Korean='비교', English='Compare'}"
                                                        Icon="{ui:SymbolIcon Table24}"
                                                        Command="{Binding DataContext.CompareWorkspaceOutputCommand, ElementName=SelectedToolRoot}"
                                                        CommandParameter="{Binding}"
-                                                       ToolTip="{Binding Availability}"
+                                                       ToolTip="{views:ThreeDText Key=ThreeD.Command.CompareOutputTip, Korean='선택한 출력의 비교 화면 열기', English='Open selected output comparison'}"
                                                        ToolTipService.ShowOnDisabled="True"
-                                                       AutomationProperties.Name="Open selected output comparison" />
+                                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.CompareOutputAccessible, Korean='선택한 출력 비교 열기', English='Open selected output comparison'}" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
