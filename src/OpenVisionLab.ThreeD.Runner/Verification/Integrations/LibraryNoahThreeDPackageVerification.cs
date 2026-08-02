@@ -30,7 +30,9 @@ internal static class LibraryNoahThreeDPackageVerification
             ("height-deviation-inspection-tool", VerifyHeightDeviationInspectionTool),
             ("declared-mesh-normal-quality-tool", VerifyDeclaredMeshNormalQualityTool),
             ("landmark-correspondence-validation-tool", VerifyLandmarkCorrespondenceValidationTool),
-            ("repeatability-statistics-tool", VerifyRepeatabilityStatisticsTool)
+            ("repeatability-statistics-tool", VerifyRepeatabilityStatisticsTool),
+            ("labeled-evidence-statistics-tool", VerifyLabeledEvidenceStatisticsTool),
+            ("threshold-candidate-analysis-tool", VerifyThresholdCandidateAnalysisTool)
         };
 
         var results = cases
@@ -60,8 +62,8 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
             && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.7"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "20963c12b50dfc0658110e2037961d3224feb2d6";
+            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.8"
+            && LibraryNoahHeightMapInspection.PackageSourceCommit == "0fe04bc967fa89918b3c6d937566cce56de69682";
         return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
     }
 
@@ -306,6 +308,65 @@ internal static class LibraryNoahThreeDPackageVerification
             && Approximately(result.SixSigmaSpread, 15.491933384829668)
             && Approximately(result.Range, 6.0);
         return (passed, $"success={result.Success},count={result.Count},mean={result.Mean:R},standardDeviation={result.SampleStandardDeviation:R},sixSigma={result.SixSigmaSpread:R},range={result.Range:R}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyLabeledEvidenceStatisticsTool()
+    {
+        var result = new LabeledEvidenceStatisticsTool().Execute(
+            [
+                new LabeledEvidenceStatisticsObservation("good-1", LabeledEvidenceRole.Good, 2.0),
+                new LabeledEvidenceStatisticsObservation("good-1", LabeledEvidenceRole.Good, 4.0),
+                new LabeledEvidenceStatisticsObservation("bad-1", LabeledEvidenceRole.Bad, -10.0),
+                new LabeledEvidenceStatisticsObservation("bad-2", LabeledEvidenceRole.Bad, 20.0)
+            ]);
+        var good = result.RoleStatistics.Single(item =>
+            item.Role == LabeledEvidenceRole.Good);
+        var bad = result.RoleStatistics.Single(item =>
+            item.Role == LabeledEvidenceRole.Bad);
+        var heldOut = result.RoleStatistics.Single(item =>
+            item.Role == LabeledEvidenceRole.HeldOut);
+        var passed = result.Success
+            && result.RoleStatistics.Count == 3
+            && good.SampleCount == 1
+            && good.ValueCount == 2
+            && Approximately(good.Mean!.Value, 3.0)
+            && Approximately(good.PopulationStandardDeviation!.Value, 1.0)
+            && bad.SampleCount == 2
+            && Approximately(bad.Minimum!.Value, -10.0)
+            && Approximately(bad.Maximum!.Value, 20.0)
+            && Approximately(bad.PopulationStandardDeviation!.Value, 15.0)
+            && heldOut.ValueCount == 0
+            && heldOut.Mean is null;
+        return (passed, $"success={result.Success},roles={result.RoleStatistics.Count},good={good.SampleCount}/{good.ValueCount}:{good.Mean:R}:{good.PopulationStandardDeviation:R},bad={bad.SampleCount}/{bad.ValueCount}:{bad.Minimum:R}..{bad.Maximum:R}:{bad.PopulationStandardDeviation:R},heldOut={heldOut.ValueCount}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyThresholdCandidateAnalysisTool()
+    {
+        var result = new ThresholdCandidateAnalysisTool().Execute(
+            [
+                new ThresholdCandidateObservation(0, ThresholdObservationClass.Accepted, 2.0),
+                new ThresholdCandidateObservation(1, ThresholdObservationClass.Accepted, 4.0),
+                new ThresholdCandidateObservation(2, ThresholdObservationClass.Rejected, -10.0),
+                new ThresholdCandidateObservation(3, ThresholdObservationClass.Rejected, 20.0)
+            ]);
+        var minimum = result.Candidates.Single(item =>
+            item.LimitKind == ThresholdCandidateLimitKind.Minimum);
+        var maximum = result.Candidates.Single(item =>
+            item.LimitKind == ThresholdCandidateLimitKind.Maximum);
+        var range = result.Candidates.Single(item =>
+            item.LimitKind == ThresholdCandidateLimitKind.Range);
+        var passed = result.Success
+            && result.Candidates.Count == 3
+            && Approximately(minimum.Minimum!.Value, 2.0)
+            && minimum.ErrorCount == 1
+            && Approximately(maximum.Maximum!.Value, 4.0)
+            && maximum.ErrorCount == 1
+            && Approximately(range.Minimum!.Value, 2.0)
+            && Approximately(range.Maximum!.Value, 4.0)
+            && range.ErrorCount == 0
+            && range.Decisions.Select(item => item.ObservationIndex)
+                .SequenceEqual([0, 1, 2, 3]);
+        return (passed, $"success={result.Success},candidates={result.Candidates.Count},minimum={minimum.Minimum:R}:{minimum.ErrorCount},maximum={maximum.Maximum:R}:{maximum.ErrorCount},range={range.Minimum:R}..{range.Maximum:R}:{range.ErrorCount}");
     }
 
     private static (bool Passed, string Evidence) VerifyThicknessPass(LibraryNoahHeightMapInput source)

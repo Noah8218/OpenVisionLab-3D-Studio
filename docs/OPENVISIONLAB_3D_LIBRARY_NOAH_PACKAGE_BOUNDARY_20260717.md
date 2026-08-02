@@ -15,11 +15,11 @@ hash.
 | Item | Value |
 | --- | --- |
 | Package ID | `Lib.ThreeD` |
-| Version | `2.8.7` |
-| Source commit | `20963c12b50dfc0658110e2037961d3224feb2d6` |
+| Version | `2.8.8` |
+| Source commit | `0fe04bc967fa89918b3c6d937566cce56de69682` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.7.nupkg` |
-| SHA-256 | `C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B` |
+| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.8.nupkg` |
+| SHA-256 | `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405` |
 
 The current package includes the previously migrated inspection tools,
 Surface Match pose-search/coverage, deterministic SurfaceModel and Prepared
@@ -36,6 +36,10 @@ mesh-normal topology/alignment quality and four-point landmark rank/normalized-
 volume validation through two public sealed Tools.
 It additionally owns scalar repeatability accumulation and descriptive
 statistics through public sealed `RepeatabilityStatisticsTool`.
+It now also owns labeled-evidence descriptive statistics and deterministic
+threshold-candidate construction, classification, error counting, ranking,
+and tie-breaking through two public sealed Tools. Studio's labeled-evidence
+adapter reuses the existing Noah region-statistics Tool for C3D ROI aggregation.
 Studio consumes them through strict adapters and retains product
 contracts, identities, unit/frame validation, acceptance, lifecycle,
 evidence, and UI.
@@ -67,7 +71,7 @@ the current package selection.
   result status and metrics back to Studio `ToolResult`.
 - `OpenVisionLab.ThreeD.Runner`: verifies the package assembly identity, the
   established inspection behaviors, and deterministic results from the
-  current package surface (`17/17` current bridge cases).
+  current package surface (`19/19` current bridge cases).
 - View/ViewModel: the bounded Thickness and local raw-height Warpage task slices
   consume this bridge through typed recipes and explicit Preview/Publish commands.
   The Warpage source is user-designated and declares `raw-height` plus its display
@@ -157,7 +161,24 @@ result is byte-identical before and after migration. Preserve
 `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
 `artifacts/current/20260801-surface-match-noah-migration/`.
 
-## Current 2.8.7 checkpoint - 2026-08-01
+## Current 2.8.8 checkpoint - 2026-08-01
+
+Library-Noah commit `0fe04bc967fa89918b3c6d937566cce56de69682` is the exact
+source of the current vendored package. It adds public sealed
+`LabeledEvidenceStatisticsTool` and `ThresholdCandidateAnalysisTool` while
+retaining every prior 2.8.7 API.
+
+The committed source passes Release `0/0` and full Smoke `106/106`. Package
+metadata records the same commit; the package SHA-256 is
+`D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+Studio Release passes `0/0`; package integrity passes; direct bridge `19/19`;
+Validation Set `84/84`; normalized before/after full-report differences `0`;
+and structure `29/29` with zero migration debt. Preserve
+`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md` and
+the physical evidence under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+
+## Earlier 2.8.7 checkpoint - 2026-08-01
 
 Library-Noah commit `20963c12b50dfc0658110e2037961d3224feb2d6` is the exact
 source of the current vendored package. It adds public sealed

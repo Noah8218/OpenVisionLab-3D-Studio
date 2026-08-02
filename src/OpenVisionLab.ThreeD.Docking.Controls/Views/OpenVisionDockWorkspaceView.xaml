@@ -5,6 +5,7 @@
              xmlns:avalonDockControls="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
              xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls">
     <UserControl.Resources>
+        <local:ValidationDockTabPresentationConverter x:Key="ValidationDockTabPresentationConverter" />
         <Style x:Key="OpenVisionTopAnchorablePaneStyle"
                TargetType="{x:Type avalonDockControls:LayoutAnchorablePaneControl}">
             <Setter Property="Foreground"
@@ -69,7 +70,6 @@
                         <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
                         <Setter Property="AutomationProperties.AutomationId" Value="{Binding ContentId}" />
                         <Setter Property="MinHeight" Value="29" />
-                        <Setter Property="Margin" Value="0,0,3,0" />
                         <Setter Property="Padding" Value="11,5" />
                         <Setter Property="Foreground"
                                 Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
@@ -77,6 +77,54 @@
                         <Setter Property="BorderBrush" Value="Transparent" />
                         <Setter Property="FontSize" Value="10.5" />
                         <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Width">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource ValidationDockTabPresentationConverter}"
+                                              ConverterParameter="Width">
+                                    <Binding Path="ContentId" />
+                                    <Binding Path="IsValidationTabFilterActive"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                    <Binding Path="ValidationVisibleSupportContentId"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="Margin">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource ValidationDockTabPresentationConverter}"
+                                              ConverterParameter="Margin">
+                                    <Binding Path="ContentId" />
+                                    <Binding Path="IsValidationTabFilterActive"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                    <Binding Path="ValidationVisibleSupportContentId"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="IsHitTestVisible">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource ValidationDockTabPresentationConverter}"
+                                              ConverterParameter="Boolean">
+                                    <Binding Path="ContentId" />
+                                    <Binding Path="IsValidationTabFilterActive"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                    <Binding Path="ValidationVisibleSupportContentId"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="Focusable">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource ValidationDockTabPresentationConverter}"
+                                              ConverterParameter="Boolean">
+                                    <Binding Path="ContentId" />
+                                    <Binding Path="IsValidationTabFilterActive"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                    <Binding Path="ValidationVisibleSupportContentId"
+                                             RelativeSource="{RelativeSource AncestorType={x:Type local:OpenVisionDockWorkspaceView}}" />
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="{x:Type TabItem}">

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -75,19 +76,13 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                 continue;
             }
 
-            var groupCandidates = new List<ToolRecipeThresholdCandidate>();
-            foreach (var kind in
-                     Enum.GetValues<ToolRecipeThresholdLimitKind>())
-            {
-                groupCandidates.Add(SelectBest(
-                    group.Key.Scope,
-                    group.Key.OwnerId,
-                    group.Key.OwnerName,
-                    group.Key.MetricName,
-                    group.Key.Unit,
-                    kind,
-                    groupObservations));
-            }
+            var groupCandidates = AnalyzeCandidates(
+                group.Key.Scope,
+                group.Key.OwnerId,
+                group.Key.OwnerName,
+                group.Key.MetricName,
+                group.Key.Unit,
+                groupObservations);
             candidates.AddRange(groupCandidates);
             if (assistantMetric
                 && groupCandidates.All(candidate => candidate.ErrorCount > 0))
@@ -303,176 +298,67 @@ public static class ToolRecipeThresholdCandidateAnalyzer
             $"Validation Set: no {missingRole} development sample is staged."));
     }
 
-    private static ToolRecipeThresholdCandidate SelectBest(
+    private static IReadOnlyList<ToolRecipeThresholdCandidate> AnalyzeCandidates(
         ToolRecipeEvidenceScope scope,
         string ownerId,
         string ownerName,
         string metricName,
         string unit,
-        ToolRecipeThresholdLimitKind kind,
         IReadOnlyList<ToolRecipeMetricObservation> observations)
     {
-        var values = observations
-            .Select(observation => observation.Value)
-            .Distinct()
-            .Order()
+        var noahResult = new ThresholdCandidateAnalysisTool().Execute(
+            observations.Select((observation, index) =>
+                new ThresholdCandidateObservation(
+                    index,
+                    ToNoahClass(observation.Role),
+                    observation.Value))
+                .ToArray());
+        if (!noahResult.Success)
+        {
+            throw new InvalidOperationException(noahResult.Message);
+        }
+
+        return noahResult.Candidates
+            .Select(candidate => CreateCandidate(
+                scope,
+                ownerId,
+                ownerName,
+                metricName,
+                unit,
+                candidate,
+                observations))
             .ToArray();
-        var evaluated = kind switch
-        {
-            ToolRecipeThresholdLimitKind.Minimum =>
-                MinimumCandidates(values)
-                    .Select(minimum => Evaluate(
-                        scope,
-                        ownerId,
-                        ownerName,
-                        metricName,
-                        unit,
-                        kind,
-                        minimum,
-                        null,
-                        observations)),
-            ToolRecipeThresholdLimitKind.Maximum =>
-                MaximumCandidates(values)
-                    .Select(maximum => Evaluate(
-                        scope,
-                        ownerId,
-                        ownerName,
-                        metricName,
-                        unit,
-                        kind,
-                        null,
-                        maximum,
-                        observations)),
-            ToolRecipeThresholdLimitKind.Range =>
-                values.SelectMany(minimum =>
-                    values
-                        .Where(maximum => maximum >= minimum)
-                        .Select(maximum => Evaluate(
-                            scope,
-                            ownerId,
-                            ownerName,
-                            metricName,
-                            unit,
-                            kind,
-                            minimum,
-                            maximum,
-                            observations))),
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(kind),
-                kind,
-                null)
-        };
-
-        var ordered = evaluated
-            .OrderBy(candidate => candidate.ErrorCount)
-            .ThenBy(candidate => candidate.BadAcceptedCount)
-            .ThenBy(candidate => candidate.GoodRejectedCount);
-        return kind switch
-        {
-            ToolRecipeThresholdLimitKind.Minimum =>
-                ordered.ThenByDescending(candidate => candidate.Minimum).First(),
-            ToolRecipeThresholdLimitKind.Maximum =>
-                ordered.ThenBy(candidate => candidate.Maximum).First(),
-            ToolRecipeThresholdLimitKind.Range =>
-                ordered
-                    .ThenBy(candidate =>
-                        candidate.Maximum!.Value - candidate.Minimum!.Value)
-                    .ThenByDescending(candidate => candidate.Minimum)
-                    .ThenBy(candidate => candidate.Maximum)
-                    .First(),
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(kind),
-                kind,
-                null)
-        };
     }
 
-    private static IEnumerable<double> MinimumCandidates(
-        IReadOnlyList<double> values)
-    {
-        foreach (var value in values)
-        {
-            yield return value;
-        }
-
-        var rejectAll = Math.BitIncrement(values[^1]);
-        if (double.IsFinite(rejectAll))
-        {
-            yield return rejectAll;
-        }
-    }
-
-    private static IEnumerable<double> MaximumCandidates(
-        IReadOnlyList<double> values)
-    {
-        var rejectAll = Math.BitDecrement(values[0]);
-        if (double.IsFinite(rejectAll))
-        {
-            yield return rejectAll;
-        }
-        foreach (var value in values)
-        {
-            yield return value;
-        }
-    }
-
-    private static ToolRecipeThresholdCandidate Evaluate(
+    private static ToolRecipeThresholdCandidate CreateCandidate(
         ToolRecipeEvidenceScope scope,
         string ownerId,
         string ownerName,
         string metricName,
         string unit,
-        ToolRecipeThresholdLimitKind kind,
-        double? minimum,
-        double? maximum,
+        ThresholdCandidateAnalysisCandidate candidate,
         IReadOnlyList<ToolRecipeMetricObservation> observations)
     {
-        var decisions = observations
-            .OrderBy(observation => observation.SampleOrder)
-            .Select(observation =>
+        var kind = FromNoahKind(candidate.LimitKind);
+        var decisions = candidate.Decisions
+            .Select(decision =>
             {
-                var accepted = kind switch
-                {
-                    ToolRecipeThresholdLimitKind.Minimum =>
-                        observation.Value >= minimum,
-                    ToolRecipeThresholdLimitKind.Maximum =>
-                        observation.Value <= maximum,
-                    ToolRecipeThresholdLimitKind.Range =>
-                        observation.Value >= minimum
-                        && observation.Value <= maximum,
-                    _ => false
-                };
-                var predicted = accepted
-                    ? ToolRecipeValidationSampleRole.Good
-                    : ToolRecipeValidationSampleRole.Bad;
-                var decision = (observation.Role, predicted) switch
-                {
-                    (ToolRecipeValidationSampleRole.Good,
-                        ToolRecipeValidationSampleRole.Good) =>
-                        ToolRecipeThresholdDecisionKind.CorrectGood,
-                    (ToolRecipeValidationSampleRole.Good,
-                        ToolRecipeValidationSampleRole.Bad) =>
-                        ToolRecipeThresholdDecisionKind.FalseReject,
-                    (ToolRecipeValidationSampleRole.Bad,
-                        ToolRecipeValidationSampleRole.Bad) =>
-                        ToolRecipeThresholdDecisionKind.CorrectBad,
-                    _ => ToolRecipeThresholdDecisionKind.FalseAccept
-                };
+                var observation = observations[decision.ObservationIndex];
                 return new ToolRecipeThresholdSampleDecision(
                     observation.SampleOrder,
                     observation.SampleIdentity,
                     observation.SourcePath,
                     observation.Role,
-                    predicted,
-                    decision,
+                    FromNoahClass(decision.PredictedClass),
+                    FromNoahDecision(decision.Decision),
                     observation.Value,
                     observation.EvidenceLocator);
             })
             .ToArray();
         var canonical =
             $"{scope}|{ownerId}|{metricName}|{unit}|{kind}|"
-            + $"{minimum?.ToString("R", System.Globalization.CultureInfo.InvariantCulture) ?? "-"}|"
-            + $"{maximum?.ToString("R", System.Globalization.CultureInfo.InvariantCulture) ?? "-"}";
+            + $"{candidate.Minimum?.ToString("R", System.Globalization.CultureInfo.InvariantCulture) ?? "-"}|"
+            + $"{candidate.Maximum?.ToString("R", System.Globalization.CultureInfo.InvariantCulture) ?? "-"}";
         var hash = Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
 
@@ -484,20 +370,54 @@ public static class ToolRecipeThresholdCandidateAnalyzer
             metricName,
             unit,
             kind,
-            minimum,
-            maximum,
-            decisions.Count(decision =>
-                decision.Decision
-                == ToolRecipeThresholdDecisionKind.CorrectGood),
-            decisions.Count(decision =>
-                decision.Decision
-                == ToolRecipeThresholdDecisionKind.FalseReject),
-            decisions.Count(decision =>
-                decision.Decision
-                == ToolRecipeThresholdDecisionKind.CorrectBad),
-            decisions.Count(decision =>
-                decision.Decision
-                == ToolRecipeThresholdDecisionKind.FalseAccept),
+            candidate.Minimum,
+            candidate.Maximum,
+            candidate.AcceptedAcceptedCount,
+            candidate.AcceptedRejectedCount,
+            candidate.RejectedRejectedCount,
+            candidate.RejectedAcceptedCount,
             decisions);
     }
+
+    private static ThresholdObservationClass ToNoahClass(
+        ToolRecipeValidationSampleRole role) => role switch
+    {
+        ToolRecipeValidationSampleRole.Good => ThresholdObservationClass.Accepted,
+        ToolRecipeValidationSampleRole.Bad => ThresholdObservationClass.Rejected,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
+    };
+
+    private static ToolRecipeValidationSampleRole FromNoahClass(
+        ThresholdObservationClass observationClass) => observationClass switch
+    {
+        ThresholdObservationClass.Accepted => ToolRecipeValidationSampleRole.Good,
+        ThresholdObservationClass.Rejected => ToolRecipeValidationSampleRole.Bad,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(observationClass),
+            observationClass,
+            null)
+    };
+
+    private static ToolRecipeThresholdLimitKind FromNoahKind(
+        ThresholdCandidateLimitKind kind) => kind switch
+    {
+        ThresholdCandidateLimitKind.Minimum => ToolRecipeThresholdLimitKind.Minimum,
+        ThresholdCandidateLimitKind.Maximum => ToolRecipeThresholdLimitKind.Maximum,
+        ThresholdCandidateLimitKind.Range => ToolRecipeThresholdLimitKind.Range,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private static ToolRecipeThresholdDecisionKind FromNoahDecision(
+        ThresholdCandidateDecisionKind decision) => decision switch
+    {
+        ThresholdCandidateDecisionKind.CorrectAccepted =>
+            ToolRecipeThresholdDecisionKind.CorrectGood,
+        ThresholdCandidateDecisionKind.FalseReject =>
+            ToolRecipeThresholdDecisionKind.FalseReject,
+        ThresholdCandidateDecisionKind.CorrectRejected =>
+            ToolRecipeThresholdDecisionKind.CorrectBad,
+        ThresholdCandidateDecisionKind.FalseAccept =>
+            ToolRecipeThresholdDecisionKind.FalseAccept,
+        _ => throw new ArgumentOutOfRangeException(nameof(decision), decision, null)
+    };
 }

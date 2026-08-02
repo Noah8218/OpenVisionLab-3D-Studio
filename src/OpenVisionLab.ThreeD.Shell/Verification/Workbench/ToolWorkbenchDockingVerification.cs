@@ -373,10 +373,26 @@ internal static class ToolWorkbenchDockingVerification
                 && stageWorkbench.IsDedicatedValidationWorkspace
                 && stageWorkbench.HasStableStageHostedDataContexts
                 && stageWorkbench.HasLocalizedValidationNavigation
+                && stageWorkbench.HasValidationSamplesFirstUseClarity
+                && !stageWorkbench.IsValidationIssueNavigationVisible
+                && stageWorkbench.HasFocusedValidationPaneTabs
+                && stageWorkbench.VisibleValidationPaneTabCount == 1
                 && stageWorkbench.ValidationSetSampleCount == 5
                 && stageWorkbench.CanRunValidationSet
                 && !stageWorkbench.IsBottomPaneAttached,
-                $"stage={stageWorkbench.OperatorStage}; validate={stageWorkbench.HasValidateStageComposition}; linkedViewer={stageWorkbench.HasEvidenceLinkedViewerComposition}; dedicated={stageWorkbench.IsDedicatedValidationWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedValidationNavigation}; samples={stageWorkbench.ValidationSetSampleCount}; canRun={stageWorkbench.CanRunValidationSet}; bottom={stageWorkbench.IsBottomPaneAttached}");
+                $"stage={stageWorkbench.OperatorStage}; validate={stageWorkbench.HasValidateStageComposition}; linkedViewer={stageWorkbench.HasEvidenceLinkedViewerComposition}; dedicated={stageWorkbench.IsDedicatedValidationWorkspace}; contexts={stageWorkbench.HasStableStageHostedDataContexts}; localized={stageWorkbench.HasLocalizedValidationNavigation}; firstUse={stageWorkbench.HasValidationSamplesFirstUseClarity}; issueNav={stageWorkbench.IsValidationIssueNavigationVisible}; focusedTabs={stageWorkbench.HasFocusedValidationPaneTabs}; visibleTabs={stageWorkbench.VisibleValidationPaneTabCount}; samples={stageWorkbench.ValidationSetSampleCount}; canRun={stageWorkbench.CanRunValidationSet}; bottom={stageWorkbench.IsBottomPaneAttached}");
+            stageHost.Width = 1280;
+            stageHost.UpdateLayout();
+            Check(
+                "Compact Validate clamps restored ratios to a readable action-pane width",
+                stageWorkbench.IsCompactDockLayout
+                && stageWorkbench.HasReadableValidationPaneRatio
+                && ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == recipeStepCount
+                && shell.Workbench.IsDirty == recipeDirty,
+                $"compact={stageWorkbench.IsCompactDockLayout}; readableRatio={stageWorkbench.HasReadableValidationPaneRatio}; selected={shell.Workbench.SelectedPipelineStep?.Id}; steps={shell.Workbench.PipelineSteps.Count}; dirty={shell.Workbench.IsDirty}");
+            stageHost.Width = 1600;
+            stageHost.UpdateLayout();
             foreach (var section in Enum.GetValues<ValidationWorkspaceSection>())
             {
                 stageWorkbench.SetValidationWorkspaceSection(section);
@@ -386,6 +402,19 @@ internal static class ToolWorkbenchDockingVerification
                 stageWorkbench.ActiveValidationWorkspaceSection == ValidationWorkspaceSection.HeldOut
                 && shell.IsValidateWorkspaceSelected,
                 $"section={stageWorkbench.ActiveValidationWorkspaceSection}; stage={shell.SelectedWorkspaceMode}");
+            stageWorkbench.ActivateSessionLogPane();
+            stageHost.UpdateLayout();
+            Check(
+                "Validate reveals one explicitly requested advanced support pane without execution",
+                shell.IsValidateWorkspaceSelected
+                && stageWorkbench.IsSessionLogPaneSelected
+                && stageWorkbench.VisibleValidationPaneTabCount == 2
+                && ReferenceEquals(selectedStep, shell.Workbench.SelectedPipelineStep)
+                && shell.Workbench.PipelineSteps.Count == recipeStepCount
+                && shell.Workbench.IsDirty == recipeDirty
+                && !shell.Workbench.IsValidationSetRunning
+                && !shell.Workbench.IsSelectedStepPreviewRunning,
+                $"stage={stageWorkbench.OperatorStage}; sessionLog={stageWorkbench.IsSessionLogPaneSelected}; visibleTabs={stageWorkbench.VisibleValidationPaneTabCount}; selected={shell.Workbench.SelectedPipelineStep?.Id}; steps={shell.Workbench.PipelineSteps.Count}; dirty={shell.Workbench.IsDirty}; validationRunning={shell.Workbench.IsValidationSetRunning}; previewRunning={shell.Workbench.IsSelectedStepPreviewRunning}");
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Review);
             stageHost.UpdateLayout();
             Check(
@@ -423,8 +452,9 @@ internal static class ToolWorkbenchDockingVerification
                 "Advanced diagnostics remain an explicit full-layout route",
                 shell.IsExpertWorkspaceSelected
                 && stageWorkbench.OperatorStage == OpenVisionOperatorStage.Legacy
+                && stageWorkbench.HasAllLegacySupportPaneTabs
                 && stageWorkbench.GetDockingPaneContracts().Count == 12,
-                $"stage={stageWorkbench.OperatorStage}; mode={shell.SelectedWorkspaceMode}; panes={stageWorkbench.GetDockingPaneContracts().Count}");
+                $"stage={stageWorkbench.OperatorStage}; mode={shell.SelectedWorkspaceMode}; supportTabs={stageWorkbench.HasAllLegacySupportPaneTabs}; panes={stageWorkbench.GetDockingPaneContracts().Count}");
             shell.SelectWorkspaceCommand.Execute(ShellWorkspaceMode.Review);
             Check(
                 "Results and Advanced navigation preserve recipe, output, and run evidence",
@@ -499,9 +529,11 @@ internal static class ToolWorkbenchDockingVerification
             Check(
                 "Validate exposes one stable keyboard-focusable sample-set action",
                 ownerPathWorkbench.HasAccessibleValidationSampleSetAction
+                && ownerPathWorkbench.HasValidationSamplesFirstUseClarity
+                && !ownerPathWorkbench.IsValidationIssueNavigationVisible
                 && ownerPathShell.Workbench.RunValidationSetCommand
                     .CanExecute(null),
-                $"accessible={ownerPathWorkbench.HasAccessibleValidationSampleSetAction}; canRun={ownerPathShell.Workbench.RunValidationSetCommand.CanExecute(null)}");
+                $"accessible={ownerPathWorkbench.HasAccessibleValidationSampleSetAction}; firstUse={ownerPathWorkbench.HasValidationSamplesFirstUseClarity}; issueNav={ownerPathWorkbench.IsValidationIssueNavigationVisible}; canRun={ownerPathShell.Workbench.RunValidationSetCommand.CanExecute(null)}");
             ownerPathWorkbench.SetValidationWorkspaceSection(
                 ValidationWorkspaceSection.Failures);
             ownerPathHost.UpdateLayout();
@@ -509,8 +541,10 @@ internal static class ToolWorkbenchDockingVerification
                 ownerPathShell.Workbench.SelectedValidationSetStep?.StepId;
             Check(
                 "Failure Analysis leads with selected sample rule and reason before technical evidence",
-                ownerPathWorkbench.HasValidationFailureOperatorSummary,
-                $"summary={ownerPathWorkbench.HasValidationFailureOperatorSummary}; sample={ownerPathShell.Workbench.SelectedValidationSetSample?.FileName}; rule={ownerPathShell.Workbench.SelectedValidationSetStep?.ToolName}; reason={ownerPathShell.Workbench.SelectedValidationSetStep?.Evidence}");
+                ownerPathWorkbench.HasValidationFailureOperatorSummary
+                && ownerPathWorkbench.HasValidationResultsReviewControls
+                && ownerPathWorkbench.IsValidationIssueNavigationVisible,
+                $"summary={ownerPathWorkbench.HasValidationFailureOperatorSummary}; reviewControls={ownerPathWorkbench.HasValidationResultsReviewControls}; issueNav={ownerPathWorkbench.IsValidationIssueNavigationVisible}; sample={ownerPathShell.Workbench.SelectedValidationSetSample?.FileName}; rule={ownerPathShell.Workbench.SelectedValidationSetStep?.ToolName}; reason={ownerPathShell.Workbench.SelectedValidationSetStep?.Evidence}");
             Check(
                 "IA-4b explicit sample-set execution exposes a real failure-to-Teach route",
                 ownerPathShell.Workbench.ValidationSetFailCount > 0

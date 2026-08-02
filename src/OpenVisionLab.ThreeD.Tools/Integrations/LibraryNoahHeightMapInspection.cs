@@ -65,8 +65,8 @@ public sealed record LibraryNoahInspectionEvaluation(
 public static class LibraryNoahHeightMapInspection
 {
     public const string PackageId = "Lib.ThreeD";
-    public const string PackageVersion = "2.8.7";
-    public const string PackageSourceCommit = "20963c12b50dfc0658110e2037961d3224feb2d6";
+    public const string PackageVersion = "2.8.8";
+    public const string PackageSourceCommit = "0fe04bc967fa89918b3c6d937566cce56de69682";
 
     public static string PackageAssemblyName => typeof(NoahHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 

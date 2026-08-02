@@ -154,7 +154,51 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Repeatability-statistics Noah migration - 2026-08-01
+### Current product-owner conversation priority - Layout continuation - 2026-08-01
+
+The product owner selected the layout/UI-design stream for the next
+conversation. Use
+`docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md` as
+the active entry point. Begin with a fresh current-build Wide `1920 x 1040`
+and Compact `1280 x 760` integrity audit, then select one bounded
+evidence-backed operator problem. Preserve all completed Workbench v4, Viewer,
+top dock-tab, Authoring integrity/side-collapse, first-use clarity,
+presentation-only layout persistence, and theme closures.
+
+`J-12 Multiple-match result collection` remains the next numerical queue item,
+but is deferred while this owner-selected layout-only conversation priority is
+active. Human-owner R0 remains an external acceptance task. This priority
+change does not alter inventory status by itself.
+
+### Current execution checkpoint - Validation-statistics Noah migration - 2026-08-01
+
+`ToolRecipeLabeledEvidenceAnalyzer` and
+`ToolRecipeThresholdCandidateAnalyzer` are strict adapters over committed
+public `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool`, and
+the existing `HeightMapRegionStatisticsTool`. Noah owns role-grouped
+descriptive statistics, rectangular ROI aggregation, deterministic threshold
+candidate construction, classification, error counting, ranking, and
+tie-breaking. Studio retains recipe/Tool/parameter/source/sample/role identity,
+grouping and routing, HeldOut exclusion, warnings, canonical candidate IDs,
+reports, lifecycle, and UI.
+
+Committed Noah `0fe04bc967fa89918b3c6d937566cce56de69682` passes Release
+`0/0` and Smoke `106/106`. Vendored `Lib.ThreeD 2.8.8` has SHA-256
+`D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+Studio Release is `0/0`; bridge `19/19`; Validation Set `84/84`; normalized
+before/after full-report differences `0`; and structure `29/29` with `0`
+migration-debt files and `30` reviewed boundaries. Both fixed R0
+`-ValidateOnly` modes pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+
+Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0 remains
+external. Immediate software priority: `J-12 Multiple-match result collection
+with stable identities`. New matching arithmetic must be implemented in
+committed Noah first. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
+
+### Historical checkpoint - Repeatability-statistics Noah migration - 2026-08-01
 
 `AlignedPointRepeatabilityRule` and `ThicknessRepeatabilityRule` are strict
 adapters over committed public `RepeatabilityStatisticsTool`. Noah owns
@@ -175,9 +219,8 @@ Calibration ViewModel `75/75`; and structure `28/28` with `2` debt files and
 - `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
 
 Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0 remains
-external. Immediate software priority: migrate the two validation-statistics
-analyzers before `J-12 Multiple-match result collection`. Recommended model:
-`gpt-5.6-sol`; reasoning effort: high.
+external. Its former validation-statistics priority is superseded by the
+current checkpoint above.
 
 ### Historical checkpoint - Declared-normal quality and Landmark Correspondence Noah migration - 2026-08-01
 
@@ -2076,12 +2119,15 @@ External acceptance, in parallel with software work:
 
 Software queue:
 
+The owner-selected layout-only continuation above currently precedes this
+numerical queue. Resume item 11 only when the owner returns to algorithm work.
+
 1. `Library-Noah Surface Match kernel migration prerequisite` - Complete;
    committed Noah `7d1ad8721ca7aed9efa2a17beaa36409d7dbd718`, vendored
    `Lib.ThreeD 2.8.0`, and preserved exact Studio artifacts/parity.
 2. `Library-Noah Tool contract and no-new-debt guard` - Complete; schema-1
-   baseline records `8` migration-debt files and `22` reviewed boundaries;
-   structure passes `25/25`.
+   decreasing baseline now records `0` migration-debt files and `30` reviewed
+   boundaries; structure passes `29/29`.
 3. `Surface Match preparation/edge Tool migration` - Complete; committed
    Noah `46cfa0946bb4c23190b0dab75415ce2c637b4c41`, vendored `Lib.ThreeD
    2.8.1`, and exact persisted artifact parity.
@@ -2104,14 +2150,13 @@ Software queue:
    Complete; committed Noah `3ef2f52546a9187df465bf8973e26426c30f7634`,
    vendored `Lib.ThreeD 2.8.6`, exact focused parity `2/2`, and strict Studio
    adapters.
-9. `Repeatability statistics Tool migration` | Move
-   `AlignedPointRepeatabilityRule` and `ThicknessRepeatabilityRule` arithmetic
-   to committed Noah while retaining Studio sample identity and evidence |
-   Recommended model: `gpt-5.6-sol` | Reasoning effort: `high`
-10. `Validation statistics Tool migration` | Move labeled-evidence descriptive
-    statistics and threshold candidate analysis to committed Noah while
-    retaining Studio role/identity/routing | Recommended model: `gpt-5.6-sol`
-    | Reasoning effort: `high`
+9. `Repeatability statistics Tool migration` - Complete; committed Noah
+   `20963c12b50dfc0658110e2037961d3224feb2d6`, vendored `Lib.ThreeD 2.8.7`,
+   exact Thickness/Aligned Point report parity, and strict Studio adapters.
+10. `Validation statistics Tool migration` - Complete; committed Noah
+    `0fe04bc967fa89918b3c6d937566cce56de69682`, vendored `Lib.ThreeD 2.8.8`,
+    Validation Set `84/84`, normalized report difference `0`, and zero
+    inventoried Studio numerical debt.
 11. `J-12 Multiple-match result collection with stable identities` | Extend
    Noah first for any new search/collection arithmetic, then add Studio-owned
    typed collection identity, persistence, Runner/Workbench evidence, and

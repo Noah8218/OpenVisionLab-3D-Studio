@@ -11,6 +11,10 @@ repeating the commercial-video review or reopening completed product slices.
 
 Authoritative detail remains in:
 
+- `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`
+  for the product-owner-selected layout-only continuation, completed layout
+  changes, non-copy boundary, current Wide/Compact composition, and next-chat
+  evidence procedure;
 - `docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`
   for all `234` backlog items, dependencies, and evidence gates;
 - `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`
@@ -55,14 +59,24 @@ Authoritative detail remains in:
 - `docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
   for the current scalar repeatability Tool, exact Thickness/Aligned Point
   parity, decreasing ledger, and next dependency.
+- `docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md`
+  for the completed labeled-evidence and threshold-candidate Tool migration,
+  exact Validation Set parity, zero-debt ledger, and next dependency.
 
 ## Paste this request into the next chat
 
 ```text
 Work in C:\Git\OpenVisionLab-3D-Studio.
 
+The product owner selected a layout-only continuation for this next chat. Read
+the dedicated layout handoff immediately after AGENTS.md, capture a fresh
+current-build Wide/Compact baseline before any visible edit, and select one
+bounded evidence-backed layout problem. Do not start `J-12` or other algorithm
+work unless the owner explicitly changes priority again.
+
 Read, in order:
 1. AGENTS.md
+1a. docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md
 2. docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md
 3. docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md
 4. docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md
@@ -104,6 +118,8 @@ Read, in order:
   12ab. docs/OPENVISIONLAB_3D_NOMINAL_COMPARISON_AND_TRANSFORM_DIAGNOSTICS_NOAH_MIGRATION_20260801.md
   12ac. docs/OPENVISIONLAB_3D_HEIGHT_MAP_INSPECTION_PREPARATION_NOAH_MIGRATION_20260801.md
   12ad. docs/OPENVISIONLAB_3D_DUAL_SURFACE_THICKNESS_AND_HEIGHT_DEVIATION_NOAH_MIGRATION_20260801.md
+  12ae. docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md
+  12af. docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md
 13. docs/OPENVISIONLAB_3D_THRESHOLD_MANUAL_CORRECTION_AND_FAILURE_RECORD_20260728.md
 14. docs/OPENVISIONLAB_3D_THRESHOLD_ASSISTANT_HARDENING_20260729.md
 15. docs/OPENVISIONLAB_3D_THRESHOLD_CORRECTION_RUN_RECORD_20260729.md
@@ -318,10 +334,10 @@ structure `18/18`; NuGet health `12/0/0`; both R0 `-ValidateOnly` modes pass.
 Preserve `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
 `artifacts/current/20260801-surface-match-noah-migration/`.
 
-The Library-Noah Tool-only ownership contract is now active. After the current
-debt migrations its schema-1 decreasing baseline records `8` Studio
-migration-debt files and `22` reviewed Studio boundaries; structure passes
-`25/25` with no unclassified or expanded owner. Preserve
+The Library-Noah Tool-only ownership contract is active. Its schema-1
+decreasing baseline has reached `0` Studio migration-debt files and `30`
+reviewed Studio boundaries; structure passes `29/29` with no unclassified or
+expanded owner. Preserve
 `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`,
 its adjacent JSON baseline, and
 `artifacts/current/20260801-noah-tool-ownership-contract/`.
@@ -406,12 +422,28 @@ are `13/13` and `20/20`; Calibration ViewModel is `75/75`; structure is
 and
 `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
 
-Immediate software priority: migrate `ToolRecipeLabeledEvidenceAnalyzer` and
-`ToolRecipeThresholdCandidateAnalyzer` into committed Noah Tools before
-`J-12 Multiple-match result collection`. Recommended
-model: gpt-5.6-sol. Reasoning effort: high. `K-09`
-remains blocked on `J-12`; `K-04` remains blocked on `B-12`; symmetry-aware
-`J-13` remains separate.
+The validation-statistics Noah migration is Complete. Committed Noah
+`0fe04bc967fa89918b3c6d937566cce56de69682` exposes public
+`LabeledEvidenceStatisticsTool` and `ThresholdCandidateAnalysisTool` through
+vendored `Lib.ThreeD 2.8.8`, SHA-256
+`D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+Noah is `0/0` and `106/106`; Studio is `0/0`; bridge is `19/19`; Validation
+Set is `84/84`; normalized before/after full-report differences are `0`; and
+structure is `29/29`. The decreasing ledger is now `0` debt files and `30`
+reviewed boundaries. Both fixed R0 `-ValidateOnly` modes pass. Preserve
+`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md` and
+the physical evidence under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+
+Immediate next-chat priority: run the current-build Wide/Compact layout audit
+defined in
+`docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`, then
+select one bounded layout issue with fresh baseline evidence. Recommended
+model: gpt-5.6-sol. Reasoning effort: high. `J-12 Multiple-match result
+collection with stable identities` remains the next numerical backlog item but
+is deferred by the owner-selected layout stream. `K-09` remains blocked on
+`J-12`; `K-04` remains blocked on `B-12`; symmetry-aware `J-13` remains
+separate.
 
 Human-owner Wide/Compact R0 remains a parallel external acceptance task.
 Prerequisite: owner operation and evidence. Recommended model: none until the
@@ -621,14 +653,14 @@ evidence exists. Reasoning effort: none.
 
 Library-Noah Surface Match pose-search/coverage, preparation/edge,
 filtering/leveling, nominal-comparison/transform-diagnostics, height-map
-inspection/preparation, dependent height rules, declared-normal quality, and
-Landmark Correspondence migration is
-complete from clean worktree
+inspection/preparation, dependent height rules, declared-normal quality,
+Landmark Correspondence, repeatability, and validation-statistics migration is
+complete from worktree
 `C:\Git\Library-Noah-surface-match-kernel`; the unrelated dirty main Noah
-checkout remains untouched. The Tool-only contract next requires repeatability
-statistics, then validation statistics, before `J-12`. Implement source-neutral Tools
-in committed Noah first, then vendor the exact package before Studio
-adaptation. Recommended model: `gpt-5.6-sol`. Reasoning effort: high.
+checkout remains untouched. The Tool-only decreasing ledger is zero. Next is
+`J-12`; implement any new source-neutral matching arithmetic in committed Noah
+first, then vendor the exact package before Studio adaptation. Recommended
+model: `gpt-5.6-sol`. Reasoning effort: high.
 `K-09` remains blocked on `J-12`; `K-04` remains blocked on `B-12`.
 
 Then:
@@ -877,14 +909,15 @@ claim calibration/metrology in this slice.
 
 ## Working-tree warning
 
-The workspace contains the current uncommitted Level Surface, labeled-sample,
-threshold-candidate, UI, Runner, and documentation changes. Inspect and
-preserve them. Do not reset, discard, overwrite, or stage unrelated work.
+The workspace contains the current uncommitted validation-statistics adapter,
+vendored-package, Runner/structure, R0-hash, and documentation changes. Inspect
+and preserve them. Do not reset, discard, overwrite, or stage unrelated work.
 
 These untracked folders are user-owned and must remain untouched:
 
 - `3D/SSD-Black/`;
 - `3D/fccsp/`;
+- `3D/TLB/`;
 - `3D/새 폴더/`.
 
 No commit or push is authorized by this handoff.

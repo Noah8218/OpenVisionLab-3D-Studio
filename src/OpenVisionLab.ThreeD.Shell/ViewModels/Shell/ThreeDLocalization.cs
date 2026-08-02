@@ -74,7 +74,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ValidationSetNextIssue), nameof(ValidationSetOpenComparison), nameof(ValidationSetCancel),
         nameof(ValidationSetMetrics), nameof(ValidationSetOverlays), nameof(ValidationSetNoMetrics),
         nameof(ValidationSetNoOverlays), nameof(ValidationSetComparisonHint),
-        nameof(ValidationSetRole), nameof(ValidationSetLabeledEvidence),
+        nameof(ValidationSetRole), nameof(ValidationSetExpectedRole), nameof(ValidationSetRunState),
+        nameof(ValidationSetWorkflowGuide), nameof(ValidationSetMeaningGuide),
+        nameof(ValidationSetSelectedExpectedRole), nameof(ValidationWorkspaceNavigationHint),
+        nameof(ValidationSetLabeledEvidence),
         nameof(ValidationSetScope), nameof(ValidationSetOwner), nameof(ValidationSetMetric),
         nameof(ValidationSetThresholdCandidates), nameof(ValidationSetThresholdReadOnly),
         nameof(ValidationSetThresholdReview), nameof(ValidationSetThresholdCancelReview),
@@ -375,6 +378,30 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetCancel => T("ThreeD.Command.ValidationSetCancel", "\uC2E4\uD589 \uCDE8\uC18C", "Cancel run");
     public string ValidationSetMetrics => T("ThreeD.Workbench.ValidationSetMetrics", "\uCE21\uC815\uAC12", "Metrics");
     public string ValidationSetRole => T("ThreeD.Workbench.ValidationSetRole", "\uC5ED\uD560", "Role");
+    public string ValidationSetExpectedRole => T(
+        "ThreeD.Workbench.ValidationSetExpectedRole",
+        "\uAE30\uB300 \uC5ED\uD560",
+        "Expected");
+    public string ValidationSetRunState => T(
+        "ThreeD.Workbench.ValidationSetRunState",
+        "\uC2E4\uD589 \uC0C1\uD0DC",
+        "Run state");
+    public string ValidationSetWorkflowGuide => T(
+        "ThreeD.Workbench.ValidationSetWorkflowGuide",
+        "1. \uC0D8\uD50C \uCD94\uAC00  \u2192  2. \uAE30\uB300 \uC5ED\uD560 \uC9C0\uC815  \u2192  3. \uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589",
+        "1. Add samples  \u2192  2. Set expected roles  \u2192  3. Run sample set");
+    public string ValidationSetMeaningGuide => T(
+        "ThreeD.Workbench.ValidationSetMeaningGuide",
+        "\uAE30\uB300 \uC5ED\uD560\uC740 \uC791\uC5C5\uC790\uAC00 \uC815\uD55C \uC815\uB2F5\uC774\uACE0, \uC2E4\uD589 \uC0C1\uD0DC\uB294 \uB808\uC2DC\uD53C\uC758 \uC2E4\uC81C \uACB0\uACFC\uC785\uB2C8\uB2E4. Held-out\uC740 \uC784\uACC4\uAC12 \uC870\uC815\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.",
+        "Expected role is the operator's answer; Run state is the recipe result. Held-out is excluded from threshold tuning.");
+    public string ValidationSetSelectedExpectedRole => T(
+        "ThreeD.Workbench.ValidationSetSelectedExpectedRole",
+        "\uC120\uD0DD\uD55C \uC0D8\uD50C\uC758 \uAE30\uB300 \uC5ED\uD560",
+        "Expected role for selected sample");
+    public string ValidationWorkspaceNavigationHint => T(
+        "ThreeD.Workbench.ValidationWorkspaceNavigationHint",
+        "\uAC80\uD1A0 \uD654\uBA74 \uC804\uD658 \u00B7 '\uC0D8\uD50C \uC138\uD2B8 \uC2E4\uD589'\uB9CC \uAC80\uC0AC\uB97C \uC2DC\uC791\uD569\uB2C8\uB2E4.",
+        "Review sections \u00B7 only 'Run sample set' starts inspection.");
     public string ValidationSetLabeledEvidence => T("ThreeD.Workbench.ValidationSetLabeledEvidence", "\uB77C\uBCA8 \uC0D8\uD50C \uBD84\uD3EC \uC99D\uAC70", "Labeled sample distributions");
     public string ValidationSetScope => T("ThreeD.Workbench.ValidationSetScope", "\uBC94\uC704", "Scope");
     public string ValidationSetOwner => T("ThreeD.Workbench.ValidationSetOwner", "\uB2E8\uACC4 / ROI", "Step / ROI");

@@ -52,6 +52,7 @@ public partial class RecipePipelineReviewView : UserControl
         InitializeComponent();
         standardReviewTabsTemplate = ReviewTabs.Template;
         ReviewTabs.SelectionChanged += ReviewTabs_SelectionChanged;
+        SizeChanged += RecipePipelineReviewView_SizeChanged;
     }
 
     public RecipeReviewPresentationMode PresentationMode => presentationMode;
@@ -81,6 +82,31 @@ public partial class RecipePipelineReviewView : UserControl
             StringComparison.Ordinal)
         && HasAccessibleText(RunValidationSampleSetButton);
 
+    public bool HasValidationSamplesFirstUseClarity =>
+        ValidationSamplesGuidance.Visibility == Visibility.Visible
+        && ValidationSampleRoleBar.Visibility == Visibility.Visible
+        && ValidationResultsFilterBar.Visibility == Visibility.Collapsed
+        && ValidationReviewActions.Visibility == Visibility.Collapsed
+        && !string.IsNullOrWhiteSpace(ValidationSamplesGuidanceText())
+        && string.Equals(
+            AutomationProperties.GetAutomationId(ValidationSamplesGuidance),
+            "ValidationSamplesMeaningGuide",
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetAutomationId(ValidationSampleRoleBar),
+            "ValidationSampleRoleAssignment",
+            StringComparison.Ordinal);
+
+    public bool HasValidationResultsReviewControls =>
+        ValidationSamplesGuidance.Visibility == Visibility.Collapsed
+        && ValidationSampleRoleBar.Visibility == Visibility.Collapsed
+        && ValidationResultsFilterBar.Visibility == Visibility.Visible
+        && ValidationReviewActions.Visibility == Visibility.Visible;
+
+    public bool IsValidationIssueNavigationVisible =>
+        ValidationIssueNavigationHost.Visibility == Visibility.Visible
+        && ValidationIssueCommands.Visibility == Visibility.Visible;
+
     public bool IsFailureOperatorSummaryVisible =>
         ValidationFailureOperatorSummary.Visibility == Visibility.Visible
         && !string.IsNullOrWhiteSpace(ValidationFailureSampleValue.Text)
@@ -90,6 +116,14 @@ public partial class RecipePipelineReviewView : UserControl
     public void SetPresentationMode(RecipeReviewPresentationMode mode)
     {
         presentationMode = mode;
+        ValidationSetHeaderSummary.Visibility =
+            mode == RecipeReviewPresentationMode.Validation
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        ValidationSetTitleSummary.Visibility =
+            mode == RecipeReviewPresentationMode.Validation
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         ValidationWorkspaceNavigation.Visibility =
             mode == RecipeReviewPresentationMode.Validation
                 ? Visibility.Visible
@@ -214,9 +248,28 @@ public partial class RecipePipelineReviewView : UserControl
         var usesPrimaryReview = section is ValidationWorkspaceSection.Samples
             or ValidationWorkspaceSection.Results
             or ValidationWorkspaceSection.Failures;
+        var samplesOnly = section == ValidationWorkspaceSection.Samples;
         ValidationSetFilterBar.Visibility = usesPrimaryReview
             ? Visibility.Visible
             : Visibility.Collapsed;
+        ValidationSamplesGuidance.Visibility = samplesOnly
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ValidationSampleRoleBar.Visibility = samplesOnly
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ValidationResultsFilterBar.Visibility = section is ValidationWorkspaceSection.Results
+            or ValidationWorkspaceSection.Failures
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ValidationReviewActions.Visibility = section is ValidationWorkspaceSection.Results
+            or ValidationWorkspaceSection.Failures
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ValidationIssueNavigationHost.Visibility =
+            section == ValidationWorkspaceSection.Failures
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         ValidationSetPrimaryGrid.Visibility = usesPrimaryReview
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -245,19 +298,14 @@ public partial class RecipePipelineReviewView : UserControl
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-        var samplesOnly = section == ValidationWorkspaceSection.Samples;
-        ValidationSamplesColumn.Width = new GridLength(
-            samplesOnly ? 1 : 1.35,
-            GridUnitType.Star);
-        ValidationPrimaryGapColumn.Width = samplesOnly
-            ? new GridLength(0)
-            : new GridLength(8);
-        ValidationRecordColumn.Width = samplesOnly
-            ? new GridLength(0)
-            : new GridLength(1.15, GridUnitType.Star);
-        ValidationRecordPane.Visibility = samplesOnly
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        ApplyValidationPrimaryLayout();
+
+        if (samplesOnly
+            && DataContext is ToolWorkbenchViewModel samplesWorkbench
+            && samplesWorkbench.ValidationSetFilter != ValidationSetStatusFilter.All)
+        {
+            samplesWorkbench.SetValidationSetFilterCommand.Execute("All");
+        }
 
         ApplyThresholdSection(section);
 
@@ -301,17 +349,29 @@ public partial class RecipePipelineReviewView : UserControl
 
     private void RestoreStandardValidationLayout()
     {
+        ValidationSetHeaderSummary.Visibility = Visibility.Visible;
+        ValidationSetTitleSummary.Visibility = Visibility.Visible;
         ValidationSetFilterBar.Visibility = Visibility.Visible;
+        ValidationSamplesGuidance.Visibility = Visibility.Visible;
+        ValidationSampleRoleBar.Visibility = Visibility.Visible;
+        ValidationResultsFilterBar.Visibility = Visibility.Visible;
+        ValidationReviewActions.Visibility = Visibility.Visible;
+        ValidationIssueNavigationHost.Visibility = Visibility.Visible;
         ValidationSetPrimaryGrid.Visibility = Visibility.Visible;
         ValidationEvidenceExpander.Visibility = Visibility.Visible;
         ValidationThresholdExpander.Visibility = Visibility.Visible;
         RunValidationSampleSetButton.Visibility = Visibility.Collapsed;
         OpenValidationIssueInTeachButton.Visibility = Visibility.Collapsed;
         ValidationFailureOperatorSummary.Visibility = Visibility.Collapsed;
+        ValidationSamplesPane.Visibility = Visibility.Visible;
+        Grid.SetColumn(ValidationSamplesPane, 0);
+        Grid.SetColumnSpan(ValidationSamplesPane, 1);
         ValidationSamplesColumn.Width = new GridLength(1.35, GridUnitType.Star);
         ValidationPrimaryGapColumn.Width = new GridLength(8);
         ValidationRecordColumn.Width = new GridLength(1.15, GridUnitType.Star);
         ValidationRecordPane.Visibility = Visibility.Visible;
+        Grid.SetColumn(ValidationRecordPane, 2);
+        Grid.SetColumnSpan(ValidationRecordPane, 1);
         ValidationThresholdCandidatesGrid.Visibility = Visibility.Visible;
         ValidationThresholdDecisionsGrid.Visibility = Visibility.Visible;
         ReviewValidationThresholdButton.Visibility = Visibility.Visible;
@@ -324,6 +384,64 @@ public partial class RecipePipelineReviewView : UserControl
         Grid.SetColumn(ValidationThresholdHeldOutGrid, 2);
         Grid.SetColumnSpan(ValidationThresholdHeldOutGrid, 1);
         ValidationThresholdHeldOutGrid.MaxHeight = 78;
+    }
+
+    private string ValidationSamplesGuidanceText() =>
+        ValidationSamplesGuidance.Child is StackPanel panel
+            ? string.Join(
+                " ",
+                panel.Children
+                    .OfType<TextBlock>()
+                    .Select(text => text.Text)
+                    .Where(text => !string.IsNullOrWhiteSpace(text)))
+            : string.Empty;
+
+    private void RecipePipelineReviewView_SizeChanged(
+        object sender,
+        SizeChangedEventArgs e) => ApplyValidationPrimaryLayout();
+
+    private void ApplyValidationPrimaryLayout()
+    {
+        if (presentationMode != RecipeReviewPresentationMode.Validation)
+        {
+            return;
+        }
+
+        var samplesOnly = ValidationSection == ValidationWorkspaceSection.Samples;
+        var compactSinglePane = ActualWidth > 0 && ActualWidth < 560;
+        var showSamples = samplesOnly
+            || ValidationSection == ValidationWorkspaceSection.Results
+            || !compactSinglePane;
+        var showRecord = !samplesOnly
+            && (ValidationSection == ValidationWorkspaceSection.Failures
+                || !compactSinglePane);
+
+        ValidationSamplesPane.Visibility = showSamples
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ValidationRecordPane.Visibility = showRecord
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (!showSamples || !showRecord)
+        {
+            ValidationSamplesColumn.Width = new GridLength(1, GridUnitType.Star);
+            ValidationPrimaryGapColumn.Width = new GridLength(0);
+            ValidationRecordColumn.Width = new GridLength(0);
+            Grid.SetColumn(ValidationSamplesPane, 0);
+            Grid.SetColumnSpan(ValidationSamplesPane, 3);
+            Grid.SetColumn(ValidationRecordPane, 0);
+            Grid.SetColumnSpan(ValidationRecordPane, 3);
+            return;
+        }
+
+        ValidationSamplesColumn.Width = new GridLength(1.35, GridUnitType.Star);
+        ValidationPrimaryGapColumn.Width = new GridLength(8);
+        ValidationRecordColumn.Width = new GridLength(1.15, GridUnitType.Star);
+        Grid.SetColumn(ValidationSamplesPane, 0);
+        Grid.SetColumnSpan(ValidationSamplesPane, 1);
+        Grid.SetColumn(ValidationRecordPane, 2);
+        Grid.SetColumnSpan(ValidationRecordPane, 1);
     }
 
 }

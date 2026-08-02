@@ -211,6 +211,7 @@
                                       ToolInspectorTitle="{views:ThreeDText Key=ThreeD.Workspace.SelectedTool, Korean='선택 도구', English='Selected Tool'}"
                                       CompactToolInspectorTitle="{views:ThreeDText Key=ThreeD.Workspace.CompactSelectedTool, Korean='선택 도구', English='Selected'}"
                                       EvidenceTitle="{Binding Localization.PipelineValidation}"
+                                      ValidationEvidenceTitle="{Binding Localization.Validate}"
                                       OutputCompareTitle="{Binding Localization.OutputCompare}"
                                       DisplayedOutputsTitle="{Binding Localization.DisplayedOutputs}"
                                       LinkedViewTitle="{Binding Localization.SessionLog}"

@@ -168,6 +168,8 @@ $declaredNormalQualityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.Three
 $landmarkCorrespondenceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DLandmarkCorrespondenceRule.cs"
 $alignedPointRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs"
 $thicknessRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs"
+$labeledEvidenceStatisticsAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs"
+$thresholdCandidateAnalysisAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateAnalyzer.cs"
 $noahToolContractPath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md"
 $noahToolBaselinePath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json"
 $appSource = [System.IO.File]::ReadAllText($appPath)
@@ -296,6 +298,15 @@ Add-Check "LibraryNoahRepeatabilityStatisticsOwnership" (
     -not ([System.IO.File]::ReadAllText($alignedPointRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum") -and
     -not ([System.IO.File]::ReadAllText($thicknessRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum")
 ) "Studio retains study/source identity, unit/frame/alignment policy, acceptance, metrics, and evidence; vendored Library-Noah owns scalar repeatability statistics"
+Add-Check "LibraryNoahValidationStatisticsOwnership" (
+    (Test-Path -LiteralPath $labeledEvidenceStatisticsAdapterPath) -and
+    (Test-Path -LiteralPath $thresholdCandidateAnalysisAdapterPath) -and
+    ([System.IO.File]::ReadAllText($labeledEvidenceStatisticsAdapterPath) -match "LabeledEvidenceStatisticsTool") -and
+    ([System.IO.File]::ReadAllText($labeledEvidenceStatisticsAdapterPath) -match "HeightMapRegionStatisticsTool") -and
+    ([System.IO.File]::ReadAllText($thresholdCandidateAnalysisAdapterPath) -match "ThresholdCandidateAnalysisTool") -and
+    -not ([System.IO.File]::ReadAllText($labeledEvidenceStatisticsAdapterPath) -match "Math\.|\.Average\s*\(|\.Sum\s*\(") -and
+    -not ([System.IO.File]::ReadAllText($thresholdCandidateAnalysisAdapterPath) -match "Math\.|BitIncrement|BitDecrement|\.Average\s*\(|\.Sum\s*\(")
+) "Studio retains observation/metric identity, routing, warnings, hashing, and reports; vendored Library-Noah owns role statistics and deterministic threshold analysis"
 
 $noahToolContractExists = Test-Path -LiteralPath $noahToolContractPath
 $noahToolBaselineExists = Test-Path -LiteralPath $noahToolBaselinePath
@@ -319,6 +330,8 @@ Add-Check "NoahToolOwnershipContract" (
 
 $migrationDebt = @($noahToolBaseline.migrationDebt)
 $studioBoundaries = @($noahToolBaseline.studioBoundaries)
+$hasMigrationDebtProperty = $null -ne $noahToolBaseline -and
+    $noahToolBaseline.PSObject.Properties.Name -contains "migrationDebt"
 $noahInventory = @($migrationDebt + $studioBoundaries)
 $inventoryPaths = @($noahInventory | ForEach-Object { [string]$_.path })
 $duplicateInventoryPaths = @(
@@ -352,7 +365,7 @@ Add-Check "NoahToolMigrationInventory" (
     $null -ne $noahToolBaseline -and
     [int]$noahToolBaseline.schemaVersion -eq 1 -and
     [string]$noahToolBaseline.contract -eq "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md" -and
-    $migrationDebt.Count -gt 0 -and
+    $hasMigrationDebtProperty -and
     $duplicateInventoryPaths.Count -eq 0 -and
     $missingInventoryFiles.Count -eq 0 -and
     $invalidDebtEntries.Count -eq 0 -and

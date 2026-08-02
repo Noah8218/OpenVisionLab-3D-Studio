@@ -20,6 +20,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     private const double ValidationWorkbenchHeightRatio = 0.85;
     private const double CompactValidationWorkbenchHeightRatio = 0.72;
     private const double CompactValidationHeight = 750;
+    private const double CompactValidationEvidenceToViewerRatio = 0.60;
     private const double StandardWorkbenchHeightRatio = 2;
     private bool bottomPaneDetachedForFocus;
     private bool dataLayersTabbedForCompactLayout;
@@ -136,6 +137,13 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata("Evidence Workbench", OnEvidenceTitleChanged));
 
+    public static readonly DependencyProperty ValidationEvidenceTitleProperty =
+        DependencyProperty.Register(
+            nameof(ValidationEvidenceTitle),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata("Validation", OnValidationEvidenceTitleChanged));
+
     public static readonly DependencyProperty OutputCompareContentProperty =
         DependencyProperty.Register(
             nameof(OutputCompareContent),
@@ -241,6 +249,20 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
             typeof(OpenVisionDockWorkspaceView),
             new PropertyMetadata(true, OnIsBottomPaneExpandedChanged));
 
+    public static readonly DependencyProperty IsValidationTabFilterActiveProperty =
+        DependencyProperty.Register(
+            nameof(IsValidationTabFilterActive),
+            typeof(bool),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(false));
+
+    public static readonly DependencyProperty ValidationVisibleSupportContentIdProperty =
+        DependencyProperty.Register(
+            nameof(ValidationVisibleSupportContentId),
+            typeof(string),
+            typeof(OpenVisionDockWorkspaceView),
+            new PropertyMetadata(null));
+
     public OpenVisionDockWorkspaceView()
     {
         InitializeComponent();
@@ -249,6 +271,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         {
             ApplyInitialDockSizes();
             ApplyResponsiveDockLayout(ActualWidth);
+            ApplyStageSupportPaneAvailability();
         };
         SizeChanged += (_, args) =>
         {
@@ -368,6 +391,12 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         set => SetValue(EvidenceTitleProperty, value);
     }
 
+    public string ValidationEvidenceTitle
+    {
+        get => (string)GetValue(ValidationEvidenceTitleProperty);
+        set => SetValue(ValidationEvidenceTitleProperty, value);
+    }
+
     public object? OutputCompareContent
     {
         get => GetValue(OutputCompareContentProperty);
@@ -456,6 +485,18 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         get => (bool)GetValue(IsBottomPaneExpandedProperty);
         set => SetValue(IsBottomPaneExpandedProperty, value);
+    }
+
+    public bool IsValidationTabFilterActive
+    {
+        get => (bool)GetValue(IsValidationTabFilterActiveProperty);
+        private set => SetValue(IsValidationTabFilterActiveProperty, value);
+    }
+
+    public string? ValidationVisibleSupportContentId
+    {
+        get => (string?)GetValue(ValidationVisibleSupportContentIdProperty);
+        private set => SetValue(ValidationVisibleSupportContentIdProperty, value);
     }
 
     public bool IsCompactLayout => dataLayersTabbedForCompactLayout;
@@ -560,6 +601,28 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         && ReferenceEquals(workbenchPane.Children[1], primaryPane)
         && primaryPane.Children.Contains(viewerAnchorable);
 
+    public int VisibleValidationPaneTabCount =>
+        IsValidationTabFilterActive
+            ? string.IsNullOrWhiteSpace(ValidationVisibleSupportContentId) ? 1 : 2
+            : ValidationPaneAnchorables.Count;
+
+    public bool HasFocusedValidationPaneTabs =>
+        operatorStage == OpenVisionOperatorStage.Validate
+        && IsValidationTabFilterActive
+        && VisibleValidationPaneTabCount == 1;
+
+    public bool HasReadableValidationPaneRatio =>
+        !IsCompactLayout
+        || evidencePane.DockWidth.IsStar
+           && primaryPane.DockWidth.IsStar
+           && evidencePane.DockWidth.Value
+           >= primaryPane.DockWidth.Value
+           * CompactValidationEvidenceToViewerRatio;
+
+    public bool HasAllLegacySupportPaneTabs =>
+        operatorStage == OpenVisionOperatorStage.Legacy
+        && !IsValidationTabFilterActive;
+
     public bool HasResultsStageComposition =>
         operatorStage == OpenVisionOperatorStage.Results
         && !IsBottomPaneAttached
@@ -640,6 +703,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         ApplyResponsiveDockLayout(
             ActualWidth > 0 ? ActualWidth : CompactWorkbenchWidth,
             rememberCurrent: false);
+        ApplyStageSupportPaneAvailability();
     }
 
     public bool HasRecipeFlowInspectorViewerOrder =>
@@ -679,6 +743,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateLinkedViewPane()
     {
+        ShowValidationSupportTab(linkedViewAnchorable);
         if (!IsBottomPaneExpanded)
         {
             IsBottomPaneExpanded = true;
@@ -768,6 +833,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateOutputComparePane()
     {
+        ShowValidationSupportTab(outputCompareAnchorable);
         if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
         outputCompareAnchorable.IsSelected = true;
         outputCompareAnchorable.IsActive = true;
@@ -810,6 +876,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateProfilePane()
     {
+        ShowValidationSupportTab(profileAnchorable);
         if (!IsBottomPaneExpanded)
         {
             IsBottomPaneExpanded = true;
@@ -823,6 +890,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateFitDiagnosticsPane()
     {
+        ShowValidationSupportTab(fitDiagnosticsAnchorable);
         if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
         fitDiagnosticsAnchorable.IsSelected = true;
         fitDiagnosticsAnchorable.IsActive = true;
@@ -832,6 +900,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateIntersectionEvidencePane()
     {
+        ShowValidationSupportTab(intersectionEvidenceAnchorable);
         if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
         intersectionEvidenceAnchorable.IsSelected = true;
         intersectionEvidenceAnchorable.IsActive = true;
@@ -841,6 +910,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
 
     public void ActivateCorrespondenceEvidencePane()
     {
+        ShowValidationSupportTab(correspondenceEvidenceAnchorable);
         if (!IsBottomPaneExpanded) IsBottomPaneExpanded = true;
         correspondenceEvidenceAnchorable.IsSelected = true;
         correspondenceEvidenceAnchorable.IsActive = true;
@@ -948,7 +1018,15 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     {
         if (owner is OpenVisionDockWorkspaceView view && view.evidenceAnchorable is not null)
         {
-            view.evidenceAnchorable.Title = args.NewValue as string ?? string.Empty;
+            view.ApplyAdaptiveEvidenceTitle();
+        }
+    }
+
+    private static void OnValidationEvidenceTitleChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
+    {
+        if (owner is OpenVisionDockWorkspaceView view && view.evidenceAnchorable is not null)
+        {
+            view.ApplyAdaptiveEvidenceTitle();
         }
     }
 
@@ -1021,7 +1099,7 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         ApplyAdaptiveAuthoringTitles();
         viewerAnchorable.Title = ViewerTitle;
         resultsAnchorable.Title = ResultsTitle;
-        evidenceAnchorable.Title = EvidenceTitle;
+        ApplyAdaptiveEvidenceTitle();
         outputCompareAnchorable.Title = OutputCompareTitle;
         displayedOutputsAnchorable.Title = DisplayedOutputsTitle;
         linkedViewAnchorable.Title = LinkedViewTitle;
@@ -1103,6 +1181,50 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
         ApplyBottomPanePresentation();
     }
 
+    private IReadOnlyList<LayoutAnchorable> ValidationPaneAnchorables =>
+    [
+        evidenceAnchorable,
+        outputCompareAnchorable,
+        linkedViewAnchorable,
+        profileAnchorable,
+        fitDiagnosticsAnchorable,
+        intersectionEvidenceAnchorable,
+        correspondenceEvidenceAnchorable,
+    ];
+
+    private void ApplyStageSupportPaneAvailability()
+    {
+        var filterWasActive = IsValidationTabFilterActive;
+        var filterIsActive =
+            operatorStage == OpenVisionOperatorStage.Validate;
+        IsValidationTabFilterActive = filterIsActive;
+        ApplyAdaptiveEvidenceTitle();
+        if (!filterIsActive)
+        {
+            ValidationVisibleSupportContentId = null;
+            return;
+        }
+
+        if (!filterWasActive)
+        {
+            ValidationVisibleSupportContentId = null;
+            evidenceAnchorable.IsSelected = true;
+        }
+    }
+
+    private void ShowValidationSupportTab(LayoutAnchorable anchorable)
+    {
+        if (operatorStage == OpenVisionOperatorStage.Validate)
+        {
+            ValidationVisibleSupportContentId = anchorable.ContentId;
+        }
+    }
+
+    private void ApplyAdaptiveEvidenceTitle() =>
+        evidenceAnchorable.Title = IsValidationTabFilterActive
+            ? ValidationEvidenceTitle
+            : EvidenceTitle;
+
     private void FocusCompactToolInspector()
     {
         if (!dataLayersPane.Children.Contains(toolInspectorAnchorable))
@@ -1158,10 +1280,16 @@ public sealed partial class OpenVisionDockWorkspaceView : UserControl
     private void ComposeValidateStage(bool compact)
     {
         var layout = compact ? compactLayout : wideLayout;
+        var evidenceWidth = compact
+            ? Math.Max(
+                layout.ValidateEvidence,
+                layout.ValidateViewer
+                * CompactValidationEvidenceToViewerRatio)
+            : layout.ValidateEvidence;
         AttachPane(evidencePane, 0);
         AttachPane(primaryPane, 1);
         evidencePane.DockWidth = new GridLength(
-            layout.ValidateEvidence,
+            evidenceWidth,
             GridUnitType.Star);
         primaryPane.DockWidth = new GridLength(
             layout.ValidateViewer,

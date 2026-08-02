@@ -4,6 +4,7 @@
 
 Start a new development conversation with:
 
+- `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`;
 - `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
 
 It records the current `127 C / 17 P / 65 N / 9 E / 16 O` inventory, the
@@ -36,7 +37,8 @@ the completed height-map inspection and preparation Noah Tool migration,
 the completed Dual Surface Thickness and Height Deviation Noah Tool migration,
 the completed declared-normal quality and Landmark Correspondence Noah Tool
 migration,
-the completed repeatability-statistics Noah Tool migration,
+the completed repeatability-statistics and validation-statistics Noah Tool
+migrations, which reduce the inventoried Studio numerical debt to zero,
 the human-owner R0 acceptance task, the
 dirty-working-tree warning, and the user-owned untracked-folder boundary.
 
@@ -52,10 +54,15 @@ acceptance and experiment-comparison assemblies. It passes Wide/Compact
 `-ValidateOnly`. Human-owner R0 remains external for `A-01`, but by explicit
 owner direction it no longer pauses dependency-ready software development.
 The migrated active calculation chain now belongs to committed Noah
-`20963c12b50dfc0658110e2037961d3224feb2d6` through vendored
-`Lib.ThreeD 2.8.7`; the unrelated dirty main Noah checkout remains untouched.
-The immediate software priority is the validation-statistics pair before
-`J-12`.
+`0fe04bc967fa89918b3c6d937566cce56de69682` through vendored
+`Lib.ThreeD 2.8.8`; the unrelated dirty main Noah checkout remains untouched.
+By explicit product-owner direction on 2026-08-01, the next conversation's
+active priority is the layout-only continuation recorded in
+`OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`. It begins
+with a fresh current-build Wide/Compact integrity audit and then one bounded,
+evidence-backed layout problem. `J-12 Multiple-match result collection`
+remains the next numerical backlog item, but is deferred until the owner
+returns to that stream.
 `K-04` remains blocked
 on `B-12` and `K-09`
 remains blocked on `J-12`. The completed
@@ -64,10 +71,57 @@ score contracts.
 
 Do not reset unrelated work. Preserve the user-owned untracked `3D/TLB/`
 folder. Do not touch `3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`.
-Commit and push still require an explicit user request; the active 2026-08-01
-session received that authorization for this completed slice. The exact Noah
-source commit required for package provenance exists on
-`codex/surface-match-kernel`.
+Commit and push still require an explicit user request. This handoff does not
+authorize either action. The exact Noah source commit required for package
+provenance exists locally on `codex/surface-match-kernel` and has not been
+pushed by this slice.
+
+## Layout-only continuation handoff - 2026-08-01
+
+The layout conversation now has one current entry point:
+
+- `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`.
+
+It consolidates the completed one-Job-Bar/responsibility-rail architecture,
+unified Authoring, dominant Viewer, linked Validate/Results evidence,
+single-row Viewer and right-side Height range, removal of the left text HUD,
+top dock tabs, Source Quality/Selected Tool overlap repair, required-text
+integrity, side-collapse, first-use clarity, graphite/PropertyGrid theme, and
+safe presentation-only layout persistence.
+
+The next session must not copy GoPxL theme, colors, proportions, topology,
+assets, names, or icons. It must capture a fresh Release baseline at Wide
+`1920 x 1040` and Compact `1280 x 760` before editing, preserve all explicit
+Preview/Publish/Run/Validation and non-mutation contracts, and close only one
+bounded layout slice with fresh before/after evidence. Human-owner R0 remains
+external; `A-11` remains blocked by `A-09/A-01`. Dependency-ready candidates
+after the audit include `A-12` current-source quality placement and a `C-13`
+linked-view display-range consistency review.
+
+## Validation-statistics Noah migration closure - 2026-08-01
+
+Public sealed `LabeledEvidenceStatisticsTool` owns role-grouped descriptive
+statistics. Public sealed `ThresholdCandidateAnalysisTool` owns deterministic
+candidate construction, classification, error counting, ranking, and
+tie-breaking. The Studio labeled-evidence adapter also uses the existing
+`HeightMapRegionStatisticsTool` for C3D ROI mean and coverage. Studio retains
+recipe/Tool/parameter/source/sample/role identity, grouping and routing,
+HeldOut exclusion, warning/report composition, canonical candidate IDs,
+evidence locators, lifecycle, and UI.
+
+Committed Noah `0fe04bc967fa89918b3c6d937566cce56de69682` passes Release
+`0/0` and Smoke `106/106`. Vendored `Lib.ThreeD 2.8.8` has SHA-256
+`D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+Studio Release passes `0/0`; bridge `19/19`; Validation Set `84/84`; normalized
+before/after full-report differences `0`; and structure `29/29` with `0` debt
+and `30` reviewed boundaries. Both fixed R0 `-ValidateOnly` modes pass. No UI
+changed. Preserve
+`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md` and
+the physical evidence under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+
+Human-owner R0 remains external. Next: `J-12`; `K-09` remains blocked on that
+result collection foundation.
 
 ## Repeatability-statistics Noah migration closure - 2026-08-01
 
@@ -89,8 +143,8 @@ changed. Preserve
 `docs/OPENVISIONLAB_3D_REPEATABILITY_STATISTICS_NOAH_MIGRATION_20260801.md`
 and
 `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
-Human-owner R0 remains external. Next migrate the two validation-statistics
-analyzers before `J-12`.
+Human-owner R0 remains external. Its former validation-statistics priority is
+superseded by the closure above; next is `J-12`.
 
 ## Declared-normal quality and Landmark Correspondence Noah migration closure - 2026-08-01
 

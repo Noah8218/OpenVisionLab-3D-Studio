@@ -1549,9 +1549,11 @@ internal static class ToolRecipeValidationSetVerification
                 && !workbench.IsValidationEvidenceExpanded
                 && workbench.ValidationSetSamples.All(sample =>
                     sample.Status == "Pending")
+                && !workbench.HasValidationSetIssues
+                && workbench.IsSelectedValidationRoleHeldOut
                 && !workbench.HasValidationEvidence
                 && !workbench.HasValidationThresholdCandidates,
-                $"recipeDirty={workbench.IsDirty};manifestDirty={workbench.IsValidationSetDefinitionDirty};unsaved={workbench.HasUncommittedRecipeChanges};expanded={workbench.IsValidationEvidenceExpanded};pending={workbench.ValidationSetSamples.Count(sample => sample.Status == "Pending")};evidence={workbench.HasValidationEvidence};candidates={workbench.HasValidationThresholdCandidates}");
+                $"recipeDirty={workbench.IsDirty};manifestDirty={workbench.IsValidationSetDefinitionDirty};unsaved={workbench.HasUncommittedRecipeChanges};expanded={workbench.IsValidationEvidenceExpanded};pending={workbench.ValidationSetSamples.Count(sample => sample.Status == "Pending")};issues={workbench.HasValidationSetIssues};heldOutSelected={workbench.IsSelectedValidationRoleHeldOut};evidence={workbench.HasValidationEvidence};candidates={workbench.HasValidationThresholdCandidates}");
             workbench.RunValidationSetAsync().GetAwaiter().GetResult();
             Check(
                 "workbench exposes Pass Fail Error counts and selects the first issue",
@@ -1559,8 +1561,9 @@ internal static class ToolRecipeValidationSetVerification
                 && workbench.ValidationSetPassCount == 1
                 && workbench.ValidationSetFailCount == 1
                 && workbench.ValidationSetErrorCount == 1
+                && workbench.HasValidationSetIssues
                 && workbench.SelectedValidationSetSample?.Status == "Fail",
-                $"{workbench.ValidationSetAllCount}/{workbench.ValidationSetPassCount}/{workbench.ValidationSetFailCount}/{workbench.ValidationSetErrorCount};selected={workbench.SelectedValidationSetSample?.Status}");
+                $"{workbench.ValidationSetAllCount}/{workbench.ValidationSetPassCount}/{workbench.ValidationSetFailCount}/{workbench.ValidationSetErrorCount};issues={workbench.HasValidationSetIssues};selected={workbench.SelectedValidationSetSample?.Status}");
             Check(
                 "selected failed step retains metric and overlay evidence",
                 workbench.SelectedValidationSetStep is { Metrics.Count: > 0, Overlays.Count: > 0 },

@@ -42,7 +42,7 @@ This file defines the working agreement for Codex in this repository.
   commit the exact source, pack that committed version, vendor the package and
   checksum, then adapt Studio. Do not use an external `ProjectReference` or
   package an uncommitted Noah working tree.
-- `Lib.ThreeD 2.8.7` owns deterministic Surface Match pose-search and
+- `Lib.ThreeD 2.8.8` owns deterministic Surface Match pose-search and
   unique-nearest coverage, SurfaceModel/Prepared Scene sampling, model and
   organized-scene edge extraction, edge-domain coverage, center-excluded
   local-median outlier filtering, height-field surface leveling,
@@ -54,7 +54,10 @@ This file defines the working agreement for Codex in this repository.
   declared mesh-normal topology/alignment quality, and four-point landmark
   rank/normalized-volume validation. It also owns scalar repeatability mean,
   extrema, sample standard deviation, six-sigma spread, and range through
-  `RepeatabilityStatisticsTool`.
+  `RepeatabilityStatisticsTool`. It also owns labeled-evidence descriptive
+  statistics and deterministic threshold-candidate construction, assessment,
+  ranking, and tie-breaking through `LabeledEvidenceStatisticsTool` and
+  `ThresholdCandidateAnalysisTool`.
   `RigidSurfacePoseSearch`, `SurfaceCoverageScorer`,
   `SurfaceModelPreparation`, `PreparedScenePreparation`,
   `ModelSurfaceEdgeExtractor`, `SceneSurfaceEdgeExtractor`, and
@@ -138,6 +141,45 @@ This file defines the working agreement for Codex in this repository.
 
 ## Current Product Target
 
+- Product-owner layout-only continuation priority (2026-08-01): the next
+  conversation must continue the layout/UI-design stream from
+  `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`.
+  Begin with a fresh current-build Wide/Compact layout-integrity audit, then
+  select one bounded evidence-backed operator problem. Preserve the completed
+  Workbench v4, Viewer single-row/Height range, top dock-tab, Authoring
+  integrity/side-collapse, first-use clarity, safe layout persistence, and
+  PropertyGrid theme closures. GoPxL remains a workflow-principle benchmark,
+  not a visual template. `J-12` remains the next numerical backlog item but is
+  deferred while this owner-selected layout-only continuation is active. Do
+  not start algorithm work in that next conversation unless the owner changes
+  priority again. Human-owner Wide/Compact R0 remains external.
+
+- Validation-statistics Library-Noah migration closure (2026-08-01):
+  `ToolRecipeLabeledEvidenceAnalyzer` and
+  `ToolRecipeThresholdCandidateAnalyzer` are strict adapters over public
+  `LabeledEvidenceStatisticsTool`, `ThresholdCandidateAnalysisTool`, and the
+  existing `HeightMapRegionStatisticsTool`. Noah owns role-grouped descriptive
+  statistics, ROI aggregation, deterministic threshold construction,
+  classification, error counting, ranking, and tie-breaking. Studio retains
+  recipe/Tool/parameter/source/sample/role identity, grouping and routing,
+  HeldOut exclusion, warnings, canonical candidate identities, reports,
+  lifecycle, and UI. Committed Noah
+  `0fe04bc967fa89918b3c6d937566cce56de69682` passes Release `0/0` and Smoke
+  `106/106`; vendored `Lib.ThreeD 2.8.8` has SHA-256
+  `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+  Studio Release passes `0/0`; bridge `19/19`; Validation Set passes `84/84`;
+  the normalized before/after full report has `0` differences; and structure
+  passes `29/29` with `0` migration-debt files and `30` reviewed Studio
+  boundaries. Wide/Compact fixed inputs pass both `-ValidateOnly` modes. No UI
+  changed. Preserve
+  `docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md`
+  and the physical evidence under
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+  Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0
+  remains external. Next: `J-12 Multiple-match result collection`, with new
+  matching arithmetic implemented in committed Noah first. Recommended model:
+  `gpt-5.6-sol`; reasoning effort: high.
+
 - Repeatability-statistics Library-Noah migration closure (2026-08-01):
   `AlignedPointRepeatabilityRule` and `ThicknessRepeatabilityRule` are strict
   adapters over public `RepeatabilityStatisticsTool`. Noah owns Welford
@@ -159,8 +201,8 @@ This file defines the working agreement for Codex in this repository.
   and
   `artifacts/current/20260801-noah-repeatability-statistics-migration/`.
   Inventory remains `127 C / 17 P / 65 N / 9 E / 16 O`; Human-owner R0
-  remains external. Next: migrate the two validation-statistics analyzers
-  before `J-12`. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
+  remains external. Its former validation-statistics priority is superseded by
+  the `Lib.ThreeD 2.8.8` closure above; next is `J-12`.
 
 - Declared-normal quality and Landmark Correspondence Library-Noah migration
   closure (2026-08-01): public sealed `DeclaredMeshNormalQualityTool` owns

@@ -188,8 +188,8 @@ public partial class MainWindow : Window
         RestoreStartupRunRecordAfterRecipeLoad();
         RestoreMostRecentWorkbenchRecipe();
         ConfigureOutputCompareFromCommandLine();
-        ConfigureWorkbenchBottomPaneFromCommandLine();
         ConfigureValidationSetFromCommandLine();
+        ConfigureWorkbenchBottomPaneFromCommandLine();
         ConfigureC3DSourceLoadProgressFromCommandLine();
         _workbenchViewerTeaching.SyncAppliedSelections();
         ConfigureStudioLayoutPersistence();

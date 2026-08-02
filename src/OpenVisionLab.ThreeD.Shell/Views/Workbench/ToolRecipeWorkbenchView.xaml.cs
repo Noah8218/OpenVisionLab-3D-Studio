@@ -81,6 +81,18 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool HasValidateStageComposition =>
         DockWorkspace.HasValidateStageComposition;
 
+    public int VisibleValidationPaneTabCount =>
+        DockWorkspace.VisibleValidationPaneTabCount;
+
+    public bool HasFocusedValidationPaneTabs =>
+        DockWorkspace.HasFocusedValidationPaneTabs;
+
+    public bool HasReadableValidationPaneRatio =>
+        DockWorkspace.HasReadableValidationPaneRatio;
+
+    public bool HasAllLegacySupportPaneTabs =>
+        DockWorkspace.HasAllLegacySupportPaneTabs;
+
     public bool HasResultsStageComposition =>
         DockWorkspace.HasResultsStageComposition;
 
@@ -126,6 +138,24 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         DockWorkspace.EvidenceContent is RecipePipelineReviewView
         {
             HasAccessibleValidationSampleSetAction: true
+        };
+
+    public bool HasValidationSamplesFirstUseClarity =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            HasValidationSamplesFirstUseClarity: true
+        };
+
+    public bool HasValidationResultsReviewControls =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            HasValidationResultsReviewControls: true
+        };
+
+    public bool IsValidationIssueNavigationVisible =>
+        DockWorkspace.EvidenceContent is RecipePipelineReviewView
+        {
+            IsValidationIssueNavigationVisible: true
         };
 
     public bool HasValidationFailureOperatorSummary =>

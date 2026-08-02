@@ -43,6 +43,10 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <WrapPanel>
                         <RadioButton x:Name="ValidationSamplesNavigation"
                                      Margin="0,0,14,0"
@@ -85,7 +89,15 @@
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceHeldOut}"
                                      Click="ValidationHeldOutNavigation_Click" />
                     </WrapPanel>
+                    <TextBlock Grid.Row="1"
+                               Margin="0,7,12,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               FontSize="9.5"
+                               Text="{Binding Localization.ValidationWorkspaceNavigationHint}"
+                               TextWrapping="Wrap" />
                     <StackPanel Grid.Row="1"
+                                Grid.Column="1"
                                 Margin="0,6,0,0"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal">
@@ -131,7 +143,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
+                            <StackPanel x:Name="ValidationSetHeaderSummary">
                                 <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}"
                                            Text="{Binding Localization.RecipePipelineTeachReview}" />
                                 <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
@@ -838,7 +850,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
+                            <StackPanel x:Name="ValidationSetTitleSummary">
                                 <TextBlock FontSize="11"
                                            FontWeight="SemiBold"
                                            Text="{Binding Localization.ValidationSetTitle}" />
@@ -869,6 +881,17 @@
                                         Command="{Binding AddCurrentSourceToValidationSetCommand}"
                                         ToolTip="{Binding Localization.ValidationSetAddCurrentInput}"
                                         AutomationProperties.Name="{Binding Localization.ValidationSetAddCurrentInput}">
+                                    <Button.Style>
+                                        <Style TargetType="Button"
+                                               BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsValidationSetRunning}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="ArrowImport24" />
                                         <TextBlock Text="{Binding Localization.ValidationSetAddCurrentInput}" />
@@ -878,6 +901,17 @@
                                         Command="{Binding SelectValidationSetSourcesCommand}"
                                         ToolTip="{Binding Localization.ValidationSetAddSamples}"
                                         AutomationProperties.Name="{Binding Localization.ValidationSetAddSamples}">
+                                    <Button.Style>
+                                        <Style TargetType="Button"
+                                               BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsValidationSetRunning}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="DocumentAdd24" />
                                         <TextBlock Text="{Binding Localization.ValidationSetAddSamples}" />
@@ -886,7 +920,8 @@
                                 <Button Margin="0,0,5,0"
                                         Command="{Binding CancelValidationSetCommand}"
                                         ToolTip="{Binding Localization.ValidationSetCancel}"
-                                        AutomationProperties.Name="{Binding Localization.ValidationSetCancel}">
+                                        AutomationProperties.Name="{Binding Localization.ValidationSetCancel}"
+                                        Visibility="{Binding IsValidationSetRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="Dismiss24" />
                                         <TextBlock Text="{Binding Localization.ValidationSetCancel}" />
@@ -895,6 +930,17 @@
                                 <Button Command="{Binding ClearValidationSetCommand}"
                                         ToolTip="{Binding Localization.ValidationSetClear}"
                                         AutomationProperties.Name="{Binding Localization.ValidationSetClear}">
+                                    <Button.Style>
+                                        <Style TargetType="Button"
+                                               BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsValidationSetRunning}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="Dismiss24" />
                                         <TextBlock Text="{Binding Localization.ValidationSetClear}" />
@@ -977,14 +1023,85 @@
                             </Grid>
                         </Border>
 
-                        <Grid x:Name="ValidationSetFilterBar"
-                              Grid.Row="2"
-                              Margin="4,0,4,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <WrapPanel VerticalAlignment="Center">
+                        <StackPanel x:Name="ValidationSetFilterBar"
+                                    Grid.Row="2"
+                                    Margin="4,0,4,6">
+                            <Border x:Name="ValidationSamplesGuidance"
+                                    Margin="0,0,0,6"
+                                    Padding="8,6"
+                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                    BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="3"
+                                    AutomationProperties.AutomationId="ValidationSamplesMeaningGuide">
+                                <StackPanel>
+                                    <TextBlock FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Localization.ValidationSetWorkflowGuide}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                               FontSize="9"
+                                               Text="{Binding Localization.ValidationSetMeaningGuide}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <Grid x:Name="ValidationSampleRoleBar"
+                                  AutomationProperties.AutomationId="ValidationSampleRoleAssignment">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding Localization.ValidationSetSelectedExpectedRole}" />
+                                <WrapPanel Grid.Row="1"
+                                           Margin="0,4,0,0">
+                                    <ToggleButton Margin="0,0,4,0"
+                                                  Padding="8,3"
+                                                  IsChecked="{Binding IsSelectedValidationRoleGood, Mode=OneWay}"
+                                                  Command="{Binding SetValidationSampleRoleCommand}"
+                                                  CommandParameter="Good"
+                                                  AutomationProperties.AutomationId="ValidationSampleRoleGood"
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Good}">
+                                        <TextBlock>
+                                            <Run Text="Good  " />
+                                            <Run FontWeight="SemiBold"
+                                                 Text="{Binding ValidationSetGoodCount, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </ToggleButton>
+                                    <ToggleButton Margin="0,0,4,0"
+                                                  Padding="8,3"
+                                                  IsChecked="{Binding IsSelectedValidationRoleBad, Mode=OneWay}"
+                                                  Command="{Binding SetValidationSampleRoleCommand}"
+                                                  CommandParameter="Bad"
+                                                  AutomationProperties.AutomationId="ValidationSampleRoleBad"
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Bad}">
+                                        <TextBlock>
+                                            <Run Text="Bad  " />
+                                            <Run FontWeight="SemiBold"
+                                                 Text="{Binding ValidationSetBadCount, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </ToggleButton>
+                                    <ToggleButton Padding="8,3"
+                                                  IsChecked="{Binding IsSelectedValidationRoleHeldOut, Mode=OneWay}"
+                                                  Command="{Binding SetValidationSampleRoleCommand}"
+                                                  CommandParameter="HeldOut"
+                                                  AutomationProperties.AutomationId="ValidationSampleRoleHeldOut"
+                                                  AutomationProperties.Name="{Binding Localization.ValidationSetSelectedExpectedRole, StringFormat={}{0}: Held-out}">
+                                        <TextBlock>
+                                            <Run Text="Held-out  " />
+                                            <Run FontWeight="SemiBold"
+                                                 Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </ToggleButton>
+                                </WrapPanel>
+                            </Grid>
+
+                            <WrapPanel x:Name="ValidationResultsFilterBar"
+                                       VerticalAlignment="Center"
+                                       AutomationProperties.AutomationId="ValidationRunStateFilters">
                                 <ToggleButton Margin="0,0,4,0"
                                               Padding="8,3"
                                               IsChecked="{Binding IsValidationSetFilterAll, Mode=OneWay}"
@@ -1024,68 +1141,42 @@
                                         <TextBlock Margin="5,0,0,0" FontWeight="SemiBold" Text="{Binding ValidationSetErrorCount}" />
                                     </StackPanel>
                                 </ToggleButton>
-                                <TextBlock Margin="12,0,5,0"
-                                           VerticalAlignment="Center"
-                                           FontWeight="SemiBold"
-                                           Text="{Binding Localization.ValidationSetRole}" />
-                                <Button Margin="0,0,4,0"
-                                        Padding="7,3"
-                                        Command="{Binding SetValidationSampleRoleCommand}"
-                                        CommandParameter="Good"
-                                        AutomationProperties.Name="Assign selected sample as Good">
-                                    <TextBlock>
-                                        <Run Text="Good " />
-                                        <Run FontWeight="SemiBold"
-                                             Text="{Binding ValidationSetGoodCount, Mode=OneWay}" />
-                                    </TextBlock>
-                                </Button>
-                                <Button Margin="0,0,4,0"
-                                        Padding="7,3"
-                                        Command="{Binding SetValidationSampleRoleCommand}"
-                                        CommandParameter="Bad"
-                                        AutomationProperties.Name="Assign selected sample as Bad">
-                                    <TextBlock>
-                                        <Run Text="Bad " />
-                                        <Run FontWeight="SemiBold"
-                                             Text="{Binding ValidationSetBadCount, Mode=OneWay}" />
-                                    </TextBlock>
-                                </Button>
-                                <Button Padding="7,3"
-                                        Command="{Binding SetValidationSampleRoleCommand}"
-                                        CommandParameter="HeldOut"
-                                        AutomationProperties.Name="Assign selected sample as Held-out">
-                                    <TextBlock>
-                                        <Run Text="Held-out " />
-                                        <Run FontWeight="SemiBold"
-                                             Text="{Binding ValidationSetHeldOutCount, Mode=OneWay}" />
-                                    </TextBlock>
-                                </Button>
                             </WrapPanel>
-                            <WrapPanel Grid.Column="1" Margin="12,0,0,0">
-                                <Button Margin="0,0,4,0"
-                                        Padding="7,3"
-                                        Command="{Binding PreviousValidationSetIssueCommand}"
-                                        ToolTip="{Binding Localization.ValidationSetPreviousIssue}"
-                                        AutomationProperties.Name="{Binding Localization.ValidationSetPreviousIssue}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Symbol="ArrowRight24">
-                                            <ui:SymbolIcon.RenderTransform>
-                                                <RotateTransform Angle="180" />
-                                            </ui:SymbolIcon.RenderTransform>
-                                        </ui:SymbolIcon>
-                                        <TextBlock Text="{Binding Localization.ValidationSetPreviousIssue}" />
+
+                            <WrapPanel x:Name="ValidationReviewActions"
+                                       Margin="0,5,0,0"
+                                       HorizontalAlignment="Right">
+                                <StackPanel x:Name="ValidationIssueNavigationHost"
+                                            Orientation="Horizontal">
+                                    <StackPanel x:Name="ValidationIssueCommands"
+                                                Orientation="Horizontal"
+                                                Visibility="{Binding HasValidationSetIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <Button Margin="0,0,4,0"
+                                                Padding="7,3"
+                                                Command="{Binding PreviousValidationSetIssueCommand}"
+                                                ToolTip="{Binding Localization.ValidationSetPreviousIssue}"
+                                                AutomationProperties.Name="{Binding Localization.ValidationSetPreviousIssue}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Symbol="ArrowRight24">
+                                                    <ui:SymbolIcon.RenderTransform>
+                                                        <RotateTransform Angle="180" />
+                                                    </ui:SymbolIcon.RenderTransform>
+                                                </ui:SymbolIcon>
+                                                <TextBlock Text="{Binding Localization.ValidationSetPreviousIssue}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Margin="0,0,4,0"
+                                                Padding="7,3"
+                                                Command="{Binding NextValidationSetIssueCommand}"
+                                                ToolTip="{Binding Localization.ValidationSetNextIssue}"
+                                                AutomationProperties.Name="{Binding Localization.ValidationSetNextIssue}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Margin="0,0,4,0" Text="{Binding Localization.ValidationSetNextIssue}" />
+                                                <ui:SymbolIcon Width="14" Height="14" Symbol="ArrowRight24" />
+                                            </StackPanel>
+                                        </Button>
                                     </StackPanel>
-                                </Button>
-                                <Button Margin="0,0,4,0"
-                                        Padding="7,3"
-                                        Command="{Binding NextValidationSetIssueCommand}"
-                                        ToolTip="{Binding Localization.ValidationSetNextIssue}"
-                                        AutomationProperties.Name="{Binding Localization.ValidationSetNextIssue}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Margin="0,0,4,0" Text="{Binding Localization.ValidationSetNextIssue}" />
-                                        <ui:SymbolIcon Width="14" Height="14" Symbol="ArrowRight24" />
-                                    </StackPanel>
-                                </Button>
+                                </StackPanel>
                                 <Button Padding="8,3"
                                         Command="{Binding OpenValidationSetComparisonCommand}"
                                         ToolTip="{Binding Localization.ValidationSetComparisonHint}"
@@ -1096,7 +1187,7 @@
                                     </StackPanel>
                                 </Button>
                             </WrapPanel>
-                        </Grid>
+                        </StackPanel>
 
                         <Grid x:Name="ValidationSetPrimaryGrid"
                               Grid.Row="3">
@@ -1152,11 +1243,29 @@
                                         </DataGrid.RowStyle>
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Width="34" Header="#" Binding="{Binding Order}" />
-                                            <DataGridTextColumn Width="76" Header="{Binding ValidationSetRole, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Role}" />
-                                            <DataGridTextColumn Width="1.5*" Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding FileName}" />
-                                            <DataGridTextColumn Width="72" Header="{Binding ColumnState, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding StatusText}" />
+                                            <DataGridTextColumn Width="88" Header="{Binding ValidationSetExpectedRole, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding RoleText}" />
+                                            <DataGridTextColumn Width="1.5*"
+                                                                Header="{Binding ValidationSetFile, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                                                Binding="{Binding FileName}">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                        <Setter Property="ToolTip" Value="{Binding FileName}" />
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Width="82" Header="{Binding ValidationSetRunState, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding StatusText}" />
                                             <DataGridTextColumn Width="76" Header="{Binding ValidationSetDuration, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Duration}" />
-                                            <DataGridTextColumn Width="2*" Header="{Binding ColumnEvidence, Source={x:Static shell:ThreeDLocalization.Shared}}" Binding="{Binding Message}" />
+                                            <DataGridTextColumn Width="2*"
+                                                                Header="{shell:ThreeDText Key=ThreeD.Column.ValidationEvidence, Korean='실행 근거', English='Evidence'}"
+                                                                Binding="{Binding Message}">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                                        <Setter Property="ToolTip" Value="{Binding Message}" />
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <TextBlock Grid.Row="1"
@@ -1224,7 +1333,7 @@
                                                             <ColumnDefinition Width="*" />
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding Order}" />
-                                                        <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Column="1" FontSize="10" FontWeight="SemiBold" Text="{Binding ToolName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ToolName}" />
                                                         <TextBlock Grid.Column="2" FontSize="9.5" FontWeight="SemiBold" Text="{Binding StatusText}" />
                                                         <TextBlock Grid.Column="3"
                                                                    FontSize="9.5"
@@ -1246,11 +1355,11 @@
                                             CornerRadius="3"
                                             Visibility="{Binding HasSelectedValidationSetStep, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="1*" />
-                                                <ColumnDefinition Width="8" />
-                                                <ColumnDefinition Width="1*" />
-                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="1*" />
+                                                <RowDefinition Height="6" />
+                                                <RowDefinition Height="1*" />
+                                            </Grid.RowDefinitions>
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
@@ -1273,7 +1382,7 @@
                                                                     <ColumnDefinition Width="*" />
                                                                     <ColumnDefinition Width="Auto" />
                                                                 </Grid.ColumnDefinitions>
-                                                                <TextBlock FontSize="9" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock FontSize="9" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
                                                                 <TextBlock Grid.Column="1" Margin="6,0,0,0" FontSize="9" FontWeight="SemiBold">
                                                                     <Run Text="{Binding Value}" />
                                                                     <Run Text="{Binding Unit}" />
@@ -1284,7 +1393,7 @@
                                                     </ListBox.ItemTemplate>
                                                 </ListBox>
                                             </Grid>
-                                            <Grid Grid.Column="2">
+                                            <Grid Grid.Row="2">
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="*" />

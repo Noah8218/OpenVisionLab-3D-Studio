@@ -1,3 +1,4 @@
+using Lib.ThreeD.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -31,9 +32,7 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
                 group.Key.OwnerName,
                 group.Key.MetricName,
                 group.Key.Unit,
-                Enum.GetValues<ToolRecipeValidationSampleRole>()
-                    .Select(role => Calculate(role, group))
-                    .ToArray()))
+                Calculate(group)))
             .ToArray();
 
         var good = result.Samples.Count(sample =>
@@ -275,23 +274,26 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
                 continue;
             }
 
+            var sourceValues = source.Values.ToArray();
             foreach (var selection in regions)
             {
                 var rectangle = selection.GridRectangle!;
-                var finite = new List<double>(
-                    checked(rectangle.RowCount * rectangle.ColumnCount));
-                var values = source.Values.Span;
-                for (var row = rectangle.Row;
-                     row < rectangle.Row + rectangle.RowCount;
-                     row++)
-                for (var column = rectangle.Column;
-                     column < rectangle.Column + rectangle.ColumnCount;
-                     column++)
+                var regionStatistics = new HeightMapRegionStatisticsTool()
+                    .Execute(
+                        source.Height,
+                        source.Width,
+                        sourceValues,
+                        new HeightGridRegion(
+                            rectangle.Row,
+                            rectangle.Column,
+                            rectangle.RowCount,
+                            rectangle.ColumnCount));
+                if (!regionStatistics.Success
+                    || regionStatistics.FiniteCellCount == 0)
                 {
-                    var value = values[checked(row * source.Width + column)];
-                    if (double.IsFinite(value)) finite.Add(value);
+                    continue;
                 }
-                if (finite.Count == 0) continue;
+
                 var identity = SampleIdentity(sample);
                 observations.Add(new ToolRecipeMetricObservation(
                     sample.Order,
@@ -303,7 +305,7 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
                     selection.Name,
                     "Mean raw height",
                     source.Unit,
-                    finite.Average()));
+                    regionStatistics.Mean));
                 observations.Add(new ToolRecipeMetricObservation(
                     sample.Order,
                     identity,
@@ -314,48 +316,62 @@ public static class ToolRecipeLabeledEvidenceAnalyzer
                     selection.Name,
                     "Valid cell ratio",
                     "ratio",
-                    finite.Count / (double)(rectangle.RowCount * rectangle.ColumnCount)));
+                    regionStatistics.FiniteCoverageRatio));
             }
         }
     }
 
-    private static ToolRecipeRoleMetricStatistics Calculate(
-        ToolRecipeValidationSampleRole role,
+    private static IReadOnlyList<ToolRecipeRoleMetricStatistics> Calculate(
         IEnumerable<ToolRecipeMetricObservation> observations)
     {
         var selected = observations
-            .Where(item => item.Role == role)
             .ToArray();
-        var values = selected.Select(item => item.Value).ToArray();
-        if (values.Length == 0)
+        var noahResult = new LabeledEvidenceStatisticsTool().Execute(
+            selected.Select(item =>
+                new LabeledEvidenceStatisticsObservation(
+                    $"{item.SampleOrder}:{item.SampleIdentity}",
+                    ToNoahRole(item.Role),
+                    item.Value))
+                .ToArray());
+        if (!noahResult.Success)
         {
-            return new ToolRecipeRoleMetricStatistics(
-                role,
-                0,
-                0,
-                null,
-                null,
-                null,
-                null,
-                role != ToolRecipeValidationSampleRole.HeldOut);
+            throw new InvalidOperationException(noahResult.Message);
         }
 
-        var mean = values.Average();
-        var variance = values.Sum(value => (value - mean) * (value - mean))
-                       / values.Length;
-        return new ToolRecipeRoleMetricStatistics(
-            role,
-            selected.Select(item =>
-                    $"{item.SampleOrder}:{item.SampleIdentity}")
-                .Distinct(StringComparer.Ordinal)
-                .Count(),
-            values.Length,
-            values.Min(),
-            values.Max(),
-            mean,
-            Math.Sqrt(variance),
-            role != ToolRecipeValidationSampleRole.HeldOut);
+        return noahResult.RoleStatistics
+            .Select(statistics =>
+            {
+                var role = FromNoahRole(statistics.Role);
+                return new ToolRecipeRoleMetricStatistics(
+                    role,
+                    statistics.SampleCount,
+                    statistics.ValueCount,
+                    statistics.Minimum,
+                    statistics.Maximum,
+                    statistics.Mean,
+                    statistics.PopulationStandardDeviation,
+                    role != ToolRecipeValidationSampleRole.HeldOut);
+            })
+            .ToArray();
     }
+
+    private static LabeledEvidenceRole ToNoahRole(
+        ToolRecipeValidationSampleRole role) => role switch
+    {
+        ToolRecipeValidationSampleRole.Good => LabeledEvidenceRole.Good,
+        ToolRecipeValidationSampleRole.Bad => LabeledEvidenceRole.Bad,
+        ToolRecipeValidationSampleRole.HeldOut => LabeledEvidenceRole.HeldOut,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
+    };
+
+    private static ToolRecipeValidationSampleRole FromNoahRole(
+        LabeledEvidenceRole role) => role switch
+    {
+        LabeledEvidenceRole.Good => ToolRecipeValidationSampleRole.Good,
+        LabeledEvidenceRole.Bad => ToolRecipeValidationSampleRole.Bad,
+        LabeledEvidenceRole.HeldOut => ToolRecipeValidationSampleRole.HeldOut,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
+    };
 
     private static string SampleIdentity(
         ToolRecipeValidationSampleResult sample) =>

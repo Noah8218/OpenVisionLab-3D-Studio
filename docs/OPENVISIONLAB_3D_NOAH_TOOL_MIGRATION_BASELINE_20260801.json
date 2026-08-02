@@ -2,21 +2,18 @@
   "schemaVersion": 1,
   "contract": "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md",
   "signalPatternVersion": 1,
-  "migrationDebt": [
+  "migrationDebt": [],
+  "studioBoundaries": [
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs",
-      "maximumSignalCount": 4,
-      "targetNoahTool": "LabeledEvidenceStatisticsTool",
-      "scope": "Move role-grouped descriptive statistics; retain evidence identity and routing in Studio."
+      "maximumSignalCount": 0,
+      "responsibility": "Strict LabeledEvidenceStatisticsTool and HeightMapRegionStatisticsTool adapter plus C3D observation collection, role/sample/source/metric identity, development routing, warnings, and report composition."
     },
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateAnalyzer.cs",
-      "maximumSignalCount": 2,
-      "targetNoahTool": "ThresholdCandidateAnalysisTool",
-      "scope": "Move deterministic threshold generation, ranking, and error-count analysis."
-    }
-  ],
-  "studioBoundaries": [
+      "maximumSignalCount": 0,
+      "responsibility": "Strict ThresholdCandidateAnalysisTool adapter plus metric identity, supported-parameter mapping, evidence warnings, candidate hashing, Held-out exclusion, and report composition."
+    },
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Calibration/AlignedPointRepeatabilityRule.cs",
       "maximumSignalCount": 2,

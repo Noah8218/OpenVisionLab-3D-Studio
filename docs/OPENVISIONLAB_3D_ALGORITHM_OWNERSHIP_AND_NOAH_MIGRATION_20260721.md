@@ -2,19 +2,21 @@
 
 Updated: 2026-08-01
 
-Status: **Owner-approved Tool-only numerical ownership contract; migration is
-phased, inventoried, and evidence-gated.**
+Status: **Owner-approved Tool-only numerical ownership contract; the audited
+Studio migration baseline is zero and future work remains evidence-gated.**
 
-> 2026-08-01 current package update: `Lib.ThreeD 2.8.7` at
-> `20963c12b50dfc0658110e2037961d3224feb2d6` additionally owns scalar
-> repeatability mean, extrema, sample standard deviation, six-sigma spread,
-> range, and explicit negative-variance round-off policy. It retains declared
+> 2026-08-01 current package update: `Lib.ThreeD 2.8.8` at
+> `0fe04bc967fa89918b3c6d937566cce56de69682` additionally owns
+> labeled-evidence descriptive statistics and deterministic threshold-candidate
+> construction, classification, error counting, ranking, and tie-breaking. It
+> retains repeatability mean, extrema, sample standard deviation, six-sigma
+> spread, range, and explicit negative-variance round-off policy; declared
 > mesh-normal quality and four-point landmark independence validation, plus
 > retains dual-surface thickness, height-deviation, height-map, filtering,
 > leveling, Surface
 > Match, mesh-comparison, and transform-diagnostic Tools.
 > The vendored package SHA-256 is
-> `C40A2EB0239C5BF6063984429CEDB580608CD7EF8C96D08AA13A67C2B3ACF33B`.
+> `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
 > Older package sections below remain migration history.
 
 ## Binding ownership rule
@@ -66,6 +68,8 @@ reusable by other OpenVisionLab products.
 | Registration transform diagnostics | `Lib.ThreeD 2.8.4` deterministic source-neutral Tool | Complete: Noah owns homogeneous-row, orthogonality, determinant, translation, and rotation diagnostics; Studio retains authored limits, ordered acceptance, evidence, lifecycle, and UI. |
 | Landmark Correspondence | `Lib.ThreeD 2.8.6` `LandmarkCorrespondenceValidationTool` | Complete: Noah owns augmented rank and normalized tetrahedral volume; Studio retains identity, lineage, recipe, artifact, hashing, and lifecycle ownership. |
 | Thickness / aligned-point repeatability statistics | `Lib.ThreeD 2.8.7` `RepeatabilityStatisticsTool` | Complete: Noah owns scalar accumulation and descriptive statistics; Studio retains study/source/correspondence identity, unit/frame/alignment, acceptance, metrics, and evidence. |
+| Labeled-evidence descriptive and C3D ROI statistics | `Lib.ThreeD 2.8.8` `LabeledEvidenceStatisticsTool` and `HeightMapRegionStatisticsTool` | Complete: Noah owns aggregation; Studio retains recipe/Tool/parameter/source/sample/role identity, grouping, warnings, reports, and evidence locators. |
+| Threshold candidate analysis | `Lib.ThreeD 2.8.8` `ThresholdCandidateAnalysisTool` | Complete: Noah owns candidate construction, classification, error counts, ranking, and tie-breaking; Studio retains eligibility/routing, HeldOut exclusion, canonical candidate identity, warnings, reports, and lifecycle. |
 
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.
@@ -85,16 +89,30 @@ The current Studio audit is recorded in:
 - `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`;
 - `docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json`.
 
-The baseline contains `4` migration-debt files and `26` reviewed Studio
-boundaries. It is a decreasing migration ledger, not a permanent exception
-list. The structure verifier rejects new unclassified numerical owners and
-numerical-signal growth above the recorded baseline. A passing guard does not
-mean the remaining debt is migrated.
+The decreasing migration baseline contains `0` migration-debt files and `30`
+reviewed Studio boundaries. It is not a permanent exception list. The
+structure verifier rejects new unclassified numerical owners and
+numerical-signal growth above the recorded boundary ceilings.
 
-Current verification passes structure `27/27`; the vendored `Lib.ThreeD
-2.8.6` package boundary also passes with source commit and SHA-256 agreement.
-Preserve
-`artifacts/current/20260801-noah-tool-ownership-contract/`.
+Current verification passes structure `29/29`; the vendored `Lib.ThreeD 2.8.8`
+package boundary also passes with source commit and SHA-256 agreement. Preserve
+`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md` and
+the physical current-task evidence under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+
+## Current validation-statistics migration: Lib.ThreeD 2.8.8
+
+`LabeledEvidenceStatisticsTool` owns role-grouped descriptive statistics.
+`ThresholdCandidateAnalysisTool` owns deterministic candidate construction,
+classification, error counting, ranking, and tie-breaking. The Studio adapter
+uses `HeightMapRegionStatisticsTool` for rectangular C3D ROI mean and coverage.
+Studio retains all product identities, grouping, routing, HeldOut policy,
+canonical candidate IDs, reporting, lifecycle, and UI.
+
+Noah passes `0/0` and `106/106`; Studio passes `0/0`, bridge `19/19`,
+Validation Set `84/84`, normalized report difference `0`, and structure
+`29/29`. See
+`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md`.
 
 ## Current declared-normal quality and Landmark Correspondence migration: Lib.ThreeD 2.8.6
 

@@ -154,6 +154,9 @@ public sealed partial class ToolWorkbenchViewModel
                 ?? value?.Steps.FirstOrDefault();
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedValidationSetSample));
+            OnPropertyChanged(nameof(IsSelectedValidationRoleGood));
+            OnPropertyChanged(nameof(IsSelectedValidationRoleBad));
+            OnPropertyChanged(nameof(IsSelectedValidationRoleHeldOut));
             previousValidationSetIssueCommand.RaiseCanExecuteChanged();
             nextValidationSetIssueCommand.RaiseCanExecuteChanged();
             openValidationSetComparisonCommand.RaiseCanExecuteChanged();
@@ -266,6 +269,14 @@ public sealed partial class ToolWorkbenchViewModel
         row.Role == ToolRecipeValidationSampleRole.Bad);
     public int ValidationSetHeldOutCount => validationSetSamples.Count(row =>
         row.Role == ToolRecipeValidationSampleRole.HeldOut);
+    public bool HasValidationSetIssues => validationSetSamples.Any(row =>
+        row.Status is "Fail" or "Error");
+    public bool IsSelectedValidationRoleGood =>
+        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.Good;
+    public bool IsSelectedValidationRoleBad =>
+        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.Bad;
+    public bool IsSelectedValidationRoleHeldOut =>
+        SelectedValidationSetSample?.Role == ToolRecipeValidationSampleRole.HeldOut;
     public bool HasValidationEvidence =>
         validationEvidenceDistributions.Count > 0;
     public bool HasValidationThresholdCandidates =>
@@ -622,7 +633,9 @@ public sealed partial class ToolWorkbenchViewModel
                     ToolRecipeValidationSampleRole.Good),
                 "Pending",
                 Localize("대기", "Pending"),
-                Localize("명시적 전체 실행 대기", "Waiting for explicit Run All"),
+                Localize(
+                    "미실행 · '샘플 세트 실행'을 선택하세요.",
+                    "Not run · choose Run sample set."),
                 string.Empty,
                 []));
         }
@@ -798,8 +811,8 @@ public sealed partial class ToolWorkbenchViewModel
             Status = "Pending",
             StatusText = Localize("대기", "Pending"),
             Message = Localize(
-                "역할이 변경되었습니다. 명시적 전체 실행을 기다립니다.",
-                "Role changed; waiting for explicit Run All."),
+                "기대 역할이 변경됐습니다. '샘플 세트 실행'을 선택하세요.",
+                "Expected role changed; choose Run sample set."),
             Duration = string.Empty,
             Steps = []
         };
@@ -918,6 +931,10 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(ValidationSetGoodCount));
         OnPropertyChanged(nameof(ValidationSetBadCount));
         OnPropertyChanged(nameof(ValidationSetHeldOutCount));
+        OnPropertyChanged(nameof(HasValidationSetIssues));
+        OnPropertyChanged(nameof(IsSelectedValidationRoleGood));
+        OnPropertyChanged(nameof(IsSelectedValidationRoleBad));
+        OnPropertyChanged(nameof(IsSelectedValidationRoleHeldOut));
         previousValidationSetIssueCommand.RaiseCanExecuteChanged();
         nextValidationSetIssueCommand.RaiseCanExecuteChanged();
         openValidationSetComparisonCommand.RaiseCanExecuteChanged();
@@ -1842,8 +1859,8 @@ public sealed partial class ToolWorkbenchViewModel
     {
         ValidationSetSummary = validationSetSamples.Count == 0
             ? Localize(
-                "검증할 C3D 샘플을 추가한 다음 전체 실행을 누르세요. 샘플 선택만으로 레시피나 뷰어 입력은 바뀌지 않습니다.",
-                "Add C3D samples, then choose Run All. Selecting samples never changes the recipe or Viewer input.")
+                "C3D 샘플을 추가하고 기대 역할을 지정한 다음 '샘플 세트 실행'을 선택하세요. 샘플 선택만으로 검사는 실행되지 않습니다.",
+                "Add C3D samples, assign expected roles, then choose Run sample set. Selecting samples never runs inspection.")
             : Localize(
                 $"{validationSetSamples.Count}개 샘플 준비됨 · 실행 전",
                 $"{validationSetSamples.Count} sample(s) ready · not run");
@@ -1974,6 +1991,9 @@ public sealed record ValidationSetSampleRow(
     IReadOnlyList<ValidationSetStepRow> Steps)
 {
     public string FileName => Path.GetFileName(SourcePath);
+    public string RoleText => Role == ToolRecipeValidationSampleRole.HeldOut
+        ? "Held-out"
+        : Role.ToString();
 }
 
 public sealed record ValidationEvidenceDistributionRow(
