@@ -101,6 +101,7 @@ foreach ($sample in $samples) {
             '-c', $Configuration,
             '--no-build',
             '--',
+            '--smoke-software-rendering',
             '--smoke-screenshot', $screenshot,
             '--smoke-screenshot-quality-report', $quality,
             '--smoke-contracts', $contract,
