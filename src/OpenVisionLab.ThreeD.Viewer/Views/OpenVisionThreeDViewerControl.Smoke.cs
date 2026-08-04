@@ -346,8 +346,11 @@ public sealed partial class OpenVisionThreeDViewerControl
             leftPressed = false;
             await Task.Delay(180);
             doubleClickFitCamera = CaptureCameraSnapshot();
+            var expectedDoubleClickStatus = viewModel.C3DSampleVisible && c3dSample is not null
+                ? "Double-click fit"
+                : "Fit all visible entities";
             doubleClickFitPassed = IsFinite(doubleClickFitCamera)
-                && viewModel.ViewerStatus.StartsWith("Double-click fit", StringComparison.Ordinal)
+                && viewModel.ViewerStatus.StartsWith(expectedDoubleClickStatus, StringComparison.Ordinal)
                 && (TargetChanged(zoomCamera, doubleClickFitCamera)
                     || Math.Abs(zoomCamera.Distance - doubleClickFitCamera.Distance) > 0.000001);
 
@@ -611,7 +614,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!rightPanPassed) failures.Add("right-drag pan target did not change");
         if (!rightPanMenuSuppressed) failures.Add("right-drag opened the Viewer context menu");
         if (!zoomPassed) failures.Add("zoom distance did not change");
-        if (!doubleClickFitPassed) failures.Add("double-click did not fit the active C3D height grid");
+        if (!doubleClickFitPassed) failures.Add("double-click did not fit the active Viewer scene");
         if (!contextMenuPassed) failures.Add("Viewer context menu did not open");
         if (!contextMenuBindingsPassed) failures.Add("Viewer context menu command bindings were incomplete");
         if (!topViewMenuBindingsPassed) failures.Add("Viewer top View menu command bindings were incomplete");
