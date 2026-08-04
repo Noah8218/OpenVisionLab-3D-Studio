@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0002",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Runner help exits with usage failure code",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "documentation and standalone-clone audit",
+    "summary": "The developer guide previously recommended Runner --help, but direct execution showed that help is treated as invalid usage.",
+    "refs": [
+      "src/OpenVisionLab.ThreeD.Runner/Application/RunnerCommandRouter.cs"
+    ]
+  },
+  "state": {
+    "status": "open",
+    "current_summary": "The current Release Runner prints its usage text for --help but exits with code 2 because no explicit help route exists and the final missing recipe/report branch handles the request as invalid usage.",
+    "next_action": "Add an explicit case-insensitive --help route that prints usage and returns 0, retain nonzero exit codes for genuinely invalid or incomplete commands, and add a focused command-line regression check."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "OpenVisionLab.ThreeD.Runner --help prints usage but exits with code 2 instead of a successful help exit.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Scripts, users, and documentation checks cannot distinguish a successful request for help from an invalid command."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "--help and a case-insensitive equivalent print usage and exit 0.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "Missing required values and unknown command combinations continue to exit nonzero with controlled usage output.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "source location",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Application/RunnerCommandRouter.cs",
+      "summary": "The final recipe/report validation prints the shared usage block and returns 2; no explicit help branch was found."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "current Release build",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260804-user-docs-standalone-clone/build-artifacts/bin/OpenVisionLab.ThreeD.Runner/release/OpenVisionLab.ThreeD.Runner.dll",
+      "summary": "Runner binary used for the direct --help exit-code observation."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "command execution",
+      "location": "dotnet OpenVisionLab.ThreeD.Runner.dll --help",
+      "observation": "The current Release Runner printed its usage text and returned exit code 2.",
+      "observed_at": "2026-08-04T13:22:48.4159096+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-04T13:22:48.4159096+09:00",
+  "updated_at": "2026-08-04T13:22:48.4159096+09:00"
+}

@@ -1,0 +1,124 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0001",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "Publish user documentation and verify the exact GitHub clone",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "user request and current documentation implementation",
+    "summary": "The user requested a current README, a first-time user tutorial, documented utilities, and proof that the project works when obtained by itself from GitHub.",
+    "refs": [
+      "README.md",
+      "docs/OPENVISIONLAB_3D_USER_TUTORIAL.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "Published user documentation and setup/package-script changes as implementation commit f7e43d96e8a5ff95206e3b703cd6e125fb0444e1 on origin/main. A clean D-backed GitHub HTTPS clone matched that remote commit, used only repository-vendored Lib.ThreeD and WPG packages, built Release with zero warnings and errors, produced a clean self-contained package with complete manifest and recipe references, and passed the packaged Shell check without a valid system DOTNET_ROOT."
+  },
+  "objective": {
+    "summary": "Publish the completed user documentation on GitHub and prove that the exact remote revision builds and runs without an adjacent Library-Noah checkout.",
+    "constraints": [
+      "Do not push without explicit user authorization.",
+      "Use only dependencies vendored in OpenVisionLab-3D-Studio.",
+      "Store fresh-clone verification outputs physically on D:.",
+      "Rebuild the distributable package from a clean commit."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The intended documentation and script changes are committed and remote main resolves to the same commit.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A fresh clone of that remote commit restores and builds Release with zero errors using only repository-vendored packages.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "A clean-commit self-contained package has no missing or mismatched manifest payloads and all bundled recipe source references resolve.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "The packaged Shell command-line verification passes with an invalid system DOTNET_ROOT.",
+      "evidence_refs": [
+        "E4"
+      ]
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "remote baseline",
+      "location": "origin/main@7123305",
+      "summary": "Remote main was independently cloned and built before this documentation slice."
+    },
+    {
+      "kind": "distribution boundary",
+      "location": "openvisionlab-3d-studio-manifest.json",
+      "summary": "The current local package reports gitWorkingTree=dirty by design and is verification evidence, not a distributable release."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "verification directory",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260804-user-docs-standalone-clone",
+      "summary": "Local setup, build, package, manifest, recipe-reference, Markdown-link, and self-contained Shell evidence."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "remote identity",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/commit/f7e43d96e8a5ff95206e3b703cd6e125fb0444e1",
+      "observation": "Local implementation commit, origin/main, and the fresh GitHub clone all resolved to f7e43d96e8a5ff95206e3b703cd6e125fb0444e1; the clone was clean with 929 tracked files and no tracked private fixture paths.",
+      "observed_at": "2026-08-04T13:40:35.5350821+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "fresh-clone build",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260804-f7e43d9-github-clone/release-build.binlog",
+      "observation": "The clean GitHub clone passed Build-scope setup 4/4, contained all six required vendored package/configuration files, had zero external Library-Noah project/config references, and built Release with zero warnings and zero errors.",
+      "observed_at": "2026-08-04T13:40:35.5350821+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "clean package verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260804-f7e43d9-github-clone/package-verification.txt",
+      "observation": "The clean-commit self-contained package recorded the exact clone commit and clean working tree, matched all 502 manifest payload paths, sizes, and SHA-256 values, resolved 12/12 recipe source references, matched 3/3 packaged documentation sources, and distributed no corrupt fixtures.",
+      "observed_at": "2026-08-04T13:40:35.5350821+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "self-contained execution",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260804-f7e43d9-github-clone/package-shell-command-line.txt",
+      "observation": "With DOTNET_ROOT set to a missing path and multilevel lookup disabled, the packaged Shell exited 0 and passed its command-line verification 31/31.",
+      "observed_at": "2026-08-04T13:40:35.5350821+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-04T13:40:35.5350821+09:00",
+      "from": "open",
+      "to": "resolved",
+      "summary": "The user documentation was published and the exact implementation commit passed the clean GitHub-clone, build, package-integrity, recipe-reference, and self-contained execution gates."
+    }
+  ],
+  "created_at": "2026-08-04T13:20:51.5565034+09:00",
+  "updated_at": "2026-08-04T13:40:35.5350821+09:00"
+}
