@@ -1,8 +1,11 @@
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Layout;
 using OpenVisionLab.ThreeD.Shell.Views.Shell;
@@ -301,21 +304,13 @@ internal static class ToolWorkbenchDockingVerification
             var selectedStepState = selectedStep?.State;
             var recipeStepCount = shell.Workbench.PipelineSteps.Count;
             var recipeDirty = shell.Workbench.IsDirty;
-            var validationFixtureDirectory = Path.Combine(
-                FindRepositoryRoot(),
-                "artifacts",
-                "current",
-                "20260729-completeness-threshold-assistance",
-                "validation-set-fixture");
-            var validationSamplePaths = new[]
-            {
-                "completeness-good-low.C3D",
-                "completeness-good-high.C3D",
-                "completeness-bad-low.C3D",
-                "completeness-bad-high.C3D",
-                "completeness-held-out.C3D",
-            }
-                .Select(name => Path.Combine(validationFixtureDirectory, name))
+            var validationFixture =
+                CompletenessValidationVerificationFixtureFactory.Create(
+                    Path.Combine(
+                        Path.GetDirectoryName(Path.GetFullPath(reportPath))!,
+                        "validation-set-fixture"));
+            var validationSamplePaths = validationFixture.Samples
+                .Select(sample => sample.SourcePath)
                 .ToArray();
             Check(
                 "stage verification fixture owns five readable Validation Set samples",
@@ -498,15 +493,9 @@ internal static class ToolWorkbenchDockingVerification
             stageHost.Close();
 
             var ownerPathShell = new ShellMainWindowViewModel();
-            var ownerPathRecipe = Path.Combine(
-                validationFixtureDirectory,
-                "completeness-threshold-fixture.ov3d-recipe.json");
-            var ownerPathRunRecord = Path.Combine(
-                FindRepositoryRoot(),
-                "artifacts",
-                "current",
-                "20260729-completeness-results-overlays",
-                "runner-record.json");
+            var ownerPathRecipe = validationFixture.RecipePath;
+            var ownerPathRunRecord = WriteOwnerPathRunRecord(
+                validationFixture);
             var ownerPathOpenMessage = string.Empty;
             var ownerPathRunMessage = string.Empty;
             Check(
@@ -983,6 +972,85 @@ internal static class ToolWorkbenchDockingVerification
         contracts.Select(contract => contract.ContentId).Order(StringComparer.Ordinal)
             .SequenceEqual(expectedIds.Order(StringComparer.Ordinal), StringComparer.Ordinal)
         && contracts.Select(contract => contract.ContentId).Distinct(StringComparer.Ordinal).Count() == contracts.Count;
+
+    private static string WriteOwnerPathRunRecord(
+        CompletenessValidationVerificationFixture fixture)
+    {
+        var path = Path.Combine(fixture.RootPath, "owner-path-run-record.json");
+        var document = fixture.Document;
+        var step = document.Steps.Single();
+        var metrics = new[]
+        {
+            new InspectionRunMetric(
+                "Passed cells",
+                MetricKind.Count,
+                2,
+                "cells",
+                ResultStatus.Fail),
+            new InspectionRunMetric(
+                "Failed cells",
+                MetricKind.Count,
+                2,
+                "cells",
+                ResultStatus.Fail),
+        };
+        var stepResult = new InspectionRunStepResult(
+            0,
+            step.Id,
+            step.ToolId,
+            step.ToolName,
+            step.InputEntityIds,
+            step.OutputEntityId,
+            ResultStatus.Fail,
+            "Completeness Grid Fail: 2 passed, 2 failed, 4 total cells.",
+            0,
+            metrics,
+            []);
+        var record = new InspectionRunRecord(
+            "1.5",
+            "run-workbench-owner-path-fixture",
+            new DateTimeOffset(2026, 7, 29, 0, 0, 0, TimeSpan.Zero),
+            new InspectionRunRecipe(
+                "tool-recipe",
+                document.SchemaVersion,
+                fixture.RecipePath,
+                Convert.ToHexString(SHA256.HashData(
+                    File.ReadAllBytes(fixture.RecipePath)))),
+            new InspectionRunSource(
+                document.Source.Id,
+                document.Source.Path,
+                document.Source.ContentSha256!,
+                document.Source.ByteLength
+                    ?? new FileInfo(document.Source.Path).Length,
+                document.Source.Unit),
+            "Ordered Tool Recipe Replay",
+            ResultStatus.Fail,
+            "Executed 1 authored typed step in recipe order.",
+            0,
+            metrics,
+            [],
+            "NotCompared",
+            new InspectionRunArtifacts(
+                Path.Combine(fixture.RootPath, "owner-path-runner.txt"),
+                null,
+                null,
+                path,
+                null,
+                null))
+        {
+            Steps = [stepResult],
+        };
+        File.WriteAllText(
+            path,
+            JsonSerializer.Serialize(
+                record,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() },
+                }));
+        return path;
+    }
 
     private static string FindRepositoryRoot()
     {

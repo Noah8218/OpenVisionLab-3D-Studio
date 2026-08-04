@@ -671,134 +671,14 @@ internal static class ToolRecipeValidationSetVerification
                     out var unsupportedWarpageMessage),
                 unsupportedWarpageMessage);
 
-            var completenessTaughtPath = Path.Combine(
-                artifactRoot,
-                "completeness-taught.C3D");
-            var completenessGoodLowPath = Path.Combine(
-                artifactRoot,
-                "completeness-good-low.C3D");
-            var completenessGoodHighPath = Path.Combine(
-                artifactRoot,
-                "completeness-good-high.C3D");
-            var completenessBadLowPath = Path.Combine(
-                artifactRoot,
-                "completeness-bad-low.C3D");
-            var completenessBadHighPath = Path.Combine(
-                artifactRoot,
-                "completeness-bad-high.C3D");
-            var completenessHeldOutPath = Path.Combine(
-                artifactRoot,
-                "completeness-held-out.C3D");
-            CreateCompletenessFixture(
-                completenessTaughtPath,
-                [2.2, 3.2, 4.2, 2.8],
-                0);
-            CreateCompletenessFixture(
-                completenessGoodLowPath,
-                [2, 3, 4, 2.5],
-                0);
-            CreateCompletenessFixture(
-                completenessGoodHighPath,
-                [2.5, 3.5, 4.5, 3],
-                0);
-            CreateCompletenessFixture(
-                completenessBadLowPath,
-                [-5, 3, 8, 2],
-                2);
-            CreateCompletenessFixture(
-                completenessBadHighPath,
-                [-4, 3, 7, 2],
-                1);
-            CreateCompletenessFixture(
-                completenessHeldOutPath,
-                [2.2, 3.2, 4.2, 2.8],
-                0);
-            var completenessBinding =
-                ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(
-                    completenessTaughtPath);
-            var completenessSourceInfo =
-                new FileInfo(completenessTaughtPath);
-            var completenessSource = new ToolRecipeSource(
-                "source.validation.completeness",
-                "Completeness taught source",
-                "C3D",
-                "raw-height",
-                "frame.c3d-grid-index",
-                completenessTaughtPath,
-                completenessSourceInfo.Length,
-                completenessBinding.ContentSha256,
-                completenessBinding.GridWidth,
-                completenessBinding.GridHeight);
-            var completenessReference = new ToolRecipeSelection(
-                "selection.validation.completeness.reference",
-                "Completeness Reference ROI",
-                ToolRecipeSelectionKinds.GridRectangle,
-                completenessSource.Id,
-                completenessSource.FrameId,
-                completenessBinding,
-                new ToolRecipeGridRectangle(0, 0, 1, 4),
-                null,
-                null);
-            var completenessInspection = new ToolRecipeSelection(
-                "selection.validation.completeness.inspection",
-                "Completeness Inspection Grid ROI",
-                ToolRecipeSelectionKinds.GridRectangle,
-                completenessSource.Id,
-                completenessSource.FrameId,
-                completenessBinding,
-                new ToolRecipeGridRectangle(2, 0, 4, 4),
-                null,
-                null);
-            var completenessProfile = new C3DCompletenessGridProfile(
-                2,
-                2,
-                2,
-                2,
-                2,
-                2,
-                C3DCompletenessCellShape.GridRectangle);
-            var completenessPolicy =
-                new C3DCompletenessPresencePolicy(0.8, 0, 6);
-            var completenessStep = new ToolRecipeStep(
-                "step.validation.completeness",
-                "completeness-grid",
-                "Completeness Grid",
-                3,
-                [
-                    completenessSource.Id,
-                    completenessReference.Id,
-                    completenessInspection.Id
-                ],
-                "result.validation.completeness",
-                completenessProfile.ToRecipeParameters()
-                    .Concat(completenessPolicy.ToRecipeParameters())
-                    .ToArray());
-            var completenessDocument = new ToolRecipeDocument(
-                ToolRecipeDocument.CurrentSchemaVersion,
-                "Completeness Validation Set fixture",
-                completenessSource,
-                [],
-                [completenessStep],
-                [completenessReference, completenessInspection]);
+            var completenessFixture =
+                CompletenessValidationVerificationFixtureFactory.Create(
+                    artifactRoot);
+            var completenessDocument = completenessFixture.Document;
+            var completenessStep = completenessDocument.Steps.Single();
             var completenessResult = ToolRecipeValidationSetExecution.Execute(
                 completenessDocument,
-                [
-                    new ToolRecipeValidationSampleInput(
-                        completenessGoodLowPath,
-                        ToolRecipeValidationSampleRole.Good),
-                    new ToolRecipeValidationSampleInput(
-                        completenessGoodHighPath,
-                        ToolRecipeValidationSampleRole.Good),
-                    new ToolRecipeValidationSampleInput(
-                        completenessBadLowPath,
-                        ToolRecipeValidationSampleRole.Bad),
-                    new ToolRecipeValidationSampleInput(
-                        completenessBadHighPath,
-                        ToolRecipeValidationSampleRole.Bad),
-                    new ToolRecipeValidationSampleInput(
-                        completenessHeldOutPath,
-                        ToolRecipeValidationSampleRole.HeldOut)
-                ]);
+                completenessFixture.Samples);
             Check(
                 "Completeness fixture replays two Good two Bad and one Held-out with real Pass Fail evidence",
                 completenessResult.Samples.Count == 5
@@ -904,23 +784,7 @@ internal static class ToolRecipeValidationSetVerification
                     ";",
                     completenessProposals.Select(item =>
                         item.Message)));
-            var completenessRecipePath = Path.Combine(
-                artifactRoot,
-                "completeness-threshold-fixture.ov3d-recipe.json");
-            ToolRecipeDocumentStore.Save(
-                completenessRecipePath,
-                completenessDocument);
-            ToolRecipeValidationSetDefinitionStore.SaveForRecipe(
-                completenessRecipePath,
-                new ToolRecipeValidationSetDefinition(
-                    ToolRecipeValidationSetDefinition.CurrentSchemaVersion,
-                    completenessDocument.Name,
-                    completenessDocument.Source.ContentSha256!,
-                    completenessResult.Samples.Select(sample =>
-                        new ToolRecipeValidationSampleDefinition(
-                            sample.Order,
-                            sample.SourcePath,
-                            sample.Role)).ToArray()));
+            var completenessRecipePath = completenessFixture.RecipePath;
             var completenessWorkbench = new ToolWorkbenchViewModel(
                 Path.Combine(
                     artifactRoot,
@@ -1831,49 +1695,6 @@ internal static class ToolRecipeValidationSetVerification
             values).SaveC3D(path);
     }
 
-    private static void CreateCompletenessFixture(
-        string path,
-        IReadOnlyList<double> relativeCellHeights,
-        int missingCellsInSecondCell)
-    {
-        if (relativeCellHeights.Count != 4
-            || missingCellsInSecondCell is < 0 or > 4)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(relativeCellHeights));
-        }
-
-        const int width = 6;
-        const int height = 6;
-        var values = Enumerable.Repeat(10d, width * height).ToArray();
-        var cells = new[]
-        {
-            new ToolRecipeGridRectangle(2, 0, 2, 2),
-            new ToolRecipeGridRectangle(2, 2, 2, 2),
-            new ToolRecipeGridRectangle(4, 0, 2, 2),
-            new ToolRecipeGridRectangle(4, 2, 2, 2)
-        };
-        for (var index = 0; index < cells.Length; index++)
-        {
-            Fill(
-                values,
-                width,
-                cells[index],
-                10d + relativeCellHeights[index]);
-        }
-        for (var index = 0; index < missingCellsInSecondCell; index++)
-        {
-            var rowOffset = index / 2;
-            var columnOffset = index % 2;
-            values[(2 + rowOffset) * width + 2 + columnOffset] = double.NaN;
-        }
-
-        C3DHeightFieldSnapshot.CreateForVerification(
-            "source.validation.completeness",
-            width,
-            height,
-            values).SaveC3D(path);
-    }
 }
 
 internal static class ThresholdCandidateVerificationFormatting
