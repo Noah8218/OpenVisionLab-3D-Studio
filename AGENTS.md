@@ -42,7 +42,7 @@ This file defines the working agreement for Codex in this repository.
   commit the exact source, pack that committed version, vendor the package and
   checksum, then adapt Studio. Do not use an external `ProjectReference` or
   package an uncommitted Noah working tree.
-- `Lib.ThreeD 2.8.13` owns deterministic Surface Match pose-search and
+- `Lib.ThreeD 2.9.0` owns deterministic Surface Match pose-search and
   unique-nearest coverage, SurfaceModel/Prepared Scene sampling, model and
   organized-scene edge extraction, edge-domain coverage, center-excluded
   local-median outlier filtering, height-field surface leveling,
@@ -154,7 +154,87 @@ This file defines the working agreement for Codex in this repository.
 
 ## Current Product Target
 
-- Height-map input-contract integration closure (2026-08-04): current vendored
+- Human-owner R0 fixed-input refresh (2026-08-04): Status is Blocked only on
+  the product owner's unaided Wide and Compact runs. The current source was
+  rebuilt in Release with `0/0`; the launcher pins seven current binaries plus
+  the unchanged Completeness recipe and Fail Run Record by SHA-256; and both
+  `-ValidateOnly` modes pass. The launcher now dynamically selects the monitor
+  with the smallest `Bounds.Left`; current evidence selects `\\.\DISPLAY2`
+  at `[-1920,365,1920,1080]`, and live launch fails closed unless the actual
+  window intersects it. Automated validation did not launch the application
+  and does not close R0. Preserve
+  `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`,
+  `scripts/start-human-owner-r0.ps1`, and the D-backed
+  `20260804-r0-package-refresh` evidence. Inventory remains
+  `139 C / 17 P / 54 N / 9 E / 16 O`; Workspace v3 remains `7/8` and `A-01`
+  remains Partial. Next dependency: owner performs Wide first, records the
+  observer sheet, closes the app, then repeats Compact without coaching.
+  Prerequisite: owner operation and evidence. Recommended model: none;
+  reasoning effort: none.
+
+- Runner help exit closure (2026-08-04): `PL-0002` is resolved. Explicit
+  case-insensitive `--help` now writes the shared usage text to stdout and
+  exits `0`; missing required values and unknown command combinations retain
+  the same usage text on stderr and exit `2`. Release passes `0/0`; exact
+  command checks pass `4/4`; all four outputs retain the same usage-content
+  SHA-256; L-13 Runner regression passes `19/19`; and structure passes
+  `29/29` with `0` migration debt. No UI, recipe, execution, Viewer, or
+  Library-Noah behavior changed. Preserve
+  `docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`, `.proofline/issues/PL-0002.json`,
+  and the D-backed `20260804-pl0002-runner-help` evidence. Inventory remains
+  `139 C / 17 P / 54 N / 9 E / 16 O`. No dependency-ready software item is
+  selected; the next acceptance priority is human-owner Wide/Compact R0.
+  Prerequisite: owner operation and evidence. Recommended model: none until
+  evidence exists; reasoning effort: none.
+
+- Surface-match pose/score export closure (2026-08-04): `L-13` is Complete.
+  Optional Run Record schema `1.6` retains the exact identified model, scene,
+  execution, row-major pose, overlay, separate surface/edge scores, and
+  separate assessment. Runner exports stored artifacts to JSON/HTML/CSV
+  without recomputing matching; matched evidence requires exact score and
+  assessment links, while NoMatch invents neither. Legacy schema `1.5`
+  remains readable. Release passes `0/0`; focused L-13 `19/19`; existing edge
+  foundation/review `21/21` and `20/20`; direct CLI exit `0`; structure
+  `29/29` with `0` migration debt. No UI or Noah package changed. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md` and the
+  D-backed `20260804-l13-surface-match-export` evidence. Inventory is
+  `139 C / 17 P / 54 N / 9 E / 16 O`. Its former PL-0002 next item is
+  superseded by the completed Runner help closure above. Human-owner
+  Wide/Compact R0 remains external.
+
+- Acquisition/source provenance closure (2026-08-04): `B-12` is Complete.
+  Recipe sources can retain explicit Available/Unavailable acquisition
+  evidence and required limitation notes. Source Quality keeps a transient
+  draft with explicit Apply/reset; exact Available and Unavailable values
+  save/reopen; legacy missing fields fall back cleanly; changing source resets
+  source-scoped evidence. Apply does not Preview, Publish, Run, or Validate.
+  Release passes `0/0`; focused B-12 `14/14`; Source Quality `18/18`; recipe
+  `28/28` and `29/29`; Inspection Workspace `64/64`; docking `82/82`; Shell
+  command line `33/33`; current EXE Wide/Compact and graphite-state evidence
+  pass on the leftmost monitor. Preserve
+  `docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md` and the
+  D-backed `20260804-b12-acquisition-provenance` evidence. Inventory is
+  `137 C / 17 P / 56 N / 9 E / 16 O`. Next is `K-04 Acquisition viewpoint/
+  direction metadata for edge orientation`. Recommended model:
+  `gpt-5.6-sol`; reasoning effort: high. Do not infer viewpoint from geometry.
+
+- 3D consumer API and package promotion closure (2026-08-04): current vendored
+  `Lib.ThreeD 2.9.0` is built from committed Noah
+  `9fdce9b2d4714d7cb7aa082a10b7afe217896e71` with SHA-256
+  `2D8DCF71B9200289D67C27EFF2A7508CE7A5A3FD377C8E4891B467FC3CA1DF23`.
+  It retains every `2.8.13` public type/member and adds an array factory,
+  explicit measurement outcomes, stable metric names, safe metric lookup, and
+  NuGet-shipped README/3D/XML documentation without automatic unit conversion,
+  frame inference, or missing-value interpolation. Noah Release passes `0/0`,
+  Smoke `135/135`, package-only 2D/3D use, and binary compatibility; Studio
+  package integrity, Release `0/0`, bridge `25/25`, C3D
+  Thickness/Warpage/Datum `5/5` each, structure `29/29`, and NuGet health
+  `12/0/0` pass. No UI changed. Preserve
+  `docs/OPENVISIONLAB_3D_LIBRARY_NOAH_PACKAGE_BOUNDARY_20260717.md` and the
+  D-backed `20260804-library-noah-2.9.0` evidence. Its former next item B-12 is
+  superseded by the completed current checkpoint above.
+
+- Historical height-map input-contract integration closure (2026-08-04): vendored
   `Lib.ThreeD 2.8.13` is built from committed Noah
   `21f2e3084843ef8a499e6fe02c4326a19813aa2c` with SHA-256
   `852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D`.

@@ -85,6 +85,25 @@ public static class ToolRecipeValidator
         {
             errors.Add("Source grid dimensions must be positive when recorded.");
         }
+        if (source.AcquisitionProvenance is { } acquisition)
+        {
+            if (!Enum.IsDefined(acquisition.State))
+            {
+                errors.Add("Acquisition provenance state must be Available or Unavailable.");
+            }
+            if (string.IsNullOrWhiteSpace(acquisition.Evidence))
+            {
+                errors.Add("Acquisition provenance evidence is required when the contract is recorded.");
+            }
+            if (string.IsNullOrWhiteSpace(acquisition.LimitationNotes))
+            {
+                errors.Add("Acquisition provenance limitation notes are required when the contract is recorded.");
+            }
+            if (acquisition.AcquisitionDirection is { } direction)
+            {
+                ValidateAcquisitionDirection(source, acquisition, direction, errors);
+            }
+        }
 
         var globalIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var routableEntityIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -331,6 +350,58 @@ public static class ToolRecipeValidator
         }
 
         return new ToolRecipeValidationResult(errors, warnings);
+    }
+
+    private static void ValidateAcquisitionDirection(
+        ToolRecipeSource source,
+        ToolRecipeAcquisitionProvenance acquisition,
+        ToolRecipeAcquisitionDirection direction,
+        List<string> errors)
+    {
+        if (!Enum.IsDefined(direction.State))
+        {
+            errors.Add("Acquisition direction state must be Available or Unavailable.");
+        }
+        if (!Enum.IsDefined(direction.Convention))
+        {
+            errors.Add("Acquisition direction convention must be SensorToScene.");
+        }
+        if (string.IsNullOrWhiteSpace(direction.FrameId)
+            || !string.Equals(direction.FrameId, source.FrameId, StringComparison.Ordinal))
+        {
+            errors.Add("Acquisition direction frame must exactly match the source frame.");
+        }
+
+        if (direction.State == ToolRecipeAcquisitionDirectionState.Unavailable)
+        {
+            if (direction.Vector is not null)
+            {
+                errors.Add("Unavailable acquisition direction must not contain a vector.");
+            }
+            return;
+        }
+
+        if (acquisition.State != ToolRecipeAcquisitionProvenanceState.Available)
+        {
+            errors.Add("Available acquisition direction requires available acquisition provenance.");
+        }
+        if (direction.Vector is not { } vector
+            || !double.IsFinite(vector.X)
+            || !double.IsFinite(vector.Y)
+            || !double.IsFinite(vector.Z))
+        {
+            errors.Add("Available acquisition direction requires a finite vector.");
+            return;
+        }
+
+        var length = Math.Sqrt(
+            vector.X * vector.X
+            + vector.Y * vector.Y
+            + vector.Z * vector.Z);
+        if (!double.IsFinite(length) || Math.Abs(length - 1.0) > 1e-9)
+        {
+            errors.Add("Available acquisition direction vector must be normalized to unit length.");
+        }
     }
 
     private static void ValidateXYZAffineSolveStep(

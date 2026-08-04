@@ -129,6 +129,30 @@ internal static class ShellVerificationCommandRouter
 
         const string sourceQualityWorkspaceVerificationOption =
             "--verify-source-quality-workspace";
+        const string sourceAcquisitionProvenanceVerificationOption =
+            "--verify-source-acquisition-provenance";
+        var sourceAcquisitionProvenanceVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                sourceAcquisitionProvenanceVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (sourceAcquisitionProvenanceVerificationIndex >= 0)
+        {
+            if (sourceAcquisitionProvenanceVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{sourceAcquisitionProvenanceVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = SourceAcquisitionProvenanceVerification.Verify(
+                args[sourceAcquisitionProvenanceVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
         const string sourceChannelNormalQualityVerificationOption =
             "--verify-source-channel-normal-quality";
         var sourceChannelNormalQualityVerificationIndex = Array.FindIndex(

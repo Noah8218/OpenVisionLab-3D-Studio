@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next Chat Handoff Prompt
 
-Date: 2026-08-03
+Date: 2026-08-04
 
 Status: Current continuation entry point
 
@@ -11,6 +11,23 @@ repeating the commercial-video review or reopening completed product slices.
 
 Authoritative detail remains in:
 
+- `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`
+  for the current nine-input SHA-256 package, dynamic leftmost-monitor
+  launcher, observer sheet, and the remaining unaided Wide/Compact gate;
+- `docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`
+  for the current PL-0002 shared help/error usage contract, exact exit-code
+  matrix, and command-line evidence;
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md`
+  for the completed L-13 identified pose/separate-score export contract,
+  no-recomputation boundary, and JSON/HTML/CSV evidence;
+- `docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`
+  for the current K-04 explicit direction contract, exact Noah/package
+  provenance, linked orientation artifact, stale behavior, UI evidence, and
+  no-inference/no-score-change boundaries;
+- `docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md`
+  for the current B-12 Available/Unavailable source contract, explicit draft/
+  Apply workflow, save/reopen and legacy behavior, no-execution boundary,
+  current UI state matrix, and K-04 dependency;
 - `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`
   for the current J-07 contract, exact Noah/package provenance, stable source
   locators, persistence, display-only overlay, regression evidence, and next
@@ -89,22 +106,29 @@ Authoritative detail remains in:
 Work in C:\Git\OpenVisionLab-3D-Studio.
 
 The product owner explicitly left the layout-only stream and completed J-12,
-K-09, F-13, J-13, J-05, and J-07. Continue with `B-12 Acquisition/source
-provenance text and limitation notes`. Persist an explicit available/
-unavailable provenance contract through save/reopen without Preview, Publish,
-Run, Validation, or inferred viewpoint. Keep camera integration outside scope.
-This slice should unblock K-04 without implementing K-04 edge orientation in
-the same task. Use the current Release J-07 evidence as the baseline.
+K-09, F-13, J-13, J-05, J-07, B-12, K-04, L-13, and PL-0002. No
+dependency-ready software item is selected. The next acceptance priority is
+human-owner unaided Wide/Compact R0; wait for owner operation/evidence or an
+explicit new product direction before selecting more implementation work.
+Preserve the PL-0002 shared help/error usage and exit-code contract. Preserve the K-04 explicit
+operator/import SensorToScene contract and never infer camera viewpoint from
+geometry. Keep camera integration, calibration, reconstruction, metrology,
+and weighted-score changes outside scope. Preserve explicit Preview, Publish,
+Run, and Validation actions.
 
 Read, in order:
 1. AGENTS.md
-1a. docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md
-1b. docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md
-1c. docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md
-1d. docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md
-1e. docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md
-1f. docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md
-1g. docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md
+1a. docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md
+1b. docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md
+1c. docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md
+1d. docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md
+1e. docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md
+1d. docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md
+1e. docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md
+1f. docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md
+1g. docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md
+1h. docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md
+1i. docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md
 2. docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md
 3. docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md
 4. docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md
@@ -486,10 +510,39 @@ focused `15/15`, and legacy byte parity `5/5`. Current inventory is
 committed Noah
 `7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored `Lib.ThreeD 2.8.12`,
 focused `15/15`, and unchanged legacy bytes `5/5`. Current inventory is
-`136 C / 17 P / 57 N / 9 E / 16 O`. Immediate next-chat priority is `B-12
-Acquisition/source provenance text and limitation notes`.
-Recommended model: `gpt-5.6-sol`. Reasoning effort: high. `K-04` remains
-blocked until B-12 passes; L-13 is independently dependency-ready.
+`136 C / 17 P / 57 N / 9 E / 16 O` at that checkpoint. B-12 is now Complete
+with focused `14/14`, exact save/reopen, legacy fallback, no-execution proof,
+and current Wide/Compact/theme evidence. Current inventory is
+`137 C / 17 P / 56 N / 9 E / 16 O`. Immediate next-chat priority is `K-04
+Acquisition viewpoint/direction metadata for edge orientation`.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high. B-12 is the completed
+prerequisite; L-13 is independently dependency-ready.
+
+K-04 is now Complete from committed Noah
+`9dd95690d3e439b459c39aea99878880cdcc5808`, vendored `Lib.ThreeD 2.9.1`,
+an explicit normalized SensorToScene source-frame contract, and linked
+facing/away/grazing Viewer evidence. Inventory at that checkpoint was
+`138 C / 17 P / 55 N / 9 E / 16 O`; its former L-13 next item is superseded
+by the completed closure below.
+
+L-13 is now Complete with optional Run Record schema `1.6`, exact identified
+model/scene/execution/pose/overlay links, separate surface and edge scores,
+separate assessment, matched and NoMatch behavior, JSON/HTML/CSV parity,
+focused `19/19`, direct CLI exit `0`, and no matching recomputation. Current
+inventory is `139 C / 17 P / 54 N / 9 E / 16 O`.
+
+PL-0002 is now resolved. Case-insensitive Runner help writes the shared usage
+body to stdout and exits `0`; invalid and incomplete commands retain the same
+body on stderr and exit `2`. Release is `0/0`; direct command matrix is `4/4`;
+L-13 regression is `19/19`; structure is `29/29` with migration debt `0`.
+No dependency-ready software item is selected.
+
+The current R0 package was refreshed on 2026-08-04 after a Release Rebuild
+`0/0`. Wide and Compact `-ValidateOnly` pass against the new nine-input hashes
+without launching the application. The launcher dynamically selects
+`\\.\DISPLAY2` at `[-1920,365,1920,1080]` and live launch fails closed unless
+the actual window intersects it. This does not replace the owner's two
+unaided runs.
 
 Human-owner Wide/Compact R0 remains a parallel external acceptance task.
 Prerequisite: owner operation and evidence. Recommended model: none until the
@@ -701,15 +754,15 @@ Library-Noah Surface Match pose-search/coverage, preparation/edge,
 filtering/leveling, nominal-comparison/transform-diagnostics, height-map
 inspection/preparation, dependent height rules, declared-normal quality,
 Landmark Correspondence, repeatability, and validation-statistics migration is
-complete. J-12 multiple-match search is additionally complete from clean
-worktree `C:\Git\Library-Noah-j12`; its current J-07 package source is commit
-`7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored as
-`Lib.ThreeD 2.8.12`. The unrelated dirty main Noah checkout remains untouched.
-The Tool-only decreasing ledger is zero. K-09, F-13, J-13, J-05, and J-07 are
-Complete. Next is `B-12 Acquisition/source provenance text and limitation
-notes`, persisted without execution or inferred viewpoint.
-Recommended model: `gpt-5.6-sol`. Reasoning effort: high. `K-04` remains
-blocked until B-12 passes; L-13 is independently dependency-ready.
+complete. The current K-04 package source is committed Noah
+`9dd95690d3e439b459c39aea99878880cdcc5808`, vendored as
+`Lib.ThreeD 2.9.1`. The Tool-only decreasing ledger remains zero. K-09, F-13,
+J-13, J-05, J-07, B-12, K-04, L-13, and PL-0002 are Complete. No
+dependency-ready software item is selected. The next acceptance priority is
+human-owner Wide/Compact R0. Prerequisite: owner operation and evidence.
+Recommended model: none until evidence exists; reasoning effort: none.
+Preserve K-04's explicit-only direction and no-inference
+boundary, and preserve L-13's no-recomputation export boundary.
 
 Then:
 
@@ -868,7 +921,6 @@ Reasoning effort: high
 Remaining after the completed matching foundation, J-12 collection, and J-13
 equivalence evaluator:
 
-- `J-05/J-07`;
 - `K-04`;
 - `L-13`.
 

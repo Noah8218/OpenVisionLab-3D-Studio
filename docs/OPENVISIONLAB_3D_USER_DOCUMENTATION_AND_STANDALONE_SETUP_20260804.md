@@ -38,7 +38,8 @@ Preview/Publish/Run behavior changed.
   under `documentation`.
 - Initialized the project-local Proofline issue ledger, resolved the exact
   GitHub publication and clean-clone objective as `PL-0001`, and recorded the
-  separate Runner help exit defect as `PL-0002`.
+  separate Runner help exit defect as `PL-0002`. That defect is now resolved;
+  see `OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`.
 
 ## Acceptance criteria and verification
 
@@ -101,14 +102,20 @@ references, and self-contained execution. This closure/Proofline record is a
 documentation-only follow-up and does not change the validated implementation
 files.
 
-`PL-0002` records the separate confirmed developer-UX defect that Runner
-`--help` prints usage but exits `2`. It is not needed for the operator package
-or the tutorial workflow and was not changed in this documentation slice.
+`PL-0002` recorded the separate developer-UX defect that Runner `--help`
+printed usage but exited `2`. It is now resolved: case-insensitive help exits
+`0`, while invalid and incomplete commands retain exit `2`. It remains
+separate from the operator package and tutorial workflow.
 
 Human-owner unaided Wide/Compact R0 remains external and is not replaced by
 these automated checks.
 
 ## Next priorities
 
-1. Add acquisition/source provenance text and limitation notes (`B-12`) | Recommended model: `gpt-5.6-sol` | Reasoning effort: high
-2. Make Runner `--help` a successful help command (`PL-0002`) | Recommended model: `gpt-5.6-terra` | Reasoning effort: low
+1. Human-owner unaided Wide/Compact R0 | Prerequisite: owner operation and evidence | Recommended model: none until evidence exists | Reasoning effort: none
+
+`K-04` acquisition direction and display-only edge orientation are now
+Complete. See
+`OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`.
+`L-13` identified Surface Match pose and separate-score export is also
+Complete. See `OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md`.

@@ -17,6 +17,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private (Vector3 Model, Vector3 Scene)[]? surfaceMatchCorrespondences;
     private SurfaceEdgeModelRenderSegment[]? surfaceEdgeModelSegments;
     private SurfaceEdgeSceneRenderSegment[]? surfaceEdgeSceneSegments;
+    private (Vector3 Start, Vector3 End)? surfaceAcquisitionDirectionMarker;
     private SurfaceMatchDisplayFrame surfaceMatchDisplayFrame;
 
     public void ShowWorkbenchSurfaceMatch(
@@ -28,7 +29,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         SurfaceAndEdgeMatchScoreArtifact? edgeScore = null,
         SurfaceEdgeDiagnosticOverlayArtifact? edgeDiagnosticOverlay = null,
         SurfaceAndEdgeMatchAssessmentArtifact? edgeAssessment = null,
-        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null)
+        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null,
+        SurfaceEdgeAcquisitionDirectionArtifact? acquisitionDirectionOrientation = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(scene);
@@ -98,6 +100,17 @@ public sealed partial class OpenVisionThreeDViewerControl
                     "Viewer edge diagnostic overlay is invalid or linked to different evidence.");
             }
 
+            if (acquisitionDirectionOrientation is not null
+                && !SurfaceEdgeAcquisitionDirectionArtifactValidator
+                    .Inspect(acquisitionDirectionOrientation, edgeDiagnosticOverlay).IsValid)
+            {
+                throw new InvalidDataException(
+                    "Viewer acquisition-direction orientation is invalid or linked to different edge evidence.");
+            }
+
+            var orientationByOrder = acquisitionDirectionOrientation?.Items
+                .ToDictionary(item => item.ModelEdgeOrder);
+
             surfaceEdgeModelSegments = edgeDiagnosticOverlay.ModelSegments
                 .Select(segment => new SurfaceEdgeModelRenderSegment(
                     surfaceMatchDisplayFrame.Map(segment.FirstPosition),
@@ -107,7 +120,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                         segment.Anchor,
                         segment.DeclaredNormal,
                         0.62f),
-                    segment.IsMatched))
+                    segment.IsMatched,
+                    orientationByOrder is not null
+                        && orientationByOrder.TryGetValue(segment.ModelEdgeOrder, out var item)
+                            ? item.Orientation
+                            : null))
                 .ToArray();
             surfaceEdgeSceneSegments = edgeDiagnosticOverlay.SceneSegments
                 .Select(segment => new SurfaceEdgeSceneRenderSegment(
@@ -115,11 +132,26 @@ public sealed partial class OpenVisionThreeDViewerControl
                     surfaceMatchDisplayFrame.Map(segment.SecondPosition),
                     segment.IsMatched))
                 .ToArray();
+            if (acquisitionDirectionOrientation is not null
+                && edgeDiagnosticOverlay.ModelSegments.FirstOrDefault() is { } firstSegment)
+            {
+                surfaceAcquisitionDirectionMarker = (
+                    surfaceMatchDisplayFrame.Map(firstSegment.Anchor),
+                    surfaceMatchDisplayFrame.MapDirectionEnd(
+                        firstSegment.Anchor,
+                        acquisitionDirectionOrientation.NormalizedSensorToSceneDirection,
+                        1.0f));
+            }
+            else
+            {
+                surfaceAcquisitionDirectionMarker = null;
+            }
         }
         else
         {
             surfaceEdgeModelSegments = null;
             surfaceEdgeSceneSegments = null;
+            surfaceAcquisitionDirectionMarker = null;
         }
         surfaceMatchRenderExecution = execution;
 
@@ -139,7 +171,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             edgeScore,
             edgeDiagnosticOverlay,
             edgeAssessment,
-            falsePositiveReview);
+            falsePositiveReview,
+            acquisitionDirectionOrientation);
         RenderNow();
     }
 
@@ -152,6 +185,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         surfaceMatchCorrespondences = null;
         surfaceEdgeModelSegments = null;
         surfaceEdgeSceneSegments = null;
+        surfaceAcquisitionDirectionMarker = null;
         surfaceMatchDisplayFrame = default;
         viewModel.ClearWorkbenchSurfaceMatch();
         RenderNow();
@@ -305,6 +339,48 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
 
             gl.End();
+            if (modelEdges.Any(edge => edge.Orientation.HasValue))
+            {
+                gl.PointSize(9.0f);
+                gl.Begin(OpenGL.GL_POINTS);
+                foreach (var edge in modelEdges.Where(edge => edge.Orientation.HasValue))
+                {
+                    SetAcquisitionOrientationColor(gl, edge.Orientation!.Value);
+                    gl.Vertex(edge.NormalEnd.X, edge.NormalEnd.Y, edge.NormalEnd.Z);
+                }
+                gl.End();
+            }
+        }
+
+        if (surfaceAcquisitionDirectionMarker is { } marker)
+        {
+            gl.LineWidth(3.0f);
+            gl.Color(0.28, 0.78, 1.0);
+            gl.Begin(OpenGL.GL_LINES);
+            DrawSurfaceMatchEdge(gl, marker.Start, marker.End);
+            gl.End();
+            gl.PointSize(10.0f);
+            gl.Begin(OpenGL.GL_POINTS);
+            gl.Vertex(marker.End.X, marker.End.Y, marker.End.Z);
+            gl.End();
+        }
+    }
+
+    private static void SetAcquisitionOrientationColor(
+        OpenGL gl,
+        SurfaceEdgeAcquisitionOrientation orientation)
+    {
+        switch (orientation)
+        {
+            case SurfaceEdgeAcquisitionOrientation.SensorFacing:
+                gl.Color(0.24, 0.92, 0.92);
+                break;
+            case SurfaceEdgeAcquisitionOrientation.AwayFromSensor:
+                gl.Color(1.0, 0.30, 0.64);
+                break;
+            default:
+                gl.Color(1.0, 0.72, 0.18);
+                break;
         }
     }
 
@@ -322,7 +398,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         Vector3 Second,
         Vector3 Anchor,
         Vector3 NormalEnd,
-        bool IsMatched);
+        bool IsMatched,
+        SurfaceEdgeAcquisitionOrientation? Orientation);
 
     private readonly record struct SurfaceEdgeSceneRenderSegment(
         Vector3 First,

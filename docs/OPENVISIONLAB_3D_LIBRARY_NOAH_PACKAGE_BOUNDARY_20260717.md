@@ -15,14 +15,19 @@ hash.
 | Item | Value |
 | --- | --- |
 | Package ID | `Lib.ThreeD` |
-| Version | `2.8.13` |
-| Source commit | `21f2e3084843ef8a499e6fe02c4326a19813aa2c` |
+| Version | `2.9.0` |
+| Source commit | `9fdce9b2d4714d7cb7aa082a10b7afe217896e71` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.13.nupkg` |
-| SHA-256 | `852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D` |
+| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.9.0.nupkg` |
+| SHA-256 | `2D8DCF71B9200289D67C27EFF2A7508CE7A5A3FD377C8E4891B467FC3CA1DF23` |
 
-The current package retains every `2.8.12` API and includes the previously migrated inspection tools,
-Surface Match pose-search/coverage, deterministic SurfaceModel and Prepared
+The current package retains every `2.8.13` public API. Version `2.9.0` adds an
+additive row-major `HeightMap3D.FromArray(...)` entry point, explicit
+`ThreeDMeasurementOutcome`, stable metric-name constants, `TryGetMetric(...)`,
+and package-shipped README, 3D guide, and XML IntelliSense documentation. It
+does not add automatic unit conversion, coordinate-frame inference, or missing-
+value interpolation. It continues to include the previously migrated inspection
+tools, Surface Match pose-search/coverage, deterministic SurfaceModel and Prepared
 Scene sampling, model/organized-scene edge extraction, and edge-domain
 coverage. It now also includes center-excluded local-median outlier filtering
 and deterministic height-field surface leveling, nominal/actual mesh
@@ -180,7 +185,67 @@ result is byte-identical before and after migration. Preserve
 `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
 `artifacts/current/20260801-surface-match-noah-migration/`.
 
-## Current 2.8.13 checkpoint - 2026-08-04
+## Current 2.9.0 checkpoint - 2026-08-04
+
+Library-Noah commit `9fdce9b2d4714d7cb7aa082a10b7afe217896e71` is the exact
+source recorded by the current vendored package. The source unifies the latest
+2D mainline with the verified `2.8.13` 3D input-contract work and adds only
+backward-compatible 3D consumer ergonomics and package documentation. Public
+binary comparison against Studio's previous `2.8.13` assembly found `0` missing
+types and `0` missing public members.
+
+The committed Library-Noah source passes Release `0/0` and full Smoke `135/135`.
+An isolated package-only consumer restores local `Lib.OpenCV 2.9.0` and
+`Lib.ThreeD 2.9.0`, executes one 2D EdgeDetection case, a passing and failing
+3D Thickness case, and an input-contract mismatch case. The package verifier
+confirms `README.md`, `docs/three-d-inspection.md`, and
+`lib/netstandard2.0/Lib.ThreeD.xml` in addition to the assembly, license, and
+source metadata. Package SHA-256 is
+`2D8DCF71B9200289D67C27EFF2A7508CE7A5A3FD377C8E4891B467FC3CA1DF23`.
+
+Studio package integrity passes; Release build passes `0/0`; direct bridge
+passes `25/25`; C3D Thickness, Warpage, and Datum Plane regressions pass `5/5`
+each; structure passes `29/29`; and NuGet health passes with `12` projects,
+zero vulnerable packages, and zero deprecated packages. No UI or Viewer code
+changed, so this package-boundary promotion does not require UI captures.
+Evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-library-noah-2.9.0`.
+
+The first D-backed Release attempt restored to the repository default `obj`
+paths but built with `--artifacts-path`, so it failed with `NETSDK1004` because
+those asset locations did not match. Re-running `dotnet build` with restore and
+the same D-backed artifacts path passed `0/0`; this was command configuration,
+not a source or package regression. An attempted non-existent
+`--verify-c3d-datum-plane` option likewise returned Runner usage code `2`; the
+source-declared `--verify-c3d-datum-plane-deviation` gate then passed `5/5`.
+
+Status: Complete
+
+Scope: `Lib.ThreeD 2.9.0` provenance, vendored package/hash, exact Studio package
+references, additive 3D consumer API compatibility, package documentation, and
+focused Studio regression evidence.
+
+Acceptance criteria: exact package version/source/SHA-256 -> pass; no missing
+`2.8.13` public type/member -> pass; package README/3D guide/XML docs -> pass;
+Library 2D/3D package-only use -> pass; legacy Studio Thickness/Warpage/Datum
+behavior -> pass; Studio dependency and numerical-ownership boundaries -> pass.
+
+Verification: Library-Noah Release `0/0`, Smoke `135/135`, package-only consumer
+pass, and binary compatibility `0/0` missing; Studio package verifier pass,
+Release `0/0`, direct bridge `25/25`, C3D Thickness/Warpage/Datum `5/5` each,
+structure `29/29`, and NuGet health `12/0/0`.
+
+Evidence: the package and checksum under `third_party/LibraryNoah`; this
+document; Library-Noah's 3D usability/release plan; and the D-backed Library and
+Studio verification folders.
+
+Boundary / next dependency: the convenience API removes boilerplate but still
+requires callers to declare units and frames explicitly. It does not establish
+physical C3D calibration, acquisition mapping, frame registration, automatic
+conversion, or missing-value reconstruction. Studio product priority remains
+`B-12` acquisition/source provenance text and limitation notes.
+
+## Historical 2.8.13 checkpoint - 2026-08-04
 
 Library-Noah commit `21f2e3084843ef8a499e6fe02c4326a19813aa2c` is the exact
 source of the current vendored package. It retains every `2.8.12` API and adds

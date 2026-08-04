@@ -18,7 +18,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
         var lines = new List<string>
         {
             "OpenVisionLab 3D Surface Edge diagnostic/review Workbench parity verification",
-            "Boundary|Presentation routes identified evidence only; independent limits create no weighted score; no Preview, Publish, Run, Validation, acquisition-direction, or metrology claim."
+            "Boundary|Presentation routes identified evidence only; explicit acquisition direction classifies declared normals without changing score or acceptance; no Preview, Publish, Run, Validation, inferred viewpoint, or metrology claim."
         };
         var total = 0;
         var passed = 0;
@@ -110,6 +110,15 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                     rejectedExecution,
                     rejectedScore,
                     workbenchRejectedAssessment));
+            var acquisitionDirection = new ToolRecipeAcquisitionDirection(
+                ToolRecipeAcquisitionDirectionState.Available,
+                ToolRecipeAcquisitionDirectionConvention.SensorToScene,
+                workbenchRejectedOverlay.TargetFrameId,
+                new ToolRecipeXyz(0.0, 0.0, -1.0));
+            var acquisitionOrientation = SurfaceEdgeAcquisitionDirectionBuilder.Build(
+                workbenchRejectedOverlay,
+                new string('A', 64),
+                acquisitionDirection);
 
             Check(
                 "runner-workbench-accepted-overlay-parity",
@@ -155,11 +164,13 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 edgeScore: rejectedScore,
                 edgeDiagnosticOverlay: workbenchRejectedOverlay,
                 edgeAssessment: workbenchRejectedAssessment,
-                falsePositiveReview: workbenchReview);
+                falsePositiveReview: workbenchReview,
+                acquisitionDirectionOrientation: acquisitionOrientation);
             Check(
                 "workbench-owns-complete-rejected-review-evidence",
                 ReferenceEquals(workbench.SurfaceEdgeScore, rejectedScore)
                 && ReferenceEquals(workbench.SurfaceEdgeDiagnosticOverlay, workbenchRejectedOverlay)
+                && ReferenceEquals(workbench.SurfaceEdgeAcquisitionDirection, acquisitionOrientation)
                 && ReferenceEquals(workbench.SurfaceEdgeAssessment, workbenchRejectedAssessment)
                 && ReferenceEquals(workbench.SurfaceMatchFalsePositiveReview, workbenchReview),
                 $"score={workbench.SurfaceEdgeScore?.ContentSha256};overlay={workbench.SurfaceEdgeDiagnosticOverlay?.ContentSha256};assessment={workbench.SurfaceEdgeAssessment?.ContentSha256};review={workbench.SurfaceMatchFalsePositiveReview?.ContentSha256}");
@@ -169,6 +180,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 && request is not null
                 && ReferenceEquals(request.EdgeScore, rejectedScore)
                 && ReferenceEquals(request.EdgeDiagnosticOverlay, workbenchRejectedOverlay)
+                && ReferenceEquals(request.AcquisitionDirectionOrientation, acquisitionOrientation)
                 && ReferenceEquals(request.EdgeAssessment, workbenchRejectedAssessment)
                 && ReferenceEquals(request.FalsePositiveReview, workbenchReview),
                 $"requests={requestCount}");
@@ -189,6 +201,15 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 && workbench.SurfaceEdgeAssessment?.Reason
                     == SurfaceAndEdgeDecisionReason.EdgeCoverageBelowMinimum,
                 $"decision={workbench.SurfaceEdgeAssessment?.Decision};reason={workbench.SurfaceEdgeAssessment?.Reason}");
+            Check(
+                "explicit-direction-orientation-keeps-raw-evidence-identities",
+                acquisitionOrientation.EdgeDiagnosticOverlayContentSha256
+                    == workbenchRejectedOverlay.ContentSha256
+                && workbench.SurfaceEdgeScore?.ContentSha256
+                    == rejectedScore.ContentSha256
+                && workbench.SurfaceEdgeAssessment?.ContentSha256
+                    == workbenchRejectedAssessment.ContentSha256,
+                $"orientation={acquisitionOrientation.ContentSha256};overlay={workbenchRejectedOverlay.ContentSha256};score={rejectedScore.ContentSha256};assessment={workbenchRejectedAssessment.ContentSha256}");
 
             var draft = new SurfaceMatchStepProperties();
             var defaultsValid = draft.TryCreateIndependentContracts(
@@ -234,6 +255,44 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                         || pair.Key.Contains("InlierRmse", StringComparison.Ordinal))
                     .Select(pair => $"{pair.Key}={pair.Value}")));
 
+            var logsBeforeDirectionApply = workbench.RunLog.Count;
+            workbench.SourceQuality.LoadAcquisitionProvenance(
+                workbench.SourceAcquisitionProvenance,
+                workbench.Source.FrameId);
+            workbench.SourceQuality.SelectedAcquisitionStateOption =
+                workbench.SourceQuality.AcquisitionStateOptions.Single(option =>
+                    option.State == ToolRecipeAcquisitionProvenanceState.Available);
+            workbench.SourceQuality.SelectedAcquisitionDirectionStateOption =
+                workbench.SourceQuality.AcquisitionDirectionStateOptions.Single(option =>
+                    option.State == ToolRecipeAcquisitionDirectionState.Available);
+            workbench.SourceQuality.AcquisitionEvidenceDraft =
+                "Operator-confirmed acquisition direction for stale-evidence verification.";
+            workbench.SourceQuality.AcquisitionLimitationNotesDraft =
+                "Direction only; camera pose and calibration remain unavailable.";
+            workbench.SourceQuality.AcquisitionDirectionXDraft = "0";
+            workbench.SourceQuality.AcquisitionDirectionYDraft = "0";
+            workbench.SourceQuality.AcquisitionDirectionZDraft = "1";
+            workbench.SourceQuality.ApplyAcquisitionProvenanceCommand.Execute(null);
+            Check(
+                "direction-change-invalidates-only-orientation-evidence",
+                workbench.SurfaceEdgeAcquisitionDirection is null
+                && workbench.IsSurfaceEdgeAcquisitionDirectionStale
+                && workbench.SurfaceEdgeDiagnosticOverlay?.ContentSha256
+                    == workbenchRejectedOverlay.ContentSha256
+                && workbench.SurfaceEdgeScore?.ContentSha256
+                    == rejectedScore.ContentSha256
+                && workbench.SurfaceEdgeAssessment?.ContentSha256
+                    == workbenchRejectedAssessment.ContentSha256
+                && request?.AcquisitionDirectionOrientation is null,
+                $"stale={workbench.IsSurfaceEdgeAcquisitionDirectionStale};orientation={workbench.SurfaceEdgeAcquisitionDirection?.ContentSha256 ?? "none"};overlay={workbench.SurfaceEdgeDiagnosticOverlay?.ContentSha256};requests={requestCount}");
+            Check(
+                "direction-apply-does-not-execute-surface-match",
+                workbench.RunLog.Count == logsBeforeDirectionApply
+                && !workbench.IsSelectedStepPreviewRunning
+                && !workbench.IsValidationSetRunning,
+                $"logs={logsBeforeDirectionApply}->{workbench.RunLog.Count};preview={workbench.IsSelectedStepPreviewRunning};validation={workbench.IsValidationSetRunning}");
+
+            var dirtyBeforeClear = workbench.IsDirty;
             workbench.ClearSurfaceMatchEvidence();
             Check(
                 "clear-removes-review-without-editing",
@@ -243,7 +302,7 @@ internal static class SurfaceEdgeDiagnosticReviewWorkbenchParityVerification
                 && workbench.SurfaceEdgeAssessment is null
                 && workbench.SurfaceMatchFalsePositiveReview is null
                 && clearCount == 1
-                && workbench.IsDirty == initialDirty
+                && workbench.IsDirty == dirtyBeforeClear
                 && workbench.PipelineSteps.Count == initialStepCount,
                 $"clear={clearCount};dirty={workbench.IsDirty};steps={workbench.PipelineSteps.Count}");
         }

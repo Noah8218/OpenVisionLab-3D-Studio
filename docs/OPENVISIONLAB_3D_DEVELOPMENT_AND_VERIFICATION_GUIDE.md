@@ -124,6 +124,7 @@ Build Release first, then use `--no-build` for the smallest relevant checks:
 
 ```powershell
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-tool-recipe-selections "$artifactDir\tool-recipe-selections.txt"
+dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-source-acquisition-provenance "$artifactDir\source-acquisition-provenance.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-tool-height-measurement-workbench "$artifactDir\height-measurement-workbench.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-inspection-workspace-selection "$artifactDir\inspection-workspace-selection.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-validation-set "$artifactDir\validation-set.txt"
@@ -134,6 +135,14 @@ dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.Thr
 Do not copy historical pass counts into a current completion claim. Record the
 actual output from the current source and current command.
 
+The acquisition/source provenance verifier also covers the optional structured
+SensorToScene direction: normalization, exact source frame, save/reopen,
+legacy missing-direction fallback, invalid/zero-vector rejection, source
+change isolation, draft/reset behavior, and the absence of Preview, Publish,
+Run, or Validation execution. See
+`OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md` and
+`OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`.
+
 ## 7. Runner and algorithm verification
 
 Representative focused commands:
@@ -143,7 +152,15 @@ dotnet run --no-build --project $runnerProject -c Release -- --verify-c3d-map-fi
 dotnet run --no-build --project $runnerProject -c Release -- --verify-mesh-deviation --report "$artifactDir\mesh-deviation.txt"
 dotnet run --no-build --project $runnerProject -c Release -- --verify-nominal-actual-comparison --report "$artifactDir\nominal-actual.txt"
 dotnet run --no-build --project $runnerProject -c Release -- --verify-registration-acceptance --report "$artifactDir\registration-acceptance.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-library-noah-3d --report "$artifactDir\library-noah-3d.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-surface-edge-acquisition-direction --report "$artifactDir\surface-edge-acquisition-direction.txt"
 ```
+
+For K-04, also generate the existing surface-edge diagnostic/review fixtures
+and run `--verify-surface-edge-diagnostic-review-workbench-parity`. The gate
+must prove that changing direction removes only stale orientation evidence;
+the raw overlay, surface/edge score, and assessment identities must remain
+unchanged.
 
 Run a specific recipe:
 

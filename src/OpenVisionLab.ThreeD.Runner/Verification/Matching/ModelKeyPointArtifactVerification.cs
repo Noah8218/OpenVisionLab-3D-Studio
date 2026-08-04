@@ -212,9 +212,9 @@ internal static class ModelKeyPointArtifactVerification
                 $"artifact={first.Semantics};overlay={overlayValidity.Evidence}"),
             Check(
                 "noah-package-provenance",
-                LibraryNoahHeightMapInspection.PackageVersion == "2.8.13"
+                LibraryNoahHeightMapInspection.PackageVersion == "2.9.1"
                 && LibraryNoahHeightMapInspection.PackageSourceCommit
-                    == "21f2e3084843ef8a499e6fe02c4326a19813aa2c",
+                    == "9dd95690d3e439b459c39aea99878880cdcc5808",
                 $"version={LibraryNoahHeightMapInspection.PackageVersion};commit={LibraryNoahHeightMapInspection.PackageSourceCommit}")
         };
 

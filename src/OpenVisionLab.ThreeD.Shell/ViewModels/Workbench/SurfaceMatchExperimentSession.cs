@@ -72,6 +72,21 @@ internal sealed class SurfaceMatchExperimentSession
         IsCandidateStale = false;
     }
 
+    public bool ClearAcquisitionDirectionEvidence()
+    {
+        var hadEvidence = Published?.AcquisitionDirectionOrientation is not null
+            || Candidate?.AcquisitionDirectionOrientation is not null;
+        if (Published is not null)
+        {
+            Published = Published with { AcquisitionDirectionOrientation = null };
+        }
+        if (Candidate is not null)
+        {
+            Candidate = Candidate with { AcquisitionDirectionOrientation = null };
+        }
+        return hadEvidence;
+    }
+
     public void Clear()
     {
         Published = null;
@@ -89,4 +104,5 @@ internal sealed record SurfaceMatchExperimentEvidence(
     SurfaceAndEdgeMatchScoreArtifact? EdgeScore,
     SurfaceEdgeDiagnosticOverlayArtifact? EdgeDiagnosticOverlay,
     SurfaceAndEdgeMatchAssessmentArtifact? EdgeAssessment,
-    SurfaceMatchFalsePositiveReviewArtifact? FalsePositiveReview);
+    SurfaceMatchFalsePositiveReviewArtifact? FalsePositiveReview,
+    SurfaceEdgeAcquisitionDirectionArtifact? AcquisitionDirectionOrientation = null);

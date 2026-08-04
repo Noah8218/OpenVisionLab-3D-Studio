@@ -372,6 +372,10 @@ public partial class MainWindow : Window
         var asyncC3DLoadCancelAt = smoke.AsyncC3DLoadCancelAt;
         var asyncC3DLoadExpectFailure = smoke.AsyncC3DLoadExpectFailure;
         var sourceQualitySmokeReportPath = smoke.SourceQualitySmokeReportPath;
+        var sourceAcquisitionProvenanceSmokeState =
+            smoke.SourceAcquisitionProvenanceSmokeState;
+        var sourceAcquisitionProvenancePopupScreenshotPath =
+            smoke.SourceAcquisitionProvenancePopupScreenshotPath;
         var heightImagePaletteSmoke = smoke.HeightImagePaletteSmoke;
         var heightImageRangeMinimumSmoke = smoke.HeightImageRangeMinimumSmoke;
         var heightImageRangeMaximumSmoke = smoke.HeightImageRangeMaximumSmoke;
@@ -498,6 +502,28 @@ public partial class MainWindow : Window
                         "Source Quality did not become ready or changed authored/execution state.");
                     Application.Current.Shutdown(1);
                     return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(sourceAcquisitionProvenanceSmokeState))
+                {
+                    var sourceAcquisitionFailure =
+                        await ConfigureSourceAcquisitionProvenanceSmokeStateAsync(
+                            sourceAcquisitionProvenanceSmokeState,
+                            sourceAcquisitionProvenancePopupScreenshotPath);
+                    if (sourceAcquisitionFailure is not null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(
+                                sourceAcquisitionProvenancePopupScreenshotPath))
+                        {
+                            WriteTextReport(
+                                sourceAcquisitionProvenancePopupScreenshotPath
+                                + ".failure.txt",
+                                [sourceAcquisitionFailure]);
+                        }
+                        _viewModel.SetViewerSmokeFailed(sourceAcquisitionFailure);
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
                 }
 
                 if (newRecipeLifecycleSmokePath is not null
@@ -1739,6 +1765,207 @@ public partial class MainWindow : Window
             LogCategory.UI,
             LogLevel.Warning,
             $"Startup Run Record could not be restored after recipe load: {message}");
+    }
+
+    private async Task<string?> ConfigureSourceAcquisitionProvenanceSmokeStateAsync(
+        string requestedState,
+        string? popupScreenshotPath)
+    {
+        var workbench = _viewModel.Workbench;
+        var quality = workbench.SourceQuality;
+        if (!workbench.IsSourceQualityWorkspaceVisible)
+        {
+            return "Acquisition provenance state smoke requires the visible Source Quality workspace.";
+        }
+
+        ToolWorkbench.ActivateSelectedToolPane();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+        var beforeDirty = workbench.IsDirty;
+        var beforeSteps = workbench.PipelineSteps.Count;
+        var beforeSelections = workbench.Selections.Count;
+        var beforeLogs = workbench.RunLog.Count;
+        var beforePreview = workbench.IsSelectedStepPreviewRunning;
+        var beforeValidation = workbench.IsValidationSetRunning;
+
+        switch (requestedState.Trim().ToLowerInvariant())
+        {
+            case "validation-focus":
+            {
+                quality.AcquisitionEvidenceDraft = string.Empty;
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                var evidence = FindVisualDescendants<System.Windows.Controls.TextBox>(
+                        ToolWorkbench)
+                    .FirstOrDefault(textBox =>
+                        System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)
+                        == "SourceAcquisitionEvidence");
+                if (evidence is null
+                    || !evidence.Focus()
+                    || !quality.HasAcquisitionValidationError
+                    || quality.ApplyAcquisitionProvenanceCommand.CanExecute(null))
+                {
+                    return "Acquisition provenance validation state or keyboard focus was unavailable.";
+                }
+
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                break;
+            }
+            case "available-hover":
+            {
+                quality.SelectedAcquisitionStateOption =
+                    quality.AcquisitionStateOptions.Single(option =>
+                        option.State == ToolRecipeAcquisitionProvenanceState.Available);
+                quality.AcquisitionEvidenceDraft =
+                    "Verified acquisition record ACQ-20260804-17 is available.";
+                quality.AcquisitionLimitationNotesDraft =
+                    "Viewpoint, sensor pose, calibration, and capture conditions were not supplied.";
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                var apply = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
+                    .FirstOrDefault(button =>
+                        System.Windows.Automation.AutomationProperties.GetAutomationId(button)
+                        == "ApplySourceAcquisitionProvenance");
+                if (apply is null
+                    || !apply.IsEnabled
+                    || !quality.ApplyAcquisitionProvenanceCommand.CanExecute(null)
+                    || !apply.Focus())
+                {
+                    return "Acquisition provenance enabled Apply state was unavailable.";
+                }
+
+                var center = apply.PointToScreen(
+                    new System.Windows.Point(
+                        apply.ActualWidth / 2.0,
+                        apply.ActualHeight / 2.0));
+                if (!SetCursorPos(
+                        (int)Math.Round(center.X),
+                        (int)Math.Round(center.Y)))
+                {
+                    return "Acquisition provenance Apply hover state was unavailable.";
+                }
+
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+                await Task.Delay(100);
+                break;
+            }
+            case "direction-available-focus":
+            {
+                quality.SelectedAcquisitionStateOption =
+                    quality.AcquisitionStateOptions.Single(option =>
+                        option.State == ToolRecipeAcquisitionProvenanceState.Available);
+                quality.SelectedAcquisitionDirectionStateOption =
+                    quality.AcquisitionDirectionStateOptions.Single(option =>
+                        option.State == ToolRecipeAcquisitionDirectionState.Available);
+                quality.AcquisitionEvidenceDraft =
+                    "Verified acquisition record ACQ-20260804-17 is available.";
+                quality.AcquisitionLimitationNotesDraft =
+                    "Direction is explicit; camera pose and calibration were not supplied.";
+                quality.AcquisitionDirectionXDraft = "0";
+                quality.AcquisitionDirectionYDraft = "0";
+                quality.AcquisitionDirectionZDraft = "-1";
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                var zDirection = FindVisualDescendants<System.Windows.Controls.TextBox>(
+                        ToolWorkbench)
+                    .FirstOrDefault(textBox =>
+                        System.Windows.Automation.AutomationProperties.GetAutomationId(textBox)
+                        == "SourceAcquisitionDirectionZ");
+                if (zDirection is null || !zDirection.IsEnabled)
+                {
+                    return "Acquisition direction enabled input or keyboard-focus state was unavailable.";
+                }
+
+                zDirection.BringIntoView();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                if (!zDirection.Focus()
+                    || !quality.ApplyAcquisitionProvenanceCommand.CanExecute(null))
+                {
+                    return "Acquisition direction enabled input or keyboard-focus state was unavailable.";
+                }
+
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                break;
+            }
+            case "open-dropdown":
+            {
+                var selectors = FindVisualDescendants<System.Windows.Controls.ComboBox>(
+                        ToolWorkbench)
+                    .Where(comboBox =>
+                        System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
+                        == "SourceAcquisitionProvenanceState")
+                    .ToArray();
+                var selector = selectors.FirstOrDefault(comboBox =>
+                    comboBox.IsVisible
+                    && comboBox.IsEnabled
+                    && comboBox.ActualWidth > 0.0
+                    && comboBox.ActualHeight > 0.0);
+                if (selector is null)
+                {
+                    var candidateStates = string.Join(
+                        "; ",
+                        selectors.Select(comboBox =>
+                            $"visible={comboBox.IsVisible}, enabled={comboBox.IsEnabled}, "
+                            + $"size={comboBox.ActualWidth:0.#}x{comboBox.ActualHeight:0.#}"));
+                    return "Acquisition provenance state selector was unavailable. "
+                           + $"Candidates={selectors.Length}: {candidateStates}";
+                }
+
+                _ = selector.Focus();
+                selector.IsDropDownOpen = true;
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                var center = selector.PointToScreen(
+                    new System.Windows.Point(
+                        selector.ActualWidth / 2.0,
+                        selector.ActualHeight / 2.0));
+                if (!SetCursorPos(
+                        (int)Math.Round(center.X),
+                        (int)Math.Round(center.Y + selector.ActualHeight * 2.5)))
+                {
+                    return "Acquisition provenance popup hover state was unavailable.";
+                }
+
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+                await Task.Delay(100);
+                if (!string.IsNullOrWhiteSpace(popupScreenshotPath))
+                {
+                    selector.ApplyTemplate();
+                    var popup = selector.Template.FindName("PART_Popup", selector)
+                        as System.Windows.Controls.Primitives.Popup
+                        ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
+                            .FirstOrDefault();
+                    if (popup?.Child is not FrameworkElement popupChild || !popup.IsOpen)
+                    {
+                        return "Acquisition provenance popup was closed or had no captureable child.";
+                    }
+
+                    var fullPopupPath = Path.GetFullPath(popupScreenshotPath);
+                    Directory.CreateDirectory(
+                        Path.GetDirectoryName(fullPopupPath) ?? Environment.CurrentDirectory);
+                    popupChild.UpdateLayout();
+                    var capture = WpfScreenshotCapture.Capture(popupChild);
+                    WpfScreenshotCapture.Save(capture.Bitmap, fullPopupPath);
+                    WriteTextReport(
+                        fullPopupPath + ".quality.txt",
+                    [
+                        $"SourceAcquisitionProvenancePopup|{capture.Quality.Summary}",
+                        "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
+                    ]);
+                }
+
+                break;
+            }
+            default:
+                return $"Unknown acquisition provenance smoke state: {requestedState}.";
+        }
+
+        var boundaryPreserved = workbench.IsDirty == beforeDirty
+                                && workbench.PipelineSteps.Count == beforeSteps
+                                && workbench.Selections.Count == beforeSelections
+                                && workbench.RunLog.Count == beforeLogs
+                                && workbench.IsSelectedStepPreviewRunning == beforePreview
+                                && workbench.IsValidationSetRunning == beforeValidation;
+        return boundaryPreserved
+            ? null
+            : "Acquisition provenance visual-state smoke changed recipe or execution state.";
     }
 
     private async Task<bool> RunSourceQualitySmokeAsync(string? reportPath)

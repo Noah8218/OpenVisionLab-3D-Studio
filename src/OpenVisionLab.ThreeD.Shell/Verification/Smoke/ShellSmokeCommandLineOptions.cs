@@ -55,6 +55,10 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? AsyncC3DLoadSmokePath => GetValue("--smoke-async-c3d-load");
     public string? AsyncC3DLoadSmokeReportPath => GetValue("--smoke-async-c3d-load-report");
     public string? SourceQualitySmokeReportPath => GetValue("--smoke-source-quality-report");
+    public string? SourceAcquisitionProvenanceSmokeState =>
+        GetValue("--smoke-source-acquisition-provenance-state");
+    public string? SourceAcquisitionProvenancePopupScreenshotPath =>
+        GetValue("--smoke-source-acquisition-provenance-popup-screenshot");
     public string? HeightImagePaletteSmoke => GetValue("--smoke-height-image-palette");
     public string? HeightImageDisplayRangeSmokeReportPath =>
         GetValue("--smoke-height-image-display-range-report");
@@ -186,6 +190,8 @@ internal sealed class ShellSmokeCommandLineOptions
         || OpenRecipeLifecycleSmokePath is not null
         || AsyncC3DLoadSmokePath is not null
         || SourceQualitySmoke
+        || SourceAcquisitionProvenanceSmokeState is not null
+        || SourceAcquisitionProvenancePopupScreenshotPath is not null
         || HeightImageDisplayRangeSmoke
         || SharedHeightHoverSmoke
         || HeightImageRoiPointerSmoke is not null

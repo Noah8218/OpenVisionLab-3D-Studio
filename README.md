@@ -47,6 +47,13 @@ Preview, Publish, Run, and validation are explicit actions. Editing a
 parameter, changing Viewer visibility, or reopening saved setup does not run an
 inspection automatically.
 
+Source Quality also provides one explicit acquisition/source contract editor.
+Record whether acquisition evidence is available, the evidence and known
+limitations, and—when supplied—the source-frame `Sensor → scene` XYZ direction.
+Then choose **Apply source contract**. The normalized direction can classify
+existing edge normals for display, but it does not change matching or infer a
+camera pose, calibration, or viewpoint from geometry.
+
 ## Included Thickness Coupon tutorial data
 
 The repository and the self-contained package include a ready-to-run Thickness
@@ -75,7 +82,7 @@ works after cloning or moving the whole package folder.
 
 | Area | Current workflow |
 | --- | --- |
-| Input review | C3D height data, glTF/GLB, STL, LAS, and LAZ loading with visible source-quality evidence |
+| Input review | C3D height data, glTF/GLB, STL, LAS, and LAZ loading with visible source-quality evidence plus explicit available/unavailable acquisition provenance, limitations, and optional source-frame sensor-to-scene direction |
 | Height inspection | Thickness, Warpage, Plane Flatness, Height Deviation, Gap/Flush, Volume, and grid/region statistics |
 | Geometry inspection | Point-pair and cross-section measurements, lines, planes, edges, landmarks, nominal/actual mesh comparison, and deterministic surface matching |
 | Teaching | Linked 3D and full-resolution Height Image ROI editing with explicit Review, Apply, Cancel, and Delete actions |
@@ -167,6 +174,8 @@ The package quick-start source is available at
 - [User tutorial](docs/OPENVISIONLAB_3D_USER_TUTORIAL.md)
 - [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
 - [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)
+- [Acquisition/source provenance contract](docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md)
+- [Acquisition direction and edge orientation](docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md)
 - [Sample data and attribution](3D/PublicSamples/README.md)
 - [Product direction and master backlog](docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md)
 - [Code rules](docs/OPENVISIONLAB_3D_CODE_RULES.md)

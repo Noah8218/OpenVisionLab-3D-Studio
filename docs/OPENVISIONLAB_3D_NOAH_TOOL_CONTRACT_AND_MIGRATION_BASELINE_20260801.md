@@ -2,7 +2,7 @@
 
 Date: 2026-08-01
 
-Updated: 2026-08-04 for `Lib.ThreeD 2.8.13` height-map input contracts
+Updated: 2026-08-04 for `Lib.ThreeD 2.9.0` consumer API and package promotion
 
 Status: Active architecture contract
 
@@ -110,7 +110,7 @@ Studio-boundary files:
 Nominal/actual mesh comparison, triangle-distance lookup, and registration
 transform diagnostics join SurfaceModel/PreparedScene preparation,
 model/scene edge extraction, edge coverage, local-median outlier filtering,
-and Level Surface as reviewed Studio adapters over `Lib.ThreeD 2.8.13`.
+and Level Surface as reviewed Studio adapters over `Lib.ThreeD 2.9.0`.
 Height-grid summary/distribution, Source Quality distribution, Completeness
 Grid, ROI statistics, and reference-grid reconstruction are also reviewed
 boundaries over public Noah Tools. Dual Surface Thickness and Height Deviation
@@ -243,9 +243,9 @@ and display-only overlay evidence.
 
 Verification: `scripts/verify-code-structure.ps1` passes `29/29`, including
 the contract, schema-1 inventory, zero-debt, and no-new-ownership checks. The
-vendored Library-Noah package boundary passes for `Lib.ThreeD 2.8.13`, source
-commit `21f2e3084843ef8a499e6fe02c4326a19813aa2c`, package SHA-256
-`852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D`,
+vendored Library-Noah package boundary passes for `Lib.ThreeD 2.9.0`, source
+commit `9fdce9b2d4714d7cb7aa082a10b7afe217896e71`, package SHA-256
+`2D8DCF71B9200289D67C27EFF2A7508CE7A5A3FD377C8E4891B467FC3CA1DF23`,
 and `netstandard2.0`. The Noah bridge passes `25/25`, J-07 passes `15/15`,
 legacy byte parity passes `5/5`, multiple-match Runner passes `14/14`,
 Workbench passes `10/10`, the existing matching foundation passes `34/34`,

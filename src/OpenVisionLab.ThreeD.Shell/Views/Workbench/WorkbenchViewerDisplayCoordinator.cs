@@ -347,12 +347,13 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
             args.EdgeScore,
             args.EdgeDiagnosticOverlay,
             args.EdgeAssessment,
-            args.FalsePositiveReview);
+            args.FalsePositiveReview,
+            args.AcquisitionDirectionOrientation);
         RefreshViewerSourceState();
         OVLog.Write(
             LogCategory.UI,
             LogLevel.Info,
-            $"Surface match evidence displayed | executionSha256={args.Execution.ContentSha256} | overlaySha256={args.Execution.Overlay?.ContentSha256 ?? "(none)"} | edgeScoreSha256={args.EdgeScore?.ContentSha256 ?? "(none)"} | edgeOverlaySha256={args.EdgeDiagnosticOverlay?.ContentSha256 ?? "(none)"} | edgeAssessment={args.EdgeAssessment?.Decision.ToString() ?? "none"} | reviewSha256={args.FalsePositiveReview?.ContentSha256 ?? "(none)"} | assessment={args.Assessment?.Decision.ToString() ?? "none"} | recipeChanged=false | previewRun=false | validationRun=false");
+            $"Surface match evidence displayed | executionSha256={args.Execution.ContentSha256} | overlaySha256={args.Execution.Overlay?.ContentSha256 ?? "(none)"} | edgeScoreSha256={args.EdgeScore?.ContentSha256 ?? "(none)"} | edgeOverlaySha256={args.EdgeDiagnosticOverlay?.ContentSha256 ?? "(none)"} | acquisitionOrientationSha256={args.AcquisitionDirectionOrientation?.ContentSha256 ?? "(none)"} | edgeAssessment={args.EdgeAssessment?.Decision.ToString() ?? "none"} | reviewSha256={args.FalsePositiveReview?.ContentSha256 ?? "(none)"} | assessment={args.Assessment?.Decision.ToString() ?? "none"} | recipeChanged=false | previewRun=false | validationRun=false");
     }
 
     private void OnSurfaceMatchDisplayCleared(

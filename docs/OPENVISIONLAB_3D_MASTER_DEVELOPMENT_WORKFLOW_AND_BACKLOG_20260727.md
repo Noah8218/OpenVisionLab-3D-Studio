@@ -105,9 +105,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 136 |
+| Complete `C` | 138 |
 | Partial `P` | 17 |
-| New `N` | 57 |
+| New `N` | 55 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 235 |
@@ -155,11 +155,139 @@ Current inventory count:
   equivalence are complete. Deterministic model-side key points now have
   stable sample/triangle identities, persistence, and a WPF-neutral display-
   only overlay, while matching consumption remains deliberately absent.
-  Production performance claims and acquisition direction remain incomplete.
+  Production performance claims remain incomplete. Explicit source-frame
+  acquisition direction and display-only edge-normal orientation are complete.
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Model key points and debug overlay - 2026-08-03
+### Current execution checkpoint - Human-owner R0 fixed-input refresh - 2026-08-04
+
+Status is Blocked only on the product owner's unaided Wide and Compact runs.
+The current source was rebuilt in Release with `0/0`; seven current binaries,
+the unchanged Completeness recipe, and the supplied Fail Run Record have new
+fixed SHA-256 evidence; and both `-ValidateOnly` modes pass without launching
+the application.
+
+The launcher now chooses the monitor with the smallest `Bounds.Left`, records
+the device and bounds, places the live R0 window there, and fails closed unless
+the actual window intersects that monitor. Current validation selects
+`\\.\DISPLAY2` at `[-1920,365,1920,1080]`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`;
+- `scripts/start-human-owner-r0.ps1`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-r0-package-refresh\`.
+
+Inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`; Workspace v3 remains
+`7/8` and `A-01` remains Partial. Next dependency: owner performs Wide first,
+records the observer sheet, closes the app, then repeats Compact without
+coaching. Prerequisite: owner operation and evidence. Recommended model: none;
+reasoning effort: none.
+
+### Previous execution checkpoint - Runner help exit - 2026-08-04
+
+`PL-0002` is resolved. Explicit case-insensitive `--help` writes the shared
+usage text to stdout and exits `0`. Missing required values and unknown command
+combinations retain the same usage text on stderr and exit `2`. The shared
+writer prevents help/error usage copies from drifting.
+
+Release builds pass `0/0`; the direct command matrix passes `4/4` with one
+identical usage-content SHA-256; existing L-13 Runner regression passes
+`19/19`; and structure passes `29/29` with `0` migration debt. No UI, Viewer,
+recipe, execution, numerical, or Library-Noah behavior changed. Preserve:
+
+- `docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`;
+- `.proofline/issues/PL-0002.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-pl0002-runner-help\`.
+
+Inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`. No dependency-ready
+software item is selected. The next acceptance priority is human-owner
+Wide/Compact R0. Prerequisite: owner operation and evidence. Recommended
+model: none until evidence exists; reasoning effort: none.
+
+### Previous execution checkpoint - Surface Match pose and score export - 2026-08-04
+
+`L-13` is Complete. Optional Run Record schema `1.6` retains the exact
+identified model, Prepared Scene, execution, row-major pose, transformed
+overlay, separate surface and edge score components, and separate authored
+assessment. Runner accepts saved artifacts and exports JSON/HTML/CSV without
+pose search, scoring, or acceptance evaluation. Matched evidence requires
+exact score and assessment links; NoMatch exports no invented pose, overlay,
+score, or assessment. Schema-`1.5` Run Records remain readable.
+
+Release builds pass `0/0`; focused L-13 passes `19/19`; existing edge
+foundation/review pass `21/21` and `20/20`; direct CLI export exits `0`; and
+the structure guard passes `29/29` with `0` migration debt. No UI, Viewer
+renderer, Library-Noah package, matching result, raw score, or acceptance
+decision changed. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-l13-surface-match-export\`.
+
+Inventory is `139 C / 17 P / 54 N / 9 E / 16 O`. Its former PL-0002 next item
+is superseded by the current Runner help closure above. Human-owner
+Wide/Compact R0 remains external and requires owner operation, not model-token
+spend.
+
+### Previous execution checkpoint - Acquisition direction and edge orientation - 2026-08-04
+
+`K-04` is Complete. The optional source contract now retains an explicit
+Available/Unavailable `SensorToScene` direction in the exact source frame.
+Source Quality authors one normalized direction through the existing explicit
+Apply/reset flow. Legacy recipes without direction remain clean and show the
+Unavailable fallback.
+
+Committed Library-Noah `9dd95690d3e439b459c39aea99878880cdcc5808`
+owns deterministic normal orientation through vendored `Lib.ThreeD 2.9.1`,
+SHA-256
+`BDE8D2C01B6DC380EF4579C89DE495F06F79BA4864D4229CD5CE87713BD1CA4E`.
+Studio owns the content-addressed link to the existing edge overlay and the
+display adapter. Missing/unavailable direction, frame mismatch, and hash
+tamper fail closed; geometry is never used to infer direction.
+
+Current builds pass `0/0`; Library-Noah Smoke `138/138`; package bridge
+`26/26`; direction artifact `5/5`; source contract `17/17`; edge Workbench
+parity/stale handling `16/16`; existing edge foundation/review `21/21` and
+`20/20`. Current EXE Wide/Compact Source Quality captures pass on the leftmost
+monitor with accepted screenshot quality. Applying a changed direction removes
+only stale orientation evidence and does not change or rerun the raw overlay,
+score, or assessment. Preserve:
+
+- `docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-k04-acquisition-direction\`.
+
+Inventory at that checkpoint was `138 C / 17 P / 55 N / 9 E / 16 O`.
+Human-owner R0 remains external. Its former L-13 next item is superseded by
+the completed current checkpoint above. Camera integration, calibration,
+reconstruction, metrology, and weighted-score changes remain out of scope.
+
+### Previous execution checkpoint - Acquisition/source provenance - 2026-08-04
+
+`B-12` is Complete. `ToolRecipeSource` now carries an optional explicit
+Available/Unavailable acquisition provenance contract with required evidence
+and limitation notes. Source Quality owns a transient draft with explicit
+Apply/reset; Workbench owns source-scoped dirty state and exact save/reopen.
+Legacy recipes without the field remain readable and clean. Selecting a
+different source resets the source-specific contract.
+
+Release builds with `0` warnings and `0` errors. Focused B-12 passes `14/14`;
+Source Quality `18/18`; recipe teaching/selections `28/28` and `29/29`;
+Inspection Workspace `64/64`; docking `82/82`; Shell command line `33/33`.
+Current Release EXE Wide/Compact source-quality smokes and capture quality
+pass on the leftmost monitor. Normal, focus, validation-error, enabled,
+disabled, and open-popup graphite-theme states were visually checked. No
+camera integration, calibration, viewpoint inference, edge orientation, or
+automatic Preview/Publish/Run/Validation was added. Preserve:
+
+- `docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260804-b12-acquisition-provenance\`.
+
+Inventory is `137 C / 17 P / 56 N / 9 E / 16 O`. Human-owner R0 remains
+external. Next is `K-04 Acquisition viewpoint/direction metadata for edge
+orientation`. Recommended model: `gpt-5.6-sol`; reasoning effort: high. K-04
+must consume explicit operator/import evidence and must not infer a viewpoint
+from geometry. `L-13` remains independently dependency-ready.
+
+### Previous execution checkpoint - Model key points and debug overlay - 2026-08-03
 
 `J-07` is Complete. Committed Library-Noah owns deterministic farthest-point
 selection from the J-05 retained SurfaceModel samples, including the seed,
@@ -179,11 +307,10 @@ Validation Set, command-line, and structure gates pass; both R0
 - `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j07-model-key-points\`.
 
-Inventory is `136 C / 17 P / 57 N / 9 E / 16 O`. Human-owner R0 remains
-external. Next is `B-12 Acquisition/source provenance text and limitation
-notes`; persist explicit available/unavailable evidence without execution or
-inferred viewpoint. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
-`K-04` remains blocked on `B-12`; `L-13` is independently dependency-ready.
+Inventory at that checkpoint was `136 C / 17 P / 57 N / 9 E / 16 O`.
+Human-owner R0 remains external. Its former next item B-12 is superseded by
+the completed current checkpoint above. `K-04` is now dependency-ready;
+`L-13` remains independently dependency-ready.
 
 ### Previous execution checkpoint - Model surface selection - 2026-08-03
 
@@ -1767,7 +1894,7 @@ Reasoning effort: high
 | B-09 | C | Coordinate-true invalid-cell map and mask identity | B-07, C-06 | Release build `0/0`, map `15/15`, Source Quality `13/13`, Height Image `14/14`, exact-source pixel/cell/SHA parity |
 | B-10 | N | Grid monotonicity, duplicate locator, non-finite coordinate, and topology diagnostics | B-07 | Deterministic malformed fixtures |
 | B-11 | C | Available-channel catalog: height, intensity, color, depth, normal, confidence/SNR | B-07 | Release build `0/0`; focused `26/26`; C3D, GLB/STL, LAS/LAZ exact seven-entry evidence |
-| B-12 | N | Acquisition/source provenance text and limitation notes | B-07 | Saved/reopened provenance without execution |
+| B-12 | C | Acquisition/source provenance text and limitation notes | B-07 | Explicit Available/Unavailable evidence and limitations; exact save/reopen; legacy fallback; source isolation; no execution; focused `14/14` |
 | B-13 | N | Source quality gate consumed by compatible-tool suggestions | B-07 | Invalid source disables only unsupported tools with exact reason |
 | B-14 | N | Before/after quality delta for each preparation output | D-01 | Derived artifact report with valid/missing/outlier changes |
 | B-15 | P | Normal inspection for imported mesh pick exists only at one selected surface point | None | Current mesh pick normal overlay |
@@ -1990,7 +2117,7 @@ Reasoning effort: high
 | K-01 | C | Height Difference Edge, Line Fit, and Line diagnostics exist as inspection features | None | Current feature evidence |
 | K-02 | C | Model 3D edge extraction for a SurfaceModel | J-03 | Stable topology boundary/crease artifact; non-manifold rejection; `21/21` focused fixture |
 | K-03 | C | Scene 3D edge extraction for matching | J-06 | Stable complete-organized-grid height-step artifact; incomplete grid rejection; `21/21` focused fixture |
-| K-04 | N | Acquisition viewpoint/direction metadata for edge orientation | B-12 | Explicit available/unavailable state |
+| K-04 | C | Acquisition viewpoint/direction metadata for edge orientation | B-12 | Explicit normalized SensorToScene source-frame contract; committed Noah Tool; linked facing/away/grazing artifact; no inference or score change; focused `5/5`, contract `17/17`, Workbench `16/16` |
 | K-05 | C | Normal/edge-direction diagnostic overlay | B-16, K-02 | Known outward-normal fixture; identified overlay and `20/20` focused verification |
 | K-06 | C | Separate surface and 3D-edge match scores | J-08, K-02, K-03 | Equal `100%` surface coverage separates to `100%` versus `0%` edge coverage; Runner `21/21`; parity `12/12` |
 | K-07 | C | Independent thresholds for score components | K-06 | Separate PropertyGrid persistence and exact Runner/Workbench assessment parity; no weighted score |
@@ -2001,8 +2128,8 @@ Reasoning effort: high
 | K-12 | O | Calibrated 2D intensity or extra-camera fusion in current phase | Separate scope approval | Not scheduled |
 
 Algorithm ownership note: all reusable numerical algorithms belong in
-Library-Noah public sealed Tools. Surface Match single- and multiple-result
-adapters strictly consume vendored `Lib.ThreeD 2.8.9`. The schema-1 decreasing
+Library-Noah public sealed Tools. Active Studio adapters consume exact vendored
+`Lib.ThreeD 2.9.1`. The schema-1 decreasing
 migration baseline contains zero Studio debt and `31` reviewed boundaries; do
 not reintroduce arithmetic or expand a boundary ceiling.
 
@@ -2029,7 +2156,7 @@ verification only.
 | L-10 | N | Source Quality report included in Run Record | B-07 | Same source-quality identity in UI/Runner |
 | L-11 | C | Threshold-correction evidence included in Run Record | I-11 | Schema `1.5`, exact before/suggested/manual/development/Held-out JSON/HTML and Workbench parity, `10/10` fail-closed projection checks |
 | L-12 | N | Completeness per-cell result export | H-06 | HTML/CSV child rows |
-| L-13 | N | Surface-match pose/score component export | J-16 | JSON/HTML/CSV parity |
+| L-13 | C | Surface-match pose/score component export | J-16 | Schema `1.6`, focused `19/19`, JSON/HTML/CSV exact identified-value parity, direct CLI, NoMatch/legacy/fail-closed evidence |
 | L-14 | N | One support/diagnostic bundle for recipe, log excerpt, source identity, quality report, and current result | B-07 | Bundle manifest and missing-sensitive-data policy |
 | L-15 | P | Validation is local ordered sample replay, not production batch/history | None | Current boundary retained |
 | L-16 | O | Plant database, long-term trend/SPC service, and retention policy | Product-scope decision | Not scheduled |
@@ -2333,10 +2460,22 @@ The owner explicitly left the layout-only stream and completed item 11 on
     Noah `7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored
     `Lib.ThreeD 2.8.12`, stable source-sample/source-triangle identities,
     focused `15/15`, atomic persistence, and display-only overlay evidence.
-17. `B-12 Acquisition/source provenance text and limitation notes` | Persist
-    explicit available/unavailable source evidence without execution or
-    inferred viewpoint; this unblocks K-04 | Recommended model:
-    `gpt-5.6-sol` | Reasoning effort: `high`
+17. `B-12 Acquisition/source provenance text and limitation notes` - Complete;
+    explicit Available/Unavailable evidence, required limitations, draft/
+    Apply isolation, save/reopen, legacy fallback, source reset, focused
+    `14/14`, and current Wide/Compact/theme evidence.
+18. `K-04 Acquisition viewpoint/direction metadata for edge orientation` -
+    Complete; explicit normalized SensorToScene source-frame contract,
+    committed Noah classification Tool, linked facing/away/grazing display
+    evidence, legacy fallback, no inference, and unchanged score/assessment.
+19. `L-13 Surface-match pose/score component export` - Complete; optional Run
+    Record schema `1.6`, exact linked artifacts, JSON/HTML/CSV parity, matched
+    and NoMatch behavior, focused `19/19`, direct CLI, no recomputation, and
+    legacy schema-`1.5` read compatibility.
+20. `PL-0002 Runner --help successful exit` - Complete; case-insensitive help
+    exits `0` on stdout, invalid and incomplete commands retain exit `2` on
+    stderr, the usage body is shared and byte-identical, Release is `0/0`,
+    direct command matrix is `4/4`, and existing L-13 regression is `19/19`.
 
 ## Documentation decision
 

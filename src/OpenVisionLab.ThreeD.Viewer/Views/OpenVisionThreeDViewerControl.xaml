@@ -1610,6 +1610,17 @@
                             <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#c77aff" />
                             <TextBlock FontSize="9" Foreground="#cbd5e1" Text="Normal" />
                         </WrapPanel>
+                        <WrapPanel Margin="0,3,0,0"
+                                   Visibility="{Binding SurfaceMatchAcquisitionDirectionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#3debea" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Facing" />
+                            <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#ff4da3" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Away" />
+                            <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#ffb82e" />
+                            <TextBlock Margin="0,0,8,0" FontSize="9" Foreground="#cbd5e1" Text="Grazing" />
+                            <Rectangle Width="13" Height="3" Margin="0,0,4,0" VerticalAlignment="Center" Fill="#47c7ff" />
+                            <TextBlock FontSize="9" Foreground="#cbd5e1" Text="Sensor → scene" />
+                        </WrapPanel>
                         <TextBlock Margin="0,3,0,0"
                                    FontSize="9"
                                    Foreground="#94a3b8"

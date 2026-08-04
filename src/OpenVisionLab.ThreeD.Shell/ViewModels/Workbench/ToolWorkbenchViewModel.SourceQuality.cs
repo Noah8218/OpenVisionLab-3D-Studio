@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -70,7 +71,9 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void InitializeSourceQualityWorkspace()
     {
-        SourceQuality = new SourceQualityWorkspaceViewModel(Localization);
+        SourceQuality = new SourceQualityWorkspaceViewModel(
+            Localization,
+            ApplySourceAcquisitionProvenance);
         SourceQuality.PropertyChanged += OnSourceQualityPropertyChanged;
         selectSourceQualityCommand = new RelayCommand(
             _ => SelectSourceQualityWorkspace(),
@@ -78,6 +81,26 @@ public sealed partial class ToolWorkbenchViewModel
                  && !string.IsNullOrWhiteSpace(Source.Path)
                  && SourceQuality.IsAvailableOrLoading);
     }
+
+    private void ApplySourceAcquisitionProvenance(
+        ToolRecipeAcquisitionProvenance provenance)
+    {
+        ArgumentNullException.ThrowIfNull(provenance);
+        var directionChanged = sourceAcquisitionProvenance?.AcquisitionDirection
+            != provenance.AcquisitionDirection;
+        MutateRecipe(() => sourceAcquisitionProvenance = provenance);
+        if (directionChanged)
+        {
+            InvalidateSurfaceEdgeAcquisitionDirectionEvidence();
+        }
+        OnPropertyChanged(nameof(SourceAcquisitionProvenance));
+    }
+
+    private ToolRecipeAcquisitionProvenance CreateUnavailableSourceAcquisitionProvenance() => new(
+        ToolRecipeAcquisitionProvenanceState.Unavailable,
+        Localization.SourceAcquisitionDefaultEvidence,
+        Localization.SourceAcquisitionDefaultLimitations,
+        ToolRecipeAcquisitionDirection.CreateUnavailable(Source.FrameId));
 
     private void SelectSourceQualityWorkspace()
     {

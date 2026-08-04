@@ -67,6 +67,15 @@ $layoutSize = if ($Layout -eq "Wide") {
     [pscustomobject]@{ Width = 1280; Height = 760 }
 }
 
+Add-Type -AssemblyName System.Windows.Forms
+$leftmostMonitor = [System.Windows.Forms.Screen]::AllScreens |
+    Sort-Object { $_.Bounds.Left } |
+    Select-Object -First 1
+if (-not $leftmostMonitor) {
+    throw "No display is available for the human-owner R0."
+}
+$monitorBounds = $leftmostMonitor.Bounds
+
 $inputHashes = @(
     Get-FileHash -Algorithm SHA256 -LiteralPath $shellExe
     Get-FileHash -Algorithm SHA256 -LiteralPath $shellAssembly
@@ -80,19 +89,19 @@ $inputHashes = @(
 )
 $expectedHashes = @{}
 $expectedHashes[(Resolve-Path -LiteralPath $shellExe).Path] =
-    "871DD11B0B048C851DA6752982AFDD96BF780101B8DB81F72C944A100183B743"
+    "D1439160F7D0A5FA1E980D1A172CA731D8E955729A0D5E948CC992E14A2EECDA"
 $expectedHashes[(Resolve-Path -LiteralPath $shellAssembly).Path] =
-    "390DE2E02B95F74CFD6E9C0214E70B09479055398BF77ED8187A80DE7B1E764D"
+    "D4ABE60BDD90BECA71D658A933EC682A2B0B868B8136150864836D673F558EBA"
 $expectedHashes[(Resolve-Path -LiteralPath $coreAssembly).Path] =
-    "62DCA103CAB4FC9ECE72EC98F5F47CBA0C368EC1F6DEF55EF121624B87B71D3F"
+    "2573842B3A7D378E342DE1191665F883857919BFD7A89C2082831201D95DFEE5"
 $expectedHashes[(Resolve-Path -LiteralPath $dataAssembly).Path] =
-    "95CBAA8D86190C5D200704CE77BCE86AC3672141C72191B69C108869C3E2264A"
+    "9DE4FCE15F824BF6D666935CFF7BAB9418ABA8C011E091B1E858D0B79A2080C6"
 $expectedHashes[(Resolve-Path -LiteralPath $toolsAssembly).Path] =
-    "BC6D917113850418A3C64E7896886C88C34347122B4FF3EA8E9BDEEAD41B4B80"
+    "DB13F20E1CFC0595A5CA4BBC49421129940C807CA439B6EC6775735EEF16AD76"
 $expectedHashes[(Resolve-Path -LiteralPath $viewerAssembly).Path] =
-    "0CBAA865FB0D1A9B21818CE5FE9867B0F598AAFCEC1FBE1EC586A4DA80A9A4D5"
+    "12A9F00E47E5189DD9CEB19AD77CADFCF5B398D6C4B3F9421350EF3B3C1EBDA4"
 $expectedHashes[(Resolve-Path -LiteralPath $dockingAssembly).Path] =
-    "570CE47C54A8A7F1EEBF50DD730EBA7777A23C7BC39A2ADCB4A81AB8A46FA197"
+    "3E2B30A8DFB09ED5F51B8F25D9EFFE8DCFB5850B211EDA44DD7CDADA5BF0515B"
 $expectedHashes[(Resolve-Path -LiteralPath $recipePath).Path] =
     "0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461"
 $expectedHashes[(Resolve-Path -LiteralPath $runRecordPath).Path] =
@@ -123,6 +132,11 @@ Write-Output "Viewer assembly: $viewerAssembly"
 Write-Output "Docking assembly: $dockingAssembly"
 Write-Output "Recipe: $recipePath"
 Write-Output "Run Record: $runRecordPath"
+Write-Output (
+    "Leftmost monitor: $($leftmostMonitor.DeviceName) " +
+    "[$($monitorBounds.Left),$($monitorBounds.Top)," +
+    "$($monitorBounds.Width),$($monitorBounds.Height)]"
+)
 foreach ($hash in $inputHashes) {
     Write-Output "SHA-256 $($hash.Hash)  $($hash.Path)"
 }
@@ -214,6 +228,38 @@ public static class OpenVisionLabOwnerR0NativeWindow
             IntPtr.Zero);
         return bestWindow;
     }
+
+    public static bool Intersects(
+        IntPtr hWnd,
+        int left,
+        int top,
+        int width,
+        int height)
+    {
+        Rect rect;
+        if (!GetWindowRect(hWnd, out rect))
+        {
+            return false;
+        }
+
+        return rect.Right > left &&
+            rect.Left < left + width &&
+            rect.Bottom > top &&
+            rect.Top < top + height;
+    }
+
+    public static string GetBounds(IntPtr hWnd)
+    {
+        Rect rect;
+        return GetWindowRect(hWnd, out rect)
+            ? String.Format(
+                "[{0},{1},{2},{3}]",
+                rect.Left,
+                rect.Top,
+                rect.Right - rect.Left,
+                rect.Bottom - rect.Top)
+            : "Unavailable";
+    }
 }
 "@
 }
@@ -247,8 +293,8 @@ if ($windowHandle -eq [IntPtr]::Zero) {
 [OpenVisionLabOwnerR0NativeWindow]::SetWindowPos(
     $windowHandle,
     [IntPtr]::Zero,
-    0,
-    0,
+    $monitorBounds.Left,
+    $monitorBounds.Top,
     $layoutSize.Width,
     $layoutSize.Height,
     0x0040) | Out-Null
@@ -267,14 +313,35 @@ if ($stableWindowHandle -ne [IntPtr]::Zero) {
     [OpenVisionLabOwnerR0NativeWindow]::SetWindowPos(
         $windowHandle,
         [IntPtr]::Zero,
-        0,
-        0,
+        $monitorBounds.Left,
+        $monitorBounds.Top,
         $layoutSize.Width,
         $layoutSize.Height,
         0x0040) | Out-Null
     [OpenVisionLabOwnerR0NativeWindow]::SetForegroundWindow(
         $windowHandle) | Out-Null
 }
+
+$actualWindowBounds =
+    [OpenVisionLabOwnerR0NativeWindow]::GetBounds($windowHandle)
+$intersectsLeftmost =
+    [OpenVisionLabOwnerR0NativeWindow]::Intersects(
+        $windowHandle,
+        $monitorBounds.Left,
+        $monitorBounds.Top,
+        $monitorBounds.Width,
+        $monitorBounds.Height)
+if (-not $intersectsLeftmost) {
+    throw (
+        "R0 window does not intersect the selected leftmost monitor. " +
+        "Monitor=$($leftmostMonitor.DeviceName) " +
+        "[$($monitorBounds.Left),$($monitorBounds.Top)," +
+        "$($monitorBounds.Width),$($monitorBounds.Height)]; " +
+        "Window=$actualWindowBounds"
+    )
+}
+Write-Output "Window bounds: $actualWindowBounds"
+Write-Output "Window intersects leftmost monitor: True"
 
 Write-Output ""
 Write-Output "Owner goal (no click-by-click assistance):"

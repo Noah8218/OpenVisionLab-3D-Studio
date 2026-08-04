@@ -1,10 +1,15 @@
 # OpenVisionLab 3D Next Session Handoff
 
-## Next-chat entry point - 2026-08-03
+## Next-chat entry point - 2026-08-04
 
 Start a new development conversation with:
 
+- `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`;
+- `docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`;
+- `docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md`;
+- `docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`;
 - `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`;
+- `docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md`;
 - `docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`;
 - `docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md`;
 - `docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md`;
@@ -12,7 +17,7 @@ Start a new development conversation with:
 - `docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`;
 - `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
 
-It records the current `136 C / 17 P / 57 N / 9 E / 16 O` inventory, the
+It records the current `139 C / 17 P / 54 N / 9 E / 16 O` inventory, the
 completed commercial-video-derived foundation, every remaining priority
 train, the completed Teach, Advanced Viewer, novice hierarchy/accessibility,
 top dock-tab, Viewer command-bar, and single-row Height color-range slices,
@@ -52,8 +57,12 @@ the completed repeatability-statistics and validation-statistics Noah Tool
   SurfaceModel symmetry-declaration prerequisite, completed symmetry-aware
   pose-equivalence evaluator, and completed Noah-owned active model-surface
   selection, and completed Noah-owned model key-point artifact and display-
-  only debug overlay,
-the human-owner R0 acceptance task, the
+  only debug overlay, the completed explicit acquisition/source provenance
+  and limitation-note contract, and the completed source-frame acquisition
+  direction and display-only edge orientation, the completed identified
+  Surface Match pose/separate-score JSON/HTML/CSV export, and the resolved
+  Runner help success/error exit contract,
+the refreshed current-hash human-owner R0 acceptance task, the
 dirty-working-tree warning, and the user-owned untracked-folder boundary.
 
 The user explicitly confirmed that GoPxL is a benchmark, not a screen or theme
@@ -64,29 +73,156 @@ Viewer-linked Validate/Results, the graphite role system, and safe
 presentation-only layout persistence all pass. The refreshed R0 fixed-hash
 package now also includes the overlap/clipping repair, side-collapse work,
 the state-driven first-use action cleanup, and the current matching and
-acceptance and experiment-comparison assemblies. It passes Wide/Compact
-`-ValidateOnly`. Human-owner R0 remains external for `A-01`, but by explicit
+acceptance and experiment-comparison assemblies. Its current 2026-08-04
+hashes cover the completed B-12, K-04, L-13, and PL-0002 source state. It
+passes Wide/Compact `-ValidateOnly` and selects `\\.\DISPLAY2` at
+`[-1920,365,1920,1080]` as the current leftmost monitor. Human-owner R0
+remains external for `A-01`, but by explicit
 owner direction it no longer pauses dependency-ready software development.
-The migrated active calculation chain now belongs to committed Noah
-`21f2e3084843ef8a499e6fe02c4326a19813aa2c` through vendored
-`Lib.ThreeD 2.8.13`; the unrelated dirty main Noah checkout remains untouched.
+The migrated active calculation chain now consumes committed Noah
+`9dd95690d3e439b459c39aea99878880cdcc5808` through vendored
+`Lib.ThreeD 2.9.1`. It retains the backward-compatible 3D consumer ergonomics
+and NuGet-shipped documentation, and adds the public sealed acquisition-
+direction normal-orientation Tool used by K-04.
 The owner explicitly left the layout-only stream and approved J-12, K-09,
-F-13, J-13, J-05, and J-07, which are now complete. No dependency-ready standalone layout item remains: `A-11`
+F-13, J-13, J-05, J-07, B-12, K-04, L-13, and PL-0002, which are now complete. No dependency-ready standalone layout item remains: `A-11`
 requires `A-09` and the human-owner `A-01` evidence, while `M-18/M-19` are
-per-change gates. The next priority is `B-12 Acquisition/source provenance
-text and limitation notes` with `gpt-5.6-sol`, high reasoning. It must persist
-explicit available/unavailable source evidence without execution and without
-inferring a viewpoint. `K-04` remains blocked on `B-12`; `L-13` remains
-independently dependency-ready. The completed
+per-change gates. No dependency-ready software item is selected. The next
+acceptance priority is human-owner Wide/Compact R0. Prerequisite: owner
+operation and evidence. Recommended model: none until evidence exists;
+reasoning effort: none. K-04
+consumes only explicit operator/import evidence and does not infer viewpoint
+from geometry or change matching scores. The completed
 acceptance policy remains separate from the raw surface and diagnostic edge
 score contracts.
 
 Do not reset unrelated work. Preserve the user-owned untracked `3D/TLB/`
 folder. Do not touch `3D/SSD-Black/`, `3D/fccsp/`, or `3D/새 폴더/`.
 Commit and push still require an explicit user request. This handoff does not
-authorize either action. The exact Noah source commit required for package
-provenance exists locally on `codex/j07-model-keypoints` at
-`C:\Git\Library-Noah-j12` and has not been pushed by this slice.
+authorize either action. The exact current Noah package source commit exists
+locally on `codex/3d-consumer-api-usability` at `C:\Git\Library-Noah` and has
+not been pushed by this slice.
+
+## Human-owner R0 fixed-input refresh - 2026-08-04
+
+- Status is Blocked only on the product owner's unaided Wide and Compact
+  runs; automated `-ValidateOnly` does not close R0.
+- Current-source Release Rebuild passes `0/0`; seven current binaries plus the
+  unchanged Completeness recipe and supplied Fail Run Record are fixed by the
+  hashes in `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
+- Wide and Compact `-ValidateOnly` both pass without launching the app.
+- The launcher dynamically selects `\\.\DISPLAY2` at
+  `[-1920,365,1920,1080]` and live launch fails closed unless the actual
+  window intersects it.
+- Preserve `scripts/start-human-owner-r0.ps1` and the D-backed
+  `20260804-r0-package-refresh` evidence.
+- Workspace v3 remains `7/8`; `A-01` remains Partial. Next dependency: owner
+  runs Wide first and Compact second without coaching. Prerequisite: owner
+  operation and evidence. Recommended model: none; reasoning effort: none.
+
+## PL-0002 Runner help exit closure - 2026-08-04
+
+- `PL-0002` is resolved. Explicit case-insensitive `--help` writes shared
+  usage to stdout and exits `0`.
+- Unknown command combinations and missing required values retain the same
+  usage body on stderr and exit `2`.
+- Release passes `0/0`; direct command matrix `4/4`; usage SHA-256 parity;
+  L-13 Runner regression `19/19`; structure `29/29` with migration debt `0`.
+- No UI, recipe, execution, Viewer, numerical, or Library-Noah behavior
+  changed. Preserve `docs/OPENVISIONLAB_3D_RUNNER_HELP_EXIT_20260804.md`,
+  `.proofline/issues/PL-0002.json`, and the D-backed
+  `20260804-pl0002-runner-help` evidence.
+- Inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`. Next acceptance
+  priority: human-owner Wide/Compact R0. Prerequisite: owner operation and
+  evidence. Recommended model: none until evidence exists; reasoning effort:
+  none.
+
+## L-13 Surface Match pose and score export closure - 2026-08-04
+
+- `L-13` is Complete. Run Record schema `1.6` retains exact identified model,
+  scene, execution, pose, overlay, separate score, and separate assessment
+  evidence.
+- Runner exports saved artifacts to JSON/HTML/CSV without pose search,
+  scoring, or acceptance evaluation.
+- Matched results require exact score and assessment links. NoMatch results
+  retain no invented pose, overlay, score, or assessment. Schema `1.5`
+  remains readable.
+- Release passes `0/0`; focused L-13 `19/19`; edge foundation/review `21/21`
+  and `20/20`; direct CLI exit `0`; structure `29/29` with migration debt `0`.
+- No UI or Library-Noah package changed. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MATCH_POSE_SCORE_EXPORT_20260804.md` and
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-l13-surface-match-export\`.
+- Inventory is `139 C / 17 P / 54 N / 9 E / 16 O`. Its former PL-0002 next
+  item is superseded by the completed closure above. Human-owner R0 remains
+  external.
+
+## K-04 acquisition direction and edge orientation closure - 2026-08-04
+
+- `K-04` is Complete. Source Quality authors an optional normalized
+  `SensorToScene` XYZ direction in the exact source frame through the existing
+  Apply/reset contract.
+- Missing direction remains a clean legacy-compatible Unavailable fallback.
+  Available requires available provenance, a finite non-zero vector, and exact
+  source-frame identity.
+- Library-Noah commit `9dd95690d3e439b459c39aea99878880cdcc5808`
+  owns classification in `Lib.ThreeD 2.9.1`; package SHA-256 is
+  `BDE8D2C01B6DC380EF4579C89DE495F06F79BA4864D4229CD5CE87713BD1CA4E`.
+- The linked orientation artifact adds facing/away/grazing Viewer evidence
+  without changing edge score, surface score, assessment, or execution.
+- Direction Apply invalidates only prior orientation evidence and does not
+  Preview, Publish, Run, Validate, or rerun matching.
+- Verified: Noah Smoke `138/138`; package bridge `26/26`; direction artifact
+  `5/5`; source contract `17/17`; Workbench parity/stale `16/16`; edge
+  foundation/review `21/21` and `20/20`; current builds `0/0`; Wide/Compact
+  actual EXE captures accepted on the leftmost monitor.
+- Preserve
+  `docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md`
+  and
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-k04-acquisition-direction\`.
+- Inventory at that checkpoint was `138 C / 17 P / 55 N / 9 E / 16 O`.
+  Its former L-13 next item is superseded by the completed closure above.
+
+## B-12 acquisition/source provenance closure - 2026-08-04
+
+- `B-12` is Complete. Recipe sources can retain an explicit Available or
+  Unavailable state, required evidence text, and required limitation notes.
+- Source Quality owns a draft with explicit Apply and reset-to-applied. Draft
+  edits do not dirty the recipe or execute inspection. Apply changes only the
+  recipe source and does not Preview, Publish, Run, or Validate.
+- Available and explicit Unavailable values save and reopen exactly. A legacy
+  recipe with no field opens clean with a localized unavailable fallback.
+- Selecting a different source resets the source-scoped provenance instead of
+  reusing the prior source's evidence.
+- Release passes `0/0`; focused B-12 `14/14`; Source Quality `18/18`; recipe
+  `28/28` and `29/29`; Inspection Workspace `64/64`; docking `82/82`; Shell
+  command line `33/33`; current EXE Wide/Compact and graphite state captures
+  pass on the leftmost monitor.
+- Preserve
+  `docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md` and
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260804-b12-acquisition-provenance\`.
+- Inventory is `137 C / 17 P / 56 N / 9 E / 16 O`. Next is `K-04 Acquisition
+  viewpoint/direction metadata for edge orientation`. Recommended model:
+  `gpt-5.6-sol`; reasoning effort: high.
+
+## Lib.ThreeD 2.9.0 consumer API and package promotion closure - 2026-08-04
+
+- `Lib.ThreeD 2.9.0` is fixed to Noah
+  `9fdce9b2d4714d7cb7aa082a10b7afe217896e71`, SHA-256
+  `2D8DCF71B9200289D67C27EFF2A7508CE7A5A3FD377C8E4891B467FC3CA1DF23`.
+- The package keeps every `2.8.13` public type/member and adds
+  `HeightMap3D.FromArray(...)`, `ThreeDMeasurementOutcome`, stable metric-name
+  constants, `TryGetMetric(...)`, README, the 3D guide, and XML IntelliSense.
+- Library-Noah passes Release `0/0`, Smoke `135/135`, package-only 2D/3D use,
+  and binary compatibility with `0` missing types/members.
+- Studio passes package integrity, Release `0/0`, bridge `25/25`, C3D
+  Thickness/Warpage/Datum `5/5` each, structure `29/29`, and NuGet health
+  `12/0/0`. No UI or Viewer code changed.
+- The API remains explicit: no automatic unit conversion, frame inference,
+  calibration claim, or missing-value interpolation was introduced.
+- Preserve `docs/OPENVISIONLAB_3D_LIBRARY_NOAH_PACKAGE_BOUNDARY_20260717.md`
+  and the D-backed `20260804-library-noah-2.9.0` evidence.
+- Next product priority remains `B-12 Acquisition/source provenance text and
+  limitation notes`. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
 
 ## Model key-point artifact and debug-overlay closure - 2026-08-03
 

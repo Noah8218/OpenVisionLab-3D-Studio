@@ -23,6 +23,32 @@ public sealed record InspectionRunRecord(
         get;
         init;
     }
+    public InspectionRunSurfaceMatchEvidence? SurfaceMatchEvidence
+    {
+        get;
+        init;
+    }
+}
+
+/// <summary>
+/// Read-only projection of already identified Surface Match artifacts. The
+/// reporting layer retains their exact identities and never executes pose
+/// search, scoring, or acceptance evaluation.
+/// </summary>
+public sealed record InspectionRunSurfaceMatchEvidence(
+    string SchemaVersion,
+    string Semantics,
+    string ModelArtifactId,
+    string ModelContentSha256,
+    string SceneArtifactId,
+    string SceneContentSha256,
+    SurfaceMatchExecutionArtifact Execution,
+    SurfaceAndEdgeMatchScoreArtifact? Score,
+    SurfaceAndEdgeMatchAssessmentArtifact? Assessment)
+{
+    public const string CurrentSchemaVersion = "1.0";
+    public const string CurrentSemantics =
+        "identified-pose-separate-surface-edge-score-assessment-export-v1";
 }
 
 public enum InspectionRunThresholdCorrectionEvidenceState

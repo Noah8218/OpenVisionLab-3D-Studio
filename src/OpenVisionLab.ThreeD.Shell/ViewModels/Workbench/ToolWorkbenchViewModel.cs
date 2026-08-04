@@ -64,6 +64,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private string newReferenceKind = "Landmark set";
     private bool isDirty;
     private ToolRecipeSelectionSourceBinding? loadedSourceBinding;
+    private ToolRecipeAcquisitionProvenance? sourceAcquisitionProvenance;
     private bool isTeachingSelectionCaptureActive;
     private string? teachingSelectionCaptureStepId;
     private int teachingSelectionCapturedPointCount;
@@ -262,6 +263,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     public ToolWorkbenchSourceItem Source { get; }
+    public ToolRecipeAcquisitionProvenance? SourceAcquisitionProvenance =>
+        sourceAcquisitionProvenance;
     public SharedHeightCursorSession SharedHeightCursor { get; }
     public HeightImageViewerViewModel HeightImageViewer { get; }
     public OrientedBox3DEditorViewModel OrientedBoxEditor { get; }
@@ -1056,7 +1059,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit = "raw-height";
             Source.FrameId = "frame.c3d-grid-index";
             Source.Path = fullPath;
+            sourceAcquisitionProvenance = CreateUnavailableSourceAcquisitionProvenance();
         }, markDirty);
+        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        InvalidateSurfaceEdgeAcquisitionDirectionEvidence();
+        OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         recipeStateMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         stageStart = Stopwatch.GetTimestamp();
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
@@ -1154,6 +1161,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             loadedSourceBinding = null;
             AcceptCurrentSourceIdentity();
             SourceQuality.Clear();
+            sourceAcquisitionProvenance = CreateUnavailableSourceAcquisitionProvenance();
             recipeSchemaVersion = ToolRecipeDocument.CurrentSchemaVersion;
             RecipeName = string.IsNullOrWhiteSpace(name)
                 ? "Untitled 3D Inspection"
@@ -1171,6 +1179,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             SelectedReference = null;
             RecipePath = null;
         }, markDirty: false);
+        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         SetDirty(false);
         ClearValidationSet();
         SetValidationSetDefinitionDirty(false);
@@ -1855,6 +1865,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit = document.Source.Unit;
             Source.FrameId = document.Source.FrameId;
             Source.Path = document.Source.Path;
+            sourceAcquisitionProvenance = document.Source.AcquisitionProvenance;
 
             foreach (var existing in References)
             {
@@ -1904,6 +1915,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                   ?? PipelineSteps.FirstOrDefault();
             SelectedReference = References.FirstOrDefault();
         }, markDirty);
+        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         OnPropertyChanged(nameof(RecipeSchemaVersion));
     }
 
@@ -1920,7 +1933,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             loadedSourceBinding is null ? null : new FileInfo(Source.Path.Trim()).Length,
             loadedSourceBinding?.ContentSha256,
             loadedSourceBinding?.GridWidth,
-            loadedSourceBinding?.GridHeight),
+            loadedSourceBinding?.GridHeight,
+            sourceAcquisitionProvenance),
         References.Select(reference => new ToolRecipeReference(reference.Id.Trim(), reference.Name.Trim(), reference.Kind.Trim())).ToArray(),
         PipelineSteps.Select(step => new ToolRecipeStep(
             step.Id.Trim(),

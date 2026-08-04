@@ -188,6 +188,73 @@ internal static class RunRecordWriter
         WriteOutputs(options, record);
     }
 
+    public static void WriteSurfaceMatch(
+        RunArtifactOptions options,
+        string recipePath,
+        ToolRecipeDocument document,
+        SurfaceModelArtifact model,
+        PreparedSceneArtifact scene,
+        SurfaceMatchExecutionArtifact execution,
+        SurfaceAndEdgeMatchScoreArtifact? score,
+        SurfaceAndEdgeMatchAssessmentArtifact? assessment,
+        string runnerReportPath)
+    {
+        if (!options.Requested) return;
+
+        var evidence = SurfaceMatchRunRecordProjection.Create(
+            model,
+            scene,
+            execution,
+            score,
+            assessment);
+        var recordedAt = DateTimeOffset.UtcNow;
+        var recipeHash = HashFile(recipePath);
+        var source = scene.SourceQuality.Source;
+        var status = assessment?.Decision == SurfaceMatchDecision.Pass
+            ? ResultStatus.Pass
+            : ResultStatus.Fail;
+        var message = assessment is null
+            ? execution.PoseResult.RejectionReason
+            : $"Surface/edge assessment: {assessment.Decision} ({assessment.Reason}).";
+        var record = new InspectionRunRecord(
+            "1.6",
+            $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
+            recordedAt,
+            new InspectionRunRecipe(
+                "tool-recipe",
+                document.SchemaVersion,
+                Path.GetFullPath(recipePath),
+                recipeHash),
+            new InspectionRunSource(
+                source.EntityId,
+                source.Path,
+                source.RootSourceSha256,
+                source.ByteLength,
+                scene.Unit),
+            "Surface Match",
+            status,
+            string.IsNullOrWhiteSpace(message)
+                ? "Identified Surface Match evidence exported without recomputation."
+                : message,
+            0.0,
+            [],
+            [],
+            "NotCompared",
+            new InspectionRunArtifacts(
+                Path.GetFullPath(runnerReportPath),
+                null,
+                FullOptionalPath(options.ViewerScreenshotPath),
+                FullOptionalPath(options.JsonPath),
+                FullOptionalPath(options.HtmlPath),
+                FullOptionalPath(options.CsvPath)))
+        {
+            ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
+            SurfaceMatchEvidence = evidence
+        };
+
+        WriteOutputs(options, record);
+    }
+
     private static InspectionRunStepResult ToStepResult(
         int recipeIndex,
         ToolRecipeStep step,
@@ -243,8 +310,12 @@ internal static class RunRecordWriter
             ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
         var thresholdCorrectionSection =
-            FormatThresholdCorrectionHtml(
-                record.ThresholdCorrectionEvidence);
+            record.SurfaceMatchEvidence is null
+                ? FormatThresholdCorrectionHtml(
+                    record.ThresholdCorrectionEvidence)
+                : string.Empty;
+        var surfaceMatchSection =
+            FormatSurfaceMatchHtml(record.SurfaceMatchEvidence);
         var html = $$"""
         <!doctype html>
         <html lang="en">
@@ -272,6 +343,7 @@ internal static class RunRecordWriter
           </dl>
           <p>{{Encode(record.Message)}}</p>
           {{thresholdCorrectionSection}}
+          {{surfaceMatchSection}}
           <table><thead>{{tableHeader}}</thead><tbody>
           {{rows}}
           </tbody></table>
@@ -356,6 +428,70 @@ internal static class RunRecordWriter
                """;
     }
 
+    private static string FormatSurfaceMatchHtml(
+        InspectionRunSurfaceMatchEvidence? evidence)
+    {
+        if (evidence is null)
+        {
+            return string.Empty;
+        }
+
+        var execution = evidence.Execution;
+        var poseResult = execution.PoseResult;
+        var pose = poseResult.Pose;
+        var poseRows = pose is null
+            ? "<p>No pose was produced.</p>"
+            : $"""
+               <table>
+                 <thead><tr><th>Unit</th><th>Source frame</th><th>Target frame</th><th>Rotation matrix (row-major)</th><th>Translation XYZ</th></tr></thead>
+                 <tbody><tr><td>{Encode(pose.Unit)}</td><td>{Encode(pose.SourceFrameId)}</td><td>{Encode(pose.TargetFrameId)}</td><td>{Format(pose.M11)} {Format(pose.M12)} {Format(pose.M13)}<br>{Format(pose.M21)} {Format(pose.M22)} {Format(pose.M23)}<br>{Format(pose.M31)} {Format(pose.M32)} {Format(pose.M33)}</td><td>{Format(pose.TranslationX)}, {Format(pose.TranslationY)}, {Format(pose.TranslationZ)}</td></tr></tbody>
+               </table>
+               """;
+        var scoreRows = evidence.Score is not { } score
+            ? "<p>No score components were produced for this result.</p>"
+            : $"""
+               <table>
+                 <thead><tr><th>Component</th><th>Semantics</th><th>Model count</th><th>Scene count</th><th>Matched</th><th>Unmatched</th><th>Coverage</th><th>Inlier RMSE</th><th>Maximum distance</th></tr></thead>
+                 <tbody>
+                   <tr><td>Surface</td><td>{Encode(score.SurfaceScore.Semantics)}</td><td>{score.SurfaceScore.ModelSampleCount}</td><td>{score.SurfaceScore.SceneSampleCount}</td><td>{score.SurfaceScore.MatchedModelSampleCount}</td><td>{poseResult.Coverage.UnmatchedModelSampleCount}</td><td>{Format(score.SurfaceScore.CoverageRatio)}</td><td>{FormatNullable(score.SurfaceScore.InlierRmse)}</td><td>{Format(score.SurfaceScore.MaximumCorrespondenceDistance)}</td></tr>
+                   <tr><td>Edge</td><td>{Encode(score.EdgeScore.Semantics)}</td><td>{score.EdgeScore.ModelEdgeCount}</td><td>{score.EdgeScore.SceneEdgeCount}</td><td>{score.EdgeScore.MatchedModelEdgeCount}</td><td>{score.EdgeScore.UnmatchedModelEdgeCount}</td><td>{Format(score.EdgeScore.CoverageRatio)}</td><td>{FormatNullable(score.EdgeScore.InlierRmse)}</td><td>{Format(score.EdgeScore.MaximumCorrespondenceDistance)}</td></tr>
+                 </tbody>
+               </table>
+               """;
+        var assessmentRows = evidence.Assessment is not { } assessment
+            ? "<p>No assessment was produced for this result.</p>"
+            : $"""
+               <table>
+                 <thead><tr><th>Component</th><th>Decision</th><th>Reason</th><th>Raw coverage</th><th>Raw RMSE</th><th>Minimum coverage</th><th>Maximum RMSE</th></tr></thead>
+                 <tbody>
+                   <tr><td>Surface</td><td>{assessment.Surface.Decision}</td><td>{assessment.Surface.Reason}</td><td>{Format(assessment.Surface.RawCoverageRatio)}</td><td>{FormatNullable(assessment.Surface.RawInlierRmse)}</td><td>{Format(assessment.Surface.MinimumCoverageRatio)}</td><td>{Format(assessment.Surface.MaximumInlierRmse)}</td></tr>
+                   <tr><td>Edge</td><td>{assessment.Edge.Decision}</td><td>{assessment.Edge.Reason}</td><td>{Format(assessment.Edge.RawCoverageRatio)}</td><td>{FormatNullable(assessment.Edge.RawInlierRmse)}</td><td>{Format(assessment.Edge.MinimumCoverageRatio)}</td><td>{Format(assessment.Edge.MaximumInlierRmse)}</td></tr>
+                 </tbody>
+               </table>
+               <p><strong>Overall assessment:</strong> {assessment.Decision} ({assessment.Reason})</p>
+               """;
+
+        return $"""
+               <section>
+                 <h2>Surface Match evidence</h2>
+                 <dl>
+                   <dt>Semantics</dt><dd>{Encode(evidence.Semantics)}</dd>
+                   <dt>Model</dt><dd>{Encode(evidence.ModelArtifactId)}<br>SHA-256 {evidence.ModelContentSha256}</dd>
+                   <dt>Scene</dt><dd>{Encode(evidence.SceneArtifactId)}<br>SHA-256 {evidence.SceneContentSha256}</dd>
+                   <dt>Execution SHA-256</dt><dd>{execution.ContentSha256}</dd>
+                   <dt>Pose SHA-256</dt><dd>{poseResult.ContentSha256}</dd>
+                   <dt>Score SHA-256</dt><dd>{Encode(evidence.Score?.ContentSha256 ?? "(none)")}</dd>
+                   <dt>Assessment SHA-256</dt><dd>{Encode(evidence.Assessment?.ContentSha256 ?? "(none)")}</dd>
+                   <dt>Pose state</dt><dd>{poseResult.State}</dd>
+                   <dt>Evaluated candidates</dt><dd>{poseResult.EvaluatedCandidateCount}</dd>
+                 </dl>
+                 {poseRows}
+                 {scoreRows}
+                 {assessmentRows}
+               </section>
+               """;
+    }
+
     private static string FormatDevelopmentIdentities(
         IReadOnlyList<ToolRecipeThresholdDevelopmentSampleEvidence> samples) =>
         string.Join(
@@ -373,6 +509,11 @@ internal static class RunRecordWriter
     private static void WriteCsv(string path, InspectionRunRecord record)
     {
         EnsureDirectory(path);
+        if (record.SurfaceMatchEvidence is not null)
+        {
+            WriteSurfaceMatchCsv(path, record);
+            return;
+        }
         if (record.Steps is { Count: > 0 })
         {
             WriteMultiStepCsv(path, record);
@@ -405,6 +546,113 @@ internal static class RunRecordWriter
             Csv(record.ExecutionEnvironment?.OperatingSystem ?? "unknown"),
             Csv(record.ExecutionEnvironment?.ProcessArchitecture ?? "unknown"))));
         File.WriteAllLines(path, lines, new UTF8Encoding(false));
+    }
+
+    private static void WriteSurfaceMatchCsv(
+        string path,
+        InspectionRunRecord record)
+    {
+        var evidence = record.SurfaceMatchEvidence!;
+        var execution = evidence.Execution;
+        var poseResult = execution.PoseResult;
+        var lines = new List<string>
+        {
+            "runId,component,field,value,unit,sourceContentSha256"
+        };
+        void Add(
+            string component,
+            string field,
+            string value,
+            string unit,
+            string sourceSha256) =>
+            lines.Add(string.Join(',',
+                Csv(record.RunId),
+                Csv(component),
+                Csv(field),
+                Csv(value),
+                Csv(unit),
+                Csv(sourceSha256)));
+
+        Add("identity", "modelArtifactId", evidence.ModelArtifactId, string.Empty, evidence.ModelContentSha256);
+        Add("identity", "sceneArtifactId", evidence.SceneArtifactId, string.Empty, evidence.SceneContentSha256);
+        Add("identity", "executionContentSha256", execution.ContentSha256, string.Empty, execution.ContentSha256);
+        Add("pose", "state", poseResult.State.ToString(), string.Empty, poseResult.ContentSha256);
+        Add("pose", "evaluatedCandidateCount", poseResult.EvaluatedCandidateCount.ToString(CultureInfo.InvariantCulture), "count", poseResult.ContentSha256);
+        Add("pose", "rejectionReason", poseResult.RejectionReason ?? string.Empty, string.Empty, poseResult.ContentSha256);
+        if (poseResult.Pose is { } pose)
+        {
+            Add("pose", "sourceFrameId", pose.SourceFrameId, string.Empty, poseResult.ContentSha256);
+            Add("pose", "targetFrameId", pose.TargetFrameId, string.Empty, poseResult.ContentSha256);
+            Add("pose", "m11", Format(pose.M11), "ratio", poseResult.ContentSha256);
+            Add("pose", "m12", Format(pose.M12), "ratio", poseResult.ContentSha256);
+            Add("pose", "m13", Format(pose.M13), "ratio", poseResult.ContentSha256);
+            Add("pose", "m21", Format(pose.M21), "ratio", poseResult.ContentSha256);
+            Add("pose", "m22", Format(pose.M22), "ratio", poseResult.ContentSha256);
+            Add("pose", "m23", Format(pose.M23), "ratio", poseResult.ContentSha256);
+            Add("pose", "m31", Format(pose.M31), "ratio", poseResult.ContentSha256);
+            Add("pose", "m32", Format(pose.M32), "ratio", poseResult.ContentSha256);
+            Add("pose", "m33", Format(pose.M33), "ratio", poseResult.ContentSha256);
+            Add("pose", "translationX", Format(pose.TranslationX), pose.Unit, poseResult.ContentSha256);
+            Add("pose", "translationY", Format(pose.TranslationY), pose.Unit, poseResult.ContentSha256);
+            Add("pose", "translationZ", Format(pose.TranslationZ), pose.Unit, poseResult.ContentSha256);
+        }
+
+        if (evidence.Score is { } score)
+        {
+            AddScoreRows(Add, "surface-score", score.SurfaceScore.Semantics, score.SurfaceScore.ModelSampleCount, score.SurfaceScore.SceneSampleCount, score.SurfaceScore.MatchedModelSampleCount, poseResult.Coverage.UnmatchedModelSampleCount, score.SurfaceScore.CoverageRatio, score.SurfaceScore.InlierRmse, score.SurfaceScore.MaximumCorrespondenceDistance, poseResult.Pose?.Unit ?? string.Empty, score.ContentSha256);
+            AddScoreRows(Add, "edge-score", score.EdgeScore.Semantics, score.EdgeScore.ModelEdgeCount, score.EdgeScore.SceneEdgeCount, score.EdgeScore.MatchedModelEdgeCount, score.EdgeScore.UnmatchedModelEdgeCount, score.EdgeScore.CoverageRatio, score.EdgeScore.InlierRmse, score.EdgeScore.MaximumCorrespondenceDistance, poseResult.Pose?.Unit ?? string.Empty, score.ContentSha256);
+            Add("edge-score", "matchCount", score.EdgeScore.Matches.Length.ToString(CultureInfo.InvariantCulture), "count", score.ContentSha256);
+            Add("edge-score", "evidence", score.EdgeScore.Evidence, string.Empty, score.ContentSha256);
+        }
+
+        if (evidence.Assessment is { } assessment)
+        {
+            AddAssessmentRows(Add, "surface-assessment", assessment.Surface, assessment.ContentSha256);
+            AddAssessmentRows(Add, "edge-assessment", assessment.Edge, assessment.ContentSha256);
+            Add("assessment", "decision", assessment.Decision.ToString(), string.Empty, assessment.ContentSha256);
+            Add("assessment", "reason", assessment.Reason.ToString(), string.Empty, assessment.ContentSha256);
+            Add("assessment", "policyContentSha256", assessment.Policy.ContentSha256, string.Empty, assessment.ContentSha256);
+        }
+
+        File.WriteAllLines(path, lines, new UTF8Encoding(false));
+    }
+
+    private static void AddScoreRows(
+        Action<string, string, string, string, string> add,
+        string component,
+        string semantics,
+        int modelCount,
+        int sceneCount,
+        int matchedCount,
+        int unmatchedCount,
+        double coverage,
+        double? rmse,
+        double maximumDistance,
+        string unit,
+        string sourceSha256)
+    {
+        add(component, "semantics", semantics, string.Empty, sourceSha256);
+        add(component, "modelCount", modelCount.ToString(CultureInfo.InvariantCulture), "count", sourceSha256);
+        add(component, "sceneCount", sceneCount.ToString(CultureInfo.InvariantCulture), "count", sourceSha256);
+        add(component, "matchedCount", matchedCount.ToString(CultureInfo.InvariantCulture), "count", sourceSha256);
+        add(component, "unmatchedCount", unmatchedCount.ToString(CultureInfo.InvariantCulture), "count", sourceSha256);
+        add(component, "coverageRatio", Format(coverage), "ratio", sourceSha256);
+        add(component, "inlierRmse", FormatNullable(rmse), unit, sourceSha256);
+        add(component, "maximumCorrespondenceDistance", Format(maximumDistance), unit, sourceSha256);
+    }
+
+    private static void AddAssessmentRows(
+        Action<string, string, string, string, string> add,
+        string component,
+        SurfaceAndEdgeComponentAssessment assessment,
+        string sourceSha256)
+    {
+        add(component, "decision", assessment.Decision.ToString(), string.Empty, sourceSha256);
+        add(component, "reason", assessment.Reason.ToString(), string.Empty, sourceSha256);
+        add(component, "rawCoverageRatio", Format(assessment.RawCoverageRatio), "ratio", sourceSha256);
+        add(component, "rawInlierRmse", FormatNullable(assessment.RawInlierRmse), string.Empty, sourceSha256);
+        add(component, "minimumCoverageRatio", Format(assessment.MinimumCoverageRatio), "ratio", sourceSha256);
+        add(component, "maximumInlierRmse", Format(assessment.MaximumInlierRmse), string.Empty, sourceSha256);
     }
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
@@ -567,5 +815,7 @@ internal static class RunRecordWriter
     private static void EnsureDirectory(string path) => Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
     private static string Encode(string value) => WebUtility.HtmlEncode(value);
     private static string Format(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+    private static string FormatNullable(double? value) =>
+        value.HasValue ? Format(value.Value) : string.Empty;
     private static string Csv(string value) => $"\"{value.Replace("\"", "\"\"")}\"";
 }

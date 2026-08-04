@@ -38,7 +38,8 @@ internal static class LibraryNoahThreeDPackageVerification
             ("labeled-evidence-statistics-tool", VerifyLabeledEvidenceStatisticsTool),
             ("threshold-candidate-analysis-tool", VerifyThresholdCandidateAnalysisTool),
             ("deterministic-model-surface-selection-tool", VerifyDeterministicModelSurfaceSelectionTool),
-            ("rigid-pose-symmetry-equivalence-tool", VerifyRigidPoseSymmetryEquivalenceTool)
+            ("rigid-pose-symmetry-equivalence-tool", VerifyRigidPoseSymmetryEquivalenceTool),
+            ("acquisition-direction-orientation-tool", VerifyAcquisitionDirectionOrientationTool)
         };
 
         var results = cases
@@ -68,8 +69,8 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
             && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.13"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "21f2e3084843ef8a499e6fe02c4326a19813aa2c";
+            && LibraryNoahHeightMapInspection.PackageVersion == "2.9.1"
+            && LibraryNoahHeightMapInspection.PackageSourceCommit == "9dd95690d3e439b459c39aea99878880cdcc5808";
         return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
     }
 
@@ -137,6 +138,41 @@ internal static class LibraryNoahThreeDPackageVerification
         return (
             passed,
             $"success={result.Success},equivalent={result.Equivalent},operation={result.SymmetryOperationIndex},angle={result.SymmetryOperationAngleDegrees:R},translation={result.TranslationDifference:R},rotation={result.RotationDifferenceDegrees:R}");
+    }
+
+    private static (bool Passed, string Evidence)
+        VerifyAcquisitionDirectionOrientationTool()
+    {
+        var result = new AcquisitionDirectionOrientationTool().Execute(
+            new ThreeDPoint(0.0, 0.0, -2.0),
+            [
+                new AcquisitionDirectionNormalInput(
+                    0,
+                    new ThreeDPoint(0.0, 0.0, 1.0)),
+                new AcquisitionDirectionNormalInput(
+                    1,
+                    new ThreeDPoint(0.0, 0.0, -1.0)),
+                new AcquisitionDirectionNormalInput(
+                    2,
+                    new ThreeDPoint(1.0, 0.0, 0.0))
+            ],
+            new AcquisitionDirectionOrientationOptions
+            {
+                GrazingAbsoluteCosineMaximum = 0.05
+            });
+        var passed = result.Success
+            && result.Items.Select(item => item.Orientation).SequenceEqual(
+                [
+                    AcquisitionDirectionOrientation.SensorFacing,
+                    AcquisitionDirectionOrientation.AwayFromSensor,
+                    AcquisitionDirectionOrientation.Grazing
+                ])
+            && Approximately(
+                result.NormalizedSensorToSceneDirection.Z,
+                -1.0);
+        return (
+            passed,
+            $"success={result.Success},directionZ={result.NormalizedSensorToSceneDirection?.Z:R},orientations={string.Join(',', result.Items.Select(item => item.Orientation))}");
     }
 
     private static (bool Passed, string Evidence) VerifyHeightGridSummaryTool()

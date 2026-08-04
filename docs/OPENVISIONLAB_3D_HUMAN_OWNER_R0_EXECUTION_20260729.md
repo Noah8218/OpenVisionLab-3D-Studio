@@ -1,7 +1,7 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-08-01
-Status: Blocked - the current Workbench v4 package and launcher are ready, but
+Date: 2026-08-04
+Status: Blocked - the current fixed-input package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
 ## Purpose
@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `A7E123EC297125AFD7CE92102A02178334AD2BD74A55FE14B6E36F66F3196F94` |
-| Shell assembly | `6F3BCEA58B5460CE4E92E1F3DAA59193BA65AD06982757039C6369E11AFFDD01` |
-| Core assembly | `348B3F52BB05F5EDC74AD5143D65EF0DE7B5023D8F8678AC37A1BB9651691686` |
-| Data assembly | `CD0E1984304207BF2C91E07FE256F3BD0EBB7D9148F9FF9BF11C9A1541908C16` |
-| Tools assembly | `BFAF62F214D5BEC5152DDDE40698DCC40E1198F160AE7A1689AE821C4C2776F8` |
-| Viewer assembly | `065CBAF64A95A63E1ADDE1AF0F3A61BE12D8296849C8751A99DAF6BFF4EA3123` |
-| Docking assembly | `BA97888BAEC8F8247CA8C4A5F437557A5C1BDE12FD7D7F6D9C9A404DFBCFC002` |
+| Release EXE | `D1439160F7D0A5FA1E980D1A172CA731D8E955729A0D5E948CC992E14A2EECDA` |
+| Shell assembly | `D4ABE60BDD90BECA71D658A933EC682A2B0B868B8136150864836D673F558EBA` |
+| Core assembly | `2573842B3A7D378E342DE1191665F883857919BFD7A89C2082831201D95DFEE5` |
+| Data assembly | `9DE4FCE15F824BF6D666935CFF7BAB9418ABA8C011E091B1E858D0B79A2080C6` |
+| Tools assembly | `DB13F20E1CFC0595A5CA4BBC49421129940C807CA439B6EC6775735EEF16AD76` |
+| Viewer assembly | `12A9F00E47E5189DD9CEB19AD77CADFCF5B398D6C4B3F9421350EF3B3C1EBDA4` |
+| Docking assembly | `3E2B30A8DFB09ED5F51B8F25D9EFFE8DCFB5850B211EDA44DD7CDADA5BF0515B` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,10 +52,23 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-08-01 Library-Noah repeatability-statistics migration supersedes the
-previous fixed binary set. R0 must use
-the hashes above and restart from Wide; no result from an earlier binary set
-can close this gate.
+The 2026-08-04 current-source Release rebuild supersedes every previous fixed
+binary set and includes the completed B-12, K-04, L-13, and PL-0002 software
+state. R0 must use the hashes above and restart from Wide; no result from an
+earlier binary set can close this gate. PL-0002 changes Runner rather than an
+R0 fixed input, but the conservative stale-source guard required a full
+current-source rebuild before this package could be validated.
+
+The launcher selects the monitor with the smallest `Bounds.Left`, reports its
+device name and bounds, places the application there, and fails closed if the
+actual application window does not intersect that monitor. On the current
+workstation the selected monitor is `\\.\DISPLAY2` with bounds
+`[-1920,365,1920,1080]`.
+
+The current Wide handoff launch verified actual window bounds
+`[-1920,365,1920,1040]` intersect that monitor and left the application open
+for owner operation. This proves launch placement only; the Wide acceptance
+rows remain Pending until the owner reports the unaided outcome.
 
 The product owner's 2026-07-31 direction allows dependency-ready software
 development to continue before this R0 is performed. This sheet still gates
@@ -122,6 +135,7 @@ Observation notes:
 ```text
 Wide
 Start/end:
+Monitor/window bounds:
 Outcome: Pass | Fail
 Hesitation or wrong turn:
 Misleading label:
@@ -132,6 +146,7 @@ Owner comment:
 
 Compact
 Start/end:
+Monitor/window bounds:
 Outcome: Pass | Fail
 Hesitation or wrong turn:
 Misleading label:
@@ -166,15 +181,18 @@ Scope: Prepared a non-automated current-Release launcher and an observer-only
 Wide/Compact R0 acceptance record.
 Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only launch checks ->
-Pass; Wide owner run -> Pending; Compact owner run -> Pending.
+Pass; Wide leftmost-monitor launch placement -> Pass; Wide owner run ->
+Pending; Compact owner run -> Pending.
 Verification: the current source was rebuilt in Release with `0` warnings and
-`0` errors on 2026-08-01. After the Library-Noah declared-normal quality and
-landmark-correspondence migration, both process-local `-ValidateOnly` commands
-passed again, enforced the
-refreshed nine-input fixed hashes above, confirmed the Release was newer than
-current source, and launched no application.
+`0` errors on 2026-08-04. Both process-local `-ValidateOnly` commands passed,
+enforced the refreshed nine-input fixed hashes above, confirmed the Release
+was newer than current source, selected `\\.\DISPLAY2` as the leftmost
+monitor, and launched no application. The subsequent owner Wide handoff
+launch placed the actual window at `[-1920,365,1920,1040]`, verified its
+intersection with that monitor, and left the application open without
+performing the task.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`artifacts/current/20260801-noah-normal-quality-landmark-migration/after/r0-*-validate-only.txt`.
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-r0-package-refresh\`.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. Surface
 matching software may proceed independently, but it cannot be used to claim

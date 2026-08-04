@@ -11,6 +11,7 @@ public sealed partial class MainWindowViewModel
     private SurfaceMatchRuntimeReport? workbenchSurfaceMatchRuntime;
     private SurfaceAndEdgeMatchScoreArtifact? workbenchSurfaceEdgeScore;
     private SurfaceEdgeDiagnosticOverlayArtifact? workbenchSurfaceEdgeDiagnosticOverlay;
+    private SurfaceEdgeAcquisitionDirectionArtifact? workbenchSurfaceEdgeAcquisitionDirection;
     private SurfaceAndEdgeMatchAssessmentArtifact? workbenchSurfaceEdgeAssessment;
     private SurfaceMatchFalsePositiveReviewArtifact? workbenchSurfaceMatchFalsePositiveReview;
 
@@ -25,6 +26,8 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceEdgeScore;
     public SurfaceEdgeDiagnosticOverlayArtifact? WorkbenchSurfaceEdgeDiagnosticOverlay =>
         workbenchSurfaceEdgeDiagnosticOverlay;
+    public SurfaceEdgeAcquisitionDirectionArtifact? WorkbenchSurfaceEdgeAcquisitionDirection =>
+        workbenchSurfaceEdgeAcquisitionDirection;
     public SurfaceAndEdgeMatchAssessmentArtifact? WorkbenchSurfaceEdgeAssessment =>
         workbenchSurfaceEdgeAssessment;
     public SurfaceMatchFalsePositiveReviewArtifact? WorkbenchSurfaceMatchFalsePositiveReview =>
@@ -38,6 +41,8 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceEdgeScore is not null;
     public bool SurfaceMatchEdgeDiagnosticVisible =>
         workbenchSurfaceEdgeDiagnosticOverlay is not null;
+    public bool SurfaceMatchAcquisitionDirectionVisible =>
+        workbenchSurfaceEdgeAcquisitionDirection is not null;
     public bool SurfaceMatchFalsePositiveReviewVisible =>
         workbenchSurfaceMatchFalsePositiveReview is not null;
     public string SurfaceMatchStateLabel =>
@@ -112,7 +117,9 @@ public sealed partial class MainWindowViewModel
                 : "Decision uses separate authored limits · raw score unchanged";
     public string SurfaceMatchEdgeDiagnosticLabel =>
         workbenchSurfaceEdgeDiagnosticOverlay is { } overlay
-            ? $"Model edge {overlay.ModelSegments.Length} · scene step {overlay.SceneSegments.Length} · declared normals"
+            ? workbenchSurfaceEdgeAcquisitionDirection is { } orientation
+                ? $"Model edge {overlay.ModelSegments.Length} · scene step {overlay.SceneSegments.Length} · facing {orientation.Items.Count(item => item.Orientation == SurfaceEdgeAcquisitionOrientation.SensorFacing)} · away {orientation.Items.Count(item => item.Orientation == SurfaceEdgeAcquisitionOrientation.AwayFromSensor)} · grazing {orientation.Items.Count(item => item.Orientation == SurfaceEdgeAcquisitionOrientation.Grazing)} · {orientation.FrameId}"
+                : $"Model edge {overlay.ModelSegments.Length} · scene step {overlay.SceneSegments.Length} · declared normals · acquisition direction unavailable"
             : "Edge directions unavailable";
     public string SurfaceMatchAcceptedReviewLabel =>
         workbenchSurfaceMatchFalsePositiveReview is { } review
@@ -177,6 +184,7 @@ public sealed partial class MainWindowViewModel
               + $"Scene edge SHA-256: {workbenchSurfaceEdgeScore?.SceneEdgeContentSha256 ?? "(none)"}\n"
               + $"Surface/edge score SHA-256: {workbenchSurfaceEdgeScore?.ContentSha256 ?? "(none)"}\n"
               + $"Edge diagnostic overlay SHA-256: {workbenchSurfaceEdgeDiagnosticOverlay?.ContentSha256 ?? "(none)"}\n"
+              + $"Acquisition orientation SHA-256: {workbenchSurfaceEdgeAcquisitionDirection?.ContentSha256 ?? "(none)"}\n"
               + $"Independent surface/edge assessment SHA-256: {workbenchSurfaceEdgeAssessment?.ContentSha256 ?? "(none)"}\n"
               + $"False-positive review SHA-256: {workbenchSurfaceMatchFalsePositiveReview?.ContentSha256 ?? "(none)"}\n"
               + "Runtime is observational and excluded from deterministic identities."
@@ -189,7 +197,8 @@ public sealed partial class MainWindowViewModel
         SurfaceAndEdgeMatchScoreArtifact? edgeScore,
         SurfaceEdgeDiagnosticOverlayArtifact? edgeDiagnosticOverlay,
         SurfaceAndEdgeMatchAssessmentArtifact? edgeAssessment,
-        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview)
+        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview,
+        SurfaceEdgeAcquisitionDirectionArtifact? acquisitionDirectionOrientation = null)
     {
         ArgumentNullException.ThrowIfNull(execution);
         var validity =
@@ -253,6 +262,15 @@ public sealed partial class MainWindowViewModel
                 "Viewer requires independent surface/edge assessment evidence linked to the raw score.");
         }
 
+        if (acquisitionDirectionOrientation is not null
+            && (edgeDiagnosticOverlay is null
+                || !SurfaceEdgeAcquisitionDirectionArtifactValidator
+                    .Inspect(acquisitionDirectionOrientation, edgeDiagnosticOverlay).IsValid))
+        {
+            throw new InvalidDataException(
+                "Viewer requires acquisition-direction orientation linked to the displayed edge overlay.");
+        }
+
         if (falsePositiveReview is not null
             && !SurfaceMatchFalsePositiveReviewArtifactValidator
                 .Inspect(falsePositiveReview).IsValid)
@@ -266,6 +284,7 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceMatchRuntime = runtime;
         workbenchSurfaceEdgeScore = edgeScore;
         workbenchSurfaceEdgeDiagnosticOverlay = edgeDiagnosticOverlay;
+        workbenchSurfaceEdgeAcquisitionDirection = acquisitionDirectionOrientation;
         workbenchSurfaceEdgeAssessment = edgeAssessment;
         workbenchSurfaceMatchFalsePositiveReview = falsePositiveReview;
         SelectionSummary =
@@ -285,6 +304,7 @@ public sealed partial class MainWindowViewModel
         workbenchSurfaceMatchRuntime = null;
         workbenchSurfaceEdgeScore = null;
         workbenchSurfaceEdgeDiagnosticOverlay = null;
+        workbenchSurfaceEdgeAcquisitionDirection = null;
         workbenchSurfaceEdgeAssessment = null;
         workbenchSurfaceMatchFalsePositiveReview = null;
         RaiseSurfaceMatchProperties();
@@ -297,12 +317,14 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(WorkbenchSurfaceMatchRuntime));
         OnPropertyChanged(nameof(WorkbenchSurfaceEdgeScore));
         OnPropertyChanged(nameof(WorkbenchSurfaceEdgeDiagnosticOverlay));
+        OnPropertyChanged(nameof(WorkbenchSurfaceEdgeAcquisitionDirection));
         OnPropertyChanged(nameof(WorkbenchSurfaceEdgeAssessment));
         OnPropertyChanged(nameof(WorkbenchSurfaceMatchFalsePositiveReview));
         OnPropertyChanged(nameof(SurfaceMatchEvidenceVisible));
         OnPropertyChanged(nameof(SurfaceMatchDecisionVisible));
         OnPropertyChanged(nameof(SurfaceMatchEdgeScoreVisible));
         OnPropertyChanged(nameof(SurfaceMatchEdgeDiagnosticVisible));
+        OnPropertyChanged(nameof(SurfaceMatchAcquisitionDirectionVisible));
         OnPropertyChanged(nameof(SurfaceMatchFalsePositiveReviewVisible));
         OnPropertyChanged(nameof(SurfaceMatchStateLabel));
         OnPropertyChanged(nameof(SurfaceMatchDecisionLabel));

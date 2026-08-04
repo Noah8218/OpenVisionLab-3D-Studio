@@ -20,6 +20,8 @@ public sealed partial class ToolWorkbenchViewModel
     private SurfaceMatchRuntimeReport? surfaceMatchRuntime;
     private SurfaceAndEdgeMatchScoreArtifact? surfaceEdgeScore;
     private SurfaceEdgeDiagnosticOverlayArtifact? surfaceEdgeDiagnosticOverlay;
+    private SurfaceEdgeAcquisitionDirectionArtifact? surfaceEdgeAcquisitionDirection;
+    private bool isSurfaceEdgeAcquisitionDirectionStale;
     private SurfaceAndEdgeMatchAssessmentArtifact? surfaceEdgeAssessment;
     private SurfaceMatchFalsePositiveReviewArtifact? surfaceMatchFalsePositiveReview;
     private RelayCommand setSingleViewerLayoutCommand = null!;
@@ -48,6 +50,10 @@ public sealed partial class ToolWorkbenchViewModel
         surfaceEdgeScore;
     public SurfaceEdgeDiagnosticOverlayArtifact? SurfaceEdgeDiagnosticOverlay =>
         surfaceEdgeDiagnosticOverlay;
+    public SurfaceEdgeAcquisitionDirectionArtifact? SurfaceEdgeAcquisitionDirection =>
+        surfaceEdgeAcquisitionDirection;
+    public bool IsSurfaceEdgeAcquisitionDirectionStale =>
+        isSurfaceEdgeAcquisitionDirectionStale;
     public SurfaceAndEdgeMatchAssessmentArtifact? SurfaceEdgeAssessment =>
         surfaceEdgeAssessment;
     public SurfaceMatchFalsePositiveReviewArtifact? SurfaceMatchFalsePositiveReview =>
@@ -145,7 +151,8 @@ public sealed partial class ToolWorkbenchViewModel
         SurfaceAndEdgeMatchScoreArtifact? edgeScore = null,
         SurfaceEdgeDiagnosticOverlayArtifact? edgeDiagnosticOverlay = null,
         SurfaceAndEdgeMatchAssessmentArtifact? edgeAssessment = null,
-        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null)
+        SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null,
+        SurfaceEdgeAcquisitionDirectionArtifact? acquisitionDirectionOrientation = null)
     {
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(scene);
@@ -233,6 +240,15 @@ public sealed partial class ToolWorkbenchViewModel
                 "Workbench independent surface/edge assessment is invalid or linked to a different score.");
         }
 
+        if (acquisitionDirectionOrientation is not null
+            && (edgeDiagnosticOverlay is null
+                || !SurfaceEdgeAcquisitionDirectionArtifactValidator
+                    .Inspect(acquisitionDirectionOrientation, edgeDiagnosticOverlay).IsValid))
+        {
+            throw new InvalidDataException(
+                "Workbench acquisition-direction orientation is invalid or linked to a different edge overlay.");
+        }
+
         if (falsePositiveReview is not null
             && (!SurfaceMatchFalsePositiveReviewArtifactValidator
                     .Inspect(falsePositiveReview).IsValid
@@ -259,7 +275,9 @@ public sealed partial class ToolWorkbenchViewModel
             edgeScore,
             edgeDiagnosticOverlay,
             edgeAssessment,
-            falsePositiveReview);
+            falsePositiveReview,
+            acquisitionDirectionOrientation);
+        isSurfaceEdgeAcquisitionDirectionStale = false;
         LoadPublishedSurfaceMatchExperiment(evidence);
         RaiseSurfaceMatchExperimentDisplay(evidence);
     }
@@ -278,6 +296,8 @@ public sealed partial class ToolWorkbenchViewModel
         surfaceMatchRuntime = null;
         surfaceEdgeScore = null;
         surfaceEdgeDiagnosticOverlay = null;
+        surfaceEdgeAcquisitionDirection = null;
+        isSurfaceEdgeAcquisitionDirectionStale = false;
         surfaceEdgeAssessment = null;
         surfaceMatchFalsePositiveReview = null;
         RaisePublishedSurfaceMatchProperties();
@@ -479,4 +499,5 @@ public sealed record ToolWorkbenchSurfaceMatchDisplayRequestEventArgs(
     SurfaceAndEdgeMatchScoreArtifact? EdgeScore,
     SurfaceEdgeDiagnosticOverlayArtifact? EdgeDiagnosticOverlay,
     SurfaceAndEdgeMatchAssessmentArtifact? EdgeAssessment,
-    SurfaceMatchFalsePositiveReviewArtifact? FalsePositiveReview);
+    SurfaceMatchFalsePositiveReviewArtifact? FalsePositiveReview,
+    SurfaceEdgeAcquisitionDirectionArtifact? AcquisitionDirectionOrientation = null);

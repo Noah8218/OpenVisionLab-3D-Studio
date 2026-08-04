@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OpenVisionLab.ThreeD.Core;
 
 /// <summary>
@@ -44,7 +46,62 @@ public sealed record ToolRecipeSource(
     long? ByteLength = null,
     string? ContentSha256 = null,
     int? GridWidth = null,
-    int? GridHeight = null);
+    int? GridHeight = null,
+    ToolRecipeAcquisitionProvenance? AcquisitionProvenance = null);
+
+[JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionProvenanceState>))]
+public enum ToolRecipeAcquisitionProvenanceState
+{
+    Available,
+    Unavailable
+}
+
+/// <summary>
+/// Operator-authored or imported acquisition evidence for one recipe source.
+/// Text is retained verbatim as declared evidence; it does not establish a
+/// camera pose, calibration, or inferred acquisition viewpoint.
+/// </summary>
+public sealed record ToolRecipeAcquisitionProvenance(
+    ToolRecipeAcquisitionProvenanceState State,
+    string Evidence,
+    string LimitationNotes,
+    ToolRecipeAcquisitionDirection? AcquisitionDirection = null)
+{
+    public static ToolRecipeAcquisitionProvenance CreateUnavailable() => new(
+        ToolRecipeAcquisitionProvenanceState.Unavailable,
+        "No acquisition provenance was supplied for this source.",
+        "Acquisition viewpoint, direction, sensor pose, calibration, and capture conditions are unavailable.");
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionDirectionState>))]
+public enum ToolRecipeAcquisitionDirectionState
+{
+    Available,
+    Unavailable
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionDirectionConvention>))]
+public enum ToolRecipeAcquisitionDirectionConvention
+{
+    SensorToScene
+}
+
+/// <summary>
+/// Explicit source-frame direction from the sensor toward the acquired scene.
+/// It is operator-authored or imported evidence, not an inferred camera pose.
+/// </summary>
+public sealed record ToolRecipeAcquisitionDirection(
+    ToolRecipeAcquisitionDirectionState State,
+    ToolRecipeAcquisitionDirectionConvention Convention,
+    string FrameId,
+    ToolRecipeXyz? Vector)
+{
+    public static ToolRecipeAcquisitionDirection CreateUnavailable(string frameId) => new(
+        ToolRecipeAcquisitionDirectionState.Unavailable,
+        ToolRecipeAcquisitionDirectionConvention.SensorToScene,
+        frameId,
+        null);
+}
 
 public sealed record ToolRecipeReference(
     string Id,

@@ -47,6 +47,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("LevelSurfacePreviewLoadedHandler", VerifyLevelSurfacePreviewLoadedHandler()),
             ("SourceQuality", VerifySourceQuality()),
             ("SourceQualityLoadedHandler", VerifySourceQualityLoadedHandler()),
+            ("SourceAcquisitionProvenanceState", VerifySourceAcquisitionProvenanceState()),
             ("HeightImageDisplayRange", VerifyHeightImageDisplayRange()),
             ("HeightImageDisplayRangeLoadedHandler", VerifyHeightImageDisplayRangeLoadedHandler()),
             ("SharedHeightHover", VerifySharedHeightHover()),
@@ -330,6 +331,21 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-source-quality"]);
         return options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifySourceAcquisitionProvenanceState()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-source-acquisition-provenance-state",
+            "open-dropdown",
+            "--smoke-source-acquisition-provenance-popup-screenshot",
+            "popup.png"
+        ]);
+        return options.SourceAcquisitionProvenanceSmokeState == "open-dropdown"
+               && options.SourceAcquisitionProvenancePopupScreenshotPath == "popup.png"
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifyHeightImageDisplayRange()

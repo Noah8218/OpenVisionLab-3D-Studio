@@ -6,6 +6,12 @@ internal static class RunnerCommandRouter
 {
     public static int Run(string[] args)
     {
+        if (args.Contains("--help", StringComparer.OrdinalIgnoreCase))
+        {
+            WriteUsage(Console.Out);
+            return 0;
+        }
+
         var lazProbePath = ReadOption(args, "--laz-probe");
         var stlStreamProbePath = ReadOption(args, "--stl-stream-probe");
         var meshDeviationParityPath = ReadOption(args, "--mesh-deviation-parity");
@@ -31,6 +37,16 @@ internal static class RunnerCommandRouter
             ReadOption(args, "--threshold-candidate-id");
         var thresholdManualValues =
             ReadOption(args, "--threshold-manual-values");
+        var surfaceMatchModelPath =
+            ReadOption(args, "--surface-match-model");
+        var surfaceMatchScenePath =
+            ReadOption(args, "--surface-match-scene");
+        var surfaceMatchExecutionPath =
+            ReadOption(args, "--surface-match-execution");
+        var surfaceMatchScorePath =
+            ReadOption(args, "--surface-match-score");
+        var surfaceMatchAssessmentPath =
+            ReadOption(args, "--surface-match-assessment");
         var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
         var toolTeachingRemoveOutliersPath =
@@ -124,6 +140,12 @@ internal static class RunnerCommandRouter
         var verifySurfaceEdgeDiagnosticReview = args.Contains(
             "--verify-surface-edge-diagnostic-review",
             StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceEdgeAcquisitionDirection = args.Contains(
+            "--verify-surface-edge-acquisition-direction",
+            StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceMatchRunRecordExport = args.Contains(
+            "--verify-surface-match-run-record-export",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DCompletenessGrid = args.Contains(
             "--verify-c3d-completeness-grid",
             StringComparer.OrdinalIgnoreCase);
@@ -196,6 +218,37 @@ internal static class RunnerCommandRouter
                 thresholdCandidateId,
                 reportPath,
                 thresholdManualValues);
+        }
+
+        if (surfaceMatchExecutionPath is not null
+            || surfaceMatchModelPath is not null
+            || surfaceMatchScenePath is not null
+            || surfaceMatchScorePath is not null
+            || surfaceMatchAssessmentPath is not null)
+        {
+            if (toolRecipePath is null
+                || surfaceMatchModelPath is null
+                || surfaceMatchScenePath is null
+                || surfaceMatchExecutionPath is null
+                || reportPath is null
+                || !runArtifacts.Requested
+                || (surfaceMatchScorePath is null)
+                    != (surfaceMatchAssessmentPath is null))
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
+                return 2;
+            }
+
+            return SurfaceMatchRunRecordExportExecution.Run(
+                toolRecipePath,
+                surfaceMatchModelPath,
+                surfaceMatchScenePath,
+                surfaceMatchExecutionPath,
+                surfaceMatchScorePath,
+                surfaceMatchAssessmentPath,
+                reportPath,
+                runArtifacts);
         }
 
         if (toolRecipePath is not null)
@@ -629,6 +682,18 @@ internal static class RunnerCommandRouter
             return SurfaceMatchingFoundationVerification.Run(reportPath);
         }
 
+        if (verifySurfaceMatchRunRecordExport)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-run-record-export --report <path>");
+                return 2;
+            }
+
+            return SurfaceMatchRunRecordExportVerification.Run(reportPath);
+        }
+
         if (verifySurfaceMatchAcceptance)
         {
             if (reportPath is null)
@@ -701,6 +766,18 @@ internal static class RunnerCommandRouter
             }
 
             return SurfaceEdgeDiagnosticReviewVerification.Run(reportPath);
+        }
+
+        if (verifySurfaceEdgeAcquisitionDirection)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-edge-acquisition-direction --report <path>");
+                return 2;
+            }
+
+            return SurfaceEdgeAcquisitionDirectionVerification.Run(reportPath);
         }
 
         if (verifyRegistrationAcceptance)
@@ -958,47 +1035,54 @@ internal static class RunnerCommandRouter
 
         if (recipePath is null || reportPath is null)
         {
-            Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>] [--run-record <json> --html-report <html> --csv-report <csv> --viewer-screenshot <png>]");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --source-quality-c3d <path> --entity-id <id> --unit <unit> --frame <frame> --report <json>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-source-quality-report --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-invalid-cell-map --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
-            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");
+            WriteUsage(Console.Error);
             return 2;
         }
 
         return RunRecipe(recipePath, reportPath, expectedStatus, compareContractPath, runArtifacts);
 
+    }
+
+    private static void WriteUsage(TextWriter writer)
+    {
+        writer.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --recipe <path> --report <path> [--expect-status Pass|Fail|Warning|Error] [--compare-contract <path>] [--run-record <json> --html-report <html> --csv-report <csv> --viewer-screenshot <png>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --laz-probe <path> --report <path> [--max-sampled-points <count>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stl-stream-probe <path> --unit <unit> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --mesh-deviation-parity <measured.ply> --nominal-stl <nominal.stl> --cloudcompare-unsigned <unsigned.ply> --cloudcompare-signed <signed.ply> --unit <unit> --report <path> [--max-points <count>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --source-quality-c3d <path> --entity-id <id> --unit <unit> --frame <frame> --report <json>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-volume --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-cross-section --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-source-quality-report --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-invalid-cell-map --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-run-record-export --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");
     }
 }

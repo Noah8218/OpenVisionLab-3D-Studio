@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "open",
-    "current_summary": "The current Release Runner prints its usage text for --help but exits with code 2 because no explicit help route exists and the final missing recipe/report branch handles the request as invalid usage.",
-    "next_action": "Add an explicit case-insensitive --help route that prints usage and returns 0, retain nonzero exit codes for genuinely invalid or incomplete commands, and add a focused command-line regression check."
+    "status": "resolved",
+    "current_summary": "The missing explicit help route caused --help to fall through to invalid usage. RunnerCommandRouter now routes case-insensitive help through the shared usage writer to stdout with exit 0, while missing and unknown commands retain the same usage on stderr with exit 2; Release and existing Runner regression checks pass."
   },
   "problem": {
     "claims": [
@@ -37,12 +36,16 @@
     {
       "id": "C1",
       "text": "--help and a case-insensitive equivalent print usage and exit 0.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2"
+      ]
     },
     {
       "id": "C2",
       "text": "Missing required values and unknown command combinations continue to exit nonzero with controlled usage output.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     }
   ],
   "relations": [],
@@ -67,9 +70,32 @@
       "location": "dotnet OpenVisionLab.ThreeD.Runner.dll --help",
       "observation": "The current Release Runner printed its usage text and returned exit code 2.",
       "observed_at": "2026-08-04T13:22:48.4159096+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "command execution",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260804-pl0002-runner-help/help.direct.stdout.txt and help-upper.stdout.txt",
+      "observation": "Release Runner --help and --HELP each wrote the shared 4004-byte usage body to stdout, wrote zero bytes to stderr, and exited 0; both usage bodies have SHA-256 CEFCB5D382309FC56DD9053EBE63CADFCC25242602983CCCD646D8CDAF87B2FC.",
+      "observed_at": "2026-08-04T19:42:10.2034064+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "command execution",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260804-pl0002-runner-help/invalid.direct.stderr.txt and missing-report.stderr.txt",
+      "observation": "An unknown command and a recipe command missing --report each wrote zero bytes to stdout, wrote the same shared usage body to stderr, and exited 2; both usage bodies match E2's SHA-256.",
+      "observed_at": "2026-08-04T19:42:10.2034064+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-04T19:42:10.2034064+09:00",
+      "from": "open",
+      "to": "resolved",
+      "summary": "Added an explicit case-insensitive help success route while preserving controlled nonzero invalid and incomplete command exits."
+    }
+  ],
   "created_at": "2026-08-04T13:22:48.4159096+09:00",
-  "updated_at": "2026-08-04T13:22:48.4159096+09:00"
+  "updated_at": "2026-08-04T19:42:10.2034064+09:00"
 }

@@ -46,6 +46,21 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(SourceQuality), nameof(OpenSourceQuality),
         nameof(SourceQualityLoading), nameof(SourceQualityUnavailable), nameof(SourceQualityReady),
         nameof(SourceQualityError), nameof(SourceQualityHint), nameof(SourceQualityViewOnly),
+        nameof(SourceAcquisitionProvenanceTitle), nameof(SourceAcquisitionProvenanceHint),
+        nameof(SourceAcquisitionState),
+        nameof(SourceAcquisitionEvidence), nameof(SourceAcquisitionLimitations),
+        nameof(SourceAcquisitionAvailable), nameof(SourceAcquisitionUnavailable),
+        nameof(SourceAcquisitionDirectionTitle), nameof(SourceAcquisitionDirectionState),
+        nameof(SourceAcquisitionDirectionAvailable), nameof(SourceAcquisitionDirectionUnavailable),
+        nameof(SourceAcquisitionDirectionConvention), nameof(SourceAcquisitionDirectionFrame),
+        nameof(SourceAcquisitionDirectionVector), nameof(SourceAcquisitionDirectionInvalid),
+        nameof(SourceAcquisitionDirectionPersisted), nameof(SourceAcquisitionDirectionFallback),
+        nameof(SourceAcquisitionDefaultEvidence), nameof(SourceAcquisitionDefaultLimitations),
+        nameof(SourceAcquisitionApply), nameof(SourceAcquisitionReset),
+        nameof(SourceAcquisitionEvidenceRequired), nameof(SourceAcquisitionLimitationsRequired),
+        nameof(SourceAcquisitionNoChanges), nameof(SourceAcquisitionReady),
+        nameof(SourceAcquisitionPersisted), nameof(SourceAcquisitionFallback),
+        nameof(SourceAcquisitionBoundary),
         nameof(CurrentSourceQualitySummaryFormat), nameof(CurrentSourceQualityDetailFormat),
         nameof(ThicknessRepeatGrid), nameof(RepeatAsGrid),
         nameof(ThicknessRepeatReady), nameof(ThicknessRepeatUnavailable),
@@ -219,8 +234,120 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Review the input grid, valid and missing cells, height distribution, and channel limits before inspection.");
     public string SourceQualityViewOnly => T(
         "ThreeD.SourceQuality.ViewOnly",
-        "\uBCF4\uAE30 \uC804\uC6A9 \u00B7 \uB808\uC2DC\uD53C \uBCC0\uACBD \uC5C6\uC74C \u00B7 Preview/Run \uC2E4\uD589 \uC5C6\uC74C",
-        "Read-only \u00b7 recipe unchanged \u00b7 no Preview or Run");
+        "\uD488\uC9C8 \uBD84\uC11D \uBCF4\uAE30 \uC804\uC6A9 \u00B7 \uCD9C\uCC98 \uBA54\uBAA8 \uC801\uC6A9 \uC2DC\uC5D0\uB9CC \uB808\uC2DC\uD53C \uBCC0\uACBD \u00B7 Preview/Run \uC2E4\uD589 \uC5C6\uC74C",
+        "Quality analysis is read-only \u00b7 only Apply provenance changes the recipe \u00b7 no Preview or Run");
+    public string SourceAcquisitionProvenanceTitle => T(
+        "ThreeD.SourceQuality.Acquisition.Title",
+        "\uD68D\uB4DD/\uC18C\uC2A4 \uCD9C\uCC98",
+        "Acquisition/source provenance");
+    public string SourceAcquisitionProvenanceHint => T(
+        "ThreeD.SourceQuality.Acquisition.Hint",
+        "\uC774 \uC18C\uC2A4\uC5D0 \uB300\uD574 \uD655\uC778\uD55C \uD68D\uB4DD \uC99D\uAC70\uC640 \uC54C\uB824\uC9C4 \uC81C\uC57D\uC744 \uBA85\uC2DC\uD569\uB2C8\uB2E4. \uC801\uC6A9\uD558\uAE30 \uC804\uAE4C\uC9C0\uB294 \uB808\uC2DC\uD53C\uAC00 \uBCC0\uACBD\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        "Declare verified acquisition evidence and known limits for this source. The recipe is unchanged until Apply.");
+    public string SourceAcquisitionState => T(
+        "ThreeD.SourceQuality.Acquisition.State",
+        "\uC99D\uAC70 \uC0C1\uD0DC",
+        "Evidence status");
+    public string SourceAcquisitionEvidence => T(
+        "ThreeD.SourceQuality.Acquisition.Evidence",
+        "\uD68D\uB4DD \uC99D\uAC70",
+        "Acquisition evidence");
+    public string SourceAcquisitionLimitations => T(
+        "ThreeD.SourceQuality.Acquisition.Limitations",
+        "\uC81C\uC57D \uBC0F \uBD80\uC871\uD55C \uC815\uBCF4",
+        "Limitations and missing information");
+    public string SourceAcquisitionDirectionTitle => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Title",
+        "구조화된 획득 방향",
+        "Structured acquisition direction");
+    public string SourceAcquisitionDirectionState => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.State",
+        "방향 증거 상태",
+        "Direction evidence status");
+    public string SourceAcquisitionDirectionAvailable => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Available",
+        "방향 있음",
+        "Direction available");
+    public string SourceAcquisitionDirectionUnavailable => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Unavailable",
+        "방향 없음",
+        "Direction unavailable");
+    public string SourceAcquisitionDirectionConvention => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Convention",
+        "방향 규약",
+        "Direction convention");
+    public string SourceAcquisitionDirectionFrame => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Frame",
+        "좌표 프레임",
+        "Coordinate frame");
+    public string SourceAcquisitionDirectionVector => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Vector",
+        "센서에서 장면으로 향하는 XYZ 벡터",
+        "Sensor-to-scene XYZ vector");
+    public string SourceAcquisitionDirectionInvalid => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Invalid",
+        "방향 있음은 출처 증거 있음과 유한한 0이 아닌 XYZ 벡터가 필요합니다.",
+        "Direction available requires available provenance and a finite, non-zero XYZ vector.");
+    public string SourceAcquisitionDirectionPersisted => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Persisted",
+        "정규화된 방향이 레시피에 명시적으로 저장됨",
+        "Normalized direction explicitly stored in the recipe");
+    public string SourceAcquisitionDirectionFallback => T(
+        "ThreeD.SourceQuality.Acquisition.Direction.Fallback",
+        "기존 레시피 호환 기본값: 방향 증거 없음",
+        "Legacy-compatible fallback: direction evidence unavailable");
+    public string SourceAcquisitionAvailable => T(
+        "ThreeD.SourceQuality.Acquisition.Available",
+        "\uC99D\uAC70 \uC788\uC74C",
+        "Evidence available");
+    public string SourceAcquisitionUnavailable => T(
+        "ThreeD.SourceQuality.Acquisition.Unavailable",
+        "\uC99D\uAC70 \uC5C6\uC74C",
+        "Evidence unavailable");
+    public string SourceAcquisitionDefaultEvidence => T(
+        "ThreeD.SourceQuality.Acquisition.DefaultEvidence",
+        "\uC774 \uC18C\uC2A4\uC5D0 \uB300\uD574 \uC81C\uACF5\uB41C \uD68D\uB4DD \uCD9C\uCC98 \uC99D\uAC70\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+        "No acquisition provenance was supplied for this source.");
+    public string SourceAcquisitionDefaultLimitations => T(
+        "ThreeD.SourceQuality.Acquisition.DefaultLimitations",
+        "\uD68D\uB4DD \uC2DC\uC810\u00B7\uBC29\uD5A5, \uC13C\uC11C \uD3EC\uC988, \uAD50\uC815 \uBC0F \uCD2C\uC601 \uC870\uAC74\uC744 \uD655\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+        "Acquisition viewpoint, direction, sensor pose, calibration, and capture conditions are unavailable.");
+    public string SourceAcquisitionApply => T(
+        "ThreeD.SourceQuality.Acquisition.Apply",
+        "소스 계약 적용",
+        "Apply source contract");
+    public string SourceAcquisitionReset => T(
+        "ThreeD.SourceQuality.Acquisition.Reset",
+        "\uC801\uC6A9\uB41C \uAC12\uC73C\uB85C \uB418\uB3CC\uB9AC\uAE30",
+        "Reset to applied");
+    public string SourceAcquisitionEvidenceRequired => T(
+        "ThreeD.SourceQuality.Acquisition.EvidenceRequired",
+        "\uD68D\uB4DD \uC99D\uAC70\uB97C \uC785\uB825\uD558\uC138\uC694.",
+        "Acquisition evidence is required.");
+    public string SourceAcquisitionLimitationsRequired => T(
+        "ThreeD.SourceQuality.Acquisition.LimitationsRequired",
+        "\uC81C\uC57D \uBC0F \uBD80\uC871\uD55C \uC815\uBCF4\uB97C \uC785\uB825\uD558\uC138\uC694.",
+        "Limitation notes are required.");
+    public string SourceAcquisitionNoChanges => T(
+        "ThreeD.SourceQuality.Acquisition.NoChanges",
+        "\uC801\uC6A9\uD560 \uBCC0\uACBD \uC0AC\uD56D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+        "No pending provenance changes.");
+    public string SourceAcquisitionReady => T(
+        "ThreeD.SourceQuality.Acquisition.Ready",
+        "\uC801\uC6A9 \uB300\uAE30 \uC911\uC785\uB2C8\uB2E4. \uC544\uC9C1 \uB808\uC2DC\uD53C\uC5D0 \uC800\uC7A5\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+        "Ready to apply. The draft is not yet stored in the recipe.");
+    public string SourceAcquisitionPersisted => T(
+        "ThreeD.SourceQuality.Acquisition.Persisted",
+        "\uB808\uC2DC\uD53C\uC5D0 \uBA85\uC2DC\uC801\uC73C\uB85C \uC800\uC7A5\uB428",
+        "Explicitly stored in the recipe");
+    public string SourceAcquisitionFallback => T(
+        "ThreeD.SourceQuality.Acquisition.Fallback",
+        "\uAE30\uC874 \uB808\uC2DC\uD53C \uD638\uD658 \uAE30\uBCF8\uAC12\uC73C\uB85C \uD45C\uC2DC\uB428",
+        "Shown from the legacy-compatible fallback");
+    public string SourceAcquisitionBoundary => T(
+        "ThreeD.SourceQuality.Acquisition.Boundary",
+        "\uC774 \uBA54\uBAA8\uB294 \uCE74\uBA54\uB77C \uD3EC\uC988\u00B7\uAD50\uC815\u00B7\uD68D\uB4DD \uC2DC\uC810\uC744 \uC99D\uBA85\uD558\uAC70\uB098 \uCD94\uB860\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        "These notes do not prove or infer camera pose, calibration, or acquisition viewpoint.");
     public string CurrentSourceQualitySummaryFormat => T(
         "ThreeD.SourceQuality.CurrentSummaryFormat",
         "\uD488\uC9C8 \uC720\uD6A8 {0:P1} \u00B7 \uB204\uB77D {1:P1}",

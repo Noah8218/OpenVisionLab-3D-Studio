@@ -368,6 +368,29 @@ public sealed partial class ToolWorkbenchViewModel
             "Load a published match result before comparing parameters.");
     }
 
+    private void InvalidateSurfaceEdgeAcquisitionDirectionEvidence()
+    {
+        var sessionHadEvidence = surfaceMatchExperiment.ClearAcquisitionDirectionEvidence();
+        var hadEvidence = surfaceEdgeAcquisitionDirection is not null
+            || sessionHadEvidence;
+        if (!hadEvidence)
+        {
+            return;
+        }
+
+        surfaceEdgeAcquisitionDirection = null;
+        isSurfaceEdgeAcquisitionDirectionStale = true;
+        if (surfaceMatchExperiment.Published is { } published)
+        {
+            ApplyPublishedSurfaceMatchEvidence(published);
+            RaiseSurfaceMatchExperimentDisplay(published);
+        }
+        else
+        {
+            RaisePublishedSurfaceMatchProperties();
+        }
+    }
+
     private void ApplyPublishedSurfaceMatchEvidence(
         SurfaceMatchExperimentEvidence evidence)
     {
@@ -376,6 +399,7 @@ public sealed partial class ToolWorkbenchViewModel
         surfaceMatchRuntime = evidence.Runtime;
         surfaceEdgeScore = evidence.EdgeScore;
         surfaceEdgeDiagnosticOverlay = evidence.EdgeDiagnosticOverlay;
+        surfaceEdgeAcquisitionDirection = evidence.AcquisitionDirectionOrientation;
         surfaceEdgeAssessment = evidence.EdgeAssessment;
         surfaceMatchFalsePositiveReview = evidence.FalsePositiveReview;
         RaisePublishedSurfaceMatchProperties();
@@ -394,7 +418,8 @@ public sealed partial class ToolWorkbenchViewModel
                 evidence.EdgeScore,
                 evidence.EdgeDiagnosticOverlay,
                 evidence.EdgeAssessment,
-                evidence.FalsePositiveReview));
+                evidence.FalsePositiveReview,
+                evidence.AcquisitionDirectionOrientation));
 
     private void RaisePublishedSurfaceMatchProperties()
     {
@@ -404,6 +429,8 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(SurfaceMatchRuntime));
         OnPropertyChanged(nameof(SurfaceEdgeScore));
         OnPropertyChanged(nameof(SurfaceEdgeDiagnosticOverlay));
+        OnPropertyChanged(nameof(SurfaceEdgeAcquisitionDirection));
+        OnPropertyChanged(nameof(IsSurfaceEdgeAcquisitionDirectionStale));
         OnPropertyChanged(nameof(SurfaceEdgeAssessment));
         OnPropertyChanged(nameof(SurfaceMatchFalsePositiveReview));
         RefreshSurfaceMatchExperimentState();

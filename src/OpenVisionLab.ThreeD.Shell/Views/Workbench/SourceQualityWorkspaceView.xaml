@@ -73,8 +73,213 @@
                             <TextBlock FontSize="9"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource ThreeD.PassBrush}"
-                                       Text="{Binding Localization.SourceQualityViewOnly}" />
+                                       Text="{Binding Localization.SourceQualityViewOnly}"
+                                       TextWrapping="Wrap" />
                         </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,7,0,0"
+                        Padding="10"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        AutomationProperties.AutomationId="SourceAcquisitionProvenanceEditor">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontSize="10.5"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding Localization.SourceAcquisitionProvenanceTitle}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       FontSize="9"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding SelectedAcquisitionStateOption.Label}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAcquisitionStateAvailable}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionProvenanceHint}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,7,0,2"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionState}" />
+                        <ComboBox Height="27"
+                                  ItemsSource="{Binding AcquisitionStateOptions}"
+                                  DisplayMemberPath="Label"
+                                  SelectedItem="{Binding SelectedAcquisitionStateOption, Mode=TwoWay}"
+                                  AutomationProperties.AutomationId="SourceAcquisitionProvenanceState"
+                                  AutomationProperties.Name="{Binding Localization.SourceAcquisitionProvenanceTitle}" />
+                        <TextBlock Margin="0,7,0,2"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionEvidence}" />
+                        <TextBox MinHeight="42"
+                                 MaxLength="2000"
+                                 Padding="6,4"
+                                 AcceptsReturn="True"
+                                 TextAlignment="Left"
+                                 Text="{Binding AcquisitionEvidenceDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.AutomationId="SourceAcquisitionEvidence"
+                                 AutomationProperties.Name="{Binding Localization.SourceAcquisitionEvidence}" />
+                        <TextBlock Margin="0,7,0,2"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionLimitations}" />
+                        <TextBox MinHeight="50"
+                                 MaxLength="2000"
+                                 Padding="6,4"
+                                 AcceptsReturn="True"
+                                 TextAlignment="Left"
+                                 Text="{Binding AcquisitionLimitationNotesDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                  AutomationProperties.AutomationId="SourceAcquisitionLimitations"
+                                  AutomationProperties.Name="{Binding Localization.SourceAcquisitionLimitations}" />
+                        <Border Margin="0,8,0,0"
+                                Padding="8"
+                                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                AutomationProperties.AutomationId="SourceAcquisitionDirectionEditor">
+                            <StackPanel>
+                                <TextBlock FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding Localization.SourceAcquisitionDirectionTitle}" />
+                                <TextBlock Margin="0,6,0,2"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding Localization.SourceAcquisitionDirectionState}" />
+                                <ComboBox Height="27"
+                                          ItemsSource="{Binding AcquisitionDirectionStateOptions}"
+                                          DisplayMemberPath="Label"
+                                          SelectedItem="{Binding SelectedAcquisitionDirectionStateOption, Mode=TwoWay}"
+                                          AutomationProperties.AutomationId="SourceAcquisitionDirectionState"
+                                          AutomationProperties.Name="{Binding Localization.SourceAcquisitionDirectionState}" />
+                                <Grid Margin="0,7,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding Localization.SourceAcquisitionDirectionConvention}" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="9.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding AcquisitionDirectionConvention}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding Localization.SourceAcquisitionDirectionFrame}" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="9.5"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding AcquisitionDirectionFrame}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding AcquisitionDirectionFrame}" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Margin="0,7,0,2"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding Localization.SourceAcquisitionDirectionVector}" />
+                                <Grid IsEnabled="{Binding IsAcquisitionDirectionAvailable}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="6" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="6" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Height="27"
+                                             Padding="6,3"
+                                             Text="{Binding AcquisitionDirectionXDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="SourceAcquisitionDirectionX"
+                                             AutomationProperties.Name="X" />
+                                    <TextBox Grid.Column="2"
+                                             Height="27"
+                                             Padding="6,3"
+                                             Text="{Binding AcquisitionDirectionYDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="SourceAcquisitionDirectionY"
+                                             AutomationProperties.Name="Y" />
+                                    <TextBox Grid.Column="4"
+                                             Height="27"
+                                             Padding="6,3"
+                                             Text="{Binding AcquisitionDirectionZDraft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="SourceAcquisitionDirectionZ"
+                                             AutomationProperties.Name="Z" />
+                                </Grid>
+                                <TextBlock Margin="0,5,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding AcquisitionDirectionPersistenceSummary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="8.5"
+                                   Text="{Binding AcquisitionDraftMessage}"
+                                   TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasAcquisitionValidationError}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <WrapPanel Margin="0,7,0,0">
+                            <Button Height="26"
+                                     Padding="8,2"
+                                     Command="{Binding ApplyAcquisitionProvenanceCommand}"
+                                    Content="{Binding Localization.SourceAcquisitionApply}"
+                                    AutomationProperties.AutomationId="ApplySourceAcquisitionProvenance"
+                                    AutomationProperties.Name="{Binding Localization.SourceAcquisitionApply}" />
+                            <Button Height="26"
+                                    Margin="6,0,0,0"
+                                    Padding="8,2"
+                                    Command="{Binding ResetAcquisitionProvenanceCommand}"
+                                    Content="{Binding Localization.SourceAcquisitionReset}"
+                                    AutomationProperties.AutomationId="ResetSourceAcquisitionProvenance"
+                                    AutomationProperties.Name="{Binding Localization.SourceAcquisitionReset}" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,6,0,0"
+                                   FontSize="8.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding AcquisitionPersistenceSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="8.5"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionBoundary}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 

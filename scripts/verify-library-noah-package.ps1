@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.8.13.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.9.1.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.8.13.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\LibraryNoah\Lib.ThreeD.2.9.1.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -55,7 +55,10 @@ try {
         "Lib.ThreeD.nuspec",
         "LICENSE",
         "NOTICE",
-        "lib/netstandard2.0/Lib.ThreeD.dll")) {
+        "README.md",
+        "docs/three-d-inspection.md",
+        "lib/netstandard2.0/Lib.ThreeD.dll",
+        "lib/netstandard2.0/Lib.ThreeD.xml")) {
         if ($entries -notcontains $requiredEntry) {
             throw "Library-Noah package is missing required entry: $requiredEntry"
         }
@@ -81,7 +84,7 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "Lib.ThreeD" -or $version -ne "2.8.13" -or $sourceCommit -ne "21f2e3084843ef8a499e6fe02c4326a19813aa2c") {
+    if ($id -ne "Lib.ThreeD" -or $version -ne "2.9.1" -or $sourceCommit -ne "9dd95690d3e439b459c39aea99878880cdcc5808") {
         throw "Library-Noah package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 

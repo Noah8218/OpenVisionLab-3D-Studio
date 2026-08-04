@@ -79,8 +79,18 @@ it does not run a tool.
    incompatible.
 2. Open the detailed **Source Quality** information when you need coverage,
    missing-value, unit, coordinate, or frame evidence.
-3. Inspect the 3D surface and the full-resolution **Height Image**.
-4. Use zoom, pan, fit, palette, and display-range controls as needed. These are
+3. In **Acquisition/source provenance**, choose whether acquisition evidence
+   is available and record the evidence and limitations. If an acquisition
+   direction was supplied, set **Structured acquisition direction** to
+   available and enter the XYZ vector using the displayed `Sensor → scene`
+   convention and source frame.
+4. Choose **Apply source contract**. The direction is normalized before it is
+   saved. Draft typing and reset do not change the recipe or run an inspection.
+5. Do not treat these values as an inferred camera pose or calibration. If the
+   direction was not supplied, keep it unavailable; the application does not
+   guess it from the 3D geometry.
+6. Inspect the 3D surface and the full-resolution **Height Image**.
+7. Use zoom, pan, fit, palette, and display-range controls as needed. These are
    Viewer settings and do not change the recipe or execute it.
 
 The tutorial source declares `raw-height`. Treat the displayed values as the
