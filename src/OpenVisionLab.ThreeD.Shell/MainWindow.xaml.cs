@@ -814,10 +814,10 @@ public partial class MainWindow : Window
                         || string.IsNullOrWhiteSpace(edgeStepId)
                         || !_viewModel.Workbench.TryConfigureHeightDifferenceEdgeSmoke(
                             edgeStepId,
-                            new ToolRecipeGridRectangle(285, 290, 135, 16),
+                            new ToolRecipeGridRectangle(156, 180, 135, 16),
                             "AcrossColumns",
                             "Rising",
-                            "100",
+                            "4",
                             out var edgeConfiguration))
                     {
                         _viewModel.SetViewerSmokeFailed("Edge smoke prerequisite failed: Published Filter or smoke-only search band is unavailable.");
