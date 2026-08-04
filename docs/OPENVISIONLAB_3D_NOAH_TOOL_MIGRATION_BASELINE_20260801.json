@@ -110,6 +110,11 @@
       "responsibility": "Explicit execution, acceptance, and observational runtime composition."
     },
     {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/MultipleSurfaceMatchEvaluationExecutor.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicMultipleSurfaceMatchTool adapter plus model/scene/unit identity validation, existing execution and assessment composition, stable collection identity, and typed evidence mapping."
+    },
+    {
       "path": "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DLevelSurfaceRule.cs",
       "maximumSignalCount": 0,
       "responsibility": "Strict LevelSurfaceTool adapter plus source and reference identity validation, authored RMS acceptance, transform/artifact, metric, and overlay composition."
@@ -117,7 +122,12 @@
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceModelPreparation.cs",
       "maximumSignalCount": 0,
-      "responsibility": "Strict DeterministicSurfaceModelPreparationTool adapter plus source-normal admission and identified artifact composition."
+      "responsibility": "Strict DeterministicModelSurfaceSelectionTool and DeterministicSurfaceModelPreparationTool adapter plus source-normal admission, source-triangle locator mapping, and identified active-domain artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/ModelKeyPointExtractor.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict DeterministicModelKeyPointExtractionTool adapter plus source sample and triangle identity mapping, identified artifact composition, and WPF-neutral display-only debug overlay composition."
     },
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Matching/PreparedScenePreparation.cs",
@@ -138,6 +148,11 @@
       "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceAndEdgeMatchScorer.cs",
       "maximumSignalCount": 0,
       "responsibility": "Strict DeterministicSurfaceEdgeCoverageTool adapter plus identity validation, evidence formatting, and score-artifact composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceMatchPoseEquivalenceEvaluator.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict RigidPoseSymmetryEquivalenceTool adapter plus SurfaceModel, pose, unit, source-frame, target-frame, tolerance, and typed evidence validation."
     },
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Rules/C3DThicknessRule.cs",

@@ -456,6 +456,7 @@ public sealed partial class ToolWorkbenchViewModel
         showPublishedSurfaceMatchExperimentCommand?.RaiseCanExecuteChanged();
         showCandidateSurfaceMatchExperimentCommand?.RaiseCanExecuteChanged();
         discardSurfaceMatchExperimentCommand?.RaiseCanExecuteChanged();
+        RefreshSurfaceMatchCollectionState();
     }
 
     private static string FormatExperimentEvidence(

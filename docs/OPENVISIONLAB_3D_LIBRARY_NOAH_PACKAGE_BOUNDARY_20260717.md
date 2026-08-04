@@ -10,18 +10,18 @@ This keeps Studio CI, a deployed Viewer bundle, and a developer machine independ
 from `C:\Git\Library-Noah` while preserving a reviewable source commit and package
 hash.
 
-## Current fixed input - 2026-08-01
+## Current fixed input - 2026-08-04
 
 | Item | Value |
 | --- | --- |
 | Package ID | `Lib.ThreeD` |
-| Version | `2.8.8` |
-| Source commit | `0fe04bc967fa89918b3c6d937566cce56de69682` |
+| Version | `2.8.13` |
+| Source commit | `21f2e3084843ef8a499e6fe02c4326a19813aa2c` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.8.nupkg` |
-| SHA-256 | `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405` |
+| Vendored path | `third_party/LibraryNoah/Lib.ThreeD.2.8.13.nupkg` |
+| SHA-256 | `852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D` |
 
-The current package includes the previously migrated inspection tools,
+The current package retains every `2.8.12` API and includes the previously migrated inspection tools,
 Surface Match pose-search/coverage, deterministic SurfaceModel and Prepared
 Scene sampling, model/organized-scene edge extraction, and edge-domain
 coverage. It now also includes center-excluded local-median outlier filtering
@@ -40,6 +40,19 @@ It now also owns labeled-evidence descriptive statistics and deterministic
 threshold-candidate construction, classification, error counting, ranking,
 and tie-breaking through two public sealed Tools. Studio's labeled-evidence
 adapter reuses the existing Noah region-statistics Tool for C3D ROI aggregation.
+The package now also owns bounded deterministic multiple Surface Match search,
+per-result unique-nearest coverage, greedy disjoint scene-sample claiming,
+stable result ordering, and bounded termination through public sealed
+`DeterministicMultipleSurfaceMatchTool`.
+It now also owns direct and declared model-axis cyclic rigid-pose equivalence,
+translation/rotation residuals, inclusive decisions, and stable operation
+tie-breaking through public sealed `RigidPoseSymmetryEquivalenceTool`.
+It now owns deterministic exact-coordinate duplicate removal and canonical
+explicit internal/unobservable source-triangle exclusions through public
+sealed `DeterministicModelSurfaceSelectionTool`.
+It now also owns deterministic farthest-point key-point selection from an
+already prepared model-sample domain through public sealed
+`DeterministicModelKeyPointExtractionTool`.
 Studio consumes them through strict adapters and retains product
 contracts, identities, unit/frame validation, acceptance, lifecycle,
 evidence, and UI.
@@ -71,7 +84,7 @@ the current package selection.
   result status and metrics back to Studio `ToolResult`.
 - `OpenVisionLab.ThreeD.Runner`: verifies the package assembly identity, the
   established inspection behaviors, and deterministic results from the
-  current package surface (`19/19` current bridge cases).
+  current package surface (`25/25` current bridge cases).
 - View/ViewModel: the bounded Thickness and local raw-height Warpage task slices
   consume this bridge through typed recipes and explicit Preview/Publish commands.
   The Warpage source is user-designated and declares `raw-height` plus its display
@@ -80,9 +93,15 @@ the current package selection.
 
 ## Guardrails
 
-- A declared `Unit` and `FrameId` are mandatory at the Studio bridge boundary.
+- A declared legacy `Unit` and `FrameId` remain mandatory at the Studio bridge boundary.
+- Strict callers may separately declare planar and scalar-height units plus an
+  exact expected planar-unit/height-unit/frame contract. Legacy callers map
+  their single `Unit` to both dimensions without an implicit conversion.
 - `double.NaN` represents a missing scalar sample; infinity and invalid grid geometry
   are controlled errors.
+- Count and valid-coverage gates are independent. Results preserve total,
+  valid, and missing counts, coverage ratios, coordinate convention, and
+  package-authored metric units.
 - A package `Fail` remains a measurement result. Invalid input, ROI, or insufficient
   data becomes a Studio `Error` and is not presented as a tolerance failure.
 - This bridge does not convert a C3D display height into physical thickness or
@@ -161,10 +180,130 @@ result is byte-identical before and after migration. Preserve
 `docs/OPENVISIONLAB_3D_SURFACE_MATCH_NOAH_MIGRATION_20260801.md` and
 `artifacts/current/20260801-surface-match-noah-migration/`.
 
-## Current 2.8.8 checkpoint - 2026-08-01
+## Current 2.8.13 checkpoint - 2026-08-04
+
+Library-Noah commit `21f2e3084843ef8a499e6fe02c4326a19813aa2c` is the exact
+source of the current vendored package. It retains every `2.8.12` API and adds
+explicit planar-unit, height-unit, coordinate-convention, frame, missing-value,
+valid-coverage, and per-metric-unit contracts for scalar height-map inspection.
+The Studio adapter preserves the legacy single-unit constructor while routing
+strict calls through `HeightMapInputRequirements` and the explicit
+`HeightMap3D` constructor.
+
+The committed source passes Release `0/0` and full Smoke `128/128`. Package
+metadata records the same commit; package SHA-256 is
+`852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D`.
+Studio package integrity passes; Release build passes `0/0`; direct bridge
+passes `25/25`; C3D Thickness, Warpage, and Datum Plane regressions pass `5/5`
+each; structure passes `29/29`; and NuGet health passes with `12` projects,
+zero vulnerable packages, and zero deprecated packages. Evidence is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-library-noah-input-contract`.
+
+Status: Complete
+
+Scope: `Lib.ThreeD 2.8.13` provenance, vendored package/hash, backward-compatible
+Studio strict height-map adapter, and focused regression evidence.
+
+Acceptance criteria: exact package version/source/SHA-256 -> pass; explicit
+planar unit/height unit/frame/coordinate/missing/coverage/metric-unit path ->
+pass; legacy Thickness/Warpage/Datum behavior -> pass; Studio dependency and
+structure boundaries -> pass.
+
+Verification: Library-Noah Release `0/0` and Smoke `128/128`; Studio package
+verifier pass; Studio Release `0/0`; direct bridge `25/25`; C3D Thickness,
+Warpage, and Datum Plane `5/5` each; structure `29/29`; NuGet health `12/0/0`.
+
+Evidence: the package and checksum under `third_party/LibraryNoah`; this
+document; and the D-backed `20260804-library-noah-input-contract` reports.
+
+Boundary / next dependency: existing product recipes remain supported through
+the legacy equal-unit compatibility path. The strict split-unit path is proven
+by the direct bridge, but it does not establish physical C3D calibration or an
+acquisition mapping profile. `B-12` remains the next product priority.
+
+## Historical 2.8.12 checkpoint - 2026-08-03
+
+Library-Noah commit `7ed50ea37b3d7cb711c2afe698d209f9073e9217` is the exact
+source of the then-vendored package. It adds public sealed
+`DeterministicModelKeyPointExtractionTool` while retaining every prior 2.8.11
+API. Noah owns seed choice, nearest-selected distance, strict minimum
+separation, bounded count, and source-order tie-breaking. Studio retains
+SurfaceModel/sample/triangle identity, persistence, model-context validation,
+and WPF-neutral display-only overlay composition.
+
+The committed source passes Release `0/0` and full Smoke `122/122`. Package
+metadata records the same commit; package SHA-256 is
+`7E5DAF887851CB16C45279CD957260C2546AD0EDBB92B9F4903E23E529BADFE3`.
+Studio Release Rebuild passes `0/0`; package integrity passes; direct bridge
+`21/21`; J-07 passes `15/15`; legacy byte parity passes `5/5`; and structure
+passes `29/29` with zero migration debt and `33` reviewed boundaries. Preserve
+`docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`
+and the D-backed `20260803-j07-model-key-points` evidence.
+
+## Historical 2.8.11 checkpoint - 2026-08-03
+
+Library-Noah commit `55ea7a61bd1281294e91aa5366d2bafb509d3667` is the exact
+source of the then-vendored package. It adds public sealed
+`DeterministicModelSurfaceSelectionTool` while retaining every prior 2.8.10
+API. Noah owns exact-coordinate triangle identity, canonical explicit
+exclusions, retained source ordering, duplicate ownership, and controlled
+invalid-input results. Studio retains imported-source identity, authored
+roles, original locator mapping, schema/persistence, lifecycle, and active-
+domain routing.
+
+The committed source passes Release `0/0` and full Smoke `118/118`. Package
+metadata records the same commit; package SHA-256 is
+`AC61E132938AD184F3E3A39622A5BC3C4E48F1419D7C4EC75AC604A8CD1F8A42`.
+Studio Release Rebuild passes `0/0`; package integrity passes; direct bridge
+`21/21`; J-05 passes `15/15`; legacy byte parity passes `5/5`; and structure
+passes `29/29` with zero migration debt and `32` reviewed boundaries.
+Preserve `docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md` and the
+D-backed `20260803-j05-model-surface-selection` evidence.
+
+## Historical 2.8.10 checkpoint - 2026-08-03
+
+Library-Noah commit `f225fd2709de1dd1d0ecfe19b37315cb1f019ee4` is the exact
+source of the then-vendored package. It adds public sealed
+`RigidPoseSymmetryEquivalenceTool` while retaining every prior 2.8.9 API. Noah
+owns direct and declared model-axis cyclic rigid-pose equivalence,
+translation/rotation residuals, inclusive limit decisions, and deterministic
+operation tie-breaking. Studio retains SurfaceModel/pose/unit/frame/limit
+validation and typed evidence composition.
+
+The committed source passes Release `0/0` and full Smoke `113/113`. Package
+metadata records the same commit; package SHA-256 is
+`535CD75D33BE5EC015B1B36215FF3DBDD7E8AEC1A5F2B8FFE1FCCBA18B7877C7`.
+Studio Release passes `0/0`; package integrity passes; direct bridge `20/20`;
+J-13 passes `15/15`; legacy byte parity passes `5/5`; and structure passes
+`29/29` with zero migration debt and `32` reviewed boundaries. Preserve
+`docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md` and the
+D-backed `20260803-j13-symmetry-aware-pose-equivalence` evidence.
+
+## Historical 2.8.9 checkpoint - 2026-08-03
+
+Library-Noah commit `4e301f481cac886f78425197314cd540b653473a` is the exact
+source of the then-vendored package. It adds public sealed
+`DeterministicMultipleSurfaceMatchTool` while retaining every prior 2.8.8 API.
+Noah owns the repeated pose search, unique-nearest scoring, disjoint scene
+sample claims, deterministic ordering, and bounded stop policy. Studio remains
+responsible for source/unit/frame identity, authored acceptance, stable product
+IDs, immutable collection persistence, explicit lifecycle, evidence, and UI.
+
+The committed source passes Release `0/0` and full Smoke `108/108`. Package
+metadata records the same commit; the package SHA-256 is
+`A3B212E6D8AC487DF668F0FE557C17615845A161412AE7AF6BD7FE4FCC260278`.
+Studio Release passes `0/0`; package integrity passes; direct bridge `19/19`;
+multiple-match Runner `14/14`; Workbench `6/6`; existing matching `34/34`;
+and structure `29/29` with zero migration debt and `31` reviewed boundaries.
+Preserve
+`docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`
+and the physical evidence under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j12-multiple-match\`.
+
+## Earlier 2.8.8 checkpoint - 2026-08-01
 
 Library-Noah commit `0fe04bc967fa89918b3c6d937566cce56de69682` is the exact
-source of the current vendored package. It adds public sealed
+source of the then-vendored package. It adds public sealed
 `LabeledEvidenceStatisticsTool` and `ThresholdCandidateAnalysisTool` while
 retaining every prior 2.8.7 API.
 

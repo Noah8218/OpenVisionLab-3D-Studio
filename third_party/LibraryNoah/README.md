@@ -1,10 +1,10 @@
 # Library-Noah package input
 
-- Package: `Lib.ThreeD` `2.8.8`
-- Source worktree: `C:\Git\Library-Noah-surface-match-kernel`
-- Source commit: `0fe04bc967fa89918b3c6d937566cce56de69682`
+- Package: `Lib.ThreeD` `2.8.13`
+- Source worktree: `C:\Git\Library-Noah-3d-input-contract-2.8.13`
+- Source commit: `21f2e3084843ef8a499e6fe02c4326a19813aa2c`
 - Target framework: `netstandard2.0`
-- SHA-256: `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`
+- SHA-256: `852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D`
 
 This package is intentionally vendored so Studio restore and CI do not depend on an
 adjacent local checkout. `scripts/verify-library-noah-package.ps1` verifies the

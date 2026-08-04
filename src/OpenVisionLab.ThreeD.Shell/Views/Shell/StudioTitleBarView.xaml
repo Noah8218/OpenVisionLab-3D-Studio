@@ -72,6 +72,58 @@
                                Text="{Binding SourceContextText, ElementName=Root}"
                                TextTrimming="CharacterEllipsis" />
                 </Border>
+                <Border x:Name="CurrentSourceQualityStatusBadge"
+                        MaxWidth="190"
+                        Margin="6,0,0,0"
+                        Padding="8,4"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        ToolTip="{Binding SourceQualityStatusToolTip, ElementName=Root}"
+                        Visibility="{Binding IsSourceQualityStatusVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="StudioCurrentSourceQualityStatus"
+                        AutomationProperties.Name="{Binding SourceQualityStatusText, ElementName=Root}"
+                        AutomationProperties.HelpText="{Binding SourceQualityStatusToolTip, ElementName=Root}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Pass">
+                                    <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Warning">
+                                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Error">
+                                    <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock x:Name="CurrentSourceQualityStatusText"
+                               FontSize="10.5"
+                               Text="{Binding SourceQualityStatusText, ElementName=Root}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Pass">
+                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Warning">
+                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SourceQualityStatusKind, ElementName=Root}" Value="Error">
+                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
                 <Border Margin="6,0,0,0"
                         Padding="8,4"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"

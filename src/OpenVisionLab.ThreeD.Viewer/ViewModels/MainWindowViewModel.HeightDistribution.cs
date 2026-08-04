@@ -227,6 +227,20 @@ public sealed partial class MainWindowViewModel
             isAuto: true);
     }
 
+    public bool TryApplyLinkedC3DHeightColorRange(double minimum, double maximum)
+    {
+        if (c3DHeightDistribution is null
+            || !double.IsFinite(minimum)
+            || !double.IsFinite(maximum)
+            || minimum >= maximum)
+        {
+            return false;
+        }
+
+        ApplyC3DHeightColorRange(minimum, maximum, isAuto: false);
+        return true;
+    }
+
     public void ShiftC3DHeightColorMinimum(int direction)
     {
         if (c3DHeightDistribution is null || direction == 0)

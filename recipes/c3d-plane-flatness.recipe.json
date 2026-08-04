@@ -29,7 +29,7 @@
       "halfWidth": 2.0,
       "halfDepth": 2.0
     },
-    "tolerance": 3.0,
+    "tolerance": 0.01,
     "unit": "model",
     "maxSampledPoints": 140000,
     "enabled": true

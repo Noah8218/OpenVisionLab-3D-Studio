@@ -7,6 +7,7 @@ using System.Windows.Input;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
@@ -27,6 +28,7 @@ public partial class ViewerWorkspaceView : UserControl
     private Window? ownerWindow;
     private string loadedAuxiliaryPath = string.Empty;
     private bool subscriptionsAttached;
+    private bool synchronizingLinkedHeightDisplayRange;
     private bool roiFocusRatioApplied;
     private ViewerWorkspaceLayout roiFocusLayout;
     private GridLength roiFocusFirstLength;
@@ -132,6 +134,7 @@ public partial class ViewerWorkspaceView : UserControl
         workbench.PropertyChanged += OnWorkbenchPropertyChanged;
         workbench.CompareCandidates.CollectionChanged += OnCompareCandidatesChanged;
         workbench.SharedHeightCursor.PropertyChanged += OnSharedHeightCursorChanged;
+        workbench.HeightImageViewer.PropertyChanged += OnHeightImageViewerPropertyChanged;
         AttachMainViewer(MainViewerContent as OpenVisionThreeDViewerControl);
         subscriptionsAttached = true;
     }
@@ -147,6 +150,7 @@ public partial class ViewerWorkspaceView : UserControl
         workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
         workbench.CompareCandidates.CollectionChanged -= OnCompareCandidatesChanged;
         workbench.SharedHeightCursor.PropertyChanged -= OnSharedHeightCursorChanged;
+        workbench.HeightImageViewer.PropertyChanged -= OnHeightImageViewerPropertyChanged;
         AttachMainViewer(null);
         subscriptionsAttached = false;
     }
@@ -167,12 +171,14 @@ public partial class ViewerWorkspaceView : UserControl
             }
 
             ApplySharedHeightCursorToMainViewer();
+            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
             return;
         }
 
         if (mainViewer is not null)
         {
             mainViewer.C3DGridHoverChanged -= OnMainViewerC3DGridHoverChanged;
+            mainViewer.ViewModel.PropertyChanged -= OnMainViewerPropertyChanged;
             mainViewer.SetLinkedHeightCursor(null);
         }
 
@@ -181,10 +187,110 @@ public partial class ViewerWorkspaceView : UserControl
         if (mainViewer is not null)
         {
             mainViewer.C3DGridHoverChanged += OnMainViewerC3DGridHoverChanged;
+            mainViewer.ViewModel.PropertyChanged += OnMainViewerPropertyChanged;
         }
 
         ApplySharedHeightCursorToMainViewer();
+        SynchronizeLinkedHeightDisplayRangeFromMainViewer();
     }
+
+    private void OnMainViewerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(MainWindowViewModel.C3DHeightColorRangeRevision)
+            or nameof(MainWindowViewModel.C3DHeightDistributionSourceSha256))
+        {
+            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
+        }
+    }
+
+    private void OnHeightImageViewerPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(HeightImageViewerViewModel.Frame))
+        {
+            SynchronizeLinkedHeightDisplayRangeFromMainViewer();
+        }
+        else if (args.PropertyName == nameof(HeightImageViewerViewModel.DisplayRangeRevision))
+        {
+            SynchronizeLinkedHeightDisplayRangeToMainViewer();
+        }
+    }
+
+    private void SynchronizeLinkedHeightDisplayRangeFromMainViewer()
+    {
+        var viewerViewModel = mainViewer?.ViewModel;
+        var heightImage = workbench?.HeightImageViewer;
+        if (synchronizingLinkedHeightDisplayRange
+            || viewerViewModel is null
+            || heightImage?.Frame is null
+            || !HasMatchingHeightSource(viewerViewModel, heightImage))
+        {
+            return;
+        }
+
+        synchronizingLinkedHeightDisplayRange = true;
+        try
+        {
+            if (viewerViewModel.C3DHeightColorRangeAuto)
+            {
+                heightImage.UseAutoRange();
+            }
+            else
+            {
+                heightImage.TryApplyLinkedDisplayRange(
+                    viewerViewModel.C3DHeightColorMinimumRaw,
+                    viewerViewModel.C3DHeightColorMaximumRaw);
+            }
+        }
+        finally
+        {
+            synchronizingLinkedHeightDisplayRange = false;
+        }
+    }
+
+    private void SynchronizeLinkedHeightDisplayRangeToMainViewer()
+    {
+        var viewerViewModel = mainViewer?.ViewModel;
+        var heightImage = workbench?.HeightImageViewer;
+        if (synchronizingLinkedHeightDisplayRange
+            || viewerViewModel is null
+            || heightImage?.DisplayFrame is not { } displayFrame
+            || !HasMatchingHeightSource(viewerViewModel, heightImage))
+        {
+            return;
+        }
+
+        synchronizingLinkedHeightDisplayRange = true;
+        try
+        {
+            if (heightImage.IsAutoRange)
+            {
+                viewerViewModel.ResetC3DHeightColorRange();
+            }
+            else
+            {
+                viewerViewModel.TryApplyLinkedC3DHeightColorRange(
+                    displayFrame.Minimum,
+                    displayFrame.Maximum);
+            }
+        }
+        finally
+        {
+            synchronizingLinkedHeightDisplayRange = false;
+        }
+    }
+
+    private static bool HasMatchingHeightSource(
+        MainWindowViewModel viewerViewModel,
+        HeightImageViewerViewModel heightImage) =>
+        heightImage.Frame is { } frame
+        && string.Equals(
+            viewerViewModel.C3DHeightDistributionSourceSha256,
+            frame.SourceContentSha256,
+            StringComparison.OrdinalIgnoreCase);
 
     private void OnMainViewerC3DGridHoverChanged(
         object? sender,

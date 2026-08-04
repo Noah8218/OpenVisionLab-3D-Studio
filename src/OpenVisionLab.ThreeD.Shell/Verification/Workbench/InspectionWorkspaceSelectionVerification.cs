@@ -420,6 +420,23 @@ internal static class InspectionWorkspaceSelectionVerification
                     == workbench.HeightImageViewer.Frame?.Maximum,
                 workbench.HeightImageViewer.DisplayRangeSummary);
 
+            var linkedRangeRevision = workbench.HeightImageViewer.DisplayRangeRevision;
+            var linkedRangeApplied = workbench.HeightImageViewer.TryApplyLinkedDisplayRange(
+                12.123456789,
+                32.987654321);
+            Check(
+                "linked 3D range preserves exact Height Image bounds as view-only state",
+                linkedRangeApplied
+                && workbench.HeightImageViewer.DisplayRangeRevision > linkedRangeRevision
+                && workbench.HeightImageViewer.DisplayFrame?.Minimum == 12.123456789
+                && workbench.HeightImageViewer.DisplayFrame?.Maximum == 32.987654321
+                && !workbench.IsDirty
+                && thickness.InputEntityIdsText == routeBeforeSelectionOnlyChanges
+                && thickness.State == stateBeforeSelectionOnlyChanges
+                && workbench.CurrentMeasurementOutput is null,
+                workbench.HeightImageViewer.DisplayRangeSummary);
+            workbench.HeightImageViewer.AutoRangeCommand.Execute(null);
+
             workbench.HeightImageViewer.SelectedPalette = C3DHeightImagePalette.Height;
             Check(
                 "Height Image default palette and Auto range restore the visible-overlay pixel identity",

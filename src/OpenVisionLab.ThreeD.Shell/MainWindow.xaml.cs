@@ -400,6 +400,14 @@ public partial class MainWindow : Window
             smoke.SurfaceMatchExperimentPreviewSmoke;
         var surfaceMatchExperimentFocusHoverSmoke =
             smoke.SurfaceMatchExperimentFocusHoverSmoke;
+        var surfaceMatchCollectionPopupSmoke =
+            smoke.SurfaceMatchCollectionPopupSmoke;
+        var surfaceMatchCollectionPopupScreenshotPath =
+            smoke.SurfaceMatchCollectionPopupScreenshotPath;
+        var surfaceMatchCollectionDisabledSmoke =
+            smoke.SurfaceMatchCollectionDisabledSmoke;
+        var surfaceMatchCollectionNavigationFocusHoverSmoke =
+            smoke.SurfaceMatchCollectionNavigationFocusHoverSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
         var twoPointLinePublishSmoke = smoke.TwoPointLinePublishSmoke;
@@ -1063,6 +1071,107 @@ public partial class MainWindow : Window
                 var workbenchUiApplyStarted = Stopwatch.GetTimestamp();
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                if (surfaceMatchCollectionNavigationFocusHoverSmoke)
+                {
+                    var collection =
+                        _viewModel.Workbench.SurfaceMatchCollection;
+                    var selectedMatchId = _viewModel.Workbench
+                        .SelectedSurfaceMatchCollectionItem?.MatchId;
+                    var previousButton =
+                        FindVisualDescendants<
+                                System.Windows.Controls.Button>(
+                                ToolWorkbench)
+                            .FirstOrDefault(button =>
+                                System.Windows.Automation
+                                    .AutomationProperties
+                                    .GetAutomationId(button)
+                                == "PreviousSurfaceMatchCollectionItem");
+                    if (collection is null
+                        || selectedMatchId is null
+                        || previousButton is null
+                        || !previousButton.IsEnabled
+                        || !previousButton.Focus())
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Previous Surface Match collection navigation button could not receive focus.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    var center = previousButton.PointToScreen(
+                        new System.Windows.Point(
+                            previousButton.ActualWidth / 2.0,
+                            previousButton.ActualHeight / 2.0));
+                    if (!SetCursorPos(
+                            (int)Math.Round(center.X),
+                            (int)Math.Round(center.Y)))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Previous Surface Match collection navigation button could not receive pointer hover.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Input);
+                    await Task.Delay(100);
+                    if (_viewModel.Workbench.SurfaceMatchCollection
+                            ?.ContentSha256 != collection.ContentSha256
+                        || _viewModel.Workbench
+                            .SelectedSurfaceMatchCollectionItem?.MatchId
+                            != selectedMatchId)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Focusing or hovering Surface Match navigation changed evidence or selection state.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+                if (surfaceMatchCollectionDisabledSmoke)
+                {
+                    var collection =
+                        _viewModel.Workbench.SurfaceMatchCollection;
+                    var selectedMatchId = _viewModel.Workbench
+                        .SelectedSurfaceMatchCollectionItem?.MatchId;
+                    var selector =
+                        FindVisualDescendants<
+                                System.Windows.Controls.ComboBox>(
+                                ToolWorkbench)
+                            .FirstOrDefault(comboBox =>
+                                System.Windows.Automation
+                                    .AutomationProperties
+                                    .GetAutomationId(comboBox)
+                                == "SurfaceMatchCollectionSelector");
+                    if (collection is null
+                        || selectedMatchId is null
+                        || selector is null)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match collection selector was unavailable for disabled-state capture.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    selector.SetCurrentValue(
+                        IsEnabledProperty,
+                        false);
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                    if (selector.IsEnabled
+                        || _viewModel.Workbench.SurfaceMatchCollection
+                            ?.ContentSha256 != collection.ContentSha256
+                        || _viewModel.Workbench
+                            .SelectedSurfaceMatchCollectionItem?.MatchId
+                            != selectedMatchId)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match collection disabled-state capture changed evidence or selection state.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
                 if (surfaceMatchExperimentFocusHoverSmoke)
                 {
                     var publishedButton =
@@ -1099,6 +1208,123 @@ public partial class MainWindow : Window
                         () => { },
                         DispatcherPriority.Input);
                     await Task.Delay(100);
+                }
+                if (surfaceMatchCollectionPopupSmoke)
+                {
+                    var collection =
+                        _viewModel.Workbench.SurfaceMatchCollection;
+                    var selectedMatchId = _viewModel.Workbench
+                        .SelectedSurfaceMatchCollectionItem?.MatchId;
+                    var selector =
+                        FindVisualDescendants<
+                                System.Windows.Controls.ComboBox>(
+                                ToolWorkbench)
+                            .FirstOrDefault(comboBox =>
+                                System.Windows.Automation
+                                    .AutomationProperties
+                                    .GetAutomationId(comboBox)
+                                == "SurfaceMatchCollectionSelector");
+                    if (collection is null
+                        || selectedMatchId is null
+                        || selector is null
+                        || !selector.Focus())
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match collection selector could not receive keyboard focus.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    selector.IsDropDownOpen = true;
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                    var center = selector.PointToScreen(
+                        new System.Windows.Point(
+                            selector.ActualWidth / 2.0,
+                            selector.ActualHeight / 2.0));
+                    if (!SetCursorPos(
+                            (int)Math.Round(center.X),
+                            (int)Math.Round(
+                                center.Y
+                                + selector.ActualHeight * 2.5)))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Surface Match collection popup item could not receive pointer hover.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Input);
+                    await Task.Delay(100);
+                    if (surfaceMatchCollectionPopupScreenshotPath is not null)
+                    {
+                        try
+                        {
+                            selector.ApplyTemplate();
+                            var popup = selector.Template.FindName(
+                                    "PART_Popup",
+                                    selector)
+                                as System.Windows.Controls.Primitives.Popup
+                                ?? FindVisualDescendants<
+                                        System.Windows.Controls.Primitives.Popup>(
+                                        selector)
+                                    .FirstOrDefault();
+                            if (popup?.Child is not FrameworkElement popupChild
+                                || !popup.IsOpen)
+                            {
+                                throw new InvalidOperationException(
+                                    "PART_Popup is closed or has no FrameworkElement child.");
+                            }
+
+                            popupChild.UpdateLayout();
+                            var popupCapture = WpfScreenshotCapture.Capture(
+                                popupChild);
+                            WpfScreenshotCapture.Save(
+                                popupCapture.Bitmap,
+                                surfaceMatchCollectionPopupScreenshotPath);
+                            ShellSmokeArtifacts.WriteTextReport(
+                                surfaceMatchCollectionPopupScreenshotPath
+                                + ".quality.txt",
+                            [
+                                "SurfaceMatchCollectionPopupScreenshot|"
+                                + popupCapture.Quality.Summary,
+                                "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
+                            ]);
+                        }
+                        catch (Exception exception)
+                        {
+                            ShellSmokeArtifacts.WriteTextReport(
+                                surfaceMatchCollectionPopupScreenshotPath
+                                + ".failure.txt",
+                            [
+                                "SurfaceMatchCollectionPopupScreenshot=FAIL",
+                                exception.ToString()
+                            ]);
+                            _viewModel.SetViewerSmokeFailed(
+                                "Surface Match collection popup app-only capture failed: "
+                                + exception.Message);
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                    }
+
+                    if (!selector.IsDropDownOpen
+                        || _viewModel.Workbench.SurfaceMatchCollection
+                            ?.ContentSha256 != collection.ContentSha256
+                        || _viewModel.Workbench
+                            .SelectedSurfaceMatchCollectionItem?.MatchId
+                            != selectedMatchId)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Opening the Surface Match collection selector changed evidence or selection state.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    await Task.Delay(2500);
                 }
                 var workbenchUiApplyMilliseconds = Stopwatch.GetElapsedTime(workbenchUiApplyStarted).TotalMilliseconds;
                 if (workbenchInteractionReportPath is not null)
@@ -1224,6 +1450,8 @@ public partial class MainWindow : Window
             GetCommandLineValue("--smoke-surface-match-assessment");
         var runtimePath =
             GetCommandLineValue("--smoke-surface-match-runtime");
+        var collectionPath =
+            GetCommandLineValue("--smoke-surface-match-collection");
         var edgeScorePath =
             GetCommandLineValue("--smoke-surface-edge-score");
         var edgeOverlayPath =
@@ -1237,12 +1465,65 @@ public partial class MainWindow : Window
             && executionPath is null
             && assessmentPath is null
             && runtimePath is null
+            && collectionPath is null
             && edgeScorePath is null
             && edgeOverlayPath is null
             && edgeAssessmentPath is null
             && falsePositiveReviewPath is null)
         {
             return true;
+        }
+
+        if (collectionPath is not null)
+        {
+            if (string.IsNullOrWhiteSpace(modelPath)
+                || string.IsNullOrWhiteSpace(scenePath)
+                || string.IsNullOrWhiteSpace(collectionPath)
+                || executionPath is not null
+                || assessmentPath is not null
+                || runtimePath is not null
+                || edgeScorePath is not null
+                || edgeOverlayPath is not null
+                || edgeAssessmentPath is not null
+                || falsePositiveReviewPath is not null)
+            {
+                failure =
+                    "Multiple Surface Match smoke requires model, scene, and collection paths without single-result evidence paths.";
+                return false;
+            }
+
+            try
+            {
+                var model = SurfaceModelArtifactStore.Load(modelPath);
+                var scene = PreparedSceneArtifactStore.Load(scenePath);
+                var collection = SurfaceMatchCollectionArtifactStore.Load(
+                    collectionPath);
+                _viewModel.Workbench.ShowSurfaceMatchCollectionEvidence(
+                    model,
+                    scene,
+                    collection);
+                var selectionText = GetCommandLineValue(
+                    "--smoke-surface-match-select-index");
+                if (selectionText is not null
+                    && (!int.TryParse(selectionText, out var selectionIndex)
+                        || selectionIndex < 0
+                        || selectionIndex >= collection.Items.Length
+                        || !_viewModel.Workbench.SelectSurfaceMatchCollectionItem(
+                            collection.Items[selectionIndex].MatchId)))
+                {
+                    failure =
+                        "Multiple Surface Match smoke selection index is invalid or could not be selected.";
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failure =
+                    $"Multiple Surface Match smoke evidence failed: {exception.Message}";
+                return false;
+            }
         }
 
         if (string.IsNullOrWhiteSpace(modelPath)
@@ -1479,10 +1760,22 @@ public partial class MainWindow : Window
         _viewModel.Workbench.SelectSourceQualityCommand.Execute(null);
         await Dispatcher.InvokeAsync(() => { });
 
+        var expectedGlobalKind = quality.Report?.Coverage.MissingSampleCount > 0
+            ? "Warning"
+            : "Pass";
         var passed = quality.HasReport
-                     && !quality.IsLoading
-                     && !quality.HasError
-                     && _viewModel.Workbench.IsSourceQualityWorkspaceVisible
+                      && !quality.IsLoading
+                      && !quality.HasError
+                      && _viewModel.Workbench.IsCurrentSourceQualityStatusVisible
+                      && string.Equals(
+                          _viewModel.Workbench.CurrentSourceQualityStatusKind,
+                          expectedGlobalKind,
+                          StringComparison.Ordinal)
+                      && !string.IsNullOrWhiteSpace(
+                          _viewModel.Workbench.CurrentSourceQualitySummary)
+                      && !string.IsNullOrWhiteSpace(
+                          _viewModel.Workbench.CurrentSourceQualityDetail)
+                      && _viewModel.Workbench.IsSourceQualityWorkspaceVisible
                      && !_viewModel.Workbench.HasSelectedPipelineStep
                      && _viewModel.Workbench.IsDirty == beforeDirty
                      && _viewModel.Workbench.PipelineSteps.Count == beforeStepCount
@@ -1501,6 +1794,7 @@ public partial class MainWindow : Window
                 [
                     $"SourceQualityWorkspaceSmoke|{(passed ? "Pass" : "Fail")}|viewOnly=true|recipeChanged=false|inspectionRun=false",
                     $"State|loading={quality.IsLoading}|hasReport={quality.HasReport}|hasError={quality.HasError}|visible={_viewModel.Workbench.IsSourceQualityWorkspaceVisible}|selectedStep={_viewModel.Workbench.SelectedPipelineStep?.Id ?? "(none)"}",
+                    $"GlobalStatus|visible={_viewModel.Workbench.IsCurrentSourceQualityStatusVisible}|kind={_viewModel.Workbench.CurrentSourceQualityStatusKind}|summary={_viewModel.Workbench.CurrentSourceQualitySummary}|detail={_viewModel.Workbench.CurrentSourceQualityDetail.Replace(Environment.NewLine, " | ")}",
                     $"Source|name={quality.SourceName}|grid={sourceReport?.Grid.Width ?? 0}x{sourceReport?.Grid.Height ?? 0}|cells={sourceReport?.Grid.CellCount ?? 0}|valid={sourceReport?.Coverage.ValidSampleCount ?? 0}|validRatio={sourceReport?.Coverage.ValidRatio ?? 0:R}|missing={sourceReport?.Coverage.MissingSampleCount ?? 0}|missingRatio={sourceReport?.Coverage.MissingRatio ?? 0:R}",
                     $"Height|min={sourceReport?.Height.Minimum?.ToString("R") ?? "null"}|max={sourceReport?.Height.Maximum?.ToString("R") ?? "null"}|mean={sourceReport?.Height.Mean?.ToString("R") ?? "null"}|bins={sourceReport?.Height.Distribution?.BinCount ?? 0}|peak={sourceReport?.Height.Distribution?.PeakBinIndex ?? -1}",
                     $"Mask|bytes={sourceReport?.Coverage.InvalidCellMask.ByteLength ?? 0}|sha256={quality.MaskSha256}",
@@ -1530,6 +1824,10 @@ public partial class MainWindow : Window
                 out var requestedPalette)
             || !Enum.IsDefined(requestedPalette))
         {
+            WriteHeightImageDisplayRangeFailure(
+                reportPath,
+                source,
+                "The source or requested palette/range was unavailable.");
             return false;
         }
 
@@ -1547,6 +1845,10 @@ public partial class MainWindow : Window
             source.FrameId);
         if (!heightImage.HasImage || heightImage.HasError)
         {
+            WriteHeightImageDisplayRangeFailure(
+                reportPath,
+                source,
+                heightImage.Error);
             return false;
         }
 
@@ -1557,7 +1859,77 @@ public partial class MainWindow : Window
             requestedMaximum);
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
 
+        var heightImageToThreeDPassed =
+            !_viewer.ViewModel.C3DHeightColorRangeAuto
+            && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
+            && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+
+        var mismatchedSourcePath = Path.GetFullPath(Path.Combine(
+            Environment.CurrentDirectory,
+            "3D",
+            "SyntheticValidation",
+            "AffineInspectionPlateV1",
+            "source-affine-inspection-plate-v1.C3D"));
+        var mismatchedSourceIsolationPassed = false;
+        if (File.Exists(mismatchedSourcePath))
+        {
+            await heightImage.EnsureSourceAsync(
+                mismatchedSourcePath,
+                "source.c3d.display-range-mismatch",
+                source.Unit,
+                source.FrameId);
+            var mismatchedRangeApplied = heightImage.TryApplyManualRange(-10.0, 10.0);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            mismatchedSourceIsolationPassed = mismatchedRangeApplied
+                && heightImage.Frame is { } mismatchedFrame
+                && !string.Equals(
+                    mismatchedFrame.SourceContentSha256,
+                    _viewer.ViewModel.C3DHeightDistributionSourceSha256,
+                    StringComparison.OrdinalIgnoreCase)
+                && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
+                && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+
+            await heightImage.EnsureSourceAsync(
+                source.Path,
+                source.Id,
+                source.Unit,
+                source.FrameId);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        }
+
+        var nativeSpan = heightImage.Frame.Maximum - heightImage.Frame.Minimum;
+        var reciprocalMinimum = heightImage.Frame.Minimum + nativeSpan * 0.25;
+        var reciprocalMaximum = heightImage.Frame.Maximum - nativeSpan * 0.25;
+        var reciprocalApplied = _viewer.ViewModel.TryApplyLinkedC3DHeightColorRange(
+            reciprocalMinimum,
+            reciprocalMaximum);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var threeDToHeightImagePassed = reciprocalApplied
+            && !heightImage.IsAutoRange
+            && heightImage.DisplayFrame?.Minimum == reciprocalMinimum
+            && heightImage.DisplayFrame?.Maximum == reciprocalMaximum;
+
+        _viewer.ViewModel.ResetC3DHeightColorRange();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var autoRangePassed = _viewer.ViewModel.C3DHeightColorRangeAuto
+            && heightImage.IsAutoRange
+            && heightImage.DisplayFrame?.Minimum == heightImage.Frame.Minimum
+            && heightImage.DisplayFrame?.Maximum == heightImage.Frame.Maximum;
+
+        rangeApplied = heightImage.TryApplyManualRange(
+            requestedMinimum,
+            requestedMaximum);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var finalLinkedRangePassed = heightImageToThreeDPassed
+            && mismatchedSourceIsolationPassed
+            && threeDToHeightImagePassed
+            && autoRangePassed
+            && !_viewer.ViewModel.C3DHeightColorRangeAuto
+            && _viewer.ViewModel.C3DHeightColorMinimumRaw == requestedMinimum
+            && _viewer.ViewModel.C3DHeightColorMaximumRaw == requestedMaximum;
+
         var passed = rangeApplied
+                     && finalLinkedRangePassed
                      && !heightImage.IsAutoRange
                      && heightImage.SelectedPalette == requestedPalette
                      && heightImage.DisplayFrame is
@@ -1591,12 +1963,35 @@ public partial class MainWindow : Window
                     $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}",
                     $"Native|width={heightImage.Frame.Width}|height={heightImage.Frame.Height}|min={heightImage.Frame.Minimum:R}|max={heightImage.Frame.Maximum:R}|pixelSha256={nativePixelSha256}|maskSha256={heightImage.Frame.InvalidCellMap.Sha256}",
                     $"Display|mode={heightImage.DisplayRangeMode}|palette={heightImage.SelectedPalette}|min={heightImage.DisplayFrame?.Minimum:R}|max={heightImage.DisplayFrame?.Maximum:R}|pixelSha256={heightImage.DisplayPixelSha256}",
+                    $"LinkedRange|sourceMatch={string.Equals(_viewer.ViewModel.C3DHeightDistributionSourceSha256, heightImage.Frame.SourceContentSha256, StringComparison.OrdinalIgnoreCase)}|heightImageToThreeD={heightImageToThreeDPassed}|mismatchedSourceIsolated={mismatchedSourceIsolationPassed}|threeDToHeightImage={threeDToHeightImagePassed}|auto={autoRangePassed}|finalShared={finalLinkedRangePassed}|threeDMin={_viewer.ViewModel.C3DHeightColorMinimumRaw:R}|threeDMax={_viewer.ViewModel.C3DHeightColorMaximumRaw:R}",
                     $"Boundary|dirty={beforeDirty}->{_viewModel.Workbench.IsDirty}|steps={beforeStepCount}->{_viewModel.Workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{_viewModel.Workbench.Selections.Count}|logs={beforeLogCount}->{_viewModel.Workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{_viewModel.Workbench.IsSelectedStepPreviewRunning}|outputSame={ReferenceEquals(_viewModel.Workbench.CurrentMeasurementOutput, beforeOutput)}",
                     $"Error|{heightImage.RangeError}"
                 ]);
         }
 
         return passed;
+    }
+
+    private static void WriteHeightImageDisplayRangeFailure(
+        string? reportPath,
+        ToolWorkbenchSourceItem source,
+        string failure)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            return;
+        }
+
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(
+            Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
+        File.WriteAllLines(
+            fullReportPath,
+            [
+                "HeightImageDisplayRangeSmoke|Fail|viewOnly=true|recipeChanged=false|inspectionRun=false",
+                $"Source|path={source.Path}|entity={source.Id}|frame={source.FrameId}|unit={source.Unit}",
+                $"Error|{failure}"
+            ]);
     }
 
     private async Task<bool> RunSharedHeightHoverSmokeAsync(

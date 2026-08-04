@@ -97,6 +97,12 @@ internal static class RunnerCommandRouter
         var verifySurfaceModelFoundation = args.Contains(
             "--verify-surface-model-foundation",
             StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceModelSurfaceSelection = args.Contains(
+            "--verify-surface-model-surface-selection",
+            StringComparer.OrdinalIgnoreCase);
+        var verifyModelKeyPoints = args.Contains(
+            "--verify-model-key-points",
+            StringComparer.OrdinalIgnoreCase);
         var verifySurfaceMatchingFoundation = args.Contains(
             "--verify-surface-matching-foundation",
             StringComparer.OrdinalIgnoreCase);
@@ -105,6 +111,12 @@ internal static class RunnerCommandRouter
             StringComparer.OrdinalIgnoreCase);
         var verifySurfaceMatchPerformanceBudget = args.Contains(
             "--verify-surface-match-performance-budget",
+            StringComparer.OrdinalIgnoreCase);
+        var verifyMultipleSurfaceMatch = args.Contains(
+            "--verify-multiple-surface-match",
+            StringComparer.OrdinalIgnoreCase);
+        var verifySurfaceMatchPoseEquivalence = args.Contains(
+            "--verify-surface-match-pose-equivalence",
             StringComparer.OrdinalIgnoreCase);
         var verifySurfaceEdgeMatching = args.Contains(
             "--verify-surface-edge-matching",
@@ -581,6 +593,30 @@ internal static class RunnerCommandRouter
             return SurfaceModelFoundationVerification.Run(reportPath);
         }
 
+        if (verifySurfaceModelSurfaceSelection)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
+                return 2;
+            }
+
+            return SurfaceModelSurfaceSelectionVerification.Run(reportPath);
+        }
+
+        if (verifyModelKeyPoints)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
+                return 2;
+            }
+
+            return ModelKeyPointArtifactVerification.Run(reportPath);
+        }
+
         if (verifySurfaceMatchingFoundation)
         {
             if (reportPath is null)
@@ -617,6 +653,30 @@ internal static class RunnerCommandRouter
 
             return SurfaceMatchPerformanceBudgetVerification.Run(
                 reportPath);
+        }
+
+        if (verifyMultipleSurfaceMatch)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
+                return 2;
+            }
+
+            return MultipleSurfaceMatchVerification.Run(reportPath);
+        }
+
+        if (verifySurfaceMatchPoseEquivalence)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-surface-match-pose-equivalence --report <path>");
+                return 2;
+            }
+
+            return SurfaceMatchPoseEquivalenceVerification.Run(reportPath);
         }
 
         if (verifySurfaceEdgeMatching)
@@ -924,9 +984,12 @@ internal static class RunnerCommandRouter
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-surface-selection --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-model-key-points --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-matching-foundation --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
+            Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
             Console.Error.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");

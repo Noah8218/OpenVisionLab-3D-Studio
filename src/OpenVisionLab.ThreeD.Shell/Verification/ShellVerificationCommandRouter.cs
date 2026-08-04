@@ -12,6 +12,34 @@ internal static class ShellVerificationCommandRouter
     public static void Run(string[] args)
     {
         var e = new VerificationArguments(args);
+        const string multipleSurfaceMatchWorkbenchOption =
+            "--verify-multiple-surface-match-workbench";
+        var multipleSurfaceMatchWorkbenchIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                multipleSurfaceMatchWorkbenchOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (multipleSurfaceMatchWorkbenchIndex >= 0)
+        {
+            if (multipleSurfaceMatchWorkbenchIndex + 4 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{multipleSurfaceMatchWorkbenchOption} requires model, scene, collection, and report paths.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = MultipleSurfaceMatchWorkbenchVerification.Verify(
+                args[multipleSurfaceMatchWorkbenchIndex + 1],
+                args[multipleSurfaceMatchWorkbenchIndex + 2],
+                args[multipleSurfaceMatchWorkbenchIndex + 3],
+                args[multipleSurfaceMatchWorkbenchIndex + 4],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
         const string surfaceEdgeDiagnosticReviewParityOption =
             "--verify-surface-edge-diagnostic-review-workbench-parity";
         var surfaceEdgeDiagnosticReviewParityIndex = Array.FindIndex(

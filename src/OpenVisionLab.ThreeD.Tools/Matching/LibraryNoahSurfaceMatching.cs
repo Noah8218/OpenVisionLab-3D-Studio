@@ -5,6 +5,11 @@ using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
 using NoahPose = Lib.ThreeD.FeatureExtraction.RigidSurfacePose;
 using NoahSample = Lib.ThreeD.FeatureExtraction.SurfaceMatchSample;
 using NoahSearchOptions = Lib.ThreeD.FeatureExtraction.DeterministicRigidSurfacePoseSearchOptions;
+using NoahMultipleSearchOptions = Lib.ThreeD.FeatureExtraction.DeterministicMultipleSurfaceMatchOptions;
+using NoahSymmetry = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetry;
+using NoahSymmetryAxis = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryAxis;
+using NoahSymmetryKind = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryKind;
+using NoahSymmetryOptions = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryEquivalenceOptions;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -114,6 +119,69 @@ internal static class LibraryNoahSurfaceMatching
             MinimumMatchedSampleCount =
                 parameters.MinimumMatchedSampleCount,
             MaximumCandidateCount = parameters.MaximumCandidateCount
+        };
+    }
+
+    public static NoahMultipleSearchOptions MultipleSearchOptions(
+        RigidSurfacePoseSearchParameters parameters,
+        int maximumMatchCount,
+        int maximumExpandedCandidateCount)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        return new NoahMultipleSearchOptions
+        {
+            PoseSearchOptions = SearchOptions(parameters),
+            MaximumMatchCount = maximumMatchCount,
+            MaximumExpandedCandidateCount = maximumExpandedCandidateCount
+        };
+    }
+
+    public static NoahSymmetryOptions SymmetryEquivalenceOptions(
+        SurfaceModelArtifact model,
+        double maximumTranslationDifference,
+        double maximumRotationDifferenceDegrees)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var declaration = model.Symmetry;
+        if (declaration is null
+            || declaration.Kind
+                == SurfaceModelSymmetryDeclaration.NoneKind)
+        {
+            return new NoahSymmetryOptions
+            {
+                Symmetry = new NoahSymmetry(
+                    NoahSymmetryKind.None,
+                    NoahSymmetryAxis.None,
+                    1),
+                MaximumTranslationDifference =
+                    maximumTranslationDifference,
+                MaximumRotationDifferenceDegrees =
+                    maximumRotationDifferenceDegrees,
+                RigidTransformTolerance = 1e-9
+            };
+        }
+
+        var axis = declaration.Axis switch
+        {
+            SurfaceModelSymmetryDeclaration.XAxis =>
+                NoahSymmetryAxis.X,
+            SurfaceModelSymmetryDeclaration.YAxis =>
+                NoahSymmetryAxis.Y,
+            SurfaceModelSymmetryDeclaration.ZAxis =>
+                NoahSymmetryAxis.Z,
+            _ => NoahSymmetryAxis.None
+        };
+        return new NoahSymmetryOptions
+        {
+            Symmetry = new NoahSymmetry(
+                NoahSymmetryKind.DiscreteRotation,
+                axis,
+                declaration.Order),
+            MaximumTranslationDifference =
+                maximumTranslationDifference,
+            MaximumRotationDifferenceDegrees =
+                maximumRotationDifferenceDegrees,
+            RigidTransformTolerance = 1e-9
         };
     }
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -11,6 +12,44 @@ public sealed partial class ToolWorkbenchViewModel
     public SourceQualityWorkspaceViewModel SourceQuality { get; private set; } = null!;
 
     public ICommand SelectSourceQualityCommand => selectSourceQualityCommand;
+
+    public bool IsCurrentSourceQualityStatusVisible =>
+        !string.IsNullOrWhiteSpace(Source.Path);
+
+    public string CurrentSourceQualityStatusKind =>
+        !IsCurrentSourceQualityStatusVisible
+            ? "Unavailable"
+            : SourceQuality.IsLoading
+                ? "Loading"
+                : SourceQuality.HasError
+                    ? "Error"
+                    : SourceQuality.Report is { Coverage.MissingSampleCount: > 0 }
+                        ? "Warning"
+                        : SourceQuality.HasReport
+                            ? "Pass"
+                            : "Unavailable";
+
+    public string CurrentSourceQualitySummary => SourceQuality.Report is { } report
+        ? string.Format(
+            CultureInfo.InvariantCulture,
+            Localization.CurrentSourceQualitySummaryFormat,
+            report.Coverage.ValidRatio,
+            report.Coverage.MissingRatio)
+        : $"{Localization.SourceQuality}: {SourceQuality.State}";
+
+    public string CurrentSourceQualityDetail => SourceQuality.Report is not null
+        ? string.Concat(
+            string.Format(
+                CultureInfo.InvariantCulture,
+                Localization.CurrentSourceQualityDetailFormat,
+                SourceQuality.GridValue,
+                SourceQuality.ValidValue,
+                SourceQuality.MissingValue),
+            Environment.NewLine,
+            Localization.SourceQualityViewOnly)
+        : SourceQuality.HasError
+            ? $"{SourceQuality.State}: {SourceQuality.Error}"
+            : SourceQuality.State;
 
     public bool IsSourceQualityWorkspaceVisible =>
         !HasSelectedPipelineStep
@@ -86,6 +125,10 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSourceQualityWorkspaceVisible));
         OnPropertyChanged(nameof(SelectedWorkspaceTitle));
         OnPropertyChanged(nameof(SelectedWorkspaceState));
+        OnPropertyChanged(nameof(IsCurrentSourceQualityStatusVisible));
+        OnPropertyChanged(nameof(CurrentSourceQualityStatusKind));
+        OnPropertyChanged(nameof(CurrentSourceQualitySummary));
+        OnPropertyChanged(nameof(CurrentSourceQualityDetail));
         selectSourceQualityCommand.RaiseCanExecuteChanged();
     }
 }

@@ -35,7 +35,8 @@ public static class ModelSurfaceEdgeExtractor
                 model.Points
                     .Select(LibraryNoahSurfaceMatching.Point)
                     .ToArray(),
-                model.Triangles
+                SurfaceModelSurfaceDomain
+                    .GetRetainedTriangles(model)
                     .Select(triangle => new SurfaceModelTriangleInput(
                         triangle.FirstPointIndex,
                         triangle.SecondPointIndex,

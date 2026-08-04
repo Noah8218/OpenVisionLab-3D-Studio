@@ -36,8 +36,8 @@
     "acceptance": {
       "expectedGap": 1.322,
       "gapTolerance": 0.1,
-      "expectedFlush": 243.5,
-      "flushTolerance": 5.0
+      "expectedFlush": 5.327,
+      "flushTolerance": 0.1
     },
     "gapUnit": "model",
     "flushUnit": "raw-height",

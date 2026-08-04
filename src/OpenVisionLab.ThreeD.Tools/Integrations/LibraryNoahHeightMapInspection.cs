@@ -1,5 +1,6 @@
 using NoahHeightMap3D = Lib.ThreeD.Geometry.HeightMap3D;
 using NoahHeightMapRoi = Lib.ThreeD.Geometry.HeightMapRoi;
+using NoahHeightMapInputRequirements = Lib.ThreeD.Inspection.HeightMapInputRequirements;
 using NoahInspectionResult = Lib.ThreeD.Inspection.ThreeDInspectionResult;
 using NoahInspectionStatus = Lib.ThreeD.Inspection.ThreeDInspectionResultStatus;
 using NoahThicknessInspectionOptions = Lib.ThreeD.Inspection.ThicknessInspectionOptions;
@@ -12,6 +13,11 @@ using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
+public sealed record LibraryNoahHeightMapContract(
+    string PlanarUnit,
+    string HeightUnit,
+    string FrameId);
+
 public sealed record LibraryNoahHeightMapInput(
     string SourceEntityId,
     int Rows,
@@ -22,7 +28,18 @@ public sealed record LibraryNoahHeightMapInput(
     double RowPitch,
     IReadOnlyList<double>? Values,
     string Unit,
-    string FrameId);
+    string FrameId)
+{
+    public string? PlanarUnit { get; init; }
+
+    public string? HeightUnit { get; init; }
+
+    public LibraryNoahHeightMapContract? ExpectedContract { get; init; }
+
+    internal string EffectivePlanarUnit => string.IsNullOrWhiteSpace(PlanarUnit) ? Unit : PlanarUnit;
+
+    internal string EffectiveHeightUnit => string.IsNullOrWhiteSpace(HeightUnit) ? Unit : HeightUnit;
+}
 
 public sealed record LibraryNoahGridRoi(int Row, int Column, int RowCount, int ColumnCount);
 
@@ -31,14 +48,16 @@ public sealed record LibraryNoahThicknessInspectionInput(
     LibraryNoahGridRoi? Roi,
     double MinimumThickness,
     double MaximumThickness,
-    int MinimumValidSamples = 1);
+    int MinimumValidSamples = 1,
+    double MinimumValidCoverageRatio = 0.0);
 
 public sealed record LibraryNoahWarpageInspectionInput(
     LibraryNoahHeightMapInput? Source,
     LibraryNoahGridRoi? Roi,
     double MaximumPeakToValley,
     double? MaximumRms = null,
-    int MinimumValidSamples = 3);
+    int MinimumValidSamples = 3,
+    double MinimumValidCoverageRatio = 0.0);
 
 public sealed record LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
     LibraryNoahHeightMapInput? Source,
@@ -49,14 +68,18 @@ public sealed record LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
     double PlaneOffset,
     double MaximumPeakToValleyRawHeight,
     int MinimumValidSamples = 3,
-    double MinimumAbsoluteNormalY = 0.1);
+    double MinimumAbsoluteNormalY = 0.1,
+    double MinimumValidCoverageRatio = 0.0);
 
 public sealed record LibraryNoahInspectionEvaluation(
     ToolResult Result,
     bool HasMeasurement,
     string PackageResultStatus,
     string PackageErrorCode,
-    LibraryNoahGridRoi? Roi);
+    LibraryNoahGridRoi? Roi,
+    string PlanarUnit = "",
+    string HeightUnit = "",
+    string CoordinateConvention = "");
 
 /// <summary>
 /// Explicit Studio-to-Library-Noah boundary for a declared scalar height map.
@@ -65,8 +88,8 @@ public sealed record LibraryNoahInspectionEvaluation(
 public static class LibraryNoahHeightMapInspection
 {
     public const string PackageId = "Lib.ThreeD";
-    public const string PackageVersion = "2.8.8";
-    public const string PackageSourceCommit = "0fe04bc967fa89918b3c6d937566cce56de69682";
+    public const string PackageVersion = "2.8.13";
+    public const string PackageSourceCommit = "21f2e3084843ef8a499e6fe02c4326a19813aa2c";
 
     public static string PackageAssemblyName => typeof(NoahHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 
@@ -87,7 +110,9 @@ public static class LibraryNoahHeightMapInspection
                 Roi = ToNoahRoi(input.Roi),
                 MinimumThickness = input.MinimumThickness,
                 MaximumThickness = input.MaximumThickness,
-                MinimumValidSamples = input.MinimumValidSamples
+                MinimumValidSamples = input.MinimumValidSamples,
+                MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
+                InputRequirements = ToNoahRequirements(input.Source!)
             }).Execute(heightMap));
     }
 
@@ -108,7 +133,9 @@ public static class LibraryNoahHeightMapInspection
                 Roi = ToNoahRoi(input.Roi),
                 MaximumPeakToValley = input.MaximumPeakToValley,
                 MaximumRms = input.MaximumRms,
-                MinimumValidSamples = input.MinimumValidSamples
+                MinimumValidSamples = input.MinimumValidSamples,
+                MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
+                InputRequirements = ToNoahRequirements(input.Source!)
             }).Execute(heightMap));
     }
 
@@ -135,7 +162,9 @@ public static class LibraryNoahHeightMapInspection
                     PlaneOffset = input.PlaneOffset,
                     MaximumPeakToValleyRawHeight = input.MaximumPeakToValleyRawHeight,
                     MinimumValidSamples = input.MinimumValidSamples,
-                    MinimumAbsoluteNormalY = input.MinimumAbsoluteNormalY
+                    MinimumAbsoluteNormalY = input.MinimumAbsoluteNormalY,
+                    MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
+                    InputRequirements = ToNoahRequirements(input.Source!)
                 }).Execute(heightMap));
     }
 
@@ -193,9 +222,11 @@ public static class LibraryNoahHeightMapInspection
 
         if (string.IsNullOrWhiteSpace(source.SourceEntityId)
             || string.IsNullOrWhiteSpace(source.Unit)
+            || string.IsNullOrWhiteSpace(source.EffectivePlanarUnit)
+            || string.IsNullOrWhiteSpace(source.EffectiveHeightUnit)
             || string.IsNullOrWhiteSpace(source.FrameId))
         {
-            errorMessage = "Source entity ID, unit, and frame ID are required.";
+            errorMessage = "Source entity ID, planar unit, height unit, legacy unit, and frame ID are required.";
             return false;
         }
 
@@ -215,7 +246,8 @@ public static class LibraryNoahHeightMapInspection
                 source.ColumnPitch,
                 source.RowPitch,
                 source.Values.ToArray(),
-                source.Unit,
+                source.EffectivePlanarUnit,
+                source.EffectiveHeightUnit,
                 source.FrameId,
                 source.SourceEntityId);
             errorMessage = string.Empty;
@@ -233,6 +265,16 @@ public static class LibraryNoahHeightMapInspection
             ? null
             : new NoahHeightMapRoi(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);
 
+    private static NoahHeightMapInputRequirements ToNoahRequirements(LibraryNoahHeightMapInput source)
+    {
+        var contract = source.ExpectedContract
+            ?? new LibraryNoahHeightMapContract(
+                source.EffectivePlanarUnit,
+                source.EffectiveHeightUnit,
+                source.FrameId);
+        return new NoahHeightMapInputRequirements(contract.PlanarUnit, contract.HeightUnit, contract.FrameId);
+    }
+
     private static LibraryNoahInspectionEvaluation Translate(
         string toolName,
         NoahInspectionResult inspection,
@@ -245,7 +287,8 @@ public static class LibraryNoahHeightMapInspection
             NoahInspectionStatus.Failed => ResultStatus.Fail,
             _ => ResultStatus.Error
         };
-        var unit = string.IsNullOrWhiteSpace(inspection.Unit) ? source.Unit : inspection.Unit;
+        var planarUnit = string.IsNullOrWhiteSpace(inspection.PlanarUnit) ? source.EffectivePlanarUnit : inspection.PlanarUnit;
+        var heightUnit = string.IsNullOrWhiteSpace(inspection.HeightUnit) ? source.EffectiveHeightUnit : inspection.HeightUnit;
         ResultStatus? metricStatus = inspection.HasMeasurement ? null : ResultStatus.Error;
         var metrics = inspection.Metrics
             .OrderBy(pair => pair.Key, StringComparer.Ordinal)
@@ -253,7 +296,7 @@ public static class LibraryNoahHeightMapInspection
                 pair.Key,
                 ResolveMetricKind(pair.Key),
                 pair.Value,
-                ResolveMetricUnit(pair.Key, unit),
+                ResolveMetricUnit(inspection, pair.Key, planarUnit, heightUnit),
                 metricStatus))
             .ToArray();
 
@@ -275,7 +318,10 @@ public static class LibraryNoahHeightMapInspection
             inspection.HasMeasurement,
             inspection.ResultStatusName,
             inspection.ErrorName,
-            roi);
+            roi,
+            planarUnit,
+            heightUnit,
+            inspection.CoordinateConvention);
     }
 
     private static LibraryNoahInspectionEvaluation Error(
@@ -294,24 +340,40 @@ public static class LibraryNoahHeightMapInspection
             false,
             "BridgeError",
             "BridgeValidation",
-            roi);
+            roi,
+            source?.EffectivePlanarUnit ?? string.Empty,
+            source?.EffectiveHeightUnit ?? string.Empty);
 
     private static MetricKind ResolveMetricKind(string name) =>
         name switch
         {
-            "ValidSampleCount" or "MissingSampleCount" or "BelowLowerLimitCount" or "AboveUpperLimitCount"
+            "TotalSampleCount" or "ValidSampleCount" or "MissingSampleCount" or "MinimumValidSamples"
+                or "BelowLowerLimitCount" or "AboveUpperLimitCount"
                 or "MinimumResidualRow" or "MinimumResidualColumn" or "MaximumResidualRow" or "MaximumResidualColumn" => MetricKind.Count,
+            "ValidCoverageRatio" or "MinimumValidCoverageRatio" => MetricKind.Number,
             "PeakToValley" or "Rms" or "MinimumResidual" or "MaximumResidual" or "MaximumPeakToValley" or "MaximumRms"
                 or "MinimumRawHeightResidual" or "MaximumRawHeightResidual" or "PeakToValleyRawHeight" or "RmsRawHeightResidual" or "MaximumPeakToValleyRawHeight" => MetricKind.Deviation,
             "PlaneSlopeX" or "PlaneSlopeY" or "PlaneIntercept" or "PlaneNormalX" or "PlaneNormalY" or "PlaneNormalZ" or "PlaneOffset" or "MinimumAbsoluteNormalY" => MetricKind.Number,
             _ => MetricKind.Length
         };
 
-    private static string ResolveMetricUnit(string name, string unit) =>
-        ResolveMetricKind(name) switch
+    private static string ResolveMetricUnit(
+        NoahInspectionResult inspection,
+        string name,
+        string planarUnit,
+        string heightUnit)
+    {
+        if (inspection.MetricUnits.TryGetValue(name, out var unit) && !string.IsNullOrWhiteSpace(unit))
+        {
+            return unit;
+        }
+
+        return ResolveMetricKind(name) switch
         {
             MetricKind.Count => "count",
             MetricKind.Number => "ratio",
-            _ => unit
+            _ when name is "PlaneSlopeX" or "PlaneSlopeY" => $"{heightUnit}/{planarUnit}",
+            _ => heightUnit
         };
+    }
 }

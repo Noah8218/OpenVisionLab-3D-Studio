@@ -46,6 +46,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(SourceQuality), nameof(OpenSourceQuality),
         nameof(SourceQualityLoading), nameof(SourceQualityUnavailable), nameof(SourceQualityReady),
         nameof(SourceQualityError), nameof(SourceQualityHint), nameof(SourceQualityViewOnly),
+        nameof(CurrentSourceQualitySummaryFormat), nameof(CurrentSourceQualityDetailFormat),
         nameof(ThicknessRepeatGrid), nameof(RepeatAsGrid),
         nameof(ThicknessRepeatReady), nameof(ThicknessRepeatUnavailable),
         nameof(ThicknessRepeatColumns), nameof(ThicknessRepeatRows), nameof(ThicknessRepeatColumnPitch),
@@ -220,6 +221,14 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.SourceQuality.ViewOnly",
         "\uBCF4\uAE30 \uC804\uC6A9 \u00B7 \uB808\uC2DC\uD53C \uBCC0\uACBD \uC5C6\uC74C \u00B7 Preview/Run \uC2E4\uD589 \uC5C6\uC74C",
         "Read-only \u00b7 recipe unchanged \u00b7 no Preview or Run");
+    public string CurrentSourceQualitySummaryFormat => T(
+        "ThreeD.SourceQuality.CurrentSummaryFormat",
+        "\uD488\uC9C8 \uC720\uD6A8 {0:P1} \u00B7 \uB204\uB77D {1:P1}",
+        "Quality {0:P1} valid \u00b7 {1:P1} missing");
+    public string CurrentSourceQualityDetailFormat => T(
+        "ThreeD.SourceQuality.CurrentDetailFormat",
+        "\uD604\uC7AC \uC785\uB825 \uD488\uC9C8 \u00B7 \uADF8\uB9AC\uB4DC {0} \u00B7 \uC720\uD6A8 {1} \u00B7 \uB204\uB77D {2}",
+        "Current input quality \u00b7 grid {0} \u00b7 valid {1} \u00b7 missing {2}");
     public string ToolLabs => T("ThreeD.Header.ToolLabs", "\uD234 \uB7A9", "Tool Labs");
     public string AdvancedLayout => T("ThreeD.Header.AdvancedLayout", "\uACE0\uAE09 \uB808\uC774\uC544\uC6C3", "Advanced layout");
     public string Language => T("ThreeD.Header.Language", "\uC5B8\uC5B4", "Language");

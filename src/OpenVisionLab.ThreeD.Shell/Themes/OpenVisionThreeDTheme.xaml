@@ -259,12 +259,22 @@
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
     </Style>
 
-    <Style TargetType="{x:Type TextBox}">
+    <Style TargetType="{x:Type TextBox}"
+           BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
         <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+            </Trigger>
             <Trigger Property="IsReadOnly" Value="True">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
@@ -276,12 +286,22 @@
         </Style.Triggers>
     </Style>
 
-    <Style TargetType="{x:Type ComboBox}">
+    <Style TargetType="{x:Type ComboBox}"
+           BasedOn="{StaticResource {x:Type ComboBox}}">
         <Setter Property="MinHeight" Value="28" />
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
         <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
+            <Trigger Property="Validation.HasError" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />

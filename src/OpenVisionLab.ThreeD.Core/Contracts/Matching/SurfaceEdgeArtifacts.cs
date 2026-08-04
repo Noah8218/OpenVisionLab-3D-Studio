@@ -96,7 +96,9 @@ public sealed record ModelSurfaceEdgeArtifact(
             model.Unit,
             model.FrameId,
             model.Points.Length,
-            model.Triangles.Length,
+            SurfaceModelSurfaceDomain
+                .GetRetainedSourceTriangleIndices(model)
+                .Length,
             parameters,
             edges.ToArray(),
             string.Empty);

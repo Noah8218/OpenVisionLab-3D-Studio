@@ -11,7 +11,14 @@ public sealed record SurfaceModelPreparationRequest(
     string SourceContentSha256,
     string Unit,
     string FrameId,
-    SurfaceModelPreparationParameters Parameters);
+    SurfaceModelPreparationParameters Parameters,
+    SurfaceModelSymmetryDeclaration? Symmetry = null,
+    SurfaceModelSurfaceSelectionRequest? SurfaceSelection = null);
+
+public sealed record SurfaceModelSurfaceSelectionRequest(
+    int[] ExplicitInternalSourceTriangleIndices,
+    int[] ExplicitUnobservableSourceTriangleIndices,
+    bool RemoveExactDuplicateTriangles);
 
 /// <summary>
 /// Strict product adapter from an imported triangle mesh to an identified
@@ -65,14 +72,67 @@ public static class SurfaceModelPreparation
                 mesh.Indices[offset + 2]);
         }
 
+        var noahPoints = points
+            .Select(LibraryNoahSurfaceMatching.Point)
+            .ToArray();
+        var noahTriangles = triangles
+            .Select(triangle => new SurfaceModelTriangleInput(
+                triangle.FirstPointIndex,
+                triangle.SecondPointIndex,
+                triangle.ThirdPointIndex))
+            .ToArray();
+        var retainedSourceTriangleIndices = Enumerable
+            .Range(0, triangles.Length)
+            .ToArray();
+        SurfaceModelSurfaceSelection? surfaceSelection = null;
+        if (request.SurfaceSelection is { } selectionRequest)
+        {
+            var selectionResult =
+                new DeterministicModelSurfaceSelectionTool().Execute(
+                    noahPoints,
+                    noahTriangles,
+                    new DeterministicModelSurfaceSelectionOptions
+                    {
+                        ExplicitInternalSourceTriangleIndices =
+                            selectionRequest
+                                .ExplicitInternalSourceTriangleIndices,
+                        ExplicitUnobservableSourceTriangleIndices =
+                            selectionRequest
+                                .ExplicitUnobservableSourceTriangleIndices,
+                        RemoveExactDuplicateTriangles =
+                            selectionRequest.RemoveExactDuplicateTriangles
+                    });
+            if (!selectionResult.Success)
+            {
+                throw new InvalidDataException(selectionResult.Message);
+            }
+
+            retainedSourceTriangleIndices = selectionResult
+                .RetainedSourceTriangleIndices
+                .ToArray();
+            surfaceSelection = new SurfaceModelSurfaceSelection(
+                SurfaceModelSurfaceSelection
+                    .ExactDuplicateAndExplicitExclusionPolicy,
+                triangles.Length,
+                selectionResult.ExplicitInternalSourceTriangleIndices
+                    .ToArray(),
+                selectionResult.ExplicitUnobservableSourceTriangleIndices
+                    .ToArray(),
+                selectionRequest.RemoveExactDuplicateTriangles,
+                retainedSourceTriangleIndices.ToArray(),
+                selectionResult.RemovedSurfaces
+                    .Select(item => new SurfaceModelSurfaceRemoval(
+                        item.SourceTriangleIndex,
+                        RemovalReason(item.Reason),
+                        item.DuplicateOfSourceTriangleIndex))
+                    .ToArray());
+        }
+
         var noahResult = new DeterministicSurfaceModelPreparationTool()
             .Execute(
-                points.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
-                triangles
-                    .Select(triangle => new SurfaceModelTriangleInput(
-                        triangle.FirstPointIndex,
-                        triangle.SecondPointIndex,
-                        triangle.ThirdPointIndex))
+                noahPoints,
+                retainedSourceTriangleIndices
+                    .Select(index => noahTriangles[index])
                     .ToArray(),
                 normals.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
                 new DeterministicSurfaceModelPreparationOptions
@@ -88,7 +148,8 @@ public static class SurfaceModelPreparation
         var samples = noahResult.Samples
             .Select(sample => new SurfaceModelSample(
                 sample.Order,
-                sample.SourceTriangleIndex,
+                retainedSourceTriangleIndices[
+                    sample.SourceTriangleIndex],
                 ToPoint(sample.Position),
                 ToPoint(sample.Normal)))
             .ToArray();
@@ -105,7 +166,9 @@ public static class SurfaceModelPreparation
             points,
             triangles,
             normals,
-            samples);
+            samples,
+            request.Symmetry,
+            surfaceSelection);
     }
 
     private static SurfaceModelPoint3 ToPoint(System.Numerics.Vector3 value) =>
@@ -113,4 +176,19 @@ public static class SurfaceModelPreparation
 
     private static SurfaceModelPoint3 ToPoint(ThreeDPoint value) =>
         new(value.X, value.Y, value.Z);
+
+    private static string RemovalReason(
+        ModelSurfaceRemovalReason reason) =>
+        reason switch
+        {
+            ModelSurfaceRemovalReason.ExplicitInternal =>
+                SurfaceModelSurfaceSelection.ExplicitInternalReason,
+            ModelSurfaceRemovalReason.ExplicitUnobservable =>
+                SurfaceModelSurfaceSelection
+                    .ExplicitUnobservableReason,
+            ModelSurfaceRemovalReason.ExactDuplicate =>
+                SurfaceModelSurfaceSelection.ExactDuplicateReason,
+            _ => throw new InvalidDataException(
+                "Library-Noah returned an unsupported model-surface removal reason.")
+        };
 }

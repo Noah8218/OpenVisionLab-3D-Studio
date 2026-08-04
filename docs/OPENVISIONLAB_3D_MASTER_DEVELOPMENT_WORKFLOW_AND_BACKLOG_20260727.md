@@ -105,12 +105,12 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 127 |
+| Complete `C` | 136 |
 | Partial `P` | 17 |
-| New `N` | 65 |
+| New `N` | 57 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
-| Total | 234 |
+| Total | 235 |
 
 ## Current maturity and first gate
 
@@ -148,13 +148,165 @@ Current inventory count:
   model/scene 3D-edge artifacts, and separate diagnostic edge scoring.
   Direction diagnostics, independent component thresholds, and one retained
   false-positive review are complete. Published/Candidate parameter
-  experimentation with exact no-rerun Publish is also complete. Production
-  performance claims, multiple matches, acquisition direction, and symmetry
-  remain incomplete.
+  experimentation with exact no-rerun Publish is also complete. Stable,
+  disjoint multiple-match collection and presentation-only selection are now
+  complete. Non-wrapping previous/next retained-match review is complete.
+  SurfaceModel symmetry declaration and independent symmetry-aware pose
+  equivalence are complete. Deterministic model-side key points now have
+  stable sample/triangle identities, persistence, and a WPF-neutral display-
+  only overlay, while matching consumption remains deliberately absent.
+  Production performance claims and acquisition direction remain incomplete.
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current product-owner conversation priority - Layout continuation - 2026-08-01
+### Current execution checkpoint - Model key points and debug overlay - 2026-08-03
+
+`J-07` is Complete. Committed Library-Noah owns deterministic farthest-point
+selection from the J-05 retained SurfaceModel samples, including the seed,
+nearest-selected distance, strict minimum separation, bounded count, and
+stable source-order tie. Studio owns stable source-sample/source-triangle
+identity, atomic JSON persistence, and a WPF-neutral display-only position/
+normal overlay. Neither artifact changes or executes matching.
+
+Committed Noah `7ed50ea37b3d7cb711c2afe698d209f9073e9217` passes Release
+`0/0` and Smoke `122/122`. Vendored `Lib.ThreeD 2.8.12` has SHA-256
+`7E5DAF887851CB16C45279CD957260C2546AD0EDBB92B9F4903E23E529BADFE3`.
+Studio Release Rebuild passes `0/0`; bridge `21/21`; J-07 `15/15`; legacy byte
+parity `5/5`; established matching, Workbench, edge, docking, workspace,
+Validation Set, command-line, and structure gates pass; both R0
+`-ValidateOnly` modes pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j07-model-key-points\`.
+
+Inventory is `136 C / 17 P / 57 N / 9 E / 16 O`. Human-owner R0 remains
+external. Next is `B-12 Acquisition/source provenance text and limitation
+notes`; persist explicit available/unavailable evidence without execution or
+inferred viewpoint. Recommended model: `gpt-5.6-sol`; reasoning effort: high.
+`K-04` remains blocked on `B-12`; `L-13` is independently dependency-ready.
+
+### Previous execution checkpoint - Model surface selection - 2026-08-03
+
+`J-05` is Complete. SurfaceModel schema `1.2` preserves every imported point,
+triangle, and normal while identifying one retained source-triangle domain.
+Automatic removal is limited to exact-coordinate duplicates; internal and
+unobservable roles require explicit source-triangle locators. Matching samples,
+model-edge extraction, and transformed overlays consume the same retained
+domain. No-selection schema `1.0/1.1` artifacts remain byte-identical.
+
+Committed Noah `55ea7a61bd1281294e91aa5366d2bafb509d3667` passes Release
+`0/0` and Smoke `118/118`. Vendored `Lib.ThreeD 2.8.11` has SHA-256
+`AC61E132938AD184F3E3A39622A5BC3C4E48F1419D7C4EC75AC604A8CD1F8A42`.
+Studio Release Rebuild passes `0/0`; bridge `21/21`; J-05 `15/15`; legacy byte
+parity `5/5`; established matching, Workbench, edge, docking, workspace,
+Validation Set, command-line, and structure gates pass; both R0
+`-ValidateOnly` modes pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j05-model-surface-selection\`.
+
+Inventory at that checkpoint was `135 C / 17 P / 58 N / 9 E / 16 O`.
+Human-owner R0 remains external. Its former next item `J-07` is superseded by
+the completed current checkpoint above. `K-04` remains blocked on `B-12`.
+
+### Previous execution checkpoint - Symmetry-aware pose equivalence - 2026-08-03
+
+`J-13` is Complete. Undeclared schema `1.0` and schema `1.1` `none` use direct
+rigid-pose comparison. Declared `x`, `y`, or `z` cyclic model-axis symmetry
+uses deterministic `reference rotation * symmetry operation` equivalence with
+inclusive translation and rotation limits and lowest-operation-index ties.
+This is an independent typed evaluator; J-12 matching search, disjoint result
+collection, ordering, identity, persistence, and presentation remain
+unchanged.
+
+Committed Noah `f225fd2709de1dd1d0ecfe19b37315cb1f019ee4` passes Release
+`0/0` and Smoke `113/113`. Vendored `Lib.ThreeD 2.8.10` has SHA-256
+`535CD75D33BE5EC015B1B36215FF3DBDD7E8AEC1A5F2B8FFE1FCCBA18B7877C7`.
+Studio Release passes `0/0`; bridge `20/20`; J-13 `15/15`; legacy byte parity
+`5/5`; existing matching, Workbench, edge, docking, workspace, Validation Set,
+command-line, and structure gates pass; both R0 `-ValidateOnly` modes pass.
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j13-symmetry-aware-pose-equivalence\`.
+
+Inventory at that checkpoint was `134 C / 17 P / 59 N / 9 E / 16 O`.
+Human-owner R0 remains external. Its former next item `J-05` is superseded by
+the completed current checkpoint above. `K-04` remains blocked on `B-12`.
+
+### Previous execution checkpoint - SurfaceModel symmetry declaration - 2026-08-03
+
+`F-13` is Complete. Existing undeclared schema-`1.0` SurfaceModels preserve
+their exact canonical identity and JSON bytes. Schema `1.1` requires explicit
+`none` or discrete rotation about model axis `x`, `y`, or `z` with order at
+least `2`. The declaration participates in canonical identity and persists
+through the existing atomic store. It is metadata only in this slice: matching
+and pose-equivalence behavior are unchanged.
+
+Release passes `0/0`; focused SurfaceModel verification `34/34`; legacy byte
+parity `5/5`; bridge `19/19`; matching `34/34`; acceptance `14/14`;
+performance `18/18`; multiple-match Runner/Workbench `14/14` and `10/10`;
+edge/review `21/21` and `20/20`; accepted-input single-match parity `23/23`;
+docking `82/82`; Inspection Workspace `64/64`; Validation Set `84/84`;
+command line `31/31`; structure `29/29`; and both R0 `-ValidateOnly` modes
+pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-f13-surface-model-symmetry-declaration\`.
+
+Inventory is `133 C / 17 P / 60 N / 9 E / 16 O`. Human-owner R0 remains
+external. Its former next item `J-13` is superseded by the current J-13
+closure above.
+
+### Previous execution checkpoint - Multiple-match issue navigation - 2026-08-03
+
+`K-09` is Complete. Non-wrapping Previous/Next commands and the retained-result
+selector share the existing `SelectedSurfaceMatchCollectionItem` owner and
+Viewer display path. The first result disables Previous and the last disables
+Next. The actions do not execute matching, Preview, Publish, Run, or Validation,
+mutate recipe/output/candidate state, or persist the viewed result.
+
+Studio Release passes `0/0`; J-12 Runner `14/14`; K-09 Workbench `10/10`;
+current-input single-match parity `14/14`; docking `82/82`; Inspection
+Workspace `64/64`; Validation Set `84/84`; command line `31/31`; structure
+`29/29`; and both R0 `-ValidateOnly` modes pass. Current Release Wide/Compact
+English/Korean, focus/hover, first/last disabled, and leftmost-monitor evidence
+passes. Preserve:
+
+- `docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-k09-multiple-match-issue-navigation\`.
+
+Inventory was `132 C / 17 P / 61 N / 9 E / 16 O` at that checkpoint.
+Human-owner R0 remains external. Its former next item `F-13` is superseded by
+the current F-13 closure above.
+
+### Previous execution checkpoint - Multiple Surface Match collection - 2026-08-03
+
+`J-12` is Complete. Committed Noah
+`4e301f481cac886f78425197314cd540b653473a` owns bounded repeated pose search,
+per-result unique-nearest coverage, disjoint scene-sample claiming, stable
+ordering, and bounded termination. Vendored `Lib.ThreeD 2.8.9` has SHA-256
+`A3B212E6D8AC487DF668F0FE557C17615845A161412AE7AF6BD7FE4FCC260278`.
+
+Studio owns schema-1 collection identity/persistence, authored acceptance,
+explicit lifecycle, evidence, and presentation-only retained-match selection.
+The controlled two-object fixture retains two ordered `5/5` matches with zero
+shared scene claims. Noah Release/Smoke passes `0/0` and `108/108`; Studio
+Release `0/0`; bridge `19/19`; J-12 Runner `14/14`; Workbench `6/6`; existing
+matching `34/34`; acceptance `14/14`; performance `18/18`; focused edge/model
+regressions pass; docking `82/82`; Inspection Workspace `64/64`; Validation
+Set `84/84`; command line `30/30`; and structure `29/29` with zero debt and
+`31` reviewed boundaries. Current Release Wide/Compact, popup/theme states,
+leftmost-monitor evidence, and both R0 `-ValidateOnly` modes pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j12-multiple-match\`.
+
+Inventory was `131 C / 17 P / 62 N / 9 E / 16 O` at that checkpoint.
+Human-owner R0 remains external. Its former next item `K-09` is superseded by
+the current K-09 closure above.
+
+### Historical product-owner conversation priority - Layout continuation - 2026-08-01
 
 The product owner selected the layout/UI-design stream for the next
 conversation. Use
@@ -165,10 +317,8 @@ evidence-backed operator problem. Preserve all completed Workbench v4, Viewer,
 top dock-tab, Authoring integrity/side-collapse, first-use clarity,
 presentation-only layout persistence, and theme closures.
 
-`J-12 Multiple-match result collection` remains the next numerical queue item,
-but is deferred while this owner-selected layout-only conversation priority is
-active. Human-owner R0 remains an external acceptance task. This priority
-change does not alter inventory status by itself.
+This layout-only priority was explicitly superseded when the owner approved
+J-12 on 2026-08-03. Human-owner R0 remains an external acceptance task.
 
 ### Current execution checkpoint - Validation-statistics Noah migration - 2026-08-01
 
@@ -1592,10 +1742,11 @@ changes
 | A-09 | P | Configure/Review/Run state language remains understandable across every tool | A-01 | Owner replay plus cross-tool state-text review |
 | A-10 | C | Validate and Results local drill-down retains live content, localized/accessibility navigation, failure-to-Teach routing, and an explicit visible Advanced route after stage recomposition | A-01 | `OPENVISIONLAB_3D_IA4B_OWNER_PATH_REPLAY_20260729.md`; actual Release Wide/Compact video; Window-hosted `52/52` |
 | A-11 | N | Consistent per-tool empty, incomplete, stale, ready, running, pass, fail, and error presentation matrix | A-09 | One shared state contract and focused UI verification |
-| A-12 | N | Global current-source quality state beside recipe/input state | B-08 | Current-source command-bar capture |
+| A-12 | C | Global current-source quality state beside recipe/input state | B-08 | `OPENVISIONLAB_3D_GLOBAL_CURRENT_SOURCE_QUALITY_STATE_20260803.md`; current Release Wide/Compact Authoring/Validate/Results captures; read-only Source Quality smoke |
 | A-13 | N | Task-specific assistant host using `analyze -> propose -> review -> explicit apply` | H-03 or D-04 | One assistant with Cancel/non-mutation and Apply evidence |
 | A-14 | N | In-product first-use checklist limited to current inspection task | R1 | Owner can dismiss/reopen; no permanent journey strip |
 | A-15 | P | Keyboard command coverage for common recipe, execution, and ROI actions | None | Existing shortcut verifier plus new Height Image/assistant actions |
+| A-16 | C | Advanced workspace semantic-theme parity for Data/Layers, Tool/Inspector, Evidence Workbench, linked evidence, and generated child controls | Current layout audit | `OPENVISIONLAB_3D_ADVANCED_SEMANTIC_THEME_PARITY_20260803.md`; fresh Wide/Compact English/Korean and open-popup theme-state evidence |
 
 ### B. Source identity, quality, and provenance
 
@@ -1643,7 +1794,7 @@ Reasoning effort: high
 | C-10 | C | Height Image ROI draw/move/resize/delete/review/apply/cancel | C-09 | Actual Windows pointer Review and Apply/save/reopen; recipe non-execution before Apply |
 | C-11 | C | Invalid/missing mask overlay in Height Image | B-09, C-06 | Pixel count matches SourceQualityReport |
 | C-12 | P | Height range palette selection exists in the 3D display | C-04 | Current height distribution |
-| C-13 | N | Manual/auto display range in both linked views without recipe mutation | C-06 | View-only state contract |
+| C-13 | C | Manual/auto display range in both linked views without recipe mutation | C-06 | `OPENVISIONLAB_3D_LINKED_VIEW_DISPLAY_RANGE_CONSISTENCY_20260803.md`; exact bidirectional/AUTO current-build reports; Wide/Compact evidence |
 | C-14 | C | Height profile and endpoint interaction | None | Profile UI/pointer verification |
 | C-15 | N | Linked crosshair/profile line between Height Image, Profile, and 3D | C-06, C-14 | One coordinate identity across three views |
 | C-16 | P | Intensity/color/depth display varies by file type and available source data | B-11 | Current GLB/LAS color plus C3D height evidence |
@@ -1726,7 +1877,7 @@ Reasoning effort: high
 | F-10 | N | Constrained best-fit alignment policy | F-09 | Synthetic known-transform fixture and failure gates |
 | F-11 | N | Alignment confidence/residual/coverage evidence | F-07 or F-10 | Explicit metric and acceptance state |
 | F-12 | N | Named coordinate-frame hierarchy and visible transform chain | F-07 | Source/reference/result frame display |
-| F-13 | N | Symmetry declaration for later matching | J-01 | Saved model contract and validation |
+| F-13 | C | Symmetry declaration for later matching | J-01 | Schema-1.0 byte parity `5/5`; schema-1.1 none/discrete-axis declaration, identity, validation, and round trip `34/34` |
 | F-14 | C | Allowed pose/rotation/search range contract | J-01 | Invalid range rejection and saved parameters |
 | F-15 | E | Physical calibration frame and traceable unit validation | Trusted calibration artifact | Independent physical evidence |
 
@@ -1815,15 +1966,15 @@ Reasoning effort: high
 | J-02 | P | Mesh import and fixed nominal/actual comparison exist, but are not a matching model | None | Current mesh/nominal evidence |
 | J-03 | C | Model preparation step with sampling parameters | J-01 | Deterministic sampled-model hash |
 | J-04 | C | Model point/triangle/normal validity checks | J-03, B-16 | Known-valid and invalid model fixtures |
-| J-05 | N | Remove internal/redundant/unobservable model surfaces | J-03 | Controlled model-preparation comparison |
+| J-05 | C | Remove internal/redundant/unobservable model surfaces | J-03 | Noah-owned exact duplicate and explicit source-triangle selection; schema-1.2 active domain; controlled `15/15`; legacy byte parity `5/5` |
 | J-06 | C | Scene preparation contract tied to SourceQualityReport | B-07 | Explicit prepared-scene identity |
-| J-07 | N | Model key-point artifact and debug overlay | J-03 | Stable key-point count/identity |
+| J-07 | C | Noah-owned deterministic farthest-point model samples; identified source-sample/source-triangle artifact; atomic persistence; WPF-neutral display-only position/normal overlay; no matching effect | J-03 | Committed Noah `7ed50ea`; vendored `Lib.ThreeD 2.8.12`; focused `15/15`; stable two-point IDs; save/reopen/tamper; legacy bytes `5/5` |
 | J-08 | C | Pose-search executor returning rigid pose | J-03, J-06 | Known-pose synthetic fixture |
 | J-09 | C | Explicit surface-coverage score semantics | J-08 | Occluded fixture with documented expected range |
 | J-10 | C | Transformed-model scene overlay | J-08, C-19 | Workbench and screenshot evidence |
 | J-11 | C | Match Pass/Fail limits distinct from raw score display | J-09 | PropertyGrid/Runner evidence |
-| J-12 | N | Multiple-match result collection with stable identities | J-08 | Known two-object fixture |
-| J-13 | N | Symmetry-aware pose equivalence | F-13, J-08 | Symmetric fixture |
+| J-12 | C | Multiple-match result collection with stable identities | J-08 | Two stable ordered `5/5` results, zero shared scene claims, save/load/tamper evidence, Runner `14/14`, Workbench `6/6` |
+| J-13 | C | Symmetry-aware pose equivalence | F-13, J-08 | Noah Tool, non-commutative axis fixture, direct/`x2`/`y3`/`z4` evidence, strict identity rejection, and legacy byte parity |
 | J-14 | C | Bounded translation/rotation/search domain | F-14, J-08 | Runtime and false-positive comparison |
 | J-15 | C | Matcher runtime and rejection reason evidence | J-08 | Per-stage timing and fail-closed reason |
 | J-16 | C | Workbench/Runner pose, score, overlay, and hash parity | J-08 | Focused execution verification |
@@ -1844,17 +1995,16 @@ Reasoning effort: high
 | K-06 | C | Separate surface and 3D-edge match scores | J-08, K-02, K-03 | Equal `100%` surface coverage separates to `100%` versus `0%` edge coverage; Runner `21/21`; parity `12/12` |
 | K-07 | C | Independent thresholds for score components | K-06 | Separate PropertyGrid persistence and exact Runner/Workbench assessment parity; no weighted score |
 | K-08 | C | False-positive review with original scene, samples, model, pose, and scores | K-06 | Retained `100/100` accepted versus `100/0` rejected comparison |
-| K-09 | N | Multiple-match issue navigation | J-12 | Previous/next match selection |
+| K-09 | C | Multiple-match issue navigation | J-12 | Non-wrapping selector-synchronized Previous/Next; Workbench `10/10`; current Wide/Compact first/last state evidence |
 | K-10 | C | Matching parameter experiment comparison without changing current published result | J-15 | One temporary Preview candidate, Published/Candidate Viewer switch, exact no-rerun Publish, stale/discard/reopen boundaries, parity `23/23` |
 | K-11 | C | Matching performance budget over fixed fixtures | J-15 | Release `18/18`; fixed 256-sample, 11/61-candidate timing matrix |
 | K-12 | O | Calibrated 2D intensity or extra-camera fusion in current phase | Separate scope approval | Not scheduled |
 
 Algorithm ownership note: all reusable numerical algorithms belong in
-Library-Noah public sealed Tools. `RigidSurfacePoseSearch` and
-`SurfaceCoverageScorer` now strictly adapt the vendored `Lib.ThreeD 2.8.0`
-pose-search and coverage Tools. The remaining Studio preparation, edge, filter,
-comparison, measurement, and statistical implementations are explicit debt in
-the schema-1 decreasing migration baseline; do not add to or expand that debt.
+Library-Noah public sealed Tools. Surface Match single- and multiple-result
+adapters strictly consume vendored `Lib.ThreeD 2.8.9`. The schema-1 decreasing
+migration baseline contains zero Studio debt and `31` reviewed boundaries; do
+not reintroduce arithmetic or expand a boundary ceiling.
 
 ### L. Results, validation, reporting, and diagnostics
 
@@ -2119,14 +2269,14 @@ External acceptance, in parallel with software work:
 
 Software queue:
 
-The owner-selected layout-only continuation above currently precedes this
-numerical queue. Resume item 11 only when the owner returns to algorithm work.
+The owner explicitly left the layout-only stream and completed item 11 on
+2026-08-03. Continue from item 12.
 
 1. `Library-Noah Surface Match kernel migration prerequisite` - Complete;
    committed Noah `7d1ad8721ca7aed9efa2a17beaa36409d7dbd718`, vendored
    `Lib.ThreeD 2.8.0`, and preserved exact Studio artifacts/parity.
 2. `Library-Noah Tool contract and no-new-debt guard` - Complete; schema-1
-   decreasing baseline now records `0` migration-debt files and `30` reviewed
+   decreasing baseline now records `0` migration-debt files and `31` reviewed
    boundaries; structure passes `29/29`.
 3. `Surface Match preparation/edge Tool migration` - Complete; committed
    Noah `46cfa0946bb4c23190b0dab75415ce2c637b4c41`, vendored `Lib.ThreeD
@@ -2157,13 +2307,36 @@ numerical queue. Resume item 11 only when the owner returns to algorithm work.
     `0fe04bc967fa89918b3c6d937566cce56de69682`, vendored `Lib.ThreeD 2.8.8`,
     Validation Set `84/84`, normalized report difference `0`, and zero
     inventoried Studio numerical debt.
-11. `J-12 Multiple-match result collection with stable identities` | Extend
-   Noah first for any new search/collection arithmetic, then add Studio-owned
-   typed collection identity, persistence, Runner/Workbench evidence, and
-   explicit result selection without automatic execution | Recommended model:
-   `gpt-5.6-sol` | Reasoning effort: `high`
-12. `K-09 Multiple-match issue navigation` | Prerequisite: `J-12`; do not
-   spend model tokens until the typed collection and retained evidence exist.
+11. `J-12 Multiple-match result collection with stable identities` - Complete;
+    committed Noah `4e301f481cac886f78425197314cd540b653473a`, vendored
+    `Lib.ThreeD 2.8.9`, stable/disjoint two-object evidence, Runner `14/14`,
+    Workbench `6/6`, and presentation-only result selection.
+12. `K-09 Multiple-match issue navigation` - Complete; non-wrapping
+    Previous/Next uses the existing retained selector state and Viewer route;
+    Workbench `10/10`, current Wide/Compact state evidence, and no-execution
+    boundaries pass.
+13. `F-13 Symmetry declaration for later matching` - Complete; schema `1.1`
+    owns explicit none/discrete model-axis declarations while undeclared
+    schema `1.0` preserves exact content and JSON bytes; focused verification
+    `34/34` and legacy byte parity `5/5` pass.
+14. `J-13 Symmetry-aware pose equivalence` - Complete; committed Noah
+    `f225fd2709de1dd1d0ecfe19b37315cb1f019ee4`, vendored
+    `Lib.ThreeD 2.8.10`, focused `15/15`, direct and cyclic-axis fixtures,
+    strict Studio adapter, legacy byte parity `5/5`, and unchanged matching
+    execution.
+15. `J-05 Remove internal/redundant/unobservable model surfaces` - Complete;
+    committed Noah `55ea7a61bd1281294e91aa5366d2bafb509d3667`, vendored
+    `Lib.ThreeD 2.8.11`, focused `15/15`, one immutable source topology and
+    active domain shared by preparation/matching/edges/overlay, plus legacy
+    byte parity `5/5`.
+16. `J-07 Model key-point artifact and debug overlay` - Complete; committed
+    Noah `7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored
+    `Lib.ThreeD 2.8.12`, stable source-sample/source-triangle identities,
+    focused `15/15`, atomic persistence, and display-only overlay evidence.
+17. `B-12 Acquisition/source provenance text and limitation notes` | Persist
+    explicit available/unavailable source evidence without execution or
+    inferred viewpoint; this unblocks K-04 | Recommended model:
+    `gpt-5.6-sol` | Reasoning effort: `high`
 
 ## Documentation decision
 

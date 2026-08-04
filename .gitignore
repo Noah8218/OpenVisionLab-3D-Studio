@@ -4,3 +4,11 @@ artifacts/
 *.user
 *.suo
 .vs/
+
+# Local/private 3D captures are not public sample assets.
+/3D/SSD-Black/
+/3D/TLB/
+/3D/fccsp/
+/3D/새 폴더/
+Thumbs.db
+*_wpftmp.csproj

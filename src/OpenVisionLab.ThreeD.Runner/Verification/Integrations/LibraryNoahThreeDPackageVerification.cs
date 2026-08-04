@@ -19,6 +19,10 @@ internal static class LibraryNoahThreeDPackageVerification
             ("thickness-fail-retains-measurement", () => VerifyThicknessFailure(thicknessSource)),
             ("invalid-roi-is-controlled", () => VerifyInvalidRoi(thicknessSource)),
             ("missing-unit-is-bridge-error", () => VerifyMissingUnit(thicknessSource)),
+            ("strict-height-map-contract-metadata-and-units", VerifyStrictContractMetadataAndUnits),
+            ("strict-height-map-contract-mismatch", VerifyStrictContractMismatch),
+            ("strict-height-map-coverage-gate", VerifyStrictCoverageGate),
+            ("datum-plane-rejects-mixed-units", VerifyDatumPlaneRejectsMixedUnits),
             ("warpage-analytic-plane-pass", VerifyWarpagePlane),
             ("warpage-fail-and-insufficient-data", VerifyWarpageFailureAndInsufficientData),
             ("height-grid-summary-tool", VerifyHeightGridSummaryTool),
@@ -32,7 +36,9 @@ internal static class LibraryNoahThreeDPackageVerification
             ("landmark-correspondence-validation-tool", VerifyLandmarkCorrespondenceValidationTool),
             ("repeatability-statistics-tool", VerifyRepeatabilityStatisticsTool),
             ("labeled-evidence-statistics-tool", VerifyLabeledEvidenceStatisticsTool),
-            ("threshold-candidate-analysis-tool", VerifyThresholdCandidateAnalysisTool)
+            ("threshold-candidate-analysis-tool", VerifyThresholdCandidateAnalysisTool),
+            ("deterministic-model-surface-selection-tool", VerifyDeterministicModelSurfaceSelectionTool),
+            ("rigid-pose-symmetry-equivalence-tool", VerifyRigidPoseSymmetryEquivalenceTool)
         };
 
         var results = cases
@@ -62,9 +68,75 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
             && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.8"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "0fe04bc967fa89918b3c6d937566cce56de69682";
+            && LibraryNoahHeightMapInspection.PackageVersion == "2.8.13"
+            && LibraryNoahHeightMapInspection.PackageSourceCommit == "21f2e3084843ef8a499e6fe02c4326a19813aa2c";
         return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
+    }
+
+    private static (bool Passed, string Evidence)
+        VerifyDeterministicModelSurfaceSelectionTool()
+    {
+        var result = new DeterministicModelSurfaceSelectionTool().Execute(
+            [
+                new ThreeDPoint(0.0, 0.0, 0.0),
+                new ThreeDPoint(1.0, 0.0, 0.0),
+                new ThreeDPoint(0.0, 1.0, 0.0)
+            ],
+            [
+                new SurfaceModelTriangleInput(0, 1, 2),
+                new SurfaceModelTriangleInput(2, 0, 1)
+            ],
+            new DeterministicModelSurfaceSelectionOptions
+            {
+                RemoveExactDuplicateTriangles = true
+            });
+        var removal = result.RemovedSurfaces.SingleOrDefault();
+        var passed = result.Success
+            && result.RetainedSourceTriangleIndices.SequenceEqual([0])
+            && removal is not null
+            && removal.SourceTriangleIndex == 1
+            && removal.Reason == ModelSurfaceRemovalReason.ExactDuplicate
+            && removal.DuplicateOfSourceTriangleIndex == 0;
+        return (
+            passed,
+            $"success={result.Success},retained={string.Join(',', result.RetainedSourceTriangleIndices)},removed={removal?.SourceTriangleIndex}:{removal?.Reason}:{removal?.DuplicateOfSourceTriangleIndex}");
+    }
+
+    private static (bool Passed, string Evidence)
+        VerifyRigidPoseSymmetryEquivalenceTool()
+    {
+        var reference = new RigidSurfacePose(
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0,
+            0.0, 0.0, 0.0);
+        var candidate = new RigidSurfacePose(
+            0.0, -1.0, 0.0,
+            1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0,
+            0.0, 0.0, 0.0);
+        var result = new RigidPoseSymmetryEquivalenceTool().Execute(
+            reference,
+            candidate,
+            new RigidPoseSymmetryEquivalenceOptions
+            {
+                Symmetry = new RigidPoseSymmetry(
+                    RigidPoseSymmetryKind.DiscreteRotation,
+                    RigidPoseSymmetryAxis.Z,
+                    4),
+                MaximumTranslationDifference = 1e-9,
+                MaximumRotationDifferenceDegrees = 1e-6,
+                RigidTransformTolerance = 1e-9
+            });
+        var passed = result.Success
+            && result.Equivalent
+            && result.SymmetryOperationIndex == 1
+            && Approximately(result.SymmetryOperationAngleDegrees, 90.0)
+            && result.TranslationDifference <= 1e-12
+            && result.RotationDifferenceDegrees <= 1e-6;
+        return (
+            passed,
+            $"success={result.Success},equivalent={result.Equivalent},operation={result.SymmetryOperationIndex},angle={result.SymmetryOperationAngleDegrees:R},translation={result.TranslationDifference:R},rotation={result.RotationDifferenceDegrees:R}");
     }
 
     private static (bool Passed, string Evidence) VerifyHeightGridSummaryTool()
@@ -376,9 +448,13 @@ internal static class LibraryNoahThreeDPackageVerification
         var passed = evaluation.Result.Status == ResultStatus.Pass
             && evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "Passed"
+            && evaluation.PlanarUnit == Unit
+            && evaluation.HeightUnit == Unit
+            && evaluation.CoordinateConvention == "GridXGridYScalarHeight"
             && Approximately(Metric(evaluation, "ValidSampleCount"), 4.0)
             && Approximately(Metric(evaluation, "Mean"), 1.0875)
-            && Approximately(Metric(evaluation, "Range"), 0.2);
+            && Approximately(Metric(evaluation, "Range"), 0.2)
+            && MetricUnit(evaluation, "Mean") == Unit;
         return (passed, Evidence(evaluation));
     }
 
@@ -413,6 +489,98 @@ internal static class LibraryNoahThreeDPackageVerification
             && !evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "BridgeError"
             && evaluation.Result.Message.Contains("unit", StringComparison.OrdinalIgnoreCase);
+        return (passed, Evidence(evaluation));
+    }
+
+    private static (bool Passed, string Evidence) VerifyStrictContractMetadataAndUnits()
+    {
+        var source = CreateThicknessSource() with
+        {
+            PlanarUnit = "grid-index",
+            HeightUnit = "raw-height",
+            ExpectedContract = new LibraryNoahHeightMapContract(
+                "grid-index",
+                "raw-height",
+                FrameId)
+        };
+        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
+            new LibraryNoahThicknessInspectionInput(source, null, 0.9, 1.2, MinimumValidCoverageRatio: 0.75));
+        var passed = evaluation.Result.Status == ResultStatus.Pass
+            && evaluation.HasMeasurement
+            && evaluation.PlanarUnit == "grid-index"
+            && evaluation.HeightUnit == "raw-height"
+            && evaluation.CoordinateConvention == "GridXGridYScalarHeight"
+            && Approximately(Metric(evaluation, "TotalSampleCount"), 4.0)
+            && Approximately(Metric(evaluation, "ValidCoverageRatio"), 1.0)
+            && MetricUnit(evaluation, "Mean") == "raw-height"
+            && MetricUnit(evaluation, "ValidCoverageRatio") == "ratio";
+        return (passed, Evidence(evaluation));
+    }
+
+    private static (bool Passed, string Evidence) VerifyStrictContractMismatch()
+    {
+        var source = CreateThicknessSource() with
+        {
+            PlanarUnit = "grid-index",
+            HeightUnit = "raw-height",
+            ExpectedContract = new LibraryNoahHeightMapContract(
+                "mm",
+                "raw-height",
+                FrameId)
+        };
+        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
+            new LibraryNoahThicknessInspectionInput(source, null, 0.9, 1.2));
+        var passed = evaluation.Result.Status == ResultStatus.Error
+            && !evaluation.HasMeasurement
+            && evaluation.PackageResultStatus == "InvalidInput"
+            && evaluation.PackageErrorCode == "InputContractMismatch"
+            && evaluation.Result.Message.Contains("expected", StringComparison.OrdinalIgnoreCase)
+            && evaluation.Result.Message.Contains("actual", StringComparison.OrdinalIgnoreCase);
+        return (passed, Evidence(evaluation));
+    }
+
+    private static (bool Passed, string Evidence) VerifyStrictCoverageGate()
+    {
+        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
+            new LibraryNoahThicknessInspectionInput(
+                CreateSource(2, 2, [1.0, double.NaN, 1.1, double.NaN]),
+                null,
+                0.9,
+                1.2,
+                MinimumValidSamples: 1,
+                MinimumValidCoverageRatio: 0.75));
+        var passed = evaluation.Result.Status == ResultStatus.Error
+            && !evaluation.HasMeasurement
+            && evaluation.PackageResultStatus == "InsufficientData"
+            && evaluation.PackageErrorCode == "InsufficientValidCoverage"
+            && Approximately(Metric(evaluation, "TotalSampleCount"), 4.0)
+            && Approximately(Metric(evaluation, "MissingSampleCount"), 2.0)
+            && Approximately(Metric(evaluation, "ValidCoverageRatio"), 0.5)
+            && Approximately(Metric(evaluation, "MinimumValidCoverageRatio"), 0.75);
+        return (passed, Evidence(evaluation));
+    }
+
+    private static (bool Passed, string Evidence) VerifyDatumPlaneRejectsMixedUnits()
+    {
+        var source = CreatePlanarSource() with
+        {
+            PlanarUnit = "grid-index",
+            HeightUnit = "raw-height"
+        };
+        var evaluation = LibraryNoahHeightMapInspection.EvaluateDatumPlaneRawHeightDeviation(
+            new LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
+                source,
+                null,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                1.0));
+        var passed = evaluation.Result.Status == ResultStatus.Error
+            && !evaluation.HasMeasurement
+            && evaluation.PackageResultStatus == "InvalidInput"
+            && evaluation.PackageErrorCode == "InputContractMismatch"
+            && evaluation.Result.Message.Contains("identical planar and height units", StringComparison.OrdinalIgnoreCase);
         return (passed, Evidence(evaluation));
     }
 
@@ -476,11 +644,14 @@ internal static class LibraryNoahThreeDPackageVerification
     private static double Metric(LibraryNoahInspectionEvaluation evaluation, string name) =>
         evaluation.Result.Metrics.Single(metric => metric.Name == name).Value;
 
+    private static string MetricUnit(LibraryNoahInspectionEvaluation evaluation, string name) =>
+        evaluation.Result.Metrics.Single(metric => metric.Name == name).Unit;
+
     private static bool Approximately(double actual, double expected, double tolerance = 1e-9) =>
         double.IsFinite(actual) && Math.Abs(actual - expected) <= tolerance;
 
     private static string Evidence(LibraryNoahInspectionEvaluation evaluation) =>
-        $"status={evaluation.Result.Status},hasMeasurement={evaluation.HasMeasurement},packageStatus={evaluation.PackageResultStatus},error={evaluation.PackageErrorCode},metrics={string.Join(',', evaluation.Result.Metrics.Select(metric => $"{metric.Name}={metric.Value.ToString("R", CultureInfo.InvariantCulture)}"))}";
+        $"status={evaluation.Result.Status},hasMeasurement={evaluation.HasMeasurement},packageStatus={evaluation.PackageResultStatus},error={evaluation.PackageErrorCode},planarUnit={evaluation.PlanarUnit},heightUnit={evaluation.HeightUnit},coordinateConvention={evaluation.CoordinateConvention},metrics={string.Join(',', evaluation.Result.Metrics.Select(metric => $"{metric.Name}={metric.Value.ToString("R", CultureInfo.InvariantCulture)}[{metric.Unit}]"))}";
 
     private static (bool Passed, string Evidence) Check(string name, Func<(bool Passed, string Evidence)> verify)
     {

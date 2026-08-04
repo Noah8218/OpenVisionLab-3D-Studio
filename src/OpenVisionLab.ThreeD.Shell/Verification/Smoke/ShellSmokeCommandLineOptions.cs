@@ -73,6 +73,10 @@ internal sealed class ShellSmokeCommandLineOptions
         GetValue("--smoke-oriented-box-pointer-report");
     public string? SmokeSelectToolId => GetValue("--smoke-select-tool");
     public string? WorkbenchInteractionReportPath => GetValue("--smoke-workbench-interaction-report");
+    public string? SurfaceMatchCollectionPath =>
+        GetValue("--smoke-surface-match-collection");
+    public string? SurfaceMatchCollectionPopupScreenshotPath =>
+        GetValue("--smoke-surface-match-collection-popup-screenshot");
     public string? EdgeStepId => GetValue("--tool-teaching-step");
     public string? EdgeSmokeReportPath => GetValue("--smoke-tool-edge-report");
     public string? LineFitSmokeReportPath => GetValue("--smoke-tool-line-fit-report");
@@ -126,6 +130,13 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-surface-match-experiment-preview");
     public bool SurfaceMatchExperimentFocusHoverSmoke =>
         HasFlag("--smoke-surface-match-experiment-focus-hover");
+    public bool SurfaceMatchCollectionPopupSmoke =>
+        HasFlag("--smoke-surface-match-collection-popup")
+        || SurfaceMatchCollectionPopupScreenshotPath is not null;
+    public bool SurfaceMatchCollectionDisabledSmoke =>
+        HasFlag("--smoke-surface-match-collection-disabled");
+    public bool SurfaceMatchCollectionNavigationFocusHoverSmoke =>
+        HasFlag("--smoke-surface-match-collection-navigation-focus-hover");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
 
     public (int Width, int Height)? WindowSize =>
@@ -182,7 +193,11 @@ internal sealed class ShellSmokeCommandLineOptions
         || FocusSelectedToolParameterSearchSmoke
         || SurfaceMatchExperimentPreviewSmoke
         || SurfaceMatchExperimentFocusHoverSmoke
-        || WorkbenchInteractionReportPath is not null;
+        || SurfaceMatchCollectionPopupSmoke
+        || SurfaceMatchCollectionDisabledSmoke
+        || SurfaceMatchCollectionNavigationFocusHoverSmoke
+        || WorkbenchInteractionReportPath is not null
+        || SurfaceMatchCollectionPath is not null;
 
     private bool HasFlag(string name) =>
         arguments.Contains(name, StringComparer.OrdinalIgnoreCase);

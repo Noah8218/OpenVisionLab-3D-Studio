@@ -717,7 +717,7 @@ internal static class SurfaceMatchingFoundationVerification
             2.0);
     }
 
-    private static SourceQualityReport CreateQuality(
+    internal static SourceQualityReport CreateQuality(
         string entityId,
         string path,
         string frameId,

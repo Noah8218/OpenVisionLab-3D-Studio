@@ -36,7 +36,7 @@
       "halfWidth": 0.992,
       "halfDepth": 2.5
     },
-    "expectedNetVolume": -0.098,
+    "expectedNetVolume": 0.005,
     "tolerance": 0.01,
     "unit": "model^3",
     "maxSampledPoints": 140000,

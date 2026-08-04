@@ -343,13 +343,83 @@
                             <TextBlock FontSize="10.5"
                                        FontWeight="SemiBold"
                                        TextWrapping="Wrap"
-                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchExperiment, Korean='정합 파라미터 실험', English='Match parameter experiment'}" />
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SurfaceMatchExperiment, Korean='정합 결과 및 파라미터 실험', English='Match results and parameter experiment'}" />
                             <TextBlock Margin="0,2,0,0"
                                        FontSize="8.5"
                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
                                        Text="{Binding SurfaceMatchExperimentViewSummary}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
+                        <Grid Margin="0,6,0,0"
+                              Visibility="{Binding IsSurfaceMatchCollectionVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.RetainedMatch, Korean='보존 매치', English='Retained match'}" />
+                            <ComboBox Grid.Column="1"
+                                      MinHeight="27"
+                                      ItemsSource="{Binding SurfaceMatchCollectionItems}"
+                                      SelectedItem="{Binding SelectedSurfaceMatchCollectionItem, Mode=TwoWay}"
+                                      DisplayMemberPath="DisplayName"
+                                      IsEnabled="{Binding CanSelectSurfaceMatchCollectionItem}"
+                                      ToolTip="{Binding SelectedSurfaceMatchCollectionItem.MatchId}"
+                                      AutomationProperties.AutomationId="SurfaceMatchCollectionSelector"
+                                      AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Workspace.RetainedMatchAccessible, Korean='보존된 Surface Match 결과 선택', English='Select retained Surface Match result'}" />
+                            <Grid Grid.Row="1"
+                                  Grid.ColumnSpan="2"
+                                  Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ui:Button MinHeight="26"
+                                           Margin="0,0,3,0"
+                                           Padding="5,2"
+                                           HorizontalAlignment="Stretch"
+                                           Command="{Binding PreviousSurfaceMatchCollectionItemCommand}"
+                                           ToolTip="{views:ThreeDText Key=ThreeD.Command.PreviousRetainedMatchTip, Korean='Viewer에서 이전 보존 Surface Match 결과를 선택합니다.', English='Select the previous retained Surface Match result in the Viewer.'}"
+                                           AutomationProperties.AutomationId="PreviousSurfaceMatchCollectionItem"
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.PreviousRetainedMatchAccessible, Korean='이전 보존 Surface Match 결과', English='Previous retained Surface Match result'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="ArrowLeft24" />
+                                        <TextBlock Margin="4,0,0,0"
+                                                   Text="{views:ThreeDText Key=ThreeD.Command.PreviousRetainedMatch, Korean='이전 결과', English='Previous'}" />
+                                    </StackPanel>
+                                </ui:Button>
+                                <ui:Button Grid.Column="1"
+                                           MinHeight="26"
+                                           Margin="3,0,0,0"
+                                           Padding="5,2"
+                                           HorizontalAlignment="Stretch"
+                                           Command="{Binding NextSurfaceMatchCollectionItemCommand}"
+                                           ToolTip="{views:ThreeDText Key=ThreeD.Command.NextRetainedMatchTip, Korean='Viewer에서 다음 보존 Surface Match 결과를 선택합니다.', English='Select the next retained Surface Match result in the Viewer.'}"
+                                           AutomationProperties.AutomationId="NextSurfaceMatchCollectionItem"
+                                           AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.NextRetainedMatchAccessible, Korean='다음 보존 Surface Match 결과', English='Next retained Surface Match result'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Margin="0,0,4,0"
+                                                   Text="{views:ThreeDText Key=ThreeD.Command.NextRetainedMatch, Korean='다음 결과', English='Next'}" />
+                                        <ui:SymbolIcon Symbol="ArrowRight24" />
+                                    </StackPanel>
+                                </ui:Button>
+                            </Grid>
+                            <TextBlock Grid.Row="2"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,3,0,0"
+                                       FontFamily="Consolas"
+                                       FontSize="8.5"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding SurfaceMatchCollectionSummary}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
                         <Grid Margin="0,6,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="62" />

@@ -65,14 +65,37 @@ Open:
 | ROI | Reference and Measurement `GridRectangle`, Review/Apply/Cancel/Delete, linked 2D/3D editing |
 | Inspection workspace | Tool Catalog → Recipe Chain → Selected Tool → Viewer |
 | Measurement | Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, Volume, and more |
+| Matching | Deterministic Surface Match with retained identified results, direct selection, and bounded Previous/Next Viewer review |
 | Evidence | Explicit Preview/Run, state, metrics, overlays, reports, and headless Runner |
 | Recipe | Save and restore step order, inputs, parameters, ROI roles, and output IDs |
 
-## Requirements
+## Requirements and setup
 
-- Windows 10 or Windows 11
-- .NET 10 SDK
-- OpenGL-compatible GPU and driver
+For the self-contained Windows package:
+
+- Windows 10 build 19041 or later, or Windows 11, on x64
+- OpenGL-compatible GPU with a current vendor driver
+
+The self-contained package includes the .NET runtime. Application operators do
+not need Git, Python, the .NET SDK, or FFmpeg.
+
+Building and fully verifying the source additionally requires Git, Windows
+PowerShell 5.1 or later, the .NET 10 SDK `10.0.300` or later, and Python 3.13.
+Check the current machine without changing it:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly
+```
+
+Explicitly install missing development and verification utilities from their
+fixed `winget` package IDs:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -InstallMissing
+```
+
+See [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
+for the operator/developer boundary, exact package IDs, and recovery steps.
 
 ## Build and run
 
@@ -87,6 +110,13 @@ dotnet run --no-build `
 
 When the application opens, load the included Thickness recipe or start with a
 new recipe and add tools from the Tool Catalog.
+
+Create a folder-based self-contained Windows package that does not require a
+separate .NET installation:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.ps1
+```
 
 Displayed measurements use the unit declared by the source. Apply the
 appropriate calibration profile before using physical tolerances.
@@ -109,6 +139,7 @@ appropriate calibration profile before using physical tolerances.
 ## Development documentation
 
 - [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)
+- [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
 - [Product direction and master backlog](docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md)
 - [Current session handoff](docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md)
 - [Sample data policy](docs/OPENVISIONLAB_3D_SAMPLE_DATA.md)

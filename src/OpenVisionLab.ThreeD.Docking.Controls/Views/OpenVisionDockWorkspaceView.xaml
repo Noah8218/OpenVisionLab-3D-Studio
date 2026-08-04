@@ -351,7 +351,8 @@
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
                         <avalonDock:LayoutAnchorablePane x:Name="resultsPane"
-                                                           DockWidth="1*">
+                                                           DockWidth="1*"
+                                                           DockMinWidth="460">
                             <avalonDock:LayoutAnchorable x:Name="resultsAnchorable"
                                                          Title="{Binding ResultsTitle, RelativeSource={RelativeSource AncestorType=local:OpenVisionDockWorkspaceView}}"
                                                          ContentId="results-workspace"

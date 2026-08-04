@@ -594,15 +594,11 @@
                                        FontWeight="SemiBold"
                                        Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </StackPanel>
-                        <Grid Grid.Row="2" Margin="4,1,4,7">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <WrapPanel VerticalAlignment="Center">
+                        <WrapPanel Grid.Row="2"
+                                   Margin="4,1,4,7"
+                                   VerticalAlignment="Center">
                                 <ui:Button x:Name="RunRecordOpenButton"
-                                           Margin="0,0,5,0"
+                                           Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon FolderOpen24}"
                                            Content="{Binding Localization.RunRecordOpen}"
@@ -610,21 +606,21 @@
                                            AutomationProperties.AutomationId="RunRecordOpenButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpen}" />
                                 <ui:Button x:Name="RunRecordOpenJsonButton"
-                                           Margin="0,0,5,0"
+                                           Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon Document24}"
                                            Content="{Binding Localization.RunRecordOpenCurrent}"
                                            Command="{Binding RunRecordContext.OpenRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            AutomationProperties.AutomationId="RunRecordOpenJsonButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenCurrent}" />
-                                <ui:Button Margin="0,0,5,0"
+                                <ui:Button Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon DocumentText24}"
                                            Content="{Binding Localization.RunRecordOpenHtml}"
                                            Command="{Binding RunRecordContext.OpenHtmlReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            AutomationProperties.AutomationId="RunRecordOpenHtmlButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenHtml}" />
-                                <ui:Button Margin="0,0,5,0"
+                                <ui:Button Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon Table24}"
                                            Content="{Binding Localization.RunRecordOpenCsv}"
@@ -632,26 +628,25 @@
                                            AutomationProperties.AutomationId="RunRecordOpenCsvButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenCsv}" />
                                 <ui:Button x:Name="RunRecordExportButton"
-                                           Margin="0,0,5,0"
+                                           Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon SaveCopy24}"
                                            Content="{Binding Localization.RunRecordExport}"
                                            Command="{Binding RunRecordContext.ExportRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            AutomationProperties.AutomationId="RunRecordExportButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordExport}" />
-                                <ui:Button Margin="0,0,10,0"
+                                <ui:Button Margin="0,0,3,4"
                                            Appearance="Secondary"
                                            Icon="{ui:SymbolIcon Folder24}"
                                            Content="{Binding Localization.RunRecordOpenFolder}"
                                            Command="{Binding RunRecordContext.OpenRunRecordFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            AutomationProperties.AutomationId="RunRecordOpenFolderButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenFolder}" />
-                            </WrapPanel>
                             <ComboBox x:Name="RecentRunRecordCombo"
-                                      Grid.Column="1"
-                                      MinWidth="260"
-                                      Margin="0,0,5,0"
+                                      Width="230"
+                                      Margin="0,0,3,4"
                                       VerticalAlignment="Center"
+                                      Visibility="{Binding HasItems, RelativeSource={RelativeSource Self}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                       ItemsSource="{Binding RunRecordContext.RecentRunRecords, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                       SelectedItem="{Binding RunRecordContext.SelectedRecentRunRecord, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}"
                                       AutomationProperties.AutomationId="RunRecordRecentCombo"
@@ -671,15 +666,16 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                             <ui:Button x:Name="RunRecordOpenRecentButton"
-                                       Grid.Column="2"
+                                       Margin="0,0,0,4"
                                        Appearance="Primary"
                                        Icon="{ui:SymbolIcon ArrowRight24}"
                                        Content="{Binding Localization.RunRecordOpenRecent}"
                                        Command="{Binding RunRecordContext.OpenRecentRunRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                        CommandParameter="{Binding SelectedItem, ElementName=RecentRunRecordCombo}"
+                                       Visibility="{Binding HasItems, ElementName=RecentRunRecordCombo, Converter={StaticResource BooleanToVisibilityConverter}}"
                                        AutomationProperties.AutomationId="RunRecordOpenRecentButton"
                                        AutomationProperties.Name="{Binding Localization.RunRecordOpenRecent}" />
-                        </Grid>
+                        </WrapPanel>
                         <Border Grid.Row="1"
                                 Margin="4,0,4,7"
                                 Padding="8,6"

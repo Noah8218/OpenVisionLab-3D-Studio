@@ -41,6 +41,53 @@ public sealed record SurfaceModelPreparationParameters(
 }
 
 /// <summary>
+/// Optional model-frame symmetry metadata for later pose-equivalence policy.
+/// This declaration does not itself execute or alter matching.
+/// </summary>
+public sealed record SurfaceModelSymmetryDeclaration(
+    string Kind,
+    string Axis,
+    int Order)
+{
+    public const string NoneKind = "none";
+    public const string DiscreteRotationKind = "discrete-rotation";
+    public const string NoAxis = "none";
+    public const string XAxis = "x";
+    public const string YAxis = "y";
+    public const string ZAxis = "z";
+
+    public static SurfaceModelSymmetryDeclaration None { get; } =
+        new(NoneKind, NoAxis, 1);
+}
+
+public sealed record SurfaceModelSurfaceRemoval(
+    int SourceTriangleIndex,
+    string Reason,
+    int? DuplicateOfSourceTriangleIndex);
+
+/// <summary>
+/// Persisted active-surface evidence. Source geometry remains intact while
+/// downstream sampling, edge extraction, and overlays use the retained
+/// source-triangle domain.
+/// </summary>
+public sealed record SurfaceModelSurfaceSelection(
+    string Policy,
+    int SourceTriangleCount,
+    int[] ExplicitInternalSourceTriangleIndices,
+    int[] ExplicitUnobservableSourceTriangleIndices,
+    bool RemoveExactDuplicateTriangles,
+    int[] RetainedSourceTriangleIndices,
+    SurfaceModelSurfaceRemoval[] RemovedSurfaces)
+{
+    public const string ExactDuplicateAndExplicitExclusionPolicy =
+        "exact-duplicate-and-explicit-source-triangle-exclusion-v1";
+    public const string ExplicitInternalReason = "explicit-internal";
+    public const string ExplicitUnobservableReason =
+        "explicit-unobservable";
+    public const string ExactDuplicateReason = "exact-duplicate";
+}
+
+/// <summary>
 /// Identified, content-addressed nominal surface artifact. The source mesh,
 /// prepared samples, unit, and coordinate frame remain explicit so downstream
 /// matching cannot silently substitute unrelated geometry.
@@ -60,9 +107,13 @@ public sealed record SurfaceModelArtifact(
     SurfaceModelTriangle[] Triangles,
     SurfaceModelPoint3[] Normals,
     SurfaceModelSample[] Samples,
+    SurfaceModelSymmetryDeclaration? Symmetry,
+    SurfaceModelSurfaceSelection? SurfaceSelection,
     string ContentSha256)
 {
-    public const string CurrentSchemaVersion = "1.0";
+    public const string LegacySchemaVersion = "1.0";
+    public const string SymmetrySchemaVersion = "1.1";
+    public const string CurrentSchemaVersion = "1.2";
     public const string CurrentCoordinateConvention = "source-cartesian-xyz";
 
     public static SurfaceModelArtifact Create(
@@ -77,7 +128,9 @@ public sealed record SurfaceModelArtifact(
         IReadOnlyList<SurfaceModelPoint3> points,
         IReadOnlyList<SurfaceModelTriangle> triangles,
         IReadOnlyList<SurfaceModelPoint3> normals,
-        IReadOnlyList<SurfaceModelSample> samples)
+        IReadOnlyList<SurfaceModelSample> samples,
+        SurfaceModelSymmetryDeclaration? symmetry = null,
+        SurfaceModelSurfaceSelection? surfaceSelection = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -92,8 +145,15 @@ public sealed record SurfaceModelArtifact(
         ArgumentNullException.ThrowIfNull(normals);
         ArgumentNullException.ThrowIfNull(samples);
 
+        var effectiveSymmetry = surfaceSelection is null
+            ? symmetry
+            : symmetry ?? SurfaceModelSymmetryDeclaration.None;
         var model = new SurfaceModelArtifact(
-            CurrentSchemaVersion,
+            surfaceSelection is not null
+                ? CurrentSchemaVersion
+                : effectiveSymmetry is null
+                    ? LegacySchemaVersion
+                    : SymmetrySchemaVersion,
             artifactId.Trim(),
             name.Trim(),
             sourceEntityId.Trim(),
@@ -107,6 +167,8 @@ public sealed record SurfaceModelArtifact(
             triangles.ToArray(),
             normals.ToArray(),
             samples.ToArray(),
+            effectiveSymmetry,
+            Copy(surfaceSelection),
             string.Empty);
         model = model with
         {
@@ -156,6 +218,47 @@ public sealed record SurfaceModelArtifact(
             writer.Write(model.Preparation.MinimumTriangleArea);
             writer.Write(model.Preparation.UnitNormalTolerance);
             writer.Write(model.Preparation.MinimumNormalAlignmentCosine);
+            if (model.SchemaVersion != LegacySchemaVersion)
+            {
+                writer.Write(model.Symmetry?.Kind ?? string.Empty);
+                writer.Write(model.Symmetry?.Axis ?? string.Empty);
+                writer.Write(model.Symmetry?.Order ?? 0);
+            }
+
+            if (model.SchemaVersion == CurrentSchemaVersion)
+            {
+                var selection = model.SurfaceSelection;
+                writer.Write(selection?.Policy ?? string.Empty);
+                writer.Write(selection?.SourceTriangleCount ?? 0);
+                WriteIndices(
+                    writer,
+                    selection?.ExplicitInternalSourceTriangleIndices);
+                WriteIndices(
+                    writer,
+                    selection?.ExplicitUnobservableSourceTriangleIndices);
+                writer.Write(
+                    selection?.RemoveExactDuplicateTriangles ?? false);
+                WriteIndices(
+                    writer,
+                    selection?.RetainedSourceTriangleIndices);
+                var removed = selection?.RemovedSurfaces;
+                writer.Write(removed?.Length ?? 0);
+                if (removed is not null)
+                {
+                    foreach (var item in removed)
+                    {
+                        writer.Write(item.SourceTriangleIndex);
+                        writer.Write(item.Reason ?? string.Empty);
+                        writer.Write(
+                            item.DuplicateOfSourceTriangleIndex.HasValue);
+                        if (item.DuplicateOfSourceTriangleIndex.HasValue)
+                        {
+                            writer.Write(
+                                item.DuplicateOfSourceTriangleIndex.Value);
+                        }
+                    }
+                }
+            }
 
             writer.Write(model.Points.Length);
             foreach (var point in model.Points)
@@ -199,6 +302,52 @@ public sealed record SurfaceModelArtifact(
         writer.Write(point.Y);
         writer.Write(point.Z);
     }
+
+    private static void WriteIndices(
+        BinaryWriter writer,
+        int[]? indices)
+    {
+        writer.Write(indices?.Length ?? 0);
+        if (indices is not null)
+        {
+            foreach (var index in indices)
+            {
+                writer.Write(index);
+            }
+        }
+    }
+
+    private static SurfaceModelSurfaceSelection? Copy(
+        SurfaceModelSurfaceSelection? selection) =>
+        selection is null
+            ? null
+            : selection with
+            {
+                ExplicitInternalSourceTriangleIndices =
+                    selection.ExplicitInternalSourceTriangleIndices.ToArray(),
+                ExplicitUnobservableSourceTriangleIndices =
+                    selection.ExplicitUnobservableSourceTriangleIndices.ToArray(),
+                RetainedSourceTriangleIndices =
+                    selection.RetainedSourceTriangleIndices.ToArray(),
+                RemovedSurfaces = selection.RemovedSurfaces.ToArray()
+            };
+}
+
+public static class SurfaceModelSurfaceDomain
+{
+    public static int[] GetRetainedSourceTriangleIndices(
+        SurfaceModelArtifact model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return model.SurfaceSelection?.RetainedSourceTriangleIndices.ToArray()
+               ?? Enumerable.Range(0, model.Triangles.Length).ToArray();
+    }
+
+    public static SurfaceModelTriangle[] GetRetainedTriangles(
+        SurfaceModelArtifact model) =>
+        GetRetainedSourceTriangleIndices(model)
+            .Select(index => model.Triangles[index])
+            .ToArray();
 }
 
 public static class SurfaceModelSampling

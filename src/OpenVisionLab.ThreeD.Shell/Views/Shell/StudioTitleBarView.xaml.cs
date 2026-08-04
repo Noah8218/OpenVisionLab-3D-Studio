@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 
@@ -35,6 +36,30 @@ public partial class StudioTitleBarView : UserControl
         typeof(string),
         typeof(StudioTitleBarView),
         new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty SourceQualityStatusTextProperty = DependencyProperty.Register(
+        nameof(SourceQualityStatusText),
+        typeof(string),
+        typeof(StudioTitleBarView),
+        new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty SourceQualityStatusToolTipProperty = DependencyProperty.Register(
+        nameof(SourceQualityStatusToolTip),
+        typeof(string),
+        typeof(StudioTitleBarView),
+        new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty SourceQualityStatusKindProperty = DependencyProperty.Register(
+        nameof(SourceQualityStatusKind),
+        typeof(string),
+        typeof(StudioTitleBarView),
+        new PropertyMetadata("Unavailable"));
+
+    public static readonly DependencyProperty IsSourceQualityStatusVisibleProperty = DependencyProperty.Register(
+        nameof(IsSourceQualityStatusVisible),
+        typeof(bool),
+        typeof(StudioTitleBarView),
+        new PropertyMetadata(false));
 
     public static readonly DependencyProperty AlignmentStatusTextProperty = DependencyProperty.Register(
         nameof(AlignmentStatusText),
@@ -89,6 +114,30 @@ public partial class StudioTitleBarView : UserControl
         set => SetValue(SourceContextTextProperty, value);
     }
 
+    public string SourceQualityStatusText
+    {
+        get => (string)GetValue(SourceQualityStatusTextProperty);
+        set => SetValue(SourceQualityStatusTextProperty, value);
+    }
+
+    public string SourceQualityStatusToolTip
+    {
+        get => (string)GetValue(SourceQualityStatusToolTipProperty);
+        set => SetValue(SourceQualityStatusToolTipProperty, value);
+    }
+
+    public string SourceQualityStatusKind
+    {
+        get => (string)GetValue(SourceQualityStatusKindProperty);
+        set => SetValue(SourceQualityStatusKindProperty, value);
+    }
+
+    public bool IsSourceQualityStatusVisible
+    {
+        get => (bool)GetValue(IsSourceQualityStatusVisibleProperty);
+        set => SetValue(IsSourceQualityStatusVisibleProperty, value);
+    }
+
     public string AlignmentStatusText
     {
         get => (string)GetValue(AlignmentStatusTextProperty);
@@ -106,6 +155,24 @@ public partial class StudioTitleBarView : UserControl
         get => (bool)GetValue(IsRecipeContextVisibleProperty);
         set => SetValue(IsRecipeContextVisibleProperty, value);
     }
+
+    public bool HasAccessibleCurrentSourceQualityStatus =>
+        AutomationProperties.GetAutomationId(CurrentSourceQualityStatusBadge)
+            == "StudioCurrentSourceQualityStatus"
+        && CurrentSourceQualityStatusBadge.Visibility
+            == (IsSourceQualityStatusVisible ? Visibility.Visible : Visibility.Collapsed)
+        && string.Equals(
+            CurrentSourceQualityStatusText.Text,
+            SourceQualityStatusText,
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetName(CurrentSourceQualityStatusBadge),
+            SourceQualityStatusText,
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetHelpText(CurrentSourceQualityStatusBadge),
+            SourceQualityStatusToolTip,
+            StringComparison.Ordinal);
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs args)
     {

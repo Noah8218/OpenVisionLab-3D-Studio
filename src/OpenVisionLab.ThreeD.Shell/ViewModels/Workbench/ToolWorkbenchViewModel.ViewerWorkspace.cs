@@ -249,6 +249,7 @@ public sealed partial class ToolWorkbenchViewModel
                 "Workbench false-positive review is invalid or does not contain the displayed case.");
         }
 
+        ClearSurfaceMatchCollection();
         var evidence = new SurfaceMatchExperimentEvidence(
             model,
             scene,
@@ -271,6 +272,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         ClearSurfaceMatchExperiment();
+        ClearSurfaceMatchCollection();
         surfaceMatchEvidence = null;
         surfaceMatchAssessment = null;
         surfaceMatchRuntime = null;

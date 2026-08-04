@@ -1,22 +1,28 @@
 # OpenVisionLab 3D Algorithm Ownership and Library-Noah Migration
 
-Updated: 2026-08-01
+Updated: 2026-08-03
 
 Status: **Owner-approved Tool-only numerical ownership contract; the audited
 Studio migration baseline is zero and future work remains evidence-gated.**
 
-> 2026-08-01 current package update: `Lib.ThreeD 2.8.8` at
-> `0fe04bc967fa89918b3c6d937566cce56de69682` additionally owns
-> labeled-evidence descriptive statistics and deterministic threshold-candidate
-> construction, classification, error counting, ranking, and tie-breaking. It
-> retains repeatability mean, extrema, sample standard deviation, six-sigma
+> 2026-08-03 current package update: `Lib.ThreeD 2.8.12` at
+> `7ed50ea37b3d7cb711c2afe698d209f9073e9217` additionally owns deterministic
+> farthest-point model key-point extraction from an already prepared sample
+> domain, including stable seed and source-order tie-breaking. It retains the
+> 2.8.11 deterministic
+> exact-coordinate duplicate removal and canonical explicit internal/
+> unobservable source-triangle exclusion. It retains the 2.8.10 direct and
+> declared model-axis cyclic rigid-pose equivalence and the 2.8.9 bounded
+> multiple Surface Match search and disjoint collection APIs, labeled-evidence
+> descriptive statistics, threshold-
+> candidate construction/ranking, repeatability mean, extrema, sample standard deviation, six-sigma
 > spread, range, and explicit negative-variance round-off policy; declared
 > mesh-normal quality and four-point landmark independence validation, plus
 > retains dual-surface thickness, height-deviation, height-map, filtering,
 > leveling, Surface
 > Match, mesh-comparison, and transform-diagnostic Tools.
 > The vendored package SHA-256 is
-> `D62B050710C4CCA0309B3FA49CDCDBB239C675944E29C085E50CD198D4D15405`.
+> `7E5DAF887851CB16C45279CD957260C2546AD0EDBB92B9F4903E23E529BADFE3`.
 > Older package sections below remain migration history.
 
 ## Binding ownership rule
@@ -70,6 +76,10 @@ reusable by other OpenVisionLab products.
 | Thickness / aligned-point repeatability statistics | `Lib.ThreeD 2.8.7` `RepeatabilityStatisticsTool` | Complete: Noah owns scalar accumulation and descriptive statistics; Studio retains study/source/correspondence identity, unit/frame/alignment, acceptance, metrics, and evidence. |
 | Labeled-evidence descriptive and C3D ROI statistics | `Lib.ThreeD 2.8.8` `LabeledEvidenceStatisticsTool` and `HeightMapRegionStatisticsTool` | Complete: Noah owns aggregation; Studio retains recipe/Tool/parameter/source/sample/role identity, grouping, warnings, reports, and evidence locators. |
 | Threshold candidate analysis | `Lib.ThreeD 2.8.8` `ThresholdCandidateAnalysisTool` | Complete: Noah owns candidate construction, classification, error counts, ranking, and tie-breaking; Studio retains eligibility/routing, HeldOut exclusion, canonical candidate identity, warnings, reports, and lifecycle. |
+| Multiple Surface Match result collection | `Lib.ThreeD 2.8.9` `DeterministicMultipleSurfaceMatchTool` | Complete: Noah owns repeated pose search, unique-nearest coverage, disjoint scene claims, deterministic ordering, and bounded termination; Studio retains identities, authored acceptance, immutable collection persistence, lifecycle, evidence, and presentation-only selection. |
+| Symmetry-aware rigid-pose equivalence | `Lib.ThreeD 2.8.10` `RigidPoseSymmetryEquivalenceTool` | Complete: Noah owns direct/cyclic model-axis equivalence, residuals, inclusive decisions, and tie-breaking; Studio retains SurfaceModel/pose/unit/frame/limit validation and typed evidence. |
+| Model surface selection | `Lib.ThreeD 2.8.11` `DeterministicModelSurfaceSelectionTool` | Complete: Noah owns exact-coordinate duplicate selection and canonical explicit exclusions; Studio retains source identity, authored roles, original locators, schema/persistence, and active-domain routing. |
+| Model key-point extraction | `Lib.ThreeD 2.8.12` `DeterministicModelKeyPointExtractionTool` | Complete: Noah owns deterministic farthest-point selection over the retained model samples; Studio retains stable source-sample/source-triangle identity, atomic persistence, model-context validation, and display-only overlay composition. |
 
 No migration is a claim of physical calibration, metrology, or a real
 four-anchor fixture result.
@@ -89,18 +99,73 @@ The current Studio audit is recorded in:
 - `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`;
 - `docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json`.
 
-The decreasing migration baseline contains `0` migration-debt files and `30`
+The decreasing migration baseline contains `0` migration-debt files and `33`
 reviewed Studio boundaries. It is not a permanent exception list. The
 structure verifier rejects new unclassified numerical owners and
 numerical-signal growth above the recorded boundary ceilings.
 
-Current verification passes structure `29/29`; the vendored `Lib.ThreeD 2.8.8`
+Current verification passes structure `29/29`; the vendored `Lib.ThreeD 2.8.12`
 package boundary also passes with source commit and SHA-256 agreement. Preserve
-`docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md` and
+`docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`
+and
 the physical current-task evidence under
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260803-j07-model-key-points\`.
 
-## Current validation-statistics migration: Lib.ThreeD 2.8.8
+## Current model key-point extraction: Lib.ThreeD 2.8.12
+
+`DeterministicModelKeyPointExtractionTool` owns deterministic farthest-point
+selection from the J-05 retained SurfaceModel sample domain. Studio's
+`ModelKeyPointExtractor` validates model identity and maps the Noah result to
+stable source-sample/source-triangle evidence. The persisted artifact and
+WPF-neutral position/normal overlay do not execute or alter matching.
+
+Noah passes Release `0/0` and Smoke `122/122`; Studio passes Release Rebuild
+`0/0`, package/bridge `21/21`, focused J-07 `15/15`, legacy byte parity `5/5`,
+and structure `29/29`. See
+`docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`.
+
+## Previous model surface selection: Lib.ThreeD 2.8.11
+
+`DeterministicModelSurfaceSelectionTool` owns exact-coordinate triangle
+identity, deterministic first-retained duplicate ownership, canonical explicit
+internal/unobservable exclusions, and controlled invalid-input results.
+Studio preserves the complete source topology and maps one retained domain to
+sampling, matching, model edges, and overlays. It does not infer enclosure,
+near-duplicate tolerance, or viewpoint visibility.
+
+Noah passes Release `0/0` and Smoke `118/118`; Studio passes Release Rebuild
+`0/0`, package/bridge `21/21`, focused J-05 `15/15`, legacy byte parity `5/5`,
+and structure `29/29`. See
+`docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`.
+
+## Previous symmetry-aware pose equivalence: Lib.ThreeD 2.8.10
+
+`RigidPoseSymmetryEquivalenceTool` owns direct and declared model-axis cyclic
+rigid-pose equivalence. Studio's `SurfaceMatchPoseEquivalenceEvaluator`
+validates the model, both poses, unit, source and target frames, and authored
+limits, then maps the Noah result to WPF-neutral typed evidence. It does not
+execute or modify single or multiple matching.
+
+Noah passes Release `0/0` and Smoke `113/113`; Studio passes Release `0/0`,
+package/bridge `20/20`, focused J-13 `15/15`, legacy byte parity `5/5`, and
+structure `29/29`. See
+`docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md`.
+
+## Previous multiple Surface Match collection: Lib.ThreeD 2.8.9
+
+`DeterministicMultipleSurfaceMatchTool` owns the bounded repeated search,
+per-result unique-nearest scoring, greedy disjoint scene-sample claiming,
+stable ordering, and stop policy. Studio's
+`MultipleSurfaceMatchEvaluationExecutor` validates product identity, maps the
+Noah result into separately authored assessments, composes a schema-1
+collection with stable content-derived IDs, and supplies persistence and UI.
+
+Noah passes Release `0/0` and Smoke `108/108`; Studio passes Release `0/0`,
+package/bridge `19/19`, multiple-match Runner `14/14`, Workbench `6/6`,
+existing matching `34/34`, and structure `29/29`. See
+`docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`.
+
+## Earlier validation-statistics migration: Lib.ThreeD 2.8.8
 
 `LabeledEvidenceStatisticsTool` owns role-grouped descriptive statistics.
 `ThresholdCandidateAnalysisTool` owns deterministic candidate construction,
@@ -197,7 +262,7 @@ See
 
 Five additional public Tools now own deterministic SurfaceModel and Prepared
 Scene sampling, mesh boundary/crease extraction, organized height-step edge
-extraction, and edge-domain coverage. The seven Studio Surface Match
+extraction, and edge-domain coverage. The then-seven Studio Surface Match
 compatibility entry points contain validation, mapping, artifact, and evidence
 composition only. Exact pre/post persisted parity passes `24/24`. See
 `docs/OPENVISIONLAB_3D_SURFACE_PREPARATION_EDGE_NOAH_MIGRATION_20260801.md`.

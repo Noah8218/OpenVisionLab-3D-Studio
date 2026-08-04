@@ -2,19 +2,57 @@
 
 Date: 2026-08-01
 
-Status: Current layout-only continuation entry point
+Status: Historical layout-stream handoff; superseded on 2026-08-03
+
+## Superseding status - 2026-08-03
+
+The product owner explicitly left this layout-only stream and approved
+`J-12 Multiple-match result collection`, `K-09 Multiple-match issue
+navigation`, `F-13 SurfaceModel symmetry declaration`, and `J-13
+Symmetry-aware pose equivalence`, followed by `J-05 Model surface selection`.
+All are now Complete. J-12 uses committed
+Noah `4e301f481cac886f78425197314cd540b653473a`, vendored
+`Lib.ThreeD 2.8.9`, stable/disjoint two-object evidence, and current Release
+Wide/Compact UI evidence. K-09 adds non-wrapping selector-synchronized
+Previous/Next review with Workbench `10/10` and current first/last-state
+evidence. F-13 adds saved schema-1.1 none/discrete-axis declarations while
+preserving exact schema-1.0 bytes. J-13 uses committed Noah
+`f225fd2709de1dd1d0ecfe19b37315cb1f019ee4` through vendored
+`Lib.ThreeD 2.8.10` for independent direct and declared cyclic pose
+equivalence without changing J-12 execution. The current inventory is
+superseded by J-07, which uses committed Noah
+`7ed50ea37b3d7cb711c2afe698d209f9073e9217` through vendored
+`Lib.ThreeD 2.8.12` for deterministic model key points over the completed J-05
+active source-triangle selection. The current inventory is
+`136 C / 17 P / 57 N / 9 E / 16 O`.
+
+Use
+`docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`,
+`docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`,
+`docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md`,
+`docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md`,
+`docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`,
+`docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md`,
+and `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md` as the active continuation
+entry points. The next priority is `B-12 Acquisition/source provenance text
+and limitation notes`. Recommended model: `gpt-5.6-sol`; reasoning effort:
+high. `K-04` remains blocked until B-12 passes; L-13 is independently
+dependency-ready.
+The layout contracts in this document remain binding history and regression
+requirements, but this file no longer selects the active work stream.
 
 ## Purpose
 
-This document hands the layout and UI-design conversation to the next Codex
+This document historically handed the layout and UI-design conversation to the next Codex
 session without reopening completed work or drifting into the algorithm
 backlog. The product owner explicitly requested that the next conversation
 continue the layout stream first. `J-12 Multiple-match result collection`
 remains a valid software backlog item, but it is deferred while this
 layout-only continuation is active.
 
-The next session must treat this file as the current layout source of truth,
-then use the linked closure documents for implementation and evidence detail.
+Future layout work must treat this file as the preserved layout-contract source
+of truth, then use the linked closure documents for implementation and evidence
+detail.
 
 ## Product and benchmark boundary
 
@@ -52,6 +90,7 @@ v4 architecture and improve it only through bounded, evidence-backed slices.
 | Viewer command density | Familiar presentation actions use compact icons with selected state, tooltip, accessible name, and AutomationId. Ambiguous or consequential actions retain text. | `OPENVISIONLAB_3D_VIEWER_COMMAND_BAR_SIMPLIFICATION_20260730.md` |
 | Single-row Viewer | Loaded Single Viewer uses one shared row: geometry -> Height Image/layout -> projection/fit/overflow. Redundant source-ready, `Main`, status, and left text-HUD rows no longer consume canvas space. | `OPENVISIONLAB_3D_VIEWER_SINGLE_ROW_AND_HEIGHT_COLOR_RANGE_20260730.md` |
 | Height color range | The right legend owns visible High/Low decrement, value, increment, and `AUTO` controls. The interval changes display normalization only; it does not mutate source values, recipes, measurements, or decisions. | Viewer single-row/Height range closure |
+| Linked display range | Same-source 3D Viewer and full Height Image share exact manual/AUTO bounds in both directions. Source histograms and palettes remain independent, and recipe/execution state remains unchanged. | `OPENVISIONLAB_3D_LINKED_VIEW_DISPLAY_RANGE_CONSISTENCY_20260803.md` |
 | Canvas text removal | Persistent measurement text on the left side of the 3D canvas was removed. The lower-left orientation gizmo remains; the right-side height legend remains. | Viewer single-row/Height range closure |
 | Dock-tab discovery | Multi-item AvalonDock tabs moved to the top. Duplicate pane titles are suppressed only when the top strip owns navigation; single-item panes retain their title. | `OPENVISIONLAB_3D_VALIDATION_TOP_DOCK_TABS_20260730.md` |
 | Validate/Results evidence layout | Validate and read-only Results place linked evidence beside the same dominant Viewer. Sample selection is display-only; Run and correction remain explicit. | `OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md` |
@@ -121,8 +160,9 @@ Every next layout change must preserve all of the following:
 The completed software slices have current-build Wide and Compact evidence for
 their owning changes. Workbench v4 `3/3`, Viewer simplification, single-row
 Height controls, top dock tabs, Authoring overlap/clipping repair,
-side-collapse, first-use clarity, safe layout persistence, and PropertyGrid
-theme consistency are recorded as Complete in their closure documents.
+side-collapse, first-use clarity, safe layout persistence, PropertyGrid theme
+consistency, and linked-view display-range consistency are recorded as
+Complete in their closure documents.
 
 This does not close human usability. Human-owner unaided Wide/Compact R0 is
 still required for `A-01`, Workspace v3 `8/8`, and any release-usability claim.
@@ -130,10 +170,10 @@ Automated `-ValidateOnly`, screenshots, geometry probes, and smoke checks do
 not replace that operation. Missing R0 evidence does not globally block
 dependency-ready deterministic software work.
 
-Current product inventory at handoff:
+Historical product inventory at this layout handoff:
 
 ```text
-127 Complete / 17 Partial / 65 Not started / 9 External / 16 Out of scope
+130 Complete / 17 Partial / 63 Not started / 9 External / 16 Out of scope
 ```
 
 ## Remaining layout-only candidates
@@ -142,25 +182,37 @@ Do not assume that a complete shell redesign is the next task. Start with a
 fresh current-build audit and choose one bounded operator problem. The current
 candidate list is:
 
-1. `Current-build layout integrity audit` — reproduce loaded and empty
-   Authoring, Validate, Results, and Advanced at both supported sizes; include
-   expanded/collapsed and Korean long-text states that are affected. This is
-   the immediate next-chat priority because it establishes whether a real
-   regression or usability gap remains.
-2. `A-12 Global current-source quality state` — dependency `B-08` is Complete.
-   Evaluate whether a compact state beside recipe/input context materially
-   improves the first decision without recreating a second horizontal row or
-   duplicating Source Quality details.
-3. `C-13 Linked-view display-range consistency` — verify whether 3D Viewer and
-   full Height Image manual/auto display ranges are semantically consistent
-   and remain presentation-only. Do not merge source histograms or alter
-   recipe/measurement state.
-4. `A-11 Per-Tool state presentation matrix` — currently blocked by `A-09`
+1. `A-11 Per-Tool state presentation matrix` — currently blocked by `A-09`
    and the human-owner `A-01` evidence. Do not spend implementation tokens on
-   this as if the prerequisite were complete.
-5. `M-18/M-19` — apply accessibility-name/tooltip and Korean/English capture
+   this as if the prerequisite were complete. Prerequisite first; no model
+   tokens until it is available.
+2. `M-18/M-19` — apply accessibility-name/tooltip and Korean/English capture
    coverage to each new visible control or state; these are per-change gates,
-   not permission for decorative icon work.
+   not permission for decorative icon work. Recommended model:
+   `gpt-5.6-terra`; reasoning effort: low.
+
+There is no dependency-ready standalone layout implementation in this list.
+The owner must either supply the `A-09/A-01` prerequisites or explicitly
+return to the numerical stream. If the latter is approved, the next item is
+`J-12 Multiple-match result collection` with `gpt-5.6-sol`, high reasoning.
+
+`A-12 Global current-source quality state` and its fresh loaded/empty
+Authoring, Validate, and Results audit are Complete. Preserve
+`OPENVISIONLAB_3D_GLOBAL_CURRENT_SOURCE_QUALITY_STATE_20260803.md` and the
+D-backed `20260803-a12-current-source-quality-layout` evidence.
+
+`A-16 Advanced workspace semantic-theme parity` is Complete. Preserve
+`OPENVISIONLAB_3D_ADVANCED_SEMANTIC_THEME_PARITY_20260803.md` and the D-backed
+`20260803-a16-advanced-semantic-theme-parity` evidence. The closure covers
+Wide/Compact English/Korean surfaces, generated input/tab states, and an
+actual open ComboBox popup without changing inspection state.
+
+`C-13 Linked-view display-range consistency` is Complete. The 3D Viewer and
+full Height Image now share exact manual/AUTO bounds only when their source
+content SHA matches. Each view retains its palette and the 3D source histogram
+remains full-source. Preserve
+`OPENVISIONLAB_3D_LINKED_VIEW_DISPLAY_RANGE_CONSISTENCY_20260803.md` and the
+D-backed `20260803-c13-linked-view-display-range-consistency` evidence.
 
 `J-12` and other numerical/algorithm work are deliberately not part of the
 next layout-only conversation unless the product owner explicitly changes the
@@ -209,7 +261,8 @@ Read in this order:
 9. `docs/OPENVISIONLAB_3D_VIEWER_COMMAND_BAR_SIMPLIFICATION_20260730.md`;
 10. `docs/OPENVISIONLAB_3D_VIEWER_SINGLE_ROW_AND_HEIGHT_COLOR_RANGE_20260730.md`;
 11. `docs/OPENVISIONLAB_3D_VALIDATION_TOP_DOCK_TABS_20260730.md`;
-12. `docs/OPENVISIONLAB_3D_PROPERTY_GRID_THEME_CONSISTENCY_20260731.md`.
+12. `docs/OPENVISIONLAB_3D_PROPERTY_GRID_THEME_CONSISTENCY_20260731.md`;
+13. `docs/OPENVISIONLAB_3D_ADVANCED_SEMANTIC_THEME_PARITY_20260803.md`.
 
 ## Completion record
 

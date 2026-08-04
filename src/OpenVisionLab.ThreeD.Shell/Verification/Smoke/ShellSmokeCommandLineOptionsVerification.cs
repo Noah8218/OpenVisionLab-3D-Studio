@@ -55,7 +55,10 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ExpandSelectedToolParameters", VerifyExpandSelectedToolParameters()),
             ("FocusSelectedToolParameterSearch", VerifyFocusSelectedToolParameterSearch()),
             ("SurfaceMatchExperimentPreview", VerifySurfaceMatchExperimentPreview()),
-            ("SurfaceMatchExperimentFocusHover", VerifySurfaceMatchExperimentFocusHover())
+            ("SurfaceMatchExperimentFocusHover", VerifySurfaceMatchExperimentFocusHover()),
+            ("SurfaceMatchCollectionPopup", VerifySurfaceMatchCollectionPopup()),
+            ("SurfaceMatchCollectionDisabled", VerifySurfaceMatchCollectionDisabled()),
+            ("SurfaceMatchCollectionNavigationFocusHover", VerifySurfaceMatchCollectionNavigationFocusHover())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -131,6 +134,42 @@ internal static class ShellSmokeCommandLineOptionsVerification
 
         return options.SurfaceMatchExperimentFocusHoverSmoke
                && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifySurfaceMatchCollectionPopup()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-surface-match-collection-popup-screenshot",
+            "popup.png"
+        ]);
+        return options.SurfaceMatchCollectionPopupSmoke
+               && options.SurfaceMatchCollectionPopupScreenshotPath
+                   == "popup.png"
+               && options.ShouldAttachLoadedHandler(
+                   hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifySurfaceMatchCollectionDisabled()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-surface-match-collection-disabled"]);
+        return options.SurfaceMatchCollectionDisabledSmoke
+               && options.ShouldAttachLoadedHandler(
+                   hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifySurfaceMatchCollectionNavigationFocusHover()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-surface-match-collection-navigation-focus-hover"
+        ]);
+        return options.SurfaceMatchCollectionNavigationFocusHoverSmoke
+               && options.ShouldAttachLoadedHandler(
+                   hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifyCompactWorkbench()

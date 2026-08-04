@@ -34,7 +34,7 @@
       "distanceTolerance": 0.001,
       "expectedWidth": 2.11102437973022,
       "widthTolerance": 0.001,
-      "expectedElevationAngleDegrees": 0.0926193434169234,
+      "expectedElevationAngleDegrees": -0.103,
       "elevationAngleToleranceDegrees": 0.01
     },
     "unit": "model",

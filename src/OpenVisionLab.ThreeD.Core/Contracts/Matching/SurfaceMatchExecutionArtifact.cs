@@ -5,8 +5,8 @@ namespace OpenVisionLab.ThreeD.Core;
 
 /// <summary>
 /// Identified, display-only transformed SurfaceModel geometry. Point order and
-/// triangle indexes remain identical to the source SurfaceModel; only the
-/// point coordinates are mapped into the Prepared Scene frame.
+/// retained triangle indexes remain identical to the source SurfaceModel;
+/// only the point coordinates are mapped into the Prepared Scene frame.
 /// </summary>
 public sealed record SurfaceMatchOverlayArtifact(
     string SchemaVersion,
@@ -87,7 +87,7 @@ public sealed record SurfaceMatchOverlayArtifact(
             model.Points
                 .Select(pose.TransformPoint)
                 .ToArray(),
-            model.Triangles.ToArray(),
+            SurfaceModelSurfaceDomain.GetRetainedTriangles(model),
             string.Empty);
         return artifact with
         {

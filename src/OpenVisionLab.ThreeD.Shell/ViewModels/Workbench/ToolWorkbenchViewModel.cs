@@ -214,6 +214,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializeOutputCompareSession();
         InitializeViewerWorkspace();
         InitializeSurfaceMatchExperiment();
+        InitializeSurfaceMatchCollectionNavigation();
         InitializeDisplayedOutputs();
         Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
         InitializeFlowDiagnostics();

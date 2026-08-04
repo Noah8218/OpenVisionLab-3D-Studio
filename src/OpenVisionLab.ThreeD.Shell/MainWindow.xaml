@@ -64,6 +64,7 @@
         <workspace:ThicknessTaskWorkspaceView x:Name="TaskWorkspace"
                                                Visibility="{Binding IsTaskWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
         <dock:OpenVisionDockWorkspaceView x:Name="Workspace"
+                                           TextElement.Foreground="{DynamicResource ThreeD.TextBrush}"
                                            ToolLibraryTitle="{Binding Localization.ToolLibrary}"
                                            ViewerTitle="{views:ThreeDText Key=ThreeD.Expert.ViewerPane, Korean='3D 검사 보기', English='3D Inspection View'}"
                                            DataLayersTitle="{views:ThreeDText Key=ThreeD.Expert.DataLayersPane, Korean='데이터 및 레이어', English='Data &amp; Layers'}"
@@ -81,8 +82,8 @@
                 <workbench:ToolLibraryView DataContext="{Binding Workbench}" />
             </dock:OpenVisionDockWorkspaceView.ToolLibraryContent>
             <dock:OpenVisionDockWorkspaceView.DataLayersContent>
-                <Border Background="#ffffff"
-                        BorderBrush="#d1d5db"
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,1,0"
                         Padding="12"
                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
@@ -90,18 +91,18 @@
                         <StackPanel>
                             <TextBlock FontSize="15"
                                        FontWeight="SemiBold"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Expert.DataLayers, Korean='데이터 및 레이어', English='Data &amp; Layers'}" />
 
                             <StackPanel Margin="0,12,0,0"
                                         Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveThicknessResult, Korean='현재 두께 결과', English='Active Thickness Result'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveThicknessResult, Korean='현재 두께 결과', English='Active Thickness Result'}" />
                                 <TextBlock Margin="0,4,0,0"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap"
                                            Text="{Binding ThicknessSummary}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding ThicknessDetails}" />
                                 <Grid Margin="0,6,0,0"
@@ -117,22 +118,22 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
+                                    <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
                                     <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
-                                    <TextBlock Grid.Row="1" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
+                                    <TextBlock Grid.Row="1" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
-                                    <TextBlock Grid.Row="2" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
+                                    <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
                                     <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
-                                    <TextBlock Grid.Row="3" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
+                                    <TextBlock Grid.Row="3" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
-                                    <TextBlock Grid.Row="4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
+                                    <TextBlock Grid.Row="4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
                                     <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
                                 </Grid>
                             </StackPanel>
 
                             <StackPanel Margin="0,12,0,0"
                                         DataContext="{Binding NominalActual}">
-                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.NominalActual, Korean='기준 / 실제', English='Nominal / Actual'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.NominalActual, Korean='기준 / 실제', English='Nominal / Actual'}" />
                                 <TextBlock Margin="0,4,0,0"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap"
@@ -141,11 +142,11 @@
                                            TextWrapping="Wrap"
                                            Text="{Binding NominalSourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue='Nominal: not loaded'}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding QuerySourceSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue='Validation query: not loaded'}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding FrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}, FallbackValue='Frame: not set | Units: not set'}" />
                                 <WrapPanel Margin="0,6,0,0">
@@ -162,7 +163,7 @@
                             <Separator Margin="0,8,0,6" />
                             <TextBlock FontSize="15"
                                        FontWeight="SemiBold"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Expert.Display, Korean='표시', English='Display'}" />
                             <Grid Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
@@ -170,7 +171,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,6,0">
-                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.GeometryStyle, Korean='형상 스타일', English='Geometry Style'}" />
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.GeometryStyle, Korean='형상 스타일', English='Geometry Style'}" />
                                     <ComboBox ItemsSource="{Binding Display.AvailableGeometryStyles}"
                                               SelectedItem="{Binding Display.SelectedGeometryStyle, Mode=TwoWay}"
                                               IsEnabled="{Binding Display.CanSelectGeometryStyle, FallbackValue=False}">
@@ -182,7 +183,7 @@
                                     </ComboBox>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.ColorMap, Korean='컬러 맵', English='Color Map'}" />
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ColorMap, Korean='컬러 맵', English='Color Map'}" />
                                     <ComboBox ItemsSource="{Binding Display.AvailableColorMaps}"
                                               SelectedItem="{Binding Display.SelectedColorMap, Mode=TwoWay}"
                                               IsEnabled="{Binding Display.CanSelectColorMap}">
@@ -203,7 +204,7 @@
                                 <StackPanel Margin="0,0,6,0">
                                     <TextBlock Margin="0,0,0,2"
                                                FontSize="11"
-                                               Foreground="#6b7280">
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}">
                                         <Run Text="{views:ThreeDText Key=ThreeD.Expert.PointSize, Korean='포인트 크기', English='Point Size'}" />
                                         <Run Text=" (" />
                                         <Run Text="{Binding PointSize, StringFormat={}{0:F1}}" />
@@ -216,7 +217,7 @@
                                             Value="{Binding PointSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.RenderDensity, Korean='렌더 밀도', English='Render Density'}" />
+                                    <TextBlock Margin="0,0,0,4" FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.RenderDensity, Korean='렌더 밀도', English='Render Density'}" />
                                     <ComboBox ItemsSource="{Binding RenderDensityModes}"
                                               SelectedItem="{Binding SelectedRenderDensity, Mode=TwoWay}">
                                         <ComboBox.ItemTemplate>
@@ -229,13 +230,13 @@
                             </Grid>
                             <TextBlock Margin="0,4,0,0"
                                        FontSize="11"
-                                       Foreground="#6b7280"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        TextWrapping="Wrap"
                                        Text="{Binding RenderDensitySummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             <StackPanel Margin="0,5,0,0"
                                         DataContext="{Binding NominalActual}"
                                         Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
-                                <TextBlock Foreground="#374151"
+                                <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,3,0,0"
@@ -243,10 +244,10 @@
                                            Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#6b7280" />
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
-                                                    <Setter Property="Foreground" Value="#b45309" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -255,7 +256,7 @@
                                 </TextBlock>
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.DisplayState, Korean='표시 상태', English='Display State'}" />
+                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.DisplayState, Korean='표시 상태', English='Display State'}" />
                             <TextBlock Text="{Binding SelectedEntity, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Active}" />
                             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding CoordinateFrameSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding SceneContractSummary}" />
@@ -274,24 +275,24 @@
                                            Text="{Binding LazSamplingSummary}" />
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.EntityLayers, Korean='엔티티 레이어', English='Entity Layers'}" />
+                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.EntityLayers, Korean='엔티티 레이어', English='Entity Layers'}" />
                             <ItemsControl ItemsSource="{Binding EntityLayers}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Margin="0,0,0,8">
                                             <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
                                             <TextBlock Margin="0,2,0,0"
-                                                       Foreground="#6b7280"
+                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding Kind, StringFormat=Kind: {0}}" />
                                             <TextBlock Margin="0,2,0,0"
-                                                       Foreground="#6b7280"
+                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{Binding IsVisible, StringFormat=Visible: {0}}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Margin="0,16,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.Contracts, Korean='계약', English='Contracts'}" />
+                            <TextBlock Margin="0,16,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.Contracts, Korean='계약', English='Contracts'}" />
                             <TextBlock Text="{views:ThreeDText Key=ThreeD.Expert.SourceResultContract, Korean='원본/결과 분리: 적용', English='Source/result separation: active'}" />
                             <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Expert.UnitMetadataContract, Korean='단위 메타데이터: 표시', English='Unit metadata: visible'}" />
                         </StackPanel>
@@ -300,31 +301,31 @@
             </dock:OpenVisionDockWorkspaceView.DataLayersContent>
 
             <dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
-                <Border Background="#ffffff"
-                        BorderBrush="#d1d5db"
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1,1,0,0"
                         Padding="12">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock FontSize="15"
                                        FontWeight="SemiBold"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Expert.ToolInspector, Korean='도구 / 속성', English='Tool / Inspector'}" />
 
                             <StackPanel Margin="0,12,0,0"
                                         DataContext="{Binding ViewerContent.ViewModel.NominalActual, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
                                         Visibility="{Binding InputsReady, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
-                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.SurfaceDeviation, Korean='표면 편차', English='Surface Deviation'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.SurfaceDeviation, Korean='표면 편차', English='Surface Deviation'}" />
                                 <TextBlock Margin="0,4,0,0"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap"
                                            Text="{Binding StateSummary, FallbackValue='Status: No inputs'}" />
                                 <TextBlock Margin="0,3,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding DirectionSummary, FallbackValue='Direction: Actual to Nominal'}" />
                                 <TextBlock Margin="0,5,0,0"
-                                           Foreground="#374151"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,3,0,0"
@@ -332,10 +333,10 @@
                                            Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#6b7280" />
+                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
-                                                    <Setter Property="Foreground" Value="#b45309" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -363,14 +364,14 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <TextBlock Margin="0,0,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveTool, Korean='현재 도구', English='Active Tool'}" />
+                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ActiveTool, Korean='현재 도구', English='Active Tool'}" />
                             <StackPanel DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
                                 <TextBlock FontWeight="SemiBold" Text="{Binding SelectedEntity, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding SelectedSelectionMode, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Mode}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#374151"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,4,0,0"
@@ -385,33 +386,33 @@
                                                Text="{views:ThreeDText Key=ThreeD.Expert.ThicknessRoiTeaching, Korean='두께 ROI 티칭', English='Thickness ROI Teaching'}" />
                                     <WrapPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Row, Korean='행', English='Row'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Row, Korean='행', English='Row'}" />
                                             <TextBox Text="{Binding ThicknessRoiRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Column, Korean='열', English='Column'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Column, Korean='열', English='Column'}" />
                                             <TextBox Text="{Binding ThicknessRoiColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Rows, Korean='행 수', English='Rows'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Rows, Korean='행 수', English='Rows'}" />
                                             <TextBox Text="{Binding ThicknessRoiRowCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Columns, Korean='열 수', English='Columns'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Columns, Korean='열 수', English='Columns'}" />
                                             <TextBox Text="{Binding ThicknessRoiColumnCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
                                         <StackPanel Width="82" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Lower, Korean='하한', English='Lower'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Lower, Korean='하한', English='Lower'}" />
                                             <TextBox Text="{Binding ThicknessMinimum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="82" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Upper, Korean='상한', English='Upper'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Upper, Korean='상한', English='Upper'}" />
                                             <TextBox Text="{Binding ThicknessMaximum, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="82" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.MinSamples, Korean='최소 샘플', English='Min Samples'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.MinSamples, Korean='최소 샘플', English='Min Samples'}" />
                                             <TextBox Text="{Binding ThicknessMinimumValidSamples, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -429,7 +430,7 @@
                                                TextWrapping="Wrap"
                                                Text="{Binding ThicknessSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding ThicknessDetails}" />
                                     <TextBlock Margin="0,12,0,4"
@@ -437,27 +438,27 @@
                                                Text="{views:ThreeDText Key=ThreeD.Expert.PointPairDimensions, Korean='점 쌍 치수', English='Point Pair Dimensions'}" />
                                     <WrapPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
                                             <TextBox Text="{Binding PointPairExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
                                             <TextBox Text="{Binding PointPairDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp W'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp W'}" />
                                             <TextBox Text="{Binding PointPairExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol W'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol W'}" />
                                             <TextBox Text="{Binding PointPairWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedAngle, Korean='기준 각도', English='Exp A'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedAngle, Korean='기준 각도', English='Exp A'}" />
                                             <TextBox Text="{Binding PointPairExpectedAngleDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.AngleTolerance, Korean='각도 공차', English='Tol A'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.AngleTolerance, Korean='각도 공차', English='Tol A'}" />
                                             <TextBox Text="{Binding PointPairAngleToleranceDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -473,7 +474,7 @@
                                                Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding PointPairDimensionsSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Visibility="{Binding PointPairDimensionsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding PointPairDimensionsDetails}" />
@@ -482,19 +483,19 @@
                                                Text="{views:ThreeDText Key=ThreeD.Expert.GapFlush, Korean='갭 / 단차', English='Gap / Flush'}" />
                                     <WrapPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedGap, Korean='기준 갭', English='Exp Gap'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedGap, Korean='기준 갭', English='Exp Gap'}" />
                                             <TextBox Text="{Binding GapFlushExpectedGap, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.GapTolerance, Korean='갭 공차', English='Tol Gap'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.GapTolerance, Korean='갭 공차', English='Tol Gap'}" />
                                             <TextBox Text="{Binding GapFlushGapTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedFlush, Korean='기준 단차', English='Exp Flush'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedFlush, Korean='기준 단차', English='Exp Flush'}" />
                                             <TextBox Text="{Binding GapFlushExpectedFlush, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.FlushTolerance, Korean='단차 공차', English='Tol Flush'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.FlushTolerance, Korean='단차 공차', English='Tol Flush'}" />
                                             <TextBox Text="{Binding GapFlushFlushTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -510,18 +511,18 @@
                                                Visibility="{Binding GapFlushVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding GapFlushSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Visibility="{Binding GapFlushVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding GapFlushDetails}" />
                                     <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Expert.Volume, Korean='체적', English='Volume'}" />
                                     <WrapPanel>
                                         <StackPanel Width="94" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedNet, Korean='기준 순체적', English='Expected Net'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedNet, Korean='기준 순체적', English='Expected Net'}" />
                                             <TextBox Text="{Binding VolumeExpectedNet, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="94" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
                                             <TextBox Text="{Binding VolumeTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -534,40 +535,40 @@
                                                Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding VolumeSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Visibility="{Binding VolumeVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding VolumeDetails}" />
                                     <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="{views:ThreeDText Key=ThreeD.Expert.CrossSectionDimensions, Korean='단면 치수', English='Cross-section Dimensions'}" />
                                     <WrapPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Row, Korean='행', English='Row'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Row, Korean='행', English='Row'}" />
                                             <TextBox Text="{Binding CrossSectionRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.StartColumn, Korean='시작 열', English='Start Col'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.StartColumn, Korean='시작 열', English='Start Col'}" />
                                             <TextBox Text="{Binding CrossSectionStartColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.EndColumn, Korean='끝 열', English='End Col'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.EndColumn, Korean='끝 열', English='End Col'}" />
                                             <TextBox Text="{Binding CrossSectionEndColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                                         </StackPanel>
                                     </WrapPanel>
                                     <WrapPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp Width'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedWidth, Korean='기준 폭', English='Exp Width'}" />
                                             <TextBox Text="{Binding CrossSectionExpectedWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol Width'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.WidthTolerance, Korean='폭 공차', English='Tol Width'}" />
                                             <TextBox Text="{Binding CrossSectionWidthTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp Height'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp Height'}" />
                                             <TextBox Text="{Binding CrossSectionExpectedHeightRange, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="70" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol Height'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol Height'}" />
                                             <TextBox Text="{Binding CrossSectionHeightTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -578,7 +579,7 @@
                                     <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                                Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding CrossSectionSummary}" />
-                                    <TextBlock Margin="0,3,0,0" Foreground="#6b7280" TextWrapping="Wrap"
+                                    <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" TextWrapping="Wrap"
                                                Visibility="{Binding CrossSectionVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding CrossSectionDetails}" />
                                     <TextBlock Margin="0,12,0,4"
@@ -586,23 +587,23 @@
                                                Text="{views:ThreeDText Key=ThreeD.Expert.ReferencePlaneFlatness, Korean='기준 평면 + 평탄도', English='Reference Plane + Flatness'}" />
                                     <WrapPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.CenterX, Korean='중심 X', English='Center X'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.CenterX, Korean='중심 X', English='Center X'}" />
                                             <TextBox Text="{Binding PlaneFlatnessReferenceCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.CenterZ, Korean='중심 Z', English='Center Z'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.CenterZ, Korean='중심 Z', English='Center Z'}" />
                                             <TextBox Text="{Binding PlaneFlatnessReferenceCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
                                             <TextBox Text="{Binding PlaneFlatnessReferenceHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="50" Margin="0,0,6,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
                                             <TextBox Text="{Binding PlaneFlatnessReferenceHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="58" Margin="0,0,0,6">
-                                            <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Tolerance, Korean='공차', English='Tolerance'}" />
                                             <TextBox Text="{Binding PlaneFlatnessTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -618,31 +619,31 @@
                                                Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding PlaneFlatnessSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Visibility="{Binding PlaneFlatnessVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Text="{Binding PlaneFlatnessDetails}" />
                                 </StackPanel>
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#b91c1c"
+                                           Foreground="{DynamicResource ThreeD.FailBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding RecipeValidationSummary}" />
                                 <StackPanel Visibility="{Binding PointCloudColorLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                    <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{Binding PointCloudColorLegendTitle}" />
+                                    <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{Binding PointCloudColorLegendTitle}" />
                                     <TextBlock TextWrapping="Wrap" Text="{Binding PointCloudColorLegendLow}" />
                                     <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding PointCloudColorLegendHigh}" />
                                     <TextBlock Margin="0,2,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding PointCloudColorLegendScale}" />
                                 </StackPanel>
                                 <StackPanel Visibility="{Binding DeviationLegendVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.DeviationColorScale, Korean='편차 색상 범위', English='Deviation Color Scale'}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.DeviationColorScale, Korean='편차 색상 범위', English='Deviation Color Scale'}" />
                                     <TextBlock TextWrapping="Wrap" Text="{Binding DeviationLegendStatus}" />
                                     <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding DeviationLegendPeak}" />
                                     <TextBlock Margin="0,2,0,0" TextWrapping="Wrap" Text="{Binding DeviationLegendTolerance}" />
                                     <TextBlock Margin="0,2,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding DeviationLegendScale}" />
                                 </StackPanel>
@@ -650,22 +651,22 @@
                                     <TextBlock Margin="0,4,0,0"
                                                TextWrapping="Wrap"
                                                Text="{Binding LazTwoPointAcceptanceSummary}" />
-                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.LazLasAcceptance, Korean='LAZ/LAS 판정', English='LAZ/LAS Acceptance'}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.LazLasAcceptance, Korean='LAZ/LAS 판정', English='LAZ/LAS Acceptance'}" />
                                     <WrapPanel>
                                         <StackPanel Width="78" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedDistance, Korean='기준 거리', English='Exp D'}" />
                                             <TextBox Text="{Binding LazTwoPointExpectedDistance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.DistanceTolerance, Korean='거리 공차', English='Tol D'}" />
                                             <TextBox Text="{Binding LazTwoPointDistanceTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="78" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp H'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.ExpectedHeight, Korean='기준 높이', English='Exp H'}" />
                                             <TextBox Text="{Binding LazTwoPointExpectedHeightDelta, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                         <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol H'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HeightTolerance, Korean='높이 공차', English='Tol H'}" />
                                             <TextBox Text="{Binding LazTwoPointHeightDeltaTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                         </StackPanel>
                                     </WrapPanel>
@@ -677,92 +678,92 @@
 
                             <StackPanel Margin="0,14,0,0"
                                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
-                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.C3DRecipeEdit, Korean='C3D 레시피 편집', English='C3D Recipe Edit'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.C3DRecipeEdit, Korean='C3D 레시피 편집', English='C3D Recipe Edit'}" />
                                 <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding RecipeSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#b91c1c"
+                                           Foreground="{DynamicResource ThreeD.FailBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding RecipeValidationSummary}" />
-                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.PeakTolerance, Korean='피크 공차', English='Peak Tolerance'}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.PeakTolerance, Korean='피크 공차', English='Peak Tolerance'}" />
                                 <TextBox Text="{Binding RecipePeakTolerance, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F0}}" />
-                                <TextBlock Margin="0,10,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.Alignment, Korean='정렬', English='Alignment'}" />
+                                <TextBlock Margin="0,10,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.Alignment, Korean='정렬', English='Alignment'}" />
                                 <Button Margin="0,0,0,8"
                                         Content="{views:ThreeDText Key=ThreeD.Command.AlignFromRoi, Korean='ROI로 정렬', English='Align From ROI'}"
                                         Command="{Binding DataContext.ApplyRoiAlignmentCommand, ElementName=ShellWindow}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T X" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T X" />
                                         <TextBox Text="{Binding RecipeTransformTranslateX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Y" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T Y" />
                                         <TextBox Text="{Binding RecipeTransformTranslateY, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="T Z" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="T Z" />
                                         <TextBox Text="{Binding RecipeTransformTranslateZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R X" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="R X" />
                                         <TextBox Text="{Binding RecipeTransformRotateXDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Y" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="R Y" />
                                         <TextBox Text="{Binding RecipeTransformRotateYDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="R Z" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="R Z" />
                                         <TextBox Text="{Binding RecipeTransformRotateZDegrees, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F1}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.Scale, Korean='배율', English='Scale'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.Scale, Korean='배율', English='Scale'}" />
                                         <TextBox Text="{Binding RecipeTransformScale, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                 </WrapPanel>
-                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.RoiLeft, Korean='왼쪽 ROI', English='ROI Left'}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.RoiLeft, Korean='왼쪽 ROI', English='ROI Left'}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C X" />
                                         <TextBox Text="{Binding RecipeRoiLeftCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C Z" />
                                         <TextBox Text="{Binding RecipeRoiLeftCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
                                         <TextBox Text="{Binding RecipeRoiLeftHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
                                         <TextBox Text="{Binding RecipeRoiLeftHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                 </WrapPanel>
-                                <TextBlock Margin="0,8,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.RoiRight, Korean='오른쪽 ROI', English='ROI Right'}" />
+                                <TextBlock Margin="0,8,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.RoiRight, Korean='오른쪽 ROI', English='ROI Right'}" />
                                 <WrapPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C X" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C X" />
                                         <TextBox Text="{Binding RecipeRoiRightCenterX, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="C Z" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="C Z" />
                                         <TextBox Text="{Binding RecipeRoiRightCenterZ, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfWidth, Korean='반폭', English='Half W'}" />
                                         <TextBox Text="{Binding RecipeRoiRightHalfWidth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                     <StackPanel Width="64" Margin="0,0,6,6">
-                                        <TextBlock FontSize="11" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Field.HalfDepth, Korean='반깊이', English='Half D'}" />
                                         <TextBox Text="{Binding RecipeRoiRightHalfDepth, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F3}}" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Margin="0,2,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding RecipeParameterSummary}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding AlignmentWorkflowSummary}" />
                                 <Button Margin="0,8,0,0"
@@ -775,7 +776,7 @@
 
                             <StackPanel Margin="0,14,0,0"
                                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
-                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.ViewerEvidence, Korean='뷰어 증거', English='Viewer Evidence'}" />
+                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.ViewerEvidence, Korean='뷰어 증거', English='Viewer Evidence'}" />
                                 <TextBlock Margin="0,4,0,0"
                                            TextWrapping="Wrap"
                                            Text="{Binding SelectionSummary}" />
@@ -784,12 +785,12 @@
                                            Text="{Binding ViewerStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             </StackPanel>
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.LatestResult, Korean='최근 결과', English='Latest Result'}" />
+                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.LatestResult, Korean='최근 결과', English='Latest Result'}" />
                             <TextBlock FontWeight="SemiBold"
                                        TextWrapping="Wrap"
                                        Text="{Binding RecipeComparisonSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
 
-                            <TextBlock Margin="0,14,0,4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.InspectionTarget, Korean='검사 대상', English='Inspection Target'}" />
+                            <TextBlock Margin="0,14,0,4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.InspectionTarget, Korean='검사 대상', English='Inspection Target'}" />
                             <TextBlock Text="{views:ThreeDText Key=ThreeD.Expert.CurrentViewportSelection, Korean='선택: 현재 뷰포트 선택점', English='Selection: current viewport pick'}" />
                             <TextBlock Margin="0,4,0,0" Text="{views:ThreeDText Key=ThreeD.Expert.ResultMeasurementOverlay, Korean='오버레이: 결과 및 측정 증거', English='Overlay: result and measurement evidence'}" />
                         </StackPanel>
@@ -798,8 +799,8 @@
             </dock:OpenVisionDockWorkspaceView.ToolInspectorContent>
 
             <dock:OpenVisionDockWorkspaceView.EvidenceContent>
-                <Border Background="#ffffff"
-                        BorderBrush="#d1d5db"
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="10">
                     <Grid>
@@ -816,7 +817,7 @@
                             <TextBlock VerticalAlignment="Center"
                                        FontSize="15"
                                        FontWeight="SemiBold"
-                                       Foreground="#111827"
+                                       Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Expert.EvidenceWorkbench, Korean='검사 증거', English='Evidence Workbench'}" />
                             <Button Grid.Column="1"
                                     MinWidth="78"
@@ -840,20 +841,20 @@
                                         <StackPanel>
                                             <StackPanel Margin="0,0,0,12"
                                                         Visibility="{Binding ViewerContent.ViewModel.NominalActual.InputsReady, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
-                                                <TextBlock Foreground="#6b7280"
+                                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding ViewerContent.ViewModel.NominalActual.EvidenceSummary, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}, FallbackValue='No comparison evidence.', TargetNullValue='No comparison evidence.'}" />
                                             </StackPanel>
                                             <StackPanel Margin="0,0,0,12"
                                                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}"
                                                         Visibility="{Binding C3DSampleVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.C3DThicknessEvidence, Korean='C3D 두께 증거', English='C3D Thickness Evidence'}" />
+                                                <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.C3DThicknessEvidence, Korean='C3D 두께 증거', English='C3D Thickness Evidence'}" />
                                                 <TextBlock Margin="0,4,0,0"
                                                            FontWeight="SemiBold"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding ThicknessSummary}" />
                                                 <TextBlock Margin="0,3,0,0"
-                                                           Foreground="#6b7280"
+                                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding ThicknessDetails}" />
                                                 <Grid Margin="0,6,0,0"
@@ -869,25 +870,25 @@
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
-                                                    <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
+                                                    <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Mean, Korean='평균', English='Mean'}" />
                                                     <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMean, StringFormat={}{0:F3}}" />
-                                                    <TextBlock Grid.Row="1" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
+                                                    <TextBlock Grid.Row="1" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Minimum, Korean='최소', English='Minimum'}" />
                                                     <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMinimumMeasured, StringFormat={}{0:F3}}" />
-                                                    <TextBlock Grid.Row="2" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
+                                                    <TextBlock Grid.Row="2" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Maximum, Korean='최대', English='Maximum'}" />
                                                     <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessMaximumMeasured, StringFormat={}{0:F3}}" />
-                                                    <TextBlock Grid.Row="3" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
+                                                    <TextBlock Grid.Row="3" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.Range, Korean='범위', English='Range'}" />
                                                     <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessRange, StringFormat={}{0:F3}}" />
-                                                    <TextBlock Grid.Row="4" Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
+                                                    <TextBlock Grid.Row="4" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Metric.ValidSamples, Korean='유효 샘플', English='Valid samples'}" />
                                                     <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Right" Text="{Binding ThicknessValidSampleCount, StringFormat={}{0:N0}}" />
                                                 </Grid>
                                             </StackPanel>
-                                            <TextBlock Foreground="#6b7280" Text="{views:ThreeDText Key=ThreeD.Expert.LatestResult, Korean='최근 결과', English='Latest Result'}" />
+                                            <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="{views:ThreeDText Key=ThreeD.Expert.LatestResult, Korean='최근 결과', English='Latest Result'}" />
                                             <TextBlock Margin="0,4,0,0"
                                                        FontWeight="SemiBold"
                                                        TextWrapping="Wrap"
                                                        Text="{Binding RecipeComparisonSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                             <TextBlock Margin="0,12,0,0"
-                                                       Foreground="#6b7280"
+                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        Text="{views:ThreeDText Key=ThreeD.Expert.PersistedEvidence, Korean='저장된 증거', English='Persisted Evidence'}" />
                                             <TextBlock Margin="0,4,0,0"
                                                        TextWrapping="Wrap"
@@ -992,8 +993,8 @@
                                                 <DataTemplate>
                                                     <Border MinHeight="22"
                                                             Padding="2"
-                                                            Background="#f9fafb"
-                                                            BorderBrush="#d1d5db"
+                                                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                             BorderThickness="1">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
@@ -1013,7 +1014,7 @@
                                                                        Margin="6,0,0,0"
                                                                        Text="{Binding Status}" />
                                                             <TextBlock Grid.Column="3"
-                                                                       Foreground="#374151"
+                                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                                        TextTrimming="CharacterEllipsis"
                                                                        Text="{Binding Evidence}" />
                                                         </Grid>
@@ -1030,8 +1031,8 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Padding="6"
-                                                    Background="#f9fafb"
-                                                    BorderBrush="#d1d5db"
+                                                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                     BorderThickness="1">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -1053,7 +1054,7 @@
                                                     <TextBlock Grid.Column="3"
                                                                Text="{Binding EvidenceState}" />
                                                     <TextBlock Grid.Column="4"
-                                                               Foreground="#6b7280"
+                                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                                TextWrapping="Wrap"
                                                                Text="{Binding ReportPath}" />
                                                 </Grid>
@@ -1068,8 +1069,8 @@
             </dock:OpenVisionDockWorkspaceView.EvidenceContent>
 
             <dock:OpenVisionDockWorkspaceView.LinkedViewContent>
-                <Border Background="#ffffff"
-                        BorderBrush="#d1d5db"
+                <Border Background="{DynamicResource ThreeD.PanelBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="10"
                         DataContext="{Binding ViewerContent.ViewModel, RelativeSource={RelativeSource AncestorType=dock:OpenVisionDockWorkspaceView}}">
@@ -1087,14 +1088,14 @@
                                             DataContext="{Binding NominalActual}"
                                             Visibility="{Binding DistributionVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed, TargetNullValue=Collapsed}">
                                     <TextBlock FontWeight="SemiBold"
-                                               Foreground="#111827"
+                                               Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                                Text="Deviation Distribution" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding DistributionSummary}" />
                                     <TextBlock Margin="0,3,0,0"
-                                               Foreground="#374151"
+                                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding CurrentDisplaySamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                     <TextBlock Margin="0,3,0,0"
@@ -1102,10 +1103,10 @@
                                                Text="{Binding NextPreviewSamplingSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="#6b7280" />
+                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding DisplaySamplingChangePending}" Value="True">
-                                                        <Setter Property="Foreground" Value="#b45309" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
                                                         <Setter Property="FontWeight" Value="SemiBold" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -1124,7 +1125,7 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Height Map" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Height Map" />
                                     <Grid Margin="0,6,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="154" />
@@ -1133,8 +1134,8 @@
                                         <Border Width="150"
                                                 Height="54"
                                                 HorizontalAlignment="Left"
-                                                Background="#111827"
-                                                BorderBrush="#d1d5db"
+                                                Background="{DynamicResource ThreeD.ViewportBrush}"
+                                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                 BorderThickness="1"
                                                 ClipToBounds="True">
                                             <Image Source="{Binding HeightMapImageSource}"
@@ -1144,12 +1145,12 @@
                                                    SnapsToDevicePixels="True" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                            <TextBlock Foreground="#6b7280"
+                                            <TextBlock Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        FontSize="11"
                                                        TextTrimming="CharacterEllipsis"
                                                        Text="{Binding HeightMapSummary}" />
                                             <TextBlock Margin="0,4,0,0"
-                                                       Foreground="#6b7280"
+                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                        FontSize="11"
                                                        TextTrimming="CharacterEllipsis"
                                                        Text="{Binding HeightMapRange}" />
@@ -1167,13 +1168,13 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Point Cloud Sample" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Point Cloud Sample" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding LazSampleName}" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding LazSampleSummary}" />
                                 </StackPanel>
@@ -1188,13 +1189,13 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Mesh Sample" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Mesh Sample" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding GlbSampleName}" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding GlbSampleSummary}" />
                                 </StackPanel>
@@ -1211,19 +1212,19 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Profile / Section" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Profile / Section" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding SectionProfileSummary}" />
                                     <Border Height="58"
                                             Margin="0,6,0,0"
-                                            Background="#f9fafb"
-                                            BorderBrush="#d1d5db"
+                                            Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                             BorderThickness="1"
                                             ClipToBounds="True">
                                         <Canvas Width="240" Height="54" Margin="4,1">
-                                            <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="#d1d5db" StrokeThickness="1" />
+                                            <Line X1="0" Y1="27" X2="240" Y2="27" Stroke="{DynamicResource ThreeD.DividerBrush}" StrokeThickness="1" />
                                             <Path Data="{Binding SectionProfilePathData}"
                                                   Stroke="#f59e0b"
                                                   StrokeThickness="2"
@@ -1233,7 +1234,7 @@
                                         </Canvas>
                                     </Border>
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding SectionProfileRange}" />
                                 </StackPanel>
@@ -1251,24 +1252,24 @@
                                             </Style.Triggers>
                                         </Style>
                                     </StackPanel.Style>
-                                    <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Linked Measurement" />
+                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Linked Measurement" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding MeasurementSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                     <TextBlock Margin="0,4,0,0"
-                                               Foreground="#6b7280"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                                TextWrapping="Wrap"
                                                Text="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Pick}" />
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock FontWeight="SemiBold" Foreground="#111827" Text="Camera / Pick State" />
+                                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.PrimaryTextBrush}" Text="Camera / Pick State" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding SelectedSelectionMode, Converter={StaticResource ViewerRuntimeTextConverter}, ConverterParameter=Mode}" />
                                 <TextBlock Margin="0,4,0,0"
-                                           Foreground="#6b7280"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            TextWrapping="Wrap"
                                            Text="{Binding SelectionSummary}" />
                             </StackPanel>

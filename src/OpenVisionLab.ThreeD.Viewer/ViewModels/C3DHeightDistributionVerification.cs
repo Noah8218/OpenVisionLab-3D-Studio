@@ -254,6 +254,23 @@ public static class C3DHeightDistributionVerification
                 && Near(viewModel.C3DHeightColorMaximumRaw, 50.0),
                 viewModel.C3DHeightColorRangeSummary);
 
+            var linkedRangeRevision = viewModel.C3DHeightColorRangeRevision;
+            var linkedRangeApplied = viewModel.TryApplyLinkedC3DHeightColorRange(
+                -5.123456789,
+                75.987654321);
+            Check(
+                "linked Height Image range preserves exact display bounds without changing source evidence",
+                linkedRangeApplied
+                && !viewModel.C3DHeightColorRangeAuto
+                && viewModel.C3DHeightColorRangeRevision > linkedRangeRevision
+                && viewModel.C3DHeightColorMinimumRaw == -5.123456789
+                && viewModel.C3DHeightColorMaximumRaw == 75.987654321
+                && Near(viewModel.C3DHeightDistributionMinimumRaw, 10.0)
+                && Near(viewModel.C3DHeightDistributionMaximumRaw, 50.0)
+                && viewModel.C3DHeightDistributionSourceSha256 == dense.ContentSha256,
+                viewModel.C3DHeightColorRangeSummary);
+            viewModel.ResetC3DHeightColorRange();
+
             viewModel.SelectedColorMode = "Grayscale";
             Check(
                 "Grayscale keeps the distribution visible and changes only its palette",

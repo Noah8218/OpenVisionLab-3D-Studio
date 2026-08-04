@@ -45,6 +45,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
     private string? selectedCompletenessCellId;
     private int loadGeneration;
+    private int displayRangeRevision;
 
     public HeightImageViewerViewModel(
         ThreeDLocalization localization,
@@ -312,6 +313,11 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     public string LegendColor1 => GetPaletteColor(1.0 / 3.0);
     public string LegendColor2 => GetPaletteColor(2.0 / 3.0);
     public string LegendColor3 => GetPaletteColor(1.0);
+    public int DisplayRangeRevision
+    {
+        get => displayRangeRevision;
+        private set => SetField(ref displayRangeRevision, value);
+    }
 
     public ICommand FitCommand => fitCommand;
     public ICommand ActualPixelsCommand => actualPixelsCommand;
@@ -451,6 +457,20 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
         return !IsAutoRange;
     }
 
+    public bool TryApplyLinkedDisplayRange(double minimum, double maximum)
+    {
+        if (Frame is null
+            || !double.IsFinite(minimum)
+            || !double.IsFinite(maximum)
+            || minimum >= maximum)
+        {
+            return false;
+        }
+
+        ApplyManualRange(minimum, maximum);
+        return true;
+    }
+
     public void UseAutoRange()
     {
         if (Frame is null)
@@ -466,6 +486,7 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
         RangeError = string.Empty;
         NotifyRangeState();
         RenderActiveDisplay();
+        DisplayRangeRevision = unchecked(DisplayRangeRevision + 1);
     }
 
     private void Clear(string nextStatus)
@@ -526,12 +547,20 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
             return;
         }
 
+        ApplyManualRange(minimum, maximum);
+    }
+
+    private void ApplyManualRange(double minimum, double maximum)
+    {
         IsAutoRange = false;
         activeRangeMinimum = minimum;
         activeRangeMaximum = maximum;
+        RangeMinimumText = FormatRangeValue(minimum);
+        RangeMaximumText = FormatRangeValue(maximum);
         RangeError = string.Empty;
         NotifyRangeState();
         RenderActiveDisplay();
+        DisplayRangeRevision = unchecked(DisplayRangeRevision + 1);
     }
 
     private void RenderActiveDisplay()

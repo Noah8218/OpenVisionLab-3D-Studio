@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next Chat Handoff Prompt
 
-Date: 2026-08-01
+Date: 2026-08-03
 
 Status: Current continuation entry point
 
@@ -11,12 +11,29 @@ repeating the commercial-video review or reopening completed product slices.
 
 Authoritative detail remains in:
 
+- `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`
+  for the current J-07 contract, exact Noah/package provenance, stable source
+  locators, persistence, display-only overlay, regression evidence, and next
+  dependency;
+- `docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`
+  for the current J-05 contract, exact Noah/package provenance, immutable
+  source topology, active-domain routing, regression evidence, and next
+  dependency;
+- `docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md`
+  for the current J-13 contract, exact Noah/package provenance, strict Studio
+  boundary, direct/cyclic fixtures, regression evidence, and next dependency;
+- `docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md`
+  for the preceding F-13 saved declaration and legacy byte-compatibility;
+- `docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md`
+  for the current K-09 non-wrapping navigation contract, structural proof,
+  current-build UI state matrix, and next dependency;
+- `docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`
+  for the current J-12 contract, committed-Noah provenance, stable/disjoint
+  collection evidence, UI state matrix, and next dependency;
 - `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`
-  for the product-owner-selected layout-only continuation, completed layout
-  changes, non-copy boundary, current Wide/Compact composition, and next-chat
-  evidence procedure;
+  for the historical layout stream and preserved layout/non-copy contracts;
 - `docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`
-  for all `234` backlog items, dependencies, and evidence gates;
+  for all `235` backlog items, dependencies, and evidence gates;
 - `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`
   for the individual review of all 11 supplied commercial videos;
 - `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md` for the
@@ -62,21 +79,32 @@ Authoritative detail remains in:
 - `docs/OPENVISIONLAB_3D_VALIDATION_STATISTICS_NOAH_MIGRATION_20260801.md`
   for the completed labeled-evidence and threshold-candidate Tool migration,
   exact Validation Set parity, zero-debt ledger, and next dependency.
+- `docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`
+  for the completed multiple-match Noah Tool, schema-1 retained collection,
+  stable identities, presentation-only selection, and current UI evidence.
 
 ## Paste this request into the next chat
 
 ```text
 Work in C:\Git\OpenVisionLab-3D-Studio.
 
-The product owner selected a layout-only continuation for this next chat. Read
-the dedicated layout handoff immediately after AGENTS.md, capture a fresh
-current-build Wide/Compact baseline before any visible edit, and select one
-bounded evidence-backed layout problem. Do not start `J-12` or other algorithm
-work unless the owner explicitly changes priority again.
+The product owner explicitly left the layout-only stream and completed J-12,
+K-09, F-13, J-13, J-05, and J-07. Continue with `B-12 Acquisition/source
+provenance text and limitation notes`. Persist an explicit available/
+unavailable provenance contract through save/reopen without Preview, Publish,
+Run, Validation, or inferred viewpoint. Keep camera integration outside scope.
+This slice should unblock K-04 without implementing K-04 edge orientation in
+the same task. Use the current Release J-07 evidence as the baseline.
 
 Read, in order:
 1. AGENTS.md
-1a. docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md
+1a. docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md
+1b. docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md
+1c. docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md
+1d. docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md
+1e. docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md
+1f. docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md
+1g. docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md
 2. docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md
 3. docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md
 4. docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md
@@ -435,15 +463,33 @@ reviewed boundaries. Both fixed R0 `-ValidateOnly` modes pass. Preserve
 the physical evidence under
 `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260801-noah-validation-statistics-migration\`.
 
-Immediate next-chat priority: run the current-build Wide/Compact layout audit
-defined in
-`docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`, then
-select one bounded layout issue with fresh baseline evidence. Recommended
-model: gpt-5.6-sol. Reasoning effort: high. `J-12 Multiple-match result
-collection with stable identities` remains the next numerical backlog item but
-is deferred by the owner-selected layout stream. `K-09` remains blocked on
-`J-12`; `K-04` remains blocked on `B-12`; symmetry-aware `J-13` remains
-separate.
+J-12 is Complete. Committed Noah
+`4e301f481cac886f78425197314cd540b653473a` through vendored
+`Lib.ThreeD 2.8.9` owns the bounded repeated search and disjoint result
+arithmetic. The known two-object collection has two stable ordered `5/5`
+results with zero shared scene claims; Runner passes `14/14`, Workbench `6/6`,
+and current Release Wide/Compact/theme evidence passes. K-09 is also Complete:
+non-wrapping Previous/Next shares the existing selector state and Viewer route;
+Workbench passes `10/10` and current Wide/Compact first/last state evidence
+passes. F-13 is Complete: schema `1.1` now owns explicit none/discrete-axis
+symmetry declarations, focused verification passes `34/34`, and five existing
+schema-1.0 artifacts retain exact bytes. The inventory is
+`133 C / 17 P / 60 N / 9 E / 16 O` at that checkpoint. J-13 is now Complete:
+committed Noah `f225fd2709de1dd1d0ecfe19b37315cb1f019ee4` through vendored
+`Lib.ThreeD 2.8.10` owns direct and declared cyclic pose equivalence, focused
+verification passes `15/15`, and legacy byte parity passes `5/5`. Current
+inventory was `134 C / 17 P / 59 N / 9 E / 16 O` at that checkpoint. J-05 is
+now Complete: committed Noah
+`55ea7a61bd1281294e91aa5366d2bafb509d3667`, vendored `Lib.ThreeD 2.8.11`,
+focused `15/15`, and legacy byte parity `5/5`. Current inventory is
+`135 C / 17 P / 58 N / 9 E / 16 O` at that checkpoint. J-07 is now Complete:
+committed Noah
+`7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored `Lib.ThreeD 2.8.12`,
+focused `15/15`, and unchanged legacy bytes `5/5`. Current inventory is
+`136 C / 17 P / 57 N / 9 E / 16 O`. Immediate next-chat priority is `B-12
+Acquisition/source provenance text and limitation notes`.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high. `K-04` remains
+blocked until B-12 passes; L-13 is independently dependency-ready.
 
 Human-owner Wide/Compact R0 remains a parallel external acceptance task.
 Prerequisite: owner operation and evidence. Recommended model: none until the
@@ -655,13 +701,15 @@ Library-Noah Surface Match pose-search/coverage, preparation/edge,
 filtering/leveling, nominal-comparison/transform-diagnostics, height-map
 inspection/preparation, dependent height rules, declared-normal quality,
 Landmark Correspondence, repeatability, and validation-statistics migration is
-complete from worktree
-`C:\Git\Library-Noah-surface-match-kernel`; the unrelated dirty main Noah
-checkout remains untouched. The Tool-only decreasing ledger is zero. Next is
-`J-12`; implement any new source-neutral matching arithmetic in committed Noah
-first, then vendor the exact package before Studio adaptation. Recommended
-model: `gpt-5.6-sol`. Reasoning effort: high.
-`K-09` remains blocked on `J-12`; `K-04` remains blocked on `B-12`.
+complete. J-12 multiple-match search is additionally complete from clean
+worktree `C:\Git\Library-Noah-j12`; its current J-07 package source is commit
+`7ed50ea37b3d7cb711c2afe698d209f9073e9217`, vendored as
+`Lib.ThreeD 2.8.12`. The unrelated dirty main Noah checkout remains untouched.
+The Tool-only decreasing ledger is zero. K-09, F-13, J-13, J-05, and J-07 are
+Complete. Next is `B-12 Acquisition/source provenance text and limitation
+notes`, persisted without execution or inferred viewpoint.
+Recommended model: `gpt-5.6-sol`. Reasoning effort: high. `K-04` remains
+blocked until B-12 passes; L-13 is independently dependency-ready.
 
 Then:
 
@@ -800,7 +848,7 @@ Dependency sequence:
 ```text
 J-01/J-03/J-04 [complete]
   -> J-06/J-08/J-09 [complete]
-  -> J-10/J-11/J-15/J-16
+  -> J-10/J-11/J-12/J-14/J-15/J-16 [complete]
 ```
 
 Deliver an identified SurfaceModel, deterministic model/scene preparation,
@@ -817,10 +865,11 @@ Reasoning effort: high
 
 ### 7. Matching optimization and diagnostics
 
-Only after the matching foundation:
+Remaining after the completed matching foundation, J-12 collection, and J-13
+equivalence evaluator:
 
-- `J-05/J-07/J-12/J-13/J-14`;
-- `K-02` through `K-11`;
+- `J-05/J-07`;
+- `K-04`;
 - `L-13`.
 
 This covers model cleanup/keypoints, multiple matches, symmetry, bounded

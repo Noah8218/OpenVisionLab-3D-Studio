@@ -42,7 +42,7 @@ This file defines the working agreement for Codex in this repository.
   commit the exact source, pack that committed version, vendor the package and
   checksum, then adapt Studio. Do not use an external `ProjectReference` or
   package an uncommitted Noah working tree.
-- `Lib.ThreeD 2.8.8` owns deterministic Surface Match pose-search and
+- `Lib.ThreeD 2.8.13` owns deterministic Surface Match pose-search and
   unique-nearest coverage, SurfaceModel/Prepared Scene sampling, model and
   organized-scene edge extraction, edge-domain coverage, center-excluded
   local-median outlier filtering, height-field surface leveling,
@@ -57,15 +57,28 @@ This file defines the working agreement for Codex in this repository.
   `RepeatabilityStatisticsTool`. It also owns labeled-evidence descriptive
   statistics and deterministic threshold-candidate construction, assessment,
   ranking, and tie-breaking through `LabeledEvidenceStatisticsTool` and
-  `ThresholdCandidateAnalysisTool`.
+  `ThresholdCandidateAnalysisTool`. It also owns deterministic multiple-match
+  pose search, unique-nearest scoring, greedy disjoint scene-sample claiming,
+  stable ordering, and bounded termination through
+  `DeterministicMultipleSurfaceMatchTool`. It also owns deterministic direct
+  and declared model-axis cyclic rigid-pose equivalence, inclusive residual
+  limits, and stable operation tie-breaking through
+  `RigidPoseSymmetryEquivalenceTool`. It also owns deterministic active model-
+  surface selection for exact-coordinate duplicates and explicit internal/
+  unobservable source-triangle exclusions through
+  `DeterministicModelSurfaceSelectionTool`. It also owns deterministic
+  farthest-point model-sample key-point extraction, strict minimum separation,
+  and stable source-order tie-breaking through
+  `DeterministicModelKeyPointExtractionTool`.
   `RigidSurfacePoseSearch`, `SurfaceCoverageScorer`,
   `SurfaceModelPreparation`, `PreparedScenePreparation`,
-  `ModelSurfaceEdgeExtractor`, `SceneSurfaceEdgeExtractor`, and
-  `SurfaceAndEdgeMatchScorer` are strict Studio validation/adaptation entry
-  points, not numerical exceptions. Any new matching math, including
-  multiple-match search for `J-12`, must be added to committed Noah source,
-  packed from that exact commit, and consumed through a newly verified
-  vendored package.
+  `ModelSurfaceEdgeExtractor`, `SceneSurfaceEdgeExtractor`,
+  `SurfaceAndEdgeMatchScorer`, `MultipleSurfaceMatchEvaluationExecutor`, and
+  `SurfaceMatchPoseEquivalenceEvaluator`, and `ModelKeyPointExtractor`
+  are strict Studio validation/adaptation entry points, not numerical
+  exceptions. Any future matching math must be added to committed Noah source,
+  packed from that exact commit, and consumed through a newly verified vendored
+  package.
 - Preserve the full contract, audit boundary, and migration order in
   `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`.
 
@@ -141,18 +154,240 @@ This file defines the working agreement for Codex in this repository.
 
 ## Current Product Target
 
-- Product-owner layout-only continuation priority (2026-08-01): the next
-  conversation must continue the layout/UI-design stream from
+- Height-map input-contract integration closure (2026-08-04): current vendored
+  `Lib.ThreeD 2.8.13` is built from committed Noah
+  `21f2e3084843ef8a499e6fe02c4326a19813aa2c` with SHA-256
+  `852B5A959A3DD76AF69A7C295CEAC77E13F72BBB969A79FC48D88A83B9D8229D`.
+  It retains every `2.8.12` API and adds explicit planar/height unit, coordinate,
+  frame, missing-value, coverage, and metric-unit evidence. The Studio bridge
+  preserves legacy single-unit calls and exposes a strict expected-contract
+  path. Noah Release passes `0/0` and Smoke `128/128`; Studio package integrity,
+  Release `0/0`, bridge `25/25`, C3D Thickness/Warpage/Datum `5/5` each,
+  structure `29/29`, and NuGet health `12/0/0` pass. No UI changed. Preserve
+  `docs/OPENVISIONLAB_3D_LIBRARY_NOAH_PACKAGE_BOUNDARY_20260717.md` and the
+  D-backed `20260804-library-noah-input-contract` evidence. Next remains `B-12
+  Acquisition/source provenance text and limitation notes`. Recommended model:
+  `gpt-5.6-sol`; reasoning effort: high.
+
+- Model key-point artifact and debug-overlay closure (2026-08-03): `J-07` is
+  Complete. Public sealed Noah `DeterministicModelKeyPointExtractionTool`
+  selects a deterministic spatial subset from J-05 retained SurfaceModel
+  samples using the lowest source order as seed, maximum nearest-selected
+  distance, lower-order ties, a strict minimum separation, and a bounded
+  count. Studio owns stable source-sample/source-triangle identities, atomic
+  persistence, and a WPF-neutral display-only position/normal overlay. These
+  artifacts do not execute or alter matching. Committed Noah
+  `7ed50ea37b3d7cb711c2afe698d209f9073e9217` passes Release `0/0` and Smoke
+  `122/122`; vendored `Lib.ThreeD 2.8.12` has SHA-256
+  `7E5DAF887851CB16C45279CD957260C2546AD0EDBB92B9F4903E23E529BADFE3`.
+  Studio Release Rebuild passes `0/0`; bridge `21/21`; J-07 `15/15`; legacy
+  byte parity `5/5`; the established matching, Workbench, docking, workspace,
+  Validation Set, command-line, structure, and Wide/Compact R0 fixed-input
+  gates pass. Preserve
+  `docs/OPENVISIONLAB_3D_MODEL_KEY_POINT_ARTIFACT_AND_DEBUG_OVERLAY_20260803.md`
+  and the D-backed `20260803-j07-model-key-points` evidence. Inventory is
+  `136 C / 17 P / 57 N / 9 E / 16 O`. No Viewer renderer or UI changed, and
+  key points are not matching inputs. Next is `B-12 Acquisition/source
+  provenance text and limitation notes`, which must persist explicit
+  available/unavailable evidence without execution or inferred viewpoint.
+  Recommended model: `gpt-5.6-sol`; reasoning effort: high. `K-04` remains
+  blocked on `B-12`; `L-13` remains independently dependency-ready.
+
+- Model surface-selection closure (2026-08-03): `J-05` is Complete. Public
+  sealed Noah `DeterministicModelSurfaceSelectionTool` owns deterministic
+  exact-coordinate duplicate removal and canonical explicit internal/
+  unobservable source-triangle exclusions. Studio preserves the full source
+  geometry, maps retained sampling back to original triangle locators, saves
+  schema-`1.2` selection evidence, and routes one active domain to matching,
+  model edges, and transformed overlays. No-selection schema-`1.0/1.1`
+  artifacts preserve exact bytes. Committed Noah
+  `55ea7a61bd1281294e91aa5366d2bafb509d3667` passes Release `0/0` and Smoke
+  `118/118`; vendored `Lib.ThreeD 2.8.11` has SHA-256
+  `AC61E132938AD184F3E3A39622A5BC3C4E48F1419D7C4EC75AC604A8CD1F8A42`.
+  Studio Release Rebuild passes `0/0`; bridge `21/21`; J-05 `15/15`; legacy
+  byte parity `5/5`; the established matching, Workbench, docking, workspace,
+  Validation Set, command-line, structure, and Wide/Compact R0 fixed-input
+  gates pass. Preserve
+  `docs/OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md` and the D-backed
+  `20260803-j05-model-surface-selection` evidence. Inventory is
+  `135 C / 17 P / 58 N / 9 E / 16 O`. Automatic visibility/enclosure and
+  near-duplicate inference remain outside this closure; explicit
+  unobservable locators do not satisfy `B-12`. Next is `J-07 Model key-point
+  artifact and debug overlay`. Recommended model: `gpt-5.6-sol`; reasoning
+  effort: high. Human-owner R0 remains external, and `K-04` remains blocked
+  on `B-12`.
+
+- Symmetry-aware pose-equivalence closure (2026-08-03): `J-13` is Complete.
+  Public sealed Noah `RigidPoseSymmetryEquivalenceTool` owns direct and
+  declared model-axis cyclic rigid-pose equivalence, inclusive translation/
+  rotation residual decisions, and deterministic lowest-operation tie
+  breaking. Studio strictly validates SurfaceModel, pose, unit, source frame,
+  target frame, and limits, then maps typed evidence; existing single/multiple
+  matching execution and persisted bytes are unchanged. Committed Noah
+  `f225fd2709de1dd1d0ecfe19b37315cb1f019ee4` passes Release `0/0` and Smoke
+  `113/113`; vendored `Lib.ThreeD 2.8.10` has SHA-256
+  `535CD75D33BE5EC015B1B36215FF3DBDD7E8AEC1A5F2B8FFE1FCCBA18B7877C7`.
+  Studio Release passes `0/0`; bridge `20/20`; J-13 `15/15`; legacy byte
+  parity `5/5`; the established matching, Workbench, docking, workspace,
+  Validation Set, command-line, structure, and Wide/Compact R0 fixed-input
+  gates pass. Preserve
+  `docs/OPENVISIONLAB_3D_SYMMETRY_AWARE_POSE_EQUIVALENCE_20260803.md` and the
+  D-backed `20260803-j13-symmetry-aware-pose-equivalence` evidence. Inventory
+  was `134 C / 17 P / 59 N / 9 E / 16 O` at that checkpoint. Its former next
+  item J-05 is superseded by the completed model surface-selection closure
+  above. Human-owner R0 remains external, and `K-04` remains blocked on
+  `B-12`.
+
+- SurfaceModel symmetry-declaration closure (2026-08-03): `F-13` is
+  Complete. Existing undeclared schema-`1.0` artifacts keep their exact
+  canonical hashes and JSON bytes. Schema `1.1` requires an explicit `none`
+  declaration or discrete rotation about model axis `x`, `y`, or `z` with
+  order at least `2`; the declaration participates in content identity and
+  round-trips through the existing atomic store. No matching, pose-equivalence,
+  UI, or Noah package behavior changed. Release passes `0/0`; SurfaceModel
+  `34/34`; legacy byte parity `5/5`; bridge `19/19`; matching `34/34`;
+  acceptance `14/14`; performance `18/18`; multiple Runner/Workbench `14/14`
+  and `10/10`; edge/review `21/21` and `20/20`; single-match parity `23/23`;
+  docking `82/82`; Inspection Workspace `64/64`; Validation Set `84/84`;
+  command line `31/31`; structure `29/29`; and both R0 `-ValidateOnly` modes
+  pass. Preserve
+  `docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md` and
+  the D-backed `20260803-f13-surface-model-symmetry-declaration` evidence.
+  Inventory is `133 C / 17 P / 60 N / 9 E / 16 O`. Human-owner R0 remains
+  external. Its former next item `J-13` is superseded by the current J-13
+  closure above.
+
+- Multiple-match issue-navigation closure (2026-08-03): `K-09` is Complete.
+  The retained-result selector and new non-wrapping Previous/Next commands use
+  one `SelectedSurfaceMatchCollectionItem` owner and the existing Viewer
+  evidence route. First disables Previous; last disables Next; navigation is
+  presentation-only and does not execute matching, Preview, Publish, Run, or
+  Validation, mutate recipe/output/candidate state, or persist the viewed
+  item. Studio Release passes `0/0`; J-12 Runner `14/14`; K-09 Workbench
+  `10/10`; current-input single-match parity `14/14`; docking `82/82`;
+  Inspection Workspace `64/64`; Validation Set `84/84`; command line `31/31`;
+  and structure `29/29` with `0` migration debt and `31` reviewed boundaries.
+  Current Release Wide/Compact English/Korean, focus/hover, first/last disabled,
+  leftmost-monitor evidence passes; both R0 `-ValidateOnly` modes pass with
+  Shell SHA-256
+  `C1C470339EBC9242BF2413E857CBA6CE49A105B15D398246D745F6BE3F4D44F2`.
+  Preserve
+  `docs/OPENVISIONLAB_3D_MULTIPLE_MATCH_ISSUE_NAVIGATION_20260803.md` and the
+  D-backed `20260803-k09-multiple-match-issue-navigation` evidence. Inventory
+  was `132 C / 17 P / 61 N / 9 E / 16 O` at that checkpoint. Human-owner R0
+  remains external. Its former next item `F-13` is superseded by the current
+  F-13 closure above.
+
+- Multiple-match result collection closure (2026-08-03): `J-12` is Complete.
+  Committed Noah `4e301f481cac886f78425197314cd540b653473a` passes Release
+  `0/0` and Smoke `108/108`; vendored `Lib.ThreeD 2.8.9` has SHA-256
+  `A3B212E6D8AC487DF668F0FE557C17615845A161412AE7AF6BD7FE4FCC260278`.
+  Noah owns repeated pose search, unique-nearest coverage, disjoint scene
+  claims, stable ordering, and bounded termination. Studio owns identity,
+  authored acceptance, schema-1 collection persistence, lifecycle, evidence,
+  and presentation-only selection. The controlled two-object fixture retains
+  two stable `5/5` matches with zero shared scene claims. Studio Release passes
+  `0/0`; bridge `19/19`; J-12 Runner `14/14`; Workbench `6/6`; existing
+  matching `34/34`; acceptance `14/14`; performance `18/18`; SurfaceModel
+  `22/22`; edge `21/21`; edge review `20/20`; single-match parity `23/23`;
+  docking `82/82`; Inspection Workspace `64/64`; Validation Set `84/84`;
+  command line `30/30`; and structure `29/29` with `0` migration debt and `31`
+  reviewed boundaries. Current Release Wide/Compact, popup/theme states, and
+  leftmost-monitor evidence pass; both R0 `-ValidateOnly` modes pass. Preserve
+  `docs/OPENVISIONLAB_3D_MULTIPLE_SURFACE_MATCH_RESULT_COLLECTION_20260803.md`
+  and the D-backed `20260803-j12-multiple-match` evidence. Inventory is
+  `131 C / 17 P / 62 N / 9 E / 16 O` at that checkpoint. Human-owner R0
+  remains external. Its former next item `K-09` is superseded by the current
+  K-09 closure above.
+
+- Linked-view display-range consistency closure (2026-08-03): `C-13` is
+  Complete. The same-source 3D Viewer and full Height Image now share exact
+  manual and `AUTO` display bounds in both directions through the existing
+  Viewer workspace presentation bridge. Synchronization requires matching
+  source-content SHA-256; palettes remain independent; the 3D histogram
+  remains full-source; and recipe, measurement, ROI, Preview, Publish, Run,
+  Validation, and output state remain unchanged. Release passes `0/0`; C3D
+  distribution `26/26`; C3D Height Image `25/25`; Inspection Workspace
+  `64/64`; height-measurement `54/54`; docking `82/82`; Validation Set
+  `84/84`; command line `28/28`; structure `29/29`; current Wide/Compact
+  actual-window reports pass both directions, AUTO, and final shared range;
+  and both R0 `-ValidateOnly` modes pass. Preserve
+  `docs/OPENVISIONLAB_3D_LINKED_VIEW_DISPLAY_RANGE_CONSISTENCY_20260803.md`
+  and the D-backed `20260803-c13-linked-view-display-range-consistency`
+  evidence. Inventory is `130 C / 17 P / 63 N / 9 E / 16 O`. No
+  dependency-ready standalone layout item remains: `A-11` requires `A-09`
+  and human-owner `A-01`; returning to `J-12` requires the owner's explicit
+  decision to leave the layout-only stream. Recommended model for `J-12` if
+  approved: `gpt-5.6-sol`; reasoning effort: high.
+
+- Post-reinstall recovery and setup closure (2026-08-03): Python `3.13.14` is
+  restored; `scripts/setup-development-environment.ps1` passes its explicit
+  check/install modes at `5/5`; and the README plus
+  `docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md` now separate
+  operator runtime from developer/verification utilities. The supported
+  operator path is the folder-based self-contained `win-x64` package produced
+  by `scripts/publish-windows-app.ps1`, so operators do not install .NET, Git,
+  Python, or FFmpeg. The current package has `501` manifest payload files,
+  resolves `11/11` recipe source references, has zero hash/size failures, and
+  passes current-package Wide/Compact and leftmost-monitor launch checks with
+  an invalid system `DOTNET_ROOT`. The six tracked public Thickness recipe
+  contracts now match source SHA-256
+  `D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8` and all
+  existing CI expected statuses pass without algorithm changes. Release is
+  `0/0`; focused Runner `13/13`; height-measurement `54/54`; Validation Set
+  `84/84`; docking `78/78`; command line `28/28`; structure `29/29`; Python
+  gates and Cross-section Viewer/Runner parity pass. Preserve
+  `docs/OPENVISIONLAB_3D_POST_REINSTALL_RECOVERY_AND_SETUP_20260803.md` and the
+  D-backed `20260803-recovery-prerequisites-and-recipe-contracts` evidence.
+  The restored data volume moved to `E:`. Ten historical `artifacts/current`
+  Junctions now target their existing E-drive directories and their pre/post
+  manifests match. Human-owner R0 remains external. The former next priority
+  `A-12` is superseded by the completion record below; `J-12` remains
+  deferred.
+
+- Advanced workspace semantic-theme parity closure (2026-08-03): `A-16` is
+  Complete. Data/Layers, Tool/Inspector, Evidence Workbench, linked evidence,
+  and generated input/tab/popup states now use the existing OpenVision
+  graphite semantic roles. The former platform-light assignments are absent;
+  final screenshot white ratios are `0.55%` Wide and `0.56%` Compact, versus
+  `39.23%` and `32.66%` before. Release passes `0/0`; docking/theme `82/82`;
+  Inspection Workspace `63/63`; Validation Set `84/84`; command line `28/28`;
+  structure `29/29`; the actual open ComboBox popup is dark and remains
+  presentation-only; and both R0 `-ValidateOnly` modes pass. Preserve
+  `docs/OPENVISIONLAB_3D_ADVANCED_SEMANTIC_THEME_PARITY_20260803.md` and the
+  D-backed `20260803-a16-advanced-semantic-theme-parity` evidence. At that
+  checkpoint inventory was `129 C / 17 P / 64 N / 9 E / 16 O`; its former
+  `C-13` priority is superseded by the completion record above. Human-owner R0
+  remains external and `J-12` remains deferred.
+
+- Global current-source quality state closure (2026-08-03): `A-12` is
+  Complete. A loaded source shows one localized read-only valid/missing state
+  beside source and alignment; empty input hides it; the detailed Source
+  Quality pane remains authoritative. Release passes `0/0`; docking `80/80`;
+  Inspection Workspace `63/63`; Validation Set `84/84`; command line `28/28`;
+  structure `29/29`; eight current final captures are accepted; and both R0
+  `-ValidateOnly` modes pass. Preserve
+  `docs/OPENVISIONLAB_3D_GLOBAL_CURRENT_SOURCE_QUALITY_STATE_20260803.md` and
+  the D-backed `20260803-a12-current-source-quality-layout` evidence.
+  At that checkpoint inventory was `128 C / 17 P / 65 N / 9 E / 16 O`, and
+  the audit added `A-16` for the pre-existing Advanced workspace
+  white/platform-light semantic-theme leak. Its former `A-16` priority is
+  superseded by the completion record above. Human-owner R0 remains external
+  and `J-12` remains deferred.
+
+- Historical product-owner layout-only continuation priority (2026-08-01):
+  this stream was explicitly left for J-12 on 2026-08-03. Continue to
+  use
   `docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md`.
-  Begin with a fresh current-build Wide/Compact layout-integrity audit, then
-  select one bounded evidence-backed operator problem. Preserve the completed
+  Preserve the completed
   Workbench v4, Viewer single-row/Height range, top dock-tab, Authoring
   integrity/side-collapse, first-use clarity, safe layout persistence, and
-  PropertyGrid theme closures. GoPxL remains a workflow-principle benchmark,
-  not a visual template. `J-12` remains the next numerical backlog item but is
-  deferred while this owner-selected layout-only continuation is active. Do
-  not start algorithm work in that next conversation unless the owner changes
-  priority again. Human-owner Wide/Compact R0 remains external.
+  PropertyGrid theme closures plus the A-12, A-16, and C-13 closures. GoPxL
+  remains a workflow-principle benchmark, not a visual template. The approved
+  layout candidate list now has no dependency-ready standalone implementation:
+  `A-11` is blocked by `A-09/A-01`, while `M-18/M-19` are per-change gates.
+  Its former J-12 priority is superseded by the multiple-match closure above.
+  Human-owner Wide/Compact R0 remains external.
 
 - Validation-statistics Library-Noah migration closure (2026-08-01):
   `ToolRecipeLabeledEvidenceAnalyzer` and
@@ -1460,8 +1695,7 @@ This file defines the working agreement for Codex in this repository.
   `docs/OPENVISIONLAB_3D_SHARED_HEIGHT_CURSOR_20260728.md` and
   `artifacts/current/20260728-shared-height-hover/`. `C-09/C-10`
   synchronized ROI display/editing and `C-11` visible invalid-cell overlay
-  are now complete. `C-13` remains open for one shared 2D/3D
-  display range. R0 owner
+  are now complete. `C-13` was completed later on 2026-08-03. R0 owner
   replay, physical calibration, and metrology remain external or unverified.
 
 - Height Image palette and display-range C-07 closure (2026-07-28): the
@@ -1489,7 +1723,7 @@ This file defines the working agreement for Codex in this repository.
   `artifacts/current/20260728-height-image-display-range/`. `C-08` shared
   hover and `C-09/C-10` synchronized ROI editing are now complete. `C-11`
   is next.
-  `C-13` remains open for a shared manual/auto range in both linked views.
+  `C-13` was completed later on 2026-08-03.
   R0 owner replay, physical calibration, and metrology remain external or
   unverified.
 

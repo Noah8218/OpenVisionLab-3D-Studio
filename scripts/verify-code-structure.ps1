@@ -146,7 +146,11 @@ $teachingCoordinatorPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/V
 $surfacePoseAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/RigidSurfacePoseSearch.cs"
 $surfaceCoverageAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceCoverageScorer.cs"
 $surfaceNoahAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/LibraryNoahSurfaceMatching.cs"
+$multipleSurfaceMatchAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/MultipleSurfaceMatchEvaluationExecutor.cs"
+$surfacePoseEquivalenceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceMatchPoseEquivalenceEvaluator.cs"
+$surfacePoseEquivalenceContractPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Core/Contracts/Matching/SurfaceMatchPoseEquivalenceEvaluation.cs"
 $surfaceModelPreparationAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceModelPreparation.cs"
+$modelKeyPointAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/ModelKeyPointExtractor.cs"
 $preparedSceneAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/PreparedScenePreparation.cs"
 $modelSurfaceEdgeAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/ModelSurfaceEdgeExtractor.cs"
 $sceneSurfaceEdgeAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SceneSurfaceEdgeExtractor.cs"
@@ -212,29 +216,41 @@ Add-Check "LibraryNoahSurfaceMatchingOwnership" (
     (Test-Path -LiteralPath $surfacePoseAdapterPath) -and
     (Test-Path -LiteralPath $surfaceCoverageAdapterPath) -and
     (Test-Path -LiteralPath $surfaceNoahAdapterPath) -and
+    (Test-Path -LiteralPath $multipleSurfaceMatchAdapterPath) -and
+    (Test-Path -LiteralPath $surfacePoseEquivalenceAdapterPath) -and
+    (Test-Path -LiteralPath $surfacePoseEquivalenceContractPath) -and
     ([System.IO.File]::ReadAllText($surfacePoseAdapterPath) -match "DeterministicRigidSurfacePoseSearchTool") -and
     ([System.IO.File]::ReadAllText($surfaceCoverageAdapterPath) -match "DeterministicSurfaceCoverageTool") -and
     ([System.IO.File]::ReadAllText($surfaceNoahAdapterPath) -match "Lib\.ThreeD\.FeatureExtraction") -and
+    ([System.IO.File]::ReadAllText($multipleSurfaceMatchAdapterPath) -match "DeterministicMultipleSurfaceMatchTool") -and
+    ([System.IO.File]::ReadAllText($surfacePoseEquivalenceAdapterPath) -match "RigidPoseSymmetryEquivalenceTool") -and
+    ([System.IO.File]::ReadAllText($surfaceNoahAdapterPath) -match "RigidPoseSymmetryEquivalenceOptions") -and
     -not ([System.IO.File]::ReadAllText($surfacePoseAdapterPath) -match "Math\.|AxisCandidates|Centroid\(|Rotation3|InsideTranslationBounds") -and
-    -not ([System.IO.File]::ReadAllText($surfaceCoverageAdapterPath) -match "Math\.|DistanceSquared|claimedSceneSamples")
-) "Studio validates identities and maps evidence; vendored Library-Noah owns pose-search and coverage arithmetic"
+    -not ([System.IO.File]::ReadAllText($surfaceCoverageAdapterPath) -match "Math\.|DistanceSquared|claimedSceneSamples") -and
+    -not ([System.IO.File]::ReadAllText($multipleSurfaceMatchAdapterPath) -match "Math\.|DistanceSquared|claimedSceneSamples|AxisCandidates|Rotation3") -and
+    -not ([System.IO.File]::ReadAllText($surfacePoseEquivalenceAdapterPath) -match "Math\.|Acos|Atan2|OperationTrace|RelativeRotation")
+) "Studio validates identities and maps single/multiple/equivalence evidence; vendored Library-Noah owns pose-search, disjoint result collection, coverage, and symmetry-equivalence arithmetic"
 Add-Check "LibraryNoahSurfacePreparationAndEdgeOwnership" (
     (Test-Path -LiteralPath $surfaceModelPreparationAdapterPath) -and
+    (Test-Path -LiteralPath $modelKeyPointAdapterPath) -and
     (Test-Path -LiteralPath $preparedSceneAdapterPath) -and
     (Test-Path -LiteralPath $modelSurfaceEdgeAdapterPath) -and
     (Test-Path -LiteralPath $sceneSurfaceEdgeAdapterPath) -and
     (Test-Path -LiteralPath $surfaceEdgeCoverageAdapterPath) -and
+    ([System.IO.File]::ReadAllText($surfaceModelPreparationAdapterPath) -match "DeterministicModelSurfaceSelectionTool") -and
     ([System.IO.File]::ReadAllText($surfaceModelPreparationAdapterPath) -match "DeterministicSurfaceModelPreparationTool") -and
+    ([System.IO.File]::ReadAllText($modelKeyPointAdapterPath) -match "DeterministicModelKeyPointExtractionTool") -and
     ([System.IO.File]::ReadAllText($preparedSceneAdapterPath) -match "DeterministicPreparedScenePreparationTool") -and
     ([System.IO.File]::ReadAllText($modelSurfaceEdgeAdapterPath) -match "DeterministicModelSurfaceEdgeExtractionTool") -and
     ([System.IO.File]::ReadAllText($sceneSurfaceEdgeAdapterPath) -match "DeterministicOrganizedSceneSurfaceEdgeExtractionTool") -and
     ([System.IO.File]::ReadAllText($surfaceEdgeCoverageAdapterPath) -match "DeterministicSurfaceEdgeCoverageTool") -and
-    -not ([System.IO.File]::ReadAllText($surfaceModelPreparationAdapterPath) -match "Math\.|Vector3\.Normalize|GetEvenTriangleIndex") -and
+    -not ([System.IO.File]::ReadAllText($surfaceModelPreparationAdapterPath) -match "Math\.|Vector3\.Normalize|GetEvenTriangleIndex|TriangleKey|DuplicateGeometry|Dictionary<") -and
+    -not ([System.IO.File]::ReadAllText($modelKeyPointAdapterPath) -match "Math\.|Distance\(|\.OrderBy|\.Aggregate|\.Max\(|\.Min\(") -and
     -not ([System.IO.File]::ReadAllText($preparedSceneAdapterPath) -match "Math\.|GetEvenPointIndex") -and
     -not ([System.IO.File]::ReadAllText($modelSurfaceEdgeAdapterPath) -match "Math\.|TriangleNormal|Distance\(|Dot\(|Cross\(") -and
     -not ([System.IO.File]::ReadAllText($sceneSurfaceEdgeAdapterPath) -match "Math\.|AddCandidate|Math\.Abs") -and
     -not ([System.IO.File]::ReadAllText($surfaceEdgeCoverageAdapterPath) -match "Math\.|DistanceSquared|claimedSceneEdges|squaredErrorSum")
-) "Studio composes identified artifacts; vendored Library-Noah owns surface preparation, edge extraction, and edge coverage arithmetic"
+) "Studio composes identified artifacts and active-domain evidence; vendored Library-Noah owns model-surface selection, surface preparation, key-point extraction, edge extraction, and edge coverage arithmetic"
 Add-Check "LibraryNoahOutlierFilteringAndLevelingOwnership" (
     (Test-Path -LiteralPath $removeOutlierAdapterPath) -and
     (Test-Path -LiteralPath $levelSurfaceAdapterPath) -and

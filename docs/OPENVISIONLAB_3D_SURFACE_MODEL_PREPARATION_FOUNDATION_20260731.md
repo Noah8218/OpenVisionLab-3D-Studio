@@ -6,6 +6,11 @@ Status: Complete
 
 Backlog scope: `J-01`, `J-03`, `J-04`
 
+Superseding extension (2026-08-03): `F-13` adds schema-`1.1` explicit
+none/discrete-model-axis symmetry declarations while preserving exact bytes
+and canonical hashes for undeclared schema-`1.0` artifacts. See
+`docs/OPENVISIONLAB_3D_SURFACE_MODEL_SYMMETRY_DECLARATION_20260803.md`.
+
 ## Outcome
 
 OpenVisionLab 3D Studio now has a WPF-neutral, identified, content-addressed
@@ -150,9 +155,11 @@ Wide/Compact screenshot evidence is therefore not applicable.
 
 ## Boundaries
 
-This completion does not:
+This historical completion did not:
 
-- remove internal, redundant, or unobservable surfaces (`J-05`);
+- remove internal, redundant, or unobservable surfaces (`J-05`; superseded by
+  the completed bounded contract in
+  `OPENVISIONLAB_3D_MODEL_SURFACE_SELECTION_20260803.md`);
 - prepare a measured scene (`J-06`);
 - create model key points (`J-07`);
 - search for a rigid pose (`J-08`);

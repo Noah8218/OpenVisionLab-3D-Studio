@@ -16,11 +16,17 @@ public sealed record SurfaceModelValidityReport(
     int ConsistentNormalCornerCount,
     int SampleCount,
     int ValidSampleCount,
+    bool SymmetryDeclarationValid,
+    string SymmetryEvidence,
+    bool SurfaceSelectionValid,
+    int RetainedSurfaceCount,
+    int RemovedSurfaceCount,
+    string SurfaceSelectionEvidence,
     bool ContentIdentityValid,
     IReadOnlyList<string> Errors,
     string Evidence)
 {
-    public const string CurrentSchemaVersion = "1.0";
+    public const string CurrentSchemaVersion = "1.2";
 
     public bool IsValid => State == SurfaceModelValidityState.Valid;
 }
@@ -51,11 +57,27 @@ public static class SurfaceModelArtifactValidator
         var samples = model.Samples ?? [];
         var preparation = model.Preparation;
 
-        if (model.SchemaVersion != SurfaceModelArtifact.CurrentSchemaVersion)
+        if (model.SchemaVersion is not (
+                SurfaceModelArtifact.LegacySchemaVersion
+                or SurfaceModelArtifact.SymmetrySchemaVersion
+                or SurfaceModelArtifact.CurrentSchemaVersion))
         {
             errors.Add(
                 $"Unsupported SurfaceModel schema '{model.SchemaVersion}'.");
         }
+
+        var symmetryDeclarationValid = ValidateSymmetryDeclaration(
+            model.SchemaVersion,
+            model.Symmetry,
+            errors,
+            out var symmetryEvidence);
+        var surfaceSelectionValid = ValidateSurfaceSelection(
+            model.SchemaVersion,
+            model.SurfaceSelection,
+            triangles.Length,
+            errors,
+            out var retainedSourceTriangleIndices,
+            out var surfaceSelectionEvidence);
 
         RequireText(model.ArtifactId, "artifact ID", errors);
         RequireText(model.Name, "name", errors);
@@ -256,11 +278,12 @@ public static class SurfaceModelArtifactValidator
 
         var validSampleCount = 0;
         var expectedSampleCount =
-            preparation is null || triangles.Length == 0
+            preparation is null
+            || retainedSourceTriangleIndices.Length == 0
                 ? 0
                 : Math.Min(
                     preparation.MaximumSampleCount,
-                    triangles.Length);
+                    retainedSourceTriangleIndices.Length);
         if (samples.Length != expectedSampleCount)
         {
             errors.Add(
@@ -294,7 +317,9 @@ public static class SurfaceModelArtifactValidator
                 .GetEvenTriangleIndex(
                     sampleIndex,
                     samples.Length,
-                    triangles.Length);
+                    retainedSourceTriangleIndices.Length);
+            expectedTriangleIndex =
+                retainedSourceTriangleIndices[expectedTriangleIndex];
             var triangle = triangles[sample.SourceTriangleIndex];
             var faceNormal = triangleNormals[sample.SourceTriangleIndex];
             if (sample.SourceTriangleIndex != expectedTriangleIndex
@@ -365,6 +390,8 @@ public static class SurfaceModelArtifactValidator
             + $"unit {unitNormalCount}/{normals.Length}, "
             + $"aligned corners {consistentNormalCornerCount}/{comparableNormalCornerCount}; "
             + $"samples={validSampleCount}/{samples.Length}; "
+            + $"symmetry={symmetryEvidence}; "
+            + $"surfaceSelection={surfaceSelectionEvidence}; "
             + $"contentIdentity={contentIdentityValid}.";
 
         return new SurfaceModelValidityReport(
@@ -383,6 +410,12 @@ public static class SurfaceModelArtifactValidator
             consistentNormalCornerCount,
             samples.Length,
             validSampleCount,
+            symmetryDeclarationValid,
+            symmetryEvidence,
+            surfaceSelectionValid,
+            retainedSourceTriangleIndices.Length,
+            model.SurfaceSelection?.RemovedSurfaces?.Length ?? 0,
+            surfaceSelectionEvidence,
             contentIdentityValid,
             errors.ToArray(),
             evidence);
@@ -405,6 +438,274 @@ public static class SurfaceModelArtifactValidator
                 consistentNormalCornerCount++;
             }
         }
+    }
+
+    private static bool ValidateSurfaceSelection(
+        string? schemaVersion,
+        SurfaceModelSurfaceSelection? selection,
+        int triangleCount,
+        ICollection<string> errors,
+        out int[] retainedSourceTriangleIndices,
+        out string evidence)
+    {
+        if (schemaVersion != SurfaceModelArtifact.CurrentSchemaVersion)
+        {
+            retainedSourceTriangleIndices =
+                Enumerable.Range(0, triangleCount).ToArray();
+            evidence = "all-source-triangles";
+            if (selection is null)
+            {
+                return true;
+            }
+
+            errors.Add(
+                "SurfaceModel schema 1.0/1.1 cannot contain surface-selection evidence.");
+            return false;
+        }
+
+        if (selection is null)
+        {
+            retainedSourceTriangleIndices = [];
+            evidence = "missing";
+            errors.Add(
+                "SurfaceModel schema 1.2 requires surface-selection evidence.");
+            return false;
+        }
+
+        var valid = true;
+        void Error(string message)
+        {
+            valid = false;
+            errors.Add(message);
+        }
+
+        if (selection.Policy
+            != SurfaceModelSurfaceSelection
+                .ExactDuplicateAndExplicitExclusionPolicy)
+        {
+            Error("SurfaceModel surface-selection policy is unsupported.");
+        }
+
+        if (selection.SourceTriangleCount != triangleCount)
+        {
+            Error(
+                "SurfaceModel surface-selection source count must match the preserved source triangles.");
+        }
+
+        var internalIndices = selection
+            .ExplicitInternalSourceTriangleIndices;
+        var unobservableIndices = selection
+            .ExplicitUnobservableSourceTriangleIndices;
+        var retained = selection.RetainedSourceTriangleIndices;
+        var removed = selection.RemovedSurfaces;
+        if (internalIndices is null
+            || unobservableIndices is null
+            || retained is null
+            || removed is null)
+        {
+            retainedSourceTriangleIndices = [];
+            evidence = "malformed";
+            Error(
+                "SurfaceModel surface-selection collections are required.");
+            return false;
+        }
+
+        if (!IsStrictAscendingRange(internalIndices, triangleCount)
+            || !IsStrictAscendingRange(
+                unobservableIndices,
+                triangleCount)
+            || !IsStrictAscendingRange(retained, triangleCount)
+            || retained.Length == 0)
+        {
+            Error(
+                "SurfaceModel surface-selection indices must be unique, ascending, in range, and retain at least one triangle.");
+        }
+
+        var internalSet = internalIndices.ToHashSet();
+        var unobservableSet = unobservableIndices.ToHashSet();
+        var retainedSet = retained.ToHashSet();
+        if (internalSet.Overlaps(unobservableSet)
+            || internalSet.Overlaps(retainedSet)
+            || unobservableSet.Overlaps(retainedSet))
+        {
+            Error(
+                "SurfaceModel surface-selection roles must be disjoint.");
+        }
+
+        var removedIndices = new HashSet<int>();
+        var previousRemovedIndex = -1;
+        foreach (var item in removed)
+        {
+            if (item is null
+                || !IsIndex(item.SourceTriangleIndex, triangleCount)
+                || item.SourceTriangleIndex <= previousRemovedIndex
+                || !removedIndices.Add(item.SourceTriangleIndex)
+                || retainedSet.Contains(item.SourceTriangleIndex))
+            {
+                Error(
+                    "SurfaceModel removed-surface evidence must be unique, ascending, in range, and outside the retained domain.");
+                continue;
+            }
+
+            previousRemovedIndex = item.SourceTriangleIndex;
+            if (item.Reason
+                == SurfaceModelSurfaceSelection.ExplicitInternalReason)
+            {
+                if (!internalSet.Contains(item.SourceTriangleIndex)
+                    || item.DuplicateOfSourceTriangleIndex.HasValue)
+                {
+                    Error(
+                        "SurfaceModel explicit-internal removal evidence does not match the authored indices.");
+                }
+            }
+            else if (item.Reason
+                     == SurfaceModelSurfaceSelection
+                         .ExplicitUnobservableReason)
+            {
+                if (!unobservableSet.Contains(item.SourceTriangleIndex)
+                    || item.DuplicateOfSourceTriangleIndex.HasValue)
+                {
+                    Error(
+                        "SurfaceModel explicit-unobservable removal evidence does not match the authored indices.");
+                }
+            }
+            else if (item.Reason
+                     == SurfaceModelSurfaceSelection.ExactDuplicateReason)
+            {
+                if (!selection.RemoveExactDuplicateTriangles
+                    || !item.DuplicateOfSourceTriangleIndex.HasValue
+                    || !retainedSet.Contains(
+                        item.DuplicateOfSourceTriangleIndex.Value)
+                    || item.DuplicateOfSourceTriangleIndex.Value
+                        >= item.SourceTriangleIndex)
+                {
+                    Error(
+                        "SurfaceModel exact-duplicate removal must reference an earlier retained source triangle.");
+                }
+            }
+            else
+            {
+                Error(
+                    "SurfaceModel removed-surface reason is unsupported.");
+            }
+        }
+
+        if (!internalSet.SetEquals(removed
+                .Where(item => item?.Reason
+                    == SurfaceModelSurfaceSelection
+                        .ExplicitInternalReason)
+                .Select(item => item!.SourceTriangleIndex))
+            || !unobservableSet.SetEquals(removed
+                .Where(item => item?.Reason
+                    == SurfaceModelSurfaceSelection
+                        .ExplicitUnobservableReason)
+                .Select(item => item!.SourceTriangleIndex))
+            || retainedSet.Count + removedIndices.Count != triangleCount
+            || Enumerable.Range(0, triangleCount).Any(index =>
+                !retainedSet.Contains(index)
+                && !removedIndices.Contains(index)))
+        {
+            Error(
+                "SurfaceModel surface-selection evidence must partition every source triangle exactly once.");
+        }
+
+        retainedSourceTriangleIndices = retained.ToArray();
+        evidence =
+            $"{selection.Policy}; retained={retained.Length}/{triangleCount}; "
+            + $"removed={removed.Length}; internal={internalIndices.Length}; "
+            + $"unobservable={unobservableIndices.Length}; "
+            + $"exactDuplicates={removed.Count(item => item?.Reason == SurfaceModelSurfaceSelection.ExactDuplicateReason)}";
+        return valid;
+    }
+
+    private static bool IsStrictAscendingRange(
+        IReadOnlyList<int> indices,
+        int count)
+    {
+        for (var index = 0; index < indices.Count; index++)
+        {
+            if (!IsIndex(indices[index], count)
+                || index > 0 && indices[index] <= indices[index - 1])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool ValidateSymmetryDeclaration(
+        string? schemaVersion,
+        SurfaceModelSymmetryDeclaration? symmetry,
+        ICollection<string> errors,
+        out string evidence)
+    {
+        if (schemaVersion == SurfaceModelArtifact.LegacySchemaVersion)
+        {
+            evidence = "schema-1.0-undeclared";
+            if (symmetry is null)
+            {
+                return true;
+            }
+
+            errors.Add(
+                "SurfaceModel schema 1.0 cannot contain a symmetry declaration.");
+            return false;
+        }
+
+        if (schemaVersion is not (
+                SurfaceModelArtifact.SymmetrySchemaVersion
+                or SurfaceModelArtifact.CurrentSchemaVersion))
+        {
+            evidence = "unsupported-schema";
+            return false;
+        }
+
+        if (symmetry is null)
+        {
+            evidence = "missing";
+            errors.Add(
+                "SurfaceModel schema 1.1/1.2 requires a symmetry declaration.");
+            return false;
+        }
+
+        if (symmetry.Kind == SurfaceModelSymmetryDeclaration.NoneKind)
+        {
+            evidence = "none";
+            if (symmetry.Axis == SurfaceModelSymmetryDeclaration.NoAxis
+                && symmetry.Order == 1)
+            {
+                return true;
+            }
+
+            errors.Add(
+                "SurfaceModel symmetry kind 'none' requires axis 'none' and order 1.");
+            return false;
+        }
+
+        if (symmetry.Kind
+            == SurfaceModelSymmetryDeclaration.DiscreteRotationKind)
+        {
+            evidence =
+                $"discrete-rotation:{symmetry.Axis}:{symmetry.Order}";
+            var axisValid = symmetry.Axis is
+                SurfaceModelSymmetryDeclaration.XAxis
+                or SurfaceModelSymmetryDeclaration.YAxis
+                or SurfaceModelSymmetryDeclaration.ZAxis;
+            if (axisValid && symmetry.Order >= 2)
+            {
+                return true;
+            }
+
+            errors.Add(
+                "SurfaceModel discrete-rotation symmetry requires model axis x, y, or z and order at least 2.");
+            return false;
+        }
+
+        evidence = $"unsupported:{symmetry.Kind}";
+        errors.Add(
+            $"SurfaceModel symmetry kind '{symmetry.Kind}' is unsupported.");
+        return false;
     }
 
     private static void RequireText(

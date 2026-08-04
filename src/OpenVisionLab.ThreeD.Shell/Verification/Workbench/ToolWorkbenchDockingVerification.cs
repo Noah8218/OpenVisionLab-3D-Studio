@@ -187,6 +187,27 @@ internal static class ToolWorkbenchDockingVerification
                 && navigationRail.IsCompact
                 && Math.Abs(navigationRail.Width - 60) < 0.1,
                 $"wide={wideRailWidth:F0}; compact={navigationRail.Width:F0}; isCompact={navigationRail.IsCompact}");
+            var titleBar = new StudioTitleBarView
+            {
+                Width = 1280,
+                SourceQualityStatusText = "Quality 84.5% valid \u00b7 15.5% missing",
+                SourceQualityStatusToolTip = "Current input quality detail",
+                SourceQualityStatusKind = "Warning",
+                IsSourceQualityStatusVisible = true,
+            };
+            titleBar.Measure(new Size(1280, 56));
+            titleBar.Arrange(new Rect(0, 0, 1280, 56));
+            titleBar.UpdateLayout();
+            Check(
+                "Job Bar exposes the accessible current-source quality state",
+                titleBar.HasAccessibleCurrentSourceQualityStatus,
+                $"visible={titleBar.IsSourceQualityStatusVisible}; kind={titleBar.SourceQualityStatusKind}; text={titleBar.SourceQualityStatusText}");
+            titleBar.IsSourceQualityStatusVisible = false;
+            titleBar.UpdateLayout();
+            Check(
+                "Job Bar hides current-source quality when no input exists",
+                titleBar.HasAccessibleCurrentSourceQualityStatus,
+                $"visible={titleBar.IsSourceQualityStatusVisible}");
             Check("Workbench hosts all twelve dockable views", workbench.HasAllDockContentHosts && workbenchContracts.All(contract => contract.HasContent), Describe(workbenchContracts));
             Check("Workbench panes can float", workbenchContracts.All(contract => contract.CanFloat), Describe(workbenchContracts));
             Check("Workbench required panes cannot close", workbenchContracts.All(contract => !contract.CanClose), Describe(workbenchContracts));
@@ -845,6 +866,83 @@ internal static class ToolWorkbenchDockingVerification
                 "Advanced reactivation owns the requested Viewer in its live presenter",
                 advanced.ReactivateViewerContent(reactivatedAdvancedViewer),
                 $"viewer={ReferenceEquals(advanced.ViewerContent, reactivatedAdvancedViewer)}");
+
+            var repositoryRoot = FindRepositoryRoot();
+            var advancedXaml = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.ThreeD.Shell",
+                "MainWindow.xaml"));
+            var legacyAdvancedColors = new[]
+            {
+                "#ffffff",
+                "#d1d5db",
+                "#111827",
+                "#6b7280",
+                "#374151",
+                "#b45309",
+                "#b91c1c",
+                "#f9fafb",
+            };
+            var advancedThemeResources = new[]
+            {
+                "ThreeD.PanelBrush",
+                "ThreeD.PanelAlternateBrush",
+                "ThreeD.ViewportBrush",
+                "ThreeD.DividerBrush",
+                "ThreeD.TextBrush",
+                "ThreeD.PrimaryTextBrush",
+                "ThreeD.SecondaryTextBrush",
+                "ThreeD.MutedTextBrush",
+                "ThreeD.WarningBrush",
+                "ThreeD.FailBrush",
+            };
+            Check(
+                "Advanced content surfaces use semantic theme resources without the legacy light palette",
+                legacyAdvancedColors.All(color => !advancedXaml.Contains(color, StringComparison.OrdinalIgnoreCase))
+                && advancedThemeResources.All(resource => advancedXaml.Contains(resource, StringComparison.Ordinal)),
+                $"legacy={string.Join(',', legacyAdvancedColors.Where(color => advancedXaml.Contains(color, StringComparison.OrdinalIgnoreCase)))}; semantic={advancedThemeResources.Count(resource => advancedXaml.Contains(resource, StringComparison.Ordinal))}/{advancedThemeResources.Length}");
+
+            var themeXaml = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.ThreeD.Shell",
+                "Themes",
+                "OpenVisionThreeDTheme.xaml"));
+            var dockXaml = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.ThreeD.Docking.Controls",
+                "Views",
+                "OpenVisionDockWorkspaceView.xaml"));
+            var controlStateMarkers = new[]
+            {
+                "IsMouseOver",
+                "IsKeyboardFocusWithin",
+                "Validation.HasError",
+                "IsReadOnly",
+                "IsEnabled",
+                "ThreeD.AccentHoverBrush",
+                "ThreeD.FocusBrush",
+                "ThreeD.FailBrush",
+                "ThreeD.DisabledSurfaceBrush",
+            };
+            var dockStateMarkers = new[]
+            {
+                "IsMouseOver",
+                "IsSelected",
+                "IsKeyboardFocused",
+                "IsEnabled",
+                "ThreeD.PanelAlternateBrush",
+                "ThreeD.SelectedSurfaceBrush",
+                "ThreeD.FocusBrush",
+                "ThreeD.DisabledBrush",
+            };
+            Check(
+                "Advanced generated controls retain semantic hover focus selected disabled read-only and validation states",
+                controlStateMarkers.All(marker => themeXaml.Contains(marker, StringComparison.Ordinal))
+                && dockStateMarkers.All(marker => dockXaml.Contains(marker, StringComparison.Ordinal)),
+                $"controls={controlStateMarkers.Count(marker => themeXaml.Contains(marker, StringComparison.Ordinal))}/{controlStateMarkers.Length}; dockTabs={dockStateMarkers.Count(marker => dockXaml.Contains(marker, StringComparison.Ordinal))}/{dockStateMarkers.Length}");
 
             var calibrationMarker = new object();
             var calibration = new OpenVisionCalibrationDockWorkspaceView
