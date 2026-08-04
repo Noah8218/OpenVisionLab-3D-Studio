@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Studio
 
-### Build, teach, review, and replay rule-based 3D inspection recipes on Windows
+### Build, teach, validate, and replay rule-based 3D inspection recipes on Windows
 
 [![CI](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/workflows/ci.yml)
 ![Windows](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows)
@@ -8,118 +8,144 @@
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
 
-OpenVisionLab 3D Studio is a rule-based 3D inspection workbench for C3D height
-data and common mesh or point-cloud formats. It brings source review, ROI
-teaching, inspection parameters, result overlays, and reusable recipes into one
-desktop workflow.
+OpenVisionLab 3D Studio is a local desktop workbench for repeatable, rule-based
+3D inspection. An operator can load height, mesh, or point-cloud data; check
+source quality; teach measurement regions; set explicit limits; preview the
+selected step; run a complete recipe; and review the resulting metrics,
+overlays, and records in one application.
 
 ![Thickness ROI teaching workflow](docs/assets/openvisionlab-3d-roi-workflow.gif)
 
-## Inspection workflow
+## Start here
+
+Choose the path that matches what you have:
+
+- **Self-contained Windows package:** extract the folder, run
+  `OpenVisionLab.ThreeD.Shell.exe`, and follow the package `README.md`. The
+  package includes its .NET runtime; no developer utilities are required.
+- **GitHub source clone:** install the source-build prerequisites, clone this
+  repository, build it, and launch the Shell using the commands below.
+
+For a guided first inspection, see the
+[user tutorial](docs/OPENVISIONLAB_3D_USER_TUTORIAL.md).
+
+## What the operator workflow looks like
 
 ```mermaid
 flowchart LR
     Source["Open 3D data"] --> Quality["Review source quality"]
-    Quality --> Tool["Add an inspection tool"]
-    Tool --> Reference["Teach the reference ROI"]
-    Reference --> Measurement["Teach the measurement ROI"]
-    Measurement --> Parameter["Set parameters"]
-    Parameter --> Preview["Preview"]
-    Preview --> Review["Review metrics and overlays"]
-    Review --> Run["Run all"]
-    Run --> Save["Save and reopen the recipe"]
+    Quality --> Tool["Add or select an inspection step"]
+    Tool --> Teach["Teach ROI and parameters"]
+    Teach --> Preview["Preview selected step"]
+    Preview --> Publish["Publish accepted preview"]
+    Publish --> Run["Run complete recipe"]
+    Run --> Evidence["Review metrics, overlays, and records"]
+    Evidence --> Save["Save and reopen the recipe"]
 ```
 
-- Edit the same ROI in the Surface and full-resolution Height Image views.
-- Move ROI candidates through `Missing → Drawing → Review → Applied`.
-- Keep Preview and Run as explicit actions.
-- Save step order, inputs, parameters, ROI roles, and output identities.
-- Pin outputs for A/B/C comparison or open side-by-side, stacked, and pop-out
-  Viewer layouts.
+Preview, Publish, Run, and validation are explicit actions. Editing a
+parameter, changing Viewer visibility, or reopening saved setup does not run an
+inspection automatically.
 
-## Try the included Thickness example
+## Included Thickness Coupon tutorial data
 
-The repository includes an eight-pad Thickness recipe that is ready to open and
-inspect.
+The repository and the self-contained package include a ready-to-run Thickness
+Coupon with eight independently inspectable pads.
 
 ![Thickness Coupon with paired reference and measurement ROIs](3D/Samples/ThicknessCouponV1/source-height-preview.png)
 
-- Grid: `1280 × 840`
-- Layout: eight independently inspectable pads in a `4 × 2` arrangement
-- Recipe: eight Thickness steps and 16 independently editable ROIs
-- ROI pairing: each reference and measurement ROI stays inside the same pad
+| Item | Included value |
+| --- | --- |
+| Height grid | 1280 × 840 |
+| Layout | Eight pads in a 4 × 2 arrangement |
+| Recipe | Eight Thickness steps with 16 editable ROIs |
+| ROI contract | Reference and Measurement ROI remain on the same visible pad |
+| Declared unit | `raw-height` |
 
-Open:
+Open this recipe from **Recipe Center → Open existing recipe**:
 
 ```text
-3D/Samples/ThicknessCouponV1/inspection-recipe.ov3d-recipe.json
+3D\Samples\ThicknessCouponV1\inspection-recipe.ov3d-recipe.json
 ```
 
-## Main features
+The recipe keeps its C3D input beside the recipe file, so the complete example
+works after cloning or moving the whole package folder.
 
-| Area | Capability |
+## Supported inspection work
+
+| Area | Current workflow |
 | --- | --- |
-| Input | C3D, glTF/GLB, STL, LAS/LAZ |
-| 3D Viewer | Surface default, Points/Wireframe/Edges, Top/Perspective, Fit all/Fit ROI |
-| Height Image | Full native grid, Fit/1:1/Zoom/Pan, shared hover, invalid-cell display |
-| ROI | Reference and Measurement `GridRectangle`, Review/Apply/Cancel/Delete, linked 2D/3D editing |
-| Inspection workspace | Tool Catalog → Recipe Chain → Selected Tool → Viewer |
-| Measurement | Thickness, Warpage, Plane Flatness, Point Pair, Gap/Flush, Volume, and more |
-| Matching | Deterministic Surface Match with retained identified results, direct selection, and bounded Previous/Next Viewer review |
-| Evidence | Explicit Preview/Run, state, metrics, overlays, reports, and headless Runner |
-| Recipe | Save and restore step order, inputs, parameters, ROI roles, and output IDs |
+| Input review | C3D height data, glTF/GLB, STL, LAS, and LAZ loading with visible source-quality evidence |
+| Height inspection | Thickness, Warpage, Plane Flatness, Height Deviation, Gap/Flush, Volume, and grid/region statistics |
+| Geometry inspection | Point-pair and cross-section measurements, lines, planes, edges, landmarks, nominal/actual mesh comparison, and deterministic surface matching |
+| Teaching | Linked 3D and full-resolution Height Image ROI editing with explicit Review, Apply, Cancel, and Delete actions |
+| Validation | Good, Bad, and Held-out sample roles; run results; failure analysis; threshold review; and held-out replay |
+| Evidence | Viewer overlays, metrics, reports, output comparison, retained match review, and headless Runner records |
+| Recipe lifecycle | Save and restore ordered steps, inputs, parameters, ROI roles, outputs, and validation setup |
 
-## Requirements and setup
+Measurements use the unit declared by the source. A `raw-height` result is not
+automatically a calibrated physical measurement. Apply and verify the correct
+calibration and acceptance limits before using physical tolerances.
 
-For the self-contained Windows package:
+## Build and run from a fresh clone
+
+### Prerequisites
 
 - Windows 10 build 19041 or later, or Windows 11, on x64
 - OpenGL-compatible GPU with a current vendor driver
+- Git
+- Windows PowerShell 5.1 or later
+- .NET 10 SDK `10.0.300` or later in the .NET 10 line
 
-The self-contained package includes the .NET runtime. Application operators do
-not need Git, Python, the .NET SDK, or FFmpeg.
+Python 3.13 is required only for the repository's full independent verification
+suite, not for a normal source build or application launch.
 
-Building and fully verifying the source additionally requires Git, Windows
-PowerShell 5.1 or later, the .NET 10 SDK `10.0.300` or later, and Python 3.13.
 Check the current machine without changing it:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly -Scope Build
 ```
 
-Explicitly install missing development and verification utilities from their
-fixed `winget` package IDs:
+Install only missing build utilities by their fixed `winget` package IDs:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -InstallMissing
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -InstallMissing -Scope Build
 ```
 
-See [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
-for the operator/developer boundary, exact package IDs, and recovery steps.
-
-## Build and run
+Clone to a short local path to avoid Windows and NuGet path-length failures:
 
 ```powershell
+cd C:\src
 git clone https://github.com/Noah8218/OpenVisionLab-3D-Studio.git
 cd OpenVisionLab-3D-Studio
-dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug -p:Platform="Any CPU"
-dotnet run --no-build `
-  --project src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj `
-  -c Debug
+dotnet restore OpenVisionLab.ThreeDStudio.sln
+dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -p:Platform="Any CPU"
+dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release
 ```
 
-When the application opens, load the included Thickness recipe or start with a
-new recipe and add tools from the Tool Catalog.
+The repository contains the vendored `Lib.ThreeD` and WPF PropertyGrid
+packages required by the solution. A separate `Library-Noah` checkout is not
+required to build or run this project.
 
-Create a folder-based self-contained Windows package that does not require a
-separate .NET installation:
+See [system requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
+for full verification utilities, exact package IDs, short NuGet-cache guidance,
+and post-reinstall recovery.
+
+## Create the self-contained Windows package
+
+From a source clone:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.ps1
 ```
 
-Displayed measurements use the unit declared by the source. Apply the
-appropriate calibration profile before using physical tolerances.
+The default output is
+`artifacts\release\openvisionlab-3d-studio-win-x64`. It is a folder-based,
+self-contained `win-x64` package with the application, samples, recipes,
+operator documentation, license notices, and a SHA-256 manifest.
+
+The package quick-start source is available at
+[Windows package quick start](docs/OPENVISIONLAB_3D_WINDOWS_PACKAGE_QUICK_START.md).
 
 ## Keyboard shortcuts
 
@@ -127,36 +153,33 @@ appropriate calibration profile before using physical tolerances.
 | --- | --- |
 | `Ctrl+N` | New recipe |
 | `Ctrl+O` | Open recipe |
-| `Ctrl+Shift+O` | Open 3D input |
-| `Ctrl+S` | Save |
-| `Ctrl+Shift+S` | Save as |
+| `Ctrl+Shift+O` | Open C3D height input |
+| `Ctrl+S` | Save recipe |
+| `Ctrl+Shift+S` | Save recipe as |
 | `F5` | Preview the selected step |
 | `Ctrl+F5` | Run the complete recipe |
 | `Enter` | Apply the current ROI candidate |
 | `Esc` | Cancel the current ROI candidate |
-| `Delete` | Delete the selected ROI or supported recipe item |
+| `Delete` | Delete the selected supported ROI or recipe item |
 
-## Development documentation
+## Documentation
 
-- [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)
+- [User tutorial](docs/OPENVISIONLAB_3D_USER_TUTORIAL.md)
 - [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
+- [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)
+- [Sample data and attribution](3D/PublicSamples/README.md)
 - [Product direction and master backlog](docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md)
-- [Current session handoff](docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md)
-- [Sample data policy](docs/OPENVISIONLAB_3D_SAMPLE_DATA.md)
 - [Code rules](docs/OPENVISIONLAB_3D_CODE_RULES.md)
 
-## License and copyright
+## License and attribution
 
 OpenVisionLab 3D Studio is licensed under the
-[Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE). Commercial use, modification, and redistribution
+are permitted under its terms. Distributions must retain the `LICENSE`,
+`NOTICE`, copyright, and required attribution notices. Third-party components
+remain subject to their respective licenses.
 
 ```text
 This project includes software developed by Noah Choi.
 Copyright (c) 2026 Noah Choi.
 ```
-
-Commercial use, modification, and redistribution are permitted under the
-license terms. Copies or substantial portions of the software must retain the
-`LICENSE`, `NOTICE`, copyright, and attribution notices.
-
-Third-party components remain subject to their respective licenses.

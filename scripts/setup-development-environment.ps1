@@ -2,6 +2,8 @@
 param(
     [switch]$CheckOnly,
     [switch]$InstallMissing,
+    [ValidateSet('Build', 'FullVerification')]
+    [string]$Scope = 'FullVerification',
     [string]$ReportPath = 'artifacts\setup\development-environment.txt'
 )
 
@@ -23,7 +25,18 @@ else {
 function Refresh-ProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    $env:Path = @($machinePath, $userPath) -join ';'
+    $entries = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($pathValue in @($env:Path, $machinePath, $userPath)) {
+        foreach ($entry in @([string]$pathValue -split ';')) {
+            $trimmed = $entry.Trim()
+            if ($trimmed.Length -gt 0 -and $seen.Add($trimmed)) {
+                $entries.Add($trimmed)
+            }
+        }
+    }
+    $env:Path = $entries -join ';'
 }
 
 function Get-WindowsState {
@@ -85,7 +98,7 @@ function Get-GitState {
     }
 }
 
-function Get-PythonState {
+function Get-PythonState([bool]$Required) {
     $versionText = $null
     $launcher = Get-Command py -ErrorAction SilentlyContinue
     if ($launcher) {
@@ -108,7 +121,7 @@ function Get-PythonState {
     [pscustomobject]@{
         Name = 'Python 3.13'
         Category = 'Full verification'
-        Required = $true
+        Required = $Required
         Ready = -not [string]::IsNullOrWhiteSpace($versionText)
         Version = if ($versionText) { $versionText } else { 'missing' }
         Detail = 'Required by the independent C3D and NuGet health verification gates; not required to run the application.'
@@ -148,7 +161,7 @@ function Get-EnvironmentState {
         Get-WindowsState
         Get-DotNetSdkState
         Get-GitState
-        Get-PythonState
+        Get-PythonState ($Scope -eq 'FullVerification')
         Get-PowerShellState
         Get-WingetState
     )
@@ -185,13 +198,14 @@ $requiredStates = @($states | Where-Object Required)
 $readyCount = @($requiredStates | Where-Object Ready).Count
 $status = if ($readyCount -eq $requiredStates.Count) { 'Ready' } else { 'NeedsAction' }
 $lines = [System.Collections.Generic.List[string]]::new()
-$lines.Add("DevelopmentEnvironment|$status|mode=$mode|required=$readyCount/$($requiredStates.Count)")
+$lines.Add("DevelopmentEnvironment|$status|mode=$mode|scope=$Scope|required=$readyCount/$($requiredStates.Count)")
 foreach ($state in $states) {
     $stateStatus = if ($state.Ready) { 'Ready' } else { 'Missing' }
     $required = if ($state.Required) { 'Required' } else { 'Optional' }
     $lines.Add("Utility|name=$($state.Name)|category=$($state.Category)|requirement=$required|status=$stateStatus|version=$($state.Version)|detail=$($state.Detail)")
 }
 $lines.Add('Boundary|Application operators do not need Git or Python. Use the self-contained Windows package to avoid a separate .NET runtime installation.')
+$lines.Add('Scope|Build checks source checkout, restore, build, and Shell launch prerequisites. FullVerification additionally requires Python 3.13.')
 $lines.Add('Safety|InstallMissing uses explicit winget package IDs and never launches the application or changes recipe/project state.')
 
 $reportDirectory = Split-Path -Parent $fullReportPath

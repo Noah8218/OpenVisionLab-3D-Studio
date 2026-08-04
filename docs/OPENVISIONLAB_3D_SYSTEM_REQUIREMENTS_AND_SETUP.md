@@ -18,7 +18,7 @@ package produced by `scripts/publish-windows-app.ps1`.
 
 The package is intentionally folder-based rather than single-file. Native and
 managed Viewer dependencies remain individually inspectable, and the generated
-manifest records every delivered file with its size and SHA-256.
+manifest records every payload file with its size and SHA-256.
 
 Build the package:
 
@@ -33,9 +33,10 @@ artifacts\release\openvisionlab-3d-studio-win-x64
 ```
 
 The package includes the application, the public Thickness Coupon and valid
-mesh/point-cloud examples, tracked recipes, `README.md`, `LICENSE`, `NOTICE`,
-this setup guide, and `openvisionlab-3d-studio-manifest.json`. Deliberately
-corrupt loader fixtures are not distributed in the operator package.
+mesh/point-cloud examples, tracked recipes, a package-specific `README.md`, the
+user tutorial, `LICENSE`, `NOTICE`, this setup guide, and
+`openvisionlab-3d-studio-manifest.json`. Deliberately corrupt loader fixtures
+are not distributed in the operator package.
 
 ## Source-build and verification utilities
 
@@ -44,7 +45,7 @@ corrupt loader fixtures are not distributed in the operator package.
 | Git | Clone and source identity | A current supported Windows Git | `Git.Git` |
 | Windows PowerShell | Repository automation | 5.1 | Built into supported Windows versions |
 | .NET SDK | Restore, build, Runner, and Shell verification | 10.0.300; `global.json` allows a later compatible feature band | `Microsoft.DotNet.SDK.10` |
-| Python | Independent C3D and NuGet-health gates | 3.13, matching GitHub Actions | `Python.Python.3.13` |
+| Python | Full verification only: independent C3D and NuGet-health gates | 3.13, matching GitHub Actions | `Python.Python.3.13` |
 | Windows Package Manager | Optional setup helper | Current App Installer/winget | Supplied by Microsoft App Installer |
 | FFmpeg and FFprobe | Optional operator-video evidence only | No product runtime contract | Not installed by the setup script |
 
@@ -55,24 +56,35 @@ be installed or presented to operators as required utilities.
 
 ## Check or repair a restored development machine
 
-Read-only check:
+Read-only source-build check:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly -Scope Build
 ```
 
-Install only missing fixed development/verification packages:
+Read-only full-verification check, including Python 3.13:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -InstallMissing
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly -Scope FullVerification
 ```
+
+Install only missing fixed packages for the selected scope:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -InstallMissing -Scope Build
+```
+
+`FullVerification` remains the default scope when `-Scope` is omitted so
+existing recovery commands keep their stricter behavior.
 
 `-InstallMissing` is an explicit external-system action. The script:
 
-1. checks Windows, .NET SDK, Git, Python, PowerShell, and winget;
+1. checks Windows, .NET SDK, Git, PowerShell, winget, and Python when full
+   verification is selected;
 2. invokes only the fixed package IDs shown above from the official winget
    source;
-3. refreshes the process PATH and checks the requirements again;
+3. refreshes the process PATH without discarding temporary process-only entries
+   and checks the requirements again;
 4. writes a reusable readiness report; and
 5. never launches OpenVisionLab, opens a recipe, or executes Preview/Run.
 
@@ -80,6 +92,23 @@ After any installation, close and reopen existing terminals and Codex tasks so
 they inherit the updated user PATH. On Windows, `py -3.13 --version` is the
 most reliable immediate Python check; a newly opened terminal should also
 resolve `python --version` to Python 3.13.
+
+## Clone and package-cache paths
+
+Use a short local checkout such as `C:\src\OpenVisionLab-3D-Studio`. Deep
+checkout paths combined with a deep NuGet global-packages path can exceed
+Windows path limits even when every required file is present.
+
+If restore reports a package path or missing-file error under a long cache,
+retry in the same terminal with a short cache:
+
+```powershell
+$env:NUGET_PACKAGES = 'C:\nuget'
+dotnet restore OpenVisionLab.ThreeDStudio.sln
+```
+
+This environment variable affects only the current process and child
+processes. It does not change the project or package contract.
 
 ## Why installation is not performed inside the Workbench
 
@@ -99,7 +128,10 @@ The supported design is therefore:
 
 ## Recovery checklist
 
-- [ ] `setup-development-environment.ps1 -CheckOnly` reports `Ready`.
+- [ ] `setup-development-environment.ps1 -CheckOnly -Scope Build` reports
+      `Ready` for normal source work.
+- [ ] `setup-development-environment.ps1 -CheckOnly -Scope FullVerification`
+      reports `Ready` before running the full independent suite.
 - [ ] `dotnet --version` is `10.0.300` or later in the .NET 10 line.
 - [ ] `py -3.13 --version` reports Python 3.13.
 - [ ] `python --version` works in a newly opened terminal.

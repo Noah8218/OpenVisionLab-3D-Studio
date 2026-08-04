@@ -1,21 +1,61 @@
-# OpenVisionLab 3D Studio 개발 및 검증 가이드
+# OpenVisionLab 3D Studio Development and Verification Guide
 
-이 문서는 공개 README에서 분리한 개발자용 빌드, 실행, 검증 진입점을
-정리합니다. 제품 설명과 일반 사용자 흐름은 저장소 루트의
-[`README.md`](../README.md)를 사용합니다.
+This guide is for contributors building and verifying the source. Operators
+using the self-contained Windows package should use the root README and the
+user tutorial instead.
 
-## 1. 개발 환경
+## 1. Development environment
 
-- Windows 10/11 x64
-- Visual Studio 2022 또는 .NET SDK `10.0.300` 호환 Feature Band
-- PowerShell
+Required for a normal source build:
+
+- Windows 10 build 19041 or later, or Windows 11, on x64
+- Windows PowerShell 5.1 or later
 - Git
-- 실제 WPF 포인터 검증을 위한 대화형 Windows 데스크톱
+- .NET 10 SDK `10.0.300` or later in the .NET 10 line
+- OpenGL-compatible GPU and current driver for an actual Viewer/Shell run
 
-솔루션의 런타임 중립 프로젝트는 `net10.0`, Viewer와 Shell은
-`net10.0-windows` 계열을 사용합니다.
+Python 3.13 is additionally required for the independent C3D and NuGet-health
+verification gates. FFmpeg and FFprobe are needed only for approved operator
+video evidence.
 
-## 2. 복원과 빌드
+Check build prerequisites without changing the machine:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly -Scope Build
+```
+
+Check the complete verification environment:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-development-environment.ps1 -CheckOnly -Scope FullVerification
+```
+
+Visual Studio is optional. The command-line build is the authoritative path and
+does not require a separate IDE installation.
+
+## 2. Clone-path and NuGet-path guidance
+
+Use a short local checkout such as:
+
+```text
+C:\src\OpenVisionLab-3D-Studio
+```
+
+Deep checkout paths combined with a deep NuGet global-packages directory can
+exceed Windows path limits during restore. If restore reports a package path or
+file-not-found error for a file that exists in `third_party`, retry with a short
+temporary NuGet cache:
+
+```powershell
+$env:NUGET_PACKAGES = 'C:\nuget'
+dotnet restore OpenVisionLab.ThreeDStudio.sln
+```
+
+Do not point the solution at an adjacent `Library-Noah` checkout. The repository
+contains the exact vendored `Lib.ThreeD` package and checksum required by the
+current source.
+
+## 3. Restore and build
 
 Debug:
 
@@ -27,182 +67,175 @@ dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug -p:Platform="Any CPU"
 Release:
 
 ```powershell
+dotnet restore OpenVisionLab.ThreeDStudio.sln
 dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -p:Platform="Any CPU"
 ```
 
-구조 변경을 완료하기 전에는 솔루션 구성과 프로젝트 책임 경계를 함께
-검사합니다.
+For code-ownership and algorithm-boundary changes, also run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-code-structure.ps1
 ```
 
-## 3. 애플리케이션 실행
+## 4. Run the applications
 
-일반 Inspection Workbench:
+Normal Inspection Workbench:
 
 ```powershell
-dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug
+dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release
 ```
 
-독립 Viewer:
+Standalone Viewer host:
 
 ```powershell
-dotnet run --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Debug
+dotnet run --no-build --project src\OpenVisionLab.ThreeDStudio\OpenVisionLab.ThreeDStudio.csproj -c Release
 ```
 
-Headless Runner:
+Headless Runner commands use the Runner project:
 
 ```powershell
-dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug -- --help
+$runnerProject = 'src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj'
 ```
 
-## 4. Workbench 집중 검증
+## 5. Test-output storage
 
-한 번 빌드한 뒤 `--no-build`로 필요한 검증만 실행합니다.
+On the project workstation, store verification reports, screenshots, recordings,
+and generated test data physically under:
+
+```text
+D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio
+```
+
+Route `TEMP` and `TMP` there for large local verification when practical. A
+machine without `D:` may use an available temporary location, but the fallback
+must be recorded with the evidence. Do not move source, product dependencies,
+documentation, or user datasets under the test-output rule.
+
+Example focused-report folder:
 
 ```powershell
-$artifactDir = "artifacts\verification\local-workbench"
+$artifactDir = 'D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\verification\local-workbench'
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+```
 
+## 6. Focused Workbench verification
+
+Build Release first, then use `--no-build` for the smallest relevant checks:
+
+```powershell
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-tool-recipe-selections "$artifactDir\tool-recipe-selections.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-tool-height-measurement-workbench "$artifactDir\height-measurement-workbench.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-inspection-workspace-selection "$artifactDir\inspection-workspace-selection.txt"
-dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-tool-recipe-teaching "$artifactDir\tool-recipe-teaching.txt"
-dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-recipe-manager-wpg "$artifactDir\recipe-manager-wpg.txt"
+dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-validation-set "$artifactDir\validation-set.txt"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-workbench-docking "$artifactDir\workbench-docking.txt"
+dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release -- --verify-shell-smoke-command-line "$artifactDir\shell-command-line.txt"
 ```
 
-2026-07-28 dual-ROI 역할 보존 체크포인트의 기대 결과는 다음과 같습니다.
-검사 수가 변경되면 최신 완료 문서를 기준으로 갱신합니다.
+Do not copy historical pass counts into a current completion claim. Record the
+actual output from the current source and current command.
 
-| 검증 | 기준 |
-| --- | ---: |
-| Tool Recipe selections | 29/29 |
-| Height measurement Workbench | 46/46 |
-| Inspection Workspace | 61/61 |
-| Tool Recipe teaching | 28/28 |
-| Recipe Manager / PropertyGrid | 37/37 |
-| Workbench docking | 33/33 |
-| Code structure | 17/17 |
+## 7. Runner and algorithm verification
 
-완료 근거:
-[`OPENVISIONLAB_3D_DUAL_ROI_ROLE_PRESERVATION_20260728.md`](OPENVISIONLAB_3D_DUAL_ROI_ROLE_PRESERVATION_20260728.md)
-
-## 5. 실제 UI 영상과 README GIF
-
-다음 스크립트는 최신 Release를 빌드하고 Wide/Compact 실제 포인터 조작,
-영상, Contact Sheet와 README GIF를 생성합니다.
+Representative focused commands:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-operator-video-self-review.ps1
+dotnet run --no-build --project $runnerProject -c Release -- --verify-c3d-map-fidelity --report "$artifactDir\c3d-map-fidelity.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-mesh-deviation --report "$artifactDir\mesh-deviation.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-nominal-actual-comparison --report "$artifactDir\nominal-actual.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-registration-acceptance --report "$artifactDir\registration-acceptance.txt"
 ```
 
-필수 조건:
-
-- 대화형 Windows 데스크톱
-- FFmpeg/FFprobe
-- 스크립트가 지정한 로컬 C3D 입력
-- 캡처 중 화면 크기와 포커스를 유지할 수 있는 환경
-
-이 검증은 마우스 드래그와 키 입력을 실제 WPF 창에 전달합니다. CI의
-비대화형 실행으로 대체하지 않습니다. 생성된 영상과 이미지에는 사적인
-창, 다른 애플리케이션, 오래된 빌드가 포함되지 않았는지 커밋 전에 직접
-확인합니다.
-
-## 6. Runner와 알고리즘 검증
-
-대표 런타임 중립 검증:
+Run a specific recipe:
 
 ```powershell
-$runnerProject = "src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj"
-
-dotnet run --no-build --project $runnerProject -c Release -- --verify-c3d-map-fidelity --report artifacts\verification\c3d-map-fidelity.txt
-dotnet run --no-build --project $runnerProject -c Release -- --verify-mesh-deviation --report artifacts\verification\mesh-deviation.txt
-dotnet run --no-build --project $runnerProject -c Release -- --verify-nominal-actual-comparison --report artifacts\verification\nominal-actual.txt
-dotnet run --no-build --project $runnerProject -c Release -- --verify-registration-acceptance --report artifacts\verification\registration-acceptance.txt
+dotnet run --no-build --project $runnerProject -c Release -- --recipe <recipe.ov3d-recipe.json> --report "$artifactDir\recipe-run.txt"
 ```
 
-특정 레시피 실행:
+Viewer/Runner parity claims require the same source identity, recipe, declared
+unit, and coordinate/frame contracts. A similar-looking input is not parity
+evidence.
 
-```powershell
-dotnet run --no-build --project $runnerProject -c Release -- --recipe <recipe.ov3d-recipe.json> --report artifacts\verification\recipe-run.txt
-```
+## 8. Data-loading checks
 
-Runner 검증은 Viewer 표시 샘플 수와 독립적인 원본/계약 결과를 사용해야
-합니다. Viewer와 Runner의 결과가 같다는 주장은 동일한 입력, 레시피,
-단위와 frame identity가 기록된 경우에만 합니다.
-
-## 7. 데이터 로딩과 Viewer 검증
-
-공개 데이터 로딩 매트릭스:
+Run the public loading matrix:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-data-loading-matrix-smoke.ps1
 ```
 
-단일 GLB/STL/LAS/LAZ 샘플:
+Probe one included sample:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\probe-3d-sample.ps1 `
   -SamplePath 3D\PublicSamples\PointCloud\interesting.las `
-  -ArtifactDir artifacts\verification\probe-las
+  -ArtifactDir "$artifactDir\probe-las"
 ```
 
-상세 형식별 입력과 실패 fixture는 다음 문서를 사용합니다.
+The public sample inventory and attribution are in
+`3D\PublicSamples\README.md`.
 
-- [`OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md`](OPENVISIONLAB_3D_DATA_LOADING_TEST_MATRIX_20260707.md)
-- [`OPENVISIONLAB_3D_SAMPLE_DATA.md`](OPENVISIONLAB_3D_SAMPLE_DATA.md)
-- [`../3D/PublicSamples/README.md`](../3D/PublicSamples/README.md)
+## 9. Self-contained package
 
-## 8. Viewer DLL 번들
-
-별도 WPF 호스트에서 사용하는 Viewer DLL 묶음:
+Build the operator package:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-viewer-dll.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-host.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.ps1
 ```
 
-출력은 `artifacts\viewer-dll\net10.0-windows` 아래 생성됩니다. 통합 계약은
-[`OPENVISIONLAB_3D_VIEWER_DLL_INTEGRATION.md`](OPENVISIONLAB_3D_VIEWER_DLL_INTEGRATION.md)를
-참조합니다.
+The default package path is:
 
-## 9. CI
+```text
+artifacts\release\openvisionlab-3d-studio-win-x64
+```
 
-`.github/workflows/ci.yml`의 Windows CI는 다음 범위를 검사합니다.
+Confirm that the package contains the Shell executable, the tutorial recipe and
+source, `README.md`, `documentation\USER_TUTORIAL.md`, `LICENSE`, `NOTICE`, and
+`openvisionlab-3d-studio-manifest.json`. Verify the manifest payload count,
+sizes, and SHA-256 values before distribution.
 
-- 솔루션 restore/build
-- 취약하거나 deprecated된 직접/전이 NuGet 패키지
-- Viewer DLL 외부 호스트
-- Viewer/Shell 화면 품질과 포인터 입력
-- Headless Runner와 알고리즘 golden
-- C3D mapping과 독립 Python 교차 검증
-- 선택된 검증 보고서와 화면 증거 업로드
+## 10. UI and media verification
 
-로컬 검증이 통과했더라도 CI를 실행하지 않았다면 원격 통과로 표현하지
-않습니다.
+Any UI, layout, visible text, localization, docking, or responsive change must
+be checked in a current build at both supported sizes:
 
-## 10. 검증 문서 찾기
+- Wide: 1920 × 1040
+- Compact: 1280 × 760
 
-| 목적 | 문서 |
-| --- | --- |
-| 현재 개발 순서 | [`OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`](OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md) |
-| 다음 세션 상태 | [`OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`](OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md) |
-| 코드/MVVM 규칙 | [`OPENVISIONLAB_3D_CODE_RULES.md`](OPENVISIONLAB_3D_CODE_RULES.md) |
-| Source Quality | [`OPENVISIONLAB_3D_SOURCE_QUALITY_WORKSPACE_20260728.md`](OPENVISIONLAB_3D_SOURCE_QUALITY_WORKSPACE_20260728.md) |
-| Height Image | [`OPENVISIONLAB_3D_FULL_HEIGHT_IMAGE_VIEWER_20260727.md`](OPENVISIONLAB_3D_FULL_HEIGHT_IMAGE_VIEWER_20260727.md) |
-| Dual ROI 실제 조작 | [`OPENVISIONLAB_3D_DUAL_ROI_ROLE_PRESERVATION_20260728.md`](OPENVISIONLAB_3D_DUAL_ROI_ROLE_PRESERVATION_20260728.md) |
-| Viewer/Runner 어려운 형상 | [`OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md`](OPENVISIONLAB_3D_PHASE2_DIFFICULT_GEOMETRY_GOLDENS_20260715.md) |
+Capture fresh before and after evidence. Check required text, overlap,
+clipping, unreachable controls, popup/theme states, and unintended nested or
+horizontal scrolling. Actual desktop EXE captures must use the active leftmost
+monitor. Documentation-only changes do not require UI screenshots.
 
-## 11. 완료 전 체크리스트
+For an explicitly requested operator video, first verify the workflow through
+the fast deterministic path, then run:
 
-- [ ] 변경 범위가 제품/도메인 책임 경계를 지켰다.
-- [ ] Release 또는 요청된 구성으로 빌드했다.
-- [ ] 가장 가까운 focused verification이 통과했다.
-- [ ] 구조 변경이면 `verify-code-structure.ps1`이 통과했다.
-- [ ] UI 변경이면 현재 빌드의 전후 화면을 캡처하고 비교했다.
-- [ ] 실제 포인터가 필요한 검증을 합성 이벤트로 대체하지 않았다.
-- [ ] `raw-height`, 물리 단위, calibration과 metrology 경계를 과장하지 않았다.
-- [ ] `git diff --check`와 변경 파일 범위를 확인했다.
-- [ ] 사용자 소유 로컬 데이터와 무관한 변경을 stage하지 않았다.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run-operator-video-self-review.ps1
+```
+
+Operator media must show only the application window and must not expose the
+desktop, taskbar, unrelated applications, account information, notifications,
+or local paths.
+
+## 11. CI scope
+
+`.github\workflows\ci.yml` runs the Windows restore/build, vendored-package
+health, structural guards, Viewer/Shell checks, Runner goldens, data-loading
+checks, independent Python gates, and selected verification-report uploads.
+
+A local pass does not establish a hosted CI pass. Check the actual GitHub
+Actions result after pushing when the user has explicitly authorized a push.
+
+## 12. Completion checklist
+
+- [ ] The approved scope and acceptance criteria are explicit.
+- [ ] Build and verification use the current source revision.
+- [ ] The smallest relevant focused checks pass.
+- [ ] Structural changes pass `verify-code-structure.ps1`.
+- [ ] UI changes include fresh Wide and Compact current-build evidence.
+- [ ] Algorithm work remains owned by committed Library-Noah source and the
+      verified vendored `Lib.ThreeD` package.
+- [ ] Test outputs are D-backed on the project workstation, or the fallback is
+      recorded.
+- [ ] `git diff --check` passes.
+- [ ] Unrelated user changes are not staged or overwritten.
