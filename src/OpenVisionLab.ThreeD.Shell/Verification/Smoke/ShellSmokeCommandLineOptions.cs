@@ -138,6 +138,7 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool SurfaceMatchCollectionNavigationFocusHoverSmoke =>
         HasFlag("--smoke-surface-match-collection-navigation-focus-hover");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
+    public bool SoftwareRendering => HasFlag("--smoke-software-rendering");
 
     public (int Width, int Height)? WindowSize =>
         int.TryParse(GetValue("--shell-smoke-width"), out var width)

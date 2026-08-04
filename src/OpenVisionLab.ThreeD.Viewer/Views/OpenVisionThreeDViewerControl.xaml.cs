@@ -28,6 +28,8 @@ namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVisionThreeDViewerHost
 {
+    private static bool useSoftwareRenderingForProcess;
+
     public static readonly DependencyProperty SidePanelsVisibleProperty =
         DependencyProperty.Register(
             nameof(SidePanelsVisible),
@@ -281,6 +283,11 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     public OpenVisionThreeDViewerControl(bool loadDefaultSamples)
     {
         InitializeComponent();
+        if (useSoftwareRenderingForProcess)
+        {
+            Viewport.RenderContextType = RenderContextType.DIBSection;
+        }
+
         UpdateSidePanelsVisibility();
         DataContext = viewModel;
         fitAllRequestedHandler = (_, _) => HandleFitAllCommand();
@@ -320,5 +327,8 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         SetGlbSampleStatus();
         SetLazSampleStatus();
     }
+
+    public static void UseSoftwareRenderingForProcess() =>
+        useSoftwareRenderingForProcess = true;
 
 }

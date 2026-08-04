@@ -31,6 +31,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ValuePath", VerifyValuePath()),
             ("MissingValue", VerifyMissingValue()),
             ("CaseInsensitiveFlag", VerifyCaseInsensitiveFlag()),
+            ("SoftwareRendering", VerifySoftwareRendering()),
             ("FilterPublishImpliesPreview", VerifyFilterPublishImpliesPreview()),
             ("EdgeLineFitImpliesPreview", VerifyEdgeLineFitImpliesPreview()),
             ("WindowSize", VerifyWindowSize()),
@@ -92,6 +93,13 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--SMOKE-PUBLISH-RESULT"]);
         return options.SmokePublishResult;
+    }
+
+    private static bool VerifySoftwareRendering()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--SMOKE-SOFTWARE-RENDERING"]);
+        return options.SoftwareRendering;
     }
 
     private static bool VerifyFilterPublishImpliesPreview()

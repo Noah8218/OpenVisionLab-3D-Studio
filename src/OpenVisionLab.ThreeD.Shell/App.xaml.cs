@@ -3,6 +3,8 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Shell.Verification;
+using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
+using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -14,6 +16,11 @@ public partial class App : Application
         {
             ShellVerificationCommandRouter.Run(e.Args);
             return;
+        }
+
+        if (ShellSmokeCommandLineOptions.Parse(e.Args).SoftwareRendering)
+        {
+            OpenVisionThreeDViewerControl.UseSoftwareRenderingForProcess();
         }
 
         LiveCharts.Configure(settings => settings.UseDefaults());
