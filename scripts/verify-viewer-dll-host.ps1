@@ -87,6 +87,7 @@ Copy-Item -LiteralPath $manifestPath -Destination $manifestEvidencePath -Force
 $outputPath = Join-Path (Split-Path $sampleProject -Parent) "bin/$Configuration/net10.0-windows"
 $hostExecutable = Join-Path $outputPath 'OpenVisionLab.ThreeD.Viewer.BinaryHost.exe'
 $runArguments = @(
+    '--smoke-software-rendering',
     '--smoke-screenshot', $screenshotPath,
     '--smoke-screenshot-quality-report', $screenshotQualityPath,
     '--smoke-c3d', 'thickness',

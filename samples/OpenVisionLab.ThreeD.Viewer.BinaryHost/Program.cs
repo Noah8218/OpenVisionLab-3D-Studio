@@ -13,6 +13,14 @@ internal static class Program
         var args = Environment.GetCommandLineArgs();
         var hostApiReportPath = GetArgumentValue(args, "--host-api-report");
         var hostApiRecipePath = GetArgumentValue(args, "--host-api-save-recipe");
+        if (args.Any(argument => string.Equals(
+                argument,
+                "--smoke-software-rendering",
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            OpenVisionThreeDViewerControl.UseSoftwareRenderingForProcess();
+        }
+
         var application = new Application();
         var viewerControl = new OpenVisionThreeDViewerControl();
         IOpenVisionThreeDViewerHost viewer = viewerControl;
