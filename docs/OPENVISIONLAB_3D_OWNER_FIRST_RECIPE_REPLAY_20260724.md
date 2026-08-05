@@ -2,7 +2,9 @@
 
 ## Status
 
-Status: Blocked
+Status: Historical — Blocked for the recorded 2026-07-24 attempts. Superseded
+as the current owner task by
+`OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
 
 The first owner replay stopped after identifying Viewer defects. Those defects
 now have a separate corrective evidence checkpoint. The owner explicitly

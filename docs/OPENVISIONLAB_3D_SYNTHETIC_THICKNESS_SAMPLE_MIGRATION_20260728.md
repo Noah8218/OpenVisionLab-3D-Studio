@@ -2,6 +2,14 @@
 
 Date: 2026-07-28
 
+Current tracking: `PL-0003` owns the remaining GitHub object cleanup. On
+2026-08-05, an authenticated owner/admin audit deleted all 57 retired-lineage
+Actions artifacts and preserved all 14 sanitized-lineage artifacts, including
+the sanitized-root artifact. GitHub Support ticket `#4633618` (`Clear Cached
+Views`) is now Open, while the former `main` commit remains addressable by old
+SHA in both the parent repository and fork network. Closure therefore depends
+on GitHub processing the ticket and a fresh object-access check.
+
 ## Decision
 
 The previously used Thickness C3D originated from non-public company work.
@@ -160,6 +168,38 @@ The post-push audit distinguishes a clean public tip from full remote erasure:
   treated as potentially derived from the retired source until deleted or
   independently inspected.
 
+## PL-0003 authenticated re-audit and artifact cleanup
+
+The 2026-08-05 audit authenticated as the repository owner with admin and push
+permission. It inspected GitHub metadata only; no Actions archive or retired
+sample content was downloaded or redistributed.
+
+- The current remote has two branch heads, no tags, no releases, and no pull
+  requests.
+- The Actions API returned 71 unexpired artifacts before cleanup. An ancestry
+  check against sanitized root
+  `6936af87a80f29f43c8e27ce34abf55c37dd8f97` classified exactly 57 as retired
+  lineage and 14 as sanitized lineage.
+- All 57 retired-lineage artifact deletions returned HTTP `204`. The
+  authenticated post-delete inventory contains 14 artifacts, with zero target
+  artifacts remaining and zero preserved artifacts missing.
+- Sanitized-root artifact `8678950407` remains present. The other 13
+  sanitized-lineage artifacts also remain present.
+- The former `main` tip still returns HTTP `200` by commit SHA. The one public
+  fork has a sanitized `main` head and no tags, but the same old SHA remains
+  addressable through the fork network.
+- GitHub Support ticket `#4633618`, `Clear Cached Views`, was submitted through
+  the authenticated Virtual Agent flow and is Open. The request identifies the
+  dangling commit and asks GitHub to clear cached/internal references without
+  deleting the repository or its sanitized history. No private sample content
+  was uploaded.
+- Immediately after submission, the old commit endpoints in both the parent
+  repository and fork network still returned HTTP `200`; this is an expected
+  pending state, not proof that GitHub has completed the cleanup.
+
+Reusable evidence is stored at
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-pl0003-github-retention\`.
+
 ## Completion record
 
 Status: Blocked
@@ -183,8 +223,13 @@ Acceptance criteria:
 - retired release tag removal -> pass, tag absent from local and remote refs;
 - old GitHub object URL inaccessible -> fail, former commit API response is
   HTTP `200`;
-- historical Actions artifact cleanup -> fail, 57 pre-sanitization artifacts
-  remain unexpired.
+- historical Actions artifact cleanup -> pass, 57/57 deletions returned HTTP
+  `204`, post-delete target count `0`;
+- sanitized-lineage artifact preservation -> pass, 14/14 remain, including the
+  sanitized-root artifact;
+- GitHub Support cleanup request -> pass, ticket `#4633618` is Open;
+- resulting object-access outcome -> fail/pending, GitHub has not yet completed
+  the request and both checked old-commit endpoints still return HTTP `200`.
 
 Verification: deterministic regeneration; Release build `0/0`; generic Tool
 Recipe Runner `8/8`; repeat authoring `20/20`; recipe selections `29/29`;
@@ -198,10 +243,13 @@ root `6936af87a80f29f43c8e27ce34abf55c37dd8f97`, post-rewrite audit tip
 `git ls-remote`/tree/content scans, and read-only GitHub commit, release, and
 Actions artifact API audits.
 
-Boundary / next dependency: the repository owner must authorize deletion of
-the 57 historical Actions artifacts and authenticate an account capable of
-that deletion. The owner must also submit a GitHub sensitive-data cleanup
-request for the still-addressable old objects. Preserve the one artifact whose
-head is the sanitized root. Forks and third-party clones require separate
-coordination; existing local clones must be replaced with a fresh clone. Local
-untracked files remain untouched.
+PL-0003 current evidence: authenticated before/after inventories, the exact
+57-item delete target set, 57 deletion responses, the 14-item preserve set,
+SHA-256 evidence manifest, Support request draft, and ticket `#4633618` record under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-pl0003-github-retention\`.
+
+Boundary / next dependency: GitHub Support processes open ticket `#4633618`;
+after GitHub reports completion, recheck and record the parent and fork-network
+object-access outcome. Forks and third-party clones remain
+separately owned external copies; existing local clones must be replaced with
+a fresh clone. Local untracked files remain untouched.

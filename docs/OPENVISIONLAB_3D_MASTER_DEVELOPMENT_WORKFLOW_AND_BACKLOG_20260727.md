@@ -5,6 +5,11 @@ Date: 2026-07-27
 Status: Current execution source of truth for commercial-video-derived product
 development after Inspection Workspace v3
 
+This document is the single owner of the current capability inventory,
+dependency graph, and development queue. `AGENTS.md` owns operating rules;
+the next-session and next-chat documents are short entry points; dated
+closure, design, and audit documents preserve historical evidence.
+
 ## Purpose
 
 This document converts the commercial-video review into an executable product
@@ -105,9 +110,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 138 |
+| Complete `C` | 139 |
 | Partial `P` | 17 |
-| New `N` | 55 |
+| New `N` | 54 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 235 |
@@ -2482,6 +2487,18 @@ The owner explicitly left the layout-only stream and completed item 11 on
 This master backlog supersedes short feature lists in older commercial-review
 documents when selecting future work. Older documents remain evidence for
 their completed historical slices.
+
+Current document authority is:
+
+1. `AGENTS.md` for stable operating rules;
+2. this master backlog for inventory, dependencies, and queue;
+3. `OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md` for the current handoff;
+4. `OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md` for the next-chat
+   entry prompt;
+5. `docs/archive/` and dated documents for state-at-the-time evidence.
+
+Do not duplicate mutable Git status, unpushed-commit claims, or current
+inventory tables in historical documents.
 
 Do not mark a backlog item `C` based only on:
 

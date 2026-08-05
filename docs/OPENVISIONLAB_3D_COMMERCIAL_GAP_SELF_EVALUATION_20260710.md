@@ -2,7 +2,9 @@
 
 Updated: 2026-07-10
 
-Status: historical review. Use `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md` for the current target, gate decision, and priorities.
+Status: Historical review. Use
+`OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md` for the
+current target, gate decision, inventory, and priorities.
 
 ## Purpose
 

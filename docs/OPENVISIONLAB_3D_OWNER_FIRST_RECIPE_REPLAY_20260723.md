@@ -2,9 +2,10 @@
 
 ## Status
 
-`Blocked` until the owner completes the current interactive EXE session and
-reports the observed result. Automated input must not be substituted for this
-evidence.
+Historical — Blocked for the recorded 2026-07-23 attempt. The current owner
+acceptance task is the Wide/Compact R0 procedure in
+`OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`. Automated input still
+must not be substituted for owner evidence.
 
 ## Product boundary
 

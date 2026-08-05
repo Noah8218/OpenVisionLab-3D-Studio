@@ -2,7 +2,9 @@
 
 Date: 2026-07-29
 
-Status: Incomplete
+Status: Historical — Incomplete for the recorded repeat. The findings were
+superseded by the closure documents named below; human acceptance remains the
+separate Wide/Compact R0 task.
 
 Historical status note: This finding is superseded by
 `docs/OPENVISIONLAB_3D_ADVANCED_VIEWER_REACTIVATION_20260729.md`. The newer

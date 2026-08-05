@@ -171,6 +171,7 @@ The package quick-start source is available at
 
 ## Documentation
 
+- [Documentation map](docs/README.md)
 - [User tutorial](docs/OPENVISIONLAB_3D_USER_TUTORIAL.md)
 - [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
 - [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)

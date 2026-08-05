@@ -1,7 +1,9 @@
 # OpenVisionLab 3D UI/UX 80% Completion Gate
 
 Updated: 2026-07-20
-Status: Active product-delivery priority
+Status: Historical — Complete. The owner accepted the evidence-based `85/100`
+gate on 2026-07-21. Current UI priorities and acceptance dependencies are in
+`OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`.
 
 ## Owner decision
 

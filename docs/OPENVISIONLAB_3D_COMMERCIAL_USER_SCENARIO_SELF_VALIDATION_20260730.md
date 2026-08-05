@@ -2,7 +2,9 @@
 
 ## Status
 
-Status: Incomplete
+Status: Historical — Incomplete for this recorded self-validation matrix.
+Current software inventory and human-owner acceptance are owned by the master
+backlog and Wide/Compact R0 procedure.
 
 Scope: Current-source novice UI operation, Thickness/Warpage/Median Filter numerical checks, ordered Runner parity, warm/cold/long repeatability, performance, error recovery, and Wide/Compact evidence.
 

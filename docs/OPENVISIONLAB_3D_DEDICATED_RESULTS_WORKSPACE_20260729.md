@@ -2,7 +2,9 @@
 
 Date: 2026-07-29
 
-Status: Incomplete after actual Release IA-4 replay
+Status: Historical — Incomplete after the recorded Release IA-4 replay. Later
+Workspace v3 closures supersede this as a current implementation priority;
+the master backlog and human-owner R0 own the remaining acceptance state.
 
 ## Actual Release supersession
 

@@ -1,5 +1,10 @@
 # OpenVisionLab 3D Product Target And Self Evaluation
 
+> Status: Historical product-direction and self-evaluation snapshot. Preserve
+> the recorded decisions and evidence, but use
+> `OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md` for
+> the current inventory, priorities, and maturity decision.
+
 > 2026-07-28 linked teaching update: `B-09`, `B-08`, `C-07`, and `C-08`
 > are now complete. The Height Image uses the shared invalid-cell map,
 > presents Source Quality, exposes explicit palette/range controls, and shares
@@ -68,7 +73,8 @@
 
 Updated: 2026-07-27
 
-Status: current product-direction source of truth. Older market reviews remain useful as history, but this document controls current priorities when they conflict.
+Status: Historical. The master development workflow and backlog controls
+current priorities when this snapshot conflicts with later evidence.
 
 Viewer reliability phases and claim limits are governed by `docs/OPENVISIONLAB_3D_VIEWER_RELIABILITY_PHASES_20260714.md`.
 

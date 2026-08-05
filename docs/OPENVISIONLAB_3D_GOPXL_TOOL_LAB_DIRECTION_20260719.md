@@ -1,7 +1,9 @@
 # OpenVisionLab 3D GoPxL-Informed Tool Lab Direction
 
 Updated: 2026-07-20
-Status: Approved product direction; G1 Flow Map, G2 Output Compare, G3 selected-tool I/P/O summary, G4 Displayed Outputs / Overlay Manager, G5 Flow Map port diagnostics / Problems, G6 compatible Tool Catalog scanning, and G7 responsive explicit-add continuity complete and verified locally; global UI/UX acceptance remains open
+Status: Active Reference for the approved tree-first, Tool Lab, typed I/O, and
+advanced Flow Map principles. G1-G7 are historical completed slices; current
+delivery and acceptance state is owned by the master backlog.
 
 ## Why this document exists
 

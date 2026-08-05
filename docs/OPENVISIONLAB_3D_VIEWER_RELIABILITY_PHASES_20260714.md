@@ -2,7 +2,10 @@
 
 Updated: 2026-07-16
 
-Status: current Viewer-reliability planning and claim-control source of truth. Use this document together with `OPENVISIONLAB_3D_PRODUCT_TARGET_AND_SELF_EVALUATION_20260711.md`; this document controls the order and exit gates for Viewer trust work.
+Status: Active Reference for Viewer trust phases and claim control. Use this
+document for phase order and exit-gate meaning; use
+`OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md` for the
+current inventory and execution priority.
 
 ## Decision
 
