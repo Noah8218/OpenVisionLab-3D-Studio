@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using NoahInputPoint = Lib.ThreeD.FeatureExtraction.ReferenceGridInputPoint;
-using NoahProfile = Lib.ThreeD.FeatureExtraction.ReferenceGridProfile;
-using NoahRegridTool = Lib.ThreeD.FeatureExtraction.ReferenceGridRegridTool;
+using SdkInputPoint = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridInputPoint;
+using SdkProfile = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridProfile;
+using SdkRegridTool = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridRegridTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -15,7 +15,7 @@ public sealed record C3DRegridHeightFieldInput(
 public sealed record C3DRegridHeightFieldEvaluation(ToolResult Result, C3DTransformedHeightField? Output);
 
 /// <summary>
-/// Strict Studio adapter for Library-Noah deterministic re-gridding. A3 only
+/// Strict Studio adapter for OpenVisionLab Vision SDK deterministic re-gridding. A3 only
 /// projects a Published A2 cloud into its authored frame; it never derives a
 /// frame, interpolates holes, writes C3D, or measures a feature.
 /// </summary>
@@ -30,20 +30,20 @@ public static class C3DRegridHeightFieldRule
         {
             Validate(input);
             var points = input.PublishedTransformedPointCloud.Points
-                .Select(point => new NoahInputPoint(point.Row, point.Column, point.X, point.Y, point.Z))
+                .Select(point => new SdkInputPoint(point.Row, point.Column, point.X, point.Y, point.Z))
                 .ToArray();
             var profile = input.ReferenceGridProfile;
-            var noahProfile = new NoahProfile(
+            var sdkProfile = new SdkProfile(
                 profile.ReferenceFrameId, profile.ReferenceUnit, profile.ReferenceProvenance, profile.ReferenceRevision,
                 profile.Origin.X, profile.Origin.Y, profile.Origin.Z,
                 profile.UAxis.X, profile.UAxis.Y, profile.UAxis.Z,
                 profile.VAxis.X, profile.VAxis.Y, profile.VAxis.Z,
                 profile.HAxis.X, profile.HAxis.Y, profile.HAxis.Z,
                 profile.PitchU, profile.PitchV, profile.RowCount, profile.ColumnCount, profile.MinimumCoverageRatio);
-            var noahResult = new NoahRegridTool().Execute(points, noahProfile, cancellationToken);
-            if (!noahResult.Success) throw new InvalidDataException(noahResult.Message);
+            var sdkResult = new SdkRegridTool().Execute(points, sdkProfile, cancellationToken);
+            if (!sdkResult.Success) throw new InvalidDataException(sdkResult.Message);
 
-            var cells = noahResult.Cells
+            var cells = sdkResult.Cells
                 .Select(cell => new C3DTransformedHeightCell(cell.Row, cell.Column, cell.Height, cell.SourceRow, cell.SourceColumn, cell.PlanarDistanceSquared))
                 .ToArray();
             var output = C3DTransformedHeightField.Create(
@@ -51,7 +51,7 @@ public static class C3DRegridHeightFieldRule
                 input.PublishedTransformedPointCloud,
                 profile,
                 cells,
-                noahResult.CollisionCount,
+                sdkResult.CollisionCount,
                 $"{input.StepId}:RegridHeightMap:{C3DTransformedHeightField.ContractVersion}:source={input.PublishedTransformedPointCloud.ContentSha256}:profile={profile.ContentSha256}");
             stopwatch.Stop();
             var status = output.MeetsMinimumCoverage ? ResultStatus.Pass : ResultStatus.Warning;

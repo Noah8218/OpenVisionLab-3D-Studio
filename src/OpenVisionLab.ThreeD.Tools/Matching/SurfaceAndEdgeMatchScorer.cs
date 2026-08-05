@@ -1,14 +1,14 @@
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
-using NoahEdgeAnchor = Lib.ThreeD.FeatureExtraction.SurfaceEdgeAnchorSample;
-using NoahEdgeCoverageResult = Lib.ThreeD.FeatureExtraction.DeterministicSurfaceEdgeCoverageResult;
-using NoahEdgeCoverageTool = Lib.ThreeD.FeatureExtraction.DeterministicSurfaceEdgeCoverageTool;
+using SdkEdgeAnchor = OpenVisionLab.Vision3D.FeatureExtraction.SurfaceEdgeAnchorSample;
+using SdkEdgeCoverageResult = OpenVisionLab.Vision3D.FeatureExtraction.DeterministicSurfaceEdgeCoverageResult;
+using SdkEdgeCoverageTool = OpenVisionLab.Vision3D.FeatureExtraction.DeterministicSurfaceEdgeCoverageTool;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Strict product adapter for decision-free positional edge coverage at an
-/// already-identified surface pose. Library-Noah owns the matching kernel.
+/// already-identified surface pose. OpenVisionLab Vision SDK owns the matching kernel.
 /// </summary>
 public static class SurfaceAndEdgeMatchScorer
 {
@@ -44,43 +44,43 @@ public static class SurfaceAndEdgeMatchScorer
                 "Edge scoring requires at least one identified model edge.");
         }
 
-        var noahResult = new NoahEdgeCoverageTool().Execute(
+        var sdkResult = new SdkEdgeCoverageTool().Execute(
             modelEdges.Edges
-                .Select(edge => new NoahEdgeAnchor(
+                .Select(edge => new SdkEdgeAnchor(
                     edge.Order,
-                    LibraryNoahSurfaceMatching.Point(edge.Anchor)))
+                    VisionSdkSurfaceMatching.Point(edge.Anchor)))
                 .ToArray(),
             sceneEdges.Edges
-                .Select(edge => new NoahEdgeAnchor(
+                .Select(edge => new SdkEdgeAnchor(
                     edge.Order,
-                    LibraryNoahSurfaceMatching.Point(edge.Anchor)))
+                    VisionSdkSurfaceMatching.Point(edge.Anchor)))
                 .ToArray(),
-            LibraryNoahSurfaceMatching.Pose(pose),
+            VisionSdkSurfaceMatching.Pose(pose),
             maximumCorrespondenceDistance);
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
         if (!string.Equals(
-                NoahEdgeCoverageResult.Semantics,
+                SdkEdgeCoverageResult.Semantics,
                 SurfaceEdgeScoreComponent.CurrentSemantics,
                 StringComparison.Ordinal))
         {
             throw new InvalidDataException(
-                "Library-Noah edge coverage semantics do not match the Studio contract.");
+                "OpenVisionLab Vision SDK edge coverage semantics do not match the Studio contract.");
         }
 
-        var matches = noahResult.Matches
+        var matches = sdkResult.Matches
             .Select(match => new SurfaceEdgeCoverageMatch(
                 match.ModelEdgeOrder,
                 match.SceneEdgeOrder,
                 match.Distance))
             .ToArray();
-        var matchedCount = noahResult.MatchedModelEdgeCount;
-        var coverageRatio = noahResult.CoverageRatio;
-        double? inlierRmse = noahResult.HasInlierRmse
-            ? noahResult.InlierRmse
+        var matchedCount = sdkResult.MatchedModelEdgeCount;
+        var coverageRatio = sdkResult.CoverageRatio;
+        double? inlierRmse = sdkResult.HasInlierRmse
+            ? sdkResult.InlierRmse
             : null;
         var evidence =
             $"semantics={SurfaceEdgeScoreComponent.CurrentSemantics};"

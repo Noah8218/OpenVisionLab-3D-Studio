@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using NoahAffineMatrix = Lib.ThreeD.FeatureExtraction.FullXyzAffineMatrix;
-using NoahApplyInputPoint = Lib.ThreeD.FeatureExtraction.AffinePointCloudInputPoint;
-using NoahApplyTool = Lib.ThreeD.FeatureExtraction.AffinePointCloudApplyTool;
+using SdkAffineMatrix = OpenVisionLab.Vision3D.FeatureExtraction.FullXyzAffineMatrix;
+using SdkApplyInputPoint = OpenVisionLab.Vision3D.FeatureExtraction.AffinePointCloudInputPoint;
+using SdkApplyTool = OpenVisionLab.Vision3D.FeatureExtraction.AffinePointCloudApplyTool;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -16,7 +16,7 @@ public sealed record C3DAffineApplyInput(
 public sealed record C3DAffineApplyEvaluation(ToolResult Result, C3DTransformedPointCloud? Output);
 
 /// <summary>
-/// Strict Studio adapter for Library-Noah's finite ordered-point transform.
+/// Strict Studio adapter for OpenVisionLab Vision SDK's finite ordered-point transform.
 /// It applies an already-published A1 matrix once and deliberately produces no
 /// re-gridded height field, mesh, or measurement result.
 /// </summary>
@@ -31,7 +31,7 @@ public static class C3DAffineApplyRule
         try
         {
             Validate(input);
-            var sourcePoints = new List<NoahApplyInputPoint>(input.RawSource.ValidCount);
+            var sourcePoints = new List<SdkApplyInputPoint>(input.RawSource.ValidCount);
             var values = input.RawSource.Values.Span;
             for (var row = 0; row < input.RawSource.Height; row++)
             {
@@ -40,7 +40,7 @@ public static class C3DAffineApplyRule
                     cancellationToken.ThrowIfCancellationRequested();
                     var height = values[checked(row * input.RawSource.Width + column)];
                     if (!double.IsFinite(height)) continue;
-                    sourcePoints.Add(new NoahApplyInputPoint(
+                    sourcePoints.Add(new SdkApplyInputPoint(
                         row,
                         column,
                         height,
@@ -50,13 +50,13 @@ public static class C3DAffineApplyRule
                 }
             }
 
-            var noahResult = new NoahApplyTool().Execute(sourcePoints, ToNoahMatrix(input.PublishedAffineTransform.Matrix), cancellationToken);
-            if (!noahResult.Success)
+            var sdkResult = new SdkApplyTool().Execute(sourcePoints, ToSdkMatrix(input.PublishedAffineTransform.Matrix), cancellationToken);
+            if (!sdkResult.Success)
             {
-                throw new InvalidDataException(noahResult.Message);
+                throw new InvalidDataException(sdkResult.Message);
             }
 
-            var points = noahResult.Points
+            var points = sdkResult.Points
                 .Select(point => new C3DTransformedPoint(
                     point.Row,
                     point.Column,
@@ -124,7 +124,7 @@ public static class C3DAffineApplyRule
         }
     }
 
-    private static NoahAffineMatrix ToNoahMatrix(C3DAffineMatrix3x4 matrix) => new(
+    private static SdkAffineMatrix ToSdkMatrix(C3DAffineMatrix3x4 matrix) => new(
         matrix.M11, matrix.M12, matrix.M13, matrix.M14,
         matrix.M21, matrix.M22, matrix.M23, matrix.M24,
         matrix.M31, matrix.M32, matrix.M33, matrix.M34);

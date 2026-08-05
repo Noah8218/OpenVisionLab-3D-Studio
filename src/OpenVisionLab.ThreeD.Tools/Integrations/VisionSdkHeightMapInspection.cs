@@ -1,24 +1,24 @@
-using NoahHeightMap3D = Lib.ThreeD.Geometry.HeightMap3D;
-using NoahHeightMapRoi = Lib.ThreeD.Geometry.HeightMapRoi;
-using NoahHeightMapInputRequirements = Lib.ThreeD.Inspection.HeightMapInputRequirements;
-using NoahInspectionResult = Lib.ThreeD.Inspection.ThreeDInspectionResult;
-using NoahInspectionStatus = Lib.ThreeD.Inspection.ThreeDInspectionResultStatus;
-using NoahThicknessInspectionOptions = Lib.ThreeD.Inspection.ThicknessInspectionOptions;
-using NoahThicknessInspectionTool = Lib.ThreeD.Inspection.ThicknessInspectionTool;
-using NoahWarpageInspectionOptions = Lib.ThreeD.Inspection.WarpageInspectionOptions;
-using NoahWarpageInspectionTool = Lib.ThreeD.Inspection.WarpageInspectionTool;
-using NoahDatumPlaneRawHeightDeviationInspectionOptions = Lib.ThreeD.Inspection.DatumPlaneRawHeightDeviationInspectionOptions;
-using NoahDatumPlaneRawHeightDeviationInspectionTool = Lib.ThreeD.Inspection.DatumPlaneRawHeightDeviationInspectionTool;
+using SdkHeightMap3D = OpenVisionLab.Vision3D.Geometry.HeightMap3D;
+using SdkHeightMapRoi = OpenVisionLab.Vision3D.Geometry.HeightMapRoi;
+using SdkHeightMapInputRequirements = OpenVisionLab.Vision3D.Inspection.HeightMapInputRequirements;
+using SdkInspectionResult = OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResult;
+using SdkInspectionStatus = OpenVisionLab.Vision3D.Inspection.ThreeDInspectionResultStatus;
+using SdkThicknessInspectionOptions = OpenVisionLab.Vision3D.Inspection.ThicknessInspectionOptions;
+using SdkThicknessInspectionTool = OpenVisionLab.Vision3D.Inspection.ThicknessInspectionTool;
+using SdkWarpageInspectionOptions = OpenVisionLab.Vision3D.Inspection.WarpageInspectionOptions;
+using SdkWarpageInspectionTool = OpenVisionLab.Vision3D.Inspection.WarpageInspectionTool;
+using SdkDatumPlaneRawHeightDeviationInspectionOptions = OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionOptions;
+using SdkDatumPlaneRawHeightDeviationInspectionTool = OpenVisionLab.Vision3D.Inspection.DatumPlaneRawHeightDeviationInspectionTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
-public sealed record LibraryNoahHeightMapContract(
+public sealed record VisionSdkHeightMapContract(
     string PlanarUnit,
     string HeightUnit,
     string FrameId);
 
-public sealed record LibraryNoahHeightMapInput(
+public sealed record VisionSdkHeightMapInput(
     string SourceEntityId,
     int Rows,
     int Columns,
@@ -34,34 +34,34 @@ public sealed record LibraryNoahHeightMapInput(
 
     public string? HeightUnit { get; init; }
 
-    public LibraryNoahHeightMapContract? ExpectedContract { get; init; }
+    public VisionSdkHeightMapContract? ExpectedContract { get; init; }
 
     internal string EffectivePlanarUnit => string.IsNullOrWhiteSpace(PlanarUnit) ? Unit : PlanarUnit;
 
     internal string EffectiveHeightUnit => string.IsNullOrWhiteSpace(HeightUnit) ? Unit : HeightUnit;
 }
 
-public sealed record LibraryNoahGridRoi(int Row, int Column, int RowCount, int ColumnCount);
+public sealed record VisionSdkGridRoi(int Row, int Column, int RowCount, int ColumnCount);
 
-public sealed record LibraryNoahThicknessInspectionInput(
-    LibraryNoahHeightMapInput? Source,
-    LibraryNoahGridRoi? Roi,
+public sealed record VisionSdkThicknessInspectionInput(
+    VisionSdkHeightMapInput? Source,
+    VisionSdkGridRoi? Roi,
     double MinimumThickness,
     double MaximumThickness,
     int MinimumValidSamples = 1,
     double MinimumValidCoverageRatio = 0.0);
 
-public sealed record LibraryNoahWarpageInspectionInput(
-    LibraryNoahHeightMapInput? Source,
-    LibraryNoahGridRoi? Roi,
+public sealed record VisionSdkWarpageInspectionInput(
+    VisionSdkHeightMapInput? Source,
+    VisionSdkGridRoi? Roi,
     double MaximumPeakToValley,
     double? MaximumRms = null,
     int MinimumValidSamples = 3,
     double MinimumValidCoverageRatio = 0.0);
 
-public sealed record LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
-    LibraryNoahHeightMapInput? Source,
-    LibraryNoahGridRoi? Roi,
+public sealed record VisionSdkDatumPlaneRawHeightDeviationInspectionInput(
+    VisionSdkHeightMapInput? Source,
+    VisionSdkGridRoi? Roi,
     double PlaneNormalX,
     double PlaneNormalY,
     double PlaneNormalZ,
@@ -71,31 +71,31 @@ public sealed record LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
     double MinimumAbsoluteNormalY = 0.1,
     double MinimumValidCoverageRatio = 0.0);
 
-public sealed record LibraryNoahInspectionEvaluation(
+public sealed record VisionSdkInspectionEvaluation(
     ToolResult Result,
     bool HasMeasurement,
     string PackageResultStatus,
     string PackageErrorCode,
-    LibraryNoahGridRoi? Roi,
+    VisionSdkGridRoi? Roi,
     string PlanarUnit = "",
     string HeightUnit = "",
     string CoordinateConvention = "");
 
 /// <summary>
-/// Explicit Studio-to-Library-Noah boundary for a declared scalar height map.
+/// Explicit Studio-to-OpenVisionLab Vision SDK boundary for a declared scalar height map.
 /// It does not infer physical units, scalar meaning, calibration, or a Viewer overlay.
 /// </summary>
-public static class LibraryNoahHeightMapInspection
+public static class VisionSdkHeightMapInspection
 {
-    public const string PackageId = "Lib.ThreeD";
-    public const string PackageVersion = "2.9.1";
-    public const string PackageSourceCommit = "9dd95690d3e439b459c39aea99878880cdcc5808";
+    public const string PackageId = "OpenVisionLab.Vision3D";
+    public const string PackageVersion = "3.0.0";
+    public const string PackageSourceCommit = "f34fdf912ff38fe20f36dbb063837e14b4f922b3";
 
-    public static string PackageAssemblyName => typeof(NoahHeightMap3D).Assembly.GetName().Name ?? string.Empty;
+    public static string PackageAssemblyName => typeof(SdkHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 
-    public static LibraryNoahInspectionEvaluation EvaluateThickness(LibraryNoahThicknessInspectionInput? input)
+    public static VisionSdkInspectionEvaluation EvaluateThickness(VisionSdkThicknessInspectionInput? input)
     {
-        const string toolName = "Library-Noah Thickness";
+        const string toolName = "OpenVisionLab Vision SDK Thickness";
         if (input is null)
         {
             return Error(toolName, null, null, "Thickness inspection input is required.");
@@ -105,20 +105,20 @@ public static class LibraryNoahHeightMapInspection
             toolName,
             input.Source,
             input.Roi,
-            heightMap => new NoahThicknessInspectionTool(new NoahThicknessInspectionOptions
+            heightMap => new SdkThicknessInspectionTool(new SdkThicknessInspectionOptions
             {
-                Roi = ToNoahRoi(input.Roi),
+                Roi = ToSdkRoi(input.Roi),
                 MinimumThickness = input.MinimumThickness,
                 MaximumThickness = input.MaximumThickness,
                 MinimumValidSamples = input.MinimumValidSamples,
                 MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
-                InputRequirements = ToNoahRequirements(input.Source!)
+                InputRequirements = ToSdkRequirements(input.Source!)
             }).Execute(heightMap));
     }
 
-    public static LibraryNoahInspectionEvaluation EvaluateWarpage(LibraryNoahWarpageInspectionInput? input)
+    public static VisionSdkInspectionEvaluation EvaluateWarpage(VisionSdkWarpageInspectionInput? input)
     {
-        const string toolName = "Library-Noah Warpage";
+        const string toolName = "OpenVisionLab Vision SDK Warpage";
         if (input is null)
         {
             return Error(toolName, null, null, "Warpage inspection input is required.");
@@ -128,21 +128,21 @@ public static class LibraryNoahHeightMapInspection
             toolName,
             input.Source,
             input.Roi,
-            heightMap => new NoahWarpageInspectionTool(new NoahWarpageInspectionOptions
+            heightMap => new SdkWarpageInspectionTool(new SdkWarpageInspectionOptions
             {
-                Roi = ToNoahRoi(input.Roi),
+                Roi = ToSdkRoi(input.Roi),
                 MaximumPeakToValley = input.MaximumPeakToValley,
                 MaximumRms = input.MaximumRms,
                 MinimumValidSamples = input.MinimumValidSamples,
                 MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
-                InputRequirements = ToNoahRequirements(input.Source!)
+                InputRequirements = ToSdkRequirements(input.Source!)
             }).Execute(heightMap));
     }
 
-    public static LibraryNoahInspectionEvaluation EvaluateDatumPlaneRawHeightDeviation(
-        LibraryNoahDatumPlaneRawHeightDeviationInspectionInput? input)
+    public static VisionSdkInspectionEvaluation EvaluateDatumPlaneRawHeightDeviation(
+        VisionSdkDatumPlaneRawHeightDeviationInspectionInput? input)
     {
-        const string toolName = "Library-Noah Datum Plane Raw-Height Deviation";
+        const string toolName = "OpenVisionLab Vision SDK Datum Plane Raw-Height Deviation";
         if (input is null)
         {
             return Error(toolName, null, null, "Datum-plane raw-height deviation input is required.");
@@ -152,10 +152,10 @@ public static class LibraryNoahHeightMapInspection
             toolName,
             input.Source,
             input.Roi,
-            heightMap => new NoahDatumPlaneRawHeightDeviationInspectionTool(
-                new NoahDatumPlaneRawHeightDeviationInspectionOptions
+            heightMap => new SdkDatumPlaneRawHeightDeviationInspectionTool(
+                new SdkDatumPlaneRawHeightDeviationInspectionOptions
                 {
-                    Roi = ToNoahRoi(input.Roi),
+                    Roi = ToSdkRoi(input.Roi),
                     PlaneNormalX = input.PlaneNormalX,
                     PlaneNormalY = input.PlaneNormalY,
                     PlaneNormalZ = input.PlaneNormalZ,
@@ -164,7 +164,7 @@ public static class LibraryNoahHeightMapInspection
                     MinimumValidSamples = input.MinimumValidSamples,
                     MinimumAbsoluteNormalY = input.MinimumAbsoluteNormalY,
                     MinimumValidCoverageRatio = input.MinimumValidCoverageRatio,
-                    InputRequirements = ToNoahRequirements(input.Source!)
+                    InputRequirements = ToSdkRequirements(input.Source!)
                 }).Execute(heightMap));
     }
 
@@ -177,7 +177,7 @@ public static class LibraryNoahHeightMapInspection
         double gridY,
         double rawHeight,
         out double residual) =>
-        NoahDatumPlaneRawHeightDeviationInspectionTool.TryCalculateRawHeightResidual(
+        SdkDatumPlaneRawHeightDeviationInspectionTool.TryCalculateRawHeightResidual(
             normalX,
             normalY,
             normalZ,
@@ -187,11 +187,11 @@ public static class LibraryNoahHeightMapInspection
             rawHeight,
             out residual);
 
-    private static LibraryNoahInspectionEvaluation Execute(
+    private static VisionSdkInspectionEvaluation Execute(
         string toolName,
-        LibraryNoahHeightMapInput? source,
-        LibraryNoahGridRoi? roi,
-        Func<NoahHeightMap3D, NoahInspectionResult> execute)
+        VisionSdkHeightMapInput? source,
+        VisionSdkGridRoi? roi,
+        Func<SdkHeightMap3D, SdkInspectionResult> execute)
     {
         if (!TryCreateHeightMap(source, out var heightMap, out var errorMessage))
         {
@@ -204,13 +204,13 @@ public static class LibraryNoahHeightMapInspection
         }
         catch (Exception exception)
         {
-            return Error(toolName, source, roi, $"Library-Noah execution failed: {exception.Message}");
+            return Error(toolName, source, roi, $"OpenVisionLab Vision SDK execution failed: {exception.Message}");
         }
     }
 
     private static bool TryCreateHeightMap(
-        LibraryNoahHeightMapInput? source,
-        out NoahHeightMap3D? heightMap,
+        VisionSdkHeightMapInput? source,
+        out SdkHeightMap3D? heightMap,
         out string errorMessage)
     {
         heightMap = null;
@@ -238,7 +238,7 @@ public static class LibraryNoahHeightMapInspection
 
         try
         {
-            heightMap = new NoahHeightMap3D(
+            heightMap = new SdkHeightMap3D(
                 source.Rows,
                 source.Columns,
                 source.OriginX,
@@ -260,31 +260,31 @@ public static class LibraryNoahHeightMapInspection
         }
     }
 
-    private static NoahHeightMapRoi? ToNoahRoi(LibraryNoahGridRoi? roi) =>
+    private static SdkHeightMapRoi? ToSdkRoi(VisionSdkGridRoi? roi) =>
         roi is null
             ? null
-            : new NoahHeightMapRoi(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);
+            : new SdkHeightMapRoi(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);
 
-    private static NoahHeightMapInputRequirements ToNoahRequirements(LibraryNoahHeightMapInput source)
+    private static SdkHeightMapInputRequirements ToSdkRequirements(VisionSdkHeightMapInput source)
     {
         var contract = source.ExpectedContract
-            ?? new LibraryNoahHeightMapContract(
+            ?? new VisionSdkHeightMapContract(
                 source.EffectivePlanarUnit,
                 source.EffectiveHeightUnit,
                 source.FrameId);
-        return new NoahHeightMapInputRequirements(contract.PlanarUnit, contract.HeightUnit, contract.FrameId);
+        return new SdkHeightMapInputRequirements(contract.PlanarUnit, contract.HeightUnit, contract.FrameId);
     }
 
-    private static LibraryNoahInspectionEvaluation Translate(
+    private static VisionSdkInspectionEvaluation Translate(
         string toolName,
-        NoahInspectionResult inspection,
-        LibraryNoahHeightMapInput source,
-        LibraryNoahGridRoi? roi)
+        SdkInspectionResult inspection,
+        VisionSdkHeightMapInput source,
+        VisionSdkGridRoi? roi)
     {
         var status = inspection.ResultStatus switch
         {
-            NoahInspectionStatus.Passed => ResultStatus.Pass,
-            NoahInspectionStatus.Failed => ResultStatus.Fail,
+            SdkInspectionStatus.Passed => ResultStatus.Pass,
+            SdkInspectionStatus.Failed => ResultStatus.Fail,
             _ => ResultStatus.Error
         };
         var planarUnit = string.IsNullOrWhiteSpace(inspection.PlanarUnit) ? source.EffectivePlanarUnit : inspection.PlanarUnit;
@@ -305,7 +305,7 @@ public static class LibraryNoahHeightMapInspection
             metrics =
             [
                 new Metric(
-                    "Library-Noah error code",
+                    "OpenVisionLab Vision SDK error code",
                     MetricKind.Number,
                     inspection.ErrorCodeValue,
                     "code",
@@ -313,7 +313,7 @@ public static class LibraryNoahHeightMapInspection
             ];
         }
 
-        return new LibraryNoahInspectionEvaluation(
+        return new VisionSdkInspectionEvaluation(
             new ToolResult(toolName, status, inspection.Message, inspection.Elapsed, metrics, []),
             inspection.HasMeasurement,
             inspection.ResultStatusName,
@@ -324,10 +324,10 @@ public static class LibraryNoahHeightMapInspection
             inspection.CoordinateConvention);
     }
 
-    private static LibraryNoahInspectionEvaluation Error(
+    private static VisionSdkInspectionEvaluation Error(
         string toolName,
-        LibraryNoahHeightMapInput? source,
-        LibraryNoahGridRoi? roi,
+        VisionSdkHeightMapInput? source,
+        VisionSdkGridRoi? roi,
         string message) =>
         new(
             new ToolResult(
@@ -335,7 +335,7 @@ public static class LibraryNoahHeightMapInspection
                 ResultStatus.Error,
                 message,
                 TimeSpan.Zero,
-                [new Metric("Library-Noah error code", MetricKind.Number, double.NaN, "code", ResultStatus.Error)],
+                [new Metric("OpenVisionLab Vision SDK error code", MetricKind.Number, double.NaN, "code", ResultStatus.Error)],
                 []),
             false,
             "BridgeError",
@@ -358,7 +358,7 @@ public static class LibraryNoahHeightMapInspection
         };
 
     private static string ResolveMetricUnit(
-        NoahInspectionResult inspection,
+        SdkInspectionResult inspection,
         string name,
         string planarUnit,
         string heightUnit)

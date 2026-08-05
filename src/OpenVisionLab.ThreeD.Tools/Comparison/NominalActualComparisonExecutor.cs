@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
-using Noah = Lib.ThreeD.FeatureExtraction;
+using Sdk = OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -50,14 +50,14 @@ public sealed class NominalActualComparisonExecutor
         ValidateFileHash(input.ActualSource, cancellationToken);
         ValidateFileHash(input.QuerySource, cancellationToken);
 
-        var triangles = new List<Noah.MeshTriangle>();
+        var triangles = new List<Sdk.MeshTriangle>();
         var nominalSummary = BinaryStlInspectionReader.Scan(
             input.NominalSource.Path,
-            (index, triangle) => triangles.Add(new Noah.MeshTriangle(
+            (index, triangle) => triangles.Add(new Sdk.MeshTriangle(
                 index,
-                ToNoah(triangle.A),
-                ToNoah(triangle.B),
-                ToNoah(triangle.C))));
+                ToSdk(triangle.A),
+                ToSdk(triangle.B),
+                ToSdk(triangle.C))));
         if (!nominalSummary.SourceSha256.Equals(input.NominalSource.Sha256, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidDataException(
@@ -66,18 +66,18 @@ public sealed class NominalActualComparisonExecutor
 
         cancellationToken.ThrowIfCancellationRequested();
         Report(progress, "Indexing nominal mesh", 0, query.VertexCount, totalStopwatch.Elapsed);
-        var noahProgress = progress is null
+        var sdkProgress = progress is null
             ? null
             : new ComparisonProgressAdapter(progress, totalStopwatch);
-        var comparison = new Noah.NominalActualMeshComparisonTool().Execute(
+        var comparison = new Sdk.NominalActualMeshComparisonTool().Execute(
             triangles,
             ReadQueryPoints(query, cancellationToken),
-            new Noah.NominalActualMeshComparisonOptions(
+            new Sdk.NominalActualMeshComparisonOptions(
                 query.VertexCount,
                 input.LowerTolerance,
                 input.UpperTolerance,
                 maximumDisplaySamples),
-            noahProgress,
+            sdkProgress,
             cancellationToken);
         if (!comparison.Success)
         {
@@ -115,7 +115,7 @@ public sealed class NominalActualComparisonExecutor
             totalStopwatch.Elapsed);
     }
 
-    private static IEnumerable<Noah.ThreeDPoint> ReadQueryPoints(
+    private static IEnumerable<Sdk.ThreeDPoint> ReadQueryPoints(
         BinaryPlyVertexReader query,
         CancellationToken cancellationToken)
     {
@@ -135,15 +135,15 @@ public sealed class NominalActualComparisonExecutor
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                yield return ToNoah(query.GetPosition(chunkIndex));
+                yield return ToSdk(query.GetPosition(chunkIndex));
             }
         }
     }
 
-    private static Noah.ThreeDPoint ToNoah(Vector3 point) =>
+    private static Sdk.ThreeDPoint ToSdk(Vector3 point) =>
         new(point.X, point.Y, point.Z);
 
-    private static NominalActualDeviationStatistics ToStudio(Noah.MeshDeviationStatistics statistics) =>
+    private static NominalActualDeviationStatistics ToStudio(Sdk.MeshDeviationStatistics statistics) =>
         new(
             statistics.Count,
             statistics.Minimum,
@@ -152,7 +152,7 @@ public sealed class NominalActualComparisonExecutor
             statistics.StandardDeviationPopulation,
             statistics.RootMeanSquare);
 
-    private static NominalActualDeviationSample ToStudio(Noah.NominalActualMeshDeviationSample sample) =>
+    private static NominalActualDeviationSample ToStudio(Sdk.NominalActualMeshDeviationSample sample) =>
         new(
             sample.PointIndex,
             ToStudio(sample.Point),
@@ -162,7 +162,7 @@ public sealed class NominalActualComparisonExecutor
             sample.SignedDistance,
             sample.RobustSignRecovered);
 
-    private static Vector3 ToStudio(Noah.ThreeDPoint point) =>
+    private static Vector3 ToStudio(Sdk.ThreeDPoint point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
 
     private static void ValidateInput(NominalActualComparisonInput input)
@@ -287,9 +287,9 @@ public sealed class NominalActualComparisonExecutor
 
     private sealed class ComparisonProgressAdapter(
         IProgress<NominalActualComparisonProgress> progress,
-        Stopwatch totalStopwatch) : IProgress<Noah.NominalActualMeshComparisonProgress>
+        Stopwatch totalStopwatch) : IProgress<Sdk.NominalActualMeshComparisonProgress>
     {
-        public void Report(Noah.NominalActualMeshComparisonProgress value) =>
+        public void Report(Sdk.NominalActualMeshComparisonProgress value) =>
             progress.Report(new NominalActualComparisonProgress(
                 "Comparing actual to nominal",
                 value.ProcessedPointCount,

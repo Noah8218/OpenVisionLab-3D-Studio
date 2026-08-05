@@ -1,4 +1,4 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -22,7 +22,7 @@ public sealed record SurfaceModelSurfaceSelectionRequest(
 
 /// <summary>
 /// Strict product adapter from an imported triangle mesh to an identified
-/// SurfaceModel. Library-Noah owns deterministic sampling, centroids, and
+/// SurfaceModel. OpenVisionLab Vision SDK owns deterministic sampling, centroids, and
 /// sample-normal calculation. Studio preserves source identity and artifacts.
 /// </summary>
 public static class SurfaceModelPreparation
@@ -72,10 +72,10 @@ public static class SurfaceModelPreparation
                 mesh.Indices[offset + 2]);
         }
 
-        var noahPoints = points
-            .Select(LibraryNoahSurfaceMatching.Point)
+        var sdkPoints = points
+            .Select(VisionSdkSurfaceMatching.Point)
             .ToArray();
-        var noahTriangles = triangles
+        var sdkTriangles = triangles
             .Select(triangle => new SurfaceModelTriangleInput(
                 triangle.FirstPointIndex,
                 triangle.SecondPointIndex,
@@ -89,8 +89,8 @@ public static class SurfaceModelPreparation
         {
             var selectionResult =
                 new DeterministicModelSurfaceSelectionTool().Execute(
-                    noahPoints,
-                    noahTriangles,
+                    sdkPoints,
+                    sdkTriangles,
                     new DeterministicModelSurfaceSelectionOptions
                     {
                         ExplicitInternalSourceTriangleIndices =
@@ -128,24 +128,24 @@ public static class SurfaceModelPreparation
                     .ToArray());
         }
 
-        var noahResult = new DeterministicSurfaceModelPreparationTool()
+        var sdkResult = new DeterministicSurfaceModelPreparationTool()
             .Execute(
-                noahPoints,
+                sdkPoints,
                 retainedSourceTriangleIndices
-                    .Select(index => noahTriangles[index])
+                    .Select(index => sdkTriangles[index])
                     .ToArray(),
-                normals.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
+                normals.Select(VisionSdkSurfaceMatching.Point).ToArray(),
                 new DeterministicSurfaceModelPreparationOptions
                 {
                     MaximumSampleCount =
                         request.Parameters.MaximumSampleCount
                 });
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
-        var samples = noahResult.Samples
+        var samples = sdkResult.Samples
             .Select(sample => new SurfaceModelSample(
                 sample.Order,
                 retainedSourceTriangleIndices[
@@ -189,6 +189,6 @@ public static class SurfaceModelPreparation
             ModelSurfaceRemovalReason.ExactDuplicate =>
                 SurfaceModelSurfaceSelection.ExactDuplicateReason,
             _ => throw new InvalidDataException(
-                "Library-Noah returned an unsupported model-surface removal reason.")
+                "OpenVisionLab Vision SDK returned an unsupported model-surface removal reason.")
         };
 }

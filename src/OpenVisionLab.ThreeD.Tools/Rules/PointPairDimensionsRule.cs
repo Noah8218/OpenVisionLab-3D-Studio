@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Numerics;
-using NoahPointPairOptions = Lib.ThreeD.Inspection.PointPairDimensionsInspectionOptions;
-using NoahPointPairResult = Lib.ThreeD.Inspection.PointPairDimensionsInspectionResult;
-using NoahPointPairTool = Lib.ThreeD.Inspection.PointPairDimensionsInspectionTool;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using SdkPointPairOptions = OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionOptions;
+using SdkPointPairResult = OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionResult;
+using SdkPointPairTool = OpenVisionLab.Vision3D.Inspection.PointPairDimensionsInspectionTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -58,13 +58,13 @@ public static class PointPairDimensionsRule
         try
         {
             var heightAxis = input.HeightAxis ?? Vector3.UnitY;
-            NoahPointPairResult evaluation = new NoahPointPairTool().Execute(
-                ToNoah(input.First),
-                ToNoah(input.Second),
-                ToNoah(heightAxis),
+            SdkPointPairResult evaluation = new SdkPointPairTool().Execute(
+                ToSdk(input.First),
+                ToSdk(input.Second),
+                ToSdk(heightAxis),
                 input.FirstRawHeight,
                 input.SecondRawHeight,
-                new NoahPointPairOptions
+                new SdkPointPairOptions
                 {
                     ExpectedDistance = input.Acceptance.ExpectedDistance,
                     DistanceTolerance = input.Acceptance.DistanceTolerance,
@@ -162,5 +162,5 @@ public static class PointPairDimensionsRule
     private static bool IsFinite(Vector3 point) =>
         float.IsFinite(point.X) && float.IsFinite(point.Y) && float.IsFinite(point.Z);
 
-    private static NoahPoint ToNoah(Vector3 point) => new(point.X, point.Y, point.Z);
+    private static SdkPoint ToSdk(Vector3 point) => new(point.X, point.Y, point.Z);
 }

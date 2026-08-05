@@ -12,7 +12,7 @@ contracts, completion evidence, and historical records.
 | Current handoff and external prerequisites | [Current session handoff](OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md) |
 | Next-chat entry prompt | [Next-chat entry prompt](OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md) |
 | Release/version policy | [Release/version policy](OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md) |
-| Library-Noah algorithm boundary | [Library-Noah Tool contract](OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md) |
+| Vision SDK algorithm boundary | [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) |
 
 Only the master backlog owns the current inventory and development queue.
 Dated documents preserve their recorded scope and do not override it.
@@ -46,9 +46,9 @@ Dated documents preserve their recorded scope and do not override it.
   benchmark principles without visual copying.
 - [Workbench v4 layout contract](OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md) — current
   Workbench layout contract.
-- [Library-Noah Tool contract](OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md) —
+- [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) —
   Tool-only numerical ownership.
-- [Library-Noah package boundary](OPENVISIONLAB_3D_LIBRARY_NOAH_PACKAGE_BOUNDARY_20260717.md) — vendored
+- [Vision SDK package boundary](OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md) — vendored
   package provenance and consumer boundary.
 - [Human-owner R0 procedure](OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md) — current external
   Wide/Compact owner acceptance procedure.
@@ -64,6 +64,10 @@ Dated documents preserve their recorded scope and do not override it.
 External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
+
+- [OpenVisionLab Vision SDK 3 migration](OPENVISIONLAB_3D_VISION_SDK_3_MIGRATION_20260805.md) —
+  fixed package provenance, compatibility boundary, full regression result,
+  sample replay, and self-contained package evidence.
 
 Dated files named for a feature, migration, closure, verification, or audit
 are durable evidence for that bounded task. Keep their original status,

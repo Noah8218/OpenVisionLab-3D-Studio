@@ -79,9 +79,10 @@ As of the 2026-08-05 documentation consolidation:
 - B-12 acquisition provenance, K-04 acquisition direction/orientation, L-13
   Surface Match pose/score export, and PL-0002 Runner help behavior are
   complete for their documented software scopes.
-- Vendored `Lib.ThreeD 2.9.1` is built from committed Library-Noah source
-  `9dd95690d3e439b459c39aea99878880cdcc5808`; package SHA-256 is
-  `BDE8D2C01B6DC380EF4579C89DE495F06F79BA4864D4229CD5CE87713BD1CA4E`.
+- Vendored `OpenVisionLab.Vision3D 3.0.0` is built from committed
+  `OpenVisionLab-Vision-SDK` source
+  `f34fdf912ff38fe20f36dbb063837e14b4f922b3`; package SHA-256 is
+  `F7324DC43ABF8E130D6F88C034287C192CFEA89E16A8A906A60F52DE341045B4`.
 - Public-sample remote-retention cleanup remains a separate external
   maintenance blocker tracked by `PL-0003`; do not infer its current GitHub
   state without an authenticated re-audit.
@@ -89,25 +90,25 @@ As of the 2026-08-05 documentation consolidation:
 The master backlog owns future inventory changes. Do not append completion
 chronology to this file.
 
-## Library-Noah Algorithm Ownership
+## OpenVisionLab Vision SDK Algorithm Ownership
 
 - All new or changed numerical, geometric, feature-extraction, matching, and
-  inspection algorithms belong in `Library-Noah` and are consumed through the
-  vendored `Lib.ThreeD` package.
-- Expose Noah algorithms as public sealed `XxxTool` types with source-neutral
+  inspection algorithms belong in `OpenVisionLab-Vision-SDK` and are consumed
+  through the vendored `OpenVisionLab.Vision3D` package.
+- Expose SDK algorithms as public sealed `XxxTool` types with source-neutral
   typed inputs/options, typed controlled results, and explicit `Execute(...)`.
 - Studio may own product identity/unit/frame validation, strict adapters,
   recipe and persistence policy, explicit Preview/Publish/Run orchestration,
-  evidence composition, and UI. Do not copy Noah arithmetic into Studio.
+  evidence composition, and UI. Do not copy SDK arithmetic into Studio.
 - Before algorithm work, inspect the vendored public API. If the API is
-  absent, update and verify Library-Noah, commit the exact source, pack that
+  absent, update and verify OpenVisionLab-Vision-SDK, commit the exact source, pack that
   clean commit, vendor package plus checksum, then adapt Studio.
-- Never use an external `ProjectReference` to Library-Noah and never package
-  an uncommitted Noah working tree.
-- Keep `docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json`
+- Never use an external `ProjectReference` to OpenVisionLab-Vision-SDK and
+  never package an uncommitted SDK working tree.
+- Keep `docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_MIGRATION_BASELINE_20260805.json`
   decreasing. Do not add debt or raise a ceiling to make the guard pass.
 - The full ownership contract remains
-  `docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md`.
+  `docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md`.
 
 ## Stable Product Contracts
 

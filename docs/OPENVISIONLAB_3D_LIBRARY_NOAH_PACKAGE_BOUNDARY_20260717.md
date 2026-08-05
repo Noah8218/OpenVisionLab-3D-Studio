@@ -1,5 +1,9 @@
 # Library-Noah 3D Package Boundary
 
+> **Historical / superseded.** This document preserves the former
+> `Lib.ThreeD` package history. The active package boundary is
+> [OpenVisionLab Vision SDK package boundary](OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md).
+
 ## Purpose
 
 `Lib.ThreeD` is the reusable, UI-free height-map inspection package owned by

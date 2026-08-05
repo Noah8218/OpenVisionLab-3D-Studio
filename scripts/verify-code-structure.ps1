@@ -145,7 +145,7 @@ $selectedToolWorkspacePath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell
 $teachingCoordinatorPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/WorkbenchViewerTeachingCoordinator.cs"
 $surfacePoseAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/RigidSurfacePoseSearch.cs"
 $surfaceCoverageAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceCoverageScorer.cs"
-$surfaceNoahAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/LibraryNoahSurfaceMatching.cs"
+$surfaceSdkAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/VisionSdkSurfaceMatching.cs"
 $multipleSurfaceMatchAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/MultipleSurfaceMatchEvaluationExecutor.cs"
 $surfacePoseEquivalenceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceMatchPoseEquivalenceEvaluator.cs"
 $surfacePoseEquivalenceContractPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Core/Contracts/Matching/SurfaceMatchPoseEquivalenceEvaluation.cs"
@@ -174,8 +174,8 @@ $alignedPointRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.T
 $thicknessRepeatabilityAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Calibration/ThicknessRepeatabilityRule.cs"
 $labeledEvidenceStatisticsAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeLabeledEvidenceAnalyzer.cs"
 $thresholdCandidateAnalysisAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeThresholdCandidateAnalyzer.cs"
-$noahToolContractPath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md"
-$noahToolBaselinePath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_NOAH_TOOL_MIGRATION_BASELINE_20260801.json"
+$visionSdkToolContractPath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md"
+$visionSdkToolBaselinePath = Join-Path $repoRoot "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_MIGRATION_BASELINE_20260805.json"
 $appSource = [System.IO.File]::ReadAllText($appPath)
 $mainWindowSource = [System.IO.File]::ReadAllText($mainWindowPath)
 $runnerProgramSource = [System.IO.File]::ReadAllText($runnerProgramPath)
@@ -212,25 +212,25 @@ Add-Check "ThicknessRepeatGridAuthoringBoundary" (
     ([System.IO.File]::ReadAllText($selectedToolWorkspacePath) -match "ThicknessRepeatGridPanel") -and
     ([System.IO.File]::ReadAllText($teachingCoordinatorPath) -match "ThicknessRepeatGridPreviewChanged")
 ) "Tools owns pure translation; Shell owns review/apply; View owns controls and overlay coordination"
-Add-Check "LibraryNoahSurfaceMatchingOwnership" (
+Add-Check "VisionSdkSurfaceMatchingOwnership" (
     (Test-Path -LiteralPath $surfacePoseAdapterPath) -and
     (Test-Path -LiteralPath $surfaceCoverageAdapterPath) -and
-    (Test-Path -LiteralPath $surfaceNoahAdapterPath) -and
+    (Test-Path -LiteralPath $surfaceSdkAdapterPath) -and
     (Test-Path -LiteralPath $multipleSurfaceMatchAdapterPath) -and
     (Test-Path -LiteralPath $surfacePoseEquivalenceAdapterPath) -and
     (Test-Path -LiteralPath $surfacePoseEquivalenceContractPath) -and
     ([System.IO.File]::ReadAllText($surfacePoseAdapterPath) -match "DeterministicRigidSurfacePoseSearchTool") -and
     ([System.IO.File]::ReadAllText($surfaceCoverageAdapterPath) -match "DeterministicSurfaceCoverageTool") -and
-    ([System.IO.File]::ReadAllText($surfaceNoahAdapterPath) -match "Lib\.ThreeD\.FeatureExtraction") -and
+    ([System.IO.File]::ReadAllText($surfaceSdkAdapterPath) -match "OpenVisionLab\.Vision3D\.FeatureExtraction") -and
     ([System.IO.File]::ReadAllText($multipleSurfaceMatchAdapterPath) -match "DeterministicMultipleSurfaceMatchTool") -and
     ([System.IO.File]::ReadAllText($surfacePoseEquivalenceAdapterPath) -match "RigidPoseSymmetryEquivalenceTool") -and
-    ([System.IO.File]::ReadAllText($surfaceNoahAdapterPath) -match "RigidPoseSymmetryEquivalenceOptions") -and
+    ([System.IO.File]::ReadAllText($surfaceSdkAdapterPath) -match "RigidPoseSymmetryEquivalenceOptions") -and
     -not ([System.IO.File]::ReadAllText($surfacePoseAdapterPath) -match "Math\.|AxisCandidates|Centroid\(|Rotation3|InsideTranslationBounds") -and
     -not ([System.IO.File]::ReadAllText($surfaceCoverageAdapterPath) -match "Math\.|DistanceSquared|claimedSceneSamples") -and
     -not ([System.IO.File]::ReadAllText($multipleSurfaceMatchAdapterPath) -match "Math\.|DistanceSquared|claimedSceneSamples|AxisCandidates|Rotation3") -and
     -not ([System.IO.File]::ReadAllText($surfacePoseEquivalenceAdapterPath) -match "Math\.|Acos|Atan2|OperationTrace|RelativeRotation")
-) "Studio validates identities and maps single/multiple/equivalence evidence; vendored Library-Noah owns pose-search, disjoint result collection, coverage, and symmetry-equivalence arithmetic"
-Add-Check "LibraryNoahSurfacePreparationAndEdgeOwnership" (
+) "Studio validates identities and maps single/multiple/equivalence evidence; vendored OpenVisionLab Vision SDK owns pose-search, disjoint result collection, coverage, and symmetry-equivalence arithmetic"
+Add-Check "VisionSdkSurfacePreparationAndEdgeOwnership" (
     (Test-Path -LiteralPath $surfaceModelPreparationAdapterPath) -and
     (Test-Path -LiteralPath $modelKeyPointAdapterPath) -and
     (Test-Path -LiteralPath $preparedSceneAdapterPath) -and
@@ -250,16 +250,16 @@ Add-Check "LibraryNoahSurfacePreparationAndEdgeOwnership" (
     -not ([System.IO.File]::ReadAllText($modelSurfaceEdgeAdapterPath) -match "Math\.|TriangleNormal|Distance\(|Dot\(|Cross\(") -and
     -not ([System.IO.File]::ReadAllText($sceneSurfaceEdgeAdapterPath) -match "Math\.|AddCandidate|Math\.Abs") -and
     -not ([System.IO.File]::ReadAllText($surfaceEdgeCoverageAdapterPath) -match "Math\.|DistanceSquared|claimedSceneEdges|squaredErrorSum")
-) "Studio composes identified artifacts and active-domain evidence; vendored Library-Noah owns model-surface selection, surface preparation, key-point extraction, edge extraction, and edge coverage arithmetic"
-Add-Check "LibraryNoahOutlierFilteringAndLevelingOwnership" (
+) "Studio composes identified artifacts and active-domain evidence; vendored OpenVisionLab Vision SDK owns model-surface selection, surface preparation, key-point extraction, edge extraction, and edge coverage arithmetic"
+Add-Check "VisionSdkOutlierFilteringAndLevelingOwnership" (
     (Test-Path -LiteralPath $removeOutlierAdapterPath) -and
     (Test-Path -LiteralPath $levelSurfaceAdapterPath) -and
     ([System.IO.File]::ReadAllText($removeOutlierAdapterPath) -match "DeterministicLocalMedianOutlierFilterTool") -and
     ([System.IO.File]::ReadAllText($levelSurfaceAdapterPath) -match "LevelSurfaceTool") -and
     -not ([System.IO.File]::ReadAllText($removeOutlierAdapterPath) -match "Math\.|\.Sort\s*\(|Median\s*\(") -and
     -not ([System.IO.File]::ReadAllText($levelSurfaceAdapterPath) -match "Math\.|\.Average\s*\(|\.Sum\s*\(|HeightFieldPlaneFit\.Fit|TransformHeight\s*\(")
-) "Studio validates identities and composes evidence; vendored Library-Noah owns local-median filtering and leveling arithmetic"
-Add-Check "LibraryNoahNominalComparisonAndTransformDiagnosticsOwnership" (
+) "Studio validates identities and composes evidence; vendored OpenVisionLab Vision SDK owns local-median filtering and leveling arithmetic"
+Add-Check "VisionSdkNominalComparisonAndTransformDiagnosticsOwnership" (
     (Test-Path -LiteralPath $nominalActualAdapterPath) -and
     (Test-Path -LiteralPath $meshDistanceAdapterPath) -and
     (Test-Path -LiteralPath $registrationAcceptanceAdapterPath) -and
@@ -269,8 +269,8 @@ Add-Check "LibraryNoahNominalComparisonAndTransformDiagnosticsOwnership" (
     -not ([System.IO.File]::ReadAllText($nominalActualAdapterPath) -match "Math\.|RunningStatistics|FindClosest\(") -and
     -not ([System.IO.File]::ReadAllText($meshDistanceAdapterPath) -match "Math\.|BuildNode|FindClosestPoint|SearchRobustCandidates") -and
     -not ([System.IO.File]::ReadAllText($registrationAcceptanceAdapterPath) -match "Math\.|Vector3d|rotationRows|translationMagnitude\s*=|rotationAngleDegrees\s*=")
-) "Studio retains identity, policy, lifecycle, and result composition; vendored Library-Noah owns mesh distance/comparison and transform-diagnostic arithmetic"
-Add-Check "LibraryNoahHeightMapInspectionPreparationOwnership" (
+) "Studio retains identity, policy, lifecycle, and result composition; vendored OpenVisionLab Vision SDK owns mesh distance/comparison and transform-diagnostic arithmetic"
+Add-Check "VisionSdkHeightMapInspectionPreparationOwnership" (
     (Test-Path -LiteralPath $heightGridAdapterPath) -and
     (Test-Path -LiteralPath $heightDistributionAdapterPath) -and
     (Test-Path -LiteralPath $heightFieldSnapshotAdapterPath) -and
@@ -289,32 +289,32 @@ Add-Check "LibraryNoahHeightMapInspectionPreparationOwnership" (
     -not ([System.IO.File]::ReadAllText($sourceQualityAdapterPath) -match "Math\.|\.Average\s*\(|\.Sum\s*\(") -and
     -not ([System.IO.File]::ReadAllText($completenessGridAdapterPath) -match "FiniteValues\s*\(|\.Average\s*\(|finite\.Length\s*/") -and
     -not ([System.IO.File]::ReadAllText($heightMeasurementExecutionPath) -match "profile\.Origin\.[XYZ]\s*\+|sum\s*\+=|\(column\s*\+\s*0\.5d\)|\(row\s*\+\s*0\.5d\)")
-) "Studio retains decoding, identity, recipes, hashes, metrics, and presentation; vendored Library-Noah owns height-grid summaries, distributions, ROI statistics, completeness inspection, and reference-grid reconstruction"
-Add-Check "LibraryNoahHeightInspectionRuleOwnership" (
+) "Studio retains decoding, identity, recipes, hashes, metrics, and presentation; vendored OpenVisionLab Vision SDK owns height-grid summaries, distributions, ROI statistics, completeness inspection, and reference-grid reconstruction"
+Add-Check "VisionSdkHeightInspectionRuleOwnership" (
     (Test-Path -LiteralPath $dualSurfaceThicknessAdapterPath) -and
     (Test-Path -LiteralPath $heightDeviationAdapterPath) -and
     ([System.IO.File]::ReadAllText($dualSurfaceThicknessAdapterPath) -match "DualSurfaceThicknessInspectionTool") -and
     ([System.IO.File]::ReadAllText($heightDeviationAdapterPath) -match "HeightDeviationInspectionTool") -and
     -not ([System.IO.File]::ReadAllText($dualSurfaceThicknessAdapterPath) -match "Math\.|\.Average\s*\(|\.Min\s*\(|\.Max\s*\(|residual\s*=|below\s*=|above\s*=") -and
     -not ([System.IO.File]::ReadAllText($heightDeviationAdapterPath) -match "Math\.|lowDeviation|highDeviation|peakDeviation\s*=|PeakTolerance\s*\?")
-) "Studio retains identity, timing, metrics, overlays, and lifecycle; vendored Library-Noah owns dual-surface residual statistics and height-deviation decisions"
-Add-Check "LibraryNoahGeometryQualityOwnership" (
+) "Studio retains identity, timing, metrics, overlays, and lifecycle; vendored OpenVisionLab Vision SDK owns dual-surface residual statistics and height-deviation decisions"
+Add-Check "VisionSdkGeometryQualityOwnership" (
     (Test-Path -LiteralPath $declaredNormalQualityAdapterPath) -and
     (Test-Path -LiteralPath $landmarkCorrespondenceAdapterPath) -and
     ([System.IO.File]::ReadAllText($declaredNormalQualityAdapterPath) -match "DeclaredMeshNormalQualityTool") -and
     ([System.IO.File]::ReadAllText($landmarkCorrespondenceAdapterPath) -match "LandmarkCorrespondenceValidationTool") -and
     -not ([System.IO.File]::ReadAllText($declaredNormalQualityAdapterPath) -match "Math\.|Vector[234]?\.(?:Cross|Dot|Normalize)") -and
     -not ([System.IO.File]::ReadAllText($landmarkCorrespondenceAdapterPath) -match "Math\.|GetAugmentedRank|GetNormalizedTetrahedronVolume|RankRelativeTolerance")
-) "Studio retains source/landmark identity, report/artifact policy, hashing, and lifecycle; vendored Library-Noah owns declared-normal geometry and four-point independence arithmetic"
-Add-Check "LibraryNoahRepeatabilityStatisticsOwnership" (
+) "Studio retains source/landmark identity, report/artifact policy, hashing, and lifecycle; vendored OpenVisionLab Vision SDK owns declared-normal geometry and four-point independence arithmetic"
+Add-Check "VisionSdkRepeatabilityStatisticsOwnership" (
     (Test-Path -LiteralPath $alignedPointRepeatabilityAdapterPath) -and
     (Test-Path -LiteralPath $thicknessRepeatabilityAdapterPath) -and
     ([System.IO.File]::ReadAllText($alignedPointRepeatabilityAdapterPath) -match "RepeatabilityStatisticsTool") -and
     ([System.IO.File]::ReadAllText($thicknessRepeatabilityAdapterPath) -match "RepeatabilityStatisticsTool") -and
     -not ([System.IO.File]::ReadAllText($alignedPointRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum") -and
     -not ([System.IO.File]::ReadAllText($thicknessRepeatabilityAdapterPath) -match "sumSquared|variance\s*=|Math\.Sqrt|SixSigmaSpread\s*=|maximum\s*-\s*minimum")
-) "Studio retains study/source identity, unit/frame/alignment policy, acceptance, metrics, and evidence; vendored Library-Noah owns scalar repeatability statistics"
-Add-Check "LibraryNoahValidationStatisticsOwnership" (
+) "Studio retains study/source identity, unit/frame/alignment policy, acceptance, metrics, and evidence; vendored OpenVisionLab Vision SDK owns scalar repeatability statistics"
+Add-Check "VisionSdkValidationStatisticsOwnership" (
     (Test-Path -LiteralPath $labeledEvidenceStatisticsAdapterPath) -and
     (Test-Path -LiteralPath $thresholdCandidateAnalysisAdapterPath) -and
     ([System.IO.File]::ReadAllText($labeledEvidenceStatisticsAdapterPath) -match "LabeledEvidenceStatisticsTool") -and
@@ -322,34 +322,34 @@ Add-Check "LibraryNoahValidationStatisticsOwnership" (
     ([System.IO.File]::ReadAllText($thresholdCandidateAnalysisAdapterPath) -match "ThresholdCandidateAnalysisTool") -and
     -not ([System.IO.File]::ReadAllText($labeledEvidenceStatisticsAdapterPath) -match "Math\.|\.Average\s*\(|\.Sum\s*\(") -and
     -not ([System.IO.File]::ReadAllText($thresholdCandidateAnalysisAdapterPath) -match "Math\.|BitIncrement|BitDecrement|\.Average\s*\(|\.Sum\s*\(")
-) "Studio retains observation/metric identity, routing, warnings, hashing, and reports; vendored Library-Noah owns role statistics and deterministic threshold analysis"
+) "Studio retains observation/metric identity, routing, warnings, hashing, and reports; vendored OpenVisionLab Vision SDK owns role statistics and deterministic threshold analysis"
 
-$noahToolContractExists = Test-Path -LiteralPath $noahToolContractPath
-$noahToolBaselineExists = Test-Path -LiteralPath $noahToolBaselinePath
-$noahToolContractSource = if ($noahToolContractExists) {
-    [System.IO.File]::ReadAllText($noahToolContractPath)
+$visionSdkToolContractExists = Test-Path -LiteralPath $visionSdkToolContractPath
+$visionSdkToolBaselineExists = Test-Path -LiteralPath $visionSdkToolBaselinePath
+$visionSdkToolContractSource = if ($visionSdkToolContractExists) {
+    [System.IO.File]::ReadAllText($visionSdkToolContractPath)
 } else {
     ""
 }
-$noahToolBaseline = if ($noahToolBaselineExists) {
-    [System.IO.File]::ReadAllText($noahToolBaselinePath) | ConvertFrom-Json
+$visionSdkToolBaseline = if ($visionSdkToolBaselineExists) {
+    [System.IO.File]::ReadAllText($visionSdkToolBaselinePath) | ConvertFrom-Json
 } else {
     $null
 }
-Add-Check "NoahToolOwnershipContract" (
-    $noahToolContractExists -and
-    $noahToolBaselineExists -and
-    $noahToolContractSource -match 'public,?\s+sealed\s+`XxxTool`' -and
-    $noahToolContractSource -match "IThreeDInspectionTool" -and
-    $noahToolContractSource -match "decreasing\s+migration baseline"
-) "contract=$noahToolContractExists|baseline=$noahToolBaselineExists"
+Add-Check "VisionSdkToolOwnershipContract" (
+    $visionSdkToolContractExists -and
+    $visionSdkToolBaselineExists -and
+    $visionSdkToolContractSource -match 'public,?\s+sealed\s+`XxxTool`' -and
+    $visionSdkToolContractSource -match "IThreeDInspectionTool" -and
+    $visionSdkToolContractSource -match "decreasing\s+migration baseline"
+) "contract=$visionSdkToolContractExists|baseline=$visionSdkToolBaselineExists"
 
-$migrationDebt = @($noahToolBaseline.migrationDebt)
-$studioBoundaries = @($noahToolBaseline.studioBoundaries)
-$hasMigrationDebtProperty = $null -ne $noahToolBaseline -and
-    $noahToolBaseline.PSObject.Properties.Name -contains "migrationDebt"
-$noahInventory = @($migrationDebt + $studioBoundaries)
-$inventoryPaths = @($noahInventory | ForEach-Object { [string]$_.path })
+$migrationDebt = @($visionSdkToolBaseline.migrationDebt)
+$studioBoundaries = @($visionSdkToolBaseline.studioBoundaries)
+$hasMigrationDebtProperty = $null -ne $visionSdkToolBaseline -and
+    $visionSdkToolBaseline.PSObject.Properties.Name -contains "migrationDebt"
+$visionSdkInventory = @($migrationDebt + $studioBoundaries)
+$inventoryPaths = @($visionSdkInventory | ForEach-Object { [string]$_.path })
 $duplicateInventoryPaths = @(
     $inventoryPaths |
         Group-Object |
@@ -357,14 +357,14 @@ $duplicateInventoryPaths = @(
         ForEach-Object Name
 )
 $missingInventoryFiles = @(
-    $noahInventory |
+    $visionSdkInventory |
         Where-Object { -not (Test-Path -LiteralPath (Join-Path $repoRoot $_.path)) } |
         ForEach-Object path
 )
 $invalidDebtEntries = @(
     $migrationDebt |
         Where-Object {
-            [string]::IsNullOrWhiteSpace([string]$_.targetNoahTool) -or
+            [string]::IsNullOrWhiteSpace([string]$_.targetVisionSdkTool) -or
             [int]$_.maximumSignalCount -lt 0
         } |
         ForEach-Object path
@@ -377,10 +377,10 @@ $invalidBoundaryEntries = @(
         } |
         ForEach-Object path
 )
-Add-Check "NoahToolMigrationInventory" (
-    $null -ne $noahToolBaseline -and
-    [int]$noahToolBaseline.schemaVersion -eq 1 -and
-    [string]$noahToolBaseline.contract -eq "docs/OPENVISIONLAB_3D_NOAH_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260801.md" -and
+Add-Check "VisionSdkToolMigrationInventory" (
+    $null -ne $visionSdkToolBaseline -and
+    [int]$visionSdkToolBaseline.schemaVersion -eq 1 -and
+    [string]$visionSdkToolBaseline.contract -eq "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md" -and
     $hasMigrationDebtProperty -and
     $duplicateInventoryPaths.Count -eq 0 -and
     $missingInventoryFiles.Count -eq 0 -and
@@ -390,13 +390,13 @@ Add-Check "NoahToolMigrationInventory" (
 
 $algorithmOwnerPattern = "public\s+(?:static\s+|sealed\s+)?class\s+\w*(?:Rule|Analyzer|Scorer|Extractor|Preparation|Executor|Execution|Index|Builder|Statistics|Filter|Fit|Matcher|Tool)\b"
 $numericalSignalPattern = "Math\.|MathF\.|Vector[234]?\.(?:Cross|Dot|Distance|DistanceSquared|Normalize)|\.Average\s*\(|\.Sum\s*\(|\.Sort\s*\("
-$noahCandidateRoots = @(
+$visionSdkCandidateRoots = @(
     Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools"
     Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Data/Quality"
     Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Data/HeightMaps"
 )
 $detectedNumericalOwners = @(
-    Get-ChildItem -LiteralPath $noahCandidateRoots -Filter "*.cs" -File -Recurse |
+    Get-ChildItem -LiteralPath $visionSdkCandidateRoots -Filter "*.cs" -File -Recurse |
         ForEach-Object {
             $source = [System.IO.File]::ReadAllText($_.FullName)
             $signalCount = [regex]::Matches($source, $numericalSignalPattern).Count
@@ -414,7 +414,7 @@ $unexpectedNumericalOwners = @(
         ForEach-Object { "$($_.Path):$($_.SignalCount)" }
 )
 $expandedNumericalOwners = @(
-    $noahInventory |
+    $visionSdkInventory |
         ForEach-Object {
             $baseline = $_
             $source = [System.IO.File]::ReadAllText((Join-Path $repoRoot $baseline.path))

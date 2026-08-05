@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 

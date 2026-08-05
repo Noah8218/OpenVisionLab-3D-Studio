@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using NoahLineGeometry = Lib.ThreeD.FeatureExtraction.ThreeDLineGeometry;
-using NoahLineIntersectionOptions = Lib.ThreeD.FeatureExtraction.LineIntersectionOptions;
-using NoahLineIntersectionTool = Lib.ThreeD.FeatureExtraction.LineIntersectionTool;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using SdkLineGeometry = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDLineGeometry;
+using SdkLineIntersectionOptions = OpenVisionLab.Vision3D.FeatureExtraction.LineIntersectionOptions;
+using SdkLineIntersectionTool = OpenVisionLab.Vision3D.FeatureExtraction.LineIntersectionTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -20,7 +20,7 @@ public sealed record C3DLineIntersectionInput(
 public sealed record C3DLineIntersectionEvaluation(ToolResult Result, C3DLineIntersectionFeature? Output);
 
 /// <summary>
-/// Studio typed adapter for Library-Noah's source-neutral full-XYZ line
+/// Studio typed adapter for OpenVisionLab Vision SDK's source-neutral full-XYZ line
 /// intersection geometry. Studio retains Published C3D lineage, recipe roles,
 /// artifact identity, metrics, overlay, and explicit lifecycle evidence.
 /// </summary>
@@ -35,23 +35,23 @@ public static class C3DLineIntersectionRule
             cancellationToken.ThrowIfCancellationRequested();
             var first = input.FirstPublishedLine;
             var second = input.SecondPublishedLine;
-            var noahResult = new NoahLineIntersectionTool().Execute(
-                ToNoahGeometry(first),
-                ToNoahGeometry(second),
-                new NoahLineIntersectionOptions
+            var sdkResult = new SdkLineIntersectionTool().Execute(
+                ToSdkGeometry(first),
+                ToSdkGeometry(second),
+                new SdkLineIntersectionOptions
                 {
                     MaximumClosestApproachDistance = input.MaximumClosestApproachDistance,
                     MinimumAcuteAngleDegrees = input.MinimumAcuteAngleDegrees,
                     MaximumSupportExtension = input.MaximumSupportExtension
                 },
                 cancellationToken);
-            if (!noahResult.Success)
+            if (!sdkResult.Success)
             {
-                throw new InvalidDataException(noahResult.Message);
+                throw new InvalidDataException(sdkResult.Message);
             }
-            if (noahResult.CornerAnchor is null || noahResult.FirstClosestPoint is null || noahResult.SecondClosestPoint is null)
+            if (sdkResult.CornerAnchor is null || sdkResult.FirstClosestPoint is null || sdkResult.SecondClosestPoint is null)
             {
-                throw new InvalidDataException("Library-Noah line intersection returned incomplete geometry evidence.");
+                throw new InvalidDataException("OpenVisionLab Vision SDK line intersection returned incomplete geometry evidence.");
             }
 
             var provenance = $"{input.StepId}:LineIntersection:{C3DLineIntersectionFeature.ContractVersion}:closest=MidpointOfClosestPoints:parallel=RejectBelowMinimumAcuteAngle:support=WithinInlierProjectionExtentsWithMaximumExtension:first={first.ContentSha256}:second={second.ContentSha256}";
@@ -59,13 +59,13 @@ public static class C3DLineIntersectionRule
                 input.OutputEntityId, first, second,
                 input.MaximumClosestApproachDistance, input.MinimumAcuteAngleDegrees,
                 input.MaximumSupportExtension, input.OutputRole,
-                noahResult.CornerAnchor.X, noahResult.CornerAnchor.Y, noahResult.CornerAnchor.Z,
-                noahResult.FirstClosestPoint.X, noahResult.FirstClosestPoint.Y, noahResult.FirstClosestPoint.Z,
-                noahResult.SecondClosestPoint.X, noahResult.SecondClosestPoint.Y, noahResult.SecondClosestPoint.Z,
-                noahResult.FirstLineParameter, noahResult.SecondLineParameter,
-                noahResult.AcuteAngleDegrees, noahResult.ClosestApproachDistance,
-                noahResult.FirstSupportMinimum, noahResult.FirstSupportMaximum, noahResult.FirstSupportExtension,
-                noahResult.SecondSupportMinimum, noahResult.SecondSupportMaximum, noahResult.SecondSupportExtension,
+                sdkResult.CornerAnchor.X, sdkResult.CornerAnchor.Y, sdkResult.CornerAnchor.Z,
+                sdkResult.FirstClosestPoint.X, sdkResult.FirstClosestPoint.Y, sdkResult.FirstClosestPoint.Z,
+                sdkResult.SecondClosestPoint.X, sdkResult.SecondClosestPoint.Y, sdkResult.SecondClosestPoint.Z,
+                sdkResult.FirstLineParameter, sdkResult.SecondLineParameter,
+                sdkResult.AcuteAngleDegrees, sdkResult.ClosestApproachDistance,
+                sdkResult.FirstSupportMinimum, sdkResult.FirstSupportMaximum, sdkResult.FirstSupportExtension,
+                sdkResult.SecondSupportMinimum, sdkResult.SecondSupportMaximum, sdkResult.SecondSupportExtension,
                 provenance);
             stopwatch.Stop();
             return new C3DLineIntersectionEvaluation(
@@ -73,10 +73,10 @@ public static class C3DLineIntersectionRule
                     "Line Intersection", ResultStatus.Pass,
                     "Completed - corner feature extraction; no acceptance rule evaluated.", stopwatch.Elapsed,
                     [
-                        new Metric("Closest approach gap", MetricKind.Deviation, noahResult.ClosestApproachDistance, "source-coordinate"),
-                        new Metric("Acute angle", MetricKind.Deviation, noahResult.AcuteAngleDegrees, "degrees"),
-                        new Metric("First support extension", MetricKind.Deviation, noahResult.FirstSupportExtension, "source-coordinate"),
-                        new Metric("Second support extension", MetricKind.Deviation, noahResult.SecondSupportExtension, "source-coordinate")
+                        new Metric("Closest approach gap", MetricKind.Deviation, sdkResult.ClosestApproachDistance, "source-coordinate"),
+                        new Metric("Acute angle", MetricKind.Deviation, sdkResult.AcuteAngleDegrees, "degrees"),
+                        new Metric("First support extension", MetricKind.Deviation, sdkResult.FirstSupportExtension, "source-coordinate"),
+                        new Metric("Second support extension", MetricKind.Deviation, sdkResult.SecondSupportExtension, "source-coordinate")
                     ],
                     [new Overlay(input.OutputEntityId, OverlayKind.Point, "Full-XYZ closest-approach corner anchor", SourceEntityId: first.RootSourceEntityId)]),
                 output);
@@ -94,11 +94,11 @@ public static class C3DLineIntersectionRule
         }
     }
 
-    private static NoahLineGeometry ToNoahGeometry(IC3DLineGeometry line) => new(
-        new NoahPoint(line.AnchorX, line.AnchorY, line.AnchorZ),
-        new NoahPoint(line.DirectionX, line.DirectionY, line.DirectionZ),
-        new NoahPoint(line.SegmentStartX, line.SegmentStartY, line.SegmentStartZ),
-        new NoahPoint(line.SegmentEndX, line.SegmentEndY, line.SegmentEndZ));
+    private static SdkLineGeometry ToSdkGeometry(IC3DLineGeometry line) => new(
+        new SdkPoint(line.AnchorX, line.AnchorY, line.AnchorZ),
+        new SdkPoint(line.DirectionX, line.DirectionY, line.DirectionZ),
+        new SdkPoint(line.SegmentStartX, line.SegmentStartY, line.SegmentStartZ),
+        new SdkPoint(line.SegmentEndX, line.SegmentEndY, line.SegmentEndZ));
 
     private static void Validate(C3DLineIntersectionInput input)
     {

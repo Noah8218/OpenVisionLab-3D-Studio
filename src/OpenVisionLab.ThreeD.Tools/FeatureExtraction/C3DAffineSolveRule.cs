@@ -1,15 +1,15 @@
 using System.Diagnostics;
-using NoahAffineCorrespondence = Lib.ThreeD.FeatureExtraction.FullXyzAffineCorrespondence;
-using NoahAffineOptions = Lib.ThreeD.FeatureExtraction.FullXyzAffineSolveOptions;
-using NoahAffineResidual = Lib.ThreeD.FeatureExtraction.FullXyzAffineResidual;
-using NoahAffineSolver = Lib.ThreeD.FeatureExtraction.FullXyzAffineSolveTool;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using SdkAffineCorrespondence = OpenVisionLab.Vision3D.FeatureExtraction.FullXyzAffineCorrespondence;
+using SdkAffineOptions = OpenVisionLab.Vision3D.FeatureExtraction.FullXyzAffineSolveOptions;
+using SdkAffineResidual = OpenVisionLab.Vision3D.FeatureExtraction.FullXyzAffineResidual;
+using SdkAffineSolver = OpenVisionLab.Vision3D.FeatureExtraction.FullXyzAffineSolveTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Studio typed adapter for Library-Noah's deterministic exact-four
+/// Studio typed adapter for OpenVisionLab Vision SDK's deterministic exact-four
 /// source-to-reference affine solve. The result is matrix evidence only; it
 /// never applies the matrix to C3D data.
 /// </summary>
@@ -38,49 +38,49 @@ public static class C3DAffineSolveRule
             Validate(input);
             cancellationToken.ThrowIfCancellationRequested();
             var pairs = input.PublishedCorrespondenceSet.Pairs;
-            var noahResult = new NoahAffineSolver().Execute(
-                pairs.Select(pair => new NoahAffineCorrespondence(
-                    new NoahPoint(pair.SourceX, pair.SourceY, pair.SourceZ),
-                    new NoahPoint(pair.ReferenceX, pair.ReferenceY, pair.ReferenceZ))).ToArray(),
-                new NoahAffineOptions
+            var sdkResult = new SdkAffineSolver().Execute(
+                pairs.Select(pair => new SdkAffineCorrespondence(
+                    new SdkPoint(pair.SourceX, pair.SourceY, pair.SourceZ),
+                    new SdkPoint(pair.ReferenceX, pair.ReferenceY, pair.ReferenceZ))).ToArray(),
+                new SdkAffineOptions
                 {
                     MaximumConditionEstimate = input.MaximumConditionEstimate,
                     ArithmeticResidualWarning = input.ArithmeticResidualWarning
                 },
                 cancellationToken);
-            if (!noahResult.Success)
+            if (!sdkResult.Success)
             {
-                throw new InvalidDataException(noahResult.Message);
+                throw new InvalidDataException(sdkResult.Message);
             }
-            if (noahResult.Matrix is null || noahResult.Residuals.Count != RequiredPairCount)
+            if (sdkResult.Matrix is null || sdkResult.Residuals.Count != RequiredPairCount)
             {
-                throw new InvalidDataException("Library-Noah Full XYZ affine solve returned incomplete matrix evidence.");
+                throw new InvalidDataException("OpenVisionLab Vision SDK Full XYZ affine solve returned incomplete matrix evidence.");
             }
 
             var matrix = new C3DAffineMatrix3x4(
-                noahResult.Matrix.M11, noahResult.Matrix.M12, noahResult.Matrix.M13, noahResult.Matrix.M14,
-                noahResult.Matrix.M21, noahResult.Matrix.M22, noahResult.Matrix.M23, noahResult.Matrix.M24,
-                noahResult.Matrix.M31, noahResult.Matrix.M32, noahResult.Matrix.M33, noahResult.Matrix.M34);
-            var residuals = pairs.Select((pair, index) => CreateResidual(pair, noahResult.Residuals[index])).ToArray();
+                sdkResult.Matrix.M11, sdkResult.Matrix.M12, sdkResult.Matrix.M13, sdkResult.Matrix.M14,
+                sdkResult.Matrix.M21, sdkResult.Matrix.M22, sdkResult.Matrix.M23, sdkResult.Matrix.M24,
+                sdkResult.Matrix.M31, sdkResult.Matrix.M32, sdkResult.Matrix.M33, sdkResult.Matrix.M34);
+            var residuals = pairs.Select((pair, index) => CreateResidual(pair, sdkResult.Residuals[index])).ToArray();
             EnsureFinite(
                 matrix.Values
-                    .Append(noahResult.SourceAugmentedDeterminant)
-                    .Append(noahResult.LinearDeterminantAbsolute)
-                    .Append(noahResult.ConditionEstimate)
-                    .Append(noahResult.ArithmeticMaximumResidual)
-                    .Append(noahResult.ArithmeticRmsResidual),
-                "Library-Noah affine evidence");
-            var warning = noahResult.ArithmeticResidualWarningExceeded;
+                    .Append(sdkResult.SourceAugmentedDeterminant)
+                    .Append(sdkResult.LinearDeterminantAbsolute)
+                    .Append(sdkResult.ConditionEstimate)
+                    .Append(sdkResult.ArithmeticMaximumResidual)
+                    .Append(sdkResult.ArithmeticRmsResidual),
+                "OpenVisionLab Vision SDK affine evidence");
+            var warning = sdkResult.ArithmeticResidualWarningExceeded;
             var output = C3DAffineTransform3D.Create(
                 input.OutputEntityId,
                 input.PublishedCorrespondenceSet,
                 matrix,
-                noahResult.SourceAugmentedDeterminant,
-                noahResult.LinearDeterminantAbsolute,
-                noahResult.ConditionEstimate,
+                sdkResult.SourceAugmentedDeterminant,
+                sdkResult.LinearDeterminantAbsolute,
+                sdkResult.ConditionEstimate,
                 input.MaximumConditionEstimate,
-                noahResult.ArithmeticRmsResidual,
-                noahResult.ArithmeticMaximumResidual,
+                sdkResult.ArithmeticRmsResidual,
+                sdkResult.ArithmeticMaximumResidual,
                 input.ArithmeticResidualWarning,
                 residuals,
                 $"{input.StepId}:XYZAffineSolve:{C3DAffineTransform3D.ContractVersion}:policy=ExactFourPartialPivot:input={input.PublishedCorrespondenceSet.ContentSha256}");
@@ -96,10 +96,10 @@ public static class C3DAffineSolveRule
                     stopwatch.Elapsed,
                     [
                         new Metric("Correspondence count", MetricKind.Count, RequiredPairCount, "count"),
-                        new Metric("Source condition estimate", MetricKind.Number, noahResult.ConditionEstimate, "ratio"),
-                        new Metric("Absolute linear determinant", MetricKind.Number, noahResult.LinearDeterminantAbsolute, "ratio"),
-                        new Metric("Arithmetic RMS residual", MetricKind.Deviation, noahResult.ArithmeticRmsResidual, input.PublishedCorrespondenceSet.ReferenceUnit),
-                        new Metric("Arithmetic maximum residual", MetricKind.Deviation, noahResult.ArithmeticMaximumResidual, input.PublishedCorrespondenceSet.ReferenceUnit, warning ? ResultStatus.Warning : ResultStatus.Pass)
+                        new Metric("Source condition estimate", MetricKind.Number, sdkResult.ConditionEstimate, "ratio"),
+                        new Metric("Absolute linear determinant", MetricKind.Number, sdkResult.LinearDeterminantAbsolute, "ratio"),
+                        new Metric("Arithmetic RMS residual", MetricKind.Deviation, sdkResult.ArithmeticRmsResidual, input.PublishedCorrespondenceSet.ReferenceUnit),
+                        new Metric("Arithmetic maximum residual", MetricKind.Deviation, sdkResult.ArithmeticMaximumResidual, input.PublishedCorrespondenceSet.ReferenceUnit, warning ? ResultStatus.Warning : ResultStatus.Pass)
                     ],
                     residuals.Select(residual => new Overlay(
                         $"{input.OutputEntityId}.{residual.ReferenceLandmarkId}",
@@ -169,7 +169,7 @@ public static class C3DAffineSolveRule
 
     private static C3DAffineLandmarkResidual CreateResidual(
         C3DLandmarkCorrespondencePair pair,
-        NoahAffineResidual residual)
+        SdkAffineResidual residual)
     {
         return new C3DAffineLandmarkResidual(
             pair.SourceEntityId, pair.SourceOutputRole, pair.SourceContentSha256, pair.ReferenceLandmarkId,

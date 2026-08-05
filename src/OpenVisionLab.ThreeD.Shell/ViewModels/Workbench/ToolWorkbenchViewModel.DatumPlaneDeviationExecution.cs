@@ -6,7 +6,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 /// <summary>
 /// Owns explicit Preview/Publish state for one typed, raw-height datum-plane
-/// result. The numerical residual calculation remains in Library-Noah.
+/// result. The numerical residual calculation remains in OpenVisionLab Vision SDK.
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
 {

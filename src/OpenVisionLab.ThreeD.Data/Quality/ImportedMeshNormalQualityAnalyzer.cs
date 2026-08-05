@@ -1,13 +1,13 @@
 using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
-using NoahQualityState = Lib.ThreeD.FeatureExtraction.DeclaredMeshNormalQualityState;
-using NoahQualityTool = Lib.ThreeD.FeatureExtraction.DeclaredMeshNormalQualityTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
+using SdkQualityState = OpenVisionLab.Vision3D.FeatureExtraction.DeclaredMeshNormalQualityState;
+using SdkQualityTool = OpenVisionLab.Vision3D.FeatureExtraction.DeclaredMeshNormalQualityTool;
 
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
-/// Adapts Studio source identity and report policy to the source-neutral Noah
+/// Adapts Studio source identity and report policy to the source-neutral Sdk
 /// declared-normal quality Tool. It never repairs, generates, or mutates a
 /// normal channel.
 /// </summary>
@@ -71,20 +71,20 @@ public static class ImportedMeshNormalQualityAnalyzer
                 "Minimum alignment cosine must be finite and between -1 and 1.");
         }
 
-        var evaluation = new NoahQualityTool().Execute(
-            positions.Select(ToNoahPoint).ToArray(),
+        var evaluation = new SdkQualityTool().Execute(
+            positions.Select(ToSdkPoint).ToArray(),
             indices,
-            normals.Select(ToNoahPoint).ToArray(),
+            normals.Select(ToSdkPoint).ToArray(),
             normalPresence,
             unitLengthTolerance,
             minimumAlignmentCosine);
         var state = evaluation.State switch
         {
-            NoahQualityState.Unavailable => SourceNormalQualityState.Unavailable,
-            NoahQualityState.Valid => SourceNormalQualityState.Valid,
-            NoahQualityState.Invalid => SourceNormalQualityState.Invalid,
+            SdkQualityState.Unavailable => SourceNormalQualityState.Unavailable,
+            SdkQualityState.Valid => SourceNormalQualityState.Valid,
+            SdkQualityState.Invalid => SourceNormalQualityState.Invalid,
             _ => throw new InvalidDataException(
-                $"Unsupported Noah declared-normal quality state: {evaluation.State}.")
+                $"Unsupported Sdk declared-normal quality state: {evaluation.State}.")
         };
         if (state == SourceNormalQualityState.Unavailable)
         {
@@ -135,7 +135,7 @@ public static class ImportedMeshNormalQualityAnalyzer
             evidence);
     }
 
-    private static NoahPoint ToNoahPoint(Vector3 point) =>
+    private static SdkPoint ToSdkPoint(Vector3 point) =>
         new(point.X, point.Y, point.Z);
 
     private static double? Nullable(double value) =>

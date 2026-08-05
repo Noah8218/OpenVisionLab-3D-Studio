@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenVisionLab.ThreeD.Core;
-using NoahLandmarkTool = Lib.ThreeD.FeatureExtraction.LandmarkCorrespondenceValidationTool;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using SdkLandmarkTool = OpenVisionLab.Vision3D.FeatureExtraction.LandmarkCorrespondenceValidationTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -50,12 +50,12 @@ public static class C3DLandmarkCorrespondenceRule
                     references[index].Y,
                     references[index].Z))
                 .ToArray();
-            var independence = new NoahLandmarkTool().Execute(
-                pairs.Select(pair => new NoahPoint(
+            var independence = new SdkLandmarkTool().Execute(
+                pairs.Select(pair => new SdkPoint(
                     pair.SourceX,
                     pair.SourceY,
                     pair.SourceZ)).ToArray(),
-                pairs.Select(pair => new NoahPoint(
+                pairs.Select(pair => new SdkPoint(
                     pair.ReferenceX,
                     pair.ReferenceY,
                     pair.ReferenceZ)).ToArray(),

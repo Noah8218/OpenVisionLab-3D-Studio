@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -17,7 +17,7 @@ public sealed record C3DMedianFilterEvaluation(
 
 /// <summary>
 /// C3D lineage/result adapter. Finite/NaN median window arithmetic lives only
-/// in Library-Noah; Studio owns C3D zero/missing policy, typed artifacts,
+/// in OpenVisionLab Vision SDK; Studio owns C3D zero/missing policy, typed artifacts,
 /// recipe identity, and explicit lifecycle evidence.
 /// </summary>
 public static class C3DMedianFilterRule

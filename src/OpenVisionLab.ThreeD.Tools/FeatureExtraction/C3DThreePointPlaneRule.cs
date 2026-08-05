@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
-using NoahThreePointPlaneInput = Lib.ThreeD.FeatureExtraction.ThreePointPlaneInput;
-using NoahThreePointPlaneTool = Lib.ThreeD.FeatureExtraction.ThreePointPlaneTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
+using SdkThreePointPlaneInput = OpenVisionLab.Vision3D.FeatureExtraction.ThreePointPlaneInput;
+using SdkThreePointPlaneTool = OpenVisionLab.Vision3D.FeatureExtraction.ThreePointPlaneTool;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -17,7 +17,7 @@ public sealed record C3DThreePointPlaneInput(
 public sealed record C3DThreePointPlaneEvaluation(ToolResult Result, C3DThreePointPlaneFeature? Output);
 
 /// <summary>
-/// Typed Studio adapter for Library-Noah's ordered three-point construction.
+/// Typed Studio adapter for OpenVisionLab Vision SDK's ordered three-point construction.
 /// It resolves current raw C3D values only; it never fits a region, applies a
 /// plane, or creates a measurement/acceptance result.
 /// </summary>
@@ -34,13 +34,13 @@ public static class C3DThreePointPlaneRule
             var first = ResolvePoint(input.RawSource, points[0].Locator);
             var second = ResolvePoint(input.RawSource, points[1].Locator);
             var third = ResolvePoint(input.RawSource, points[2].Locator);
-            var noahResult = new NoahThreePointPlaneTool().Execute(
-                new NoahThreePointPlaneInput(first, second, third),
+            var sdkResult = new SdkThreePointPlaneTool().Execute(
+                new SdkThreePointPlaneInput(first, second, third),
                 cancellationToken);
-            if (!noahResult.Success || noahResult.Anchor is null || noahResult.Normal is null
-                || noahResult.SupportSecond is null || noahResult.SupportThird is null)
+            if (!sdkResult.Success || sdkResult.Anchor is null || sdkResult.Normal is null
+                || sdkResult.SupportSecond is null || sdkResult.SupportThird is null)
             {
-                throw new InvalidDataException(noahResult.Message);
+                throw new InvalidDataException(sdkResult.Message);
             }
 
             var selectionHash = C3DThreePointPlaneFeature.CalculateSelectionContentSha256(input.PointSelection);
@@ -58,20 +58,20 @@ public static class C3DThreePointPlaneRule
                 points[1].Locator.Column,
                 points[2].Locator.Row,
                 points[2].Locator.Column,
-                noahResult.Anchor.X,
-                noahResult.Anchor.Y,
-                noahResult.Anchor.Z,
-                noahResult.Normal.X,
-                noahResult.Normal.Y,
-                noahResult.Normal.Z,
-                noahResult.PlaneOffset,
-                noahResult.SupportSecond.X,
-                noahResult.SupportSecond.Y,
-                noahResult.SupportSecond.Z,
-                noahResult.SupportThird.X,
-                noahResult.SupportThird.Y,
-                noahResult.SupportThird.Z,
-                noahResult.NormalizedCrossMagnitude,
+                sdkResult.Anchor.X,
+                sdkResult.Anchor.Y,
+                sdkResult.Anchor.Z,
+                sdkResult.Normal.X,
+                sdkResult.Normal.Y,
+                sdkResult.Normal.Z,
+                sdkResult.PlaneOffset,
+                sdkResult.SupportSecond.X,
+                sdkResult.SupportSecond.Y,
+                sdkResult.SupportSecond.Z,
+                sdkResult.SupportThird.X,
+                sdkResult.SupportThird.Y,
+                sdkResult.SupportThird.Z,
+                sdkResult.NormalizedCrossMagnitude,
                 input.OutputRole,
                 $"{input.StepId}:ThreePointPlane:{C3DThreePointPlaneFeature.ContractVersion}:policy={C3DThreePointPlaneFeature.ConstructionPolicyName}:selection={selectionHash}:source={input.RawSource.RootSourceSha256}");
             stopwatch.Stop();
@@ -99,14 +99,14 @@ public static class C3DThreePointPlaneRule
         }
     }
 
-    private static NoahPoint ResolvePoint(C3DHeightFieldSnapshot source, ToolRecipeGridCellLocator locator)
+    private static SdkPoint ResolvePoint(C3DHeightFieldSnapshot source, ToolRecipeGridCellLocator locator)
     {
         var height = source.Values.Span[checked(locator.Row * source.Width + locator.Column)];
         if (!double.IsFinite(height))
         {
             throw new InvalidDataException($"3-Point Plane selected cell ({locator.Row}, {locator.Column}) has no current finite raw-height value.");
         }
-        return new NoahPoint(locator.Column, height, locator.Row);
+        return new SdkPoint(locator.Column, height, locator.Row);
     }
 
     private static void Validate(C3DThreePointPlaneInput input)

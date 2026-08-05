@@ -51,9 +51,9 @@ $env:NUGET_PACKAGES = 'C:\nuget'
 dotnet restore OpenVisionLab.ThreeDStudio.sln
 ```
 
-Do not point the solution at an adjacent `Library-Noah` checkout. The repository
-contains the exact vendored `Lib.ThreeD` package and checksum required by the
-current source.
+Do not point the solution at an adjacent `OpenVisionLab-Vision-SDK` checkout.
+The repository contains the exact vendored `OpenVisionLab.Vision3D` package
+and checksum required by the current source.
 
 ## 3. Restore and build
 
@@ -74,6 +74,7 @@ dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -p:Platform="Any CPU"
 For code-ownership and algorithm-boundary changes, also run:
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-vision-sdk-package.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-code-structure.ps1
 ```
 
@@ -152,7 +153,7 @@ dotnet run --no-build --project $runnerProject -c Release -- --verify-c3d-map-fi
 dotnet run --no-build --project $runnerProject -c Release -- --verify-mesh-deviation --report "$artifactDir\mesh-deviation.txt"
 dotnet run --no-build --project $runnerProject -c Release -- --verify-nominal-actual-comparison --report "$artifactDir\nominal-actual.txt"
 dotnet run --no-build --project $runnerProject -c Release -- --verify-registration-acceptance --report "$artifactDir\registration-acceptance.txt"
-dotnet run --no-build --project $runnerProject -c Release -- --verify-library-noah-3d --report "$artifactDir\library-noah-3d.txt"
+dotnet run --no-build --project $runnerProject -c Release -- --verify-vision-sdk-3d --report "$artifactDir\vision-sdk-3d.txt"
 dotnet run --no-build --project $runnerProject -c Release -- --verify-surface-edge-acquisition-direction --report "$artifactDir\surface-edge-acquisition-direction.txt"
 ```
 
@@ -250,8 +251,8 @@ Actions result after pushing when the user has explicitly authorized a push.
 - [ ] The smallest relevant focused checks pass.
 - [ ] Structural changes pass `verify-code-structure.ps1`.
 - [ ] UI changes include fresh Wide and Compact current-build evidence.
-- [ ] Algorithm work remains owned by committed Library-Noah source and the
-      verified vendored `Lib.ThreeD` package.
+- [ ] Algorithm work remains owned by committed OpenVisionLab-Vision-SDK source
+      and the verified vendored `OpenVisionLab.Vision3D` package.
 - [ ] Test outputs are D-backed on the project workstation, or the fallback is
       recorded.
 - [ ] `git diff --check` passes.

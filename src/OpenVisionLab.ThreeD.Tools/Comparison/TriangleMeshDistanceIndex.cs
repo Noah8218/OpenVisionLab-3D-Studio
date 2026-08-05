@@ -1,5 +1,5 @@
 using System.Numerics;
-using Noah = Lib.ThreeD.FeatureExtraction;
+using Sdk = OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -23,9 +23,9 @@ public readonly record struct PointMeshDistance(
 
 public sealed class TriangleMeshDistanceIndex
 {
-    public const double RobustSignDistanceEpsilon = Noah.TriangleMeshDistanceTool.RobustSignDistanceEpsilon;
+    public const double RobustSignDistanceEpsilon = Sdk.TriangleMeshDistanceTool.RobustSignDistanceEpsilon;
 
-    private readonly Noah.TriangleMeshDistanceTool _tool;
+    private readonly Sdk.TriangleMeshDistanceTool _tool;
 
     public TriangleMeshDistanceIndex(IReadOnlyList<MeshTriangle> triangles)
     {
@@ -37,44 +37,44 @@ public sealed class TriangleMeshDistanceIndex
                 nameof(triangles));
         }
 
-        _tool = new Noah.TriangleMeshDistanceTool(
-            triangles.Select(ToNoah).ToArray());
+        _tool = new Sdk.TriangleMeshDistanceTool(
+            triangles.Select(ToSdk).ToArray());
     }
 
     public int TriangleCount => _tool.TriangleCount;
 
     public PointMeshDistance FindClosest(Vector3 point) =>
-        ToStudio(_tool.Execute(ToNoah(point)));
+        ToStudio(_tool.Execute(ToSdk(point)));
 
     public PointMeshDistance ResolveRobustSign(Vector3 point, double nearestUnsignedDistance) =>
-        ToStudio(_tool.ExecuteRobustSign(ToNoah(point), nearestUnsignedDistance));
+        ToStudio(_tool.ExecuteRobustSign(ToSdk(point), nearestUnsignedDistance));
 
-    private static Noah.MeshTriangle ToNoah(MeshTriangle triangle) =>
+    private static Sdk.MeshTriangle ToSdk(MeshTriangle triangle) =>
         new(
             triangle.SourceTriangleIndex,
-            ToNoah(triangle.A),
-            ToNoah(triangle.B),
-            ToNoah(triangle.C));
+            ToSdk(triangle.A),
+            ToSdk(triangle.B),
+            ToSdk(triangle.C));
 
-    private static Noah.ThreeDPoint ToNoah(Vector3 point) =>
+    private static Sdk.ThreeDPoint ToSdk(Vector3 point) =>
         new(point.X, point.Y, point.Z);
 
-    private static PointMeshDistance ToStudio(Noah.PointMeshDistance distance) =>
+    private static PointMeshDistance ToStudio(Sdk.PointMeshDistance distance) =>
         new(
             distance.SourceTriangleIndex,
             ToStudio(distance.ClosestPoint),
             ToStudio(distance.TriangleNormal),
             distance.ClosestFeature switch
             {
-                Noah.MeshClosestFeature.FaceInterior => MeshClosestFeature.FaceInterior,
-                Noah.MeshClosestFeature.Edge => MeshClosestFeature.Edge,
-                Noah.MeshClosestFeature.Vertex => MeshClosestFeature.Vertex,
-                _ => throw new InvalidDataException($"Unsupported Noah closest feature: {distance.ClosestFeature}")
+                Sdk.MeshClosestFeature.FaceInterior => MeshClosestFeature.FaceInterior,
+                Sdk.MeshClosestFeature.Edge => MeshClosestFeature.Edge,
+                Sdk.MeshClosestFeature.Vertex => MeshClosestFeature.Vertex,
+                _ => throw new InvalidDataException($"Unsupported Sdk closest feature: {distance.ClosestFeature}")
             },
             distance.UnsignedDistance,
             distance.SignedDistance,
             distance.SignResolved);
 
-    private static Vector3 ToStudio(Noah.ThreeDPoint point) =>
+    private static Vector3 ToStudio(Sdk.ThreeDPoint point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
 }

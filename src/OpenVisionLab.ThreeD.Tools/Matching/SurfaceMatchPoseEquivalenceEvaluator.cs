@@ -1,10 +1,10 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Strict model/unit/frame adapter over Library-Noah pose-symmetry arithmetic.
+/// Strict model/unit/frame adapter over OpenVisionLab Vision SDK pose-symmetry arithmetic.
 /// </summary>
 public static class SurfaceMatchPoseEquivalenceEvaluator
 {
@@ -50,9 +50,9 @@ public static class SurfaceMatchPoseEquivalenceEvaluator
         }
 
         var result = new RigidPoseSymmetryEquivalenceTool().Execute(
-            LibraryNoahSurfaceMatching.Pose(referencePose),
-            LibraryNoahSurfaceMatching.Pose(candidatePose),
-            LibraryNoahSurfaceMatching.SymmetryEquivalenceOptions(
+            VisionSdkSurfaceMatching.Pose(referencePose),
+            VisionSdkSurfaceMatching.Pose(candidatePose),
+            VisionSdkSurfaceMatching.SymmetryEquivalenceOptions(
                 model,
                 maximumTranslationDifference,
                 maximumRotationDifferenceDegrees));

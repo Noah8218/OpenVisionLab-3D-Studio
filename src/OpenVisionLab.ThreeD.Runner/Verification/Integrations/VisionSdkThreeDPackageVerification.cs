@@ -1,13 +1,13 @@
 using System.Globalization;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
 
-internal static class LibraryNoahThreeDPackageVerification
+internal static class VisionSdkThreeDPackageVerification
 {
     private const string Unit = "mm";
-    private const string FrameId = "frame.synthetic-library-noah";
-    private const string SourceId = "source.synthetic-library-noah";
+    private const string FrameId = "frame.synthetic-vision-sdk";
+    private const string SourceId = "source.synthetic-vision-sdk";
 
     public static int Run(string reportPath)
     {
@@ -54,24 +54,24 @@ internal static class LibraryNoahThreeDPackageVerification
         var status = passed == results.Length ? "Pass" : "Fail";
         var lines = new List<string>
         {
-            $"LibraryNoahThreeDPackageVerification|{status}|cases={results.Length}|passed={passed}|failed={results.Length - passed}",
-            $"Package|id={LibraryNoahHeightMapInspection.PackageId}|version={LibraryNoahHeightMapInspection.PackageVersion}|assembly={LibraryNoahHeightMapInspection.PackageAssemblyName}|sourceCommit={LibraryNoahHeightMapInspection.PackageSourceCommit}|target=netstandard2.0"
+            $"VisionSdkThreeDPackageVerification|{status}|cases={results.Length}|passed={passed}|failed={results.Length - passed}",
+            $"Package|id={VisionSdkHeightMapInspection.PackageId}|version={VisionSdkHeightMapInspection.PackageVersion}|assembly={VisionSdkHeightMapInspection.PackageAssemblyName}|sourceCommit={VisionSdkHeightMapInspection.PackageSourceCommit}|target=netstandard2.0"
         };
         lines.AddRange(results.Select(item => $"Case|{item.Name}|{(item.Passed ? "Pass" : "Fail")}|{item.Evidence}"));
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
         File.WriteAllLines(reportPath, lines);
-        Console.WriteLine($"Library-Noah 3D package verification: {status} ({passed}/{results.Length})");
+        Console.WriteLine($"OpenVisionLab Vision SDK 3D package verification: {status} ({passed}/{results.Length})");
         return passed == results.Length ? 0 : 5;
     }
 
     private static (bool Passed, string Evidence) VerifyPackageIdentity()
     {
-        var passed = LibraryNoahHeightMapInspection.PackageAssemblyName == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageId == "Lib.ThreeD"
-            && LibraryNoahHeightMapInspection.PackageVersion == "2.9.1"
-            && LibraryNoahHeightMapInspection.PackageSourceCommit == "9dd95690d3e439b459c39aea99878880cdcc5808";
-        return (passed, $"assembly={LibraryNoahHeightMapInspection.PackageAssemblyName},version={LibraryNoahHeightMapInspection.PackageVersion},commit={LibraryNoahHeightMapInspection.PackageSourceCommit}");
+        var passed = VisionSdkHeightMapInspection.PackageAssemblyName == "OpenVisionLab.Vision3D"
+            && VisionSdkHeightMapInspection.PackageId == "OpenVisionLab.Vision3D"
+            && VisionSdkHeightMapInspection.PackageVersion == "3.0.0"
+            && VisionSdkHeightMapInspection.PackageSourceCommit == "f34fdf912ff38fe20f36dbb063837e14b4f922b3";
+        return (passed, $"assembly={VisionSdkHeightMapInspection.PackageAssemblyName},version={VisionSdkHeightMapInspection.PackageVersion},commit={VisionSdkHeightMapInspection.PackageSourceCommit}");
     }
 
     private static (bool Passed, string Evidence)
@@ -477,10 +477,10 @@ internal static class LibraryNoahThreeDPackageVerification
         return (passed, $"success={result.Success},candidates={result.Candidates.Count},minimum={minimum.Minimum:R}:{minimum.ErrorCount},maximum={maximum.Maximum:R}:{maximum.ErrorCount},range={range.Minimum:R}..{range.Maximum:R}:{range.ErrorCount}");
     }
 
-    private static (bool Passed, string Evidence) VerifyThicknessPass(LibraryNoahHeightMapInput source)
+    private static (bool Passed, string Evidence) VerifyThicknessPass(VisionSdkHeightMapInput source)
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source, null, 0.9, 1.2));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source, null, 0.9, 1.2));
         var passed = evaluation.Result.Status == ResultStatus.Pass
             && evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "Passed"
@@ -494,10 +494,10 @@ internal static class LibraryNoahThreeDPackageVerification
         return (passed, Evidence(evaluation));
     }
 
-    private static (bool Passed, string Evidence) VerifyThicknessFailure(LibraryNoahHeightMapInput source)
+    private static (bool Passed, string Evidence) VerifyThicknessFailure(VisionSdkHeightMapInput source)
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source, null, 1.02, 1.12));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source, null, 1.02, 1.12));
         var passed = evaluation.Result.Status == ResultStatus.Fail
             && evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "Failed"
@@ -506,10 +506,10 @@ internal static class LibraryNoahThreeDPackageVerification
         return (passed, Evidence(evaluation));
     }
 
-    private static (bool Passed, string Evidence) VerifyInvalidRoi(LibraryNoahHeightMapInput source)
+    private static (bool Passed, string Evidence) VerifyInvalidRoi(VisionSdkHeightMapInput source)
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source, new LibraryNoahGridRoi(1, 1, 2, 2), 0.9, 1.2));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source, new VisionSdkGridRoi(1, 1, 2, 2), 0.9, 1.2));
         var passed = evaluation.Result.Status == ResultStatus.Error
             && !evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "InvalidRoi"
@@ -517,10 +517,10 @@ internal static class LibraryNoahThreeDPackageVerification
         return (passed, Evidence(evaluation));
     }
 
-    private static (bool Passed, string Evidence) VerifyMissingUnit(LibraryNoahHeightMapInput source)
+    private static (bool Passed, string Evidence) VerifyMissingUnit(VisionSdkHeightMapInput source)
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source with { Unit = string.Empty }, null, 0.9, 1.2));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source with { Unit = string.Empty }, null, 0.9, 1.2));
         var passed = evaluation.Result.Status == ResultStatus.Error
             && !evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "BridgeError"
@@ -534,13 +534,13 @@ internal static class LibraryNoahThreeDPackageVerification
         {
             PlanarUnit = "grid-index",
             HeightUnit = "raw-height",
-            ExpectedContract = new LibraryNoahHeightMapContract(
+            ExpectedContract = new VisionSdkHeightMapContract(
                 "grid-index",
                 "raw-height",
                 FrameId)
         };
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source, null, 0.9, 1.2, MinimumValidCoverageRatio: 0.75));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source, null, 0.9, 1.2, MinimumValidCoverageRatio: 0.75));
         var passed = evaluation.Result.Status == ResultStatus.Pass
             && evaluation.HasMeasurement
             && evaluation.PlanarUnit == "grid-index"
@@ -559,13 +559,13 @@ internal static class LibraryNoahThreeDPackageVerification
         {
             PlanarUnit = "grid-index",
             HeightUnit = "raw-height",
-            ExpectedContract = new LibraryNoahHeightMapContract(
+            ExpectedContract = new VisionSdkHeightMapContract(
                 "mm",
                 "raw-height",
                 FrameId)
         };
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(source, null, 0.9, 1.2));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(source, null, 0.9, 1.2));
         var passed = evaluation.Result.Status == ResultStatus.Error
             && !evaluation.HasMeasurement
             && evaluation.PackageResultStatus == "InvalidInput"
@@ -577,8 +577,8 @@ internal static class LibraryNoahThreeDPackageVerification
 
     private static (bool Passed, string Evidence) VerifyStrictCoverageGate()
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(
+        var evaluation = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(
                 CreateSource(2, 2, [1.0, double.NaN, 1.1, double.NaN]),
                 null,
                 0.9,
@@ -603,8 +603,8 @@ internal static class LibraryNoahThreeDPackageVerification
             PlanarUnit = "grid-index",
             HeightUnit = "raw-height"
         };
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateDatumPlaneRawHeightDeviation(
-            new LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
+        var evaluation = VisionSdkHeightMapInspection.EvaluateDatumPlaneRawHeightDeviation(
+            new VisionSdkDatumPlaneRawHeightDeviationInspectionInput(
                 source,
                 null,
                 0.0,
@@ -622,8 +622,8 @@ internal static class LibraryNoahThreeDPackageVerification
 
     private static (bool Passed, string Evidence) VerifyWarpagePlane()
     {
-        var evaluation = LibraryNoahHeightMapInspection.EvaluateWarpage(
-            new LibraryNoahWarpageInspectionInput(CreatePlanarSource(), null, 0.000001, 0.000001));
+        var evaluation = VisionSdkHeightMapInspection.EvaluateWarpage(
+            new VisionSdkWarpageInspectionInput(CreatePlanarSource(), null, 0.000001, 0.000001));
         var passed = evaluation.Result.Status == ResultStatus.Pass
             && evaluation.HasMeasurement
             && Approximately(Metric(evaluation, "PeakToValley"), 0.0)
@@ -637,10 +637,10 @@ internal static class LibraryNoahThreeDPackageVerification
     {
         var residualValues = CreatePlanarValues();
         residualValues[^1] += 0.1;
-        var failure = LibraryNoahHeightMapInspection.EvaluateWarpage(
-            new LibraryNoahWarpageInspectionInput(CreateSource(3, 3, residualValues), null, 0.001));
-        var insufficient = LibraryNoahHeightMapInspection.EvaluateWarpage(
-            new LibraryNoahWarpageInspectionInput(
+        var failure = VisionSdkHeightMapInspection.EvaluateWarpage(
+            new VisionSdkWarpageInspectionInput(CreateSource(3, 3, residualValues), null, 0.001));
+        var insufficient = VisionSdkHeightMapInspection.EvaluateWarpage(
+            new VisionSdkWarpageInspectionInput(
                 CreateSource(2, 2, [double.NaN, double.NaN, double.NaN, 1.0]),
                 null,
                 0.001,
@@ -654,13 +654,13 @@ internal static class LibraryNoahThreeDPackageVerification
         return (passed, $"failure=({Evidence(failure)}),insufficient=({Evidence(insufficient)})");
     }
 
-    private static LibraryNoahHeightMapInput CreateThicknessSource() =>
+    private static VisionSdkHeightMapInput CreateThicknessSource() =>
         CreateSource(2, 2, [1.0, 1.1, 1.05, 1.2]);
 
-    private static LibraryNoahHeightMapInput CreatePlanarSource() =>
+    private static VisionSdkHeightMapInput CreatePlanarSource() =>
         CreateSource(3, 3, CreatePlanarValues());
 
-    private static LibraryNoahHeightMapInput CreateSource(int rows, int columns, IReadOnlyList<double> values) =>
+    private static VisionSdkHeightMapInput CreateSource(int rows, int columns, IReadOnlyList<double> values) =>
         new(SourceId, rows, columns, 0.0, 0.0, 1.0, 1.0, values, Unit, FrameId);
 
     private static double[] CreatePlanarValues()
@@ -677,16 +677,16 @@ internal static class LibraryNoahThreeDPackageVerification
         return values;
     }
 
-    private static double Metric(LibraryNoahInspectionEvaluation evaluation, string name) =>
+    private static double Metric(VisionSdkInspectionEvaluation evaluation, string name) =>
         evaluation.Result.Metrics.Single(metric => metric.Name == name).Value;
 
-    private static string MetricUnit(LibraryNoahInspectionEvaluation evaluation, string name) =>
+    private static string MetricUnit(VisionSdkInspectionEvaluation evaluation, string name) =>
         evaluation.Result.Metrics.Single(metric => metric.Name == name).Unit;
 
     private static bool Approximately(double actual, double expected, double tolerance = 1e-9) =>
         double.IsFinite(actual) && Math.Abs(actual - expected) <= tolerance;
 
-    private static string Evidence(LibraryNoahInspectionEvaluation evaluation) =>
+    private static string Evidence(VisionSdkInspectionEvaluation evaluation) =>
         $"status={evaluation.Result.Status},hasMeasurement={evaluation.HasMeasurement},packageStatus={evaluation.PackageResultStatus},error={evaluation.PackageErrorCode},planarUnit={evaluation.PlanarUnit},heightUnit={evaluation.HeightUnit},coordinateConvention={evaluation.CoordinateConvention},metrics={string.Join(',', evaluation.Result.Metrics.Select(metric => $"{metric.Name}={metric.Value.ToString("R", CultureInfo.InvariantCulture)}[{metric.Unit}]"))}";
 
     private static (bool Passed, string Evidence) Check(string name, Func<(bool Passed, string Evidence)> verify)

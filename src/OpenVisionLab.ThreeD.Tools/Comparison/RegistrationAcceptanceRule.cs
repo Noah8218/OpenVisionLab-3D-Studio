@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using OpenVisionLab.ThreeD.Core;
-using Noah = Lib.ThreeD.FeatureExtraction;
+using Sdk = OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -54,7 +54,7 @@ public static class RegistrationAcceptanceRule
     private const string DeterminantMetric = "Rotation determinant";
     private const string TranslationMetric = "Translation magnitude";
     private const string RotationMetric = "Rotation angle";
-    private static readonly Noah.RigidTransformDiagnosticsTool TransformDiagnostics = new();
+    private static readonly Sdk.RigidTransformDiagnosticsTool TransformDiagnostics = new();
 
     public static RegistrationAcceptanceEvaluation Evaluate(
         RegistrationAcceptancePolicy? policy,
@@ -283,7 +283,7 @@ public static class RegistrationAcceptanceRule
 
     private static bool TryMeasureTransform(
         IReadOnlyList<double>? values,
-        out Noah.RigidTransformDiagnosticsResult measures,
+        out Sdk.RigidTransformDiagnosticsResult measures,
         out string message)
     {
         measures = TransformDiagnostics.Execute(values!);

@@ -1,4 +1,4 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 
@@ -92,7 +92,7 @@ public sealed class C3DHeightDistribution
             || summary.BinUpperBounds.Count != summary.Bins.Count)
         {
             throw new InvalidDataException(
-                "C3D height distribution requires a completed Library-Noah height-grid summary.");
+                "C3D height distribution requires a completed OpenVisionLab Vision SDK height-grid summary.");
         }
 
         return new C3DHeightDistribution(

@@ -1,50 +1,50 @@
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
-using NoahCoverage = Lib.ThreeD.FeatureExtraction.DeterministicSurfaceCoverageResult;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
-using NoahPose = Lib.ThreeD.FeatureExtraction.RigidSurfacePose;
-using NoahSample = Lib.ThreeD.FeatureExtraction.SurfaceMatchSample;
-using NoahSearchOptions = Lib.ThreeD.FeatureExtraction.DeterministicRigidSurfacePoseSearchOptions;
-using NoahMultipleSearchOptions = Lib.ThreeD.FeatureExtraction.DeterministicMultipleSurfaceMatchOptions;
-using NoahSymmetry = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetry;
-using NoahSymmetryAxis = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryAxis;
-using NoahSymmetryKind = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryKind;
-using NoahSymmetryOptions = Lib.ThreeD.FeatureExtraction.RigidPoseSymmetryEquivalenceOptions;
+using SdkCoverage = OpenVisionLab.Vision3D.FeatureExtraction.DeterministicSurfaceCoverageResult;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
+using SdkPose = OpenVisionLab.Vision3D.FeatureExtraction.RigidSurfacePose;
+using SdkSample = OpenVisionLab.Vision3D.FeatureExtraction.SurfaceMatchSample;
+using SdkSearchOptions = OpenVisionLab.Vision3D.FeatureExtraction.DeterministicRigidSurfacePoseSearchOptions;
+using SdkMultipleSearchOptions = OpenVisionLab.Vision3D.FeatureExtraction.DeterministicMultipleSurfaceMatchOptions;
+using SdkSymmetry = OpenVisionLab.Vision3D.FeatureExtraction.RigidPoseSymmetry;
+using SdkSymmetryAxis = OpenVisionLab.Vision3D.FeatureExtraction.RigidPoseSymmetryAxis;
+using SdkSymmetryKind = OpenVisionLab.Vision3D.FeatureExtraction.RigidPoseSymmetryKind;
+using SdkSymmetryOptions = OpenVisionLab.Vision3D.FeatureExtraction.RigidPoseSymmetryEquivalenceOptions;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Strict source/unit/frame-neutral adapter between Studio artifacts and the
-/// vendored Library-Noah surface-matching kernel. It owns no matching math.
+/// vendored OpenVisionLab Vision SDK surface-matching kernel. It owns no matching math.
 /// </summary>
-internal static class LibraryNoahSurfaceMatching
+internal static class VisionSdkSurfaceMatching
 {
-    public static NoahSample[] ModelSamples(
+    public static SdkSample[] ModelSamples(
         SurfaceModelArtifact model)
     {
         ArgumentNullException.ThrowIfNull(model);
         return model.Samples
-            .Select(sample => new NoahSample(
+            .Select(sample => new SdkSample(
                 sample.Order,
                 Point(sample.Position)))
             .ToArray();
     }
 
-    public static NoahSample[] SceneSamples(
+    public static SdkSample[] SceneSamples(
         PreparedSceneArtifact scene)
     {
         ArgumentNullException.ThrowIfNull(scene);
         return scene.Samples
-            .Select(sample => new NoahSample(
+            .Select(sample => new SdkSample(
                 sample.Order,
                 Point(sample.Position)))
             .ToArray();
     }
 
-    public static NoahPose Pose(RigidPose3D pose)
+    public static SdkPose Pose(RigidPose3D pose)
     {
         ArgumentNullException.ThrowIfNull(pose);
-        return new NoahPose(
+        return new SdkPose(
             pose.M11,
             pose.M12,
             pose.M13,
@@ -60,7 +60,7 @@ internal static class LibraryNoahSurfaceMatching
     }
 
     public static RigidPose3D Pose(
-        NoahPose pose,
+        SdkPose pose,
         string unit,
         string sourceFrameId,
         string targetFrameId)
@@ -84,11 +84,11 @@ internal static class LibraryNoahSurfaceMatching
             pose.TranslationZ);
     }
 
-    public static NoahSearchOptions SearchOptions(
+    public static SdkSearchOptions SearchOptions(
         RigidSurfacePoseSearchParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
-        return new NoahSearchOptions
+        return new SdkSearchOptions
         {
             MinimumRotationXDegrees =
                 parameters.MinimumRotationXDegrees,
@@ -122,13 +122,13 @@ internal static class LibraryNoahSurfaceMatching
         };
     }
 
-    public static NoahMultipleSearchOptions MultipleSearchOptions(
+    public static SdkMultipleSearchOptions MultipleSearchOptions(
         RigidSurfacePoseSearchParameters parameters,
         int maximumMatchCount,
         int maximumExpandedCandidateCount)
     {
         ArgumentNullException.ThrowIfNull(parameters);
-        return new NoahMultipleSearchOptions
+        return new SdkMultipleSearchOptions
         {
             PoseSearchOptions = SearchOptions(parameters),
             MaximumMatchCount = maximumMatchCount,
@@ -136,7 +136,7 @@ internal static class LibraryNoahSurfaceMatching
         };
     }
 
-    public static NoahSymmetryOptions SymmetryEquivalenceOptions(
+    public static SdkSymmetryOptions SymmetryEquivalenceOptions(
         SurfaceModelArtifact model,
         double maximumTranslationDifference,
         double maximumRotationDifferenceDegrees)
@@ -147,11 +147,11 @@ internal static class LibraryNoahSurfaceMatching
             || declaration.Kind
                 == SurfaceModelSymmetryDeclaration.NoneKind)
         {
-            return new NoahSymmetryOptions
+            return new SdkSymmetryOptions
             {
-                Symmetry = new NoahSymmetry(
-                    NoahSymmetryKind.None,
-                    NoahSymmetryAxis.None,
+                Symmetry = new SdkSymmetry(
+                    SdkSymmetryKind.None,
+                    SdkSymmetryAxis.None,
                     1),
                 MaximumTranslationDifference =
                     maximumTranslationDifference,
@@ -164,17 +164,17 @@ internal static class LibraryNoahSurfaceMatching
         var axis = declaration.Axis switch
         {
             SurfaceModelSymmetryDeclaration.XAxis =>
-                NoahSymmetryAxis.X,
+                SdkSymmetryAxis.X,
             SurfaceModelSymmetryDeclaration.YAxis =>
-                NoahSymmetryAxis.Y,
+                SdkSymmetryAxis.Y,
             SurfaceModelSymmetryDeclaration.ZAxis =>
-                NoahSymmetryAxis.Z,
-            _ => NoahSymmetryAxis.None
+                SdkSymmetryAxis.Z,
+            _ => SdkSymmetryAxis.None
         };
-        return new NoahSymmetryOptions
+        return new SdkSymmetryOptions
         {
-            Symmetry = new NoahSymmetry(
-                NoahSymmetryKind.DiscreteRotation,
+            Symmetry = new SdkSymmetry(
+                SdkSymmetryKind.DiscreteRotation,
                 axis,
                 declaration.Order),
             MaximumTranslationDifference =
@@ -186,7 +186,7 @@ internal static class LibraryNoahSurfaceMatching
     }
 
     public static SurfaceCoverageEvaluation Coverage(
-        NoahCoverage coverage)
+        SdkCoverage coverage)
     {
         ArgumentNullException.ThrowIfNull(coverage);
         if (!coverage.Success)
@@ -195,12 +195,12 @@ internal static class LibraryNoahSurfaceMatching
         }
 
         if (!string.Equals(
-                NoahCoverage.Semantics,
+                SdkCoverage.Semantics,
                 SurfaceCoverageEvaluation.CurrentSemantics,
                 StringComparison.Ordinal))
         {
             throw new InvalidDataException(
-                "Library-Noah surface coverage semantics do not match the Studio contract.");
+                "OpenVisionLab Vision SDK surface coverage semantics do not match the Studio contract.");
         }
 
         double? inlierRmse = coverage.HasInlierRmse
@@ -232,9 +232,9 @@ internal static class LibraryNoahSurfaceMatching
             evidence);
     }
 
-    public static NoahPoint Point(SurfaceModelPoint3 point)
+    public static SdkPoint Point(SurfaceModelPoint3 point)
     {
         ArgumentNullException.ThrowIfNull(point);
-        return new NoahPoint(point.X, point.Y, point.Z);
+        return new SdkPoint(point.X, point.Y, point.Z);
     }
 }

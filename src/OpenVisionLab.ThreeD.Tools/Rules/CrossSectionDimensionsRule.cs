@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
-using Lib.ThreeD.Inspection;
+using OpenVisionLab.Vision3D.Inspection;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;

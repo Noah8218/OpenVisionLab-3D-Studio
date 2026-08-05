@@ -130,9 +130,10 @@ dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -p:Platform="Any CPU"
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release
 ```
 
-The repository contains the vendored `Lib.ThreeD` and WPF PropertyGrid
-packages required by the solution. A separate `Library-Noah` checkout is not
-required to build or run this project.
+The repository contains the vendored `OpenVisionLab.Vision3D` and WPF
+PropertyGrid packages required by the solution. A separate
+`OpenVisionLab-Vision-SDK` checkout is not required to build or run this
+project.
 
 See [system requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
 for full verification utilities, exact package IDs, short NuGet-cache guidance,

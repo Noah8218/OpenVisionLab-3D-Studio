@@ -29,9 +29,9 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Verify vendored Library-Noah package
+      - name: Verify vendored OpenVisionLab Vision SDK package
         shell: pwsh
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-library-noah-package.ps1 -ReportPath artifacts\ci\library-noah-package.txt
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-vision-sdk-package.ps1 -ReportPath artifacts\ci\vision-sdk-package.txt
 
       - name: Verify vendored WPG package
         shell: pwsh
@@ -49,8 +49,8 @@ jobs:
       - name: Build
         run: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Debug --no-restore
 
-      - name: Verify Library-Noah 3D package bridge
-        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-library-noah-3d --report artifacts\ci\library-noah-3d-package.txt
+      - name: Verify OpenVisionLab Vision SDK 3D package bridge
+        run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-vision-sdk-3d --report artifacts\ci\vision-sdk-3d-package.txt
 
       - name: Verify model key-point artifact and debug overlay
         run: dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-model-key-points --report artifacts\ci\model-key-points.txt

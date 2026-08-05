@@ -24,7 +24,7 @@ item is selected without a new owner decision.
 OpenVisionLab 3D Studio remains a local, file-first deterministic rule-based
 3D inspection workbench. Preserve explicit Preview/Publish/Run, source/result
 separation, Viewer and docking behavior, semantic-theme gates, and
-Library-Noah ownership for numerical work. Do not expand into camera, PLC,
+OpenVisionLab Vision SDK ownership for numerical work. Do not expand into camera, PLC,
 robot, cloud, or production-line platform scope.
 
 PL-0003 is a separate external maintenance blocker for re-auditing historical

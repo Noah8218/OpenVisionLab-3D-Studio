@@ -267,7 +267,7 @@ internal static class SurfaceModelSurfaceSelectionVerification
         {
             $"SurfaceModelSurfaceSelectionVerification|{(passed == cases.Length ? "PASS" : "FAIL")}|cases={cases.Length}|passed={passed}|failed={cases.Length - passed}",
             $"Contract|schema={SurfaceModelArtifact.CurrentSchemaVersion}|policy={selection.Policy}|automatic=exact-coordinate-duplicate|authored=internal,unobservable|viewpointInference=false|toleranceInference=false|sourceMutation=false|ui=false",
-            $"Noah|package=Lib.ThreeD {LibraryNoahHeightMapInspection.PackageVersion}|sourceCommit={LibraryNoahHeightMapInspection.PackageSourceCommit}|tool=DeterministicModelSurfaceSelectionTool",
+            $"Sdk|package=OpenVisionLab.Vision3D {VisionSdkHeightMapInspection.PackageVersion}|sourceCommit={VisionSdkHeightMapInspection.PackageSourceCommit}|tool=DeterministicModelSurfaceSelectionTool",
             $"Artifact|path={modelPath}|sha256={selected.ContentSha256}|sourceTriangles={selection.SourceTriangleCount}|retained={selection.RetainedSourceTriangleIndices.Length}|removed={selection.RemovedSurfaces.Length}|samples={selected.Samples.Length}",
             $"ActiveDomain|retained={string.Join(',', selection.RetainedSourceTriangleIndices)}|modelEdges={edges.Edges.Length}|overlayTriangles={execution.Overlay?.Triangles.Length}|coverage={search.Coverage.CoverageRatio:G17}"
         };

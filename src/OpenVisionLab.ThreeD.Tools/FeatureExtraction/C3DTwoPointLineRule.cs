@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
-using NoahTwoPointLineInput = Lib.ThreeD.FeatureExtraction.TwoPointLineInput;
-using NoahTwoPointLineTool = Lib.ThreeD.FeatureExtraction.TwoPointLineTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
+using SdkTwoPointLineInput = OpenVisionLab.Vision3D.FeatureExtraction.TwoPointLineInput;
+using SdkTwoPointLineTool = OpenVisionLab.Vision3D.FeatureExtraction.TwoPointLineTool;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -17,7 +17,7 @@ public sealed record C3DTwoPointLineInput(
 public sealed record C3DTwoPointLineEvaluation(ToolResult Result, C3DTwoPointLineFeature? Output);
 
 /// <summary>
-/// Typed Studio adapter for Library-Noah's ordered two-point construction.
+/// Typed Studio adapter for OpenVisionLab Vision SDK's ordered two-point construction.
 /// It resolves current raw C3D values only; it never trusts the captured
 /// height as current geometry, fits a line, or creates a measurement result.
 /// </summary>
@@ -33,12 +33,12 @@ public static class C3DTwoPointLineRule
             var points = input.PointSelection.Points!;
             var first = ResolvePoint(input.RawSource, points[0].Locator);
             var second = ResolvePoint(input.RawSource, points[1].Locator);
-            var noahResult = new NoahTwoPointLineTool().Execute(
-                new NoahTwoPointLineInput(first, second),
+            var sdkResult = new SdkTwoPointLineTool().Execute(
+                new SdkTwoPointLineInput(first, second),
                 cancellationToken);
-            if (!noahResult.Success || noahResult.Anchor is null || noahResult.Direction is null || noahResult.SegmentEnd is null)
+            if (!sdkResult.Success || sdkResult.Anchor is null || sdkResult.Direction is null || sdkResult.SegmentEnd is null)
             {
-                throw new InvalidDataException(noahResult.Message);
+                throw new InvalidDataException(sdkResult.Message);
             }
 
             var selectionHash = C3DTwoPointLineFeature.CalculateSelectionContentSha256(input.PointSelection);
@@ -54,16 +54,16 @@ public static class C3DTwoPointLineRule
                 points[0].Locator.Column,
                 points[1].Locator.Row,
                 points[1].Locator.Column,
-                noahResult.Anchor.X,
-                noahResult.Anchor.Y,
-                noahResult.Anchor.Z,
-                noahResult.Direction.X,
-                noahResult.Direction.Y,
-                noahResult.Direction.Z,
-                noahResult.SegmentEnd.X,
-                noahResult.SegmentEnd.Y,
-                noahResult.SegmentEnd.Z,
-                noahResult.SegmentLength,
+                sdkResult.Anchor.X,
+                sdkResult.Anchor.Y,
+                sdkResult.Anchor.Z,
+                sdkResult.Direction.X,
+                sdkResult.Direction.Y,
+                sdkResult.Direction.Z,
+                sdkResult.SegmentEnd.X,
+                sdkResult.SegmentEnd.Y,
+                sdkResult.SegmentEnd.Z,
+                sdkResult.SegmentLength,
                 input.OutputRole,
                 $"{input.StepId}:TwoPointLine:{C3DTwoPointLineFeature.ContractVersion}:policy={C3DTwoPointLineFeature.ConstructionPolicyName}:selection={selectionHash}:source={input.RawSource.RootSourceSha256}");
             stopwatch.Stop();
@@ -91,14 +91,14 @@ public static class C3DTwoPointLineRule
         }
     }
 
-    private static NoahPoint ResolvePoint(C3DHeightFieldSnapshot source, ToolRecipeGridCellLocator locator)
+    private static SdkPoint ResolvePoint(C3DHeightFieldSnapshot source, ToolRecipeGridCellLocator locator)
     {
         var height = source.Values.Span[checked(locator.Row * source.Width + locator.Column)];
         if (!double.IsFinite(height))
         {
             throw new InvalidDataException($"2-Point Line selected cell ({locator.Row}, {locator.Column}) has no current finite raw-height value.");
         }
-        return new NoahPoint(locator.Column, height, locator.Row);
+        return new SdkPoint(locator.Column, height, locator.Row);
     }
 
     private static void Validate(C3DTwoPointLineInput input)

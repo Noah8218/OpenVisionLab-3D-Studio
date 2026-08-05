@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
-using NoahDecision = Lib.ThreeD.FeatureExtraction.HeightDeviationDecision;
-using NoahInspectionTool = Lib.ThreeD.FeatureExtraction.HeightDeviationInspectionTool;
+using SdkDecision = OpenVisionLab.Vision3D.FeatureExtraction.HeightDeviationDecision;
+using SdkInspectionTool = OpenVisionLab.Vision3D.FeatureExtraction.HeightDeviationInspectionTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -21,7 +21,7 @@ public static class HeightDeviationRule
     public static ToolResult Evaluate(HeightDeviationRuleInput input)
     {
         var stopwatch = Stopwatch.StartNew();
-        var evaluation = new NoahInspectionTool().Execute(
+        var evaluation = new SdkInspectionTool().Execute(
             input.Min,
             input.Max,
             input.Mean,
@@ -39,7 +39,7 @@ public static class HeightDeviationRule
                 []);
         }
 
-        var status = evaluation.Decision == NoahDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
+        var status = evaluation.Decision == SdkDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
         var message = string.Create(
             CultureInfo.InvariantCulture,
             $"{input.SourceName}: peak deviation {evaluation.PeakDeviation:F3} {input.Unit}, tolerance {input.PeakTolerance:F3} {input.Unit}.");

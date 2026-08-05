@@ -1,11 +1,11 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Strict product adapter for boundary/crease extraction from immutable
-/// SurfaceModel topology. Library-Noah owns the geometry calculation.
+/// SurfaceModel topology. OpenVisionLab Vision SDK owns the geometry calculation.
 /// </summary>
 public static class ModelSurfaceEdgeExtractor
 {
@@ -30,10 +30,10 @@ public static class ModelSurfaceEdgeExtractor
                 "Model edge extraction method is unsupported.");
         }
 
-        var noahResult = new DeterministicModelSurfaceEdgeExtractionTool()
+        var sdkResult = new DeterministicModelSurfaceEdgeExtractionTool()
             .Execute(
                 model.Points
-                    .Select(LibraryNoahSurfaceMatching.Point)
+                    .Select(VisionSdkSurfaceMatching.Point)
                     .ToArray(),
                 SurfaceModelSurfaceDomain
                     .GetRetainedTriangles(model)
@@ -49,12 +49,12 @@ public static class ModelSurfaceEdgeExtractor
                         parameters.MinimumCreaseAngleDegrees,
                     IncludeBoundaryEdges = parameters.IncludeBoundaryEdges
                 });
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
-        var extracted = noahResult.Edges
+        var extracted = sdkResult.Edges
             .Select(edge => new ModelSurfaceEdgeSample(
                 edge.Order,
                 edge.FirstPointIndex,

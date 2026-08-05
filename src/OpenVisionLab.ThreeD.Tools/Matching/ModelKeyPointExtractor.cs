@@ -1,11 +1,11 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Strict identity adapter from prepared SurfaceModel samples to the public
-/// Library-Noah key-point Tool. Studio performs no selection arithmetic.
+/// OpenVisionLab Vision SDK key-point Tool. Studio performs no selection arithmetic.
 /// </summary>
 public static class ModelKeyPointExtractor
 {

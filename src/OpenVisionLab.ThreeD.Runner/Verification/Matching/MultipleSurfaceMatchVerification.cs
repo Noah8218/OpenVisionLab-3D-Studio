@@ -222,7 +222,7 @@ internal static class MultipleSurfaceMatchVerification
             $"MultipleSurfaceMatchVerification|{(passedCount == cases.Count ? "PASS" : "FAIL")}|cases={cases.Count}|passed={passedCount}|failed={cases.Count - passedCount}",
             "Boundary|Deterministic known two-object fixture; stable typed collection and disjoint scene-sample evidence; no symmetry, physical metrology, acquisition-direction, cross-hardware, production-throughput, or human-usability claim.",
             $"Collection|path={collectionPath}|id={collection.CollectionId}|sha256={collection.ContentSha256}|items={collection.Items.Length}|evaluated={collection.EvaluatedCandidateCount}",
-            $"NoahPackage|version={LibraryNoahHeightMapInspection.PackageVersion}|sourceCommit={LibraryNoahHeightMapInspection.PackageSourceCommit}"
+            $"SdkPackage|version={VisionSdkHeightMapInspection.PackageVersion}|sourceCommit={VisionSdkHeightMapInspection.PackageSourceCommit}"
         };
         lines.AddRange(cases.Select(item =>
             $"{(item.Passed ? "PASS" : "FAIL")} | {item.Name} | {item.Evidence}"));

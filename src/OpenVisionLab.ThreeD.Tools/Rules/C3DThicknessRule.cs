@@ -28,7 +28,7 @@ public sealed record C3DThicknessEvaluation(
     int AboveUpperLimitCount);
 
 /// <summary>
-/// Studio-level thickness contract. The scalar calculation is delegated to Library-Noah;
+/// Studio-level thickness contract. The scalar calculation is delegated to OpenVisionLab Vision SDK;
 /// this rule adds stable Studio result names and the taught ROI overlay contract.
 /// </summary>
 public static class C3DThicknessRule
@@ -39,9 +39,9 @@ public static class C3DThicknessRule
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        var package = LibraryNoahHeightMapInspection.EvaluateThickness(
-            new LibraryNoahThicknessInspectionInput(
-                new LibraryNoahHeightMapInput(
+        var package = VisionSdkHeightMapInspection.EvaluateThickness(
+            new VisionSdkThicknessInspectionInput(
+                new VisionSdkHeightMapInput(
                     input.SourceEntityId,
                     input.Rows,
                     input.Columns,
@@ -52,7 +52,7 @@ public static class C3DThicknessRule
                     input.Values,
                     input.Unit,
                     input.FrameId),
-                new LibraryNoahGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
+                new VisionSdkGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
                 input.Acceptance.MinimumThickness,
                 input.Acceptance.MaximumThickness,
                 input.MinimumValidSamples));

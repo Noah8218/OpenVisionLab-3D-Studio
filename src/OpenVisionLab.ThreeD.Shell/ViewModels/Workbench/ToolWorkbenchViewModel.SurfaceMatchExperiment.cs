@@ -10,7 +10,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 /// <summary>
 /// Thin Workbench command adapter over <see cref="SurfaceMatchExperimentSession"/>.
-/// The session owns comparison state; Library-Noah remains the required owner
+/// The session owns comparison state; OpenVisionLab Vision SDK remains the required owner
 /// for any future new or changed numerical matching algorithm.
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
@@ -156,7 +156,7 @@ public sealed partial class ToolWorkbenchViewModel
         try
         {
             // K-10 only orchestrates the existing shared execution boundary.
-            // Any change to matching mathematics must first move to Library-Noah.
+            // Any change to matching mathematics must first move to OpenVisionLab Vision SDK.
             var result = await Task.Run(
                 () => SurfaceMatchEvaluationExecutor.Execute(
                     published.Model,

@@ -211,11 +211,11 @@ internal static class ModelKeyPointArtifactVerification
                     StringComparison.Ordinal),
                 $"artifact={first.Semantics};overlay={overlayValidity.Evidence}"),
             Check(
-                "noah-package-provenance",
-                LibraryNoahHeightMapInspection.PackageVersion == "2.9.1"
-                && LibraryNoahHeightMapInspection.PackageSourceCommit
-                    == "9dd95690d3e439b459c39aea99878880cdcc5808",
-                $"version={LibraryNoahHeightMapInspection.PackageVersion};commit={LibraryNoahHeightMapInspection.PackageSourceCommit}")
+                "vision-sdk-package-provenance",
+                VisionSdkHeightMapInspection.PackageVersion == "3.0.0"
+                && VisionSdkHeightMapInspection.PackageSourceCommit
+                    == "f34fdf912ff38fe20f36dbb063837e14b4f922b3",
+                $"version={VisionSdkHeightMapInspection.PackageVersion};commit={VisionSdkHeightMapInspection.PackageSourceCommit}")
         };
 
         var passed = cases.Count(item => item.Passed);
@@ -223,7 +223,7 @@ internal static class ModelKeyPointArtifactVerification
         {
             $"ModelKeyPointArtifactVerification|{(passed == cases.Length ? "PASS" : "FAIL")}|cases={cases.Length}|passed={passed}|failed={cases.Length - passed}",
             $"Contract|schema={ModelKeyPointArtifact.CurrentSchemaVersion}|method={parameters.Method}|seed=lowest-source-sample-order|next=max-nearest-distance|tie=lowest-source-sample-order|minimumSeparation=strict|matchingEffect=false|ui=false",
-            $"Noah|package=Lib.ThreeD {LibraryNoahHeightMapInspection.PackageVersion}|sourceCommit={LibraryNoahHeightMapInspection.PackageSourceCommit}|tool=DeterministicModelKeyPointExtractionTool",
+            $"Sdk|package=OpenVisionLab.Vision3D {VisionSdkHeightMapInspection.PackageVersion}|sourceCommit={VisionSdkHeightMapInspection.PackageSourceCommit}|tool=DeterministicModelKeyPointExtractionTool",
             $"Artifact|path={artifactPath}|sha256={first.ContentSha256}|sourceSamples={first.SourceSampleCount}|keyPoints={first.KeyPoints.Length}|ids={string.Join(',', first.KeyPoints.Select(point => point.KeyPointId))}",
             $"Overlay|sha256={overlay.ContentSha256}|markers={overlay.Markers.Length}|frame={overlay.FrameId}|displayOnly=true"
         };

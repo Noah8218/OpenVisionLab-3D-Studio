@@ -5,7 +5,7 @@ namespace OpenVisionLab.ThreeD.Core;
 
 /// <summary>
 /// Immutable raw-C3D, recipe-owned two-point line evidence. The full-XYZ
-/// geometry is constructed by Library-Noah; this contract owns Studio source,
+/// geometry is constructed by OpenVisionLab Vision SDK; this contract owns Studio source,
 /// selection, locator, role, and canonical replay identity only.
 /// </summary>
 public sealed class C3DTwoPointLineFeature : IC3DLineGeometry

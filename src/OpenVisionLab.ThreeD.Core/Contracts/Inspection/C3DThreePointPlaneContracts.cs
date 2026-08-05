@@ -5,7 +5,7 @@ namespace OpenVisionLab.ThreeD.Core;
 
 /// <summary>
 /// Immutable raw-C3D, recipe-owned three-point plane evidence. Full-XYZ plane
-/// construction belongs to Library-Noah; this contract owns Studio source,
+/// construction belongs to OpenVisionLab Vision SDK; this contract owns Studio source,
 /// selection, locator, role, and canonical replay identity only.
 /// </summary>
 public sealed class C3DThreePointPlaneFeature

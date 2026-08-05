@@ -250,7 +250,7 @@ internal static class SurfaceMatchPoseEquivalenceVerification
         {
             $"SurfaceMatchPoseEquivalenceVerification|{(passedCount == cases.Count ? "PASS" : "FAIL")}|cases={cases.Count}|passed={passedCount}|failed={cases.Count - passedCount}",
             "Contract|semantics=model-declared-cyclic-rigid-pose-equivalence-v1|composition=reference-pose-times-model-symmetry|translation=model-origin-distance|rotation=geodesic-angle|none=direct-comparison|ui=false|matchingExecution=false",
-            $"NoahPackage|version={LibraryNoahHeightMapInspection.PackageVersion}|sourceCommit={LibraryNoahHeightMapInspection.PackageSourceCommit}",
+            $"SdkPackage|version={VisionSdkHeightMapInspection.PackageVersion}|sourceCommit={VisionSdkHeightMapInspection.PackageSourceCommit}",
             $"Fixture|model={rotational.ContentSha256}|symmetry={rotational.Symmetry?.Kind}:{rotational.Symmetry?.Axis}:{rotational.Symmetry?.Order}|reference=Rx30|candidate=Rx30*Rz90"
         };
         lines.AddRange(cases.Select(item =>

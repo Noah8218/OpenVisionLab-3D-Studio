@@ -59,7 +59,7 @@ $requiredFiles = @(
     'OpenVisionLab.ThreeD.Tools.dll',
     'OpenVisionLab.ThreeD.Viewer.dll',
     'OpenVisionLab.ThreeD.Docking.Controls.dll',
-    'Lib.ThreeD.dll',
+    'OpenVisionLab.Vision3D.dll',
     'SharpGL.dll',
     'SharpGL.WPF.dll',
     'Unofficial.laszip.netstandard.dll')

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -22,7 +22,7 @@ public sealed record C3DHeightDifferenceEdgeEvaluation(
 
 /// <summary>
 /// C3D lineage/result adapter. Adjacent-pair scan and strongest-per-scanline
-/// selection live only in Library-Noah; Studio owns the typed artifact, UI
+/// selection live only in OpenVisionLab Vision SDK; Studio owns the typed artifact, UI
 /// lifecycle, recipe identity, and overlays.
 /// </summary>
 public static class C3DHeightDifferenceEdgeRule

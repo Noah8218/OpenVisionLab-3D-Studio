@@ -1,10 +1,10 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Studio identity and contract adapter for Library-Noah's decision-free
+/// Studio identity and contract adapter for OpenVisionLab Vision SDK's decision-free
 /// one-way nominal-surface coverage algorithm.
 /// </summary>
 public static class SurfaceCoverageScorer
@@ -72,10 +72,10 @@ public static class SurfaceCoverageScorer
 
         var result = new DeterministicSurfaceCoverageTool()
             .Execute(
-                LibraryNoahSurfaceMatching.ModelSamples(model),
-                LibraryNoahSurfaceMatching.SceneSamples(scene),
-                LibraryNoahSurfaceMatching.Pose(pose),
+                VisionSdkSurfaceMatching.ModelSamples(model),
+                VisionSdkSurfaceMatching.SceneSamples(scene),
+                VisionSdkSurfaceMatching.Pose(pose),
                 maximumCorrespondenceDistance);
-        return LibraryNoahSurfaceMatching.Coverage(result);
+        return VisionSdkSurfaceMatching.Coverage(result);
     }
 }

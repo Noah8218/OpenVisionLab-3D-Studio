@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -17,7 +17,7 @@ public sealed record C3DLineFitEvaluation(ToolResult Result, C3DLineFeature? Out
 
 /// <summary>
 /// C3D lineage/result adapter. Deterministic consensus/TLS math lives only in
-/// Library-Noah; Studio owns the typed artifact, UI lifecycle, and overlays.
+/// OpenVisionLab Vision SDK; Studio owns the typed artifact, UI lifecycle, and overlays.
 /// </summary>
 public static class C3DLineFitRule
 {

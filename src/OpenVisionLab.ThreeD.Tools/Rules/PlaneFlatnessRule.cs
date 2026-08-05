@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using OpenVisionLab.ThreeD.Core;
-using NoahFlatnessTool = Lib.ThreeD.Inspection.PlaneFlatnessInspectionTool;
+using SdkFlatnessTool = OpenVisionLab.Vision3D.Inspection.PlaneFlatnessInspectionTool;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -68,12 +68,12 @@ public static class PlaneFlatnessRule
             }
         }
 
-        Lib.ThreeD.Inspection.PlaneFlatnessInspectionResult evaluation;
+        OpenVisionLab.Vision3D.Inspection.PlaneFlatnessInspectionResult evaluation;
         try
         {
-            evaluation = new NoahFlatnessTool().Execute(
-                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
-                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+            evaluation = new SdkFlatnessTool().Execute(
+                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
+                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
                 input.Tolerance);
         }
         catch (ArgumentException exception)
@@ -81,7 +81,7 @@ public static class PlaneFlatnessRule
             return Error(input, exception.Message, stopwatch.Elapsed);
         }
 
-        var referencePlane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
+        var referencePlane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
         var status = evaluation.Passed ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
 

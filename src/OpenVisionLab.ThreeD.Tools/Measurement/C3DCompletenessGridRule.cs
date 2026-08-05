@@ -1,12 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
-using NoahCompletenessCellDecision = Lib.ThreeD.FeatureExtraction.CompletenessCellDecision;
-using NoahCompletenessCoverageDisposition = Lib.ThreeD.FeatureExtraction.CompletenessCoverageDisposition;
-using NoahCompletenessGridInspectionTool = Lib.ThreeD.FeatureExtraction.CompletenessGridInspectionTool;
-using NoahCompletenessGridProfile = Lib.ThreeD.FeatureExtraction.CompletenessGridProfile;
-using NoahCompletenessHeightDisposition = Lib.ThreeD.FeatureExtraction.CompletenessHeightDisposition;
-using NoahCompletenessPresencePolicy = Lib.ThreeD.FeatureExtraction.CompletenessPresencePolicy;
-using NoahHeightGridRegion = Lib.ThreeD.FeatureExtraction.HeightGridRegion;
+using SdkCompletenessCellDecision = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessCellDecision;
+using SdkCompletenessCoverageDisposition = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessCoverageDisposition;
+using SdkCompletenessGridInspectionTool = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessGridInspectionTool;
+using SdkCompletenessGridProfile = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessGridProfile;
+using SdkCompletenessHeightDisposition = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessHeightDisposition;
+using SdkCompletenessPresencePolicy = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessPresencePolicy;
+using SdkHeightGridRegion = OpenVisionLab.Vision3D.FeatureExtraction.HeightGridRegion;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -43,13 +43,13 @@ public static class C3DCompletenessGridRule
             ValidateStudioContract(input);
             var reference = input.ReferenceSelection.GridRectangle!;
             var inspection = input.InspectionGridSelection.GridRectangle!;
-            var inspectionResult = new NoahCompletenessGridInspectionTool().Execute(
+            var inspectionResult = new SdkCompletenessGridInspectionTool().Execute(
                 input.GridHeight,
                 input.GridWidth,
                 input.Values,
-                ToNoahRegion(reference),
-                ToNoahRegion(inspection),
-                new NoahCompletenessGridProfile
+                ToSdkRegion(reference),
+                ToSdkRegion(inspection),
+                new SdkCompletenessGridProfile
                 {
                     Rows = input.Profile.Rows,
                     Columns = input.Profile.Columns,
@@ -60,7 +60,7 @@ public static class C3DCompletenessGridRule
                 },
                 input.PresencePolicy is null
                     ? null
-                    : new NoahCompletenessPresencePolicy
+                    : new SdkCompletenessPresencePolicy
                     {
                         MinimumFiniteCoverageRatio = input.PresencePolicy.MinimumFiniteCoverageRatio,
                         MinimumReferenceRelativeMeanHeight = input.PresencePolicy.MinimumReferenceRelativeMeanRawHeight,
@@ -106,8 +106,8 @@ public static class C3DCompletenessGridRule
             var failedCellCount = inspectionResult.FailedCellCount;
             var aggregateStatus = inspectionResult.AggregateDecision switch
             {
-                NoahCompletenessCellDecision.Pass => ResultStatus.Pass,
-                NoahCompletenessCellDecision.Fail => ResultStatus.Fail,
+                SdkCompletenessCellDecision.Pass => ResultStatus.Pass,
+                SdkCompletenessCellDecision.Fail => ResultStatus.Fail,
                 _ => ResultStatus.Warning
             };
             var cellOverlays = input.PresencePolicy is null
@@ -326,8 +326,8 @@ public static class C3DCompletenessGridRule
     }
 
     private static string CreateDecisionReason(
-        NoahCompletenessCoverageDisposition coverageDisposition,
-        NoahCompletenessHeightDisposition heightDisposition,
+        SdkCompletenessCoverageDisposition coverageDisposition,
+        SdkCompletenessHeightDisposition heightDisposition,
         C3DCompletenessPresencePolicy? policy,
         ResultStatus? decision)
     {
@@ -336,27 +336,27 @@ public static class C3DCompletenessGridRule
             return "No acceptance policy was authored.";
         }
 
-        var coverage = coverageDisposition == NoahCompletenessCoverageDisposition.Accepted
+        var coverage = coverageDisposition == SdkCompletenessCoverageDisposition.Accepted
             ? "coverage accepted"
             : "coverage below minimum";
         var height = heightDisposition switch
         {
-            NoahCompletenessHeightDisposition.Missing => "finite mean missing",
-            NoahCompletenessHeightDisposition.BelowMinimum => "relative mean below minimum",
-            NoahCompletenessHeightDisposition.AboveMaximum => "relative mean above maximum",
+            SdkCompletenessHeightDisposition.Missing => "finite mean missing",
+            SdkCompletenessHeightDisposition.BelowMinimum => "relative mean below minimum",
+            SdkCompletenessHeightDisposition.AboveMaximum => "relative mean above maximum",
             _ => "relative mean accepted"
         };
         return $"{decision}: {coverage}; {height}.";
     }
 
-    private static NoahHeightGridRegion ToNoahRegion(ToolRecipeGridRectangle region) =>
+    private static SdkHeightGridRegion ToSdkRegion(ToolRecipeGridRectangle region) =>
         new(region.Row, region.Column, region.RowCount, region.ColumnCount);
 
-    private static ResultStatus? ToStudioDecision(NoahCompletenessCellDecision decision) =>
+    private static ResultStatus? ToStudioDecision(SdkCompletenessCellDecision decision) =>
         decision switch
         {
-            NoahCompletenessCellDecision.Pass => ResultStatus.Pass,
-            NoahCompletenessCellDecision.Fail => ResultStatus.Fail,
+            SdkCompletenessCellDecision.Pass => ResultStatus.Pass,
+            SdkCompletenessCellDecision.Fail => ResultStatus.Fail,
             _ => null
         };
 

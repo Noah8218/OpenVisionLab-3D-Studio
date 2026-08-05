@@ -106,7 +106,7 @@ internal static class RunnerCommandRouter
         var verifyThicknessRepeatabilityStudy = args.Contains("--verify-thickness-repeatability-study", StringComparer.OrdinalIgnoreCase);
         var verifyAlignedPointRepeatability = args.Contains("--verify-aligned-point-repeatability", StringComparer.OrdinalIgnoreCase);
         var verifyAlignedPointRepeatabilityStudy = args.Contains("--verify-aligned-point-repeatability-study", StringComparer.OrdinalIgnoreCase);
-        var verifyLibraryNoahThreeD = args.Contains("--verify-library-noah-3d", StringComparer.OrdinalIgnoreCase);
+        var verifyVisionSdkThreeD = args.Contains("--verify-vision-sdk-3d", StringComparer.OrdinalIgnoreCase);
         var verifySourceQualityReport = args.Contains("--verify-source-quality-report", StringComparer.OrdinalIgnoreCase);
         var verifyC3DHeightImage = args.Contains("--verify-c3d-height-image", StringComparer.OrdinalIgnoreCase);
         var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
@@ -835,15 +835,15 @@ internal static class RunnerCommandRouter
             return AlignedPointRepeatabilityStudyLoaderVerification.Run(reportPath);
         }
 
-        if (verifyLibraryNoahThreeD)
+        if (verifyVisionSdkThreeD)
         {
             if (reportPath is null)
             {
-                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
                 return 2;
             }
 
-            return LibraryNoahThreeDPackageVerification.Run(reportPath);
+            return VisionSdkThreeDPackageVerification.Run(reportPath);
         }
 
         if (verifyMeshDeviation)
@@ -1079,7 +1079,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-match-performance-budget --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-multiple-surface-match --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
-        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-library-noah-3d --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");

@@ -165,7 +165,36 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Human-owner R0 fixed-input refresh - 2026-08-04
+### Current execution checkpoint - OpenVisionLab Vision SDK 3 migration - 2026-08-05
+
+The active numerical dependency has moved from `Lib.ThreeD 2.9.1` to the
+repository-vendored `OpenVisionLab.Vision3D 3.0.0`, built from committed SDK
+source `f34fdf912ff38fe20f36dbb063837e14b4f922b3` with package SHA-256
+`F7324DC43ABF8E130D6F88C034287C192CFEA89E16A8A906A60F52DE341045B4`.
+The feed, package references, namespaces, adapters, Runner, structure guard,
+CI commands, publication check, R0 hashes, and current documents now use the
+Vision SDK identity. A clean Studio clone does not require an adjacent SDK
+checkout.
+
+SDK Release build and smoke pass `0/0` and `154/154`; the isolated package-only
+consumer passes; Studio Release and Debug builds pass `0/0`; package, bridge,
+and structure checks pass, respectively, `1/1`, `26/26`, and `29/29`; Runner
+and Shell matrices pass `46/46` and `27/27`; the bundled Thickness Coupon
+passes `8/8`; and the self-contained manifest passes `502/502`. Normalized
+primary-report parity is `73/73`, with two documented one-ULP scaled-distance
+changes and their derived hashes. Preserve:
+
+- `docs/OPENVISIONLAB_3D_VISION_SDK_3_MIGRATION_20260805.md`;
+- `docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md`;
+- `docs/OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-vision-sdk-3-migration\`.
+
+This dependency migration does not change inventory classification. Hosted CI
+remains unverified until the uncommitted work is pushed. Human-owner
+Wide/Compact R0 remains the next acceptance priority; prerequisite: owner
+operation and evidence; recommended model: none; reasoning effort: none.
+
+### Current acceptance checkpoint - Human-owner R0 fixed-input refresh - 2026-08-05
 
 Status is Blocked only on the product owner's unaided Wide and Compact runs.
 The current source was rebuilt in Release with `0/0`; seven current binaries,
@@ -180,7 +209,7 @@ the actual window intersects that monitor. Current validation selects
 
 - `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`;
 - `scripts/start-human-owner-r0.ps1`;
-- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260804-r0-package-refresh\`.
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-vision-sdk-3-migration\`.
 
 Inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`; Workspace v3 remains
 `7/8` and `A-01` remains Partial. Next dependency: owner performs Wide first,
@@ -2133,10 +2162,10 @@ Reasoning effort: high
 | K-12 | O | Calibrated 2D intensity or extra-camera fusion in current phase | Separate scope approval | Not scheduled |
 
 Algorithm ownership note: all reusable numerical algorithms belong in
-Library-Noah public sealed Tools. Active Studio adapters consume exact vendored
-`Lib.ThreeD 2.9.1`. The schema-1 decreasing
-migration baseline contains zero Studio debt and `31` reviewed boundaries; do
-not reintroduce arithmetic or expand a boundary ceiling.
+OpenVisionLab-Vision-SDK public sealed Tools. Active Studio adapters consume
+the exact vendored `OpenVisionLab.Vision3D 3.0.0` package. The schema-1
+decreasing migration baseline contains zero Studio debt and `33` reviewed
+boundaries; do not reintroduce arithmetic or expand a boundary ceiling.
 
 ### L. Results, validation, reporting, and diagnostics
 

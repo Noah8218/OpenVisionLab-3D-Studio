@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using NoahDecision = Lib.ThreeD.FeatureExtraction.DualSurfaceThicknessDecision;
-using NoahInspectionTool = Lib.ThreeD.FeatureExtraction.DualSurfaceThicknessInspectionTool;
+using SdkDecision = OpenVisionLab.Vision3D.FeatureExtraction.DualSurfaceThicknessDecision;
+using SdkInspectionTool = OpenVisionLab.Vision3D.FeatureExtraction.DualSurfaceThicknessInspectionTool;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -41,17 +41,17 @@ public static class DualSurfaceThicknessRule
         var stopwatch = Stopwatch.StartNew();
         if (string.IsNullOrWhiteSpace(input.SourceEntityId) || string.IsNullOrWhiteSpace(input.Unit))
             return Error(input, "Source entity ID and declared height unit are required.", stopwatch.Elapsed);
-        var evaluation = new NoahInspectionTool().Execute(
-            input.ReferenceSamples?.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
-            input.MeasurementSamples?.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+        var evaluation = new SdkInspectionTool().Execute(
+            input.ReferenceSamples?.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
+            input.MeasurementSamples?.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
             input.MinimumThickness,
             input.MaximumThickness,
             input.MinimumValidSamples);
         if (!evaluation.Success || evaluation.ReferencePlane is null)
             return Error(input, evaluation.Message, stopwatch.Elapsed);
 
-        var plane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
-        var status = evaluation.Decision == NoahDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
+        var plane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
+        var status = evaluation.Decision == SdkDecision.Pass ? ResultStatus.Pass : ResultStatus.Fail;
         stopwatch.Stop();
 
         var result = new ToolResult(

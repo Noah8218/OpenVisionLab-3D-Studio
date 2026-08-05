@@ -1,5 +1,5 @@
 using OpenVisionLab.ThreeD.Core;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 

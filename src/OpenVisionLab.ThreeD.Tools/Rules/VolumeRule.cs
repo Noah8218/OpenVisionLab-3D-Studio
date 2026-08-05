@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Lib.ThreeD.Inspection;
+using OpenVisionLab.Vision3D.Inspection;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -52,8 +52,8 @@ public static class VolumeRule
         try
         {
             evaluation = new VolumeInspectionTool().Execute(
-                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
-                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToNoahSample).ToArray(),
+                input.ReferenceSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
+                input.MeasurementSamples.Select(HeightFieldPlaneFit.ToSdkSample).ToArray(),
                 new VolumeInspectionOptions
                 {
                     SampleArea = input.SampleArea,
@@ -66,7 +66,7 @@ public static class VolumeRule
             return Error(input, ex.Message, stopwatch.Elapsed);
         }
 
-        var plane = HeightFieldPlaneFit.FromNoahResult(evaluation.ReferencePlane);
+        var plane = HeightFieldPlaneFit.FromSdkResult(evaluation.ReferencePlane);
         var above = evaluation.AboveVolume;
         var below = evaluation.BelowVolume;
         var net = evaluation.NetVolume;

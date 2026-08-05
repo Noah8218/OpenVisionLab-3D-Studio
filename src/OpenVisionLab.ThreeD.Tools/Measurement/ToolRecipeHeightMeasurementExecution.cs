@@ -2,19 +2,19 @@ using System.Globalization;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
-using NoahGapFlushInspectionOptions = Lib.ThreeD.Inspection.GapFlushInspectionOptions;
-using NoahGapFlushInspectionTool = Lib.ThreeD.Inspection.GapFlushInspectionTool;
-using NoahGapFlushRegionStatistics = Lib.ThreeD.Inspection.GapFlushRegionStatistics;
-using NoahCrossSectionDimensionsInspectionOptions = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionOptions;
-using NoahCrossSectionDimensionsInspectionTool = Lib.ThreeD.Inspection.CrossSectionDimensionsInspectionTool;
-using NoahCrossSectionDimensionsSample = Lib.ThreeD.Inspection.CrossSectionDimensionsSample;
-using NoahHeightGridRegion = Lib.ThreeD.FeatureExtraction.HeightGridRegion;
-using NoahHeightMapRegionStatisticsTool = Lib.ThreeD.FeatureExtraction.HeightMapRegionStatisticsTool;
-using NoahReferenceGridCoordinateMode = Lib.ThreeD.FeatureExtraction.ReferenceGridCoordinateMode;
-using NoahReferenceGridDefinition = Lib.ThreeD.FeatureExtraction.ReferenceGridDefinition;
-using NoahReferenceGridPointReconstructionOptions = Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionOptions;
-using NoahReferenceGridPointReconstructionTool = Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionTool;
-using NoahReferenceGridVector = Lib.ThreeD.FeatureExtraction.ReferenceGridVector;
+using SdkGapFlushInspectionOptions = OpenVisionLab.Vision3D.Inspection.GapFlushInspectionOptions;
+using SdkGapFlushInspectionTool = OpenVisionLab.Vision3D.Inspection.GapFlushInspectionTool;
+using SdkGapFlushRegionStatistics = OpenVisionLab.Vision3D.Inspection.GapFlushRegionStatistics;
+using SdkCrossSectionDimensionsInspectionOptions = OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsInspectionOptions;
+using SdkCrossSectionDimensionsInspectionTool = OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsInspectionTool;
+using SdkCrossSectionDimensionsSample = OpenVisionLab.Vision3D.Inspection.CrossSectionDimensionsSample;
+using SdkHeightGridRegion = OpenVisionLab.Vision3D.FeatureExtraction.HeightGridRegion;
+using SdkHeightMapRegionStatisticsTool = OpenVisionLab.Vision3D.FeatureExtraction.HeightMapRegionStatisticsTool;
+using SdkReferenceGridCoordinateMode = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridCoordinateMode;
+using SdkReferenceGridDefinition = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridDefinition;
+using SdkReferenceGridPointReconstructionOptions = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridPointReconstructionOptions;
+using SdkReferenceGridPointReconstructionTool = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridPointReconstructionTool;
+using SdkReferenceGridVector = OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridVector;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 
@@ -215,35 +215,35 @@ public static class ToolRecipeHeightMeasurementExecution
             }
             else
             {
-                var noah = new NoahGapFlushInspectionTool().Execute(
+                var sdk = new SdkGapFlushInspectionTool().Execute(
                     firstRoi.Column * profile.PitchU,
                     (firstRoi.Column + firstRoi.ColumnCount) * profile.PitchU,
                     secondRoi.Column * profile.PitchU,
                     (secondRoi.Column + secondRoi.ColumnCount) * profile.PitchU,
                     first,
                     second,
-                    new NoahGapFlushInspectionOptions
+                    new SdkGapFlushInspectionOptions
                     {
                         ExpectedGap = ParseFinite(Parameter(step, "ExpectedGap"), "ExpectedGap"),
                         GapTolerance = ParseNonNegative(Parameter(step, "GapTolerance"), "GapTolerance"),
                         ExpectedFlush = ParseFinite(Parameter(step, "ExpectedFlush"), "ExpectedFlush"),
                         FlushTolerance = ParseNonNegative(Parameter(step, "FlushTolerance"), "FlushTolerance")
                     });
-                var gapStatus = noah.GapPassed ? ResultStatus.Pass : ResultStatus.Fail;
-                var flushStatus = noah.FlushPassed ? ResultStatus.Pass : ResultStatus.Fail;
-                var status = noah.Passed ? ResultStatus.Pass : ResultStatus.Fail;
+                var gapStatus = sdk.GapPassed ? ResultStatus.Pass : ResultStatus.Fail;
+                var flushStatus = sdk.FlushPassed ? ResultStatus.Pass : ResultStatus.Fail;
+                var status = sdk.Passed ? ResultStatus.Pass : ResultStatus.Fail;
                 result = new ToolResult(
                     "Gap / Flush",
                     status,
-                    noah.Passed
+                    sdk.Passed
                         ? "Signed U-axis gap and H-axis flush are within configured tolerances."
                         : "Signed U-axis gap or H-axis flush exceeds configured tolerance.",
                     TimeSpan.Zero,
                     [
-                        new Metric("Signed gap", MetricKind.Length, noah.SignedGap, prepared.Unit, gapStatus),
-                        new Metric("Signed flush", MetricKind.Deviation, noah.SignedFlush, prepared.Unit, flushStatus),
-                        new Metric("First ROI samples", MetricKind.Count, noah.FirstSampleCount, "count"),
-                        new Metric("Second ROI samples", MetricKind.Count, noah.SecondSampleCount, "count"),
+                        new Metric("Signed gap", MetricKind.Length, sdk.SignedGap, prepared.Unit, gapStatus),
+                        new Metric("Signed flush", MetricKind.Deviation, sdk.SignedFlush, prepared.Unit, flushStatus),
+                        new Metric("First ROI samples", MetricKind.Count, sdk.FirstSampleCount, "count"),
+                        new Metric("Second ROI samples", MetricKind.Count, sdk.SecondSampleCount, "count"),
                         new Metric("Expected gap", MetricKind.Length, ParseFinite(Parameter(step, "ExpectedGap"), "ExpectedGap"), prepared.Unit),
                         new Metric("Gap tolerance", MetricKind.Length, ParseNonNegative(Parameter(step, "GapTolerance"), "GapTolerance"), prepared.Unit),
                         new Metric("Expected flush", MetricKind.Deviation, ParseFinite(Parameter(step, "ExpectedFlush"), "ExpectedFlush"), prepared.Unit),
@@ -254,7 +254,7 @@ public static class ToolRecipeHeightMeasurementExecution
                         new Overlay("overlay.gap-flush.gap", OverlayKind.Polyline, "Signed U-axis separation between facing ROI edges", gapStatus, prepared.InputEntityId),
                         new Overlay("overlay.gap-flush.flush", OverlayKind.Marker, "Signed mean-height difference along the reference H axis", flushStatus, prepared.InputEntityId)
                     ]);
-                evidence = $"gap {noah.SignedGap:G6} | flush {noah.SignedFlush:G6} | first {noah.FirstSampleCount:N0} | second {noah.SecondSampleCount:N0} finite samples";
+                evidence = $"gap {sdk.SignedGap:G6} | flush {sdk.SignedFlush:G6} | first {sdk.FirstSampleCount:N0} | second {sdk.SecondSampleCount:N0} finite samples";
             }
         }
         else if (string.Equals(step.ToolId, "volume", StringComparison.Ordinal))
@@ -280,38 +280,38 @@ public static class ToolRecipeHeightMeasurementExecution
             var widthTolerance = ParseNonNegative(Parameter(step, "WidthTolerance"), "WidthTolerance");
             var expectedHeightRange = ParseNonNegative(Parameter(step, "ExpectedHeightRange"), "ExpectedHeightRange");
             var heightTolerance = ParseNonNegative(Parameter(step, "HeightTolerance"), "HeightTolerance");
-            var noah = new NoahCrossSectionDimensionsInspectionTool().Execute(
+            var sdk = new SdkCrossSectionDimensionsInspectionTool().Execute(
                 samples,
-                new NoahCrossSectionDimensionsInspectionOptions
+                new SdkCrossSectionDimensionsInspectionOptions
                 {
                     ExpectedWidth = expectedWidth,
                     WidthTolerance = widthTolerance,
                     ExpectedHeightRange = expectedHeightRange,
                     HeightTolerance = heightTolerance
                 });
-            var widthStatus = noah.WidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
-            var heightStatus = noah.HeightPassed ? ResultStatus.Pass : ResultStatus.Fail;
-            var status = noah.Passed ? ResultStatus.Pass : ResultStatus.Fail;
+            var widthStatus = sdk.WidthPassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var heightStatus = sdk.HeightPassed ? ResultStatus.Pass : ResultStatus.Fail;
+            var status = sdk.Passed ? ResultStatus.Pass : ResultStatus.Fail;
             result = new ToolResult(
                 "Cross-section Dimensions",
                 status,
-                noah.Passed
+                sdk.Passed
                     ? "A3 U-axis width and H-axis range are within configured tolerances."
                     : "A3 U-axis width or H-axis range exceeds its configured tolerance.",
                 TimeSpan.Zero,
                 [
-                    new Metric("Section width", MetricKind.Length, noah.Width, prepared.Unit, widthStatus),
-                    new Metric("H range", MetricKind.Deviation, noah.HeightRange, prepared.Unit, heightStatus),
-                    new Metric("H minimum", MetricKind.Number, noah.HeightMinimum, prepared.Unit),
-                    new Metric("H maximum", MetricKind.Number, noah.HeightMaximum, prepared.Unit),
-                    new Metric("Valid section samples", MetricKind.Count, noah.SampleCount, "count")
+                    new Metric("Section width", MetricKind.Length, sdk.Width, prepared.Unit, widthStatus),
+                    new Metric("H range", MetricKind.Deviation, sdk.HeightRange, prepared.Unit, heightStatus),
+                    new Metric("H minimum", MetricKind.Number, sdk.HeightMinimum, prepared.Unit),
+                    new Metric("H maximum", MetricKind.Number, sdk.HeightMaximum, prepared.Unit),
+                    new Metric("Valid section samples", MetricKind.Count, sdk.SampleCount, "count")
                 ],
                 [
                     new Overlay("overlay.cross-section.row", OverlayKind.Polyline, "Artifact-owned A3 row segment", status, prepared.InputEntityId),
                     new Overlay("overlay.cross-section.width", OverlayKind.Polyline, "U-axis width span", widthStatus, prepared.InputEntityId),
                     new Overlay("overlay.cross-section.height", OverlayKind.Marker, "H-axis extrema", heightStatus, prepared.InputEntityId)
                 ]);
-            evidence = $"width {noah.Width:G6} | H range {noah.HeightRange:G6} | minimum {noah.HeightMinimum:G6} | maximum {noah.HeightMaximum:G6} | {noah.SampleCount:N0} finite samples";
+            evidence = $"width {sdk.Width:G6} | H range {sdk.HeightRange:G6} | minimum {sdk.HeightMinimum:G6} | maximum {sdk.HeightMaximum:G6} | {sdk.SampleCount:N0} finite samples";
         }
         else
         {
@@ -627,7 +627,7 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             roi,
             profile,
-            NoahReferenceGridCoordinateMode.DeclaredFrame);
+            SdkReferenceGridCoordinateMode.DeclaredFrame);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
@@ -651,7 +651,7 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             roi,
             profile,
-            NoahReferenceGridCoordinateMode.ReferenceAxes);
+            SdkReferenceGridCoordinateMode.ReferenceAxes);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
@@ -665,7 +665,7 @@ public static class ToolRecipeHeightMeasurementExecution
             .ToArray();
     }
 
-    private static IReadOnlyList<NoahCrossSectionDimensionsSample> CreateCrossSectionSamples(
+    private static IReadOnlyList<SdkCrossSectionDimensionsSample> CreateCrossSectionSamples(
         PreparedHeightMeasurement prepared,
         C3DGridRoi roi)
     {
@@ -676,7 +676,7 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             firstRow,
             profile,
-            NoahReferenceGridCoordinateMode.ReferenceAxes,
+            SdkReferenceGridCoordinateMode.ReferenceAxes,
             double.MinValue,
             double.MaxValue);
         if (!reconstruction.Success)
@@ -686,29 +686,29 @@ public static class ToolRecipeHeightMeasurementExecution
                 : reconstruction.Message);
         }
         return reconstruction.Samples
-            .Select(sample => new NoahCrossSectionDimensionsSample(
+            .Select(sample => new SdkCrossSectionDimensionsSample(
                 sample.Column,
                 sample.U,
                 sample.Height))
             .ToArray();
     }
 
-    private static NoahGapFlushRegionStatistics? CreateGapFlushRegionStatistics(
+    private static SdkGapFlushRegionStatistics? CreateGapFlushRegionStatistics(
         PreparedHeightMeasurement prepared,
         C3DGridRoi roi)
     {
-        var statistics = new NoahHeightMapRegionStatisticsTool().Execute(
+        var statistics = new SdkHeightMapRegionStatisticsTool().Execute(
             prepared.Height,
             prepared.Width,
             prepared.Values,
-            ToNoahRegion(roi));
+            ToSdkRegion(roi));
         if (!statistics.Success)
         {
             throw new InvalidDataException(statistics.Message);
         }
         return !statistics.HasFiniteSamples
             ? null
-            : new NoahGapFlushRegionStatistics(
+            : new SdkGapFlushRegionStatistics(
                 statistics.FiniteCellCount,
                 statistics.Mean,
                 statistics.Mean);
@@ -730,7 +730,7 @@ public static class ToolRecipeHeightMeasurementExecution
             prepared,
             new C3DGridRoi(locator.Row, locator.Column, 1, 1),
             profile,
-            NoahReferenceGridCoordinateMode.DeclaredFrame);
+            SdkReferenceGridCoordinateMode.DeclaredFrame);
         if (!reconstruction.Success)
         {
             throw new InvalidDataException(IsCoordinateRangeFailure(reconstruction.Message)
@@ -741,51 +741,51 @@ public static class ToolRecipeHeightMeasurementExecution
         return (new Vector3((float)sample.X, (float)sample.Y, (float)sample.Z), sample.Height);
     }
 
-    private static Lib.ThreeD.FeatureExtraction.ReferenceGridPointReconstructionResult Reconstruct(
+    private static OpenVisionLab.Vision3D.FeatureExtraction.ReferenceGridPointReconstructionResult Reconstruct(
         PreparedHeightMeasurement prepared,
         C3DGridRoi roi,
         C3DReferenceGridProfile? profile,
-        NoahReferenceGridCoordinateMode coordinateMode,
+        SdkReferenceGridCoordinateMode coordinateMode,
         double minimumSupportedCoordinate = float.MinValue,
         double maximumSupportedCoordinate = float.MaxValue) =>
-        new NoahReferenceGridPointReconstructionTool().Execute(
+        new SdkReferenceGridPointReconstructionTool().Execute(
             prepared.Height,
             prepared.Width,
             prepared.Values,
-            ToNoahRegion(roi),
-            ToNoahDefinition(profile),
-            new NoahReferenceGridPointReconstructionOptions
+            ToSdkRegion(roi),
+            ToSdkDefinition(profile),
+            new SdkReferenceGridPointReconstructionOptions
             {
                 CoordinateMode = coordinateMode,
                 MinimumSupportedCoordinate = minimumSupportedCoordinate,
                 MaximumSupportedCoordinate = maximumSupportedCoordinate
             });
 
-    private static NoahHeightGridRegion ToNoahRegion(C3DGridRoi roi) =>
+    private static SdkHeightGridRegion ToSdkRegion(C3DGridRoi roi) =>
         new(roi.Row, roi.Column, roi.RowCount, roi.ColumnCount);
 
-    private static NoahReferenceGridDefinition ToNoahDefinition(C3DReferenceGridProfile? profile) =>
+    private static SdkReferenceGridDefinition ToSdkDefinition(C3DReferenceGridProfile? profile) =>
         profile is null
-            ? new NoahReferenceGridDefinition
+            ? new SdkReferenceGridDefinition
             {
-                Origin = new NoahReferenceGridVector(0d, 0d, 0d),
-                UAxis = new NoahReferenceGridVector(1d, 0d, 0d),
-                VAxis = new NoahReferenceGridVector(0d, 0d, 1d),
-                HAxis = new NoahReferenceGridVector(0d, 1d, 0d),
+                Origin = new SdkReferenceGridVector(0d, 0d, 0d),
+                UAxis = new SdkReferenceGridVector(1d, 0d, 0d),
+                VAxis = new SdkReferenceGridVector(0d, 0d, 1d),
+                HAxis = new SdkReferenceGridVector(0d, 1d, 0d),
                 PitchU = 1d,
                 PitchV = 1d
             }
-            : new NoahReferenceGridDefinition
+            : new SdkReferenceGridDefinition
             {
-                Origin = ToNoahVector(profile.Origin),
-                UAxis = ToNoahVector(profile.UAxis),
-                VAxis = ToNoahVector(profile.VAxis),
-                HAxis = ToNoahVector(profile.HAxis),
+                Origin = ToSdkVector(profile.Origin),
+                UAxis = ToSdkVector(profile.UAxis),
+                VAxis = ToSdkVector(profile.VAxis),
+                HAxis = ToSdkVector(profile.HAxis),
                 PitchU = profile.PitchU,
                 PitchV = profile.PitchV
             };
 
-    private static NoahReferenceGridVector ToNoahVector(C3DReferenceGridVector vector) =>
+    private static SdkReferenceGridVector ToSdkVector(C3DReferenceGridVector vector) =>
         new(vector.X, vector.Y, vector.Z);
 
     private static bool IsCoordinateRangeFailure(string message) =>

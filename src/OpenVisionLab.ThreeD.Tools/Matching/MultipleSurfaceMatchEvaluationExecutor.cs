@@ -1,10 +1,10 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Strict Studio identity and acceptance adapter over Library-Noah's
+/// Strict Studio identity and acceptance adapter over OpenVisionLab Vision SDK's
 /// deterministic multiple-instance matching Tool. It owns no search arithmetic.
 /// </summary>
 public static class MultipleSurfaceMatchEvaluationExecutor
@@ -44,23 +44,23 @@ public static class MultipleSurfaceMatchEvaluationExecutor
                 string.Join(" ", searchValidity.Errors));
         }
 
-        var noahResult = new DeterministicMultipleSurfaceMatchTool().Execute(
-            LibraryNoahSurfaceMatching.ModelSamples(model),
-            LibraryNoahSurfaceMatching.SceneSamples(scene),
-            LibraryNoahSurfaceMatching.MultipleSearchOptions(
+        var sdkResult = new DeterministicMultipleSurfaceMatchTool().Execute(
+            VisionSdkSurfaceMatching.ModelSamples(model),
+            VisionSdkSurfaceMatching.SceneSamples(scene),
+            VisionSdkSurfaceMatching.MultipleSearchOptions(
                 searchParameters,
                 maximumMatchCount,
                 maximumExpandedCandidateCount));
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
-        var items = noahResult.Matches.Select(match =>
+        var items = sdkResult.Matches.Select(match =>
         {
-            var coverage = LibraryNoahSurfaceMatching.Coverage(
+            var coverage = VisionSdkSurfaceMatching.Coverage(
                 match.Coverage);
-            var pose = LibraryNoahSurfaceMatching.Pose(
+            var pose = VisionSdkSurfaceMatching.Pose(
                 match.Pose,
                 model.Unit,
                 model.FrameId,
@@ -101,8 +101,8 @@ public static class MultipleSurfaceMatchEvaluationExecutor
             acceptancePolicy,
             maximumMatchCount,
             maximumExpandedCandidateCount,
-            noahResult.EvaluatedCandidateCount,
-            noahResult.StopReason,
+            sdkResult.EvaluatedCandidateCount,
+            sdkResult.StopReason,
             items);
     }
 }

@@ -1,5 +1,9 @@
 # OpenVisionLab 3D Algorithm Ownership and Library-Noah Migration
 
+> Status: Superseded historical evidence. The active ownership contract is
+> `OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md`;
+> this file preserves the Library-Noah migration state recorded at the time.
+
 Updated: 2026-08-03
 
 Status: **Owner-approved Tool-only numerical ownership contract; the audited

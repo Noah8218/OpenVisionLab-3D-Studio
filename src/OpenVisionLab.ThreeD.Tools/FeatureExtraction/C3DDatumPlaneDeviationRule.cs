@@ -20,7 +20,7 @@ public sealed record C3DDatumPlaneDeviationEvaluation(
 
 /// <summary>
 /// Studio owns strict C3D/recipe lineage and read-only display sampling. The
-/// raw-height plane residual arithmetic itself remains in Library-Noah.
+/// raw-height plane residual arithmetic itself remains in OpenVisionLab Vision SDK.
 /// </summary>
 public static class C3DDatumPlaneDeviationRule
 {
@@ -36,9 +36,9 @@ public static class C3DDatumPlaneDeviationRule
             ValidateInput(input);
             cancellationToken.ThrowIfCancellationRequested();
             var rectangle = input.MeasurementSelection.GridRectangle!;
-            var package = LibraryNoahHeightMapInspection.EvaluateDatumPlaneRawHeightDeviation(
-                new LibraryNoahDatumPlaneRawHeightDeviationInspectionInput(
-                    new LibraryNoahHeightMapInput(
+            var package = VisionSdkHeightMapInspection.EvaluateDatumPlaneRawHeightDeviation(
+                new VisionSdkDatumPlaneRawHeightDeviationInspectionInput(
+                    new VisionSdkHeightMapInput(
                         input.RawSource.EntityId,
                         input.RawSource.Height,
                         input.RawSource.Width,
@@ -49,7 +49,7 @@ public static class C3DDatumPlaneDeviationRule
                         input.RawSource.Values.ToArray(),
                         input.RawSource.Unit,
                         input.RawSource.FrameId),
-                    new LibraryNoahGridRoi(rectangle.Row, rectangle.Column, rectangle.RowCount, rectangle.ColumnCount),
+                    new VisionSdkGridRoi(rectangle.Row, rectangle.Column, rectangle.RowCount, rectangle.ColumnCount),
                     input.Plane.NormalX,
                     input.Plane.NormalY,
                     input.Plane.NormalZ,
@@ -173,7 +173,7 @@ public static class C3DDatumPlaneDeviationRule
                 cancellationToken.ThrowIfCancellationRequested();
                 var rawHeight = values[row * input.RawSource.Width + column];
                 if (!double.IsFinite(rawHeight)
-                    || !LibraryNoahHeightMapInspection.TryCalculateDatumPlaneRawHeightResidual(
+                    || !VisionSdkHeightMapInspection.TryCalculateDatumPlaneRawHeightResidual(
                         input.Plane.NormalX, input.Plane.NormalY, input.Plane.NormalZ, input.Plane.PlaneOffset,
                         column, row, rawHeight, out var residual))
                 {

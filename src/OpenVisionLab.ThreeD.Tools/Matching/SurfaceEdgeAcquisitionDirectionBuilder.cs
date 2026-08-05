@@ -1,11 +1,11 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Adapts explicit recipe direction and existing declared normals to the
-/// Library-Noah orientation tool. No acquisition direction is inferred here.
+/// OpenVisionLab Vision SDK orientation tool. No acquisition direction is inferred here.
 /// </summary>
 public static class SurfaceEdgeAcquisitionDirectionBuilder
 {
@@ -43,7 +43,7 @@ public static class SurfaceEdgeAcquisitionDirectionBuilder
         if (!result.Success || result.NormalizedSensorToSceneDirection is null)
         {
             throw new InvalidDataException(
-                "Library-Noah rejected the acquisition direction or declared-normal evidence: "
+                "OpenVisionLab Vision SDK rejected the acquisition direction or declared-normal evidence: "
                 + result.Message);
         }
 
@@ -71,7 +71,7 @@ public static class SurfaceEdgeAcquisitionDirectionBuilder
                     AcquisitionDirectionOrientation.Grazing =>
                         SurfaceEdgeAcquisitionOrientation.Grazing,
                     _ => throw new InvalidDataException(
-                        "Library-Noah returned an unsupported acquisition orientation.")
+                        "OpenVisionLab Vision SDK returned an unsupported acquisition orientation.")
                 })).ToArray(),
             string.Empty);
         artifact = artifact with

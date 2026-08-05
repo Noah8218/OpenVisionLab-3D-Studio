@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -306,19 +306,19 @@ public static class ToolRecipeThresholdCandidateAnalyzer
         string unit,
         IReadOnlyList<ToolRecipeMetricObservation> observations)
     {
-        var noahResult = new ThresholdCandidateAnalysisTool().Execute(
+        var sdkResult = new ThresholdCandidateAnalysisTool().Execute(
             observations.Select((observation, index) =>
                 new ThresholdCandidateObservation(
                     index,
-                    ToNoahClass(observation.Role),
+                    ToSdkClass(observation.Role),
                     observation.Value))
                 .ToArray());
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidOperationException(noahResult.Message);
+            throw new InvalidOperationException(sdkResult.Message);
         }
 
-        return noahResult.Candidates
+        return sdkResult.Candidates
             .Select(candidate => CreateCandidate(
                 scope,
                 ownerId,
@@ -339,7 +339,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
         ThresholdCandidateAnalysisCandidate candidate,
         IReadOnlyList<ToolRecipeMetricObservation> observations)
     {
-        var kind = FromNoahKind(candidate.LimitKind);
+        var kind = FromSdkKind(candidate.LimitKind);
         var decisions = candidate.Decisions
             .Select(decision =>
             {
@@ -349,8 +349,8 @@ public static class ToolRecipeThresholdCandidateAnalyzer
                     observation.SampleIdentity,
                     observation.SourcePath,
                     observation.Role,
-                    FromNoahClass(decision.PredictedClass),
-                    FromNoahDecision(decision.Decision),
+                    FromSdkClass(decision.PredictedClass),
+                    FromSdkDecision(decision.Decision),
                     observation.Value,
                     observation.EvidenceLocator);
             })
@@ -379,7 +379,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
             decisions);
     }
 
-    private static ThresholdObservationClass ToNoahClass(
+    private static ThresholdObservationClass ToSdkClass(
         ToolRecipeValidationSampleRole role) => role switch
     {
         ToolRecipeValidationSampleRole.Good => ThresholdObservationClass.Accepted,
@@ -387,7 +387,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
     };
 
-    private static ToolRecipeValidationSampleRole FromNoahClass(
+    private static ToolRecipeValidationSampleRole FromSdkClass(
         ThresholdObservationClass observationClass) => observationClass switch
     {
         ThresholdObservationClass.Accepted => ToolRecipeValidationSampleRole.Good,
@@ -398,7 +398,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
             null)
     };
 
-    private static ToolRecipeThresholdLimitKind FromNoahKind(
+    private static ToolRecipeThresholdLimitKind FromSdkKind(
         ThresholdCandidateLimitKind kind) => kind switch
     {
         ThresholdCandidateLimitKind.Minimum => ToolRecipeThresholdLimitKind.Minimum,
@@ -407,7 +407,7 @@ public static class ToolRecipeThresholdCandidateAnalyzer
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
     };
 
-    private static ToolRecipeThresholdDecisionKind FromNoahDecision(
+    private static ToolRecipeThresholdDecisionKind FromSdkDecision(
         ThresholdCandidateDecisionKind decision) => decision switch
     {
         ThresholdCandidateDecisionKind.CorrectAccepted =>

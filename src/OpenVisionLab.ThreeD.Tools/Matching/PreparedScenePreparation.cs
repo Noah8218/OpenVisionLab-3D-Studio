@@ -1,4 +1,4 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -12,7 +12,7 @@ public sealed record PreparedScenePreparationRequest(
     PreparedScenePreparationParameters Parameters);
 
 /// <summary>
-/// Strict product adapter for measured-scene preparation. Library-Noah owns
+/// Strict product adapter for measured-scene preparation. OpenVisionLab Vision SDK owns
 /// deterministic even-index sampling; Studio owns Source Quality identity,
 /// source preservation, and the persisted artifact.
 /// </summary>
@@ -41,20 +41,20 @@ public static class PreparedScenePreparation
         }
 
         var points = request.FinitePoints.ToArray();
-        var noahResult = new DeterministicPreparedScenePreparationTool()
+        var sdkResult = new DeterministicPreparedScenePreparationTool()
             .Execute(
-                points.Select(LibraryNoahSurfaceMatching.Point).ToArray(),
+                points.Select(VisionSdkSurfaceMatching.Point).ToArray(),
                 new DeterministicPreparedScenePreparationOptions
                 {
                     MaximumSampleCount =
                         request.Parameters.MaximumSampleCount
                 });
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
-        var samples = noahResult.Samples
+        var samples = sdkResult.Samples
             .Select(sample => new PreparedSceneSample(
                 sample.Order,
                 sample.SourcePointIndex,

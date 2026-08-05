@@ -1,10 +1,10 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
-/// Studio artifact/identity adapter for Library-Noah's deterministic bounded
+/// Studio artifact/identity adapter for OpenVisionLab Vision SDK's deterministic bounded
 /// rigid-surface pose search. This class owns no pose or coverage arithmetic.
 /// </summary>
 public static class RigidSurfacePoseSearch
@@ -65,27 +65,27 @@ public static class RigidSurfacePoseSearch
                 "Rigid pose search minimum matched sample count exceeds the available model or scene samples.");
         }
 
-        var noahResult =
+        var sdkResult =
             new DeterministicRigidSurfacePoseSearchTool()
                 .Execute(
-                    LibraryNoahSurfaceMatching.ModelSamples(model),
-                    LibraryNoahSurfaceMatching.SceneSamples(scene),
-                    LibraryNoahSurfaceMatching.SearchOptions(parameters));
-        if (!noahResult.Success)
+                    VisionSdkSurfaceMatching.ModelSamples(model),
+                    VisionSdkSurfaceMatching.SceneSamples(scene),
+                    VisionSdkSurfaceMatching.SearchOptions(parameters));
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
         var coverage =
-            LibraryNoahSurfaceMatching.Coverage(
-                noahResult.Coverage);
-        var state = noahResult.Matched
+            VisionSdkSurfaceMatching.Coverage(
+                sdkResult.Coverage);
+        var state = sdkResult.Matched
             ? RigidSurfacePoseSearchState.Matched
             : RigidSurfacePoseSearchState.NoMatch;
-        var pose = noahResult.Pose is null
+        var pose = sdkResult.Pose is null
             ? null
-            : LibraryNoahSurfaceMatching.Pose(
-                noahResult.Pose,
+            : VisionSdkSurfaceMatching.Pose(
+                sdkResult.Pose,
                 model.Unit,
                 model.FrameId,
                 scene.FrameId);
@@ -94,9 +94,9 @@ public static class RigidSurfacePoseSearch
             scene.ContentSha256,
             parameters,
             state,
-            noahResult.EvaluatedCandidateCount,
+            sdkResult.EvaluatedCandidateCount,
             pose,
             coverage,
-            noahResult.RejectionReason);
+            sdkResult.RejectionReason);
     }
 }

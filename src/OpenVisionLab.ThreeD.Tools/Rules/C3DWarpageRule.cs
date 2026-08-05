@@ -30,7 +30,7 @@ public sealed record C3DWarpageEvaluation(
 
 /// <summary>
 /// Studio-level raw-height Warpage contract. The calculation is delegated to
-/// Library-Noah; this rule fixes the Studio identity, metric order, and ROI overlay.
+/// OpenVisionLab Vision SDK; this rule fixes the Studio identity, metric order, and ROI overlay.
 /// </summary>
 public static class C3DWarpageRule
 {
@@ -40,9 +40,9 @@ public static class C3DWarpageRule
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        var package = LibraryNoahHeightMapInspection.EvaluateWarpage(
-            new LibraryNoahWarpageInspectionInput(
-                new LibraryNoahHeightMapInput(
+        var package = VisionSdkHeightMapInspection.EvaluateWarpage(
+            new VisionSdkWarpageInspectionInput(
+                new VisionSdkHeightMapInput(
                     input.SourceEntityId,
                     input.Rows,
                     input.Columns,
@@ -53,7 +53,7 @@ public static class C3DWarpageRule
                     input.Values,
                     input.Unit,
                     input.FrameId),
-                new LibraryNoahGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
+                new VisionSdkGridRoi(input.Roi.Row, input.Roi.Column, input.Roi.RowCount, input.Roi.ColumnCount),
                 input.Acceptance.MaximumPeakToValley,
                 input.Acceptance.MaximumRms,
                 input.MinimumValidSamples));

@@ -1,5 +1,9 @@
 # OpenVisionLab 3D Library-Noah Tool Contract and Migration Baseline
 
+> **Historical / superseded.** This document records the former Library-Noah
+> boundary. The active contract is
+> [OpenVisionLab Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md).
+
 Date: 2026-08-01
 
 Updated: 2026-08-04 for `Lib.ThreeD 2.9.0` consumer API and package promotion

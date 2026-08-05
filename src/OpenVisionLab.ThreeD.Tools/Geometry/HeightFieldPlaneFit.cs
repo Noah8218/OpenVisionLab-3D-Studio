@@ -1,8 +1,8 @@
 using System.Numerics;
-using NoahFitSample = Lib.ThreeD.FeatureExtraction.HeightFieldPlaneFitSample;
-using NoahFitResult = Lib.ThreeD.FeatureExtraction.LeastSquaresHeightFieldPlaneFitResult;
-using NoahFitTool = Lib.ThreeD.FeatureExtraction.LeastSquaresHeightFieldPlaneFitTool;
-using NoahPoint = Lib.ThreeD.FeatureExtraction.ThreeDPoint;
+using SdkFitSample = OpenVisionLab.Vision3D.FeatureExtraction.HeightFieldPlaneFitSample;
+using SdkFitResult = OpenVisionLab.Vision3D.FeatureExtraction.LeastSquaresHeightFieldPlaneFitResult;
+using SdkFitTool = OpenVisionLab.Vision3D.FeatureExtraction.LeastSquaresHeightFieldPlaneFitTool;
+using SdkPoint = OpenVisionLab.Vision3D.FeatureExtraction.ThreeDPoint;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
@@ -32,11 +32,11 @@ public static class HeightFieldPlaneFit
     public static HeightFieldPlaneFitResult Fit(IReadOnlyList<HeightFieldPlaneSample> samples)
     {
         ArgumentNullException.ThrowIfNull(samples);
-        var result = new NoahFitTool().Execute(samples.Select(ToNoahSample).ToArray());
-        return FromNoahResult(result);
+        var result = new SdkFitTool().Execute(samples.Select(ToSdkSample).ToArray());
+        return FromSdkResult(result);
     }
 
-    internal static HeightFieldPlaneFitResult FromNoahResult(NoahFitResult result)
+    internal static HeightFieldPlaneFitResult FromSdkResult(SdkFitResult result)
     {
         return new HeightFieldPlaneFitResult(
             result.SlopeX,
@@ -55,9 +55,9 @@ public static class HeightFieldPlaneFit
             result.TargetRawHeightDelta);
     }
 
-    internal static NoahFitSample ToNoahSample(HeightFieldPlaneSample sample) =>
-        new(new NoahPoint(sample.Position.X, sample.Position.Y, sample.Position.Z), sample.RawHeight);
+    internal static SdkFitSample ToSdkSample(HeightFieldPlaneSample sample) =>
+        new(new SdkPoint(sample.Position.X, sample.Position.Y, sample.Position.Z), sample.RawHeight);
 
-    internal static Vector3 ToVector3(NoahPoint point) =>
+    internal static Vector3 ToVector3(SdkPoint point) =>
         new((float)point.X, (float)point.Y, (float)point.Z);
 }

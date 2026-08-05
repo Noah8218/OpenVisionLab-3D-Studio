@@ -109,6 +109,23 @@ Golden cases:
 | Controlled occlusion | `Matched`, `4/5`, coverage `0.8`, RMSE `0.8062257706404623` | `Fail / CoverageBelowMinimum` | `B4643B32DA87D2541053C2B97B911B08F005D4DDE75CEDFC34D4EB29EE128854` |
 | Pose outside authored domain | `NoMatch`, coverage `0.0` | `Rejected / PoseSearchNoMatch` | `D9C8EF83D73E8683CB3BA122BAD011B9D39A03607B0F005A00224CE878F58210` |
 
+### Current Vision SDK 3.0 golden normalization — 2026-08-05
+
+The table above preserves the original `Lib.ThreeD 2.9.1` checkpoint.
+`OpenVisionLab.Vision3D 3.0.0` commit
+`f34fdf912ff38fe20f36dbb063837e14b4f922b3` includes the SDK's
+overflow/underflow-safe distance and scaled RMSE accumulation. For the
+controlled-occlusion fixture, the mathematically equivalent calculation moves
+one representable `double` value from `0.8062257706404623` to
+`0.80622577064046241`. Coverage, correspondence count, acceptance decision,
+reason, and authored limits are unchanged.
+
+The current assessment SHA-256 is therefore
+`9B9E711B9CB72DF0F4A2DC9E520B5A2EE8715BBB4B5B586FF8BB886B78557C95`.
+The known-pose and outside-domain goldens remain byte-identical. This is an
+explicit SDK numerical-hardening normalization, not a change to Studio's
+acceptance policy.
+
 The known-pose fixture retains the documented `30 degree` yaw and
 `(10, -4, 2) mm` translation. The bounded comparison enumerates `7`
 candidates versus `25` in the broader controlled range. Recorded elapsed

@@ -1,11 +1,11 @@
-using Lib.ThreeD.FeatureExtraction;
+using OpenVisionLab.Vision3D.FeatureExtraction;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
 
 /// <summary>
 /// Strict product adapter for height-step extraction over one complete
-/// organized XYZ grid. Library-Noah owns the neighbor calculation.
+/// organized XYZ grid. OpenVisionLab Vision SDK owns the neighbor calculation.
 /// </summary>
 public static class SceneSurfaceEdgeExtractor
 {
@@ -42,11 +42,11 @@ public static class SceneSurfaceEdgeExtractor
                 "Scene edge extraction version 1 requires a complete organized XYZ grid.");
         }
 
-        var noahResult =
+        var sdkResult =
             new DeterministicOrganizedSceneSurfaceEdgeExtractionTool()
                 .Execute(
                     scene.Points
-                        .Select(LibraryNoahSurfaceMatching.Point)
+                        .Select(VisionSdkSurfaceMatching.Point)
                         .ToArray(),
                     new DeterministicOrganizedSceneSurfaceEdgeExtractionOptions
                     {
@@ -59,12 +59,12 @@ public static class SceneSurfaceEdgeExtractor
                         IncludeRowNeighbors =
                             parameters.IncludeRowNeighbors
                     });
-        if (!noahResult.Success)
+        if (!sdkResult.Success)
         {
-            throw new InvalidDataException(noahResult.Message);
+            throw new InvalidDataException(sdkResult.Message);
         }
 
-        var edges = noahResult.Edges
+        var edges = sdkResult.Edges
             .Select(edge => new SceneSurfaceEdgeSample(
                 edge.Order,
                 edge.FirstPointIndex,
