@@ -65,6 +65,10 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Workbench run-log retention](OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md) -
+  `PL-0008` newest-3,000 in-memory boundary after durable `OVLog` routing,
+  localized operator boundary, focused and affected regression, current-build
+  Wide/Compact English/Korean evidence, refreshed R0 inputs, and hosted CI.
 - [Recipe-step removal safety](OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md) -
   `PL-0007` impact-aware confirmation, execution-state guard, focused
   non-mutation/removal regression, current-build Wide/Compact localized and

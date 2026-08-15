@@ -56,6 +56,12 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   checks pass `40/40`; current Wide/Compact English/Korean normal and held
   pointer-down evidence is accepted; refreshed R0 `-ValidateOnly` passes.
   Preserve `OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md`.
+- `PL-0008` is complete: every Workbench event is routed to rolling `OVLog`
+  before the newest-first in-memory session projection is bounded at 3,000
+  entries. Focused retention passes `6/6`; the affected regression, builds,
+  structure, localized Wide/Compact UI, refreshed R0 validation, and GitHub
+  Actions CI `#76` pass. Preserve
+  `OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md`.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -84,12 +90,17 @@ software slice.
 
 ## Current Software Priority
 
-The next eligible maintenance item is bounded Workbench run-log retention.
-Define an explicit in-memory retention and export boundary while preserving
-durable `OVLog` evidence and without changing Preview/Publish/Run behavior.
+No dependency-ready software item is selected after `PL-0008`. The next
+evidence-based technical candidate is a large-C3D memory/performance target,
+but it is blocked until a representative maximum C3D input and accepted
+process-memory/load-time limits are supplied.
 
-- Recommended model: `gpt-5.6-terra`.
-- Reasoning effort: `low`.
+- Prerequisite: representative maximum C3D input and accepted budgets.
+- Recommended model: none until the prerequisite exists.
+- Reasoning effort: none.
+
+A newly approved deterministic software slice may still be selected without
+claiming that the external owner R0 has passed.
 
 ## External Maintenance Blocker
 
@@ -143,9 +154,9 @@ The 2026-08-05 documentation pass:
 
 ```text
 Status: Complete
-Scope: Refresh the current handoff through recipe-step removal safety
-Acceptance criteria: PL-0007 safety scope visible; next maintenance item identified; R0 and PL-0003 external dependencies current
-Verification: Recipe Manager + WPG 40/40; Shell command line 35/35; Debug/Release and structure pass; Wide/Compact localized and pointer-state UI evidence accepted; refreshed R0 ValidateOnly and documentation checks pass
-Evidence: docs/OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md, .proofline/issues/PL-0007.json, this file
-Boundary / next dependency: product-owner Wide/Compact R0; bounded Workbench run-log retention is the next software maintenance item; PL-0003 waits on GitHub Support #4633618
+Scope: Refresh the current handoff through bounded Workbench run-log retention
+Acceptance criteria: PL-0008 retention and durable-log boundary visible; current software prerequisite identified; R0 and PL-0003 external dependencies current
+Verification: focused retention 6/6; Tool Recipe 35/35; Validation Set 84/84; Recipe Manager + WPG 40/40; Shell command line 36/36; Workbench docking 82/82; logging 4/4; Debug/Release and structure pass; Wide/Compact English/Korean evidence accepted; refreshed R0 ValidateOnly and GitHub Actions CI #76 pass
+Evidence: docs/OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md, .proofline/issues/PL-0008.json, this file, https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/31872439326
+Boundary / next dependency: product-owner Wide/Compact R0; large-C3D optimization needs a representative maximum input and accepted budgets; PL-0003 waits on GitHub Support #4633618
 ```

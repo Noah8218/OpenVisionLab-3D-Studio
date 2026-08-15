@@ -19,9 +19,12 @@ The master backlog owns the current inventory table; do not copy its counts
 into this prompt. Inspection Workspace v3 is 7/8 and A-01 remains Partial.
 The current acceptance priority is the product owner's unaided Wide/Compact
 R0; automated validation does not replace it. PL-0004 immutable C3D loaded
-snapshot, PL-0005 truthful alignment status, and PL-0007 impact-aware guarded
-recipe-step removal are complete. The next software maintenance item is
-bounded Workbench run-log retention that preserves durable OVLog evidence.
+snapshot, PL-0005 truthful alignment status, PL-0007 impact-aware guarded
+recipe-step removal, and PL-0008 bounded Workbench run-log retention are
+complete. No dependency-ready software item is selected. A large-C3D
+memory/performance target first requires a representative maximum input and
+accepted process-memory/load-time limits; do not spend model tokens on storage
+redesign until those prerequisites exist.
 PL-0006 release-policy reconciliation is complete: the current
 repository has no release or tag, and historical v0.1.0-rc.1 candidate
 evidence is not a current distribution claim. Creating or republishing a

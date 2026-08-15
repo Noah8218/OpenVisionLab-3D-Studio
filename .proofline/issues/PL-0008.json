@@ -17,9 +17,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "The production AppendLog path now writes every event to OVLog before retaining the newest 3,000 Workbench entries; focused, regression, build, structure, localized UI, and refreshed R0 validation pass locally. Hosted CI remains before resolution.",
-    "next_action": "Commit and push the implementation and CI route, confirm hosted CI, then finalize documentation and resolve PL-0008."
+    "status": "resolved",
+    "current_summary": "Workbench now keeps the newest 3,000 session entries in newest-first order after routing every event to rolling OVLog files; the operator-facing boundary is localized, all local and documentation gates pass, and hosted CI #76 succeeded."
   },
   "objective": {
     "summary": "Keep the newest 3,000 Workbench session entries in memory while every event remains routed to durable OVLog files and the operator can distinguish the two retention surfaces.",
@@ -58,7 +57,9 @@
       "text": "Focused regression, Debug/Release builds, structure checks, current-build Wide/Compact English/Korean UI evidence, refreshed fixed R0 inputs, documentation checks, and hosted CI pass.",
       "evidence_refs": [
         "E3",
-        "E4"
+        "E4",
+        "E5",
+        "E6"
       ]
     }
   ],
@@ -115,6 +116,20 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/",
       "observation": "Debug and Release solution builds passed with 0 warnings and 0 errors; Tool Recipe teaching 35/35, Recipe Manager + WPG 40/40, Shell command line 36/36, Workbench docking 82/82, logging integration 4/4, and structure 29/29 passed. Refreshed fixed-input Wide and Compact R0 ValidateOnly both passed without launching the application. The standalone copied package initially lacked the repository-owned teaching template; the same verifier passed 35/35 from its required repository context.",
       "observed_at": "2026-08-15T16:39:00+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "hosted CI",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/31872439326",
+      "observation": "GitHub Actions CI #76 for implementation commit e43bebb833cd3dd331a8f4b26aff8f29bfa4934e completed successfully. The CI-routed current Workbench contracts step, containing the new run-log retention verifier, and the full workflow passed.",
+      "observed_at": "2026-08-15T16:43:55+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "documentation closure verification",
+      "location": "docs/OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md; AGENTS.md; docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md; docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md; docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md; docs/README.md",
+      "observation": "The active authority, master backlog, current handoff, next-chat prompt, documentation map, R0 fixed-input record, and bounded closure agree that PL-0008 is complete, inventory is unchanged, owner R0 remains external, and no dependency-ready software item is selected. Relative documentation links, referenced repository paths, stale active-priority search, and git diff whitespace checks passed.",
+      "observed_at": "2026-08-15T16:46:47.7144396+09:00"
     }
   ],
   "events": [
@@ -134,8 +149,16 @@
       "from": "open",
       "to": "doing",
       "summary": "Registered the bounded retention task after confirming the unbounded owner path, existing durable sink, and current-build baseline."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-15T16:43:55+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "All four criteria are supported by current local and hosted evidence; bounded Workbench run-log retention is complete."
     }
   ],
   "created_at": "2026-08-15T16:20:43.6040688+09:00",
-  "updated_at": "2026-08-15T16:40:00+09:00"
+  "updated_at": "2026-08-15T07:47:03.452Z"
 }

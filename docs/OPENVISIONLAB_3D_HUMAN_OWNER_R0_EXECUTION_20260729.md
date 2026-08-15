@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-08-06
+Date: 2026-08-15
 Status: Blocked - the current fixed-input package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
@@ -66,7 +66,7 @@ actual application window does not intersect that monitor. On the current
 workstation the 2026-08-06 validation selected `\\.\DISPLAY2` with bounds
 `[-1920,365,1920,1080]`.
 
-The current Wide handoff launch verified actual window bounds
+The 2026-08-06 Wide handoff launch verified actual window bounds
 `[-1920,365,1920,1040]` intersect that monitor and left the application open
 for owner operation. This proves launch placement only; the Wide acceptance
 rows remain Pending until the owner reports the unaided outcome.
@@ -196,6 +196,6 @@ Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
 `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-run-log-retention\r0-wide-validate-only.txt`
 plus `r0-compact-validate-only.txt` in the same directory.
 Boundary / next dependency: the product owner must personally complete both
-unaided runs before `A-01` or Workspace v3 acceptance can advance. Surface
-matching software may proceed independently, but it cannot be used to claim
-that this human workflow passed.
+unaided runs before `A-01` or Workspace v3 acceptance can advance. A newly
+approved deterministic software slice may proceed independently, but it
+cannot be used to claim that this human workflow passed.

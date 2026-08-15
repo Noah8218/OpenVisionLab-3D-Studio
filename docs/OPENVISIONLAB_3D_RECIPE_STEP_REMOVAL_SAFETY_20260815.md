@@ -1,5 +1,9 @@
 # OpenVisionLab 3D Recipe-Step Removal Safety
 
+> Current-priority note: the bounded Workbench run-log item identified below
+> was completed later on 2026-08-15 as `PL-0008`. This document retains the
+> recipe-step removal outcome and its then-current handoff boundary.
+
 Date: 2026-08-15
 Status: Complete
 Issue: `PL-0007`

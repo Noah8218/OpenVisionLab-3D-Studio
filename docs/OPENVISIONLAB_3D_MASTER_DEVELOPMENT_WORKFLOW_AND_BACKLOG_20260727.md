@@ -165,7 +165,38 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - recipe-step removal safety - 2026-08-15
+### Current execution checkpoint - Workbench run-log retention - 2026-08-15
+
+`PL-0008` is Complete. The production `AppendLog` path now writes every
+Workbench event to the existing rolling `OVLog` files before projecting it
+into the in-memory session list. The projection retains the newest 3,000
+entries in newest-first order and prunes only the oldest overflow. The
+localized Application Log caption states that boundary; it does not invoke or
+change Preview, Publish, Run, Validation, recipe, source, or result state.
+
+The existing durable-file policy remains 50 MB with 20 backups; this slice
+does not add an export format or claim indefinite retention. Focused retention
+passes `6/6`; Tool Recipe teaching `35/35`; Validation Set `84/84`; Recipe
+Manager + WPG `40/40`; Shell command line `36/36`; Workbench docking `82/82`;
+logging integration `4/4`; structure `29/29`; Debug/Release builds `0/0`.
+Current-build Wide/Compact English/Korean screenshots pass capture quality,
+the refreshed fixed-input R0 package passes both `-ValidateOnly` modes, and
+GitHub Actions CI `#76` succeeds for commit `e43bebb`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md`;
+- `.proofline/issues/PL-0008.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-run-log-retention\`.
+
+This maintenance correction does not change inventory, which remains
+`139 C / 17 P / 54 N / 9 E / 16 O`. No dependency-ready software item is
+selected. The next evidence-based technical candidate is a large-C3D
+memory/performance target, but it is blocked until a representative maximum
+C3D input and accepted process-memory/load-time limits exist. Recommended
+model: none until those prerequisites exist; reasoning effort: none.
+Human-owner Wide/Compact R0 remains the separate acceptance priority and
+requires owner operation rather than model execution.
+
+### Previous execution checkpoint - recipe-step removal safety - 2026-08-15
 
 `PL-0007` is Complete. The selected recipe-step Remove command now requests an
 explicit themed confirmation before mutation. The confirmation names the step
@@ -2625,9 +2656,14 @@ The owner explicitly left the layout-only stream and completed item 11 on
     zero-release/zero-tag state, source-owned version values, historical
     candidate boundary, future owner approval, and full release gate are now
     explicit. No release operation occurred.
-24. `Bounded Workbench run-log retention` - Next; define retention and export
-    behavior without weakening durable `OVLog` evidence. Recommended model:
-    `gpt-5.6-terra`; reasoning effort: `low`.
+24. `PL-0008 bounded Workbench run-log retention` - Complete; production
+    `AppendLog` routes every event to durable rolling `OVLog` before keeping
+    the newest 3,000 session entries, localized UI explains the boundary,
+    focused `6/6` and hosted CI `#76` pass.
+25. `Large-C3D memory/performance target` - Blocked; prerequisite:
+    representative maximum C3D input plus accepted process-memory and
+    load-time limits. Recommended model: none until the prerequisite exists;
+    reasoning effort: none.
 
 ## Documentation decision
 

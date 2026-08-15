@@ -1,5 +1,11 @@
 # Shared-chat analysis and immutable C3D load snapshot
 
+> Current-priority note (2026-08-15): the bounded Workbench run-log item named
+> below was completed as `PL-0008`. The large-C3D target remains blocked on a
+> representative maximum input and accepted memory/load-time budgets. Use the
+> master backlog for current priority; retain the analysis below as evidence
+> for its recorded scope.
+
 Date: 2026-08-06
 
 Status: Complete
