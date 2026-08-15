@@ -87,6 +87,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Validation Set verification failed.' }
           dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-recipe-manager-wpg (Join-Path $artifactDir 'recipe-manager-wpg.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Recipe Manager WPG verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-run-log-retention (Join-Path $artifactDir 'run-log-retention.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Workbench run-log retention verification failed.' }
           dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-shell-smoke-command-line (Join-Path $artifactDir 'shell-command-line.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Shell command-line verification failed.' }
 

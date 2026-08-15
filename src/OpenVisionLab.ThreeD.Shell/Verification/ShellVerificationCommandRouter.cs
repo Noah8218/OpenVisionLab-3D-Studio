@@ -318,6 +318,7 @@ internal static class ShellVerificationCommandRouter
 
         const string verificationOption = "--verify-calibration-viewmodel";
         const string loggingVerificationOption = "--verify-logging";
+        const string runLogRetentionVerificationOption = "--verify-run-log-retention";
         const string toolRecipeTeachingVerificationOption = "--verify-tool-recipe-teaching";
         const string toolRecipeSelectionsVerificationOption = "--verify-tool-recipe-selections";
         const string workbenchDockingVerificationOption = "--verify-workbench-docking";
@@ -595,6 +596,25 @@ internal static class ShellVerificationCommandRouter
         var loggingVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(loggingVerificationOption, StringComparison.OrdinalIgnoreCase));
+        var runLogRetentionVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(runLogRetentionVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (runLogRetentionVerificationIndex >= 0)
+        {
+            if (runLogRetentionVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine($"{runLogRetentionVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = RunLogRetentionVerification.Verify(
+                args[runLogRetentionVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
         if (loggingVerificationIndex >= 0)
         {
             if (loggingVerificationIndex + 1 >= args.Length)

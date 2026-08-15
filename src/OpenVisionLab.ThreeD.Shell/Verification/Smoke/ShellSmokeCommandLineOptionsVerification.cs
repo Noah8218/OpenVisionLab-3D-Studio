@@ -62,7 +62,8 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("SurfaceMatchCollectionPopup", VerifySurfaceMatchCollectionPopup()),
             ("SurfaceMatchCollectionDisabled", VerifySurfaceMatchCollectionDisabled()),
             ("SurfaceMatchCollectionNavigationFocusHover", VerifySurfaceMatchCollectionNavigationFocusHover()),
-            ("StepRemovalDialog", VerifyStepRemovalDialog())
+            ("StepRemovalDialog", VerifyStepRemovalDialog()),
+            ("WorkbenchRunLog", VerifyWorkbenchRunLog())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -203,6 +204,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.StepRemovalDialogSmoke
                && options.MessageDialogPrimaryPressedSmoke
                && options.MessageDialogScreenshotPath == "remove-step.png"
+               && options.ShouldAttachLoadedHandler(
+                   hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyWorkbenchRunLog()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-workbench-run-log"]);
+        return options.WorkbenchRunLogSmoke
                && options.ShouldAttachLoadedHandler(
                    hasViewerSmokeScreenshot: false);
     }

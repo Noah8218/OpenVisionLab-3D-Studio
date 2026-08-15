@@ -144,6 +144,7 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool StepRemovalDialogSmoke => HasFlag("--smoke-step-removal-dialog");
     public bool MessageDialogPrimaryPressedSmoke =>
         HasFlag("--smoke-message-dialog-primary-pressed");
+    public bool WorkbenchRunLogSmoke => HasFlag("--smoke-workbench-run-log");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
     public bool SoftwareRendering => HasFlag("--smoke-software-rendering");
     public bool UseLeftmostVirtualScreenOrigin =>
@@ -208,6 +209,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || SurfaceMatchCollectionPopupSmoke
         || SurfaceMatchCollectionDisabledSmoke
         || SurfaceMatchCollectionNavigationFocusHoverSmoke
+        || WorkbenchRunLogSmoke
         || WorkbenchInteractionReportPath is not null
         || SurfaceMatchCollectionPath is not null;
 

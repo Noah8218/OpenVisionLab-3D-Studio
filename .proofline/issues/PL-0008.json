@@ -1,0 +1,141 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0008",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "Bound Workbench run-log memory without losing OVLog evidence",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "master-backlog maintenance priority and user-approved continuation",
+    "summary": "The Workbench session RunLog is an unbounded in-memory projection even though every current AppendLog call also routes to the existing durable rolling OVLog files.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "The production AppendLog path now writes every event to OVLog before retaining the newest 3,000 Workbench entries; focused, regression, build, structure, localized UI, and refreshed R0 validation pass locally. Hosted CI remains before resolution.",
+    "next_action": "Commit and push the implementation and CI route, confirm hosted CI, then finalize documentation and resolve PL-0008."
+  },
+  "objective": {
+    "summary": "Keep the newest 3,000 Workbench session entries in memory while every event remains routed to durable OVLog files and the operator can distinguish the two retention surfaces.",
+    "constraints": [
+      "Preserve newest-first RunLog ordering.",
+      "Do not change Preview, Publish, Run, Validation, recipe, or source/result behavior.",
+      "Do not change the existing 50 MB by 20-backup rolling-file policy or add a new export format.",
+      "Keep the policy with the Workbench ViewModel owner and reuse the existing Application Log surface."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "RunLog never exceeds 3,000 entries through the production AppendLog path and retains the newest entries in newest-first order.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Entries pruned from the in-memory Workbench projection remain present in the flushed OVLog ALL file.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The localized Application Log caption states the bounded memory view and complete rolling-file boundary without starting or changing recipe execution.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Focused regression, Debug/Release builds, structure checks, current-build Wide/Compact English/Korean UI evidence, refreshed fixed R0 inputs, documentation checks, and hosted CI pass.",
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0007"
+    }
+  ],
+  "context": [
+    {
+      "kind": "retention owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs",
+      "summary": "AppendLog owns the sole current RunLog insertion path and OVLog routing."
+    },
+    {
+      "kind": "operator surface",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RunLogView.xaml",
+      "summary": "The linked Session Log pane presents bounded Application Log and Workbench Session projections."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "local UI and verification bundle",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/",
+      "summary": "Current-build before/after screenshots, capture-quality reports, focused retention and OVLog verification, builds, and R0 validation output."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "source inspection and current-build baseline",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs; src/OpenVisionLab.Logging.Controls/ViewModel/LogPanelViewModel.cs; src/OpenVisionLab.Logging/log4net.config; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/before-runlog-wide.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/before-runlog-compact.png",
+      "observation": "AppendLog inserts into Workbench RunLog without a cap and writes the same event to OVLog. The existing Application Log projection already caps memory at 3,000 entries, while log4net rolls durable ALL files at 50 MB with 20 backups. Fresh current-Release Wide 1920x1040 and Compact 1280x760 Session Log baselines passed capture-quality checks on the dynamically selected leftmost monitor.",
+      "observed_at": "2026-08-15T16:20:43.6040688+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused retention and durable-log verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/run-log-retention-release-final.txt",
+      "observation": "The current Release verifier passed 6/6: RunLog stayed at 3,000 newest-first entries after 3,002 production AppendLog calls, the two pruned entries and all generated entries remained in the flushed OVLog ALL file, English/Korean retention text matched the contract, and recipe/execution state did not change.",
+      "observed_at": "2026-08-15T16:30:17.5198326+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "current-build UI verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/after-wide-en.png; after-compact-en.png; after-wide-ko.png; after-compact-ko.png; corresponding quality reports; monitor-window-placement.txt",
+      "observation": "Current-source Release Wide 1920x1040 and Compact 1280x760 English/Korean app-only captures all exited 0 and passed capture quality on the dynamically selected leftmost DISPLAY2. The localized Application Log retention caption is visible without clipping, overlap, off-pane rendering, horizontal scrolling, or platform-default theme leakage.",
+      "observed_at": "2026-08-15T16:34:38.132+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "local regression and fixed-input validation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-run-log-retention/",
+      "observation": "Debug and Release solution builds passed with 0 warnings and 0 errors; Tool Recipe teaching 35/35, Recipe Manager + WPG 40/40, Shell command line 36/36, Workbench docking 82/82, logging integration 4/4, and structure 29/29 passed. Refreshed fixed-input Wide and Compact R0 ValidateOnly both passed without launching the application. The standalone copied package initially lacked the repository-owned teaching template; the same verifier passed 35/35 from its required repository context.",
+      "observed_at": "2026-08-15T16:39:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-15T16:20:43.6040688+09:00",
+      "summary": "Reuse the established 3,000-entry in-memory boundary for Workbench Session and preserve the existing rolling OVLog files as the complete evidence/export boundary.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-15T16:20:43.6040688+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "Registered the bounded retention task after confirming the unbounded owner path, existing durable sink, and current-build baseline."
+    }
+  ],
+  "created_at": "2026-08-15T16:20:43.6040688+09:00",
+  "updated_at": "2026-08-15T16:40:00+09:00"
+}

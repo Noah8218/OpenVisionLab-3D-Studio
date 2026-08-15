@@ -20,6 +20,8 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 {
+    internal const int MaximumRunLogEntries = 3000;
+
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
@@ -2808,15 +2810,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         return string.IsNullOrWhiteSpace(normalized) ? "entity" : normalized;
     }
 
-    private void AppendLog(string category, string message)
+    internal void AppendLog(string category, string message)
     {
-        RunLog.Insert(0, new ToolWorkbenchLogItem(DateTime.Now.ToString("HH:mm:ss"), category, message));
         var level = category.Equals("Error", StringComparison.OrdinalIgnoreCase)
             ? LogLevel.Error
             : category.Equals("Warning", StringComparison.OrdinalIgnoreCase)
                 ? LogLevel.Warning
                 : LogLevel.Info;
         OVLog.Write(LogCategory.UI, level, $"Workbench[{category}] {message}");
+        RunLog.Insert(0, new ToolWorkbenchLogItem(DateTime.Now.ToString("HH:mm:ss"), category, message));
+        while (RunLog.Count > MaximumRunLogEntries)
+        {
+            RunLog.RemoveAt(RunLog.Count - 1);
+        }
     }
 
     private string GetActiveTeachingRoleName() =>

@@ -18,7 +18,8 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Style="{DynamicResource ThreeD.DockPanelTitleTextStyle}" Text="Application Log" />
-                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}" Text="Read-only application diagnostics. This panel does not start Preview or Run." />
+                        <TextBlock Style="{DynamicResource ThreeD.DockPanelCaptionTextStyle}"
+                                   Text="{Binding Localization.WorkbenchApplicationLogRetention}" />
                     </StackPanel>
                     <Border Grid.Column="1"
                             Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"

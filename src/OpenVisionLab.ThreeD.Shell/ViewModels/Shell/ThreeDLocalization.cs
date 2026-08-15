@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using OpenVisionLab;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -109,7 +110,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ValidationSetLimits), nameof(ValidationSetCorrect), nameof(ValidationSetErrors),
         nameof(ValidationSetFalseAccept), nameof(ValidationSetFalseReject),
         nameof(ValidationSetExpected), nameof(ValidationSetPredicted), nameof(ValidationSetDecision),
-        nameof(ColumnEvidence), nameof(SessionLog), nameof(HeightProfile), nameof(FitDiagnostics),
+        nameof(ColumnEvidence), nameof(SessionLog), nameof(WorkbenchApplicationLogRetention), nameof(HeightProfile), nameof(FitDiagnostics),
         nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
         nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
         nameof(DisplayedOutputs), nameof(DisplayedOutputsTitle), nameof(DisplayedOutputsDetail),
@@ -606,6 +607,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "Open the recipe source and selected sample in docked Output Compare. The recipe and main 3D Viewer input are not changed.");
     public string ColumnEvidence => T("ThreeD.Column.Evidence", "\uC2E4\uD589 \uADFC\uAC70", "Execution evidence");
     public string SessionLog => T("ThreeD.Workbench.SessionLog", "\uC138\uC158 \uB85C\uADF8", "Session Log");
+    public string WorkbenchApplicationLogRetention => T(
+        "ThreeD.Workbench.ApplicationLogRetention",
+        $"\uBA54\uBAA8\uB9AC\uC5D0\uB294 \uCD5C\uC2E0 \uD56D\uBAA9 {ToolWorkbenchViewModel.MaximumRunLogEntries:N0}\uAC1C\uB9CC \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uBAA8\uB4E0 Workbench \uC774\uBCA4\uD2B8\uB294 \uC21C\uD658 \uC800\uC7A5\uB418\uB294 Application Log \uD30C\uC77C\uC5D0\uB3C4 \uAE30\uB85D\uB429\uB2C8\uB2E4.",
+        $"Latest {ToolWorkbenchViewModel.MaximumRunLogEntries:N0} entries are shown in memory. Every Workbench event is also written to rolling Application Log files.");
     public string HeightProfile => T("ThreeD.Workbench.HeightProfile", "\uB192\uC774 \uD504\uB85C\uD30C\uC77C", "Height Profile");
     public string FitDiagnostics => T("ThreeD.Workbench.FitDiagnostics", "\uD53C\uD305 \uC9C4\uB2E8", "Fit Diagnostics");
     public string IntersectionEvidence => T("ThreeD.Workbench.IntersectionEvidence", "\uAD50\uCC28\uC810 \uC99D\uAC70", "Intersection Evidence");

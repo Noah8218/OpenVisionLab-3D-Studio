@@ -440,6 +440,7 @@ public partial class MainWindow : Window
         var surfaceMatchCollectionNavigationFocusHoverSmoke =
             smoke.SurfaceMatchCollectionNavigationFocusHoverSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
+        var workbenchRunLogSmoke = smoke.WorkbenchRunLogSmoke;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
         var twoPointLinePublishSmoke = smoke.TwoPointLinePublishSmoke;
         var twoPointLinePreviewSmoke = smoke.TwoPointLinePreviewSmoke;
@@ -535,6 +536,11 @@ public partial class MainWindow : Window
                         StringComparer.OrdinalIgnoreCase))
                 {
                     ToolWorkbench.ToggleSelectedToolSideCollapse();
+                }
+
+                if (workbenchRunLogSmoke)
+                {
+                    ToolWorkbench.ActivateSessionLogPane();
                 }
 
                 if (asyncC3DLoadSmokePath is not null
