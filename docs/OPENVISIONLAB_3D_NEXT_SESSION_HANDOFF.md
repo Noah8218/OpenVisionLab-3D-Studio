@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-05
+Date: 2026-08-06
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -33,11 +33,28 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
 - B-12 acquisition provenance, K-04 acquisition direction/orientation, L-13
   Surface Match pose/score export, and PL-0002 Runner help exit behavior are
   complete for their documented software scopes.
-- The Library-Noah-to-Vision-SDK migration is complete in the working tree:
+- `PL-0004` is complete: all `C3DHeightGrid` reads and Viewer resampling use
+  one immutable load snapshot. Debug/Release pass `0/0`, focused and affected
+  checks pass `127/127`, and refreshed Wide/Compact R0 `-ValidateOnly` passes.
+  Preserve
+  `OPENVISIONLAB_3D_SHARED_CHAT_ANALYSIS_AND_C3D_LOAD_SNAPSHOT_20260806.md`.
+- `PL-0005` is complete: the Studio header reports the most downstream actual
+  A3/A2/A1/legacy step and its current `State`; state changes refresh the
+  summary without execution. Debug/Release pass `0/0`, Tool Recipe teaching
+  passes `35/35`, current Wide/Compact evidence is accepted, and refreshed R0
+  `-ValidateOnly` passes. Preserve
+  `OPENVISIONLAB_3D_TRUTHFUL_ALIGNMENT_STATUS_SUMMARY_20260806.md`.
+- `PL-0006` is complete: the release policy reports the current GitHub
+  zero-release/zero-tag state, treats `v0.1.0-rc.1` only as historical
+  candidate evidence, and matches source-owned product/Host API/manifest/Run
+  Record/recipe versions. No release, tag, asset, commit, or push was created.
+  Preserve `OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md`.
+- The Library-Noah-to-Vision-SDK migration is complete on main commit
+  `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
   and `27/27`; bundled sample `8/8`; self-contained manifest `502/502`.
-  Preserve `OPENVISIONLAB_3D_VISION_SDK_3_MIGRATION_20260805.md`. Hosted CI
-  remains unverified until the changes are committed, pushed, and executed.
+  Preserve `OPENVISIONLAB_3D_VISION_SDK_3_MIGRATION_20260805.md`. GitHub
+  Actions run `31012735944` completed successfully for that commit.
 
 Run `git status --short` and `git log --oneline -5` for live repository state.
 This document does not carry an unpushed-commit or dirty-worktree claim.
@@ -56,18 +73,27 @@ acceptance.
 - Reasoning effort: none.
 
 Missing R0 does not prevent a newly approved dependency-ready deterministic
-software slice. No such software item is currently selected.
+software slice.
+
+## Current Software Priority
+
+The next eligible maintenance item is bounded Workbench run-log retention.
+Define an explicit in-memory retention and export boundary while preserving
+durable `OVLog` evidence and without changing Preview/Publish/Run behavior.
+
+- Recommended model: `gpt-5.6-terra`.
+- Reasoning effort: `low`.
 
 ## External Maintenance Blocker
 
-`PL-0003` tracks the public-sample remote-retention re-audit described in
+`PL-0003` tracks the public-sample remote-retention cleanup described in
 `OPENVISIONLAB_3D_SYNTHETIC_THICKNESS_SAMPLE_MIGRATION_20260728.md`.
 
-The historical record reports old GitHub object accessibility and historical
-Actions artifacts. Current external state is unverified. Completion requires
-authorized GitHub access, a fresh remote audit, removal or documented retention
-of affected artifacts, and the appropriate GitHub sensitive-data cleanup
-outcome. Do not treat document age as proof that this blocker expired.
+The authenticated audit and 57-item retired-lineage Actions cleanup are
+complete, while all 14 sanitized-lineage artifacts were preserved. GitHub
+Support ticket `#4633618` remains Open; the old object still returned HTTP
+200 in the parent and fork network immediately after submission. Completion
+requires GitHub processing and a fresh resulting reachability check.
 
 ## Required Reading For The Next Task
 
@@ -110,9 +136,9 @@ The 2026-08-05 documentation pass:
 
 ```text
 Status: Complete
-Scope: Current handoff and documentation-authority consolidation only
-Acceptance criteria: one inventory owner; short current handoff; historical evidence retained; R0 and external retention blockers visible
-Verification: documentation link/status/ledger/diff checks recorded by the 2026-08-05 documentation task
-Evidence: AGENTS.md, docs/README.md, this file, archived handoff snapshots, PL-0003
-Boundary / next dependency: product-owner Wide/Compact R0; authorized GitHub access for PL-0003
+Scope: Refresh the current handoff through release-policy reconciliation
+Acceptance criteria: current completed documentation scope visible; next maintenance item identified; R0 and PL-0003 external dependencies current
+Verification: GitHub Releases none; Tags and git ls-remote tags zero; source-owned version values match policy; changed-document links and diff check pass
+Evidence: docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md, .proofline/issues/PL-0006.json, this file
+Boundary / next dependency: product-owner Wide/Compact R0; bounded Workbench run-log retention is the next software maintenance item; PL-0003 waits on GitHub Support #4633618
 ```

@@ -65,6 +65,13 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Truthful alignment status summary](OPENVISIONLAB_3D_TRUTHFUL_ALIGNMENT_STATUS_SUMMARY_20260806.md) -
+  `PL-0005` stage/state contract, no-action regression, current-build
+  Wide/Compact comparison, and refreshed R0 hashes.
+
+- [Shared-chat analysis and immutable C3D load snapshot](OPENVISIONLAB_3D_SHARED_CHAT_ANALYSIS_AND_C3D_LOAD_SNAPSHOT_20260806.md) —
+  verified finding matrix, `PL-0004` correction, focused regression, R0 hash
+  refresh, and remaining memory boundary.
 - [OpenVisionLab Vision SDK 3 migration](OPENVISIONLAB_3D_VISION_SDK_3_MIGRATION_20260805.md) —
   fixed package provenance, compatibility boundary, full regression result,
   sample replay, and self-contained package evidence.

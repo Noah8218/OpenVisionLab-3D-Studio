@@ -51,6 +51,57 @@ internal static class ToolRecipeTeachingVerification
             var recipePath = Path.Combine(fixtureRoot, "fixture.ov3d-teach.json");
             var emptyRecipePath = Path.Combine(fixtureRoot, "empty.ov3d-recipe.json");
 
+            var alignment = new ToolWorkbenchViewModel();
+            Check(
+                "alignment summary reports no taught stage initially",
+                alignment.AlignmentStatusSummary == "Alignment not taught",
+                alignment.AlignmentStatusSummary);
+            alignment.SetC3DSource(sourcePath, markDirty: false);
+            var legacyTool = new ToolWorkbenchToolItem(
+                "Transform", "XYZ Affine Transform", "xyz-affine-transform", 1,
+                "Legacy input", "Legacy output", "Verification-only legacy recipe step.", []);
+            var legacyStep = new ToolWorkbenchPipelineStepItem(
+                "step.legacy-affine", legacyTool, alignment.Source.Id, "legacy.affine");
+            alignment.PipelineSteps.Add(legacyStep);
+            Check(
+                "legacy alignment summary reports the legacy step state",
+                alignment.AlignmentStatusSummary == $"Legacy XYZ Affine Transform | {legacyStep.State}",
+                alignment.AlignmentStatusSummary);
+            var alignmentSolve = AddTool(alignment, "XYZ Affine Solve");
+            Check(
+                "A1 alignment summary supersedes the legacy stage",
+                alignment.AlignmentStatusSummary == $"A1 XYZ Affine Solve | {alignmentSolve.State}",
+                alignment.AlignmentStatusSummary);
+            var alignmentApply = AddTool(alignment, "Apply XYZ Affine");
+            Check(
+                "A2 alignment summary supersedes A1",
+                alignment.AlignmentStatusSummary == $"A2 Apply XYZ Affine | {alignmentApply.State}",
+                alignment.AlignmentStatusSummary);
+            var alignmentRegrid = AddTool(alignment, "Re-grid Height Map");
+            Check(
+                "A3 alignment summary supersedes A2",
+                alignment.AlignmentStatusSummary == $"A3 Re-grid Height Map | {alignmentRegrid.State}",
+                alignment.AlignmentStatusSummary);
+            var alignmentSummaryNotifications = 0;
+            alignment.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ToolWorkbenchViewModel.AlignmentStatusSummary))
+                {
+                    alignmentSummaryNotifications++;
+                }
+            };
+            var actionLogCount = alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run");
+            alignmentRegrid.State = "Published";
+            Check(
+                "alignment step state change refreshes the header summary",
+                alignmentSummaryNotifications == 1
+                && alignment.AlignmentStatusSummary == "A3 Re-grid Height Map | Published",
+                $"notifications={alignmentSummaryNotifications}; summary={alignment.AlignmentStatusSummary}");
+            Check(
+                "alignment status refresh causes no Preview, Publish, or Run action",
+                alignment.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == actionLogCount,
+                $"actionLogs={actionLogCount}");
+
             var workbench = new ToolWorkbenchViewModel();
             Check(
                 "initial empty recipe is clean and unsaved",

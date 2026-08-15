@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-05
+Updated: 2026-08-06
 Status: Current continuation entry point
 
 Use the following request to start the next development chat:
@@ -18,8 +18,15 @@ files.
 The master backlog owns the current inventory table; do not copy its counts
 into this prompt. Inspection Workspace v3 is 7/8 and A-01 remains Partial.
 The current acceptance priority is the product owner's unaided Wide/Compact
-R0; automated validation does not replace it. No dependency-ready software
-item is selected without a new owner decision.
+R0; automated validation does not replace it. PL-0004 immutable C3D loaded
+snapshot and PL-0005 truthful alignment status are complete. The next software
+maintenance item is bounded Workbench run-log retention that preserves durable
+OVLog evidence. PL-0006 release-policy reconciliation is complete: the current
+repository has no release or tag, and historical v0.1.0-rc.1 candidate
+evidence is not a current distribution claim. Creating or republishing a
+release still requires explicit owner direction and the complete release gate.
+Use the current master checkpoint and shared-chat analysis closure as the
+scope source.
 
 OpenVisionLab 3D Studio remains a local, file-first deterministic rule-based
 3D inspection workbench. Preserve explicit Preview/Publish/Run, source/result

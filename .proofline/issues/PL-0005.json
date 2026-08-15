@@ -1,0 +1,143 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0005",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Show truthful alignment stage and state in the Studio header",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "investigation",
+    "summary": "The shared-project analysis identified an obsolete alignment-status message, and current-build Wide and Compact evidence confirmed it.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_SHARED_CHAT_ANALYSIS_AND_C3D_LOAD_SNAPSHOT_20260806.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "The Studio header now reports the most downstream present A3/A2/A1/legacy step and its actual State; state changes refresh the presentation without executing product actions, and focused, build, Wide/Compact UI, and refreshed R0 checks pass."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "The Studio header can report a legacy alignment scaffold even when an A3 Re-grid Height Map step exists and exposes a different current state.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Operators receive a false progress statement about a core A1/A2/A3 workflow and cannot trust the header as a current-stage summary."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The header reports the most downstream present alignment stage in A3, A2, A1, legacy order together with that step's current state.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A step State change refreshes AlignmentStatusSummary without invoking Preview, Publish, Run, or another product action.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The existing Tool Recipe teaching verifier and solution build pass with the new status regression coverage.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Fresh current-build Wide 1920x1040 and Compact 1280x760 before/after application-only evidence demonstrates the corrected header and acceptable capture quality.",
+      "evidence_refs": [
+        "E4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0004"
+    }
+  ],
+  "context": [
+    {
+      "kind": "source location",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Shell/StudioHeaderView.xaml",
+      "summary": "The header binding is StudioHeaderView.AlignmentStatusText -> Workbench.AlignmentStatusSummary."
+    },
+    {
+      "kind": "scope boundary",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs",
+      "summary": "This issue does not change alignment algorithms, Preview/Publish/Run contracts, theme resources, or layout topology."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "local evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260806-alignment-status-summary/",
+      "summary": "Current-build Wide and Compact before/after screenshots, screenshot-quality reports, monitor/window placement records, and verification output."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "observation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260806-alignment-status-summary/before-wide.png and before-compact.png",
+      "observation": "Current Release Wide and Compact captures show a selected Re-grid Height Map step in Waiting for upstream state while the header reports the legacy affine scaffold message; both screenshot quality reports accepted the captures on the dynamic leftmost monitor.",
+      "observed_at": "2026-08-06T06:41:05.4941334+09:00",
+      "claim_refs": [
+        "P1"
+      ]
+    },
+    {
+      "id": "E2",
+      "kind": "focused regression",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260806-alignment-status-summary/tool-recipe-teaching-release.txt",
+      "observation": "Release Tool Recipe teaching verification passed 35/35, including no-stage, legacy, A1, A2, A3 precedence, exactly one status notification after an A3 State change, and zero Preview/Publish/Run log actions.",
+      "observed_at": "2026-08-06T06:53:33.6497459+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "build verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260806-alignment-status-summary/",
+      "observation": "Debug and Release solution builds completed with zero warnings and errors; the existing CI-routed verifier passed in both configurations, and git diff --check passed.",
+      "observed_at": "2026-08-06T06:53:33.6497459+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "current-build UI and fixed-input verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260806-alignment-status-summary/",
+      "observation": "Application-only Wide 1920x1040 and Compact 1280x760 before/after captures passed quality checks and changed the false legacy summary to 'A3 Re-grid Height Map | Waiting for upstream'; both actual Release windows intersected dynamic leftmost DISPLAY2, and refreshed nine-input R0 ValidateOnly passed in both layouts without launching the application.",
+      "observed_at": "2026-08-06T06:53:33.6497459+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-06T06:41:05.4941334+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "Registered the confirmed status-reporting defect and started the bounded correction."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-06T06:53:33.6497459+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Replaced the obsolete message with actual downstream stage/state projection, added state-change notification and no-action regression coverage, and passed build, UI, and fixed-input gates."
+    }
+  ],
+  "created_at": "2026-08-06T06:41:05.4941334+09:00",
+  "updated_at": "2026-08-06T06:53:33.6497459+09:00"
+}

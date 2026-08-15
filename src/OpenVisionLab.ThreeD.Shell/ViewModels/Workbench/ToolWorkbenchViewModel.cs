@@ -701,18 +701,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ? "Source not loaded"
         : $"{Source.Format} | {Source.Unit} | {Source.FrameId}";
 
-    public string AlignmentStatusSummary => PipelineSteps.Any(step =>
-        string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase))
-        ? (PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase) && string.Equals(step.State, "Published", StringComparison.OrdinalIgnoreCase))
-            ? "Affine point cloud published; A3 re-grid is not implemented"
-            : "Affine apply taught, not calculated")
-        : PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase))
-        ? (PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase) && string.Equals(step.State, "Published", StringComparison.OrdinalIgnoreCase))
-            ? "Affine solve published; apply point cloud is not calculated"
-            : "Affine solve taught, not calculated")
-        : PipelineSteps.Any(step => string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
-            ? "Legacy affine scaffold taught, not calculated"
-            : "Alignment not taught";
+    public string AlignmentStatusSummary =>
+        PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "re-grid-height-map", StringComparison.OrdinalIgnoreCase)) is { } regrid
+            ? $"A3 Re-grid Height Map | {regrid.State}"
+            : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.OrdinalIgnoreCase)) is { } apply
+                ? $"A2 Apply XYZ Affine | {apply.State}"
+                : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.OrdinalIgnoreCase)) is { } solve
+                    ? $"A1 XYZ Affine Solve | {solve.State}"
+                    : PipelineSteps.LastOrDefault(step => string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase)) is { } legacy
+                        ? $"Legacy XYZ Affine Transform | {legacy.State}"
+                        : "Alignment not taught";
 
     public ToolWorkbenchTeachingSelectionRequirement? SelectedStepSelectionRequirement =>
         CreateSelectionRequirement(SelectedPipelineStep);
@@ -2603,8 +2601,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void OnRecipePartChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.State)
-            or nameof(ToolWorkbenchPipelineStepItem.InputPortState)
+        if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.State))
+        {
+            OnPropertyChanged(nameof(AlignmentStatusSummary));
+            return;
+        }
+
+        if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.InputPortState)
             or nameof(ToolWorkbenchPipelineStepItem.InputPortDetail)
             or nameof(ToolWorkbenchPipelineStepItem.InputPortHasIssue)
             or nameof(ToolWorkbenchPipelineStepItem.OutputPortState)

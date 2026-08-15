@@ -254,6 +254,9 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(NativePoint point, uint flags);
+
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
@@ -444,6 +447,31 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
             Width = smokeSize.Width;
             Height = smokeSize.Height;
+        }
+
+        if (smoke.UseLeftmostVirtualScreenOrigin)
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            const uint monitorDefaultToNearest = 0x00000002;
+            var leftmostMonitor = MonitorFromPoint(
+                new NativePoint
+                {
+                    X = (int)SystemParameters.VirtualScreenLeft,
+                    Y = (int)SystemParameters.VirtualScreenTop
+                },
+                monitorDefaultToNearest);
+            var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+            if (leftmostMonitor != IntPtr.Zero
+                && GetMonitorInfo(leftmostMonitor, ref monitorInfo))
+            {
+                Left = monitorInfo.WorkArea.Left;
+                Top = monitorInfo.WorkArea.Top;
+            }
+            else
+            {
+                Left = SystemParameters.VirtualScreenLeft;
+                Top = SystemParameters.VirtualScreenTop;
+            }
         }
 
         var smokePublishResult = smoke.SmokePublishResult;
@@ -2721,6 +2749,30 @@ public partial class MainWindow : Window
                 _ = OpenValidationSetComparisonForSmokeAsync();
             }
         }
+
+        var requestedSection = GetCommandLineValue(
+            "--smoke-validation-section");
+        if (Enum.TryParse<ValidationWorkspaceSection>(
+                requestedSection,
+                ignoreCase: true,
+                out var validationSection)
+            && Enum.IsDefined(typeof(ValidationWorkspaceSection), validationSection))
+        {
+            _ = SelectValidationSectionForSmokeAsync(validationSection);
+        }
+    }
+
+    private async Task SelectValidationSectionForSmokeAsync(
+        ValidationWorkspaceSection section)
+    {
+        while (_viewModel.Workbench.IsValidationSetRunning)
+        {
+            await Task.Delay(25);
+        }
+
+        await Dispatcher.InvokeAsync(
+            () => ToolWorkbench.SetValidationWorkspaceSection(section),
+            DispatcherPriority.Loaded);
     }
 
     private async Task SelectValidationThresholdCandidateForSmokeAsync(

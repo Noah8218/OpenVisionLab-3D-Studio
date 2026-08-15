@@ -6,10 +6,16 @@ using OpenVisionLab.Vision3D.FeatureExtraction;
 
 namespace OpenVisionLab.ThreeD.Data;
 
+/// <summary>
+/// Immutable C3D load snapshot. All cell reads and render-density views use
+/// the exact raw samples whose identity and statistics were recorded at load.
+/// </summary>
 public sealed class C3DHeightGrid
 {
     public const float ViewerHorizontalSpan = 10.0f;
     public const float ViewerHeightScale = 0.0006f;
+
+    private readonly float[] samples;
 
     private C3DHeightGrid(
         string sourcePath,
@@ -25,7 +31,8 @@ public sealed class C3DHeightGrid
         C3DHeightDistribution heightDistribution,
         C3DHeightGridLoadPerformance loadPerformance,
         int pointStride,
-        HeightGridPoint[] points)
+        HeightGridPoint[] points,
+        float[] samples)
     {
         SourcePath = sourcePath;
         SourceByteLength = sourceByteLength;
@@ -41,6 +48,7 @@ public sealed class C3DHeightGrid
         LoadPerformance = loadPerformance;
         PointStride = pointStride;
         Points = points;
+        this.samples = samples;
         HorizontalScale = CalculateHorizontalScale(width, height);
         XHalfExtent = (width - 1) * HorizontalScale / 2.0f;
         ZHalfExtent = (height - 1) * HorizontalScale / 2.0f;
@@ -92,16 +100,7 @@ public sealed class C3DHeightGrid
             throw new ArgumentOutOfRangeException(nameof(column), column, $"C3D column must be between 0 and {Width - 1}.");
         }
 
-        using var reader = new BinaryReader(File.OpenRead(SourcePath));
-        var width = reader.ReadInt32();
-        var height = reader.ReadInt32();
-        if (width != Width || height != Height)
-        {
-            throw new InvalidDataException("C3D dimensions changed after the source was loaded.");
-        }
-
-        reader.BaseStream.Seek(8L + ((long)row * Width + column) * sizeof(float), SeekOrigin.Begin);
-        var value = reader.ReadSingle();
+        var value = samples[row * Width + column];
         if (!float.IsFinite(value) || value == 0.0f)
         {
             throw new InvalidDataException($"C3D point ({row}, {column}) is not a finite non-zero sample.");
@@ -117,17 +116,10 @@ public sealed class C3DHeightGrid
         if (startColumn < 0 || endColumn >= Width || startColumn > endColumn)
             throw new ArgumentOutOfRangeException(nameof(startColumn), $"C3D columns must satisfy 0 <= start <= end < {Width}.");
 
-        using var reader = new BinaryReader(File.OpenRead(SourcePath));
-        var width = reader.ReadInt32();
-        var height = reader.ReadInt32();
-        if (width != Width || height != Height)
-            throw new InvalidDataException("C3D dimensions changed after the source was loaded.");
-
-        reader.BaseStream.Seek(8L + ((long)row * Width + startColumn) * sizeof(float), SeekOrigin.Begin);
         var points = new List<HeightGridPoint>(endColumn - startColumn + 1);
         for (var column = startColumn; column <= endColumn; column++)
         {
-            var value = reader.ReadSingle();
+            var value = samples[row * Width + column];
             if (float.IsFinite(value) && value != 0.0f)
                 points.Add(CreatePoint(value, row, column, Width, Height, Min, Max, Mean));
         }
@@ -149,33 +141,13 @@ public sealed class C3DHeightGrid
         ValidateGridCoordinate(startRow, startColumn, nameof(startRow), nameof(startColumn));
         ValidateGridCoordinate(endRow, endColumn, nameof(endRow), nameof(endColumn));
 
-        using var reader = new BinaryReader(File.OpenRead(SourcePath));
-        var width = reader.ReadInt32();
-        var height = reader.ReadInt32();
-        var expectedBytes = 8L + checked((long)Width * Height * sizeof(float));
-        if (width != Width
-            || height != Height
-            || reader.BaseStream.Length != SourceByteLength
-            || reader.BaseStream.Length != expectedBytes)
-        {
-            throw new InvalidDataException("C3D dimensions or byte length changed after the source was loaded.");
-        }
-
-        reader.BaseStream.Position = 0;
-        var currentSha256 = Convert.ToHexString(SHA256.HashData(reader.BaseStream));
-        if (!currentSha256.Equals(ContentSha256, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidDataException("C3D source identity changed after the source was loaded.");
-        }
-
         var stepCount = Math.Max(Math.Abs(endRow - startRow), Math.Abs(endColumn - startColumn));
         var points = new List<HeightGridPoint>(stepCount + 1);
         for (var step = 0; step <= stepCount; step++)
         {
             var row = InterpolateGridCoordinate(startRow, endRow, step, stepCount);
             var column = InterpolateGridCoordinate(startColumn, endColumn, step, stepCount);
-            reader.BaseStream.Position = 8L + ((long)row * Width + column) * sizeof(float);
-            var value = reader.ReadSingle();
+            var value = samples[row * Width + column];
             if (float.IsFinite(value) && value != 0.0f)
             {
                 points.Add(CreatePoint(value, row, column, Width, Height, Min, Max, Mean));
@@ -192,25 +164,67 @@ public sealed class C3DHeightGrid
     /// </summary>
     public double[] ReadHeightMapValues()
     {
-        using var reader = new BinaryReader(File.OpenRead(SourcePath));
-        var width = reader.ReadInt32();
-        var height = reader.ReadInt32();
-        var expectedBytes = 8L + checked((long)Width * Height * sizeof(float));
-        if (width != Width || height != Height || reader.BaseStream.Length != expectedBytes)
-        {
-            throw new InvalidDataException("C3D dimensions or byte length changed after the source was loaded.");
-        }
-
         var values = new double[checked(Width * Height)];
         for (var index = 0; index < values.Length; index++)
         {
-            var value = reader.ReadSingle();
+            var value = samples[index];
             values[index] = float.IsFinite(value) && value != 0.0f
                 ? value
                 : double.NaN;
         }
 
         return values;
+    }
+
+    /// <summary>
+    /// Creates another render-density view of this exact loaded snapshot.
+    /// The source path is not reopened.
+    /// </summary>
+    public C3DHeightGrid WithMaxRenderedPoints(int maxRenderedPoints)
+    {
+        var pointStride = CalculatePointStride(samples.Length, maxRenderedPoints);
+        if (pointStride == PointStride)
+        {
+            return this;
+        }
+
+        var pointsStart = Stopwatch.GetTimestamp();
+        var points = pointStride == 0
+            ? []
+            : CreatePoints(
+                samples,
+                Width,
+                Height,
+                pointStride,
+                Min,
+                Max,
+                Mean,
+                CancellationToken.None,
+                progress: null);
+        var pointsMilliseconds = Stopwatch.GetElapsedTime(pointsStart).TotalMilliseconds;
+        var loadPerformance = LoadPerformance with
+        {
+            RenderPointsMilliseconds = pointsMilliseconds,
+            TotalMilliseconds = LoadPerformance.TotalMilliseconds
+                - LoadPerformance.RenderPointsMilliseconds
+                + pointsMilliseconds
+        };
+        return new C3DHeightGrid(
+            SourcePath,
+            SourceByteLength,
+            ContentSha256,
+            Width,
+            Height,
+            ValidSampleCount,
+            ZeroSampleCount,
+            Min,
+            Max,
+            Mean,
+            HeightDistribution,
+            loadPerformance,
+            pointStride,
+            points,
+            samples);
     }
 
     public static C3DHeightGrid Load(string path, int maxRenderedPoints = 55000)
@@ -272,9 +286,7 @@ public sealed class C3DHeightGrid
         var heightDistribution = C3DHeightDistribution.Create(summary);
         var distributionMilliseconds = Stopwatch.GetElapsedTime(distributionStart).TotalMilliseconds;
         progress?.Report(78.0);
-        var pointStride = maxRenderedPoints <= 0
-            ? 0
-            : Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints)));
+        var pointStride = CalculatePointStride(sampleCount, maxRenderedPoints);
         var pointsStart = Stopwatch.GetTimestamp();
         var points = pointStride == 0
             ? []
@@ -308,7 +320,8 @@ public sealed class C3DHeightGrid
             heightDistribution,
             loadPerformance,
             pointStride,
-            points);
+            points,
+            samples);
         progress?.Report(100.0);
         return grid;
     }
@@ -347,6 +360,11 @@ public sealed class C3DHeightGrid
 
         return points.ToArray();
     }
+
+    private static int CalculatePointStride(int sampleCount, int maxRenderedPoints) =>
+        maxRenderedPoints <= 0
+            ? 0
+            : Math.Max(1, (int)Math.Ceiling(Math.Sqrt((double)sampleCount / maxRenderedPoints)));
 
     private static HeightGridPoint CreatePoint(
         float value,

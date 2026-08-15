@@ -32,6 +32,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("MissingValue", VerifyMissingValue()),
             ("CaseInsensitiveFlag", VerifyCaseInsensitiveFlag()),
             ("SoftwareRendering", VerifySoftwareRendering()),
+            ("LeftmostVirtualScreenOrigin", VerifyLeftmostVirtualScreenOrigin()),
             ("FilterPublishImpliesPreview", VerifyFilterPublishImpliesPreview()),
             ("EdgeLineFitImpliesPreview", VerifyEdgeLineFitImpliesPreview()),
             ("WindowSize", VerifyWindowSize()),
@@ -101,6 +102,13 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--SMOKE-SOFTWARE-RENDERING"]);
         return options.SoftwareRendering;
+    }
+
+    private static bool VerifyLeftmostVirtualScreenOrigin()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--SHELL-SMOKE-LEFTMOST"]);
+        return options.UseLeftmostVirtualScreenOrigin;
     }
 
     private static bool VerifyFilterPublishImpliesPreview()

@@ -530,7 +530,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         C3DHeightGrid fitSample;
         try
         {
-            fitSample = C3DHeightGrid.Load(c3dSample.SourcePath, PlaneFitMaxSampledPoints);
+            fitSample = c3dSample.WithMaxRenderedPoints(PlaneFitMaxSampledPoints);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
         {
@@ -606,7 +606,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         C3DHeightGrid measurementSample;
         try
         {
-            measurementSample = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints);
+            measurementSample = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
         {
@@ -760,7 +760,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         C3DHeightGrid measurementSample;
         try
         {
-            measurementSample = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints);
+            measurementSample = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
         {
@@ -854,7 +854,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         var step = viewModel.CreateVolumeRecipeStep();
         C3DHeightGrid measurementGrid;
-        try { measurementGrid = C3DHeightGrid.Load(c3dSample.SourcePath, step.MaxSampledPoints); }
+        try { measurementGrid = c3dSample.WithMaxRenderedPoints(step.MaxSampledPoints); }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or OverflowException)
         {
             viewModel.ViewerStatus = $"Volume sample load failed: {ex.Message}";

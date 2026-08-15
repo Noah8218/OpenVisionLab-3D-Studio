@@ -916,9 +916,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         var restoreCrossSectionPreview = viewModel.CrossSectionVisible;
         try
         {
-            c3dSample = string.IsNullOrWhiteSpace(sourcePath)
-                ? null
-                : C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
+            c3dSample = c3dSample is not null
+                ? c3dSample.WithMaxRenderedPoints(viewModel.C3DMaxRenderedPoints)
+                : string.IsNullOrWhiteSpace(sourcePath)
+                    ? null
+                    : C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or ArgumentException)
         {

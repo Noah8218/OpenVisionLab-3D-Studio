@@ -165,6 +165,77 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
+### Current execution checkpoint - release-policy reconciliation - 2026-08-06
+
+`PL-0006` is Complete. The current release/version policy now distinguishes
+historical `v0.1.0-rc.1` candidate evidence from current GitHub publication
+state. GitHub reports no Releases, the Tags page exposes no tag,
+`git ls-remote --tags origin` returns zero refs, and historical commit
+`ac57687` is neither an ancestor of current `main` nor owned by a current
+remote ref. No release, tag, asset, commit, or push was created.
+
+The policy's current-values table now matches source-owned product
+`0.1.1-dev`, Viewer Host API `1.0`, Viewer manifest `1.0`, Run Record `1.6`,
+and generic Tool Recipe `1.5`. Future publication still requires explicit
+owner approval, the complete release gate, and the product owner's unaided
+Wide/Compact R0 for the exact release target. Preserve:
+
+- `docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md`;
+- `.proofline/issues/PL-0006.json`;
+- `docs/OPENVISIONLAB_3D_SHARED_CHAT_ANALYSIS_AND_C3D_LOAD_SNAPSHOT_20260806.md`.
+
+This documentation correction does not change inventory. The next eligible
+software maintenance item is bounded Workbench run-log retention that
+preserves durable `OVLog` evidence. Recommended model: `gpt-5.6-terra`;
+reasoning effort: `low`. Human-owner Wide/Compact R0 remains the separate
+acceptance priority and requires owner operation rather than model execution.
+
+### Current execution checkpoint - truthful alignment status summary - 2026-08-06
+
+`PL-0005` is Complete. The Studio header now selects the most downstream
+present alignment stage in A3, A2, A1, then legacy order and displays that
+step's actual `State`. Step-state changes raise the header presentation
+notification without invoking Preview, Publish, Run, or Validation.
+
+Debug and Release builds pass with `0` warnings and `0` errors. The existing
+CI-routed Tool Recipe teaching verifier passes `35/35`. Current-build
+application-only Wide `1920 x 1040` and Compact `1280 x 760` before/after
+captures pass quality checks and show `A3 Re-grid Height Map | Waiting for
+upstream` instead of the stale legacy message. Refreshed Wide and Compact R0
+`-ValidateOnly` checks pass without launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_TRUTHFUL_ALIGNMENT_STATUS_SUMMARY_20260806.md`;
+- `.proofline/issues/PL-0005.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260806-alignment-status-summary\`.
+
+This is a truthfulness correction for existing alignment behavior, not a new
+inventory item, so inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`.
+Its former next correction is now complete as `PL-0006`; use the current
+checkpoint above for active priority selection.
+
+### Current execution checkpoint - immutable C3D loaded snapshot - 2026-08-06
+
+`PL-0004` is Complete. One open `C3DHeightGrid` now owns the exact raw samples
+parsed at load, and point, row, line-profile, full-map, display-density, and
+inspection resampling all use that same snapshot without reopening its mutable
+path. Explicitly loading a source again still creates a new identified
+snapshot.
+
+Debug and Release builds pass with `0` warnings and `0` errors. The focused
+C3D contract passes `14/14`; affected height, plane, deviation, map,
+flatness, Gap/Flush, and Volume checks pass `113/113`; and refreshed Wide and
+Compact R0 `-ValidateOnly` checks pass without launching the application.
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_SHARED_CHAT_ANALYSIS_AND_C3D_LOAD_SNAPSHOT_20260806.md`;
+- `.proofline/issues/PL-0004.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260806-c3d-immutable-load-snapshot\`.
+
+This is a correctness closure for existing `B-01` identity behavior, not a
+new inventory item, so inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`.
+Its former next correction is now complete as `PL-0005`; use the current
+checkpoint above for active priority selection.
+
 ### Current execution checkpoint - OpenVisionLab Vision SDK 3 migration - 2026-08-05
 
 The active numerical dependency has moved from `Lib.ThreeD 2.9.1` to the
@@ -189,12 +260,13 @@ changes and their derived hashes. Preserve:
 - `docs/OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-vision-sdk-3-migration\`.
 
-This dependency migration does not change inventory classification. Hosted CI
-remains unverified until the uncommitted work is pushed. Human-owner
+This dependency migration does not change inventory classification. It is on
+main at `8400b89a788b2a59affb713833001fff15c6aff0`; GitHub Actions run
+`31012735944` completed successfully. Human-owner
 Wide/Compact R0 remains the next acceptance priority; prerequisite: owner
 operation and evidence; recommended model: none; reasoning effort: none.
 
-### Current acceptance checkpoint - Human-owner R0 fixed-input refresh - 2026-08-05
+### Current acceptance checkpoint - Human-owner R0 fixed-input refresh - 2026-08-06
 
 Status is Blocked only on the product owner's unaided Wide and Compact runs.
 The current source was rebuilt in Release with `0/0`; seven current binaries,
@@ -209,7 +281,7 @@ the actual window intersects that monitor. Current validation selects
 
 - `docs/OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`;
 - `scripts/start-human-owner-r0.ps1`;
-- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260805-vision-sdk-3-migration\`.
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260806-alignment-status-summary\`.
 
 Inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`; Workspace v3 remains
 `7/8` and `A-01` remains Partial. Next dependency: owner performs Wide first,
@@ -2510,6 +2582,21 @@ The owner explicitly left the layout-only stream and completed item 11 on
     exits `0` on stdout, invalid and incomplete commands retain exit `2` on
     stderr, the usage body is shared and byte-identical, Release is `0/0`,
     direct command matrix is `4/4`, and existing L-13 regression is `19/19`.
+21. `PL-0004 immutable C3D loaded snapshot` - Complete; point, row, profile,
+    full-map, display-density, and Viewer inspection sampling share the exact
+    loaded sample identity; focused `14/14`, affected checks `113/113`, Debug
+    and Release `0/0`, and refreshed Wide/Compact R0 validation pass.
+22. `PL-0005 truthful alignment status summary` - Complete; most-downstream
+    A3/A2/A1/legacy precedence, actual step state, state-change notification
+    without execution, focused `35/35`, current Wide/Compact evidence, and
+    refreshed R0 validation pass.
+23. `PL-0006 release-policy reconciliation` - Complete; current GitHub
+    zero-release/zero-tag state, source-owned version values, historical
+    candidate boundary, future owner approval, and full release gate are now
+    explicit. No release operation occurred.
+24. `Bounded Workbench run-log retention` - Next; define retention and export
+    behavior without weakening durable `OVLog` evidence. Recommended model:
+    `gpt-5.6-terra`; reasoning effort: `low`.
 
 ## Documentation decision
 

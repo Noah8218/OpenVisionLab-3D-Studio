@@ -1,7 +1,8 @@
 namespace OpenVisionLab.ThreeD.Data;
 
 /// <summary>
-/// Headless contract verification for inclusive C3D P1-P2 profile sampling.
+/// Headless contract verification for inclusive C3D P1-P2 profile sampling
+/// and immutable post-load source identity.
 /// </summary>
 public static class C3DHeightProfileVerification
 {
@@ -97,11 +98,44 @@ public static class C3DHeightProfileVerification
             var mutatedPath = Path.Combine(fixtureRoot, "profile-mutated.C3D");
             WriteC3D(mutatedPath, 5, 5, (row, column) => 1.0f + row * 10 + column);
             var mutatedGrid = C3DHeightGrid.Load(mutatedPath, maxRenderedPoints: 0);
+            var loadedSha256 = mutatedGrid.ContentSha256;
             WriteC3D(mutatedPath, 5, 5, (row, column) => 100.0f + row * 10 + column);
+
+            var loadedPoint = mutatedGrid.ReadPoint(2, 2);
             Check(
-                "same-size source content mutation is rejected by SHA-256",
-                Throws<InvalidDataException>(() => mutatedGrid.ReadLineProfile(0, 0, 4, 4)),
-                "dimensions and byte length unchanged; payload changed");
+                "point reads retain the loaded source snapshot",
+                loadedPoint.RawValue == 23.0f,
+                $"loaded={loadedPoint.RawValue:R}; replacement=122");
+
+            var loadedRow = mutatedGrid.ReadRowRange(2, 0, 4);
+            Check(
+                "row-range reads retain the loaded source snapshot",
+                RawValuesEqual(loadedRow, [21.0f, 22.0f, 23.0f, 24.0f, 25.0f]),
+                Describe(loadedRow));
+
+            var loadedProfile = mutatedGrid.ReadLineProfile(0, 0, 4, 4);
+            Check(
+                "line-profile reads retain the loaded source snapshot",
+                RawValuesEqual(loadedProfile, [1.0f, 12.0f, 23.0f, 34.0f, 45.0f]),
+                Describe(loadedProfile));
+
+            var loadedHeightMap = mutatedGrid.ReadHeightMapValues();
+            Check(
+                "full height-map reads retain the loaded source snapshot",
+                loadedHeightMap.SequenceEqual(Enumerable.Range(0, 25)
+                    .Select(index => (double)(1 + (index / 5) * 10 + index % 5))),
+                $"first={loadedHeightMap[0]:R}; center={loadedHeightMap[12]:R}; last={loadedHeightMap[^1]:R}");
+
+            var densityView = mutatedGrid.WithMaxRenderedPoints(4);
+            Check(
+                "render-density views retain loaded identity, statistics, and samples",
+                densityView.ContentSha256 == loadedSha256
+                && densityView.Min == mutatedGrid.Min
+                && densityView.Max == mutatedGrid.Max
+                && densityView.Mean == mutatedGrid.Mean
+                && densityView.PointStride == 3
+                && RawValuesEqual(densityView.Points, [1.0f, 4.0f, 31.0f, 34.0f]),
+                $"sha={densityView.ContentSha256}; stride={densityView.PointStride}; points={Describe(densityView.Points)}");
 
             var dimensionPath = Path.Combine(fixtureRoot, "profile-dimension.C3D");
             WriteC3D(dimensionPath, 5, 5, (row, column) => 1.0f + row * 10 + column);
@@ -112,9 +146,12 @@ public static class C3DHeightProfileVerification
             }
 
             Check(
-                "source dimension mutation is rejected before sampling",
-                Throws<InvalidDataException>(() => dimensionGrid.ReadLineProfile(0, 0, 4, 4)),
-                "loaded width=5; current header width=4");
+                "later source-header mutation does not alter the loaded snapshot",
+                dimensionGrid.ReadPoint(4, 4).RawValue == 45.0f
+                && RawValuesEqual(
+                    dimensionGrid.ReadLineProfile(0, 0, 4, 4),
+                    [1.0f, 12.0f, 23.0f, 34.0f, 45.0f]),
+                "loaded grid remains 5 x 5 after current file header changed to width=4");
         }
         catch (Exception exception)
         {
@@ -150,6 +187,11 @@ public static class C3DHeightProfileVerification
         IEnumerable<HeightGridPoint> actual,
         IReadOnlyList<(int Row, int Column)> expected) =>
         Coordinates(actual).SequenceEqual(expected);
+
+    private static bool RawValuesEqual(
+        IEnumerable<HeightGridPoint> actual,
+        IReadOnlyList<float> expected) =>
+        actual.Select(point => point.RawValue).SequenceEqual(expected);
 
     private static string Describe(IEnumerable<HeightGridPoint> points) =>
         string.Join(" -> ", points.Select(point => $"({point.Row},{point.Column})={point.RawValue:R}"));
