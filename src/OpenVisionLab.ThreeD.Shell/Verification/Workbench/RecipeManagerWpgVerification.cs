@@ -223,6 +223,18 @@ internal static class RecipeManagerWpgVerification
             actionWorkbench.SetC3DSource(sourcePath);
             var actionFilter = AddTool(actionWorkbench, "filter");
             var actionEdge = AddTool(actionWorkbench, "height-difference-edge");
+            var actionSelection = new ToolRecipeSelection(
+                "selection.action-edge",
+                "Action Edge ROI",
+                ToolRecipeSelectionKinds.GridRectangle,
+                actionWorkbench.Source.Id,
+                actionWorkbench.Source.FrameId,
+                ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath),
+                new ToolRecipeGridRectangle(0, 0, 2, 2),
+                null,
+                null);
+            actionWorkbench.Selections.Add(actionSelection);
+            actionEdge.InputEntityIdsText = $"{actionFilter.OutputEntityId}; {actionSelection.Id}";
             actionWorkbench.MoveSelectedStepUpCommand.Execute(null);
             Check(
                 "selected-step move command reorders without inspection execution",
@@ -231,14 +243,53 @@ internal static class RecipeManagerWpgVerification
                 && !actionWorkbench.HasCurrentFilterPreview
                 && !actionWorkbench.HasCurrentEdgePreview,
                 $"order={string.Join(",", actionWorkbench.PipelineSteps.Select(step => step.ToolId))}; filterPreview={actionWorkbench.HasCurrentFilterPreview}; edgePreview={actionWorkbench.HasCurrentEdgePreview}");
+            ToolWorkbenchStepRemovalRequestEventArgs? removalRequest = null;
+            actionWorkbench.RemoveSelectedStepRequested += (_, args) => removalRequest = args;
+            var removalDirtyBefore = actionWorkbench.IsDirty;
+            var removalLogCountBefore = actionWorkbench.RunLog.Count;
             actionWorkbench.RemoveSelectedStepCommand.Execute(null);
             Check(
-                "selected-step remove command deletes only the selected recipe step",
-                actionWorkbench.PipelineSteps.Count == 1
+                "selected-step remove command requests impact-aware confirmation without mutation",
+                removalRequest is
+                {
+                    StepId: var requestedStepId,
+                    StepName: var requestedStepName,
+                    OrphanedSelectionNames.Count: 1
+                }
+                && requestedStepId == actionEdge.Id
+                && requestedStepName == actionEdge.ToolName
+                && removalRequest.OrphanedSelectionNames[0] == actionSelection.Name
+                && actionWorkbench.PipelineSteps.Count == 2
+                && actionWorkbench.Selections.Contains(actionSelection)
+                && ReferenceEquals(actionWorkbench.SelectedPipelineStep, actionEdge)
+                && actionWorkbench.IsDirty == removalDirtyBefore
+                && actionWorkbench.RunLog.Count == removalLogCountBefore,
+                $"request={removalRequest?.StepId}; selections={removalRequest?.OrphanedSelectionNames.Count}; steps={actionWorkbench.PipelineSteps.Count}; dirty={removalDirtyBefore}->{actionWorkbench.IsDirty}; logs={removalLogCountBefore}->{actionWorkbench.RunLog.Count}");
+            var validationRunningField = typeof(ToolWorkbenchViewModel).GetField(
+                "isValidationSetRunning",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            validationRunningField!.SetValue(actionWorkbench, true);
+            var removalBlocked = !actionWorkbench.RemoveSelectedStepCommand.CanExecute(null)
+                && !actionWorkbench.ConfirmSelectedStepRemoval(actionEdge.Id)
+                && actionWorkbench.PipelineSteps.Count == 2
+                && actionWorkbench.Selections.Contains(actionSelection);
+            validationRunningField.SetValue(actionWorkbench, false);
+            Check(
+                "selected-step removal is unavailable and fails closed during validation",
+                removalBlocked,
+                $"blocked={removalBlocked}; steps={actionWorkbench.PipelineSteps.Count}; selections={actionWorkbench.Selections.Count}");
+            var removalConfirmed = actionWorkbench.ConfirmSelectedStepRemoval(actionEdge.Id);
+            Check(
+                "confirmed selected-step removal deletes only the step and its orphaned selection",
+                removalConfirmed
+                && actionWorkbench.PipelineSteps.Count == 1
                 && ReferenceEquals(actionWorkbench.PipelineSteps[0], actionFilter)
+                && !actionWorkbench.Selections.Contains(actionSelection)
                 && !actionWorkbench.HasCurrentFilterPreview
-                && !actionWorkbench.HasCurrentEdgePreview,
-                $"remaining={string.Join(",", actionWorkbench.PipelineSteps.Select(step => step.ToolId))}; filterPreview={actionWorkbench.HasCurrentFilterPreview}; edgePreview={actionWorkbench.HasCurrentEdgePreview}");
+                && !actionWorkbench.HasCurrentEdgePreview
+                && actionWorkbench.RunLog.Count == removalLogCountBefore + 1
+                && actionWorkbench.RunLog[0].Category == "Teach",
+                $"confirmed={removalConfirmed}; remaining={string.Join(",", actionWorkbench.PipelineSteps.Select(step => step.ToolId))}; selections={actionWorkbench.Selections.Count}; logs={removalLogCountBefore}->{actionWorkbench.RunLog.Count}; filterPreview={actionWorkbench.HasCurrentFilterPreview}; edgePreview={actionWorkbench.HasCurrentEdgePreview}");
 
             var edgeDraft = (HeightDifferenceEdgeStepProperties)workbench.SelectedStepPropertyDraft!;
             edgeDraft.ComparisonAxis = HeightDifferenceEdgeComparisonAxis.AcrossColumns;

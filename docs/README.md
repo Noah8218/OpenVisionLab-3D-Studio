@@ -65,6 +65,10 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Recipe-step removal safety](OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md) -
+  `PL-0007` impact-aware confirmation, execution-state guard, focused
+  non-mutation/removal regression, current-build Wide/Compact localized and
+  held pointer-down evidence, and refreshed R0 inputs.
 - [Truthful alignment status summary](OPENVISIONLAB_3D_TRUTHFUL_ALIGNMENT_STATUS_SUMMARY_20260806.md) -
   `PL-0005` stage/state contract, no-action regression, current-build
   Wide/Compact comparison, and refreshed R0 hashes.

@@ -5,6 +5,7 @@ using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDial
 using WpfMessageDialogKind = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogKind;
 using WpfMessageDialogOptions = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogOptions;
 using WpfMessageDialogResult = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogResult;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell;
 
@@ -115,6 +116,54 @@ public partial class MainWindow
             "ThreeD.Dialog.PendingParameters.Message",
             "선택한 단계의 파라미터 변경을 적용하시겠습니까? ‘아니오’를 선택하면 아직 적용하지 않은 PropertyGrid 변경만 취소됩니다.",
             "Apply the selected step's parameter changes? Choosing No discards only the unapplied PropertyGrid draft.");
+
+    private void OnWorkbenchRemoveSelectedStepRequested(
+        object? sender,
+        ToolWorkbenchStepRemovalRequestEventArgs args)
+    {
+        if (WpfMessageDialog.Show(
+                GetRecipeLifecycleDialogOwner(),
+                CreateRecipeStepRemovalDialogOptions(args)) == WpfMessageDialogResult.Yes)
+        {
+            _viewModel.Workbench.ConfirmSelectedStepRemoval(args.StepId);
+        }
+    }
+
+    private static WpfMessageDialogOptions CreateRecipeStepRemovalDialogOptions(
+        ToolWorkbenchStepRemovalRequestEventArgs args)
+    {
+        var selectionImpact = args.OrphanedSelectionNames.Count == 0
+            ? DialogText(
+                "ThreeD.Dialog.RemoveStep.NoSelections",
+                "연결된 선택 영역은 삭제되지 않습니다.",
+                "No teaching selections will be removed.")
+            : DialogText(
+                "ThreeD.Dialog.RemoveStep.OrphanSelections",
+                $"다른 단계가 사용하지 않는 선택 영역 {args.OrphanedSelectionNames.Count}개도 함께 삭제됩니다: {string.Join(", ", args.OrphanedSelectionNames)}",
+                $"{args.OrphanedSelectionNames.Count} teaching selection(s) not used by another step will also be removed: {string.Join(", ", args.OrphanedSelectionNames)}");
+        return new WpfMessageDialogOptions
+        {
+            Title = DialogText(
+                "ThreeD.Dialog.RemoveStep.Title",
+                "레시피 단계 삭제",
+                "Remove Recipe Step"),
+            Message = DialogText(
+                "ThreeD.Dialog.RemoveStep.Message",
+                $"'{args.StepName}' 단계를 삭제하시겠습니까?{Environment.NewLine}{Environment.NewLine}{selectionImpact}",
+                $"Remove the '{args.StepName}' step?{Environment.NewLine}{Environment.NewLine}{selectionImpact}"),
+            Kind = WpfMessageDialogKind.Warning,
+            Buttons = WpfMessageDialogButtons.YesNo,
+            DefaultResult = WpfMessageDialogResult.No,
+            PrimaryButtonText = DialogText(
+                "ThreeD.Dialog.RemoveStep.Remove",
+                "삭제",
+                "Remove"),
+            SecondaryButtonText = DialogText(
+                "ThreeD.Dialog.RemoveStep.Cancel",
+                "취소",
+                "Cancel")
+        };
+    }
 
     private void ShowParameterApplyFailure(string details) =>
         ShowStudioDialog(

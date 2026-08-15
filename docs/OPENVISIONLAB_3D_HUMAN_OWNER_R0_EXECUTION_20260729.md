@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `5C50521212226F1FD45F782E68784BB311E0BC7EC485E740E72A8FD788931C2F` |
-| Shell assembly | `613022257925EBE4EC2612C7ADDD0508116DBF7CCAA79E688333056E76CB27F8` |
-| Core assembly | `A69C5F8481BAC6AC02D665FF381904A90A40F57C4B10DB10A6E46DE67C8643BC` |
-| Data assembly | `82EF6127818C8DEE75CBB4986320872B7B525BA197E7AE9E807EA44B2E0EB8C2` |
-| Tools assembly | `BF6728BD54F1A1A9670A11E7FF944C732B2B44C3D0FA9C076A481DCC794F2347` |
-| Viewer assembly | `894478488457209138DCD222B0E55B91EB3F6A56180E07B40774C93120EA8ACF` |
-| Docking assembly | `1435FBC2F9A535BAD6CC26E1557923703840466C60E59DF3C1C59962EA2AFFB8` |
+| Release EXE | `24A15EC7091D8E000740B0917A7C5E7DCAC90C77BEB95D334CEC5C42B9DE6A53` |
+| Shell assembly | `420DE588EF3B1A830FC9AB0A2708682D5ED2A270794A93A33016C1A585C38016` |
+| Core assembly | `D1F026B7D9B565A3E14B8D04CDC1A123BF00CB82C9DEB7BC8DB2BA735134500D` |
+| Data assembly | `4D22B3AF7FEC156968BBFBA18DCA5620D5D98532AEDC033160431D821566B09C` |
+| Tools assembly | `27A3A91D11B6CC7A3A7311BBC5E6CB322B0188EC3FEB3FFD9D62C737120D4DA9` |
+| Viewer assembly | `CF3960E3CB0ACDFD37772E81AAE3E697725F27634FEA5CBF926831A2A27FA340` |
+| Docking assembly | `22603367A9C08BEE8B612D9BEA7733BD353FDBBB90BAD601C06ED51A55073637` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,9 +52,10 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-08-06 current-source Release rebuild supersedes every previous fixed
-binary set and includes the immutable C3D loaded-snapshot correction and the
-truthful A1/A2/A3 alignment-status correction in addition to the
+The 2026-08-15 current-source Release rebuild supersedes every previous fixed
+binary set and includes the recipe-step removal safety correction, immutable
+C3D loaded-snapshot correction, and truthful A1/A2/A3 alignment-status
+correction in addition to the
 `OpenVisionLab.Vision3D 3.0.0` migration, B-12, K-04, L-13, and PL-0002. R0
 must use the hashes above and restart from Wide; no result from an earlier
 binary set can close this gate.
@@ -183,8 +184,8 @@ Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only checks ->
 Pass; current-package actual launch placement -> Pending with owner run; Wide
 owner run -> Pending; Compact owner run -> Pending.
-Verification: the C3D-snapshot- and alignment-status-corrected current source was rebuilt in Release
-with `0` warnings and `0` errors on 2026-08-06. Both process-local
+Verification: the recipe-step-removal-, C3D-snapshot-, and alignment-status-corrected current source was rebuilt in Release
+with `0` warnings and `0` errors on 2026-08-15. Both process-local
 `-ValidateOnly` commands passed,
 enforced the refreshed nine-input fixed hashes above, confirmed the Release
 was newer than current source, selected `\\.\DISPLAY2` as the leftmost
@@ -192,7 +193,7 @@ monitor, and launched no application. The earlier actual-window placement
 evidence belongs to the superseded pre-migration binary and is not reused as
 current-package owner evidence.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260806-alignment-status-summary\r0-wide-validate-only.txt`
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-recipe-step-removal-safety\r0-wide-validate-only.txt`
 plus `r0-compact-validate-only.txt` in the same directory.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. Surface

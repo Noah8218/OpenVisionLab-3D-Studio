@@ -165,7 +165,38 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - release-policy reconciliation - 2026-08-06
+### Current execution checkpoint - recipe-step removal safety - 2026-08-15
+
+`PL-0007` is Complete. The selected recipe-step Remove command now requests an
+explicit themed confirmation before mutation. The confirmation names the step
+and reports the teaching selections that would become unused. Cancel is the
+default and preserves steps, selections, selection identity, dirty state, and
+Run Log. Confirm rechecks the stable step ID and execution state, then removes
+only that step and selections no remaining step uses.
+
+Removal is unavailable and fails closed during any active tool Preview,
+Run-backed Preview, Surface Match experiment, or Validation Set execution.
+Request, Cancel, and dialog review do not invoke Preview, Publish, Run, or
+Validation. Recipe Manager + WPG passes `40/40`; Shell command-line coverage
+passes `35/35`; Debug/Release builds pass `0/0`; structure passes `29/29`;
+current-build Wide/Compact English/Korean normal and held pointer-down evidence
+passes capture-quality checks; refreshed fixed-input Wide/Compact R0
+`-ValidateOnly` passes without launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md`;
+- `.proofline/issues/PL-0007.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-recipe-step-removal-safety\`.
+
+This safety correction improves an existing workflow and does not add a new
+inventory item, so inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`.
+It does not provide general Undo/Redo or expand confirmation to other deletion
+paths. The next eligible software maintenance item remains bounded Workbench
+run-log retention that preserves durable `OVLog` evidence. Recommended model:
+`gpt-5.6-terra`; reasoning effort: `low`. Human-owner Wide/Compact R0 remains
+the separate acceptance priority and requires owner operation rather than
+model execution.
+
+### Previous execution checkpoint - release-policy reconciliation - 2026-08-06
 
 `PL-0006` is Complete. The current release/version policy now distinguishes
 historical `v0.1.0-rc.1` candidate evidence from current GitHub publication

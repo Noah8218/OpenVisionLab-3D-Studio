@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private readonly EventHandler _workbenchSaveTeachingRecipeAsRequestedHandler;
     private readonly EventHandler _workbenchOpenToolLibraryRequestedHandler;
     private readonly EventHandler _workbenchOpenTeachingRecipeRequestedHandler;
+    private readonly EventHandler<ToolWorkbenchStepRemovalRequestEventArgs> _workbenchRemoveSelectedStepRequestedHandler;
     private readonly EventHandler<ToolWorkbenchRecipePathRequestEventArgs> _workbenchOpenRecentTeachingRecipeRequestedHandler;
     private readonly EventHandler _workbenchLoadC3DSourceRequestedHandler;
     private readonly EventHandler _workbenchCancelC3DSourceLoadRequestedHandler;
@@ -145,6 +146,7 @@ public partial class MainWindow : Window
         _workbenchSaveTeachingRecipeAsRequestedHandler = OnWorkbenchSaveTeachingRecipeAsRequested;
         _workbenchOpenToolLibraryRequestedHandler = OnWorkbenchOpenToolLibraryRequested;
         _workbenchOpenTeachingRecipeRequestedHandler = OnWorkbenchOpenTeachingRecipeRequested;
+        _workbenchRemoveSelectedStepRequestedHandler = OnWorkbenchRemoveSelectedStepRequested;
         _workbenchOpenRecentTeachingRecipeRequestedHandler = OnWorkbenchOpenRecentTeachingRecipeRequested;
         _workbenchLoadC3DSourceRequestedHandler = OnWorkbenchLoadC3DSourceRequested;
         _workbenchCancelC3DSourceLoadRequestedHandler = OnWorkbenchCancelC3DSourceLoadRequested;
@@ -165,6 +167,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.SaveTeachingRecipeAsRequested += _workbenchSaveTeachingRecipeAsRequestedHandler;
         _viewModel.Workbench.OpenToolLibraryRequested += _workbenchOpenToolLibraryRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested += _workbenchOpenTeachingRecipeRequestedHandler;
+        _viewModel.Workbench.RemoveSelectedStepRequested += _workbenchRemoveSelectedStepRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested += _workbenchOpenRecentTeachingRecipeRequestedHandler;
         _viewModel.Workbench.LoadC3DSourceRequested += _workbenchLoadC3DSourceRequestedHandler;
         _viewModel.Workbench.CancelC3DSourceLoadRequested += _workbenchCancelC3DSourceLoadRequestedHandler;
@@ -261,9 +264,28 @@ public partial class MainWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
 
+    [DllImport("Shcore.dll")]
+    private static extern int GetDpiForMonitor(
+        IntPtr monitor,
+        int dpiType,
+        out uint dpiX,
+        out uint dpiY);
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll", EntryPoint = "mouse_event")]
+    private static extern void SendMouseEvent(
+        uint flags,
+        uint deltaX,
+        uint deltaY,
+        uint data,
+        UIntPtr extraInfo);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
@@ -319,6 +341,7 @@ public partial class MainWindow : Window
         _viewModel.Workbench.SaveTeachingRecipeAsRequested -= _workbenchSaveTeachingRecipeAsRequestedHandler;
         _viewModel.Workbench.OpenToolLibraryRequested -= _workbenchOpenToolLibraryRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested -= _workbenchOpenTeachingRecipeRequestedHandler;
+        _viewModel.Workbench.RemoveSelectedStepRequested -= _workbenchRemoveSelectedStepRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested -= _workbenchOpenRecentTeachingRecipeRequestedHandler;
         _viewModel.Workbench.LoadC3DSourceRequested -= _workbenchLoadC3DSourceRequestedHandler;
         _viewModel.Workbench.CancelC3DSourceLoadRequested -= _workbenchCancelC3DSourceLoadRequestedHandler;
@@ -362,7 +385,8 @@ public partial class MainWindow : Window
         var messageDialogScreenshotPath = smoke.MessageDialogScreenshotPath;
         var messageDialogScreenshotQualityReportPath = smoke.MessageDialogScreenshotQualityReportPath;
         WpfMessageDialogWindow? messageDialogSmokeWindow = null;
-       var smokeSaveRecipePath = smoke.SmokeSaveRecipePath;
+        var messageDialogSmokePrimaryButtonText = string.Empty;
+        var smokeSaveRecipePath = smoke.SmokeSaveRecipePath;
         var teachingSelectionSmokeMode = smoke.TeachingSelectionSmokeMode;
         var teachingSelectionSmokeReportPath = smoke.TeachingSelectionSmokeReportPath;
         var teachingRecipeSmokeSavePath = smoke.TeachingRecipeSmokeSavePath;
@@ -464,8 +488,16 @@ public partial class MainWindow : Window
             if (leftmostMonitor != IntPtr.Zero
                 && GetMonitorInfo(leftmostMonitor, ref monitorInfo))
             {
-                Left = monitorInfo.WorkArea.Left;
-                Top = monitorInfo.WorkArea.Top;
+                var dpiX = 96u;
+                var dpiY = 96u;
+                const int effectiveDpi = 0;
+                GetDpiForMonitor(
+                    leftmostMonitor,
+                    effectiveDpi,
+                    out dpiX,
+                    out dpiY);
+                Left = monitorInfo.WorkArea.Left * 96.0 / Math.Max(96u, dpiX);
+                Top = monitorInfo.WorkArea.Top * 96.0 / Math.Max(96u, dpiY);
             }
             else
             {
@@ -597,17 +629,30 @@ public partial class MainWindow : Window
 
                 if (messageDialogScreenshotPath is not null)
                 {
-                    messageDialogSmokeWindow = new WpfMessageDialogWindow(new WpfMessageDialogOptions
+                    var dialogOptions = smoke.StepRemovalDialogSmoke
+                        ? _viewModel.Workbench.CreateSelectedStepRemovalRequest() is { } request
+                            ? CreateRecipeStepRemovalDialogOptions(request)
+                            : null
+                        : new WpfMessageDialogOptions
+                        {
+                            Title = DialogText("ThreeD.Dialog.RecipeSave.Title", "레시피 저장", "Save Recipe"),
+                            Message = DialogText(
+                                "ThreeD.Dialog.RecipeSave.Failed",
+                                "레시피 파일을 저장할 수 없습니다. 표시된 파일 또는 구조 오류를 확인하세요.",
+                                "The recipe file could not be saved. Check the listed file or structural error."),
+                            Details = "Access to the selected recipe folder was denied.",
+                            Kind = WpfMessageDialogKind.Warning,
+                            Buttons = WpfMessageDialogButtons.OK
+                        };
+                    if (dialogOptions is null)
                     {
-                        Title = DialogText("ThreeD.Dialog.RecipeSave.Title", "레시피 저장", "Save Recipe"),
-                        Message = DialogText(
-                            "ThreeD.Dialog.RecipeSave.Failed",
-                            "레시피 파일을 저장할 수 없습니다. 표시된 파일 또는 구조 오류를 확인하세요.",
-                            "The recipe file could not be saved. Check the listed file or structural error."),
-                        Details = "Access to the selected recipe folder was denied.",
-                        Kind = WpfMessageDialogKind.Warning,
-                        Buttons = WpfMessageDialogButtons.OK
-                    })
+                        _viewModel.SetViewerSmokeFailed(
+                            "Step-removal dialog smoke requires an idle selected recipe step.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    messageDialogSmokePrimaryButtonText = dialogOptions.PrimaryButtonText;
+                    messageDialogSmokeWindow = new WpfMessageDialogWindow(dialogOptions)
                     {
                         Owner = this
                     };
@@ -1437,11 +1482,12 @@ public partial class MainWindow : Window
 
                 if (messageDialogScreenshotPath is not null
                     && (messageDialogSmokeWindow is null
-                        || !await CaptureWindowWithRetryAsync(
+                        || !await CaptureMessageDialogForSmokeAsync(
                             messageDialogSmokeWindow,
                             messageDialogScreenshotPath,
                             messageDialogScreenshotQualityReportPath,
-                            "MessageDialog")))
+                            messageDialogSmokePrimaryButtonText,
+                            smoke.MessageDialogPrimaryPressedSmoke)))
                 {
                     _viewModel.SetViewerSmokeFailed("Message dialog screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
@@ -3380,6 +3426,95 @@ public partial class MainWindow : Window
             }
         }
         return false;
+    }
+
+    private static async Task<bool> CaptureMessageDialogForSmokeAsync(
+        WpfMessageDialogWindow dialog,
+        string screenshotPath,
+        string? qualityReportPath,
+        string primaryButtonText,
+        bool holdPrimaryButton)
+    {
+        const uint leftButtonDown = 0x0002;
+        const uint leftButtonUp = 0x0004;
+        var mouseDown = false;
+        System.Windows.Controls.Button? pressedButton = null;
+        try
+        {
+            if (holdPrimaryButton)
+            {
+                dialog.UpdateLayout();
+                var primaryButton = FindVisualDescendants<System.Windows.Controls.Button>(dialog)
+                    .FirstOrDefault(button => button.IsVisible
+                        && string.Equals(
+                            button.Content?.ToString(),
+                            primaryButtonText,
+                            StringComparison.Ordinal));
+                if (primaryButton is null)
+                {
+                    return false;
+                }
+
+                dialog.Activate();
+                SetForegroundWindow(new WindowInteropHelper(dialog).Handle);
+                primaryButton.Focus();
+                var center = primaryButton.PointToScreen(
+                    new System.Windows.Point(
+                        primaryButton.ActualWidth / 2.0,
+                        primaryButton.ActualHeight / 2.0));
+                if (!SetCursorPos((int)Math.Round(center.X), (int)Math.Round(center.Y)))
+                {
+                    return false;
+                }
+                await Task.Delay(150);
+                SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
+                mouseDown = true;
+                await Task.Delay(150);
+                if (!primaryButton.IsPressed)
+                {
+                    primaryButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                        System.Windows.Input.Mouse.PrimaryDevice,
+                        Environment.TickCount,
+                        System.Windows.Input.MouseButton.Left)
+                    {
+                        RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                        Source = primaryButton
+                    });
+                    await dialog.Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                }
+                if (!primaryButton.IsPressed)
+                {
+                    return false;
+                }
+                pressedButton = primaryButton;
+            }
+
+            return await CaptureWindowWithRetryAsync(
+                dialog,
+                screenshotPath,
+                qualityReportPath,
+                holdPrimaryButton ? "MessageDialogPrimaryPressed" : "MessageDialog");
+        }
+        finally
+        {
+            if (pressedButton is not null)
+            {
+                pressedButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                    System.Windows.Input.Mouse.PrimaryDevice,
+                    Environment.TickCount,
+                    System.Windows.Input.MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+                    Source = pressedButton
+                });
+            }
+            if (mouseDown)
+            {
+                SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
+            }
+        }
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)

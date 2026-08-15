@@ -126,7 +126,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         addSelectedToolCommand = new RelayCommand(
             parameter => AddSelectedTool(parameter as ToolWorkbenchToolItem),
             parameter => (parameter is ToolWorkbenchToolItem || SelectedTool is not null) && IsSourceReadyForRecipe);
-        removeSelectedStepCommand = new RelayCommand(_ => RemoveSelectedStep(), _ => SelectedPipelineStep is not null);
+        removeSelectedStepCommand = new RelayCommand(
+            _ => RequestSelectedStepRemoval(),
+            _ => SelectedPipelineStep is not null && !IsRecipeMutationBlocked);
         moveSelectedStepUpCommand = new RelayCommand(_ => MoveSelectedStep(-1), _ => CanMoveSelectedStep(-1));
         moveSelectedStepDownCommand = new RelayCommand(_ => MoveSelectedStep(1), _ => CanMoveSelectedStep(1));
         selectPipelineStepCommand = new RelayCommand(
@@ -245,6 +247,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? AppliedTeachingSelectionsChanged;
     public event EventHandler<ToolWorkbenchGridRectangleDraftChangedEventArgs>? TeachingGridRectangleDraftChanged;
     public event EventHandler<ToolWorkbenchToolLabRequestEventArgs>? ToolLabRequested;
+    public event EventHandler<ToolWorkbenchStepRemovalRequestEventArgs>? RemoveSelectedStepRequested;
 
     public ObservableCollection<ToolWorkbenchToolItem> Tools { get; }
 
@@ -639,6 +642,24 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     public bool HasSelectedPipelineStep => SelectedPipelineStep is not null;
+
+    public bool IsRecipeMutationBlocked =>
+        IsValidationSetRunning
+        || IsSurfaceMatchExperimentRunning
+        || IsFilterPreviewRunning
+        || IsRemoveOutlierPreviewRunning
+        || IsLevelSurfacePreviewRunning
+        || IsEdgePreviewRunning
+        || IsTwoPointLinePreviewRunning
+        || IsThreePointPlanePreviewRunning
+        || IsDatumPlaneDeviationPreviewRunning
+        || IsLineFitPreviewRunning
+        || IsLineIntersectionPreviewRunning
+        || IsLandmarkCorrespondencePreviewRunning
+        || IsAffineSolvePreviewRunning
+        || IsAffineApplyPreviewRunning
+        || IsRegridHeightFieldPreviewRunning
+        || IsMeasurementPreviewRunning;
 
     public bool CanSaveTeachingRecipe => storageValidation.IsValid
         && sourceBindingErrors.Count == 0;
@@ -1299,35 +1320,66 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
-    private void RemoveSelectedStep()
+    private void RequestSelectedStepRemoval()
     {
-        if (SelectedPipelineStep is null)
+        var request = CreateSelectedStepRemovalRequest();
+        if (request is null)
         {
             return;
         }
 
-        var step = SelectedPipelineStep;
-        var routedSelectionIds = step.InputEntityIds
-            .Where(input => Selections.Any(selection => string.Equals(selection.Id, input, StringComparison.OrdinalIgnoreCase)))
-            .ToArray();
+        RemoveSelectedStepRequested?.Invoke(this, request);
+    }
+
+    internal ToolWorkbenchStepRemovalRequestEventArgs? CreateSelectedStepRemovalRequest()
+    {
+        if (SelectedPipelineStep is not { } step || IsRecipeMutationBlocked)
+        {
+            return null;
+        }
+
+        var orphanedSelections = GetOrphanedSelections(step);
+        return new ToolWorkbenchStepRemovalRequestEventArgs(
+            step.Id,
+            step.ToolName,
+            orphanedSelections.Select(selection => selection.Name).ToArray());
+    }
+
+    internal bool ConfirmSelectedStepRemoval(string stepId)
+    {
+        if (IsRecipeMutationBlocked
+            || SelectedPipelineStep is not { } step
+            || !string.Equals(step.Id, stepId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var orphanedSelections = GetOrphanedSelections(step);
         UnsubscribeStep(step);
         PipelineSteps.Remove(step);
-        foreach (var selectionId in routedSelectionIds)
+        foreach (var orphan in orphanedSelections)
         {
-            if (!PipelineSteps.Any(item => item.InputEntityIds.Contains(selectionId, StringComparer.OrdinalIgnoreCase)))
-            {
-                var orphan = Selections.FirstOrDefault(selection =>
-                    string.Equals(selection.Id, selectionId, StringComparison.OrdinalIgnoreCase));
-                if (orphan is not null)
-                {
-                    Selections.Remove(orphan);
-                }
-            }
+            Selections.Remove(orphan);
         }
         SelectedPipelineStep = PipelineSteps.LastOrDefault();
         RefreshAuthoredRecipeState();
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         AppendLog("Teach", $"Removed taught step: {step.ToolName}.");
+        return true;
+    }
+
+    private ToolRecipeSelection[] GetOrphanedSelections(ToolWorkbenchPipelineStepItem step)
+    {
+        var routedSelectionIds = step.InputEntityIds
+            .Where(input => Selections.Any(selection => string.Equals(selection.Id, input, StringComparison.OrdinalIgnoreCase)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return Selections
+            .Where(selection => routedSelectionIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase))
+            .Where(selection => !PipelineSteps
+                .Where(item => !ReferenceEquals(item, step))
+                .Any(item => item.InputEntityIds.Contains(selection.Id, StringComparer.OrdinalIgnoreCase)))
+            .ToArray();
     }
 
     private void MoveSelectedStep(int offset)
@@ -2831,9 +2883,21 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         return true;
     }
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        if (propertyName is nameof(IsSelectedStepPreviewRunning) or nameof(IsValidationSetRunning))
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRecipeMutationBlocked)));
+            removeSelectedStepCommand?.RaiseCanExecuteChanged();
+        }
+    }
 }
+
+public sealed record ToolWorkbenchStepRemovalRequestEventArgs(
+    string StepId,
+    string StepName,
+    IReadOnlyList<string> OrphanedSelectionNames);
 
 public sealed record ToolWorkbenchToolItem(
     string Category,

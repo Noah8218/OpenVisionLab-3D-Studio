@@ -66,19 +66,22 @@ replacement for current product orientation.
 
 ## Current Product Target
 
-As of the 2026-08-05 documentation consolidation:
+As of the 2026-08-15 recipe-step removal safety closure:
 
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
 - Inspection Workspace v3: `7/8`; `A-01` remains Partial.
 - GoPxL-inspired Workbench v4: `3/3` complete.
 - Current acceptance priority: product-owner unaided Wide and Compact R0.
-- No dependency-ready software item is selected while waiting for the owner's
-  next product decision. Missing R0 does not globally prohibit a newly
-  approved deterministic software slice.
+- Bounded Workbench run-log retention is the next dependency-ready software
+  maintenance item. Missing R0 does not globally prohibit a newly approved
+  deterministic software slice.
 - B-12 acquisition provenance, K-04 acquisition direction/orientation, L-13
   Surface Match pose/score export, and PL-0002 Runner help behavior are
   complete for their documented software scopes.
+- PL-0007 selected recipe-step removal confirmation and execution-state guard
+  are complete for their documented software scope. General Undo/Redo and
+  other deletion-path confirmation remain outside that closure.
 - Vendored `OpenVisionLab.Vision3D 3.0.0` is built from committed
   `OpenVisionLab-Vision-SDK` source
   `f34fdf912ff38fe20f36dbb063837e14b4f922b3`; package SHA-256 is

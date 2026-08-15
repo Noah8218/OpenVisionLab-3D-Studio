@@ -141,6 +141,9 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-surface-match-collection-disabled");
     public bool SurfaceMatchCollectionNavigationFocusHoverSmoke =>
         HasFlag("--smoke-surface-match-collection-navigation-focus-hover");
+    public bool StepRemovalDialogSmoke => HasFlag("--smoke-step-removal-dialog");
+    public bool MessageDialogPrimaryPressedSmoke =>
+        HasFlag("--smoke-message-dialog-primary-pressed");
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
     public bool SoftwareRendering => HasFlag("--smoke-software-rendering");
     public bool UseLeftmostVirtualScreenOrigin =>

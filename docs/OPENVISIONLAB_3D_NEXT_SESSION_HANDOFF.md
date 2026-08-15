@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-06
+Date: 2026-08-15
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -49,6 +49,13 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   candidate evidence, and matches source-owned product/Host API/manifest/Run
   Record/recipe versions. No release, tag, asset, commit, or push was created.
   Preserve `OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md`.
+- `PL-0007` is complete: selected recipe-step removal now requires an
+  impact-aware themed confirmation, defaults to Cancel, removes only the exact
+  step plus selections no remaining step uses, and fails closed during active
+  Preview/Run-backed Preview/Surface Match/Validation execution. Focused
+  checks pass `40/40`; current Wide/Compact English/Korean normal and held
+  pointer-down evidence is accepted; refreshed R0 `-ValidateOnly` passes.
+  Preserve `OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md`.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -136,9 +143,9 @@ The 2026-08-05 documentation pass:
 
 ```text
 Status: Complete
-Scope: Refresh the current handoff through release-policy reconciliation
-Acceptance criteria: current completed documentation scope visible; next maintenance item identified; R0 and PL-0003 external dependencies current
-Verification: GitHub Releases none; Tags and git ls-remote tags zero; source-owned version values match policy; changed-document links and diff check pass
-Evidence: docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md, .proofline/issues/PL-0006.json, this file
+Scope: Refresh the current handoff through recipe-step removal safety
+Acceptance criteria: PL-0007 safety scope visible; next maintenance item identified; R0 and PL-0003 external dependencies current
+Verification: Recipe Manager + WPG 40/40; Shell command line 35/35; Debug/Release and structure pass; Wide/Compact localized and pointer-state UI evidence accepted; refreshed R0 ValidateOnly and documentation checks pass
+Evidence: docs/OPENVISIONLAB_3D_RECIPE_STEP_REMOVAL_SAFETY_20260815.md, .proofline/issues/PL-0007.json, this file
 Boundary / next dependency: product-owner Wide/Compact R0; bounded Workbench run-log retention is the next software maintenance item; PL-0003 waits on GitHub Support #4633618
 ```
