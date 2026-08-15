@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0014",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Theme and bound the Studio language selector popup",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "2026-08-15 PL-0010 current-Release EXE verification",
+    "summary": "Wide and Compact language checks exposed a platform-light blank dropdown popup inside the graphite Studio UI.",
+    "refs": [
+      "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-context.png",
+      "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-blank.png"
+    ]
+  },
+  "state": {
+    "status": "open",
+    "current_summary": "The Studio language ComboBox popup renders as a white, apparently blank platform-default surface while the surrounding application is graphite themed. Keyboard selection still changes language, but the popup is not visually usable or theme-complete.",
+    "next_action": "Apply the shared semantic ComboBox popup style to StudioLanguageSelector and verify open, hover, selected, keyboard-focus, pressed, English, and Korean states in Wide and Compact."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "StudioLanguageSelector opens a platform-light blank-looking popup that does not match the supported dark visual system.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Operators cannot reliably see which language is available or selected, and the popup is a conspicuous theme leak in both authoring layouts."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The language popup uses semantic theme resources and visibly renders Korean and English with correct hover, selected, keyboard-focus, pressed, disabled, and open states in Wide and Compact.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "Changing language still updates the current UI and persists without changing recipe, source, ROI, result, Preview, Publish, or Run state.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0010"
+    }
+  ],
+  "context": [
+    {
+      "kind": "control",
+      "location": "src/OpenVisionLab.ThreeD.Shell/MainWindow.xaml",
+      "summary": "StudioLanguageSelector owns the visible language ComboBox and popup."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "current Release EXE UI capture",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-context.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-blank.png",
+      "observation": "On DISPLAY2, the open StudioLanguageSelector popup was a white surface with no legible Korean or English item text while the surrounding Studio remained graphite themed; keyboard selection still changed the application language.",
+      "observed_at": "2026-08-15T20:44:02.4773750+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-15T20:44:02.4773750+09:00",
+  "updated_at": "2026-08-15T20:44:02.4773750+09:00"
+}

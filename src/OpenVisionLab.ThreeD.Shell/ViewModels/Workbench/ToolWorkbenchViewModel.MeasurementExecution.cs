@@ -50,6 +50,10 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand RemovePlaneFlatnessMeasurementRoiCommand => removePlaneFlatnessMeasurementRoiCommand;
     public ToolRecipeSelection? PlaneFlatnessReferenceSelection => GetPlaneFlatnessRoleSelection(1);
     public ToolRecipeSelection? PlaneFlatnessMeasurementSelection => GetPlaneFlatnessRoleSelection(2);
+    public bool HasDualRoiFirstSelection => PlaneFlatnessReferenceSelection is not null;
+    public bool HasDualRoiSecondSelection => PlaneFlatnessMeasurementSelection is not null;
+    public bool HasCompleteDualRoiTeaching =>
+        HasDualRoiFirstSelection && HasDualRoiSecondSelection;
     public bool IsPlaneFlatnessReferenceRoleActive => IsSelectedStepDualRoiMeasurement && !isPlaneFlatnessMeasurementRole;
     public bool IsPlaneFlatnessMeasurementRoleActive => IsSelectedStepDualRoiMeasurement && isPlaneFlatnessMeasurementRole;
     public bool CanTeachPlaneFlatnessMeasurementRoi => PlaneFlatnessReferenceSelection is not null;
@@ -260,6 +264,9 @@ public sealed partial class ToolWorkbenchViewModel
     {
         OnPropertyChanged(nameof(PlaneFlatnessReferenceSelection));
         OnPropertyChanged(nameof(PlaneFlatnessMeasurementSelection));
+        OnPropertyChanged(nameof(HasDualRoiFirstSelection));
+        OnPropertyChanged(nameof(HasDualRoiSecondSelection));
+        OnPropertyChanged(nameof(HasCompleteDualRoiTeaching));
         OnPropertyChanged(nameof(IsPlaneFlatnessReferenceRoleActive));
         OnPropertyChanged(nameof(IsPlaneFlatnessMeasurementRoleActive));
         OnPropertyChanged(nameof(CanTeachPlaneFlatnessMeasurementRoi));

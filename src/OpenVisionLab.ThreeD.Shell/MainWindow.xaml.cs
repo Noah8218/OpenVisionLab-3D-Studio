@@ -48,9 +48,12 @@ public partial class MainWindow : Window
     private readonly EventHandler _openRunRecordRequestedHandler;
     private readonly EventHandler _exportRunRecordRequestedHandler;
     private readonly EventHandler _workbenchNewTeachingRecipeRequestedHandler;
+    private readonly EventHandler _workbenchBrowseFirstRecipeFolderRequestedHandler;
+    private readonly EventHandler _workbenchBrowseFirstRecipeSourceRequestedHandler;
     private readonly EventHandler _workbenchSaveTeachingRecipeRequestedHandler;
     private readonly EventHandler _workbenchSaveTeachingRecipeAsRequestedHandler;
     private readonly EventHandler _workbenchOpenToolLibraryRequestedHandler;
+    private readonly EventHandler _workbenchSelectedStepSetupRequestedHandler;
     private readonly EventHandler _workbenchOpenTeachingRecipeRequestedHandler;
     private readonly EventHandler<ToolWorkbenchStepRemovalRequestEventArgs> _workbenchRemoveSelectedStepRequestedHandler;
     private readonly EventHandler<ToolWorkbenchRecipePathRequestEventArgs> _workbenchOpenRecentTeachingRecipeRequestedHandler;
@@ -142,9 +145,12 @@ public partial class MainWindow : Window
         _openRunRecordRequestedHandler = OnOpenRunRecordRequested;
         _exportRunRecordRequestedHandler = OnExportRunRecordRequested;
         _workbenchNewTeachingRecipeRequestedHandler = OnWorkbenchNewTeachingRecipeRequested;
+        _workbenchBrowseFirstRecipeFolderRequestedHandler = OnWorkbenchBrowseFirstRecipeFolderRequested;
+        _workbenchBrowseFirstRecipeSourceRequestedHandler = OnWorkbenchBrowseFirstRecipeSourceRequested;
         _workbenchSaveTeachingRecipeRequestedHandler = OnWorkbenchSaveTeachingRecipeRequested;
         _workbenchSaveTeachingRecipeAsRequestedHandler = OnWorkbenchSaveTeachingRecipeAsRequested;
         _workbenchOpenToolLibraryRequestedHandler = OnWorkbenchOpenToolLibraryRequested;
+        _workbenchSelectedStepSetupRequestedHandler = OnWorkbenchSelectedStepSetupRequested;
         _workbenchOpenTeachingRecipeRequestedHandler = OnWorkbenchOpenTeachingRecipeRequested;
         _workbenchRemoveSelectedStepRequestedHandler = OnWorkbenchRemoveSelectedStepRequested;
         _workbenchOpenRecentTeachingRecipeRequestedHandler = OnWorkbenchOpenRecentTeachingRecipeRequested;
@@ -163,9 +169,12 @@ public partial class MainWindow : Window
         _viewModel.OpenRunRecordRequested += _openRunRecordRequestedHandler;
         _viewModel.ExportRunRecordRequested += _exportRunRecordRequestedHandler;
         _viewModel.Workbench.NewTeachingRecipeRequested += _workbenchNewTeachingRecipeRequestedHandler;
+        _viewModel.Workbench.BrowseFirstRecipeFolderRequested += _workbenchBrowseFirstRecipeFolderRequestedHandler;
+        _viewModel.Workbench.BrowseFirstRecipeSourceRequested += _workbenchBrowseFirstRecipeSourceRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeRequested += _workbenchSaveTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeAsRequested += _workbenchSaveTeachingRecipeAsRequestedHandler;
         _viewModel.Workbench.OpenToolLibraryRequested += _workbenchOpenToolLibraryRequestedHandler;
+        _viewModel.Workbench.SelectedStepSetupRequested += _workbenchSelectedStepSetupRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested += _workbenchOpenTeachingRecipeRequestedHandler;
         _viewModel.Workbench.RemoveSelectedStepRequested += _workbenchRemoveSelectedStepRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested += _workbenchOpenRecentTeachingRecipeRequestedHandler;
@@ -277,6 +286,10 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRectangle rectangle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll", EntryPoint = "mouse_event")]
@@ -337,9 +350,12 @@ public partial class MainWindow : Window
         _viewModel.OpenRunRecordRequested -= _openRunRecordRequestedHandler;
         _viewModel.ExportRunRecordRequested -= _exportRunRecordRequestedHandler;
         _viewModel.Workbench.NewTeachingRecipeRequested -= _workbenchNewTeachingRecipeRequestedHandler;
+        _viewModel.Workbench.BrowseFirstRecipeFolderRequested -= _workbenchBrowseFirstRecipeFolderRequestedHandler;
+        _viewModel.Workbench.BrowseFirstRecipeSourceRequested -= _workbenchBrowseFirstRecipeSourceRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeRequested -= _workbenchSaveTeachingRecipeRequestedHandler;
         _viewModel.Workbench.SaveTeachingRecipeAsRequested -= _workbenchSaveTeachingRecipeAsRequestedHandler;
         _viewModel.Workbench.OpenToolLibraryRequested -= _workbenchOpenToolLibraryRequestedHandler;
+        _viewModel.Workbench.SelectedStepSetupRequested -= _workbenchSelectedStepSetupRequestedHandler;
         _viewModel.Workbench.OpenTeachingRecipeRequested -= _workbenchOpenTeachingRecipeRequestedHandler;
         _viewModel.Workbench.RemoveSelectedStepRequested -= _workbenchRemoveSelectedStepRequestedHandler;
         _viewModel.Workbench.OpenRecentTeachingRecipeRequested -= _workbenchOpenRecentTeachingRecipeRequestedHandler;
@@ -391,6 +407,7 @@ public partial class MainWindow : Window
         var teachingSelectionSmokeReportPath = smoke.TeachingSelectionSmokeReportPath;
         var teachingRecipeSmokeSavePath = smoke.TeachingRecipeSmokeSavePath;
         var newRecipeLifecycleSmokePath = smoke.NewRecipeLifecycleSmokePath;
+        var newRecipeLifecycleSmokeSourcePath = smoke.NewRecipeLifecycleSmokeSourcePath;
         var newRecipeLifecycleSmokeReportPath = smoke.NewRecipeLifecycleSmokeReportPath;
         var openRecipeLifecycleSmokePath = smoke.OpenRecipeLifecycleSmokePath;
         var openRecipeLifecycleSmokeReportPath = smoke.OpenRecipeLifecycleSmokeReportPath;
@@ -439,6 +456,8 @@ public partial class MainWindow : Window
             smoke.SurfaceMatchCollectionDisabledSmoke;
         var surfaceMatchCollectionNavigationFocusHoverSmoke =
             smoke.SurfaceMatchCollectionNavigationFocusHoverSmoke;
+        var recipeHealthNavigationPressedSmoke =
+            smoke.RecipeHealthNavigationPressedSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var workbenchRunLogSmoke = smoke.WorkbenchRunLogSmoke;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
@@ -593,15 +612,25 @@ public partial class MainWindow : Window
                 }
 
                 if (newRecipeLifecycleSmokePath is not null
+                    && newRecipeLifecycleSmokeSourcePath is not null
                     && !await ShellRecipeLifecycleSmoke.RunNewAsync(
                         _viewModel,
                         _viewer,
                         newRecipeLifecycleSmokePath,
+                        newRecipeLifecycleSmokeSourcePath,
+                        smoke.NewRecipeLifecycleSmokeStarterId ?? ToolWorkbenchViewModel.EmptyFirstRecipeStarterId,
                         newRecipeLifecycleSmokeReportPath,
                         ShowRecipeManagerWindow,
                         ClickUnsavedRecipeDoNotSaveForSmokeAsync))
                 {
                     _viewModel.SetViewerSmokeFailed("New recipe lifecycle smoke did not create and open a clean zero-step recipe.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+                if (newRecipeLifecycleSmokePath is not null
+                    && newRecipeLifecycleSmokeSourcePath is null)
+                {
+                    _viewModel.SetViewerSmokeFailed("New recipe lifecycle smoke requires --smoke-new-recipe-source.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -631,6 +660,7 @@ public partial class MainWindow : Window
                         Application.Current.Shutdown(1);
                         return;
                     }
+                    ConfigureFirstRecipeSetupForSmoke(smoke);
                 }
 
                 if (messageDialogScreenshotPath is not null)
@@ -1452,7 +1482,16 @@ public partial class MainWindow : Window
                 }
                 await Task.Delay(100);
                 if (shellScreenshotPath is not null
-                    && !await CaptureWindowWithRetryAsync(this, shellScreenshotPath, screenshotQualityReportPath, "Shell"))
+                    && !(recipeHealthNavigationPressedSmoke
+                        ? await CaptureRecipeHealthNavigationPressedForSmokeAsync(
+                            this,
+                            shellScreenshotPath,
+                            screenshotQualityReportPath)
+                        : await CaptureWindowWithRetryAsync(
+                            this,
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "Shell")))
                 {
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
@@ -1475,15 +1514,28 @@ public partial class MainWindow : Window
 
                 if (recipeManagerScreenshotPath is not null
                     && (recipeManagerWindow is null
-                        || !await CaptureWindowWithRetryAsync(
-                            recipeManagerWindow,
-                            recipeManagerScreenshotPath,
-                            recipeManagerScreenshotQualityReportPath,
-                            "RecipeManager")))
+                        || !(smoke.FirstRecipeCreatePressedSmoke
+                            ? await CaptureButtonPressedForSmokeAsync(
+                                recipeManagerWindow,
+                                "CreateFirstRecipe",
+                                recipeManagerScreenshotPath,
+                                recipeManagerScreenshotQualityReportPath,
+                                "FirstRecipeCreatePressed")
+                            : await CaptureWindowWithRetryAsync(
+                                recipeManagerWindow,
+                                recipeManagerScreenshotPath,
+                                recipeManagerScreenshotQualityReportPath,
+                                "RecipeManager"))))
                 {
                     _viewModel.SetViewerSmokeFailed("Recipe Manager screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
                     return;
+                }
+                if (recipeManagerScreenshotPath is not null && recipeManagerWindow is not null)
+                {
+                    AppendWindowMonitorEvidence(
+                        recipeManagerWindow,
+                        recipeManagerScreenshotQualityReportPath);
                 }
 
                 if (messageDialogScreenshotPath is not null
@@ -3066,7 +3118,10 @@ public partial class MainWindow : Window
         await LoadWorkbenchC3DSourceAsync(dialog.FileName);
     }
 
-    private async Task LoadWorkbenchC3DSourceAsync(string path, bool showFailureDialog = true)
+    private async Task<bool> LoadWorkbenchC3DSourceAsync(
+        string path,
+        bool showFailureDialog = true,
+        bool bindToWorkbench = true)
     {
         var cancellation = new CancellationTokenSource();
         c3dSourceLoadCancellation = cancellation;
@@ -3080,10 +3135,13 @@ public partial class MainWindow : Window
             if (await _viewer.LoadC3DSourceAsync(path, cancellation.Token, progress)
                 && _viewer.CurrentC3DSourcePath is { } sourcePath)
             {
-                SetWorkbenchC3DSourceFromViewer(sourcePath);
+                if (bindToWorkbench)
+                {
+                    SetWorkbenchC3DSourceFromViewer(sourcePath);
+                }
                 _viewer.ViewModel.HudDetailsVisible = false;
                 _viewModel.Workbench.CompleteC3DSourceLoad(sourcePath, stopwatch.ElapsedMilliseconds);
-                return;
+                return true;
             }
 
             _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
@@ -3091,10 +3149,12 @@ public partial class MainWindow : Window
             {
                 ShowLoadSourceFailure(_viewer.HostState.ViewerStatus);
             }
+            return false;
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
             _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
+            return false;
         }
         finally
         {
@@ -3132,6 +3192,39 @@ public partial class MainWindow : Window
         recipeManagerWindow.Activate();
     }
 
+    private void ConfigureFirstRecipeSetupForSmoke(ShellSmokeCommandLineOptions smoke)
+    {
+        if (string.IsNullOrWhiteSpace(smoke.FirstRecipeSetupSmokeState))
+        {
+            return;
+        }
+
+        _viewModel.Workbench.BeginFirstRecipeSetup();
+        _viewModel.Workbench.FirstRecipeName = smoke.FirstRecipeSetupName ?? "Thickness first inspection";
+        _viewModel.Workbench.FirstRecipeFolderPath = smoke.FirstRecipeSetupFolderPath ?? string.Empty;
+        _viewModel.Workbench.FirstRecipeSourcePath = smoke.FirstRecipeSetupSourcePath ?? string.Empty;
+        var starterId = smoke.FirstRecipeSetupStarterId
+            ?? (string.Equals(smoke.FirstRecipeSetupSmokeState, "valid", StringComparison.OrdinalIgnoreCase)
+                ? ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
+                : ToolWorkbenchViewModel.EmptyFirstRecipeStarterId);
+        _viewModel.Workbench.SelectedFirstRecipeStarter = _viewModel.Workbench.FirstRecipeStarterOptions
+            .First(option => string.Equals(option.Id, starterId, StringComparison.Ordinal));
+        _viewModel.Workbench.RememberFirstRecipeSetup = smoke.FirstRecipeSetupRememberSmoke;
+        if (smoke.FirstRecipeStarterPopupSmoke && recipeManagerWindow is not null)
+        {
+            recipeManagerWindow.UpdateLayout();
+            var starter = FindVisualDescendants<System.Windows.Controls.ComboBox>(recipeManagerWindow)
+                .FirstOrDefault(comboBox =>
+                    System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
+                    == "FirstRecipeStarter");
+            if (starter is not null)
+            {
+                starter.Focus();
+                starter.IsDropDownOpen = true;
+            }
+        }
+    }
+
     private void OnWorkbenchOpenToolLibraryRequested(object? sender, EventArgs args)
     {
         recipeManagerWindow?.Close();
@@ -3146,6 +3239,16 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
         }
         Activate();
+    }
+
+    private void OnWorkbenchSelectedStepSetupRequested(object? sender, EventArgs args)
+    {
+        if (!_viewModel.IsWorkbenchWorkspaceSelected)
+        {
+            _viewModel.IsWorkbenchWorkspaceSelected = true;
+        }
+
+        ToolWorkbench.ActivateSelectedToolPane();
     }
 
     private void OpenFilterToolLabRequested(object? sender, EventArgs args)
@@ -3292,66 +3395,91 @@ public partial class MainWindow : Window
     private bool ShowRegridHeightMapToolLabWindow(bool showMissingRegridMessage, bool preserveSelectedStep = false) =>
         _toolLabWindows.ShowRegridHeightMap(showMissingRegridMessage, preserveSelectedStep);
 
-    private void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args)
+    private async void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args)
     {
+        if (!_viewModel.Workbench.TryGetFirstRecipeSetup(out var setup, out _))
+        {
+            return;
+        }
+
         if (!TryResolveWorkbenchChanges("creating a new recipe"))
         {
             return;
         }
 
-        var path = SelectNewWorkbenchRecipePath();
-        if (string.IsNullOrWhiteSpace(path))
+        var sourceLoaded = IsViewerSourceAlreadyLoaded(setup.SourcePath)
+            || await LoadWorkbenchC3DSourceAsync(
+                setup.SourcePath,
+                showFailureDialog: true,
+                bindToWorkbench: false);
+        if (!sourceLoaded)
         {
             return;
         }
 
-        _viewModel.Workbench.CreateNewTeachingRecipe(GetRecipeNameFromPath(path));
+        _viewModel.Workbench.CreateNewTeachingRecipe(setup.RecipeName);
         _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-        if (!_viewModel.Workbench.TrySaveTeachingRecipe(path, out var message))
+        SetWorkbenchC3DSourceFromViewer(setup.SourcePath);
+        if (!_viewModel.Workbench.TryApplyFirstRecipeStarter(setup.StarterId, out var starterMessage))
+        {
+            ShowFirstRecipeCreateFailure(starterMessage);
+            return;
+        }
+        if (!_viewModel.Workbench.TrySaveTeachingRecipe(setup.RecipePath, out var message))
         {
             ShowRecipeSaveFailure(message);
             return;
         }
 
-        _viewer.ClearC3DTeachingSource(_viewModel.Workbench.LocalizedSourceReadinessSummary);
-        _viewModel.UpdateC3DSampleVisible(false);
+        if (!_viewModel.Workbench.CompleteFirstRecipeSetup(out var persistenceMessage))
+        {
+            ShowFirstRecipeSetupPersistenceFailure(persistenceMessage);
+        }
         ActivateWorkbenchAfterRecipeLifecycle();
     }
 
-    private string? SelectNewWorkbenchRecipePath()
+    private void OnWorkbenchBrowseFirstRecipeFolderRequested(object? sender, EventArgs args)
     {
-        var smokePath = GetCommandLineValue("--smoke-new-recipe-lifecycle");
-        if (!string.IsNullOrWhiteSpace(smokePath))
+        var current = _viewModel.Workbench.FirstRecipeFolderPath.Trim();
+        var dialog = new OpenFolderDialog
         {
-            return Path.GetFullPath(smokePath);
-        }
-
-        var dialog = new SaveFileDialog
-        {
-            Title = DialogText("ThreeD.FileDialog.CreateRecipe.Title", "새 3D 검사 레시피 만들기", "Create New 3D Inspection Recipe"),
-            Filter = DialogText("ThreeD.FileDialog.SaveRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json)|*.ov3d-recipe.json|기존 티칭 레시피 (*.ov3d-teach.json)|*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
-            FileName = "new-inspection.ov3d-recipe.json",
-            OverwritePrompt = true
+            Title = DialogText(
+                "ThreeD.FileDialog.FirstRecipeFolder.Title",
+                "새 레시피를 저장할 폴더 선택",
+                "Select Folder for New Recipe"),
+            Multiselect = false,
+            InitialDirectory = Directory.Exists(current) ? current : null
         };
-        return dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true
-            ? dialog.FileName
-            : null;
+        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true)
+        {
+            _viewModel.Workbench.FirstRecipeFolderPath = dialog.FolderName;
+        }
     }
 
-    private static string GetRecipeNameFromPath(string path)
+    private void OnWorkbenchBrowseFirstRecipeSourceRequested(object? sender, EventArgs args)
     {
-        const string currentSuffix = ".ov3d-recipe.json";
-        const string legacySuffix = ".ov3d-teach.json";
-        var fileName = Path.GetFileName(path);
-        if (fileName.EndsWith(currentSuffix, StringComparison.OrdinalIgnoreCase))
+        var source = _viewModel.Workbench.FirstRecipeSourcePath.Trim();
+        var folder = _viewModel.Workbench.FirstRecipeFolderPath.Trim();
+        var dialog = new OpenFileDialog
         {
-            return fileName[..^currentSuffix.Length];
-        }
-        if (fileName.EndsWith(legacySuffix, StringComparison.OrdinalIgnoreCase))
+            Title = DialogText(
+                "ThreeD.FileDialog.FirstRecipeSource.Title",
+                "새 레시피의 C3D 입력 선택",
+                "Select C3D Input for New Recipe"),
+            Filter = DialogText(
+                "ThreeD.FileDialog.LoadC3D.Filter",
+                "C3D 높이 맵 (*.C3D)|*.C3D|모든 파일 (*.*)|*.*",
+                "C3D height map (*.C3D)|*.C3D|All files (*.*)|*.*"),
+            CheckFileExists = true,
+            Multiselect = false,
+            InitialDirectory = File.Exists(source)
+                ? Path.GetDirectoryName(source)
+                : Directory.Exists(folder) ? folder : null
+        };
+        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true)
         {
-            return fileName[..^legacySuffix.Length];
+            _viewModel.Workbench.FirstRecipeSourcePath = dialog.FileName;
         }
-        return Path.GetFileNameWithoutExtension(fileName);
     }
 
     private Window GetRecipeLifecycleDialogOwner() =>
@@ -3432,6 +3560,197 @@ public partial class MainWindow : Window
             }
         }
         return false;
+    }
+
+    private static Task<bool> CaptureRecipeHealthNavigationPressedForSmokeAsync(
+        Window window,
+        string screenshotPath,
+        string? qualityReportPath) =>
+        CaptureButtonPressedForSmokeAsync(
+            window,
+            "NextRecipeHealthIssue",
+            screenshotPath,
+            qualityReportPath,
+            "RecipeHealthNavigationPressed");
+
+    private static void AppendWindowMonitorEvidence(Window window, string? reportPath)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            return;
+        }
+
+        const uint monitorDefaultToNearest = 0x00000002;
+        var handle = new WindowInteropHelper(window).Handle;
+        var monitor = MonitorFromWindow(handle, monitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (handle == IntPtr.Zero
+            || monitor == IntPtr.Zero
+            || !GetMonitorInfo(monitor, ref monitorInfo)
+            || !GetWindowRect(handle, out var windowRect))
+        {
+            return;
+        }
+
+        var intersects = windowRect.Left < monitorInfo.MonitorArea.Right
+            && windowRect.Right > monitorInfo.MonitorArea.Left
+            && windowRect.Top < monitorInfo.MonitorArea.Bottom
+            && windowRect.Bottom > monitorInfo.MonitorArea.Top;
+        File.AppendAllLines(
+            Path.GetFullPath(reportPath),
+        [
+            $"WindowMonitor|selected=leftmost|monitorBounds={monitorInfo.MonitorArea.Left},{monitorInfo.MonitorArea.Top},{monitorInfo.MonitorArea.Right},{monitorInfo.MonitorArea.Bottom}|workingArea={monitorInfo.WorkArea.Left},{monitorInfo.WorkArea.Top},{monitorInfo.WorkArea.Right},{monitorInfo.WorkArea.Bottom}|windowRect={windowRect.Left},{windowRect.Top},{windowRect.Right},{windowRect.Bottom}|intersects={intersects}"
+        ]);
+    }
+
+    private static async Task<bool> CaptureButtonPressedForSmokeAsync(
+        Window window,
+        string automationId,
+        string screenshotPath,
+        string? qualityReportPath,
+        string scope)
+    {
+        const uint leftButtonDown = 0x0002;
+        const uint leftButtonUp = 0x0004;
+        var mouseDown = false;
+        var routedPointerDown = false;
+        var forcedPressedState = false;
+        System.Windows.Controls.Button? pressedButton = null;
+        try
+        {
+            window.Activate();
+            SetForegroundWindow(new WindowInteropHelper(window).Handle);
+            await window.Dispatcher.InvokeAsync(
+                () => { },
+                DispatcherPriority.Input);
+            window.UpdateLayout();
+            var button = FindVisualDescendants<System.Windows.Controls.Button>(window)
+                .FirstOrDefault(button =>
+                    System.Windows.Automation.AutomationProperties.GetAutomationId(button)
+                    == automationId);
+            if (button is null)
+            {
+                WriteTextReport(qualityReportPath, [$"{scope}|failure=button-not-found|automationId={automationId}"]);
+                return false;
+            }
+            pressedButton = button;
+            if (!button.IsEnabled)
+            {
+                WriteTextReport(qualityReportPath, [$"{scope}|failure=button-disabled|automationId={automationId}"]);
+                return false;
+            }
+            if (!button.Focus())
+            {
+                WriteTextReport(qualityReportPath, [$"{scope}|failure=focus-rejected|automationId={automationId}"]);
+                return false;
+            }
+
+            var relativeCenter = button.TransformToAncestor(window).Transform(new System.Windows.Point(
+                button.ActualWidth / 2.0,
+                button.ActualHeight / 2.0));
+            var transformToDevice = PresentationSource.FromVisual(window)?.CompositionTarget?.TransformToDevice
+                ?? System.Windows.Media.Matrix.Identity;
+            var deviceCenter = transformToDevice.Transform(relativeCenter);
+            var windowHandle = new WindowInteropHelper(window).Handle;
+            if (!GetWindowRect(windowHandle, out var windowRectangle))
+            {
+                WriteTextReport(qualityReportPath, [$"{scope}|failure=window-rectangle"]);
+                return false;
+            }
+            var center = new System.Windows.Point(
+                windowRectangle.Left + deviceCenter.X,
+                windowRectangle.Top + deviceCenter.Y);
+            if (!SetCursorPos(
+                    (int)Math.Round(center.X),
+                    (int)Math.Round(center.Y)))
+            {
+                WriteTextReport(qualityReportPath, [$"{scope}|failure=cursor-position|x={center.X:F1}|y={center.Y:F1}"]);
+                return false;
+            }
+
+            await Task.Delay(150);
+            SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
+            mouseDown = true;
+            await window.Dispatcher.InvokeAsync(
+                () => { },
+                DispatcherPriority.Input);
+            await window.Dispatcher.InvokeAsync(
+                () => { },
+                DispatcherPriority.Render);
+            await Task.Delay(150);
+            if (!button.IsPressed)
+            {
+                button.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                    System.Windows.Input.Mouse.PrimaryDevice,
+                    Environment.TickCount,
+                    System.Windows.Input.MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+                    Source = button
+                });
+                routedPointerDown = true;
+                await window.Dispatcher.InvokeAsync(
+                    () => { },
+                    DispatcherPriority.Render);
+            }
+            if (!button.IsPressed)
+            {
+                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
+                    "SetIsPressed",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                setIsPressed?.Invoke(button, [true]);
+                forcedPressedState = button.IsPressed;
+            }
+            if (!button.IsPressed)
+            {
+                WriteTextReport(
+                    qualityReportPath,
+                [
+                    $"{scope}|failure=pressed-state-not-held|x={center.X:F1}|y={center.Y:F1}|window={windowRectangle.Left},{windowRectangle.Top},{windowRectangle.Right},{windowRectangle.Bottom}|relative={relativeCenter.X:F1},{relativeCenter.Y:F1}|device={deviceCenter.X:F1},{deviceCenter.Y:F1}"
+                ]);
+                return false;
+            }
+
+            var captured = await CaptureWindowWithRetryAsync(
+                window,
+                screenshotPath,
+                qualityReportPath,
+                scope);
+            if (captured && !string.IsNullOrWhiteSpace(qualityReportPath))
+            {
+                File.AppendAllLines(
+                    Path.GetFullPath(qualityReportPath),
+                [
+                    $"PointerDown|scope={scope}|state=held|osInjection={mouseDown}|routedEvent={routedPointerDown}|buttonBasePressedFallback={forcedPressedState}"
+                ]);
+            }
+            return captured;
+        }
+        finally
+        {
+            if (forcedPressedState && pressedButton is not null)
+            {
+                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
+                    "SetIsPressed",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                setIsPressed?.Invoke(pressedButton, [false]);
+            }
+            if (routedPointerDown && pressedButton is not null)
+            {
+                pressedButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
+                    System.Windows.Input.Mouse.PrimaryDevice,
+                    Environment.TickCount,
+                    System.Windows.Input.MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonUpEvent,
+                    Source = pressedButton
+                });
+            }
+            if (mouseDown)
+            {
+                SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
+            }
+        }
     }
 
     private static async Task<bool> CaptureMessageDialogForSmokeAsync(

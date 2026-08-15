@@ -127,7 +127,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         addSelectedToolCommand = new RelayCommand(
             parameter => AddSelectedTool(parameter as ToolWorkbenchToolItem),
-            parameter => (parameter is ToolWorkbenchToolItem || SelectedTool is not null) && IsSourceReadyForRecipe);
+            parameter => CanAddTool(parameter as ToolWorkbenchToolItem));
         removeSelectedStepCommand = new RelayCommand(
             _ => RequestSelectedStepRemoval(),
             _ => SelectedPipelineStep is not null && !IsRecipeMutationBlocked);
@@ -183,7 +183,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializePropertyGridEditing();
         InitializeFirstRecipeUx();
         InitializePlaneFlatnessTeaching();
-        NewTeachingRecipeCommand = new RelayCommand(_ => NewTeachingRecipeRequested?.Invoke(this, EventArgs.Empty));
+        NewTeachingRecipeCommand = new RelayCommand(_ => BeginFirstRecipeSetup());
         AddSelectedToolCommand = addSelectedToolCommand;
         RemoveSelectedStepCommand = removeSelectedStepCommand;
         MoveSelectedStepUpCommand = moveSelectedStepUpCommand;
@@ -240,6 +240,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? SaveTeachingRecipeRequested;
     public event EventHandler? SaveTeachingRecipeAsRequested;
     public event EventHandler? OpenToolLibraryRequested;
+    public event EventHandler? SelectedStepSetupRequested;
     public event EventHandler? OpenTeachingRecipeRequested;
     public event EventHandler? LoadC3DSourceRequested;
     public event EventHandler<ToolWorkbenchTeachingCaptureRequestEventArgs>? BeginTeachingSelectionCaptureRequested;
@@ -344,6 +345,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedToolTitle));
             OnPropertyChanged(nameof(SelectedToolHint));
+            NotifyProposedToolRouteChanged();
             addSelectedToolCommand.RaiseCanExecuteChanged();
             lastToolSelectionMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             OnPropertyChanged(nameof(LastToolSelectionMilliseconds));
@@ -378,6 +380,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedPipelineStep));
             OnPropertyChanged(nameof(SelectedPipelineStepTitle));
+            NotifySelectedStepFlowProblemChanged();
             OnPropertyChanged(nameof(AvailableInputEntitiesSummary));
             OnPropertyChanged(nameof(SelectedRouteInputIds));
             OnPropertyChanged(nameof(SelectedRouteOutputId));
@@ -1232,13 +1235,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var input = explicitInputIds;
         if (input is null)
         {
-            input = tool.Id == "landmark-correspondence"
-                ? string.Empty
-                : PipelineSteps.LastOrDefault()?.OutputEntityId;
-            if (tool.Id != "landmark-correspondence" && string.IsNullOrWhiteSpace(input))
+            var proposal = GetProposedInputRoute(tool);
+            if (!proposal.IsCompatible)
             {
-                input = Source.Id;
+                AppendLog("Warning", $"Tool add rejected: {tool.Name} | {proposal.Detail}");
+                return;
             }
+
+            input = proposal.InputEntityIds;
         }
 
         var step = new ToolWorkbenchPipelineStepItem(
@@ -1261,6 +1265,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         lastToolAddMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         OnPropertyChanged(nameof(LastToolAddMilliseconds));
         AppendLog("Teach", $"Added taught step: {tool.Name}.");
+        SelectedStepSetupRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void RefreshSelectedStepExecutionState()
@@ -2114,6 +2119,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshThicknessRepeatGroupPresentation();
         ((RelayCommand)SaveTeachingRecipeCommand).RaiseCanExecuteChanged();
         ((RelayCommand)SaveTeachingRecipeAsCommand).RaiseCanExecuteChanged();
+        NotifyProposedToolRouteChanged();
         addSelectedToolCommand.RaiseCanExecuteChanged();
         RefreshStepCommands();
         lastRecipeNotificationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
@@ -2658,6 +2664,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (args.PropertyName is nameof(ToolWorkbenchPipelineStepItem.State))
         {
             OnPropertyChanged(nameof(AlignmentStatusSummary));
+            RebuildRecipeHealthProjection();
             return;
         }
 
@@ -2755,6 +2762,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         runTeachingRecipeCommand?.RaiseCanExecuteChanged();
         publishSelectedStepCommand?.RaiseCanExecuteChanged();
         cancelFilterPreviewCommand?.RaiseCanExecuteChanged();
+        NotifyRecipeHealthSelectionChanged();
         if (string.Equals(SelectedPipelineStep?.ToolId, "filter", StringComparison.Ordinal))
         {
             showFilterSourceCommand?.RaiseCanExecuteChanged();
@@ -2896,6 +2904,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRecipeMutationBlocked)));
             removeSelectedStepCommand?.RaiseCanExecuteChanged();
+            NotifyRecipeHealthSelectionChanged();
         }
     }
 }

@@ -239,6 +239,356 @@
                     </StackPanel>
                 </Border>
 
+                <Border x:Name="SelectedToolSetupCard"
+                        Margin="0,0,0,8"
+                        Padding="9"
+                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="SelectedToolSetupCard">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="11.5"
+                                           FontWeight="SemiBold"
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.StepSetup, Korean='단계 설정', English='Step setup'}" />
+                                <TextBlock Margin="0,1,0,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding SelectedToolWorkspace.Title}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <ui:Button x:Name="SelectedToolSetupBackToToolsButton"
+                                       Grid.Column="1"
+                                       MinHeight="26"
+                                       Margin="7,0,0,0"
+                                       Padding="6,2"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon ArrowLeft24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Command.BackToTools, Korean='도구', English='Tools'}"
+                                       Command="{Binding OpenToolLibraryCommand}"
+                                       ToolTip="{views:ThreeDText Key=ThreeD.Command.BackToToolsTip, Korean='검사 도구 목록으로 돌아갑니다. 레시피나 검사는 변경하지 않습니다.', English='Return to Inspection Tools without changing the recipe or running inspection.'}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupBackToTools"
+                                       AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Command.BackToToolsAccessible, Korean='검사 도구 목록으로 돌아가기', English='Back to Inspection Tools'}" />
+                        </Grid>
+
+                        <Border Margin="0,7,0,0"
+                                Padding="7,5"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Margin="0,0,7,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.CompatibleInput, Korean='입력', English='Input'}" />
+                                <TextBlock Grid.Column="1"
+                                           FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding SelectedToolWorkspace.Inputs[0].DisplayName}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding SelectedToolWorkspace.Inputs[0].EntityId}" />
+                                <TextBlock Grid.Column="2"
+                                           Margin="7,0,0,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                           Text="{Binding SelectedToolWorkspace.Inputs[0].State}" />
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Margin="0,7,0,3"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.RequiredSetup, Korean='필수 설정', English='Required setup'}" />
+                        <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.Regions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock FontSize="9.5"
+                                                   Text="{Binding Label}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1"
+                                                   Margin="7,0,0,0"
+                                                   Style="{StaticResource RoiLifecycleStateTextStyle}"
+                                                   Text="{Binding State}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Grid Margin="0,1,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontSize="9.5"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.Parameters, Korean='파라미터', English='Parameters'}" />
+                            <TextBlock x:Name="SelectedToolSetupStatusText"
+                                       Grid.Column="1"
+                                       Margin="7,0,0,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding SelectedToolWorkspace.ParameterStatus}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding SelectedToolWorkspace.ParameterStatus}" />
+                        </Grid>
+                        <Grid Margin="0,2,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Margin="0,0,7,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{views:ThreeDText Key=ThreeD.Workspace.SetupStatus, Korean='준비 상태', English='Status'}" />
+                            <TextBlock Grid.Column="1"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding MeasurementExecutionSummary}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding MeasurementExecutionSummary}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupStatus" />
+                        </Grid>
+
+                        <Border Margin="0,6,0,0"
+                                Padding="7,5"
+                                Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThreeD.WarningBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Visibility="{Binding HasSelectedStepFlowProblem, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock FontSize="9.5"
+                                       Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                       Text="{Binding SelectedStepFlowProblem.Detail}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding TeachingSelectionCaptureInstruction}"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding IsTeachingSelectionCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <Grid Margin="0,7,0,0">
+                            <ui:Button x:Name="SelectedToolSetupRepairButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon WrenchScrewdriver24}"
+                                       Content="{Binding Localization.RepairRoute}"
+                                       Command="{Binding FocusFlowProblemStepCommand}"
+                                       CommandParameter="{Binding SelectedStepFlowProblem}"
+                                       ToolTip="{Binding Localization.RepairRouteToolTip}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionRepair"
+                                       AutomationProperties.Name="{Binding Localization.RepairRoute}"
+                                       Visibility="{Binding HasSelectedStepFlowProblem, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                            <ui:Button x:Name="SelectedToolSetupFirstRoiButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon TargetArrow24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Command.DrawFirstRoi, Korean='기준 ROI 그리기', English='Draw Reference ROI'}"
+                                       Command="{Binding CapturePlaneFlatnessReferenceRoiCommand}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionFirstRoi">
+                                <ui:Button.Style>
+                                    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="False" />
+                                                    <Condition Binding="{Binding IsTeachingSelectionCaptureActive}" Value="False" />
+                                                    <Condition Binding="{Binding HasDualRoiFirstSelection}" Value="False" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+
+                            <ui:Button x:Name="SelectedToolSetupSecondRoiButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon TargetArrow24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Command.DrawSecondRoi, Korean='측정 ROI 그리기', English='Draw Measurement ROI'}"
+                                       Command="{Binding CapturePlaneFlatnessMeasurementRoiCommand}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionSecondRoi">
+                                <ui:Button.Style>
+                                    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="False" />
+                                                    <Condition Binding="{Binding IsTeachingSelectionCaptureActive}" Value="False" />
+                                                    <Condition Binding="{Binding HasDualRoiFirstSelection}" Value="True" />
+                                                    <Condition Binding="{Binding HasDualRoiSecondSelection}" Value="False" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+
+                            <ui:Button x:Name="SelectedToolSetupApplyRoiButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon CheckmarkCircle24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Command.ApplyCurrentRoi, Korean='현재 ROI 적용', English='Apply current ROI'}"
+                                       Command="{Binding ApplyTeachingSelectionCaptureCommand}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionApplyRoi">
+                                <ui:Button.Style>
+                                    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="False" />
+                                                    <Condition Binding="{Binding IsTeachingSelectionCaptureActive}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+
+                            <ui:Button x:Name="SelectedToolSetupApplyParametersButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon Settings24}"
+                                       Content="{Binding Localization.ApplyParameters}"
+                                       Command="{Binding ApplySelectedStepParameterDraftCommand}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionApplyParameters">
+                                <ui:Button.Style>
+                                    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="False" />
+                                                    <Condition Binding="{Binding IsTeachingSelectionCaptureActive}" Value="False" />
+                                                    <Condition Binding="{Binding HasCompleteDualRoiTeaching}" Value="True" />
+                                                    <Condition Binding="{Binding HasPendingStepParameterChanges}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+
+                            <ui:Button x:Name="SelectedToolSetupPreviewButton"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Stretch"
+                                       HorizontalContentAlignment="Center"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon Eye24}"
+                                       Content="{Binding Localization.Preview}"
+                                       Command="{Binding PreviewSelectedStepCommand}"
+                                       AutomationProperties.AutomationId="SelectedToolSetupPrimaryActionPreview">
+                                <ui:Button.Style>
+                                    <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="False" />
+                                                    <Condition Binding="{Binding IsTeachingSelectionCaptureActive}" Value="False" />
+                                                    <Condition Binding="{Binding HasCompleteDualRoiTeaching}" Value="True" />
+                                                    <Condition Binding="{Binding HasPendingStepParameterChanges}" Value="False" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                            </ui:Button>
+                        </Grid>
+
+                        <TextBlock Margin="0,5,0,0"
+                                   FontSize="8.5"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{views:ThreeDText Key=ThreeD.Workspace.StepSetupBoundary, Korean='설정과 도구 이동은 검사를 실행하지 않습니다. Preview는 명시적 작업입니다.', English='Setup and tool navigation do not run inspection. Preview remains explicit.'}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <Border x:Name="SelectedToolRouteProblem"
+                        Margin="0,0,0,8"
+                        Padding="10"
+                        Background="{DynamicResource ThreeD.WarningSurfaceBrush}"
+                        BorderBrush="{DynamicResource ThreeD.WarningBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        AutomationProperties.AutomationId="SelectedToolRouteProblem">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="True" />
+                                        <Condition Binding="{Binding IsSelectedStepDualRoiMeasurement}" Value="False" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.WarningBrush}"
+                                   Text="{Binding SelectedStepFlowProblem.Status}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding SelectedStepFlowProblem.Detail}"
+                                   TextWrapping="Wrap" />
+                        <ui:Button Margin="0,8,0,0"
+                                   Padding="9,4"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Appearance="Secondary"
+                                   Icon="{ui:SymbolIcon WrenchScrewdriver24}"
+                                   Content="{Binding Localization.RepairRoute}"
+                                   Command="{Binding FocusFlowProblemStepCommand}"
+                                   CommandParameter="{Binding SelectedStepFlowProblem}"
+                                   ToolTip="{Binding Localization.RepairRouteToolTip}"
+                                   AutomationProperties.AutomationId="RepairSelectedToolRoute"
+                                   AutomationProperties.Name="{Binding Localization.RepairRoute}"
+                                   AutomationProperties.HelpText="{Binding Localization.RepairRouteToolTip}" />
+                    </StackPanel>
+                </Border>
+
                 <Border Padding="9"
                         Margin="0,0,0,8"
                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
@@ -539,6 +889,7 @@
                 </Border>
 
                 <Expander Style="{StaticResource WorkspaceSectionStyle}"
+                          IsExpanded="{Binding IsSelectedToolInputSectionExpanded, Mode=TwoWay}"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Inputs, Korean='1  입력', English='1  Inputs'}">
                     <StackPanel Margin="0,5,0,0">
                         <ItemsControl ItemsSource="{Binding SelectedToolWorkspace.Inputs}">
@@ -593,7 +944,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <Expander Margin="0,3,0,0"
-                                  IsExpanded="False"
+                                  IsExpanded="{Binding IsAdvancedInputRouteEditingExpanded, Mode=TwoWay}"
                                   Header="{views:ThreeDText Key=ThreeD.Workspace.EditTypedRoute, Korean='고급 입력 경로 편집', English='Advanced input route editing'}">
                             <StackPanel Margin="0,5,0,0">
                                 <TextBox Text="{Binding SelectedPipelineStep.InputEntityIdsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

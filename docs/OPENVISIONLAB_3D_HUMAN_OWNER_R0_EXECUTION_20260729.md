@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-08-15
+Date: 2026-08-16
 Status: Blocked - the current fixed-input package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `172B515A54C7CAAD70D73766ADAB7970ED3476EF62EE76477C251B3233B17BA7` |
-| Shell assembly | `6A97BC470F6C0CF0716992B77A51F4778F0BA9078503B7E86F6C4177AEB7E2D7` |
-| Core assembly | `09E720D2EEE8CAA7ACF5A63B60FE67EC28024D24C882A22D2E5E9ED96F625E61` |
-| Data assembly | `74909AF7384657192200A8D84D3CB2F44AC2849416B4727240A1FD5D98908703` |
-| Tools assembly | `68F49F8713CD01C738AAB6F4CAC385696CFB165889CA2008BAE443A16E0B1EDF` |
-| Viewer assembly | `3BA778B155E273018078B7947F48E9A6439D6EE668F630BF1FC9A27812A378A9` |
-| Docking assembly | `63E2E91A6468289EB9E9E8FEF85E7D9861D9505C80ADC164E32B69724EA83ADE` |
+| Release EXE | `419941D12A7EEEA97D7C3653AD720BCC26E504A93FFFFCAA2880F46C203D0DF3` |
+| Shell assembly | `4FADA730211B945BAC68C084C723F03C799771B4EFEADCD6C3FB753A377EA051` |
+| Core assembly | `8E1FDE184114FC7AEEA553F1769C0A2BB2D81D6CD22BFECCF725BF4266AE1167` |
+| Data assembly | `7A03FE2C22E6DB14B935054EDACDAFD4F98126DE98FE54223F5705B7526DD219` |
+| Tools assembly | `61D72BAC66EAAEE2B0A1642F68EEEF642E16BC006ACD51719E3DDDBEF5E7BC82` |
+| Viewer assembly | `314F97142CCC68FCE51FB2EFDF88991EFA974598ED220C9AA8858F4B2EA5E7AB` |
+| Docking assembly | `DCA3C5E0CB9583835B415D6260C6C958D080AFEBB7F48F00816132864B75AEDF` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,10 +52,12 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-08-15 current-source Release rebuild supersedes every previous fixed
-binary set and includes bounded Workbench run-log retention, recipe-step
-removal safety, immutable C3D loaded-snapshot correction, and truthful
-A1/A2/A3 alignment-status correction in addition to the
+The 2026-08-16 current-source Release rebuild supersedes every previous fixed
+binary set and includes PL-0009 compatible Add routing, PL-0010 contextual
+step setup, PL-0011 recipe-health navigation, PL-0013 confirmed first-use
+recipe/source/task setup, bounded Workbench run-log retention, recipe-step
+removal safety, immutable C3D loaded-snapshot
+correction, and truthful A1/A2/A3 alignment-status correction in addition to the
 `OpenVisionLab.Vision3D 3.0.0` migration, B-12, K-04, L-13, and PL-0002. R0
 must use the hashes above and restart from Wide; no result from an earlier
 binary set can close this gate.
@@ -63,7 +65,7 @@ binary set can close this gate.
 The launcher selects the monitor with the smallest `Bounds.Left`, reports its
 device name and bounds, places the application there, and fails closed if the
 actual application window does not intersect that monitor. On the current
-workstation the 2026-08-06 validation selected `\\.\DISPLAY2` with bounds
+workstation the 2026-08-16 validation selected `\\.\DISPLAY2` with bounds
 `[-1920,365,1920,1080]`.
 
 The 2026-08-06 Wide handoff launch verified actual window bounds
@@ -184,8 +186,9 @@ Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only checks ->
 Pass; current-package actual launch placement -> Pending with owner run; Wide
 owner run -> Pending; Compact owner run -> Pending.
-Verification: the run-log-retention-, recipe-step-removal-, C3D-snapshot-, and alignment-status-corrected current source was rebuilt in Release
-with `0` warnings and `0` errors on 2026-08-15. Both process-local
+Verification: the PL-0013-, run-log-retention-, recipe-step-removal-,
+C3D-snapshot-, and alignment-status-corrected current source was rebuilt in
+Release with `0` warnings and `0` errors on 2026-08-16. Both process-local
 `-ValidateOnly` commands passed,
 enforced the refreshed nine-input fixed hashes above, confirmed the Release
 was newer than current source, selected `\\.\DISPLAY2` as the leftmost
@@ -193,7 +196,7 @@ monitor, and launched no application. The earlier actual-window placement
 evidence belongs to the superseded pre-migration binary and is not reused as
 current-package owner evidence.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-run-log-retention\r0-wide-validate-only.txt`
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0013-first-use-setup\reports\r0-wide-validate-only.txt`
 plus `r0-compact-validate-only.txt` in the same directory.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. A newly

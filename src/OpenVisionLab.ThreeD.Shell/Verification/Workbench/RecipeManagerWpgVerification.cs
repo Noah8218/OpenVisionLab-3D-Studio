@@ -64,6 +64,160 @@ internal static class RecipeManagerWpgVerification
             workbench.RecipeName = "Recipe Manager Fixture";
             workbench.SetC3DSource(sourcePath);
             var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+
+            var firstUseRoot = Path.Combine(fixtureRoot, "first-use");
+            Directory.CreateDirectory(firstUseRoot);
+            var firstUseRecentPath = Path.Combine(firstUseRoot, "recent.json");
+            var firstUseRecipePath = Path.Combine(firstUseRoot, "First Recipe Fixture.ov3d-recipe.json");
+            var firstUse = new ToolWorkbenchViewModel(firstUseRecentPath);
+            var firstUseLogCount = firstUse.RunLog.Count;
+            firstUse.BeginFirstRecipeSetup();
+            Check(
+                "first-use setup opens as a visible draft without mutating authored or execution state",
+                firstUse.IsFirstRecipeSetupVisible
+                && string.IsNullOrWhiteSpace(firstUse.RecipePath)
+                && string.IsNullOrWhiteSpace(firstUse.Source.Path)
+                && firstUse.PipelineSteps.Count == 0
+                && !firstUse.IsDirty
+                && firstUse.RunLog.Count == firstUseLogCount,
+                $"visible={firstUse.IsFirstRecipeSetupVisible}; recipe={firstUse.RecipePath}; source={firstUse.Source.Path}; steps={firstUse.PipelineSteps.Count}; dirty={firstUse.IsDirty}; logs={firstUse.RunLog.Count}/{firstUseLogCount}");
+
+            firstUse.FirstRecipeName = "First Recipe Fixture";
+            firstUse.FirstRecipeFolderPath = firstUseRoot;
+            firstUse.FirstRecipeSourcePath = sourcePath;
+            firstUse.SelectedFirstRecipeStarter = firstUse.FirstRecipeStarterOptions.Single(option =>
+                option.Id == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId);
+            firstUse.RememberFirstRecipeSetup = true;
+            var draftReady = firstUse.TryGetFirstRecipeSetup(out var confirmedSetup, out var draftMessage);
+            Check(
+                "one first-use draft exposes a name, folder, C3D source, optional starter, and exact target before Create",
+                draftReady
+                && firstUse.IsFirstRecipeSetupValid
+                && confirmedSetup.RecipeName == "First Recipe Fixture"
+                && string.Equals(confirmedSetup.FolderPath, firstUseRoot, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(confirmedSetup.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && confirmedSetup.StarterId == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
+                && string.Equals(confirmedSetup.RecipePath, firstUseRecipePath, StringComparison.OrdinalIgnoreCase),
+                draftMessage);
+            Check(
+                "editing a valid first-use draft still does not load a source, add a step, save, Preview, Publish, or Run",
+                string.IsNullOrWhiteSpace(firstUse.RecipePath)
+                && string.IsNullOrWhiteSpace(firstUse.Source.Path)
+                && firstUse.PipelineSteps.Count == 0
+                && !firstUse.IsDirty
+                && firstUse.RunLog.Count == firstUseLogCount,
+                $"recipe={firstUse.RecipePath}; source={firstUse.Source.Path}; steps={firstUse.PipelineSteps.Count}; dirty={firstUse.IsDirty}; logs={firstUse.RunLog.Count}/{firstUseLogCount}");
+
+            firstUse.CreateNewTeachingRecipe(confirmedSetup.RecipeName);
+            firstUse.SetC3DSource(confirmedSetup.SourcePath);
+            var starterApplied = firstUse.TryApplyFirstRecipeStarter(
+                confirmedSetup.StarterId,
+                out var starterMessage);
+            var firstUseSaveMessage = string.Empty;
+            var firstUseSaved = starterApplied
+                && firstUse.TrySaveTeachingRecipe(confirmedSetup.RecipePath, out firstUseSaveMessage);
+            var firstUsePreferenceMessage = string.Empty;
+            var firstUsePreferenceSaved = firstUseSaved
+                && firstUse.CompleteFirstRecipeSetup(out firstUsePreferenceMessage);
+            var firstUseDocument = firstUseSaved
+                ? ToolRecipeDocumentStore.Load(firstUseRecipePath)
+                : null;
+            Check(
+                "confirmed first-use setup creates one source-routed starter and saves without running inspection",
+                firstUsePreferenceSaved
+                && firstUseDocument is not null
+                && string.Equals(firstUseDocument.Source.Path, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && firstUseDocument.Steps.Count == 1
+                && firstUseDocument.Steps[0].ToolId == "thickness"
+                && !firstUse.IsDirty
+                && !firstUse.IsFirstRecipeSetupVisible,
+                $"starter={starterMessage}; save={firstUseSaveMessage}; preference={firstUsePreferenceMessage}; steps={firstUseDocument?.Steps.Count}");
+
+            var reopenedRecipe = new ToolWorkbenchViewModel(Path.Combine(firstUseRoot, "reopen-recent.json"));
+            var recipeReopened = reopenedRecipe.TryOpenTeachingRecipe(firstUseRecipePath, out var reopenMessage);
+            Check(
+                "created recipe survives a save and reopen round trip with stable source and starter identity",
+                recipeReopened
+                && string.Equals(reopenedRecipe.Source.Path, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && reopenedRecipe.PipelineSteps.Count == 1
+                && reopenedRecipe.PipelineSteps[0].ToolId == "thickness"
+                && !reopenedRecipe.IsDirty,
+                reopenMessage);
+
+            var restoredSetup = new ToolWorkbenchViewModel(firstUseRecentPath);
+            var restoredLogCount = restoredSetup.RunLog.Count;
+            restoredSetup.BeginFirstRecipeSetup();
+            Check(
+                "remembered first-use values restore visibly and editably without opening, adding, or executing",
+                restoredSetup.IsFirstRecipeSetupVisible
+                && restoredSetup.FirstRecipeName == "First Recipe Fixture"
+                && string.Equals(restoredSetup.FirstRecipeFolderPath, firstUseRoot, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(restoredSetup.FirstRecipeSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && restoredSetup.SelectedFirstRecipeStarter?.Id == ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
+                && restoredSetup.RememberFirstRecipeSetup
+                && string.IsNullOrWhiteSpace(restoredSetup.RecipePath)
+                && string.IsNullOrWhiteSpace(restoredSetup.Source.Path)
+                && restoredSetup.PipelineSteps.Count == 0
+                && restoredSetup.RunLog.Count == restoredLogCount,
+                $"name={restoredSetup.FirstRecipeName}; starter={restoredSetup.SelectedFirstRecipeStarter?.Id}; recipe={restoredSetup.RecipePath}; source={restoredSetup.Source.Path}; logs={restoredSetup.RunLog.Count}/{restoredLogCount}");
+
+            var staleRoot = Path.Combine(firstUseRoot, "stale");
+            Directory.CreateDirectory(staleRoot);
+            var staleSource = Path.Combine(staleRoot, "stale.C3D");
+            File.Copy(sourcePath, staleSource);
+            restoredSetup.FirstRecipeName = "Stale Fixture";
+            restoredSetup.FirstRecipeFolderPath = staleRoot;
+            restoredSetup.FirstRecipeSourcePath = staleSource;
+            restoredSetup.RememberFirstRecipeSetup = true;
+            var stalePreferenceSaved = restoredSetup.CompleteFirstRecipeSetup(out var stalePreferenceMessage);
+            Directory.Delete(staleRoot, recursive: true);
+            var staleSetup = new ToolWorkbenchViewModel(firstUseRecentPath);
+            var staleLogCount = staleSetup.RunLog.Count;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            staleSetup.BeginFirstRecipeSetup();
+            Check(
+                "stale remembered paths remain visible, explain the unavailable folder, and disable Create",
+                stalePreferenceSaved
+                && staleSetup.FirstRecipeName == "Stale Fixture"
+                && string.Equals(staleSetup.FirstRecipeFolderPath, staleRoot, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(staleSetup.FirstRecipeSourcePath, staleSource, StringComparison.OrdinalIgnoreCase)
+                && !staleSetup.IsFirstRecipeSetupValid
+                && !staleSetup.CreateFirstRecipeCommand.CanExecute(null)
+                && staleSetup.FirstRecipeSetupStatus == "The saved recipe folder is unavailable. Select it again."
+                && string.IsNullOrWhiteSpace(staleSetup.RecipePath)
+                && string.IsNullOrWhiteSpace(staleSetup.Source.Path)
+                && staleSetup.PipelineSteps.Count == 0
+                && staleSetup.RunLog.Count == staleLogCount,
+                $"saved={stalePreferenceSaved}; {stalePreferenceMessage}; status={staleSetup.FirstRecipeSetupStatus}; logs={staleSetup.RunLog.Count}/{staleLogCount}");
+
+            staleSetup.ResetFirstRecipeSetupCommand.Execute(null);
+            var resetSetup = new ToolWorkbenchViewModel(firstUseRecentPath);
+            resetSetup.BeginFirstRecipeSetup();
+            Check(
+                "Reset clears remembered first-use values and has no authored or execution side effect",
+                staleSetup.FirstRecipeName == "new-inspection"
+                && string.IsNullOrWhiteSpace(staleSetup.FirstRecipeFolderPath)
+                && string.IsNullOrWhiteSpace(staleSetup.FirstRecipeSourcePath)
+                && !staleSetup.RememberFirstRecipeSetup
+                && resetSetup.FirstRecipeName == "new-inspection"
+                && string.IsNullOrWhiteSpace(resetSetup.FirstRecipeFolderPath)
+                && string.IsNullOrWhiteSpace(resetSetup.FirstRecipeSourcePath)
+                && string.IsNullOrWhiteSpace(resetSetup.RecipePath)
+                && string.IsNullOrWhiteSpace(resetSetup.Source.Path)
+                && resetSetup.PipelineSteps.Count == 0,
+                $"resetName={resetSetup.FirstRecipeName}; folder={resetSetup.FirstRecipeFolderPath}; source={resetSetup.FirstRecipeSourcePath}");
+
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishFirstUse = $"{staleSetup.Localization.FirstRecipeSetup}|{staleSetup.Localization.FirstRecipeFolder}|{staleSetup.Localization.FirstRecipeSource}|{staleSetup.Localization.FirstRecipeCreate}";
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var koreanFirstUse = $"{staleSetup.Localization.FirstRecipeSetup}|{staleSetup.Localization.FirstRecipeFolder}|{staleSetup.Localization.FirstRecipeSource}|{staleSetup.Localization.FirstRecipeCreate}";
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "first-use labels and actions switch between English and Korean",
+                englishFirstUse == "New recipe setup|Recipe folder|C3D input|Create recipe"
+                && koreanFirstUse == "새 레시피 설정|레시피 폴더|C3D 입력|레시피 만들기",
+                $"en={englishFirstUse} | ko={koreanFirstUse}");
+
             var localizedPropertyChanges = new List<string?>();
             workbench.PropertyChanged += (_, args) => localizedPropertyChanges.Add(args.PropertyName);
             OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);

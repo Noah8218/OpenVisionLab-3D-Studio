@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -28,6 +29,9 @@ public sealed partial class ToolWorkbenchViewModel
     public bool HasCompatibleToolBlocker => !string.IsNullOrWhiteSpace(CompatibleToolBlockerDetail);
     public string CompatibleToolBlockerTitle => compatibleToolBlockerTitle;
     public string CompatibleToolBlockerDetail => compatibleToolBlockerDetail;
+    public bool IsSelectedToolProposedRouteCompatible => GetProposedInputRoute(SelectedTool).IsCompatible;
+    public string SelectedToolProposedRouteTitle => Localization.ProposedToolRoute;
+    public string SelectedToolProposedRouteDetail => GetProposedInputRoute(SelectedTool).Detail;
 
     private void InitializeCompatibleToolCatalog()
     {
@@ -94,6 +98,7 @@ public sealed partial class ToolWorkbenchViewModel
         SetCompatibleToolBlocker(source, gridSelection, publishedFilter, publishedEdge);
 
         OnPropertyChanged(nameof(CompatibleToolCatalogSummary));
+        NotifyProposedToolRouteChanged();
         if (AddCompatibleToolCommand is RelayCommand addCompatibleToolCommand)
         {
             addCompatibleToolCommand.RaiseCanExecuteChanged();
@@ -168,6 +173,83 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(CompatibleToolBlockerTitle));
         OnPropertyChanged(nameof(CompatibleToolBlockerDetail));
     }
+
+    private bool CanAddTool(ToolWorkbenchToolItem? requestedTool)
+    {
+        var tool = requestedTool ?? SelectedTool;
+        return IsSourceReadyForRecipe
+            && tool is not null
+            && GetProposedInputRoute(tool).IsCompatible;
+    }
+
+    private ToolWorkbenchInputRouteProposal GetProposedInputRoute(ToolWorkbenchToolItem? tool)
+    {
+        if (tool is null)
+        {
+            return new ToolWorkbenchInputRouteProposal(false, string.Empty, string.Empty);
+        }
+
+        if (ToolRecipePrimaryInputContract.TryGetRequiredContract(tool.Id, out var requiredContract))
+        {
+            var candidate = FindCompatiblePrimaryInput(tool);
+            return candidate is null
+                ? new ToolWorkbenchInputRouteProposal(
+                    false,
+                    string.Empty,
+                    string.Format(
+                        Localization.ProposedToolRouteUnavailableFormat,
+                        requiredContract,
+                        tool.OutputContract))
+                : new ToolWorkbenchInputRouteProposal(
+                    true,
+                    candidate.Id,
+                    string.Format(
+                        Localization.ProposedToolRouteFormat,
+                        candidate.Id,
+                        candidate.Contract,
+                        tool.Name,
+                        tool.OutputContract));
+        }
+
+        var inputId = tool.Id == "landmark-correspondence"
+            ? string.Empty
+            : PipelineSteps.LastOrDefault()?.OutputEntityId;
+        if (tool.Id != "landmark-correspondence" && string.IsNullOrWhiteSpace(inputId))
+        {
+            inputId = Source.Id;
+        }
+
+        var artifact = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Id, inputId, StringComparison.OrdinalIgnoreCase));
+        var inputContract = artifact?.Contract ?? tool.InputContract;
+        return new ToolWorkbenchInputRouteProposal(
+            true,
+            inputId ?? string.Empty,
+            string.Format(
+                Localization.ProposedToolRouteFormat,
+                string.IsNullOrWhiteSpace(inputId) ? Localization.Input : inputId,
+                inputContract,
+                tool.Name,
+                tool.OutputContract));
+    }
+
+    private ToolWorkbenchArtifactItem? FindCompatiblePrimaryInput(ToolWorkbenchToolItem tool) =>
+        ArtifactRegistry
+            .Where(item => item.NodeKind == "Source" || item.PipelineStep is not null)
+            .Reverse()
+            .FirstOrDefault(item => ToolRecipePrimaryInputContract.IsCompatible(tool.Id, item.Contract));
+
+    private void NotifyProposedToolRouteChanged()
+    {
+        OnPropertyChanged(nameof(IsSelectedToolProposedRouteCompatible));
+        OnPropertyChanged(nameof(SelectedToolProposedRouteTitle));
+        OnPropertyChanged(nameof(SelectedToolProposedRouteDetail));
+    }
+
+    private sealed record ToolWorkbenchInputRouteProposal(
+        bool IsCompatible,
+        string InputEntityIds,
+        string Detail);
 }
 
 public sealed record ToolWorkbenchCompatibleToolItem(

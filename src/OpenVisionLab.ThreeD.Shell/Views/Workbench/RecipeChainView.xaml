@@ -17,6 +17,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -176,9 +177,92 @@
                 </Grid>
             </Border>
 
-            <ListBox Grid.Row="2"
+            <Border x:Name="RecipeHealthCard"
+                    Grid.Row="2"
+                    Margin="0,0,0,7"
+                    Padding="8,7"
+                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding HasSelectedPipelineStep, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.AutomationId="RecipeHealthCard">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
+                                   Text="{Binding Localization.RecipeHealth}" />
+                        <TextBlock Grid.Column="1"
+                                   Margin="7,0,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding RecipeHealthSummary}" />
+                    </Grid>
+                    <TextBlock Margin="0,4,0,0"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding RecipeHealthCountsPrimary}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,1,0,0"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                               Text="{Binding RecipeHealthCountsSecondary}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,6,0,0"
+                               FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ThreeD.AccentBrush}"
+                               Text="{Binding SelectedRecipeHealthTitle}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding SelectedRecipeHealthTitle}" />
+                    <TextBlock Margin="0,2,0,0"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding SelectedRecipeHealthDetail}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="{Binding SelectedRecipeHealthDetail}" />
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button x:Name="PreviousRecipeHealthIssueButton"
+                                   Margin="0,0,3,0"
+                                   Padding="6,3"
+                                   HorizontalAlignment="Stretch"
+                                   HorizontalContentAlignment="Center"
+                                   Content="{Binding Localization.PreviousRequirement}"
+                                   Icon="{ui:SymbolIcon ArrowLeft24}"
+                                   Command="{Binding PreviousRecipeHealthIssueCommand}"
+                                   ToolTip="{Binding Localization.PreviousRequirement}"
+                                   AutomationProperties.AutomationId="PreviousRecipeHealthIssue"
+                                   AutomationProperties.Name="{Binding Localization.PreviousRequirement}" />
+                        <ui:Button x:Name="NextRecipeHealthIssueButton"
+                                   Grid.Column="1"
+                                   Margin="3,0,0,0"
+                                   Padding="6,3"
+                                   HorizontalAlignment="Stretch"
+                                   HorizontalContentAlignment="Center"
+                                   Content="{Binding Localization.NextRequirement}"
+                                   Icon="{ui:SymbolIcon ArrowRight24}"
+                                   Command="{Binding NextRecipeHealthIssueCommand}"
+                                   ToolTip="{Binding Localization.NextRequirement}"
+                                   AutomationProperties.AutomationId="NextRecipeHealthIssue"
+                                   AutomationProperties.Name="{Binding Localization.NextRequirement}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <ListBox x:Name="RecipeStepList"
+                     Grid.Row="3"
                      ItemsSource="{Binding PipelineSteps}"
                      SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
+                     SelectionChanged="RecipeStepListSelectionChanged"
                      Background="Transparent"
                      BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -245,7 +329,7 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Border Grid.Row="3"
+            <Border Grid.Row="4"
                     Margin="0,7,0,0"
                     Padding="8"
                     Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
@@ -315,7 +399,7 @@
                 </StackPanel>
             </Border>
 
-            <Expander Grid.Row="4"
+            <Expander Grid.Row="5"
                       Margin="0,7,0,0"
                       IsExpanded="False"
                       Header="{views:ThreeDText Key=ThreeD.Workspace.AdvancedRecipeExplorer, Korean='고급 레시피 탐색기', English='Advanced recipe explorer'}">

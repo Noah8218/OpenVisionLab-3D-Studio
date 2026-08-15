@@ -123,6 +123,10 @@ internal static class ToolWorkbenchDockingVerification
                 workbench.HasSingleVisibleAuthoringFirstAction,
                 $"firstActionGuide={workbench.HasVisibleAuthoringFirstActionGuide}; singleCurrentAction={workbench.HasSingleVisibleAuthoringFirstAction}");
             Check(
+                "Recipe Flow exposes the themed health summary and requirement navigation",
+                workbench.HasRecipeHealthNavigation,
+                $"recipeHealthNavigation={workbench.HasRecipeHealthNavigation}");
+            Check(
                 "Empty Viewer keeps one primary input action without a duplicate context ribbon",
                 workbench.IsViewerInputFirstActionVisible
                 && !workbench.IsViewerContextRibbonVisible
@@ -335,6 +339,10 @@ internal static class ToolWorkbenchDockingVerification
             };
             stageHost.Show();
             stageHost.UpdateLayout();
+            Check(
+                "dual-ROI Selected Tool keeps input requirements, one next action, and catalog return together",
+                stageWorkbench.HasContextualSelectedStepSetup,
+                $"contextualSetup={stageWorkbench.HasContextualSelectedStepSetup}");
             Check(
                 "Initial Workbench mode composes the unified Authoring cockpit",
                 stageWorkbench.OperatorStage == OpenVisionOperatorStage.Teach

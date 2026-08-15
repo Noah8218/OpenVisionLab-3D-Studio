@@ -165,7 +165,105 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Workbench run-log retention - 2026-08-15
+### Current execution checkpoint - first-use recipe setup - 2026-08-16
+
+`PL-0013` is Complete. Recipe Center now exposes recipe name, folder, C3D
+source, optional Empty/Thickness starter, exact target, validation, remembered
+setup, and Reset before one explicit Create action. Confirmed setup persists at
+workspace scope and restores visibly and editably. Missing restored paths are
+explained and disable Create. Open/edit/restore/reset do not create, load, add,
+Preview, Publish, Run, or change source/result state.
+
+Recipe Manager + WPG passes `49/49`, Tool Recipe teaching `46/46`, Workbench
+docking `84/84`, Shell smoke options `39/39`, and Debug/Release build with zero
+warnings and zero errors. Actual current Release EXE empty and Thickness
+creation both save/reopen successfully; the Thickness case retains one typed
+`thickness` step routed from `source.c3d.height-map`. Wide/Compact
+English/Korean valid, focused input, open popup, stale/disabled, and held
+pressed evidence remains themed and bounded on dynamically selected leftmost
+`DISPLAY2`. Both refreshed fixed-package `-ValidateOnly` modes pass without
+launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md`;
+- `.proofline/issues/PL-0013.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0013-first-use-setup\`.
+
+The evidence-bounded workflow reassessment is first-use efficiency `8.5/10`
+and commercial authoring readiness `7.8/10`. These are qualitative judgments,
+not telemetry, release acceptance, certified usability, production approval,
+or physical-metrology claims. This slice does not change capability inventory.
+`PL-0012` search-context correction is the selected next software priority.
+Recommended model: `gpt-5.6-terra`; reasoning effort: `low`. Product-owner
+unaided Wide/Compact R0 remains the separate acceptance priority and requires
+owner operation rather than model execution.
+
+### Previous execution checkpoint - recipe health navigation - 2026-08-15
+
+`PL-0011` is Complete. Flow now projects every recipe step into exactly one of
+`Ready`, `Needs input`, `Needs selection`, `Needs parameters`, `Stale Preview`,
+or `Published`, shows exact localized counts, and exposes the selected owning
+step and requirement. Non-wrapping Previous/Next navigation selects and scrolls
+the exact stable step without invoking Preview, Publish, or Run or changing
+recipe, source, result, dirty, layer, or active-input state.
+
+Tool Recipe teaching passes `46/46`, Workbench docking `84/84`, Shell smoke
+options `37/37`, and the current Release build has zero warnings and zero
+errors. Current Release Wide English and Compact English/Korean evidence on
+dynamically selected leftmost `DISPLAY2` shows reachable health actions,
+automatic reveal of step 17, and a correctly themed held pointer-down state.
+The refreshed fixed package passes both Wide and Compact `-ValidateOnly`
+without launching the application. The UX study's evidence-bounded current
+reassessment is Compact long-chain overview `7.5/10` and commercial authoring
+readiness `7.4/10`; these are workflow judgments, not telemetry, release
+acceptance, or physical-metrology claims. Preserve:
+
+- `docs/OPENVISIONLAB_3D_RECIPE_HEALTH_NAVIGATION_20260815.md`;
+- `.proofline/issues/PL-0011.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0011-recipe-health-navigation\`.
+
+This software slice does not change capability inventory. Its selected
+follow-up, `PL-0013`, is completed in the current checkpoint above.
+
+### Previous execution checkpoint - EXE recipe-authoring UX study - 2026-08-15
+
+The current Release EXE saved and reopened ten current-format recipes against
+the bundled Thickness Coupon C3D. All ten files parse and retain `90` total
+steps. The eight-step Thickness baseline is the only ready single-task recipe;
+the other pending or incompatible chains are retained as authoring evidence,
+not as successful inspection runs.
+
+The study confirms a high-risk composition defect: `All tools` can append a
+HeightField consumer after a Thickness MeasurementResult, silently route the
+incompatible result, and save/reopen the invalid recipe. It also records the
+split add/configure/teach path, missing long-chain health navigation, stale
+Tool Library search, and fragmented first-use setup. Preserve:
+
+- `docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md`;
+- `.proofline/issues/PL-0009.json` through `PL-0014.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-exe-recipe-authoring-study\recipes\`.
+
+`PL-0009` is now Complete. Measurement Add resolves the newest compatible
+typed artifact, generic HeightField consumers fall back to the identified
+source instead of a MeasurementResult, and transformed-only tools remain
+unavailable until a `TransformedHeightField` exists. The Tool Library shows
+the proposed typed route before Add. Invalid legacy recipes remain loadable
+as repairable drafts; selecting the affected step shows a direct bilingual
+repair action that expands Inputs and advanced route editing without changing
+the recipe or invoking Preview, Publish, or Run.
+
+Current verification passes Tool Recipe teaching `42/42`, Height Measurement
+Workbench `54/54`, Recipe Manager + WPG `40/40`, Tool Recipe selections
+`29/29`, Artifact Navigator, and full Release build `0 warnings / 0 errors`.
+Actual current-Release Wide/Compact English/Korean evidence on leftmost
+`DISPLAY2` is under
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0009-compatible-tool-routing\`.
+This correction does not change capability inventory. `PL-0010` contextual
+add/configure/teach/repair and `PL-0011` recipe health navigation are complete;
+use the current checkpoint above for the selected software priority. Human-
+owner Compact R0 remains a separate acceptance prerequisite and was not
+completed by these slices.
+
+### Previous execution checkpoint - Workbench run-log retention - 2026-08-15
 
 `PL-0008` is Complete. The production `AppendLog` path now writes every
 Workbench event to the existing rolling `OVLog` files before projecting it
@@ -188,13 +286,10 @@ GitHub Actions CI `#76` succeeds for commit `e43bebb`. Preserve:
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-run-log-retention\`.
 
 This maintenance correction does not change inventory, which remains
-`139 C / 17 P / 54 N / 9 E / 16 O`. No dependency-ready software item is
-selected. The next evidence-based technical candidate is a large-C3D
-memory/performance target, but it is blocked until a representative maximum
-C3D input and accepted process-memory/load-time limits exist. Recommended
-model: none until those prerequisites exist; reasoning effort: none.
-Human-owner Wide/Compact R0 remains the separate acceptance priority and
-requires owner operation rather than model execution.
+`139 C / 17 P / 54 N / 9 E / 16 O`. Its then-current next-priority statement
+is superseded by the EXE recipe-authoring checkpoint above. Human-owner
+Wide/Compact R0 remains the separate acceptance priority and requires owner
+operation rather than model execution.
 
 ### Previous execution checkpoint - recipe-step removal safety - 2026-08-15
 
@@ -2660,7 +2755,29 @@ The owner explicitly left the layout-only stream and completed item 11 on
     `AppendLog` routes every event to durable rolling `OVLog` before keeping
     the newest 3,000 session entries, localized UI explains the boundary,
     focused `6/6` and hosted CI `#76` pass.
-25. `Large-C3D memory/performance target` - Blocked; prerequisite:
+25. `PL-0009 compatible Add and input-route correctness` - Complete; shared
+    typed-route resolution blocks unavailable transformed-only Add, avoids
+    MeasurementResult auto-routing, previews the proposed contracts, and
+    exposes non-executing legacy repair in the selected step.
+26. `PL-0010 contextual add/configure/teach/repair path` - Complete; Add now
+    activates Selected Tool, where one compact dual-ROI setup card keeps the
+    compatible input, missing ROI/parameter/readiness state, one primary next
+    action, and direct Tools return together without implicit execution.
+27. `PL-0011 recipe health summary and issue navigation` - Complete; Flow
+    exposes exact six-state counts and non-wrapping, presentation-only
+    requirement navigation for the seventeen-step chain.
+28. `PL-0013 first-use recipe/source/task setup` - Complete; one explicit
+    surface now owns recipe identity, location, C3D source, optional compatible
+    starter, confirmed remembered setup, stale validation, and reset without
+    automatic execution.
+29. `PL-0012 Tool Library search reset/visibility` - Selected; remove hidden stale
+    catalog context or make retention explicit and one-click clearable.
+    Recommended model: `gpt-5.6-terra`; reasoning effort: `low`.
+30. `PL-0014 Studio language-popup theme and bounds` - Open; replace the
+    platform-light blank popup with the shared semantic ComboBox popup and
+    verify English/Korean open, focus, hover, selected, pressed, and disabled
+    states. Recommended model: `gpt-5.6-terra`; reasoning effort: `low`.
+31. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.

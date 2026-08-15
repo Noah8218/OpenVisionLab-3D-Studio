@@ -15,6 +15,27 @@ public partial class SelectedToolWorkspaceView : UserControl
     public bool IsFailureCorrectionContextVisible =>
         TeachFailureCorrectionContext.Visibility == Visibility.Visible;
 
+    public bool IsContextualStepSetupVisible =>
+        SelectedToolSetupCard.Visibility == Visibility.Visible;
+
+    public bool HasDirectToolCatalogReturn =>
+        SelectedToolSetupBackToToolsButton.IsVisible;
+
+    public bool HasVisibleStepSetupStatus =>
+        SelectedToolSetupStatusText.IsVisible
+        && !string.IsNullOrWhiteSpace(SelectedToolSetupStatusText.Text);
+
+    public int VisibleContextualStepSetupActionCount =>
+        new[]
+        {
+            SelectedToolSetupRepairButton,
+            SelectedToolSetupFirstRoiButton,
+            SelectedToolSetupSecondRoiButton,
+            SelectedToolSetupApplyRoiButton,
+            SelectedToolSetupApplyParametersButton,
+            SelectedToolSetupPreviewButton,
+        }.Count(button => button.IsVisible);
+
     public bool CommitPendingParameterEdit(out string message) =>
         StepPropertyGrid.CommitPendingEdit(out message);
 

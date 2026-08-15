@@ -273,6 +273,12 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
             HasSingleVisibleFirstAction: true
         };
 
+    public bool HasRecipeHealthNavigation =>
+        DockWorkspace.DataLayersContent is RecipeChainView
+        {
+            HasRecipeHealthNavigation: true
+        };
+
     public bool IsViewerContextRibbonVisible =>
         FindLogicalChildByAutomationId<Border>(
             DockWorkspace.ViewerContent,
@@ -302,6 +308,15 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
         {
             HasExplicitAuthoringActions: true
+        };
+
+    public bool HasContextualSelectedStepSetup =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
+        {
+            IsContextualStepSetupVisible: true,
+            HasDirectToolCatalogReturn: true,
+            HasVisibleStepSetupStatus: true,
+            VisibleContextualStepSetupActionCount: 1,
         };
 
     public bool HasExclusiveSelectedToolWorkspaceSurface =>

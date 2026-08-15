@@ -37,4 +37,21 @@ public partial class RecipeChainView : UserControl
     public bool HasSingleVisibleFirstAction =>
         HasVisibleFirstActionGuide
         && VisibleFirstActionCount == 1;
+
+    public bool HasRecipeHealthNavigation =>
+        RecipeHealthCard is not null
+        && PreviousRecipeHealthIssueButton is not null
+        && NextRecipeHealthIssueButton is not null;
+
+    private void RecipeStepListSelectionChanged(
+        object sender,
+        SelectionChangedEventArgs args)
+    {
+        if (args.AddedItems.Count == 0)
+        {
+            return;
+        }
+
+        RecipeStepList.ScrollIntoView(args.AddedItems[0]);
+    }
 }

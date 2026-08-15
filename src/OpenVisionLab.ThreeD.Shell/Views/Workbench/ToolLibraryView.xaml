@@ -221,21 +221,53 @@
                            TextWrapping="Wrap" />
             </StackPanel>
 
-            <Grid Grid.Row="3" Margin="0,12,0,6"
-                  Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center"
-                           FontWeight="SemiBold"
-                           Text="{Binding Localization.AllTools}" />
-                <TextBox Grid.Column="1"
-                         Margin="10,0,0,0"
-                         ToolTip="{Binding Localization.ToolSearch}"
-                         AutomationProperties.Name="{Binding Localization.ToolSearch}"
-                         Text="{Binding ToolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            </Grid>
+            <StackPanel Grid.Row="3"
+                        Margin="0,12,0,6"
+                        Visibility="{Binding IsSourceReadyForRecipe, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Text="{Binding Localization.AllTools}" />
+                    <TextBox Grid.Column="1"
+                             Margin="10,0,0,0"
+                             ToolTip="{Binding Localization.ToolSearch}"
+                             AutomationProperties.Name="{Binding Localization.ToolSearch}"
+                             Text="{Binding ToolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+                <Border Margin="0,6,0,0"
+                        Padding="8,6"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        AutomationProperties.AutomationId="ProposedToolRoute">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSelectedToolProposedRouteCompatible}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding SelectedToolProposedRouteTitle}" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.TextBrush}"
+                                   Text="{Binding SelectedToolProposedRouteDetail}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <ListBox Grid.Row="4"
                      x:Name="AllToolsList"

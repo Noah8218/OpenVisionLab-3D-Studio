@@ -61,6 +61,16 @@
             </Grid>
 
             <Grid Grid.Row="2">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFirstRecipeSetupVisible}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="0.92*" />
                     <ColumnDefinition Width="1.25*" />
@@ -313,6 +323,212 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <Border Grid.Row="2"
+                    Padding="14"
+                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="5"
+                    Visibility="{Binding IsFirstRecipeSetupVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                    KeyboardNavigation.TabNavigation="Cycle"
+                    AutomationProperties.AutomationId="FirstRecipeSetup">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Width="18"
+                                       Height="18"
+                                       Margin="0,1,7,0"
+                                       Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                       Symbol="DocumentAdd24" />
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Localization.FirstRecipeSetup}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1"
+                               Margin="25,4,0,0"
+                               FontSize="10"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.FirstRecipeSetupDetail}"
+                               TextWrapping="Wrap" />
+
+                    <Grid Grid.Row="2" Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock VerticalAlignment="Center"
+                                   Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                   Text="{Binding Localization.RecipeNameLabel}" />
+                        <TextBox Grid.Column="1"
+                                 Grid.ColumnSpan="2"
+                                 Height="30"
+                                 VerticalContentAlignment="Center"
+                                 AutomationProperties.AutomationId="FirstRecipeName"
+                                 AutomationProperties.Name="{Binding Localization.RecipeNameLabel}"
+                                 Text="{Binding FirstRecipeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,9,0,0"
+                                   VerticalAlignment="Center"
+                                   Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                   Text="{Binding Localization.FirstRecipeFolder}" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="1"
+                                 Height="30"
+                                 Margin="0,9,7,0"
+                                 VerticalContentAlignment="Center"
+                                 AutomationProperties.AutomationId="FirstRecipeFolder"
+                                 AutomationProperties.Name="{Binding Localization.FirstRecipeFolder}"
+                                 Text="{Binding FirstRecipeFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ui:Button Grid.Row="1"
+                                   Grid.Column="2"
+                                   Height="30"
+                                   Margin="0,9,0,0"
+                                   Content="{Binding Localization.FirstRecipeBrowse}"
+                                   Icon="{ui:SymbolIcon Folder24}"
+                                   Command="{Binding BrowseFirstRecipeFolderCommand}"
+                                   AutomationProperties.AutomationId="BrowseFirstRecipeFolder"
+                                   AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
+
+                        <TextBlock Grid.Row="2"
+                                   Margin="0,9,0,0"
+                                   VerticalAlignment="Center"
+                                   Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                   Text="{Binding Localization.FirstRecipeSource}" />
+                        <TextBox Grid.Row="2"
+                                 Grid.Column="1"
+                                 Height="30"
+                                 Margin="0,9,7,0"
+                                 VerticalContentAlignment="Center"
+                                 AutomationProperties.AutomationId="FirstRecipeSource"
+                                 AutomationProperties.Name="{Binding Localization.FirstRecipeSource}"
+                                 Text="{Binding FirstRecipeSourcePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ui:Button Grid.Row="2"
+                                   Grid.Column="2"
+                                   Height="30"
+                                   Margin="0,9,0,0"
+                                   Content="{Binding Localization.FirstRecipeBrowse}"
+                                   Icon="{ui:SymbolIcon FolderOpen24}"
+                                   Command="{Binding BrowseFirstRecipeSourceCommand}"
+                                   AutomationProperties.AutomationId="BrowseFirstRecipeSource"
+                                   AutomationProperties.Name="{Binding Localization.FirstRecipeBrowse}" />
+
+                        <TextBlock Grid.Row="3"
+                                   Margin="0,9,0,0"
+                                   VerticalAlignment="Center"
+                                   Style="{DynamicResource ThreeD.FieldLabelTextStyle}"
+                                   Text="{Binding Localization.FirstRecipeStarter}" />
+                        <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,9,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox Height="30"
+                                      VerticalContentAlignment="Center"
+                                      ItemsSource="{Binding FirstRecipeStarterOptions}"
+                                      DisplayMemberPath="Name"
+                                      SelectedItem="{Binding SelectedFirstRecipeStarter, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="FirstRecipeStarter"
+                                      AutomationProperties.Name="{Binding Localization.FirstRecipeStarter}" />
+                            <TextBlock Grid.Column="1"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="9.5"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       Text="{Binding FirstRecipeStarterDetail}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Row="3" Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="1.2*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <CheckBox Content="{Binding Localization.FirstRecipeRememberSetup}"
+                                      IsChecked="{Binding RememberFirstRecipeSetup, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="RememberFirstRecipeSetup"
+                                      AutomationProperties.Name="{Binding Localization.FirstRecipeRememberSetup}" />
+                            <TextBlock Margin="0,7,0,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       Text="{Binding Localization.FirstRecipeTargetFile}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="9.5"
+                                       Text="{Binding FirstRecipeTargetPath}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding FirstRecipeTargetPath}" />
+                        </StackPanel>
+                        <Border Grid.Column="1"
+                                Margin="14,0,0,0"
+                                Padding="10,7"
+                                CornerRadius="4">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFirstRecipeSetupValid}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontSize="9.5"
+                                       Text="{Binding FirstRecipeSetupStatus}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Row="4" Margin="0,13,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button Content="{Binding Localization.FirstRecipeReset}"
+                                   Icon="{ui:SymbolIcon ArrowReset24}"
+                                   Command="{Binding ResetFirstRecipeSetupCommand}"
+                                   AutomationProperties.AutomationId="ResetFirstRecipeSetup"
+                                   AutomationProperties.Name="{Binding Localization.FirstRecipeReset}" />
+                        <ui:Button Grid.Column="1"
+                                   Margin="7,0,0,0"
+                                   Content="{Binding Localization.Cancel}"
+                                   Icon="{ui:SymbolIcon Dismiss24}"
+                                   Command="{Binding CancelFirstRecipeSetupCommand}"
+                                   AutomationProperties.AutomationId="CancelFirstRecipeSetup"
+                                   AutomationProperties.Name="{Binding Localization.Cancel}" />
+                        <ui:Button Grid.Column="3"
+                                   Margin="14,0,0,0"
+                                   Content="{Binding Localization.FirstRecipeCreate}"
+                                   Icon="{ui:SymbolIcon DocumentAdd24}"
+                                   Command="{Binding CreateFirstRecipeCommand}"
+                                   Appearance="Primary"
+                                   AutomationProperties.AutomationId="CreateFirstRecipe"
+                                   AutomationProperties.Name="{Binding Localization.FirstRecipeCreate}" />
+                    </Grid>
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

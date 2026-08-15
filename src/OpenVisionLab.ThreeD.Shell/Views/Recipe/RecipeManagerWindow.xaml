@@ -9,6 +9,7 @@
         Height="620"
         MinWidth="760"
         MinHeight="540"
+        WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="{DynamicResource ThreeD.AppBackgroundBrush}"

@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-15
+Updated: 2026-08-16
 Status: Current continuation entry point
 
 Use the following request to start the next development chat:
@@ -21,10 +21,26 @@ The current acceptance priority is the product owner's unaided Wide/Compact
 R0; automated validation does not replace it. PL-0004 immutable C3D loaded
 snapshot, PL-0005 truthful alignment status, PL-0007 impact-aware guarded
 recipe-step removal, and PL-0008 bounded Workbench run-log retention are
-complete. No dependency-ready software item is selected. A large-C3D
-memory/performance target first requires a representative maximum input and
-accepted process-memory/load-time limits; do not spend model tokens on storage
-redesign until those prerequisites exist.
+complete. The current Release EXE recipe-authoring study saved and reopened
+ten current-format Thickness Coupon variants; only the eight-step Thickness
+baseline is ready, while the other chains are preserved as pending or
+incompatible UX evidence. Read
+docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md. PL-0009
+compatible Add/input-route correctness is complete: proposed types are
+visible, unavailable transformed-only tools cannot be inserted, generic
+HeightField consumers avoid MeasurementResult routing, and legacy mismatches
+have a direct non-executing repair action. PL-0010 contextual
+add/configure/teach/repair is also complete: Add opens Selected Tool and a
+dual-ROI setup card keeps input, missing setup, readiness, one next action,
+and Tools return together. PL-0011 recipe health navigation is complete with
+exact six-state counts and non-wrapping, non-mutating navigation to each
+owning step and requirement. PL-0013 is now complete: Recipe Center collects recipe
+identity, folder, C3D source, and optional compatible starter before explicit
+Create, and confirmed setup restores visibly without execution. PL-0012 is the
+current software priority, followed by PL-0014 language-popup theming. A
+large-C3D memory/performance target still needs
+a representative maximum input and accepted process-memory/load-time limits;
+do not spend model tokens on it until those prerequisites exist.
 PL-0006 release-policy reconciliation is complete: the current
 repository has no release or tag, and historical v0.1.0-rc.1 candidate
 evidence is not a current distribution claim. Creating or republishing a

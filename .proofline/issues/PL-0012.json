@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0012",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Clear or expose stale Tool Library search context",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "2026-08-15 current-Release EXE recipe-authoring study",
+    "summary": "Tool search terms remained active across recipe opens and repeatedly hid the catalog needed for the next algorithm.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md"
+    ]
+  },
+  "state": {
+    "status": "open",
+    "current_summary": "The Tool Library search term survives opening another recipe. The compatible list above remains populated, so the stale All tools filter is easy to overlook and forces manual clear-and-retype work for every variant.",
+    "next_action": "Choose and verify the narrow policy: clear search on recipe open and successful Add, or make retained search an explicit visible scoped preference with one-click clear."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "A Tool Library search term remains active after another recipe is opened and hides unrelated All tools results.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Operators repeat select-all, type, and clear actions and can incorrectly conclude that a tool is unavailable."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Opening a recipe and successfully adding a tool leaves no hidden stale catalog filter, or retained search is explicitly scoped, visible, and clearable in one action.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "Search state save/reload/reopen behavior is deterministic and never adds or executes a tool.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0010"
+    }
+  ],
+  "context": [],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "current-Release EXE reproduction",
+      "location": "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md",
+      "observation": "Search terms Thickness, Warpage, Plane Flatness, Gap / Flush, Volume, Cross-section, Point Pair, and Completeness were each still present after opening the baseline recipe for the next variant. The term had to be selected and replaced before the next tool appeared.",
+      "observed_at": "2026-08-15T18:35:39.1507326+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-15T18:35:39.1507326+09:00",
+  "updated_at": "2026-08-15T18:35:39.1507326+09:00"
+}

@@ -1,0 +1,124 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0009",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Prevent incompatible tool insertion and automatic input routing",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "2026-08-15 current-Release EXE recipe-authoring study",
+    "summary": "Adding measurement tools from All tools produced persistently invalid routes instead of requiring a compatible typed input.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "The shared Add boundary now resolves only compatible typed inputs, exposes the proposed route before insertion, blocks transformed-only tools without a transformed artifact, and gives loadable legacy mismatches a direct non-executing repair action. Focused, regression, Release-build, save/reopen, and current EXE Wide/Compact checks pass."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "All tools can insert a HeightField consumer after a Thickness MeasurementResult, silently route the incompatible result, and save/reopen the invalid step.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "An operator can spend time teaching or debugging a recipe that could never satisfy its typed input contract, and the saved file looks structurally legitimate until a later requirement is inspected."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Add is unavailable or requires an explicit compatible route whenever the proposed input contract is not satisfied.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A HeightField consumer is never automatically routed to a MeasurementResult, and the proposed input/output types are visible before insertion.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Save/reopen preserves every valid explicit route, invalid legacy routes receive a direct repair action, and no Add or repair action starts Preview, Publish, or Run.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "observed scenarios",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-exe-recipe-authoring-study/recipes/03-thickness-warpage.ov3d-recipe.json through 09-thickness-completeness-grid.ov3d-recipe.json",
+      "summary": "Seven independent EXE-authored variants route the added HeightField consumer to derived.pad-thickness.08."
+    },
+    {
+      "kind": "related first-use case",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-exe-recipe-authoring-study/recipes/01-filter-thickness.ov3d-recipe.json",
+      "summary": "Filter -> Thickness saves, but ROI teaching cannot start for the selected routed input and two execution requirements remain."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "EXE-authored recipe study",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-exe-recipe-authoring-study/recipes/",
+      "summary": "Ten saved and reopened current-format recipe files."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "current-Release EXE reproduction and persisted JSON inspection",
+      "location": "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-exe-recipe-authoring-study/recipes/",
+      "observation": "Warpage, Plane Flatness, Gap / Flush, Volume, Cross-section Dimensions, Point Pair Dimensions, and Completeness Grid were each added through All tools after an eight-step Thickness baseline. Every saved file reopened through the EXE, retained two execution requirements, and persisted derived.pad-thickness.08 as the new step input even though the added tool requires a HeightField.",
+      "observed_at": "2026-08-15T18:35:39.1507326+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0009-compatible-tool-routing/reports/",
+      "observation": "Current source passes Tool Recipe teaching 42/42, Height Measurement Workbench 54/54, Recipe Manager + WPG 40/40, Tool Recipe selections 29/29, Artifact Navigator, and the full Release solution build with zero warnings and zero errors. The focused checks cover compatible input selection, unavailable transformed-only Add, visible proposed contracts, legacy mismatch load/repair, valid route save/reopen, and absence of Preview, Publish, or Run from Add and repair.",
+      "observed_at": "2026-08-15T19:43:45.7394667+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "observation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0009-compatible-tool-routing/after/",
+      "observation": "The current Release EXE was exercised on leftmost DISPLAY2. Wide and Compact show incompatible Plane Flatness Add disabled without a TransformedHeightField, Warpage proposed against and inserted from the source HeightField without execution, and the saved legacy Plane Flatness step with a direct English/Korean Repair route action. Activating repair expands Inputs and advanced route editing while the header remains Saved with the same three execution requirements; no Preview, Publish, Run, or save occurs.",
+      "observed_at": "2026-08-15T19:43:45.7394667+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-15T18:49:39.1106830+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "PL-0009 implementation started from the confirmed current-Release EXE reproduction."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-15T19:43:45.7394667+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Compatible typed insertion, proposed-route visibility, loadable legacy repair, and explicit no-auto-execution behavior are verified and complete."
+    }
+  ],
+  "created_at": "2026-08-15T18:35:39.1507326+09:00",
+  "updated_at": "2026-08-15T19:43:45.7394667+09:00"
+}

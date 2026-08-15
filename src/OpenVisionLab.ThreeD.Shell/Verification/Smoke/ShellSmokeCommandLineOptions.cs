@@ -22,6 +22,11 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? ViewerPopoutScreenshotQualityReportPath => GetValue("--viewer-popout-screenshot-quality-report");
     public string? RecipeManagerScreenshotPath => GetValue("--recipe-manager-screenshot");
     public string? RecipeManagerScreenshotQualityReportPath => GetValue("--recipe-manager-screenshot-quality-report");
+    public string? FirstRecipeSetupSmokeState => GetValue("--smoke-first-recipe-setup");
+    public string? FirstRecipeSetupName => GetValue("--smoke-first-recipe-name");
+    public string? FirstRecipeSetupFolderPath => GetValue("--smoke-first-recipe-folder");
+    public string? FirstRecipeSetupSourcePath => GetValue("--smoke-first-recipe-source");
+    public string? FirstRecipeSetupStarterId => GetValue("--smoke-first-recipe-starter");
     public string? MessageDialogScreenshotPath => GetValue("--message-dialog-screenshot");
     public string? MessageDialogScreenshotQualityReportPath => GetValue("--message-dialog-screenshot-quality-report");
     public string? FilterToolLabScreenshotPath => GetValue("--filter-tool-lab-screenshot");
@@ -49,6 +54,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? TeachingSelectionSmokeReportPath => GetValue("--smoke-tool-teaching-selection-report");
     public string? TeachingRecipeSmokeSavePath => GetValue("--smoke-save-tool-teaching-recipe");
     public string? NewRecipeLifecycleSmokePath => GetValue("--smoke-new-recipe-lifecycle");
+    public string? NewRecipeLifecycleSmokeSourcePath => GetValue("--smoke-new-recipe-source");
+    public string? NewRecipeLifecycleSmokeStarterId => GetValue("--smoke-new-recipe-starter");
     public string? NewRecipeLifecycleSmokeReportPath => GetValue("--smoke-new-recipe-lifecycle-report");
     public string? OpenRecipeLifecycleSmokePath => GetValue("--smoke-open-recipe-lifecycle");
     public string? OpenRecipeLifecycleSmokeReportPath => GetValue("--smoke-open-recipe-lifecycle-report");
@@ -141,6 +148,11 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-surface-match-collection-disabled");
     public bool SurfaceMatchCollectionNavigationFocusHoverSmoke =>
         HasFlag("--smoke-surface-match-collection-navigation-focus-hover");
+    public bool RecipeHealthNavigationPressedSmoke =>
+        HasFlag("--smoke-recipe-health-navigation-pressed");
+    public bool FirstRecipeSetupRememberSmoke => HasFlag("--smoke-first-recipe-remember");
+    public bool FirstRecipeStarterPopupSmoke => HasFlag("--smoke-first-recipe-starter-popup");
+    public bool FirstRecipeCreatePressedSmoke => HasFlag("--smoke-first-recipe-create-pressed");
     public bool StepRemovalDialogSmoke => HasFlag("--smoke-step-removal-dialog");
     public bool MessageDialogPrimaryPressedSmoke =>
         HasFlag("--smoke-message-dialog-primary-pressed");

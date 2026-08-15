@@ -51,6 +51,9 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 workbench.IsSelectedStepDualRoiMeasurement
                 && workbench.PlaneFlatnessReferenceSelection?.Id == thicknessReferenceSelection.Id
                 && workbench.PlaneFlatnessMeasurementSelection is null
+                && workbench.HasDualRoiFirstSelection
+                && !workbench.HasDualRoiSecondSelection
+                && !workbench.HasCompleteDualRoiTeaching
                 && workbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null)
                 && workbench.CanSaveTeachingRecipe
                 && !workbench.PreviewSelectedStepCommand.CanExecute(null)
@@ -74,6 +77,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 thickness.InputEntityIds.Count == 3
                 && thickness.InputEntityIds[1] == thicknessReferenceSelection.Id
                 && thickness.InputEntityIds[2] == selection.Id
+                && workbench.HasCompleteDualRoiTeaching
                 && workbench.CanSaveTeachingRecipe
                 && workbench.PreviewSelectedStepCommand.CanExecute(null),
                 string.Join(" -> ", thickness.InputEntityIds));
@@ -237,6 +241,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
 
             var planeWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-plane.json"));
             planeWorkbench.SetC3DSource(sourcePath);
+            PrepareTransformedHeightFieldRoute(planeWorkbench);
             var referenceSelection = new ToolRecipeSelection(
                 "selection.reference", "Reference ROI", ToolRecipeSelectionKinds.GridRectangle,
                 planeWorkbench.Source.Id, planeWorkbench.Source.FrameId, binding,
@@ -261,6 +266,10 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && planeWorkbench.SelectedStepPropertyDraft is PlaneFlatnessStepProperties,
                 planeWorkbench.SelectedStepAdapterStatus);
             var planeStep = planeWorkbench.SelectedPipelineStep!;
+            // This fixture exercises legacy source-bound ROI ordering. The shared
+            // route suite separately proves that new Plane Flatness insertion
+            // requires a TransformedHeightField and opens legacy repair directly.
+            planeStep.InputEntityIdsText = planeWorkbench.Source.Id;
             var originalOutputId = planeStep.OutputEntityId;
             Check("Plane Flatness starts at Reference ROI and blocks Measurement ROI",
                 planeWorkbench.IsPlaneFlatnessReferenceRoleActive
@@ -313,6 +322,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
 
             var volumeWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-volume.json"));
             volumeWorkbench.SetC3DSource(sourcePath);
+            PrepareTransformedHeightFieldRoute(volumeWorkbench);
             volumeWorkbench.SelectedTool = volumeWorkbench.Tools.Single(tool => tool.Id == "volume");
             volumeWorkbench.AddSelectedToolCommand.Execute(null);
             Check("Volume is a generic dual-ROI Measure tool with typed WPG parameters",
@@ -334,6 +344,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
 
             var crossSectionWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-cross-section.json"));
             crossSectionWorkbench.SetC3DSource(sourcePath);
+            PrepareTransformedHeightFieldRoute(crossSectionWorkbench);
             crossSectionWorkbench.SelectedTool = crossSectionWorkbench.Tools.Single(tool => tool.Id == "cross-section-dimensions");
             crossSectionWorkbench.AddSelectedToolCommand.Execute(null);
             Check("Cross-section Dimensions is a generic single-row Measure tool with typed WPG parameters",
@@ -552,9 +563,13 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             var captureRecipePath = Path.Combine(root, "captured-plane.ov3d-recipe.json");
             var captureWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "recent-captured-plane.json"));
             captureWorkbench.SetC3DSource(sourcePath);
+            PrepareTransformedHeightFieldRoute(captureWorkbench);
             captureWorkbench.SelectedTool = captureWorkbench.Tools.Single(tool => tool.Id == "plane-flatness");
             captureWorkbench.AddSelectedToolCommand.Execute(null);
             var captureStep = captureWorkbench.SelectedPipelineStep!;
+            // Keep this legacy-route fixture focused on ROI command plumbing; typed-route
+            // prevention and repair are verified separately by the recipe-teaching suite.
+            captureStep.InputEntityIdsText = captureWorkbench.Source.Id;
             ToolWorkbenchTeachingCaptureRequestEventArgs? request = null;
             captureWorkbench.BeginTeachingSelectionCaptureRequested += (_, args) => request = args;
 
@@ -602,10 +617,15 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && captureStep.InputEntityIds[2] == initialMeasurementId,
                 replacementMessage);
             var rawCaptureSaved = captureWorkbench.TrySaveTeachingRecipe(captureRecipePath, out var rawCaptureSaveMessage);
-            Check("Workbench blocks raw-C3D Plane Flatness save and still never runs Preview",
+            Check("Workbench keeps raw-C3D Plane Flatness as a repairable non-executable draft",
                 !captureWorkbench.HasCurrentMeasurementPreview
-                && !rawCaptureSaved
-                && rawCaptureSaveMessage.Contains("Published TransformedHeightField", StringComparison.Ordinal),
+                && rawCaptureSaved
+                && captureWorkbench.ValidationMessages.Any(item => item.Message.Contains(
+                    "TransformedHeightField is required",
+                    StringComparison.Ordinal))
+                && captureWorkbench.FlowPortDiagnostics.Any(item =>
+                    ReferenceEquals(item.Step, captureStep)
+                    && item.Status == captureWorkbench.Localization.FlowPortIncompatible),
                 rawCaptureSaveMessage);
 
             Check("Measurement ROI exposes a direct Delete command",
@@ -648,8 +668,8 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && !captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null)
                 && incompleteSaved
                 && incompleteReopened?.SchemaVersion == ToolRecipeDocument.DualRoiRoutingSchemaVersion
-                && incompleteReopened.Steps.Single().InputEntityIds.Count == 2
-                && incompleteReopened.Steps.Single().DualRoiRouting
+                && incompleteReopened.Steps.Single(step => step.ToolId == "plane-flatness").InputEntityIds.Count == 2
+                && incompleteReopened.Steps.Single(step => step.ToolId == "plane-flatness").DualRoiRouting
                     == new ToolRecipeDualRoiRouting(null, recapturedMeasurement.Id),
                 incompleteSaveMessage);
 
@@ -712,6 +732,23 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             Check("generic recipe reopens both measurement steps", reopened.TryOpenTeachingRecipe(recipePath, out var openMessage)
                 && reopened.PipelineSteps.Count(step => step.ToolId is "thickness" or "warpage") == 2
                 && reopened.Selections.Count == 2, openMessage);
+            reopened.SelectPipelineStep(thickness.Id);
+            var reopenActionLogCount = reopened.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            Check(
+                "reopen restores complete dual-ROI setup without implicit execution",
+                reopened.HasCompleteDualRoiTeaching
+                && reopened.SelectedToolWorkspace.Inputs.FirstOrDefault()?.EntityId == reopened.Source.Id
+                && reopenActionLogCount == 0,
+                $"complete={reopened.HasCompleteDualRoiTeaching}; actionLogs={reopenActionLogCount}");
+            reopened.CreateNewTeachingRecipe("Reset recipe");
+            Check(
+                "new-recipe reset returns contextual setup to safe empty defaults",
+                reopened.PipelineSteps.Count == 0
+                && reopened.Selections.Count == 0
+                && reopened.SelectedPipelineStep is null
+                && reopened.RunLog.Count(item => item.Category is "Preview" or "Publish" or "Run") == reopenActionLogCount,
+                $"steps={reopened.PipelineSteps.Count}; selections={reopened.Selections.Count}; actionLogs={reopenActionLogCount}");
 
             OVLog.Flush();
             var logDirectory = OVLog.GetLogDirectory();
@@ -752,6 +789,15 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         var step = workbench.SelectedPipelineStep ?? throw new InvalidOperationException($"{name} was not added.");
         step.InputEntityIdsText = $"{workbench.Source.Id}; {selectionId}";
         return step;
+    }
+
+    private static void PrepareTransformedHeightFieldRoute(ToolWorkbenchViewModel workbench)
+    {
+        foreach (var toolId in new[] { "xyz-affine-apply", "re-grid-height-map" })
+        {
+            var tool = workbench.Tools.Single(candidate => candidate.Id == toolId);
+            workbench.AddSelectedToolCommand.Execute(tool);
+        }
     }
 
     private static ToolRecipeSelection CapturedRectangle(

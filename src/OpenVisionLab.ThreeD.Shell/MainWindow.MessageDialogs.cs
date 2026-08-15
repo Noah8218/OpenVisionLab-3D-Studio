@@ -46,6 +46,28 @@ public partial class MainWindow
             "The recipe file could not be saved. Check the listed file or structural error.",
             details);
 
+    private void ShowFirstRecipeCreateFailure(string details) =>
+        ShowStudioDialog(
+            WpfMessageDialogKind.Warning,
+            "ThreeD.Dialog.FirstRecipeCreate.Title",
+            "새 레시피 만들기",
+            "Create New Recipe",
+            "ThreeD.Dialog.FirstRecipeCreate.Failed",
+            "선택한 C3D 입력과 시작 작업으로 레시피를 만들 수 없습니다.",
+            "The recipe could not be created from the selected C3D input and task starter.",
+            details);
+
+    private void ShowFirstRecipeSetupPersistenceFailure(string details) =>
+        ShowStudioDialog(
+            WpfMessageDialogKind.Warning,
+            "ThreeD.Dialog.FirstRecipeSetupPersistence.Title",
+            "첫 레시피 설정 저장",
+            "Save First Recipe Setup",
+            "ThreeD.Dialog.FirstRecipeSetupPersistence.Failed",
+            "레시피는 만들었지만 다음 사용을 위한 설정은 저장하지 못했습니다.",
+            "The recipe was created, but its setup could not be saved for next time.",
+            details);
+
     private void ShowRecipeFileUnavailable(string path) =>
         ShowStudioDialog(
             WpfMessageDialogKind.Info,

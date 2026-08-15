@@ -65,6 +65,18 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [First-use recipe setup](OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md) -
+  `PL-0013` one-surface recipe identity, folder, C3D source, optional compatible
+  starter, confirmed restore/reset behavior, actual-EXE save/reopen, and current
+  Wide/Compact localized UI evidence.
+- [EXE recipe-authoring UX study](OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md) -
+  ten current-format recipes saved and reopened through the Release EXE,
+  typed-composition and first-use friction, commercial/GoPxL principle
+  evaluation, post-`PL-0011` maturity reassessment, and the original
+  `PL-0013`/`PL-0012`/`PL-0014` finding order.
+- [Recipe health navigation](OPENVISIONLAB_3D_RECIPE_HEALTH_NAVIGATION_20260815.md) -
+  `PL-0011` exact six-state counts, non-wrapping requirement navigation,
+  seventeen-step Wide/Compact evidence, and presentation-only safety closure.
 - [Workbench run-log retention](OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md) -
   `PL-0008` newest-3,000 in-memory boundary after durable `OVLog` routing,
   localized operator boundary, focused and affected regression, current-build

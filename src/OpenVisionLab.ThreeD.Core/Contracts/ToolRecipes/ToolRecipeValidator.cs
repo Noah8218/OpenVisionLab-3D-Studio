@@ -167,6 +167,7 @@ public static class ToolRecipeValidator
         }
 
         var outputStepIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var outputContracts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var correspondenceConsumerStepIndices = new Dictionary<string, List<int>>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < steps.Count; index++)
         {
@@ -247,6 +248,9 @@ public static class ToolRecipeValidator
                 AddIdentity(globalIds, step.OutputEntityId, $"{label} output", errors);
                 AddRoutableEntity(routableEntityIds, step.OutputEntityId);
                 outputStepIndices.TryAdd(step.OutputEntityId.Trim(), index);
+                outputContracts.TryAdd(
+                    step.OutputEntityId.Trim(),
+                    ToolRecipePrimaryInputContract.GetProducedContract(step.ToolId));
             }
 
             foreach (var parameter in step.Parameters ?? [])
@@ -316,6 +320,15 @@ public static class ToolRecipeValidator
             if (validateStepContract
                 && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
             {
+                ValidateHeightMeasurementPrimaryInput(
+                    step,
+                    inputs,
+                    source,
+                    outputContracts,
+                    label,
+                    allowIncompleteSteps,
+                    errors,
+                    warnings);
                 ValidateHeightMeasurementStep(
                     step,
                     inputs,
@@ -865,6 +878,38 @@ public static class ToolRecipeValidator
     private static string? CleanOptionalIdentity(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static void ValidateHeightMeasurementPrimaryInput(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        bool preserveRepairableDraft,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count == 0
+            || !ToolRecipePrimaryInputContract.TryGetRequiredContract(
+                step.ToolId,
+                out var requiredContract))
+        {
+            return;
+        }
+
+        var inputId = inputs[0];
+        var actualContract = string.Equals(inputId, source.Id, StringComparison.OrdinalIgnoreCase)
+            ? "SourceC3D / RawHeightField"
+            : outputContracts.GetValueOrDefault(inputId);
+        if (actualContract is null
+            || ToolRecipePrimaryInputContract.IsCompatible(step.ToolId, actualContract))
+        {
+            return;
+        }
+
+        var message = $"{label} {Clean(step.ToolName)} first input '{inputId}' is {actualContract}; {requiredContract} is required.";
+        (preserveRepairableDraft ? warnings : errors).Add(message);
+    }
+
     private static void ValidateHeightMeasurementStep(
         ToolRecipeStep step,
         IReadOnlyList<string> inputs,
@@ -893,10 +938,6 @@ public static class ToolRecipeValidator
                     ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
             return;
-        }
-        if ((isPlaneFlatness || isPointPair || isGapFlush || isVolume || isCrossSection) && string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            errors.Add($"{label} {Clean(step.ToolName)} v1 requires a Published TransformedHeightField first input.");
         }
         for (var inputIndex = 1; inputIndex < inputs.Count; inputIndex++)
         {

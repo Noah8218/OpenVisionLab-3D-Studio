@@ -42,6 +42,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("MeasurementPreviewLoadedHandler", VerifyMeasurementPreviewLoadedHandler()),
             ("ThicknessRepeatGrid", VerifyThicknessRepeatGrid()),
             ("ThicknessRepeatGridLoadedHandler", VerifyThicknessRepeatGridLoadedHandler()),
+            ("NewRecipeLifecycleSource", VerifyNewRecipeLifecycleSource()),
             ("ViewerLayout", VerifyViewerLayout()),
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
             ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
@@ -62,6 +63,8 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("SurfaceMatchCollectionPopup", VerifySurfaceMatchCollectionPopup()),
             ("SurfaceMatchCollectionDisabled", VerifySurfaceMatchCollectionDisabled()),
             ("SurfaceMatchCollectionNavigationFocusHover", VerifySurfaceMatchCollectionNavigationFocusHover()),
+            ("RecipeHealthNavigationPressed", VerifyRecipeHealthNavigationPressed()),
+            ("FirstRecipeSetupCapture", VerifyFirstRecipeSetupCapture()),
             ("StepRemovalDialog", VerifyStepRemovalDialog()),
             ("WorkbenchRunLog", VerifyWorkbenchRunLog())
         };
@@ -189,6 +192,52 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.SurfaceMatchCollectionNavigationFocusHoverSmoke
                && options.ShouldAttachLoadedHandler(
                    hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyRecipeHealthNavigationPressed()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-recipe-health-navigation-pressed",
+            "--shell-smoke-screenshot",
+            "recipe-health-pressed.png"
+        ]);
+        return options.RecipeHealthNavigationPressedSmoke
+               && options.ShouldAttachLoadedHandler(
+                   hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyFirstRecipeSetupCapture()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--recipe-manager-screenshot",
+            "first-recipe.png",
+            "--smoke-first-recipe-setup",
+            "valid",
+            "--smoke-first-recipe-name",
+            "Fixture",
+            "--smoke-first-recipe-folder",
+            "D:\\fixture",
+            "--smoke-first-recipe-source",
+            "D:\\fixture\\source.C3D",
+            "--smoke-first-recipe-starter",
+            "thickness",
+            "--smoke-first-recipe-remember",
+            "--smoke-first-recipe-starter-popup",
+            "--smoke-first-recipe-create-pressed"
+        ]);
+        return options.FirstRecipeSetupSmokeState == "valid"
+            && options.FirstRecipeSetupName == "Fixture"
+            && options.FirstRecipeSetupFolderPath == "D:\\fixture"
+            && options.FirstRecipeSetupSourcePath == "D:\\fixture\\source.C3D"
+            && options.FirstRecipeSetupStarterId == "thickness"
+            && options.FirstRecipeSetupRememberSmoke
+            && options.FirstRecipeStarterPopupSmoke
+            && options.FirstRecipeCreatePressedSmoke
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifyStepRemovalDialog()
@@ -367,6 +416,24 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-source-quality"]);
         return options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyNewRecipeLifecycleSource()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-new-recipe-lifecycle",
+            "created.ov3d-recipe.json",
+            "--smoke-new-recipe-source",
+            "source.C3D",
+            "--smoke-new-recipe-starter",
+            "thickness"
+        ]);
+        return options.NewRecipeLifecycleSmokePath == "created.ov3d-recipe.json"
+            && options.NewRecipeLifecycleSmokeSourcePath == "source.C3D"
+            && options.NewRecipeLifecycleSmokeStarterId == "thickness"
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifySourceAcquisitionProvenanceState()

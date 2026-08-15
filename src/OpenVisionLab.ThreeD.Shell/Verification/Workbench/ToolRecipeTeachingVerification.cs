@@ -51,6 +51,99 @@ internal static class ToolRecipeTeachingVerification
             var recipePath = Path.Combine(fixtureRoot, "fixture.ov3d-teach.json");
             var emptyRecipePath = Path.Combine(fixtureRoot, "empty.ov3d-recipe.json");
 
+            var routeWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-route.json"));
+            routeWorkbench.SetC3DSource(sourcePath, markDirty: false);
+            routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "thickness");
+            var selectedStepSetupRequestCount = 0;
+            routeWorkbench.SelectedStepSetupRequested += (_, _) => selectedStepSetupRequestCount++;
+            Check(
+                "proposed Add route exposes actual input and output types before insertion",
+                routeWorkbench.IsSelectedToolProposedRouteCompatible
+                && routeWorkbench.SelectedToolProposedRouteDetail.Contains(
+                    "source.c3d.height-map [SourceC3D / RawHeightField]",
+                    StringComparison.Ordinal)
+                && routeWorkbench.SelectedToolProposedRouteDetail.Contains(
+                    "MeasurementResult",
+                    StringComparison.Ordinal),
+                routeWorkbench.SelectedToolProposedRouteDetail);
+            var routeActionLogCount = routeWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            var routeThickness = AddTool(routeWorkbench, "Thickness");
+            Check(
+                "Add requests the selected-step setup surface exactly once without execution",
+                selectedStepSetupRequestCount == 1
+                && ReferenceEquals(routeThickness, routeWorkbench.SelectedPipelineStep)
+                && routeWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                $"requests={selectedStepSetupRequestCount}; selected={routeWorkbench.SelectedPipelineStep?.Id}");
+            routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "warpage");
+            var routeWarpageProposal = routeWorkbench.SelectedToolProposedRouteDetail;
+            var routeWarpage = AddTool(routeWorkbench, "Warpage");
+            Check(
+                "HeightField Add skips the last MeasurementResult and routes to the compatible source",
+                routeWarpage.InputEntityIds.SequenceEqual([routeWorkbench.Source.Id])
+                && routeWarpageProposal.Contains(routeWorkbench.Source.Id, StringComparison.Ordinal)
+                && !routeWarpageProposal.Contains(routeThickness.OutputEntityId, StringComparison.Ordinal),
+                $"proposal={routeWarpageProposal}; route={routeWarpage.InputSummary}");
+            routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "plane-flatness");
+            Check(
+                "Add is unavailable when no TransformedHeightField route exists",
+                !routeWorkbench.AddSelectedToolCommand.CanExecute(routeWorkbench.SelectedTool)
+                && !routeWorkbench.IsSelectedToolProposedRouteCompatible
+                && routeWorkbench.SelectedToolProposedRouteDetail.Contains(
+                    "TransformedHeightField",
+                    StringComparison.Ordinal),
+                routeWorkbench.SelectedToolProposedRouteDetail);
+            Check(
+                "compatible Add does not invoke Preview, Publish, or Run",
+                routeWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
+                $"actionLogs={routeActionLogCount}");
+
+            routeWarpage.InputEntityIdsText = routeThickness.OutputEntityId;
+            var legacyRecipePath = Path.Combine(fixtureRoot, "legacy-incompatible-route.ov3d-recipe.json");
+            Check(
+                "legacy incompatible route is diagnosed and remains loadable for repair",
+                routeWorkbench.FlowPortDiagnostics.Any(item =>
+                    ReferenceEquals(item.Step, routeWarpage)
+                    && item.Status == routeWorkbench.Localization.FlowPortIncompatible)
+                && routeWorkbench.ValidationMessages.Any(item => item.Message.Contains(
+                    "is MeasurementResult; HeightField is required.",
+                    StringComparison.Ordinal))
+                && routeWorkbench.TrySaveTeachingRecipe(legacyRecipePath, out _),
+                routeWorkbench.FlowProblemsSummary);
+            var repairWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-repair.json"));
+            var legacyOpened = repairWorkbench.TryOpenTeachingRecipe(legacyRecipePath, out var legacyOpenMessage);
+            var legacyProblem = repairWorkbench.FlowPortDiagnostics.FirstOrDefault(item =>
+                item.Step.ToolId == "warpage"
+                && item.Status == repairWorkbench.Localization.FlowPortIncompatible);
+            repairWorkbench.SelectedPipelineStep = legacyProblem?.Step;
+            var directRepairProblem = repairWorkbench.SelectedStepFlowProblem;
+            repairWorkbench.FocusFlowProblemStepCommand.Execute(directRepairProblem);
+            Check(
+                "selected legacy step exposes Repair route and opens input editing without execution",
+                legacyOpened
+                && legacyProblem is not null
+                && repairWorkbench.HasSelectedStepFlowProblem
+                && directRepairProblem is not null
+                && ReferenceEquals(directRepairProblem, legacyProblem)
+                && ReferenceEquals(repairWorkbench.SelectedPipelineStep, directRepairProblem.Step)
+                && repairWorkbench.IsSelectedToolInputSectionExpanded
+                && repairWorkbench.IsAdvancedInputRouteEditingExpanded
+                && repairWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                legacyOpenMessage);
+            repairWorkbench.SelectedPipelineStep!.InputEntityIdsText = repairWorkbench.Source.Id;
+            var repairedRecipePath = Path.Combine(fixtureRoot, "repaired-valid-route.ov3d-recipe.json");
+            var repairedSaved = repairWorkbench.TrySaveTeachingRecipe(repairedRecipePath, out var repairedSaveMessage);
+            var reopenedRouteWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-reopened-route.json"));
+            var repairedOpened = reopenedRouteWorkbench.TryOpenTeachingRecipe(repairedRecipePath, out _);
+            Check(
+                "valid repaired route survives save and reopen",
+                repairedSaved
+                && repairedOpened
+                && reopenedRouteWorkbench.PipelineSteps.Single(step => step.ToolId == "warpage")
+                    .InputEntityIds.SequenceEqual([reopenedRouteWorkbench.Source.Id]),
+                repairedSaveMessage);
+
             var alignment = new ToolWorkbenchViewModel();
             Check(
                 "alignment summary reports no taught stage initially",
@@ -350,6 +443,115 @@ internal static class ToolRecipeTeachingVerification
                 && template.PipelineSteps.Count == 17
                 && File.Exists(template.Source.Path),
                 templateOpened ? template.Source.Path : templateMessage);
+
+            if (templateOpened)
+            {
+                var healthCountTotal = template.RecipeHealthReadyCount
+                    + template.RecipeHealthNeedsInputCount
+                    + template.RecipeHealthNeedsSelectionCount
+                    + template.RecipeHealthNeedsParametersCount
+                    + template.RecipeHealthStalePreviewCount
+                    + template.RecipeHealthPublishedCount;
+                Check(
+                    "recipe health assigns every long-chain step to exactly one visible state",
+                    template.RecipeHealthItems.Count == 17
+                    && healthCountTotal == 17
+                    && template.RecipeHealthItems.Select(item => item.Step.Id).Distinct(StringComparer.Ordinal).Count() == 17,
+                    $"items={template.RecipeHealthItems.Count}; counts={healthCountTotal}; summary={template.RecipeHealthCountsPrimary} | {template.RecipeHealthCountsSecondary}");
+
+                var templateFilter = template.PipelineSteps[0];
+                var firstDependent = template.PipelineSteps[1];
+                var originalFilterState = templateFilter.State;
+                var originalDependentState = firstDependent.State;
+                var kernel = templateFilter.Parameters.Single(parameter => parameter.Name == "KernelSize");
+                var originalKernel = kernel.Value;
+                ToolWorkbenchRecipeHealthCategory CategoryOf(ToolWorkbenchPipelineStepItem step) =>
+                    template.RecipeHealthItems.Single(item => ReferenceEquals(item.Step, step)).Category;
+
+                templateFilter.State = "Published";
+                var publishedCategory = CategoryOf(templateFilter);
+                templateFilter.State = "Preview stale";
+                var staleCategory = CategoryOf(templateFilter);
+                templateFilter.State = "Ready";
+                var readyCategory = CategoryOf(templateFilter);
+                firstDependent.State = originalDependentState;
+                templateFilter.State = "Published";
+                var dependentAfterPublished = CategoryOf(firstDependent);
+                templateFilter.State = originalFilterState;
+                var dependentWithoutPublishedInput = CategoryOf(firstDependent);
+                kernel.Value = "2";
+                templateFilter.State = "Ready";
+                var parameterCategory = CategoryOf(templateFilter);
+                kernel.Value = originalKernel;
+                templateFilter.State = originalFilterState;
+                firstDependent.State = originalDependentState;
+
+                Check(
+                    "recipe health distinguishes Ready, input, selection, parameters, stale Preview, and Published",
+                    readyCategory == ToolWorkbenchRecipeHealthCategory.Ready
+                    && dependentWithoutPublishedInput == ToolWorkbenchRecipeHealthCategory.NeedsInput
+                    && dependentAfterPublished == ToolWorkbenchRecipeHealthCategory.NeedsSelection
+                    && parameterCategory == ToolWorkbenchRecipeHealthCategory.NeedsParameters
+                    && staleCategory == ToolWorkbenchRecipeHealthCategory.StalePreview
+                    && publishedCategory == ToolWorkbenchRecipeHealthCategory.Published,
+                    $"ready={readyCategory}; input={dependentWithoutPublishedInput}; selection={dependentAfterPublished}; parameters={parameterCategory}; stale={staleCategory}; published={publishedCategory}");
+
+                var beforeNavigationRecipe = string.Join(
+                    "|",
+                    template.PipelineSteps.Select(step =>
+                        $"{step.Id}:{step.State}:{step.InputEntityIdsText}:{string.Join(',', step.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"))}"));
+                var beforeNavigationSource = $"{template.Source.Id}|{template.Source.Path}|{template.Source.FrameId}|{template.Source.Unit}";
+                var beforeNavigationDirty = template.IsDirty;
+                var beforeNavigationActionCount = template.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run");
+                var revealedRequirements = new List<string>();
+                var navigationGuard = 0;
+                while (template.NextRecipeHealthIssueCommand.CanExecute(null)
+                       && navigationGuard++ < template.PipelineSteps.Count)
+                {
+                    template.NextRecipeHealthIssueCommand.Execute(null);
+                    var revealed = template.SelectedRecipeHealthItem;
+                    if (revealed is null
+                        || !ReferenceEquals(revealed.Step, template.SelectedPipelineStep)
+                        || string.IsNullOrWhiteSpace(revealed.Detail))
+                    {
+                        break;
+                    }
+
+                    revealedRequirements.Add(revealed.Step.Id);
+                }
+
+                var lastRequirementStep = template.SelectedPipelineStep;
+                template.NextRecipeHealthIssueCommand.Execute(null);
+                var nextDidNotWrap = ReferenceEquals(lastRequirementStep, template.SelectedPipelineStep);
+                while (template.PreviousRecipeHealthIssueCommand.CanExecute(null)
+                       && navigationGuard++ < template.PipelineSteps.Count * 2)
+                {
+                    template.PreviousRecipeHealthIssueCommand.Execute(null);
+                }
+
+                var firstRequirementStep = template.SelectedPipelineStep;
+                template.PreviousRecipeHealthIssueCommand.Execute(null);
+                var previousDidNotWrap = ReferenceEquals(firstRequirementStep, template.SelectedPipelineStep);
+                var afterNavigationRecipe = string.Join(
+                    "|",
+                    template.PipelineSteps.Select(step =>
+                        $"{step.Id}:{step.State}:{step.InputEntityIdsText}:{string.Join(',', step.Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"))}"));
+                var afterNavigationSource = $"{template.Source.Id}|{template.Source.Path}|{template.Source.FrameId}|{template.Source.Unit}";
+                var afterNavigationActionCount = template.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run");
+                Check(
+                    "requirement navigation is non-wrapping and reveals the owning step without execution or recipe mutation",
+                    revealedRequirements.Count > 0
+                    && revealedRequirements.Distinct(StringComparer.Ordinal).Count() == revealedRequirements.Count
+                    && nextDidNotWrap
+                    && previousDidNotWrap
+                    && string.Equals(beforeNavigationRecipe, afterNavigationRecipe, StringComparison.Ordinal)
+                    && string.Equals(beforeNavigationSource, afterNavigationSource, StringComparison.Ordinal)
+                    && beforeNavigationDirty == template.IsDirty
+                    && beforeNavigationActionCount == afterNavigationActionCount,
+                    $"revealed={string.Join(',', revealedRequirements)}; nextNoWrap={nextDidNotWrap}; previousNoWrap={previousDidNotWrap}; dirty={beforeNavigationDirty}->{template.IsDirty}; actions={beforeNavigationActionCount}->{afterNavigationActionCount}");
+            }
         }
         catch (Exception exception)
         {

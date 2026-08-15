@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-15
+Date: 2026-08-16
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -62,6 +62,41 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   structure, localized Wide/Compact UI, refreshed R0 validation, and GitHub
   Actions CI `#76` pass. Preserve
   `OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md`.
+- The current Release EXE saved and reopened ten current-format recipes using
+  the bundled Thickness Coupon C3D. JSON inspection passes `10/10` with `90`
+  total steps. Only the eight-step Thickness baseline is ready; the other
+  pending or incompatible chains are retained as authoring evidence. Preserve
+  `OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md` and
+  `.proofline/issues/PL-0009.json` through `PL-0014.json`.
+- `PL-0009` is complete: measurement Add now resolves a compatible typed
+  artifact, generic HeightField consumers avoid MeasurementResult routing,
+  transformed-only Add is disabled without a transformed input, and the
+  proposed route is visible before insertion. Legacy mismatches remain
+  loadable and show a bilingual selected-step repair action that opens Inputs
+  and advanced routing without execution or mutation. Tool Recipe teaching
+  passes `42/42`, Height Measurement Workbench `54/54`, affected regressions
+  pass, full Release is `0/0`, and current Wide/Compact English/Korean EXE
+  evidence is preserved under
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0009-compatible-tool-routing\`.
+- `PL-0010` is complete: Add focuses Selected Tool and the contextual dual-ROI
+  setup card keeps compatible input, requirements, readiness, one primary next
+  action, and direct Tools return together without implicit execution.
+- `PL-0011` is complete: Flow shows exact Ready/input/selection/parameter/stale
+  Preview/Published counts and non-wrapping navigation to the exact owning
+  step and requirement. Tool Recipe teaching passes `46/46`, Workbench docking
+  `84/84`, Shell smoke options `37/37`, the current Release build is `0/0`,
+  Wide/Compact English/Korean EXE evidence is accepted, and both fixed
+  `-ValidateOnly` modes pass. Preserve
+  `OPENVISIONLAB_3D_RECIPE_HEALTH_NAVIGATION_20260815.md` and the
+  `20260815-pl0011-recipe-health-navigation` D-backed evidence root.
+- `PL-0013` is complete: Recipe Center keeps name, folder, C3D source,
+  optional Empty/Thickness starter, exact target, validation, remembered setup,
+  and Reset together before explicit Create. Restore and Reset do not execute
+  or mutate a recipe. Focused checks pass `49/49`, `46/46`, `84/84`, and
+  `39/39`; Debug/Release are `0/0`; actual Release EXE empty and Thickness
+  save/reopen pass; Wide/Compact localized UI and fixed `-ValidateOnly` pass.
+  Preserve `OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md` and the
+  `20260815-pl0013-first-use-setup` D-backed evidence root.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -82,6 +117,8 @@ acceptance.
 - Procedure: `OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
 - Launcher: `../scripts/start-human-owner-r0.ps1`.
 - Automated `-ValidateOnly` does not close the owner gate.
+- The owner reported the observed Wide run as pass. The Compact run was
+  interrupted by the recipe-authoring study and is not counted as passed.
 - Recommended model: none.
 - Reasoning effort: none.
 
@@ -90,17 +127,19 @@ software slice.
 
 ## Current Software Priority
 
-No dependency-ready software item is selected after `PL-0008`. The next
-evidence-based technical candidate is a large-C3D memory/performance target,
-but it is blocked until a representative maximum C3D input and accepted
-process-memory/load-time limits are supplied.
+`PL-0013` first-use recipe/source/task setup is complete. The next software
+priority is `PL-0012`: remove hidden stale Tool Library search context or make
+retention explicit and one-click clearable.
 
-- Prerequisite: representative maximum C3D input and accepted budgets.
-- Recommended model: none until the prerequisite exists.
-- Reasoning effort: none.
+1. `PL-0012` Tool Library search reset/visibility | Recommended model:
+   `gpt-5.6-terra` | Reasoning effort: `low`.
+2. `PL-0014` Studio language-popup theme and bounds | Recommended model:
+   `gpt-5.6-terra` | Reasoning effort: `low`.
 
-A newly approved deterministic software slice may still be selected without
-claiming that the external owner R0 has passed.
+The large-C3D memory/performance candidate remains blocked until a
+representative maximum C3D input and accepted process-memory/load-time limits
+are supplied. Recommended model: none until the prerequisite exists;
+reasoning effort: none.
 
 ## External Maintenance Blocker
 
@@ -154,9 +193,36 @@ The 2026-08-05 documentation pass:
 
 ```text
 Status: Complete
-Scope: Refresh the current handoff through bounded Workbench run-log retention
-Acceptance criteria: PL-0008 retention and durable-log boundary visible; current software prerequisite identified; R0 and PL-0003 external dependencies current
-Verification: focused retention 6/6; Tool Recipe 35/35; Validation Set 84/84; Recipe Manager + WPG 40/40; Shell command line 36/36; Workbench docking 82/82; logging 4/4; Debug/Release and structure pass; Wide/Compact English/Korean evidence accepted; refreshed R0 ValidateOnly and GitHub Actions CI #76 pass
-Evidence: docs/OPENVISIONLAB_3D_WORKBENCH_RUN_LOG_RETENTION_20260815.md, .proofline/issues/PL-0008.json, this file, https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/31872439326
-Boundary / next dependency: product-owner Wide/Compact R0; large-C3D optimization needs a representative maximum input and accepted budgets; PL-0003 waits on GitHub Support #4633618
+Scope: Complete PL-0009 compatible Add, visible typed-route proposal, legacy mismatch repair entry, and explicit no-auto-execution behavior
+Acceptance criteria: incompatible Add unavailable -> pass; HeightField consumer avoids MeasurementResult route -> pass; proposed contracts visible -> pass; valid save/reopen -> pass; legacy repair opens exact input editor -> pass; Add/repair do not Preview/Publish/Run -> pass
+Verification: Debug Shell 0/0; Tool Recipe teaching 42/42; Height Measurement Workbench 54/54; Recipe Manager + WPG 40/40; Tool Recipe selections 29/29; Artifact Navigator pass; full Release 0/0; actual Release EXE Wide/Compact English/Korean on DISPLAY2; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md, .proofline/issues/PL-0009.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0009-compatible-tool-routing/, this file
+Boundary / next dependency: the ten original recipes remain reproduction evidence; PL-0010 workflow consolidation is recorded below; owner Compact R0 remains external; large-C3D optimization still needs representative input and accepted budgets; PL-0003 waits on GitHub Support #4633618
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0010 Add-to-Selected focus and the contextual dual-ROI setup path for input, requirements, readiness, teaching, catalog return, save/reopen, and safe recipe reset
+Acceptance criteria: Add opens Selected Tool without execution -> pass; compatible input plus both ROI and parameter/readiness requirements visible -> pass; exactly one primary next action and direct Tools return -> pass; Reference and Measurement Missing -> Drawing -> Review -> Applied reachable in Compact with Viewer visible -> pass; save/reopen restores setup without execution -> pass; new-recipe reset clears setup without execution -> pass
+Verification: Debug Shell 0/0; Tool Recipe teaching 43/43; Height Measurement Workbench 56/56; Workbench docking 83/83; final full Release 0/0; actual current Release EXE on DISPLAY2 at physical Compact 1280x760 and Wide 1920x1032, including English/Korean and two-ROI authoring; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md, .proofline/issues/PL-0010.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/, this file
+Boundary / next dependency: PL-0011 recipe-wide health navigation is completed below; PL-0014 owns the independently observed language-popup theme leak; owner Compact R0 remains external
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0011 exact recipe-health counts and non-wrapping, localized, presentation-only requirement navigation
+Acceptance criteria: every step classified exactly once across six states -> pass; exact owner/requirement reveal without wrapping or mutation -> pass; seventeen-step Wide/Compact review with reachable actions and no clipped required text -> pass
+Verification: Debug and Release 0/0; Tool Recipe teaching 46/46; Workbench docking 84/84; Shell smoke options 37/37; current Release EXE Wide/Compact English/Korean on DISPLAY2; last-requirement and held pointer-down states accepted; fixed Wide/Compact -ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_RECIPE_HEALTH_NAVIGATION_20260815.md, .proofline/issues/PL-0011.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0011-recipe-health-navigation/, this file
+Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; its PL-0013 follow-up is completed in the record below
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0013 one-surface recipe identity, folder, C3D source, optional compatible starter, confirmed remembered setup, stale validation, and reset behavior
+Acceptance criteria: all four inputs visible before explicit Create -> pass; confirmed setup save/reload/reopen with no restore action -> pass; stale paths explained and Create disabled -> pass; Reset safe and action-free -> pass; Wide/Compact localized focus/popup/disabled/pressed states themed, reachable, and on selected monitor -> pass
+Verification: Debug and Release 0/0; Recipe Manager + WPG 49/49; Tool Recipe teaching 46/46; Workbench docking 84/84; Shell smoke options 39/39; actual Release EXE empty and Thickness save/reopen pass; fixed Wide/Compact -ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md, .proofline/issues/PL-0013.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0013-first-use-setup/, this file
+Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; PL-0012 is the next deterministic software priority
 ```

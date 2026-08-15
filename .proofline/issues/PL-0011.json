@@ -1,0 +1,96 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0011",
+    "aliases": [],
+    "type": "feature",
+    "mode": "simple",
+    "title": "Show recipe health and navigate long-chain requirements",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "2026-08-15 current-Release EXE recipe-authoring study",
+    "summary": "A seventeen-step feature/affine/measure/review recipe exceeded the Compact Flow viewport and did not expose the locations behind the global requirement state.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0011 is complete: Recipe Flow shows exact mutually exclusive health counts and bilingual non-wrapping requirement navigation, and current Release Wide/Compact evidence plus no-mutation regressions prove the seventeen-step workflow."
+  },
+  "objective": {
+    "summary": "Provide at-a-glance recipe health counts and non-wrapping Previous/Next issue navigation that reveals the owning step and exact requirement.",
+    "constraints": [
+      "Use existing stable step and artifact identities.",
+      "Navigation and expansion must not execute inspection or change recipe/source/result state.",
+      "Do not replace detailed Flow, Selected, Viewer, or evidence surfaces.",
+      "Support Wide and Compact with localized, accessible state text."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Recipe health distinguishes Ready, needs input, needs selection, needs parameters, stale Preview, and Published states with exact counts.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Previous/Next issue navigation reveals the owning step and requirement without wrapping, executing, or changing recipe data.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The seventeen-step study recipe remains reviewable in Wide and Compact without clipped required text or unreachable issue actions.",
+      "evidence_refs": [
+        "E2"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0010"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-exe-recipe-authoring-study/recipes/10-affine-feature-measure-review-chain.ov3d-recipe.json",
+      "summary": "The EXE-authored and reopened recipe contains seventeen steps; Compact Flow visibly showed the first ten and truncated several names and states."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "current-source focused verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0011-recipe-health-navigation/reports/tool-recipe-teaching.txt",
+      "observation": "Tool Recipe teaching passed 46/46. The projection classified all 17 steps exactly once across Ready, Needs input, Needs selection, Needs parameters, Stale Preview, and Published; Previous/Next visited 14 unique requirements without wrapping and left recipe, source, state, dirty flag, and Preview/Publish/Run logs unchanged.",
+      "observed_at": "2026-08-15T22:45:47.8552966+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "current Release EXE UI verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0011-recipe-health-navigation/",
+      "observation": "Current Release Wide and Compact English/Korean captures show the health counts, exact requirement detail, and reachable Previous/Next actions without clipped required text. The seventeenth step is scrolled into view with Next disabled, and a held native pointer-down capture keeps the Next button themed. The actual 1280x760 window rectangle intersected dynamically selected leftmost DISPLAY2.",
+      "observed_at": "2026-08-15T22:45:47.8552966+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-15T22:45:47.8552966+09:00",
+      "from": "open",
+      "to": "resolved",
+      "summary": "All three PL-0011 criteria are proved by focused state/navigation checks and current Release EXE Wide/Compact English/Korean evidence; PL-0013 is the next software priority and owner Wide/Compact R0 remains external."
+    }
+  ],
+  "created_at": "2026-08-15T18:35:39.1507326+09:00",
+  "updated_at": "2026-08-15T22:45:47.8552966+09:00"
+}

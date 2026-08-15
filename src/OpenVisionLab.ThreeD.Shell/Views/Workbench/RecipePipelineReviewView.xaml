@@ -510,11 +510,12 @@
                                                                    Margin="8,0,0,0"
                                                                    Padding="7,2"
                                                                    VerticalAlignment="Center"
-                                                                   Content="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   Content="{Binding DataContext.Localization.RepairRoute, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                    Icon="{ui:SymbolIcon TargetArrow24}"
                                                                    Command="{Binding DataContext.FocusFlowProblemStepCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                    CommandParameter="{Binding}"
-                                                                   ToolTip="{Binding DataContext.Localization.FocusStep, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                                                   ToolTip="{Binding DataContext.Localization.RepairRouteToolTip, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   AutomationProperties.Name="{Binding DataContext.Localization.RepairRoute, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>

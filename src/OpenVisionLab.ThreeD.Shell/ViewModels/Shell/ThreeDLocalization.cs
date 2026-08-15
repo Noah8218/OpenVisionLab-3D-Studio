@@ -22,7 +22,13 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ThreePointPlane), nameof(DatumPlaneDeviation), nameof(LineIntersection), nameof(LandmarkCorrespondence),
         nameof(XYZAffineSolve), nameof(XYZAffineApply), nameof(ToolboxAndEntities), nameof(ToolLibrary), nameof(ToolLibraryHint),
         nameof(ToolSearch), nameof(AllTools), nameof(CompactToolLibrary), nameof(RecipeFlow), nameof(CompactRecipeFlow), nameof(RecipeFlowHint), nameof(FilterOptionalHint),
-        nameof(AddSelectedStep), nameof(AddToolFromCatalog), nameof(AddToolFromCatalogToolTip), nameof(Viewer),
+        nameof(RecipeHealth), nameof(RecipeHealthSummaryFormat), nameof(RecipeHealthCountsPrimaryFormat), nameof(RecipeHealthCountsSecondaryFormat),
+        nameof(RecipeHealthReady), nameof(RecipeHealthNeedsInput), nameof(RecipeHealthNeedsSelection), nameof(RecipeHealthNeedsParameters), nameof(RecipeHealthStalePreview), nameof(RecipeHealthPublished),
+        nameof(RecipeHealthReadyDetail), nameof(RecipeHealthStalePreviewDetail), nameof(RecipeHealthPublishedDetail), nameof(RecipeHealthNoStep), nameof(RecipeHealthNoStepDetail),
+        nameof(RecipeHealthStepTitleFormat), nameof(RecipeHealthSelectionRequiredFormat), nameof(RecipeHealthDualRoiRequiredFormat), nameof(RecipeHealthGridRectangle), nameof(RecipeHealthPointSetFormat), nameof(RecipeHealthLandmarkSet),
+        nameof(PreviousRequirement), nameof(NextRequirement),
+        nameof(AddSelectedStep), nameof(AddToolFromCatalog), nameof(AddToolFromCatalogToolTip),
+        nameof(ProposedToolRoute), nameof(ProposedToolRouteFormat), nameof(ProposedToolRouteUnavailableFormat), nameof(Viewer),
         nameof(ViewerLayout), nameof(ViewerSingle), nameof(ViewerSplitVertical), nameof(ViewerSplitHorizontal),
         nameof(ViewerPopOut), nameof(ViewerMainSlot), nameof(ViewerAuxiliarySlot), nameof(ViewerAuxiliaryOutput),
         nameof(ViewerAuxiliaryNoOutput), nameof(ViewerPresentationOnly), nameof(ViewerPopOutTitle),
@@ -121,15 +127,15 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(FlowMapPortState), nameof(FlowMapEmptyHint), nameof(Problems), nameof(ProblemsTitle),
         nameof(ProblemsDetail), nameof(ProblemsSummaryFormat), nameof(ProblemsRouteChecks),
         nameof(ProblemsValidationMessages), nameof(ProblemsEmptyHint), nameof(FlowPortReady),
-        nameof(FlowPortWaitingForUpstream), nameof(FlowPortStale), nameof(FlowPortUnresolved),
+        nameof(FlowPortWaitingForUpstream), nameof(FlowPortStale), nameof(FlowPortUnresolved), nameof(FlowPortIncompatible),
         nameof(FlowPortDeclared), nameof(FlowPortCurrent), nameof(FlowPortNoInputDetail),
         nameof(FlowPortUnresolvedDetailFormat), nameof(FlowPortWaitingDetailFormat),
         nameof(FlowPortStaleDetailFormat), nameof(FlowPortDeclaredDetailFormat),
-        nameof(FlowPortCurrentDetailFormat), nameof(NavigatorHint), nameof(RecipeSource),
+        nameof(FlowPortCurrentDetailFormat), nameof(FlowPortIncompatibleDetailFormat), nameof(NavigatorHint), nameof(RecipeSource),
         nameof(RecipeNavigator), nameof(CompatibleToolCatalogTitle), nameof(CompatibleToolCatalogDetail),
         nameof(CompatibleToolCatalogSummaryFormat), nameof(CompatibleToolCatalogEmpty), nameof(SelectCompatibleTool),
         nameof(AddCompatibleTool), nameof(AddCompatibleToolToolTip), nameof(CompatibleToolBlockerLabel),
-        nameof(CompatibleToolBlockerDetailFormat),
+        nameof(CompatibleToolBlockerDetailFormat), nameof(RepairRoute), nameof(RepairRouteToolTip),
         nameof(AddInspectionStep), nameof(StepProperties), nameof(NoRecipeStepSelected),
         nameof(NoRecipeStepSelectedDetail), nameof(RecipePipelineTeachReview), nameof(Validate), nameof(MoveUp),
         nameof(MoveDown), nameof(Remove), nameof(ColumnNumber), nameof(ColumnTool), nameof(ColumnInputs),
@@ -164,6 +170,15 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(AddFirstToolActionDetail), nameof(SelectStepActionTitle), nameof(SelectStepActionDetail),
         nameof(TeachSelectedStepActionTitle), nameof(TeachSelectedStepActionDetail),
         nameof(NewRecipe), nameof(OpenExistingRecipe), nameof(CurrentRecipe), nameof(RecentRecipes),
+        nameof(FirstRecipeSetup), nameof(FirstRecipeSetupDetail), nameof(FirstRecipeFolder), nameof(FirstRecipeBrowse),
+        nameof(FirstRecipeSource), nameof(FirstRecipeStarter), nameof(FirstRecipeNoStarter), nameof(FirstRecipeNoStarterDetail),
+        nameof(FirstRecipeThicknessStarter), nameof(FirstRecipeThicknessStarterDetail), nameof(FirstRecipeRememberSetup),
+        nameof(FirstRecipeTargetFile), nameof(FirstRecipeReset), nameof(FirstRecipeCreate),
+        nameof(FirstRecipeNameRequired), nameof(FirstRecipeNameInvalid), nameof(FirstRecipeFolderRequired),
+        nameof(FirstRecipeFolderMissing), nameof(FirstRecipeSourceRequired), nameof(FirstRecipeSourceMissing),
+        nameof(FirstRecipeSourceMustBeC3D), nameof(FirstRecipeStarterRequired), nameof(FirstRecipeAlreadyExists),
+        nameof(FirstRecipeReadyToCreate), nameof(FirstRecipeTargetUnavailable), nameof(FirstRecipeStarterUnavailable),
+        nameof(FirstRecipeThicknessStarterApplied), nameof(FirstRecipeSetupRemembered), nameof(FirstRecipeSetupNotRemembered),
         nameof(RecipeNameLabel), nameof(RecipeStatusLabel), nameof(RecipePathLabel), nameof(SourceLabel),
         nameof(StepsLabel), nameof(Save), nameof(SaveAs), nameof(RemoveFromRecent),
         nameof(RemoveFromRecentToolTip), nameof(Available), nameof(Unavailable), nameof(RecipeCenterDetail),
@@ -386,6 +401,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string AddSelectedStep => T("ThreeD.Command.AddSelectedStep", "\uC120\uD0DD \uB2E8\uACC4 \uCD94\uAC00", "Add selected step");
     public string AddToolFromCatalog => T("ThreeD.Command.AddToolFromCatalog", "\uB3C4\uAD6C \uCD94\uAC00", "Add tool");
     public string AddToolFromCatalogToolTip => T("ThreeD.Command.AddToolFromCatalogToolTip", "\uC774 \uB3C4\uAD6C\uB97C \uB808\uC2DC\uD53C\uC5D0 \uCD94\uAC00\uD569\uB2C8\uB2E4. \uCD94\uAC00\uB9CC \uD558\uBA70 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Add this tool to the recipe. This does not run inspection.");
+    public string ProposedToolRoute => T("ThreeD.Workbench.ProposedToolRoute", "\uCD94\uAC00 \uC608\uC815 \uC785\uB825 \u2192 \uB3C4\uAD6C \u2192 \uCD9C\uB825", "Proposed input \u2192 tool \u2192 output");
+    public string ProposedToolRouteFormat => T("ThreeD.Workbench.ProposedToolRouteFormat", "{0} [{1}] \u2192 {2} \u2192 {3}", "{0} [{1}] \u2192 {2} \u2192 {3}");
+    public string ProposedToolRouteUnavailableFormat => T("ThreeD.Workbench.ProposedToolRouteUnavailableFormat", "\uD638\uD658 \uC785\uB825 \uC5C6\uC74C: {0} \uD544\uC694 | \uC608\uC815 \uCD9C\uB825: {1}", "No compatible input: requires {0} | Proposed output: {1}");
     public string Viewer => T("ThreeD.Workbench.Viewer", "3D \uBDF0", "3D View");
     public string ViewerLayout => T("ThreeD.Workbench.ViewerLayout", "\uBDF0\uC5B4 \uBC30\uCE58", "Viewer layout");
     public string ViewerSingle => T("ThreeD.Command.ViewerSingle", "\uB2E8\uC77C", "Single");
@@ -653,6 +671,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string AddCompatibleToolToolTip => T("ThreeD.Command.AddCompatibleToolToolTip", "\uD45C\uC2DC\uB41C \uC785\uB825\uC73C\uB85C \uAC80\uC0AC \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uCD94\uAC00\uD569\uB2C8\uB2E4. \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Explicitly add a step with the displayed inputs. It does not run.");
     public string CompatibleToolBlockerLabel => T("ThreeD.Workbench.CompatibleToolBlockerLabel", "\uB2E4\uC74C \uBBF8\uCDA9\uC871 \uC785\uB825", "Next missing input");
     public string CompatibleToolBlockerDetailFormat => T("ThreeD.Workbench.CompatibleToolBlockerDetailFormat", "{0}: {1} \uD544\uC694", "{0}: requires {1}");
+    public string RepairRoute => T("ThreeD.Command.RepairRoute", "\uACBD\uB85C \uC218\uC815", "Repair route");
+    public string RepairRouteToolTip => T("ThreeD.Command.RepairRouteToolTip", "\uBB38\uC81C \uB2E8\uACC4\uB85C \uC774\uB3D9\uD558\uACE0 \uC785\uB825 \uACBD\uB85C \uD3B8\uC9D1\uC744 \uC5FD\uB2C8\uB2E4. Preview, Publish, Run\uC740 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Focus the problem step and open input-route editing. Preview, Publish, and Run are not invoked.");
     public string AddInspectionStep => T("ThreeD.Workbench.AddInspectionStep", "\uAC80\uC0AC \uB2E8\uACC4 \uCD94\uAC00", "Add inspection step");
     public string StepProperties => T("ThreeD.Workbench.StepProperties", "\uB2E8\uACC4 \uC18D\uC131", "Step properties");
     public string NoRecipeStepSelected => T("ThreeD.Workbench.NoRecipeStepSelected", "\uB2E8\uACC4 \uC124\uC815 \uB300\uAE30", "Step setup is waiting");
@@ -799,6 +819,35 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string OpenExistingRecipe => T("ThreeD.RecipeCenter.OpenExistingRecipe", "\uAE30\uC874 \uB808\uC2DC\uD53C \uC5F4\uAE30", "Open existing recipe");
     public string CurrentRecipe => T("ThreeD.RecipeCenter.CurrentRecipe", "\uD604\uC7AC \uB808\uC2DC\uD53C", "Current recipe");
     public string RecentRecipes => T("ThreeD.RecipeCenter.RecentRecipes", "\uCD5C\uADFC \uB808\uC2DC\uD53C", "Recent recipes");
+    public string FirstRecipeSetup => T("ThreeD.RecipeCenter.FirstSetup", "새 레시피 설정", "New recipe setup");
+    public string FirstRecipeSetupDetail => T("ThreeD.RecipeCenter.FirstSetupDetail", "이름, 폴더, C3D 입력과 선택적 시작 작업을 확인한 뒤 만들기를 누르세요. 복원만으로는 파일을 열거나 검사를 실행하지 않습니다.", "Review the name, folder, C3D input, and optional starter, then choose Create. Restoring these values never opens a file or runs inspection.");
+    public string FirstRecipeFolder => T("ThreeD.RecipeCenter.FirstFolder", "레시피 폴더", "Recipe folder");
+    public string FirstRecipeBrowse => T("ThreeD.RecipeCenter.FirstBrowse", "찾아보기", "Browse");
+    public string FirstRecipeSource => T("ThreeD.RecipeCenter.FirstSource", "C3D 입력", "C3D input");
+    public string FirstRecipeStarter => T("ThreeD.RecipeCenter.FirstStarter", "시작 작업", "Task starter");
+    public string FirstRecipeNoStarter => T("ThreeD.RecipeCenter.FirstNoStarter", "비어 있는 레시피", "Empty recipe");
+    public string FirstRecipeNoStarterDetail => T("ThreeD.RecipeCenter.FirstNoStarterDetail", "단계를 추가하지 않습니다. C3D 입력만 연결하고 저장합니다.", "Adds no step. The C3D input is linked and saved.");
+    public string FirstRecipeThicknessStarter => T("ThreeD.RecipeCenter.FirstThicknessStarter", "두께 측정", "Thickness measurement");
+    public string FirstRecipeThicknessStarterDetail => T("ThreeD.RecipeCenter.FirstThicknessStarterDetail", "이 C3D 입력에 두께 단계 1개를 추가합니다. ROI 티칭과 미리보기는 명시적으로 실행합니다.", "Adds one Thickness step for this C3D input. ROI teaching and Preview stay explicit.");
+    public string FirstRecipeRememberSetup => T("ThreeD.RecipeCenter.FirstRemember", "이 워크스페이스에서 이 설정 기억", "Remember this setup in this workspace");
+    public string FirstRecipeTargetFile => T("ThreeD.RecipeCenter.FirstTarget", "생성할 파일", "Target file");
+    public string FirstRecipeReset => T("ThreeD.RecipeCenter.FirstReset", "기본값으로 재설정", "Reset to defaults");
+    public string FirstRecipeCreate => T("ThreeD.RecipeCenter.FirstCreate", "레시피 만들기", "Create recipe");
+    public string FirstRecipeNameRequired => T("ThreeD.RecipeCenter.FirstNameRequired", "레시피 이름을 입력하세요.", "Enter a recipe name.");
+    public string FirstRecipeNameInvalid => T("ThreeD.RecipeCenter.FirstNameInvalid", "파일 이름에 사용할 수 있는 레시피 이름을 입력하세요.", "Enter a recipe name that is valid as a file name.");
+    public string FirstRecipeFolderRequired => T("ThreeD.RecipeCenter.FirstFolderRequired", "레시피 폴더를 선택하세요.", "Select a recipe folder.");
+    public string FirstRecipeFolderMissing => T("ThreeD.RecipeCenter.FirstFolderMissing", "저장된 레시피 폴더를 찾을 수 없습니다. 다시 선택하세요.", "The saved recipe folder is unavailable. Select it again.");
+    public string FirstRecipeSourceRequired => T("ThreeD.RecipeCenter.FirstSourceRequired", "C3D 입력을 선택하세요.", "Select a C3D input.");
+    public string FirstRecipeSourceMissing => T("ThreeD.RecipeCenter.FirstSourceMissing", "저장된 C3D 입력을 찾을 수 없습니다. 다시 선택하세요.", "The saved C3D input is unavailable. Select it again.");
+    public string FirstRecipeSourceMustBeC3D => T("ThreeD.RecipeCenter.FirstSourceMustBeC3D", "C3D 입력 파일을 선택하세요.", "Select a C3D input file.");
+    public string FirstRecipeStarterRequired => T("ThreeD.RecipeCenter.FirstStarterRequired", "시작 작업을 선택하세요.", "Select a task starter.");
+    public string FirstRecipeAlreadyExists => T("ThreeD.RecipeCenter.FirstAlreadyExists", "같은 이름의 레시피가 이미 있습니다. 다른 이름을 입력하세요.", "A recipe with this name already exists. Enter another name.");
+    public string FirstRecipeReadyToCreate => T("ThreeD.RecipeCenter.FirstReady", "설정이 준비되었습니다. 만들기 전에는 파일 열기, 단계 추가 또는 검사가 실행되지 않습니다.", "Setup is ready. No file is opened, step added, or inspection run before Create.");
+    public string FirstRecipeTargetUnavailable => T("ThreeD.RecipeCenter.FirstTargetUnavailable", "이름과 레시피 폴더를 입력하면 생성할 파일이 표시됩니다.", "Enter a name and recipe folder to see the target file.");
+    public string FirstRecipeStarterUnavailable => T("ThreeD.RecipeCenter.FirstStarterUnavailable", "선택한 시작 작업을 현재 입력에 추가할 수 없습니다.", "The selected task starter cannot be added to the current input.");
+    public string FirstRecipeThicknessStarterApplied => T("ThreeD.RecipeCenter.FirstThicknessApplied", "두께 시작 단계가 추가되었습니다. 검사는 실행되지 않았습니다.", "The Thickness starter was added. Inspection was not run.");
+    public string FirstRecipeSetupRemembered => T("ThreeD.RecipeCenter.FirstRemembered", "이 워크스페이스의 설정을 저장했습니다.", "The setup was saved for this workspace.");
+    public string FirstRecipeSetupNotRemembered => T("ThreeD.RecipeCenter.FirstNotRemembered", "워크스페이스 설정을 저장하지 않았습니다.", "The workspace setup was not saved.");
     public string RecipeNameLabel => T("ThreeD.RecipeCenter.RecipeNameLabel", "\uB808\uC2DC\uD53C \uC774\uB984", "Recipe name");
     public string RecipeStatusLabel => T("ThreeD.RecipeCenter.RecipeStatusLabel", "\uC0C1\uD0DC", "Status");
     public string RecipePathLabel => T("ThreeD.RecipeCenter.RecipePathLabel", "\uC800\uC7A5 \uACBD\uB85C", "Save path");
@@ -830,6 +879,30 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RecipeSaveBlockedTitle => T("ThreeD.RecipeCenter.SaveBlockedTitle", "\uC800\uC7A5 \uC804\uC5D0 \uC644\uB8CC\uD560 \uC791\uC5C5", "Complete before saving");
     public string RecipeSaveBlockedCorrections => T("ThreeD.RecipeCenter.SaveBlockedCorrections", "\uC6CC\uD06C\uBCA4\uCE58\uC5D0\uC11C \uD45C\uC2DC\uB41C \uC785\uB825, \uACBD\uB85C \uB610\uB294 \uD30C\uB77C\uBBF8\uD130 \uC218\uC815 \uD56D\uBAA9\uC744 \uBA3C\uC800 \uD574\uACB0\uD558\uC138\uC694.", "Resolve the listed input, route, or parameter corrections in the Workbench first.");
 
+    public string RecipeHealth => T("ThreeD.Workbench.RecipeHealth", "레시피 상태", "Recipe health");
+    public string RecipeHealthSummaryFormat => T("ThreeD.Workbench.RecipeHealthSummaryFormat", "요구사항 {0}개", "{0} requirement(s)");
+    public string RecipeHealthCountsPrimaryFormat => T("ThreeD.Workbench.RecipeHealthCountsPrimaryFormat", "준비 {0} · 입력 {1} · 선택 {2}", "Ready {0} · Input {1} · Selection {2}");
+    public string RecipeHealthCountsSecondaryFormat => T("ThreeD.Workbench.RecipeHealthCountsSecondaryFormat", "파라미터 {0} · 오래된 미리보기 {1} · 게시 {2}", "Parameters {0} · Stale Preview {1} · Published {2}");
+    public string RecipeHealthReady => T("ThreeD.Workbench.RecipeHealthReady", "준비", "Ready");
+    public string RecipeHealthNeedsInput => T("ThreeD.Workbench.RecipeHealthNeedsInput", "입력 필요", "Needs input");
+    public string RecipeHealthNeedsSelection => T("ThreeD.Workbench.RecipeHealthNeedsSelection", "선택 필요", "Needs selection");
+    public string RecipeHealthNeedsParameters => T("ThreeD.Workbench.RecipeHealthNeedsParameters", "파라미터 필요", "Needs parameters");
+    public string RecipeHealthStalePreview => T("ThreeD.Workbench.RecipeHealthStalePreview", "오래된 미리보기", "Stale Preview");
+    public string RecipeHealthPublished => T("ThreeD.Workbench.RecipeHealthPublished", "게시됨", "Published");
+    public string RecipeHealthReadyDetail => T("ThreeD.Workbench.RecipeHealthReadyDetail", "명시적 미리보기를 실행할 준비가 되었습니다.", "Ready for explicit Preview.");
+    public string RecipeHealthStalePreviewDetail => T("ThreeD.Workbench.RecipeHealthStalePreviewDetail", "입력과 파라미터를 확인한 뒤 명시적으로 다시 미리보기 하세요.", "Review inputs and parameters, then Preview explicitly again.");
+    public string RecipeHealthPublishedDetail => T("ThreeD.Workbench.RecipeHealthPublishedDetail", "현재 게시된 증거가 있습니다.", "Current Published evidence is available.");
+    public string RecipeHealthNoStep => T("ThreeD.Workbench.RecipeHealthNoStep", "선택한 단계 없음", "No step selected");
+    public string RecipeHealthNoStepDetail => T("ThreeD.Workbench.RecipeHealthNoStepDetail", "다음 요구사항을 선택하여 필요한 단계를 여세요.", "Select the next requirement to reveal its owning step.");
+    public string RecipeHealthStepTitleFormat => T("ThreeD.Workbench.RecipeHealthStepTitleFormat", "단계 {0}: {1} · {2}", "Step {0}: {1} · {2}");
+    public string RecipeHealthSelectionRequiredFormat => T("ThreeD.Workbench.RecipeHealthSelectionRequiredFormat", "이 단계에 현재 {0}을(를) 연결하세요.", "Route a current {0} to this step.");
+    public string RecipeHealthDualRoiRequiredFormat => T("ThreeD.Workbench.RecipeHealthDualRoiRequiredFormat", "현재 이중 ROI가 {0}/{1}개입니다. 기준 ROI와 측정 ROI를 모두 연결하세요.", "Current dual ROI is {0}/{1}. Route both Reference ROI and Measurement ROI.");
+    public string RecipeHealthGridRectangle => T("ThreeD.Workbench.RecipeHealthGridRectangle", "격자 사각형 선택", "Grid rectangle selection");
+    public string RecipeHealthPointSetFormat => T("ThreeD.Workbench.RecipeHealthPointSetFormat", "점 {0}개 선택", "Point set ({0})");
+    public string RecipeHealthLandmarkSet => T("ThreeD.Workbench.RecipeHealthLandmarkSet", "랜드마크 대응 선택", "Landmark correspondence selection");
+    public string PreviousRequirement => T("ThreeD.Workbench.PreviousRequirement", "이전", "Previous");
+    public string NextRequirement => T("ThreeD.Workbench.NextRequirement", "다음", "Next");
+
     public string FlowMapPortState => T("ThreeD.Workbench.FlowMapPortState", "\uD3EC\uD2B8 \uC0C1\uD0DC", "Port state");
     public string Problems => T("ThreeD.Workbench.Problems", "\uBB38\uC81C", "Problems");
     public string ProblemsTitle => T("ThreeD.Workbench.ProblemsTitle", "\uACBD\uB85C \uBB38\uC81C", "Route problems");
@@ -850,6 +923,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FlowPortStaleDetailFormat => T("ThreeD.Workbench.FlowPortStaleDetailFormat", "\uC0C1\uC704 '{0}'\uC774(\uAC00) \uC624\uB798\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uD574\uB2F9 \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uB2E4\uC2DC Preview/Publish\uD558\uC138\uC694.", "Upstream '{0}' is stale. Preview or Publish its step explicitly again.");
     public string FlowPortDeclaredDetailFormat => T("ThreeD.Workbench.FlowPortDeclaredDetailFormat", "\uC815\uC2DD \uCD9C\uB825 '{0}'\uC774(\uAC00) \uC120\uC5B8\uB418\uC5C8\uC9C0\uB9CC \uD604\uC7AC Preview/Published \uC99D\uAC70\uB294 \uC5C6\uC2B5\uB2C8\uB2E4.", "Typed output '{0}' is declared, but has no current Preview or Published evidence.");
     public string FlowPortCurrentDetailFormat => T("ThreeD.Workbench.FlowPortCurrentDetailFormat", "\uC815\uC2DD \uCD9C\uB825 '{0}'\uC774(\uAC00) \uD604\uC7AC \uC0C1\uD0DC\uC785\uB2C8\uB2E4.", "Typed output '{0}' is current.");
+    public string FlowPortIncompatible => T("ThreeD.Workbench.FlowPortIncompatible", "\uD638\uD658\uB418\uC9C0 \uC54A\uB294 \uC785\uB825", "Incompatible input");
+    public string FlowPortIncompatibleDetailFormat => T("ThreeD.Workbench.FlowPortIncompatibleDetailFormat", "\uC785\uB825 '{0}'\uC758 \uD0C0\uC785\uC740 {1}\uC785\uB2C8\uB2E4. \uD544\uC694\uD55C {2} \uC785\uB825\uC73C\uB85C \uACBD\uB85C\uB97C \uC218\uC815\uD558\uC138\uC694.", "Input '{0}' is {1}. Repair the route with a {2} input.");
 
     private static string T(string key, string korean, string english)
     {

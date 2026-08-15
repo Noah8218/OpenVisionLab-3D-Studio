@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
@@ -12,29 +13,47 @@ internal static class ShellRecipeLifecycleSmoke
         ShellMainWindowViewModel viewModel,
         OpenVisionThreeDViewerControl viewer,
         string createdRecipePath,
+        string sourcePath,
+        string starterId,
         string? reportPath,
         Action showRecipeManager,
         Func<Task<bool>> clickDoNotSaveAsync)
     {
         showRecipeManager();
         viewModel.Workbench.RecipeName = "Discard this current draft";
-        var doNotSaveClick = clickDoNotSaveAsync();
         viewModel.Workbench.NewTeachingRecipeCommand.Execute(null);
-        var clickedDoNotSave = await doNotSaveClick;
         var createdPath = Path.GetFullPath(createdRecipePath);
+        var fullSourcePath = Path.GetFullPath(sourcePath);
+        viewModel.Workbench.FirstRecipeName = GetRecipeName(createdPath);
+        viewModel.Workbench.FirstRecipeFolderPath = Path.GetDirectoryName(createdPath)!;
+        viewModel.Workbench.FirstRecipeSourcePath = fullSourcePath;
+        viewModel.Workbench.SelectedFirstRecipeStarter = viewModel.Workbench.FirstRecipeStarterOptions
+            .Single(option => option.Id == starterId);
+        viewModel.Workbench.RememberFirstRecipeSetup = false;
+        var doNotSaveClick = clickDoNotSaveAsync();
+        viewModel.Workbench.CreateFirstRecipeCommand.Execute(null);
+        var clickedDoNotSave = await doNotSaveClick;
+        for (var attempt = 0; attempt < 200
+             && (!File.Exists(createdPath) || viewModel.Workbench.IsFirstRecipeSetupVisible); attempt++)
+        {
+            await Task.Delay(25);
+        }
         ToolRecipeDocument? createdDocument = null;
         if (File.Exists(createdPath))
         {
             createdDocument = ToolRecipeDocumentStore.Load(createdPath);
         }
 
+        var expectedStepCount = starterId == ToolWorkbenchViewModel.EmptyFirstRecipeStarterId ? 0 : 1;
         var passed = clickedDoNotSave
             && createdDocument is not null
-            && createdDocument.Steps.Count == 0
-            && string.IsNullOrWhiteSpace(createdDocument.Source.Path)
+            && createdDocument.Steps.Count == expectedStepCount
+            && (expectedStepCount == 0 || createdDocument.Steps[0].ToolId == "thickness")
+            && string.Equals(createdDocument.Source.Path, fullSourcePath, StringComparison.OrdinalIgnoreCase)
             && string.Equals(viewModel.Workbench.RecipePath, createdPath, StringComparison.OrdinalIgnoreCase)
-            && !viewModel.Workbench.IsSourceReadyForRecipe
-            && viewer.CurrentC3DSourcePath is null
+            && viewModel.Workbench.IsSourceReadyForRecipe
+            && string.Equals(viewer.CurrentC3DSourcePath, fullSourcePath, StringComparison.OrdinalIgnoreCase)
+            && !viewModel.Workbench.IsFirstRecipeSetupVisible
             && !viewModel.Workbench.IsDirty;
         if (!string.IsNullOrWhiteSpace(reportPath))
         {
@@ -47,15 +66,28 @@ internal static class ShellRecipeLifecycleSmoke
                 $"DoNotSaveButtonClicked: {clickedDoNotSave}",
                 $"RecipePath: {viewModel.Workbench.RecipePath}",
                 $"RecipeExists: {File.Exists(createdPath)}",
+                $"StarterId: {starterId}",
                 $"StepCount: {createdDocument?.Steps.Count}",
+                $"FirstStepToolId: {createdDocument?.Steps.FirstOrDefault()?.ToolId}",
                 $"SourcePath: {createdDocument?.Source.Path}",
+                $"ExpectedSourcePath: {fullSourcePath}",
                 $"SourceReady: {viewModel.Workbench.IsSourceReadyForRecipe}",
                 $"ViewerSourcePath: {viewer.CurrentC3DSourcePath}",
+                $"SetupVisible: {viewModel.Workbench.IsFirstRecipeSetupVisible}",
                 $"IsDirty: {viewModel.Workbench.IsDirty}"
             ]);
         }
 
         return passed;
+    }
+
+    private static string GetRecipeName(string path)
+    {
+        const string suffix = ".ov3d-recipe.json";
+        var fileName = Path.GetFileName(path);
+        return fileName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
+            ? fileName[..^suffix.Length]
+            : Path.GetFileNameWithoutExtension(fileName);
     }
 
     public static bool RunOpen(

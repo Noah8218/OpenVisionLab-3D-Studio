@@ -66,18 +66,22 @@ replacement for current product orientation.
 
 ## Current Product Target
 
-As of the 2026-08-15 Workbench run-log retention closure:
+As of the 2026-08-16 PL-0013 first-use setup closure:
 
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
 - Inspection Workspace v3: `7/8`; `A-01` remains Partial.
 - GoPxL-inspired Workbench v4: `3/3` complete.
 - Current acceptance priority: product-owner unaided Wide and Compact R0.
-- No dependency-ready software item is selected. The evidence-based large-C3D
-  memory/performance candidate first requires a representative maximum input
-  and accepted process-memory/load-time limits; recommended model: none until
-  those prerequisites exist; reasoning effort: none. Missing R0 does not
-  globally prohibit a newly approved deterministic software slice.
+- `PL-0009` compatible Add/input-route correctness, `PL-0010` contextual
+  add/configure/teach/repair, and `PL-0011` recipe-health navigation are
+  complete. `PL-0013` first-use recipe/source/task setup is also complete.
+  `PL-0012` search-context correction is the selected software priority and
+  `PL-0014` language-popup correction remains open. Read the master
+  backlog for their current order rather than copying it here. The separate
+  large-C3D candidate remains blocked by a representative maximum input and
+  accepted memory/load-time limits. Missing R0 does not globally prohibit a
+  newly approved deterministic software slice.
 - B-12 acquisition provenance, K-04 acquisition direction/orientation, L-13
   Surface Match pose/score export, and PL-0002 Runner help behavior are
   complete for their documented software scopes.
