@@ -165,7 +165,70 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - first-use recipe setup - 2026-08-16
+### Current execution checkpoint - Studio language popup - 2026-08-16
+
+`PL-0014` is Complete. The responsive width style on
+`StudioLanguageSelector` now derives from the existing shared ComboBox style
+instead of replacing it with the Windows platform-default template. The
+popup, item text, selected state, keyboard focus, hover, disabled state, and
+open transition therefore use the existing semantic graphite resources.
+Compact keeps the control inside the 60-pixel rail with a 52-pixel control,
+4-pixel outer margin, and reduced content padding, so `한` and `EN` remain
+visible without changing the Wide `한국어` and `English` labels.
+
+Debug and Release build with zero warnings and zero errors, and Workbench
+docking passes `87/87`, including shared-style, Wide/Compact bounds, and
+disabled-resource checks. Actual current Release EXE evidence on dynamically
+selected leftmost `DISPLAY2` covers Wide `1920 x 1040`, Compact `1280 x 760`,
+Korean/English, open, selected, keyboard-focus, and pointer-hover states.
+Language selection updates the UI and survives a normal restart while the
+recipe, source, ROI, result, and `Preview 0`/`Published 0` state remain
+unchanged. Both refreshed fixed-package `-ValidateOnly` modes pass without
+launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md`;
+- `.proofline/issues/PL-0014.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0014-language-popup\`.
+
+The evidence-bounded commercial authoring-readiness reassessment is `8.0/10`.
+This is a qualitative workflow judgment, not telemetry, release acceptance,
+certified usability, production approval, or physical-metrology evidence. The
+capability inventory is unchanged. No dependency-ready software slice is
+currently selected. Product-owner unaided Wide/Compact R0 remains the next
+acceptance priority; it requires owner operation, so no model execution is
+recommended. The large-C3D candidate remains blocked on its representative
+input and accepted memory/load-time limits.
+
+### Previous execution checkpoint - Tool Library search context - 2026-08-16
+
+`PL-0012` is Complete. Tool Library search now clears only after a successful
+recipe open, new-recipe context creation, or compatible Add. Failed open and
+rejected Add retain the visible query, and no search transition invokes
+Preview, Publish, Run, or Validation. No persisted preference, additional
+control, recipe schema, numerical algorithm, Viewer, or docking behavior was
+introduced or changed.
+
+Tool Recipe teaching passes `50/50`, Workbench docking `84/84`, and Debug and
+Release build with zero warnings and zero errors. Actual current Release EXE
+Compact English and Wide Korean evidence on dynamically selected leftmost
+`DISPLAY2` shows representative non-empty input followed by a blank unfiltered
+catalog after another recipe opens. Both refreshed fixed-package
+`-ValidateOnly` modes pass without launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_TOOL_LIBRARY_SEARCH_CONTEXT_20260816.md`;
+- `.proofline/issues/PL-0012.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0012-tool-search-context\`.
+
+The evidence-bounded commercial authoring-readiness reassessment is `7.9/10`.
+This is a qualitative workflow judgment, not telemetry, release acceptance,
+certified usability, production approval, or physical-metrology evidence. The
+capability inventory is unchanged. `PL-0014` language-popup theme and bounds is
+the selected next software priority. Recommended model: `gpt-5.6-terra`;
+reasoning effort: `low`. Product-owner unaided Wide/Compact R0 remains the
+separate acceptance priority and requires owner operation rather than model
+execution.
+
+### Previous execution checkpoint - first-use recipe setup - 2026-08-16
 
 `PL-0013` is Complete. Recipe Center now exposes recipe name, folder, C3D
 source, optional Empty/Thickness starter, exact target, validation, remembered
@@ -192,10 +255,9 @@ The evidence-bounded workflow reassessment is first-use efficiency `8.5/10`
 and commercial authoring readiness `7.8/10`. These are qualitative judgments,
 not telemetry, release acceptance, certified usability, production approval,
 or physical-metrology claims. This slice does not change capability inventory.
-`PL-0012` search-context correction is the selected next software priority.
-Recommended model: `gpt-5.6-terra`; reasoning effort: `low`. Product-owner
-unaided Wide/Compact R0 remains the separate acceptance priority and requires
-owner operation rather than model execution.
+`PL-0012` search-context correction is completed in the current checkpoint
+above. Product-owner unaided Wide/Compact R0 remains the separate acceptance
+priority and requires owner operation rather than model execution.
 
 ### Previous execution checkpoint - recipe health navigation - 2026-08-15
 
@@ -2770,13 +2832,13 @@ The owner explicitly left the layout-only stream and completed item 11 on
     surface now owns recipe identity, location, C3D source, optional compatible
     starter, confirmed remembered setup, stale validation, and reset without
     automatic execution.
-29. `PL-0012 Tool Library search reset/visibility` - Selected; remove hidden stale
-    catalog context or make retention explicit and one-click clearable.
-    Recommended model: `gpt-5.6-terra`; reasoning effort: `low`.
-30. `PL-0014 Studio language-popup theme and bounds` - Open; replace the
-    platform-light blank popup with the shared semantic ComboBox popup and
-    verify English/Korean open, focus, hover, selected, pressed, and disabled
-    states. Recommended model: `gpt-5.6-terra`; reasoning effort: `low`.
+29. `PL-0012 Tool Library search reset/visibility` - Complete; successful
+    recipe open, new-recipe context creation, and compatible Add clear the
+    search, while failed open/Add retain the visible query without execution.
+30. `PL-0014 Studio language-popup theme and bounds` - Complete; the responsive
+    width style retains the shared semantic ComboBox base, Wide and Compact
+    labels remain visible, language persists, and inspection state is not
+    executed or mutated.
 31. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;

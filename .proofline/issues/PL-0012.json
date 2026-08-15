@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "open",
-    "current_summary": "The Tool Library search term survives opening another recipe. The compatible list above remains populated, so the stale All tools filter is easy to overlook and forces manual clear-and-retype work for every variant.",
-    "next_action": "Choose and verify the narrow policy: clear search on recipe open and successful Add, or make retained search an explicit visible scoped preference with one-click clear."
+    "status": "resolved",
+    "current_summary": "PL-0012 is complete: successful recipe open, new-recipe context creation, and compatible Add clear Tool Library search; failed open/Add retains the visible query; focused regression and current Release EXE Wide/Compact evidence confirm no automatic execution."
   },
   "problem": {
     "claims": [
@@ -37,12 +36,18 @@
     {
       "id": "C1",
       "text": "Opening a recipe and successfully adding a tool leaves no hidden stale catalog filter, or retained search is explicitly scoped, visible, and clearable in one action.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
     },
     {
       "id": "C2",
       "text": "Search state save/reload/reopen behavior is deterministic and never adds or executes a tool.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
     }
   ],
   "relations": [
@@ -60,9 +65,40 @@
       "location": "docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md",
       "observation": "Search terms Thickness, Warpage, Plane Flatness, Gap / Flush, Volume, Cross-section, Point Pair, and Completeness were each still present after opening the baseline recipe for the next variant. The term had to be selected and replaced before the next tool appeared.",
       "observed_at": "2026-08-15T18:35:39.1507326+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused regression and build verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0012-tool-search-context/reports/",
+      "observation": "Debug and Release builds completed with zero warnings and zero errors; Tool Recipe teaching passed 50/50 and Workbench docking passed 84/84. The focused checks prove success-boundary clearing, failed-boundary retention, and no Preview/Publish/Run side effects.",
+      "observed_at": "2026-08-16T01:12:25.0574105+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "current Release EXE and fixed R0 validation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0012-tool-search-context/",
+      "observation": "Actual Release EXE on dynamically selected leftmost DISPLAY2 rendered Warpage in Compact English and Wide Korean, then showed a blank search and unfiltered All tools after another recipe opened. Both refreshed Wide and Compact fixed-package ValidateOnly commands passed without launching the application.",
+      "observed_at": "2026-08-16T01:12:25.0574105+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-16T00:49:25.6329919+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "Selected the narrow automatic-reset policy for recipe context changes and successful Add instead of introducing persisted search preferences or another control."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-16T01:12:25.0574105+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved PL-0012 after focused regression, actual EXE Wide/Compact verification, documentation closure, and refreshed fixed R0 validation passed."
+    }
+  ],
   "created_at": "2026-08-15T18:35:39.1507326+09:00",
-  "updated_at": "2026-08-15T18:35:39.1507326+09:00"
+  "updated_at": "2026-08-16T01:12:25.0574105+09:00"
 }

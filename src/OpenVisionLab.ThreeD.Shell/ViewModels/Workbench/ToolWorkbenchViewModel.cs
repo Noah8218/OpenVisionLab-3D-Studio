@@ -1158,6 +1158,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             LoadValidationThresholdCorrectionEvidence(fullPath, document);
             SetDirty(false);
             RecordRecentRecipe(fullPath);
+            ToolSearchText = string.Empty;
             AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
             message = $"Teaching recipe opened: {Path.GetFileName(fullPath)}";
             AppendLog("Teach", message);
@@ -1208,6 +1209,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         SetDirty(false);
         ClearValidationSet();
         SetValidationSetDefinitionDirty(false);
+        ToolSearchText = string.Empty;
         OnPropertyChanged(nameof(RecipeSchemaVersion));
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         AppendLog("Teach", "New empty teaching recipe created. Select a C3D source before adding an inspection step.");
@@ -1262,6 +1264,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             deferSelectedStepStateRefresh = false;
         }
         RefreshAuthoredRecipeState();
+        ToolSearchText = string.Empty;
         lastToolAddMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         OnPropertyChanged(nameof(LastToolAddMilliseconds));
         AppendLog("Teach", $"Added taught step: {tool.Name}.");

@@ -17,9 +17,8 @@
     ]
   },
   "state": {
-    "status": "open",
-    "current_summary": "The Studio language ComboBox popup renders as a white, apparently blank platform-default surface while the surrounding application is graphite themed. Keyboard selection still changes language, but the popup is not visually usable or theme-complete.",
-    "next_action": "Apply the shared semantic ComboBox popup style to StudioLanguageSelector and verify open, hover, selected, keyboard-focus, pressed, English, and Korean states in Wide and Compact."
+    "status": "resolved",
+    "current_summary": "PL-0014 is complete: StudioLanguageSelector retains the shared semantic ComboBox style, Wide and Compact labels and popup states are legible and bounded, language persists, and inspection state remains unchanged."
   },
   "problem": {
     "claims": [
@@ -38,12 +37,17 @@
     {
       "id": "C1",
       "text": "The language popup uses semantic theme resources and visibly renders Korean and English with correct hover, selected, keyboard-focus, pressed, disabled, and open states in Wide and Compact.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
     },
     {
       "id": "C2",
       "text": "Changing language still updates the current UI and persists without changing recipe, source, ROI, result, Preview, Publish, or Run state.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     }
   ],
   "relations": [
@@ -55,8 +59,8 @@
   "context": [
     {
       "kind": "control",
-      "location": "src/OpenVisionLab.ThreeD.Shell/MainWindow.xaml",
-      "summary": "StudioLanguageSelector owns the visible language ComboBox and popup."
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Shell/StudioNavigationRailView.xaml",
+      "summary": "StudioLanguageSelector owns the visible language ComboBox, responsive density, and popup item template."
     }
   ],
   "artifacts": [],
@@ -67,9 +71,40 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-context.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0010-contextual-step-setup/after/wide-language-popup-blank.png",
       "observation": "On DISPLAY2, the open StudioLanguageSelector popup was a white surface with no legible Korean or English item text while the surrounding Studio remained graphite themed; keyboard selection still changed the application language.",
       "observed_at": "2026-08-15T20:44:02.4773750+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "focused style, bounds, disabled-state, and build verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0014-language-popup/reports/",
+      "observation": "Debug and Release builds completed with zero warnings and zero errors; Workbench docking passed 87/87 and proved the shared ComboBox base, Wide/Compact bounds, and semantic disabled brushes.",
+      "observed_at": "2026-08-16T07:52:27.9381887+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "current Release EXE and fixed R0 validation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0014-language-popup/",
+      "observation": "Actual Release EXE on dynamically selected leftmost DISPLAY2 rendered dark, legible Korean/English Wide and 한/EN Compact popup, selected, keyboard-focus, pointer-hover, and click/open states. English survived normal restart while recipe, source, ROI, result, Ready 8, Preview 0, and Published 0 stayed unchanged. Both refreshed fixed-package ValidateOnly modes passed without launching the application.",
+      "observed_at": "2026-08-16T07:52:27.9381887+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-16T12:00:00+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "Selected the existing language selector and global theme as the narrow ownership boundary; no new settings surface or language subsystem is being introduced."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-16T12:30:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved PL-0014 after shared-style restoration, Compact density correction, focused regression, actual EXE Wide/Compact state verification, documentation closure, and fixed R0 validation passed."
+    }
+  ],
   "created_at": "2026-08-15T20:44:02.4773750+09:00",
-  "updated_at": "2026-08-15T20:44:02.4773750+09:00"
+  "updated_at": "2026-08-16T12:30:00+09:00"
 }

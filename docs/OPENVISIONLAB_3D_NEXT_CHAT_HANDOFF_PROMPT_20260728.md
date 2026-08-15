@@ -36,9 +36,15 @@ and Tools return together. PL-0011 recipe health navigation is complete with
 exact six-state counts and non-wrapping, non-mutating navigation to each
 owning step and requirement. PL-0013 is now complete: Recipe Center collects recipe
 identity, folder, C3D source, and optional compatible starter before explicit
-Create, and confirmed setup restores visibly without execution. PL-0012 is the
-current software priority, followed by PL-0014 language-popup theming. A
-large-C3D memory/performance target still needs
+Create, and confirmed setup restores visibly without execution. PL-0012 is
+now complete: successful recipe open, new-recipe creation, and compatible Add
+clear Tool Library search while failed operations retain the visible query
+without execution. PL-0014 is now complete: the language selector retains the
+shared graphite ComboBox popup, Wide and Compact labels remain visible, and
+language persistence does not execute or mutate inspection state. No
+dependency-ready software slice is currently selected. The product owner's
+unaided Wide/Compact R0 is the next acceptance priority and requires owner
+operation, not model execution. A large-C3D memory/performance target still needs
 a representative maximum input and accepted process-memory/load-time limits;
 do not spend model tokens on it until those prerequisites exist.
 PL-0006 release-policy reconciliation is complete: the current

@@ -182,12 +182,37 @@ internal static class ToolWorkbenchDockingVerification
             };
             navigationRail.ApplyResponsiveWidthForVerification(1920);
             var wideRailWidth = navigationRail.Width;
+            var wideLanguageSelectorWidth = navigationRail.LanguageSelector.Width;
+            var wideLanguageSelectorMargin = navigationRail.LanguageSelector.Margin;
             navigationRail.ApplyResponsiveWidthForVerification(1280);
             Check(
                 "Workbench v4 rail exposes accessible responsibility and utility routes",
                 navigationRail.HasAccessibleResponsibilityRoutes
                 && navigationRail.HasAccessibleUtilityRoutes,
                 $"responsibilities={navigationRail.HasAccessibleResponsibilityRoutes}; utilities={navigationRail.HasAccessibleUtilityRoutes}");
+            Check(
+                "Studio language selector retains the shared themed ComboBox base style",
+                navigationRail.LanguageSelector.Style.BasedOn is not null,
+                $"hasThemedBase={navigationRail.LanguageSelector.Style.BasedOn is not null}");
+            Check(
+                "Studio language selector stays legible within Wide and Compact rail bounds",
+                Math.Abs(wideLanguageSelectorWidth - 100) < 0.1
+                && wideLanguageSelectorMargin.Left == 8
+                && Math.Abs(navigationRail.LanguageSelector.Width - 52) < 0.1
+                && navigationRail.LanguageSelector.Margin.Left == 4
+                && navigationRail.LanguageSelector.Padding.Left == 4,
+                $"wideWidth={wideLanguageSelectorWidth:F0}; wideMargin={wideLanguageSelectorMargin.Left:F0}; compactWidth={navigationRail.LanguageSelector.Width:F0}; compactMargin={navigationRail.LanguageSelector.Margin.Left:F0}; compactPadding={navigationRail.LanguageSelector.Padding.Left:F0}");
+            navigationRail.LanguageSelector.IsEnabled = false;
+            Check(
+                "Studio language selector resolves semantic disabled colors",
+                Equals(
+                    navigationRail.LanguageSelector.Background,
+                    navigationRail.FindResource("ThreeD.DisabledSurfaceBrush"))
+                && Equals(
+                    navigationRail.LanguageSelector.Foreground,
+                    navigationRail.FindResource("ThreeD.DisabledBrush")),
+                $"background={navigationRail.LanguageSelector.Background}; foreground={navigationRail.LanguageSelector.Foreground}");
+            navigationRail.LanguageSelector.IsEnabled = true;
             Check(
                 "Workbench v4 rail switches from labeled Wide to icon Compact width",
                 Math.Abs(wideRailWidth - 140) < 0.1

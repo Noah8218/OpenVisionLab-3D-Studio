@@ -97,6 +97,22 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   save/reopen pass; Wide/Compact localized UI and fixed `-ValidateOnly` pass.
   Preserve `OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md` and the
   `20260815-pl0013-first-use-setup` D-backed evidence root.
+- `PL-0012` is complete: Tool Library search clears only after a successful
+  recipe open, new-recipe context creation, or compatible Add. Failed
+  open/Add retains the query and no transition executes inspection. Tool
+  Recipe teaching passes `50/50`, Workbench docking `84/84`, Debug/Release
+  are `0/0`, actual Release Compact English and Wide Korean evidence passes,
+  and both fixed `-ValidateOnly` modes pass. Preserve
+  `OPENVISIONLAB_3D_TOOL_LIBRARY_SEARCH_CONTEXT_20260816.md` and the
+  `20260816-pl0012-tool-search-context` D-backed evidence root.
+- `PL-0014` is complete: the responsive language-selector style now retains
+  the shared semantic ComboBox base, and Compact uses bounded margin/padding
+  so `한` and `EN` remain visible. Debug/Release are `0/0`, Workbench docking
+  passes `87/87`, actual Release Wide/Compact popup, selection, focus, and
+  hover evidence passes, language survives a normal restart, inspection state
+  remains unchanged, and both fixed `-ValidateOnly` modes pass. Preserve
+  `OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md` and the
+  `20260816-pl0014-language-popup` D-backed evidence root.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -125,16 +141,10 @@ acceptance.
 Missing R0 does not prevent a newly approved dependency-ready deterministic
 software slice.
 
-## Current Software Priority
+## Current Software Queue
 
-`PL-0013` first-use recipe/source/task setup is complete. The next software
-priority is `PL-0012`: remove hidden stale Tool Library search context or make
-retention explicit and one-click clearable.
-
-1. `PL-0012` Tool Library search reset/visibility | Recommended model:
-   `gpt-5.6-terra` | Reasoning effort: `low`.
-2. `PL-0014` Studio language-popup theme and bounds | Recommended model:
-   `gpt-5.6-terra` | Reasoning effort: `low`.
+`PL-0014` Studio language-popup theme and bounds is complete. No
+dependency-ready software slice is currently selected.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits
@@ -224,5 +234,23 @@ Scope: Complete PL-0013 one-surface recipe identity, folder, C3D source, optiona
 Acceptance criteria: all four inputs visible before explicit Create -> pass; confirmed setup save/reload/reopen with no restore action -> pass; stale paths explained and Create disabled -> pass; Reset safe and action-free -> pass; Wide/Compact localized focus/popup/disabled/pressed states themed, reachable, and on selected monitor -> pass
 Verification: Debug and Release 0/0; Recipe Manager + WPG 49/49; Tool Recipe teaching 46/46; Workbench docking 84/84; Shell smoke options 39/39; actual Release EXE empty and Thickness save/reopen pass; fixed Wide/Compact -ValidateOnly pass; git diff --check pass
 Evidence: docs/OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md, .proofline/issues/PL-0013.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260815-pl0013-first-use-setup/, this file
-Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; PL-0012 is the next deterministic software priority
+Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; PL-0012 is completed in the record below
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0012 success-boundary Tool Library search reset with failure retention and no automatic execution
+Acceptance criteria: successful recipe/new/Add context leaves no hidden stale filter -> pass; failed open/Add retains visible query -> pass; deterministic behavior invokes no Preview/Publish/Run -> pass; Wide/Compact localized current-build states remain reachable and themed -> pass
+Verification: Debug and Release 0/0; Tool Recipe teaching 50/50; Workbench docking 84/84; actual Release EXE Compact English and Wide Korean on DISPLAY2; fixed Wide/Compact -ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_TOOL_LIBRARY_SEARCH_CONTEXT_20260816.md, .proofline/issues/PL-0012.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0012-tool-search-context/, this file
+Boundary / next dependency: PL-0014 is completed in the record below; product-owner unaided Wide/Compact R0 remains external
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0014 shared semantic language-selector popup, bounded Wide/Compact labels, language persistence, and no inspection-state mutation
+Acceptance criteria: Korean/English normal, open, selected, keyboard-focus, pointer-hover, click/open, and disabled semantics remain dark and legible -> pass; Wide/Compact controls and popups stay bounded -> pass; language updates and survives normal restart without recipe/source/ROI/result/Preview/Publish/Run mutation -> pass
+Verification: Debug and Release 0/0; Workbench docking 87/87; actual current Release EXE Wide 1920x1040 and Compact 1280x760 on DISPLAY2 with Korean/English popup, focus, selection, and hover evidence; refreshed fixed Wide/Compact -ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md, .proofline/issues/PL-0014.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0014-language-popup/, this file
+Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work still requires representative input and accepted budgets
 ```

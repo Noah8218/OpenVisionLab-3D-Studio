@@ -65,6 +65,14 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Studio language-selector popup](OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md) -
+  `PL-0014` shared semantic ComboBox inheritance, bounded Wide/Compact labels,
+  Korean/English popup states, persistence, no-execution evidence, and
+  refreshed R0 inputs.
+- [Tool Library search context](OPENVISIONLAB_3D_TOOL_LIBRARY_SEARCH_CONTEXT_20260816.md) -
+  `PL-0012` successful recipe/new/Add reset boundaries, failed-boundary
+  retention, no-execution regression, actual-EXE Wide/Compact localized
+  evidence, and refreshed R0 inputs.
 - [First-use recipe setup](OPENVISIONLAB_3D_FIRST_USE_RECIPE_SETUP_20260816.md) -
   `PL-0013` one-surface recipe identity, folder, C3D source, optional compatible
   starter, confirmed restore/reset behavior, actual-EXE save/reopen, and current

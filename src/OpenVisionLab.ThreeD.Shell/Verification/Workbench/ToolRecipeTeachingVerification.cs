@@ -54,6 +54,7 @@ internal static class ToolRecipeTeachingVerification
             var routeWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-route.json"));
             routeWorkbench.SetC3DSource(sourcePath, markDirty: false);
             routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "thickness");
+            routeWorkbench.ToolSearchText = "Thickness";
             var selectedStepSetupRequestCount = 0;
             routeWorkbench.SelectedStepSetupRequested += (_, _) => selectedStepSetupRequestCount++;
             Check(
@@ -70,6 +71,12 @@ internal static class ToolRecipeTeachingVerification
                 item.Category is "Preview" or "Publish" or "Run");
             var routeThickness = AddTool(routeWorkbench, "Thickness");
             Check(
+                "successful Add clears the Tool Library search without execution",
+                string.IsNullOrEmpty(routeWorkbench.ToolSearchText)
+                && routeWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
+                $"search='{routeWorkbench.ToolSearchText}'; actionLogs={routeActionLogCount}");
+            Check(
                 "Add requests the selected-step setup surface exactly once without execution",
                 selectedStepSetupRequestCount == 1
                 && ReferenceEquals(routeThickness, routeWorkbench.SelectedPipelineStep)
@@ -85,6 +92,10 @@ internal static class ToolRecipeTeachingVerification
                 && !routeWarpageProposal.Contains(routeThickness.OutputEntityId, StringComparison.Ordinal),
                 $"proposal={routeWarpageProposal}; route={routeWarpage.InputSummary}");
             routeWorkbench.SelectedTool = routeWorkbench.Tools.Single(tool => tool.Id == "plane-flatness");
+            routeWorkbench.ToolSearchText = "Plane Flatness";
+            var rejectedAddStepCount = routeWorkbench.PipelineSteps.Count;
+            var rejectedAddActionLogCount = routeWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
             Check(
                 "Add is unavailable when no TransformedHeightField route exists",
                 !routeWorkbench.AddSelectedToolCommand.CanExecute(routeWorkbench.SelectedTool)
@@ -93,6 +104,14 @@ internal static class ToolRecipeTeachingVerification
                     "TransformedHeightField",
                     StringComparison.Ordinal),
                 routeWorkbench.SelectedToolProposedRouteDetail);
+            routeWorkbench.AddSelectedToolCommand.Execute(routeWorkbench.SelectedTool);
+            Check(
+                "rejected Add retains the visible search and changes no recipe or execution state",
+                routeWorkbench.ToolSearchText == "Plane Flatness"
+                && routeWorkbench.PipelineSteps.Count == rejectedAddStepCount
+                && routeWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == rejectedAddActionLogCount,
+                $"search='{routeWorkbench.ToolSearchText}'; steps={routeWorkbench.PipelineSteps.Count}; actionLogs={rejectedAddActionLogCount}");
             Check(
                 "compatible Add does not invoke Preview, Publish, or Run",
                 routeWorkbench.RunLog.Count(item =>
@@ -112,6 +131,7 @@ internal static class ToolRecipeTeachingVerification
                 && routeWorkbench.TrySaveTeachingRecipe(legacyRecipePath, out _),
                 routeWorkbench.FlowProblemsSummary);
             var repairWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-repair.json"));
+            repairWorkbench.ToolSearchText = "Warpage";
             var legacyOpened = repairWorkbench.TryOpenTeachingRecipe(legacyRecipePath, out var legacyOpenMessage);
             var legacyProblem = repairWorkbench.FlowPortDiagnostics.FirstOrDefault(item =>
                 item.Step.ToolId == "warpage"
@@ -131,6 +151,11 @@ internal static class ToolRecipeTeachingVerification
                 && repairWorkbench.IsAdvancedInputRouteEditingExpanded
                 && repairWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
                 legacyOpenMessage);
+            Check(
+                "successful recipe open clears the Tool Library search without execution",
+                string.IsNullOrEmpty(repairWorkbench.ToolSearchText)
+                && repairWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
+                $"search='{repairWorkbench.ToolSearchText}'");
             repairWorkbench.SelectedPipelineStep!.InputEntityIdsText = repairWorkbench.Source.Id;
             var repairedRecipePath = Path.Combine(fixtureRoot, "repaired-valid-route.ov3d-recipe.json");
             var repairedSaved = repairWorkbench.TrySaveTeachingRecipe(repairedRecipePath, out var repairedSaveMessage);
@@ -290,6 +315,7 @@ internal static class ToolRecipeTeachingVerification
                 invalidViewerBindingRejected,
                 $"rejected={invalidViewerBindingRejected}");
             newLifecycle.RecipeName = "Discarded draft";
+            newLifecycle.ToolSearchText = "Filter";
             newLifecycle.CreateNewTeachingRecipe("Created recipe");
             Check(
                 "New resets to a named source-less clean zero-step draft",
@@ -298,9 +324,25 @@ internal static class ToolRecipeTeachingVerification
                 && string.IsNullOrWhiteSpace(newLifecycle.Source.Path)
                 && !newLifecycle.IsSourceReadyForRecipe
                 && !newLifecycle.AddSelectedToolCommand.CanExecute(null)
+                && string.IsNullOrEmpty(newLifecycle.ToolSearchText)
                 && string.IsNullOrWhiteSpace(newLifecycle.RecipePath)
                 && !newLifecycle.IsDirty,
                 newLifecycle.RecipeStateSummary);
+
+            var failedOpenWorkbench = new ToolWorkbenchViewModel();
+            failedOpenWorkbench.ToolSearchText = "Keep on failure";
+            var failedOpenActionLogCount = failedOpenWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            var failedOpen = failedOpenWorkbench.TryOpenTeachingRecipe(
+                Path.Combine(fixtureRoot, "missing.ov3d-recipe.json"),
+                out _);
+            Check(
+                "failed recipe open retains the visible search and changes no execution state",
+                !failedOpen
+                && failedOpenWorkbench.ToolSearchText == "Keep on failure"
+                && failedOpenWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == failedOpenActionLogCount,
+                $"search='{failedOpenWorkbench.ToolSearchText}'; actionLogs={failedOpenActionLogCount}");
 
             workbench.RecipeName = "Fixture XYZ Affine Inspection";
             workbench.SetC3DSource(sourcePath);

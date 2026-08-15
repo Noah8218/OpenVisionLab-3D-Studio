@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `419941D12A7EEEA97D7C3653AD720BCC26E504A93FFFFCAA2880F46C203D0DF3` |
-| Shell assembly | `4FADA730211B945BAC68C084C723F03C799771B4EFEADCD6C3FB753A377EA051` |
-| Core assembly | `8E1FDE184114FC7AEEA553F1769C0A2BB2D81D6CD22BFECCF725BF4266AE1167` |
-| Data assembly | `7A03FE2C22E6DB14B935054EDACDAFD4F98126DE98FE54223F5705B7526DD219` |
-| Tools assembly | `61D72BAC66EAAEE2B0A1642F68EEEF642E16BC006ACD51719E3DDDBEF5E7BC82` |
-| Viewer assembly | `314F97142CCC68FCE51FB2EFDF88991EFA974598ED220C9AA8858F4B2EA5E7AB` |
-| Docking assembly | `DCA3C5E0CB9583835B415D6260C6C958D080AFEBB7F48F00816132864B75AEDF` |
+| Release EXE | `C11F97D93002D2036A2E7D6793A4F73821362FAB109D88C542D66BEFCDE199D0` |
+| Shell assembly | `07973250904F37C98747AC61FCCD2F4ADFBC4562BCB2DA63BAFFB7D71BFAAD4F` |
+| Core assembly | `79BFA87CFDBB2220D89FF7995E9C83C0263C7417C28AD108F808DB03355AA9EB` |
+| Data assembly | `1CF32D44B50676E522846E5285866FCDAB1386F42A7916EBC423E8B9F041EA27` |
+| Tools assembly | `E3C516E2E9CC3EC17C366E6E41BFB6330210D7EAFF1F1836F7887A8D9C6A2D00` |
+| Viewer assembly | `E17F3F309FBCC5B4D6DDBF6196DBEC93ECCBB667E59D0407BCF071A3CF525F32` |
+| Docking assembly | `C4B5FE22AE05F2C345666A8ED405BEB5C3012FD889B06D6355C12BB2D5D12BCF` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -55,7 +55,8 @@ the fixed table above, or the Release EXE is older than current `.cs`,
 The 2026-08-16 current-source Release rebuild supersedes every previous fixed
 binary set and includes PL-0009 compatible Add routing, PL-0010 contextual
 step setup, PL-0011 recipe-health navigation, PL-0013 confirmed first-use
-recipe/source/task setup, bounded Workbench run-log retention, recipe-step
+recipe/source/task setup, PL-0012 Tool Library search-context reset, PL-0014
+language-popup correction, bounded Workbench run-log retention, recipe-step
 removal safety, immutable C3D loaded-snapshot
 correction, and truthful A1/A2/A3 alignment-status correction in addition to the
 `OpenVisionLab.Vision3D 3.0.0` migration, B-12, K-04, L-13, and PL-0002. R0
@@ -186,7 +187,7 @@ Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only checks ->
 Pass; current-package actual launch placement -> Pending with owner run; Wide
 owner run -> Pending; Compact owner run -> Pending.
-Verification: the PL-0013-, run-log-retention-, recipe-step-removal-,
+Verification: the PL-0014-, PL-0012-, PL-0013-, run-log-retention-, recipe-step-removal-,
 C3D-snapshot-, and alignment-status-corrected current source was rebuilt in
 Release with `0` warnings and `0` errors on 2026-08-16. Both process-local
 `-ValidateOnly` commands passed,
@@ -196,7 +197,7 @@ monitor, and launched no application. The earlier actual-window placement
 evidence belongs to the superseded pre-migration binary and is not reused as
 current-package owner evidence.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0013-first-use-setup\reports\r0-wide-validate-only.txt`
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0014-language-popup\reports\r0-wide-validate-only.txt`
 plus `r0-compact-validate-only.txt` in the same directory.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. A newly
