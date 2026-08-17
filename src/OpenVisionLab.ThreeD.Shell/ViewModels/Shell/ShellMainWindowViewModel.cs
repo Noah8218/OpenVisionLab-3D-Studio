@@ -41,6 +41,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private readonly string? htmlReportPath;
     private readonly string? csvReportPath;
     private readonly string recentRunRecordsPath;
+    private readonly string? orderedRunRecordRoot;
     private readonly bool hasStartupEvidenceOverrides;
     private bool startupEvidenceActive;
     private string? currentContractPath;
@@ -90,7 +91,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         string? htmlReportPath = null,
         string? csvReportPath = null,
         string? recentRunRecordsPath = null,
-        string? recentRecipesPath = null)
+        string? recentRecipesPath = null,
+        string? orderedRunRecordRoot = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
@@ -98,6 +100,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         this.runRecordPath = runRecordPath;
         this.htmlReportPath = htmlReportPath;
         this.csvReportPath = csvReportPath;
+        this.orderedRunRecordRoot = orderedRunRecordRoot;
         hasStartupEvidenceOverrides =
             !string.IsNullOrWhiteSpace(comparisonContractPath)
             || !string.IsNullOrWhiteSpace(comparisonReportPath)
@@ -128,6 +131,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         OpenSelectedValidationIssueInTeachCommand =
             openSelectedValidationIssueInTeachCommand;
         Workbench.PropertyChanged += OnWorkbenchNavigationStateChanged;
+        Workbench.OrderedRunCompleted += OnWorkbenchOrderedRunCompleted;
+        Workbench.OrderedRunInvalidated += OnWorkbenchOrderedRunInvalidated;
         OpenVisionLanguageService.LanguageChanged += (_, _) => RefreshLocalizedPresentation();
         ApplyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
         FitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => c3DSampleVisible);
@@ -428,6 +433,8 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ? L("ROI 검토를 적용하거나 취소한 후 화면을 이동하세요.", "Apply or cancel the ROI review before changing stages.")
             : Workbench.HasPendingStepParameterChanges
                 ? L("파라미터 초안을 적용하거나 취소한 후 화면을 이동하세요.", "Apply or discard the parameter draft before changing stages.")
+                : Workbench.IsOrderedRunRunning
+                    ? L("현재 레시피 실행이 끝난 후 화면을 이동하세요.", "Wait for the current recipe Run to finish before changing stages.")
                 : Workbench.IsSelectedStepPreviewRunning
                     ? L("미리보기가 끝나거나 취소된 후 화면을 이동하세요.", "Wait for Preview to finish or cancel it before changing stages.")
                     : Workbench.IsValidationSetRunning
@@ -574,6 +581,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             || !IsInspectionWorkspaceSelected
             || (!Workbench.IsSelectionCandidateActive
                 && !Workbench.HasPendingStepParameterChanges
+                && !Workbench.IsOrderedRunRunning
                 && !Workbench.IsSelectedStepPreviewRunning
                 && !Workbench.IsValidationSetRunning);
     }
@@ -635,6 +643,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     {
         if (args.PropertyName is nameof(ToolWorkbenchViewModel.IsSelectionCandidateActive)
             or nameof(ToolWorkbenchViewModel.HasPendingStepParameterChanges)
+            or nameof(ToolWorkbenchViewModel.IsOrderedRunRunning)
             or nameof(ToolWorkbenchViewModel.IsSelectedStepPreviewRunning)
             or nameof(ToolWorkbenchViewModel.IsValidationSetRunning)
             or nameof(ToolWorkbenchViewModel.SelectedValidationSetStep)
@@ -646,6 +655,41 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         }
     }
+
+    private void OnWorkbenchOrderedRunCompleted(
+        object? sender,
+        ToolWorkbenchOrderedRunCompletedEventArgs args)
+    {
+        try
+        {
+            var artifact = ShellOrderedRunRecordWriter.Write(
+                args.RecipePath,
+                args.Document,
+                args.SourcePath,
+                args.Execution,
+                orderedRunRecordRoot);
+            Workbench.AttachOrderedRunRecord(artifact.JsonPath);
+            startupEvidenceActive = false;
+            RefreshRecipeComparison(
+                artifact.JsonPath,
+                useStartupOverrides: false);
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException
+            or ArgumentException
+            or NotSupportedException
+            or JsonException)
+        {
+            Workbench.ReportOrderedRunRecordFailure(exception.Message);
+            StatusText = L(
+                $"현재 레시피 실행은 완료되었지만 Run Record 저장에 실패했습니다: {exception.Message}",
+                $"The current recipe Run completed, but its Run Record could not be saved: {exception.Message}");
+        }
+    }
+
+    private void OnWorkbenchOrderedRunInvalidated(object? sender, EventArgs args) =>
+        ClearCurrentRunEvidenceForRecipeContext();
 
     public void SetViewerSmokeFailed(string viewerStatus)
     {
@@ -756,6 +800,13 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         currentCsvReportPath = ResolveOptionalPath(root, (useStartupOverrides ? csvReportPath : null) ?? runRecord?.Artifacts.CsvReport);
         RefreshCommandCanExecute();
 
+        if (runRecord?.ViewerRunnerMatchState
+            == ShellOrderedRunRecordWriter.EvidenceState)
+        {
+            RefreshShellOrderedRunRecord(root, runRecord);
+            return;
+        }
+
         var contractLines = ReadLinesOrEmpty(contractPath);
         var reportLines = ReadLinesOrEmpty(reportPath);
         var recipePath = ExtractRecipePath(root, reportLines);
@@ -781,6 +832,47 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         StatusText = comparisonState == "Runner/UI contract matched"
             ? "Viewer hosted | recipe comparison matched"
             : "Viewer hosted | recipe comparison pending";
+    }
+
+    private void RefreshShellOrderedRunRecord(
+        string root,
+        InspectionRunRecord record)
+    {
+        var steps = record.Steps ?? [];
+        var metric = steps.SelectMany(step => step.Metrics).FirstOrDefault();
+        var metricSummary = metric is null
+            ? L("유한 측정값 없음", "No finite metric")
+            : $"{metric.Name} {metric.Value:G6} {metric.Unit}".TrimEnd();
+        RecipeComparisonSummary = L(
+            $"Studio 명시적 순차 실행 · {record.Status} · {steps.Count}개 단계\n동일 ordered graph 엔진으로 실행했으며 Preview/Publish 상태는 변경하지 않았습니다.",
+            $"Explicit Studio ordered Run · {record.Status} · {steps.Count} step(s)\nExecuted by the same ordered graph engine without changing Preview or Publish state.");
+        RecipeComparisonHistory = L(
+            $"레시피: {FormatEvidencePath(root, record.Recipe.Path)}\n소스: {FormatEvidencePath(root, record.Source.Path)}\nRun Record: {FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}",
+            $"Recipe: {FormatEvidencePath(root, record.Recipe.Path)}\nSource: {FormatEvidencePath(root, record.Source.Path)}\nRun Record: {FormatEvidencePath(root, currentRunRecordPath ?? string.Empty)}");
+        RecipeComparisonDetails = string.Join(
+            Environment.NewLine,
+            steps.Select(step =>
+                $"{step.RecipeIndex + 1:D2} | {step.Id} | {step.ToolName} | {step.Status} | {step.OutputEntityId} | SHA-256 {step.OutputContentSha256 ?? "(none)"}"));
+        RunSnapshotSummary = L(
+            $"현재 레시피 실행 · 상태 {record.Status} · 핵심 측정값 {metricSummary} · {record.ElapsedMilliseconds:F3} ms",
+            $"Current recipe Run · {record.Status} · key metric {metricSummary} · {record.ElapsedMilliseconds:F3} ms");
+        RunSnapshotEvidence =
+            $"Recipe: {FormatShortEvidencePath(root, record.Recipe.Path)} | Source: {FormatShortEvidencePath(root, record.Source.Path)} | JSON: {FormatOptionalArtifact(root, currentRunRecordPath)} | Report: {FormatOptionalArtifact(root, currentReportPath)}";
+        RefreshInspectionStepsFromRecord(record);
+        RecipeRunHistory.Clear();
+        RecipeRunHistory.Add(new RecipeRunHistoryItem(
+            record.RecordedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture),
+            record.Status.ToString(),
+            metricSummary,
+            ShellOrderedRunRecordWriter.EvidenceState,
+            FormatShortEvidencePath(root, currentRunRecordPath ?? string.Empty)));
+        if (currentRunRecordPath is not null)
+        {
+            RecordRecentRunRecord(currentRunRecordPath, record);
+        }
+        StatusText = L(
+            $"Viewer hosted | 현재 레시피 실행 {record.Status}",
+            $"Viewer hosted | current recipe Run {record.Status}");
     }
 
     private void RefreshRunSnapshot(
@@ -823,27 +915,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         var recipeSteps = Array.Empty<string>();
         if (orderedRunSteps.Count > 0)
         {
-            foreach (var step in orderedRunSteps)
-            {
-                var metric = step.Metrics.FirstOrDefault();
-                var metricSummary = metric is null
-                    ? "no metrics"
-                    : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
-                var outputHash = string.IsNullOrWhiteSpace(step.OutputContentSha256)
-                    ? string.Empty
-                    : $" | SHA-256 {step.OutputContentSha256[..Math.Min(12, step.OutputContentSha256.Length)]}";
-                InspectionSteps.Add(new InspectionStepItem(
-                    (step.RecipeIndex + 1).ToString(CultureInfo.InvariantCulture),
-                    step.ToolName,
-                    step.Status.ToString(),
-                    $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}{outputHash}"));
-            }
-            InspectionStepSummary = string.Format(
-                CultureInfo.CurrentCulture,
-                Localization.RunRecordSummaryFormat,
-                runRecord!.SchemaVersion,
-                orderedRunSteps.Count,
-                runRecord.Status);
+            RefreshInspectionStepsFromRecord(runRecord!);
             return;
         }
 
@@ -878,6 +950,34 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         InspectionStepSummary = recipeSteps.Length == 0
             ? $"Recipe: {InspectionSteps[0].Status} | Source: {InspectionSteps[1].Status} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}"
             : $"Recipe steps: {recipeSteps.Length} | Viewer: {uiEvidence.Status} | Runner: {runnerEvidence.Status} | Compare: {evidenceState}";
+    }
+
+    private void RefreshInspectionStepsFromRecord(InspectionRunRecord record)
+    {
+        InspectionSteps.Clear();
+        RefreshThresholdCorrection(record);
+        var orderedRunSteps = record.Steps ?? [];
+        foreach (var step in orderedRunSteps)
+        {
+            var metric = step.Metrics.FirstOrDefault();
+            var metricSummary = metric is null
+                ? "no metrics"
+                : $"{metric.Name} {metric.Value:G6} {metric.Unit}";
+            var outputHash = string.IsNullOrWhiteSpace(step.OutputContentSha256)
+                ? string.Empty
+                : $" | SHA-256 {step.OutputContentSha256[..Math.Min(12, step.OutputContentSha256.Length)]}";
+            InspectionSteps.Add(new InspectionStepItem(
+                (step.RecipeIndex + 1).ToString(CultureInfo.InvariantCulture),
+                step.ToolName,
+                step.Status.ToString(),
+                $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}{outputHash}"));
+        }
+        InspectionStepSummary = string.Format(
+            CultureInfo.CurrentCulture,
+            Localization.RunRecordSummaryFormat,
+            record.SchemaVersion,
+            orderedRunSteps.Count,
+            record.Status);
     }
 
     private void RefreshThresholdCorrection(InspectionRunRecord? runRecord)

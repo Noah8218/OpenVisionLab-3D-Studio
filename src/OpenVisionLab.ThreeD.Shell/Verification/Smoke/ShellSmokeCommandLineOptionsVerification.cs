@@ -64,6 +64,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("SurfaceMatchCollectionDisabled", VerifySurfaceMatchCollectionDisabled()),
             ("SurfaceMatchCollectionNavigationFocusHover", VerifySurfaceMatchCollectionNavigationFocusHover()),
             ("RecipeHealthNavigationPressed", VerifyRecipeHealthNavigationPressed()),
+            ("CurrentRecipeRunStates", VerifyCurrentRecipeRunStates()),
             ("FirstRecipeSetupCapture", VerifyFirstRecipeSetupCapture()),
             ("StepRemovalDialog", VerifyStepRemovalDialog()),
             ("WorkbenchRunLog", VerifyWorkbenchRunLog())
@@ -504,5 +505,17 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-shared-height-hover"]);
         return options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyCurrentRecipeRunStates()
+    {
+        var ready = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-current-recipe-run-ready"]);
+        var pressed = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-current-recipe-run-pressed"]);
+        return ready.CurrentRecipeRunReadySmoke
+            && ready.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false)
+            && pressed.CurrentRecipeRunPressedSmoke
+            && pressed.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 }

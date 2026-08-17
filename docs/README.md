@@ -65,6 +65,14 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Shell ordered Thickness Run closure](OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md) -
+  `PL-0016` one-action current-recipe Run, shared Runner projection,
+  Run Record/Results routing, no-auto-run contract, ten actual EXE results and
+  parity, measured interaction budget, and current Wide/Compact evidence.
+- [Thickness 10-sample EXE UX and performance study](OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md) -
+  ten varied synthetic C3D inputs and recipes, actual EXE teaching and result
+  review, measured workflow and replay targets, compatible-grid variant
+  authoring, controlled-Error Run Record correction, and remaining priorities.
 - [Studio language-selector popup](OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md) -
   `PL-0014` shared semantic ComboBox inheritance, bounded Wide/Compact labels,
   Korean/English popup states, persistence, no-execution evidence, and

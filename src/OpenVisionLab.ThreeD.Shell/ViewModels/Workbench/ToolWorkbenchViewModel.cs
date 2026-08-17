@@ -512,6 +512,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 return;
             }
 
+            InvalidateOrderedRun(Localize(
+                "레시피가 바뀌어 이전 실행 증거가 현재 컨텍스트에서 해제되었습니다.",
+                "The recipe changed, so the previous Run evidence was detached from the current context."));
             recipePath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RecipePathSummary));
@@ -649,7 +652,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public bool HasSelectedPipelineStep => SelectedPipelineStep is not null;
 
     public bool IsRecipeMutationBlocked =>
-        IsValidationSetRunning
+        IsOrderedRunRunning
+        || IsValidationSetRunning
         || IsSurfaceMatchExperimentRunning
         || IsFilterPreviewRunning
         || IsRemoveOutlierPreviewRunning
@@ -918,6 +922,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
+        OnPropertyChanged(nameof(OrderedRunStatus));
+        OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
+        OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
         RefreshSelectedToolWorkspaceProjection();
     }
 
@@ -2750,6 +2757,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
 
         isDirty = value;
+        if (value)
+        {
+            InvalidateOrderedRun(Localize(
+                "레시피가 변경되었습니다. 저장한 뒤 명시적으로 다시 실행하세요.",
+                "The recipe changed. Save it, then Run explicitly again."));
+        }
         OnPropertyChanged(nameof(IsDirty));
         OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
         OnPropertyChanged(nameof(RecipeStateSummary));
@@ -2903,7 +2916,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        if (propertyName is nameof(IsSelectedStepPreviewRunning) or nameof(IsValidationSetRunning))
+        if (propertyName is nameof(IsSelectedStepPreviewRunning)
+            or nameof(IsValidationSetRunning)
+            or nameof(IsOrderedRunRunning))
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRecipeMutationBlocked)));
             removeSelectedStepCommand?.RaiseCanExecuteChanged();

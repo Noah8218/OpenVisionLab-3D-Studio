@@ -337,6 +337,30 @@ internal static class ShellVerificationCommandRouter
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
         const string validationSetVerificationOption = "--verify-validation-set";
         const string runRecordHistoryVerificationOption = "--verify-run-record-history";
+        const string orderedRunVerificationOption = "--verify-current-recipe-ordered-run";
+        var orderedRunVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(orderedRunVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (orderedRunVerificationIndex >= 0)
+        {
+            if (orderedRunVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine($"{orderedRunVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolRecipeOrderedRunVerification.Verify(
+                    args[orderedRunVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         var runRecordHistoryVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(runRecordHistoryVerificationOption, StringComparison.OrdinalIgnoreCase));

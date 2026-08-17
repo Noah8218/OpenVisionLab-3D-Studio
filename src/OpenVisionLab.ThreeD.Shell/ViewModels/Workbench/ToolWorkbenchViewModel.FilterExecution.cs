@@ -24,8 +24,14 @@ public sealed partial class ToolWorkbenchViewModel
     private bool isFilterPreviewStale;
     private bool isFilterPreviewPublished;
     private string filterExecutionSummary = "Select a Filter step, then Preview explicitly.";
+    private bool isOrderedRunRunning;
+    private ToolRecipeOrderedGraphExecutionResult? orderedRunResult;
+    private string? orderedRunRecordPath;
+    private string orderedRunSummary = "Run the saved current recipe explicitly to create a Run Record.";
 
     public event EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs>? FilterDisplayRequested;
+    public event EventHandler<ToolWorkbenchOrderedRunCompletedEventArgs>? OrderedRunCompleted;
+    public event EventHandler? OrderedRunInvalidated;
 
     public ICommand PreviewSelectedStepCommand { get; private set; } = null!;
     public ICommand RunTeachingRecipeCommand { get; private set; } = null!;
@@ -76,6 +82,38 @@ public sealed partial class ToolWorkbenchViewModel
     public string FilterOutputHashSummary => filterPreviewOutput is null
         ? "No output hash until Preview completes."
         : $"Output SHA-256 {filterPreviewOutput.ContentSha256}";
+    public bool IsOrderedRunRunning => isOrderedRunRunning;
+    public bool HasOrderedRunResult => orderedRunResult is not null;
+    public ToolRecipeOrderedGraphExecutionResult? CurrentOrderedRunResult =>
+        orderedRunResult;
+    public string? CurrentOrderedRunRecordPath => orderedRunRecordPath;
+    public string OrderedRunStatus => isOrderedRunRunning
+        ? Localize("실행 중", "Running")
+        : orderedRunResult is null
+            ? CanRunTeachingRecipe()
+                ? Localize("준비", "Ready")
+                : Localize("실행 불가", "Blocked")
+            : LocalizeStatus(orderedRunResult.Status);
+    public string OrderedRunCapabilitySummary
+    {
+        get
+        {
+            if (isOrderedRunRunning || orderedRunResult is not null)
+            {
+                return orderedRunSummary;
+            }
+
+            TryGetOrderedRunCapability(out var message);
+            return message;
+        }
+    }
+    public string OrderedRunEvidenceSummary => orderedRunRecordPath is null
+        ? Localize(
+            "명시적 실행 전에는 Run Record가 생성되지 않습니다.",
+            "No Run Record is created before explicit Run.")
+        : Localize(
+            $"Run Record 저장됨 · {Path.GetFileName(Path.GetDirectoryName(orderedRunRecordPath))}",
+            $"Run Record saved · {Path.GetFileName(Path.GetDirectoryName(orderedRunRecordPath))}");
 
     private void InitializeFilterExecution()
     {
@@ -365,47 +403,68 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private async Task RunTeachingRecipeAsync()
+    public async Task<bool> RunTeachingRecipeAsync()
     {
         var document = CreateDocument();
-        var canRun = IsSelectedStepRemoveOutlierPixels
-            ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
-                document,
-                out var message)
-            : IsSelectedStepLevelSurface
-            ? ToolRecipeLevelSurfaceExecution.CanRunWholeRecipe(
-                document,
-                out message)
-            : ToolRecipeFilterExecution.CanRunWholeRecipe(document, out message);
-        if (!canRun)
+        if (!TryGetOrderedRunCapability(document, out var message)
+            || RecipePath is not { } recipePath)
         {
-            if (IsSelectedStepRemoveOutlierPixels)
-            {
-                SetRemoveOutlierSummary(message);
-            }
-            else if (IsSelectedStepLevelSurface)
-            {
-                SetLevelSurfaceSummary(message);
-            }
-            else
-            {
-                SetFilterSummary(message);
-            }
+            orderedRunSummary = message;
+            NotifyOrderedRunState();
             AppendLog("Run", message);
-            return;
+            return false;
         }
 
-        if (IsSelectedStepRemoveOutlierPixels)
+        orderedRunResult = null;
+        orderedRunRecordPath = null;
+        isOrderedRunRunning = true;
+        orderedRunSummary = Localize(
+            $"저장된 현재 레시피의 {document.Steps.Count}개 단계를 순서대로 실행하고 있습니다.",
+            $"Running {document.Steps.Count} saved current-recipe step(s) in order.");
+        foreach (var step in PipelineSteps)
         {
-            await PreviewSelectedRemoveOutlierPixelsAsync();
+            step.State = "Run running";
         }
-        else if (IsSelectedStepLevelSurface)
+        NotifyOrderedRunState();
+        AppendLog("Run", $"Ordered recipe Run started: {Path.GetFileName(recipePath)} | steps={document.Steps.Count}.");
+
+        try
         {
-            await PreviewSelectedLevelSurfaceAsync();
+            var execution = await Task.Run(() =>
+                ToolRecipeOrderedGraphExecution.Execute(document, Source.Path));
+            orderedRunResult = execution;
+            foreach (var step in PipelineSteps)
+            {
+                step.State = "Not run";
+            }
+            foreach (var stepResult in execution.Steps)
+            {
+                var step = PipelineSteps.FirstOrDefault(candidate =>
+                    string.Equals(candidate.Id, stepResult.StepId, StringComparison.Ordinal));
+                if (step is not null)
+                {
+                    step.State = $"Run {stepResult.Result.Status}";
+                }
+            }
+
+            orderedRunSummary = CreateOrderedRunSummary(execution);
+            NotifyOrderedRunState();
+            AppendLog(
+                "Run",
+                $"Ordered recipe Run completed: status={execution.Status} | steps={execution.Steps.Count} | elapsedMs={execution.Duration.TotalMilliseconds:F3}.");
+            OrderedRunCompleted?.Invoke(
+                this,
+                new ToolWorkbenchOrderedRunCompletedEventArgs(
+                    Path.GetFullPath(recipePath),
+                    document,
+                    Path.GetFullPath(Source.Path),
+                    execution));
+            return execution.Status is not (ResultStatus.Error or ResultStatus.NotRun);
         }
-        else
+        finally
         {
-            await PreviewSelectedFilterAsync();
+            isOrderedRunRunning = false;
+            NotifyOrderedRunState();
         }
     }
 
@@ -451,21 +510,130 @@ public sealed partial class ToolWorkbenchViewModel
         && ToolRecipeValidator.Validate(CreateDocument()).IsValid;
 
     private bool CanRunTeachingRecipe() =>
-        IsSourceReadyForRecipe
-        && !HasPendingStepParameterChanges
-        && !isFilterPreviewRunning
-        && !isRemoveOutlierPreviewRunning
-        && !isLevelSurfacePreviewRunning
-        && !IsEdgePreviewRunning
-        && (IsSelectedStepRemoveOutlierPixels
-            ? ToolRecipeRemoveOutlierPixelsExecution.CanRunWholeRecipe(
-                CreateDocument(),
-                out _)
-            : IsSelectedStepLevelSurface
-            ? ToolRecipeLevelSurfaceExecution.CanRunWholeRecipe(
-                CreateDocument(),
-                out _)
-            : ToolRecipeFilterExecution.CanRunWholeRecipe(CreateDocument(), out _));
+        TryGetOrderedRunCapability(out _);
+
+    private bool TryGetOrderedRunCapability(out string message) =>
+        TryGetOrderedRunCapability(CreateDocument(), out message);
+
+    private bool TryGetOrderedRunCapability(
+        ToolRecipeDocument document,
+        out string message)
+    {
+        if (isOrderedRunRunning)
+        {
+            message = Localize(
+                "현재 레시피 실행이 끝날 때까지 기다리세요.",
+                "Wait for the current recipe Run to finish.");
+            return false;
+        }
+        if (IsRecipeMutationBlocked)
+        {
+            message = Localize(
+                "진행 중인 미리보기 또는 검증이 끝난 뒤 실행하세요.",
+                "Run after the active Preview or validation finishes.");
+            return false;
+        }
+        if (!IsSourceReadyForRecipe)
+        {
+            message = Localize(
+                $"3D 입력을 먼저 준비하세요. {LocalizedSourceReadinessSummary}",
+                $"Prepare the 3D input first. {LocalizedSourceReadinessSummary}");
+            return false;
+        }
+        if (HasPendingStepParameterChanges)
+        {
+            message = Localize(
+                "파라미터 초안을 적용하거나 취소한 뒤 실행하세요.",
+                "Apply or discard the parameter draft before Run.");
+            return false;
+        }
+        if (IsDirty)
+        {
+            message = Localize(
+                "현재 레시피 변경 사항을 저장한 뒤 실행하세요.",
+                "Save the current recipe changes before Run.");
+            return false;
+        }
+        if (RecipePath is null || !File.Exists(RecipePath))
+        {
+            message = Localize(
+                "Run Record의 레시피 신원을 보존하려면 레시피를 먼저 저장하세요.",
+                "Save the recipe first so the Run Record can preserve its identity.");
+            return false;
+        }
+        if (!ToolRecipeOrderedGraphExecution.CanExecute(document, out message))
+        {
+            return false;
+        }
+
+        message = Localize(
+            $"준비 완료 · 저장된 현재 레시피의 {document.Steps.Count}개 단계를 명시적으로 실행합니다.",
+            $"Ready · explicitly run {document.Steps.Count} saved current-recipe step(s) in order.");
+        return true;
+    }
+
+    private string CreateOrderedRunSummary(
+        ToolRecipeOrderedGraphExecutionResult execution)
+    {
+        var finalStep = execution.Steps.LastOrDefault();
+        var metric = finalStep?.Result.Metrics.FirstOrDefault(candidate =>
+            double.IsFinite(candidate.Value));
+        var metricSummary = metric is null
+            ? Localize("측정값 없음", "no finite metric")
+            : $"{metric.Name} {metric.Value:G6} {metric.Unit}".TrimEnd();
+        var outputHash = string.IsNullOrWhiteSpace(finalStep?.OutputContentSha256)
+            ? "(none)"
+            : finalStep.OutputContentSha256[..Math.Min(
+                12,
+                finalStep.OutputContentSha256.Length)];
+        var output = finalStep is null
+            ? Localize("출력 없음", "no output")
+            : $"{finalStep.OutputEntityId} · SHA-256 {outputHash}";
+        return Localize(
+            $"{LocalizeStatus(execution.Status)} · {execution.Steps.Count}개 단계 · {metricSummary} · {output}",
+            $"{LocalizeStatus(execution.Status)} · {execution.Steps.Count} step(s) · {metricSummary} · {output}");
+    }
+
+    internal void AttachOrderedRunRecord(string path)
+    {
+        orderedRunRecordPath = Path.GetFullPath(path);
+        NotifyOrderedRunState();
+    }
+
+    internal void ReportOrderedRunRecordFailure(string message)
+    {
+        orderedRunSummary = Localize(
+            $"실행은 완료되었지만 Run Record 저장에 실패했습니다: {message}",
+            $"Run completed, but its Run Record could not be saved: {message}");
+        AppendLog("Error", orderedRunSummary);
+        NotifyOrderedRunState();
+    }
+
+    private void InvalidateOrderedRun(string summary)
+    {
+        if (orderedRunResult is null && orderedRunRecordPath is null)
+        {
+            return;
+        }
+
+        orderedRunResult = null;
+        orderedRunRecordPath = null;
+        orderedRunSummary = summary;
+        NotifyOrderedRunState();
+        OrderedRunInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NotifyOrderedRunState()
+    {
+        OnPropertyChanged(nameof(IsOrderedRunRunning));
+        OnPropertyChanged(nameof(HasOrderedRunResult));
+        OnPropertyChanged(nameof(CurrentOrderedRunResult));
+        OnPropertyChanged(nameof(CurrentOrderedRunRecordPath));
+        OnPropertyChanged(nameof(OrderedRunStatus));
+        OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
+        OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
+        runTeachingRecipeCommand?.RaiseCanExecuteChanged();
+    }
 
     private void SetFilterKernel(int kernelSize)
     {
@@ -608,4 +776,24 @@ public sealed class ToolWorkbenchFilterDisplayRequestEventArgs : EventArgs
     public string ContentSha256 { get; }
     public bool IsSource { get; }
     public string DisplayLabel { get; }
+}
+
+public sealed class ToolWorkbenchOrderedRunCompletedEventArgs : EventArgs
+{
+    public ToolWorkbenchOrderedRunCompletedEventArgs(
+        string recipePath,
+        ToolRecipeDocument document,
+        string sourcePath,
+        ToolRecipeOrderedGraphExecutionResult execution)
+    {
+        RecipePath = recipePath;
+        Document = document;
+        SourcePath = sourcePath;
+        Execution = execution;
+    }
+
+    public string RecipePath { get; }
+    public ToolRecipeDocument Document { get; }
+    public string SourcePath { get; }
+    public ToolRecipeOrderedGraphExecutionResult Execution { get; }
 }

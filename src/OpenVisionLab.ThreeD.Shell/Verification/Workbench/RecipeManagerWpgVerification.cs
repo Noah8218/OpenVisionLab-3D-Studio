@@ -144,6 +144,130 @@ internal static class RecipeManagerWpgVerification
                 && !reopenedRecipe.IsDirty,
                 reopenMessage);
 
+            var variantSourcePath = Path.Combine(firstUseRoot, "variant-source.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.recipe-manager.variant",
+                3,
+                3,
+                [2, 3, 5, 3, 5, 9, 4, 7, 13]).SaveC3D(variantSourcePath);
+            var incompatibleSourcePath = Path.Combine(firstUseRoot, "variant-incompatible.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.recipe-manager.variant-incompatible",
+                4,
+                4,
+                Enumerable.Range(1, 16).Select(value => (double)value).ToArray()).SaveC3D(incompatibleSourcePath);
+            var variantBasePath = Path.Combine(firstUseRoot, "variant-base.ov3d-recipe.json");
+            var variantPath = Path.Combine(firstUseRoot, "variant-copy.ov3d-recipe.json");
+            var variantBinding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
+            var variantReference = new ToolRecipeSelection(
+                "selection.variant.reference",
+                "Variant reference ROI",
+                ToolRecipeSelectionKinds.GridRectangle,
+                reopenedRecipe.Source.Id,
+                reopenedRecipe.Source.FrameId,
+                variantBinding,
+                new ToolRecipeGridRectangle(0, 0, 2, 1),
+                null,
+                null);
+            var variantMeasurement = new ToolRecipeSelection(
+                "selection.variant.measurement",
+                "Variant measurement ROI",
+                ToolRecipeSelectionKinds.GridRectangle,
+                reopenedRecipe.Source.Id,
+                reopenedRecipe.Source.FrameId,
+                variantBinding,
+                new ToolRecipeGridRectangle(0, 1, 2, 1),
+                null,
+                null);
+            reopenedRecipe.Selections.Add(variantReference);
+            reopenedRecipe.Selections.Add(variantMeasurement);
+            var variantStep = reopenedRecipe.PipelineSteps.Single();
+            variantStep.InputEntityIdsText = string.Join(
+                "; ",
+                reopenedRecipe.Source.Id,
+                variantReference.Id,
+                variantMeasurement.Id);
+            variantStep.DualRoiRouting = new ToolRecipeDualRoiRouting(
+                variantReference.Id,
+                variantMeasurement.Id);
+            var variantBaseSaved = reopenedRecipe.TrySaveTeachingRecipe(
+                variantBasePath,
+                out var variantBaseSaveMessage);
+            var variantLogCount = reopenedRecipe.RunLog.Count;
+            reopenedRecipe.BeginCompatibleSourceVariantSetup();
+            Check(
+                "compatible variant setup pre-fills a separate draft without mutating or executing the current recipe",
+                variantBaseSaved
+                && reopenedRecipe.IsFirstRecipeSetupVisible
+                && reopenedRecipe.IsCompatibleVariantSetup
+                && reopenedRecipe.FirstRecipeName == "First Recipe Fixture-variant"
+                && string.Equals(reopenedRecipe.FirstRecipeFolderPath, firstUseRoot, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(reopenedRecipe.FirstRecipeSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase)
+                && !reopenedRecipe.IsFirstRecipeSetupValid
+                && reopenedRecipe.FirstRecipeSetupStatus == reopenedRecipe.Localization.CompatibleVariantSourceMustDiffer
+                && reopenedRecipe.RecipePath == variantBasePath
+                && !reopenedRecipe.HasCurrentMeasurementPreview
+                && reopenedRecipe.RunLog.Count == variantLogCount,
+                $"base={variantBaseSaveMessage}; status={reopenedRecipe.FirstRecipeSetupStatus}; logs={variantLogCount}->{reopenedRecipe.RunLog.Count}");
+
+            reopenedRecipe.FirstRecipeName = "variant-copy";
+            reopenedRecipe.FirstRecipeSourcePath = incompatibleSourcePath;
+            Check(
+                "compatible variant setup rejects a different C3D grid before Create",
+                !reopenedRecipe.IsFirstRecipeSetupValid
+                && reopenedRecipe.FirstRecipeSetupStatus.Contains("3 x 3", StringComparison.Ordinal)
+                && reopenedRecipe.FirstRecipeSetupStatus.Contains("4 x 4", StringComparison.Ordinal),
+                reopenedRecipe.FirstRecipeSetupStatus);
+
+            reopenedRecipe.FirstRecipeSourcePath = variantSourcePath;
+            var variantDraftReady = reopenedRecipe.TryGetFirstRecipeSetup(
+                out var variantSetup,
+                out var variantDraftMessage);
+            var variantCreateMessage = string.Empty;
+            var variantCreated = variantDraftReady
+                && reopenedRecipe.TryCreateCompatibleSourceVariant(
+                    variantSetup,
+                    ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(variantSourcePath),
+                    out variantCreateMessage);
+            var variantCompleted = variantCreated
+                && reopenedRecipe.CompleteFirstRecipeSetup(out _);
+            var variantDocument = variantCreated ? ToolRecipeDocumentStore.Load(variantPath) : null;
+            var originalVariantDocument = variantBaseSaved
+                ? ToolRecipeDocumentStore.Load(variantBasePath)
+                : null;
+            var variantSelections = variantDocument?.Selections ?? Array.Empty<ToolRecipeSelection>();
+            var originalVariantSelections = originalVariantDocument?.Selections ?? Array.Empty<ToolRecipeSelection>();
+            Check(
+                "compatible variant preserves steps, routes, ROI coordinates, and parameters while rebinding source identity",
+                variantCompleted
+                && variantDocument is not null
+                && originalVariantDocument is not null
+                && variantSetup.IsCompatibleSourceVariant
+                && string.Equals(variantSetup.RecipePath, variantPath, StringComparison.OrdinalIgnoreCase)
+                && variantDocument.Name == "variant-copy"
+                && string.Equals(variantDocument.Source.Path, variantSourcePath, StringComparison.OrdinalIgnoreCase)
+                && variantDocument.Steps.Count == originalVariantDocument.Steps.Count
+                && variantDocument.Steps[0].Id == originalVariantDocument.Steps[0].Id
+                && variantDocument.Steps[0].ToolId == originalVariantDocument.Steps[0].ToolId
+                && variantDocument.Steps[0].InputEntityIds.SequenceEqual(originalVariantDocument.Steps[0].InputEntityIds)
+                && variantDocument.Steps[0].DualRoiRouting == originalVariantDocument.Steps[0].DualRoiRouting
+                && variantDocument.Steps[0].Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}")
+                    .SequenceEqual(originalVariantDocument.Steps[0].Parameters.Select(parameter => $"{parameter.Name}={parameter.Value}"))
+                && variantSelections.Select(selection => selection.Id)
+                    .SequenceEqual(originalVariantSelections.Select(selection => selection.Id))
+                && variantSelections.Select(selection => selection.GridRectangle)
+                    .SequenceEqual(originalVariantSelections.Select(selection => selection.GridRectangle))
+                && variantSelections.All(selection =>
+                    selection.SourceBinding.ContentSha256
+                    == ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(variantSourcePath).ContentSha256)
+                && originalVariantSelections.All(selection =>
+                    selection.SourceBinding.ContentSha256 == variantBinding.ContentSha256)
+                && reopenedRecipe.BeginCompatibleSourceVariantCommand.CanExecute(null)
+                && !reopenedRecipe.HasCurrentMeasurementPreview
+                && !reopenedRecipe.IsMeasurementPreviewPublished
+                && !reopenedRecipe.IsFirstRecipeSetupVisible,
+                $"draft={variantDraftMessage}; create={variantCreateMessage}; variant={variantDocument?.Source.Path}");
+
             var restoredSetup = new ToolWorkbenchViewModel(firstUseRecentPath);
             var restoredLogCount = restoredSetup.RunLog.Count;
             restoredSetup.BeginFirstRecipeSetup();

@@ -1,0 +1,84 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0017",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Make perspective grid ROI teaching coordinate-confident",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "2026-08-17 actual Release EXE ten-recipe UX study",
+    "summary": "Teaching the first Thickness recipe in the perspective Viewer made the screen-to-grid row and column mapping hard to predict and caused one wrong-region attempt.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md"
+    ]
+  },
+  "state": {
+    "status": "open",
+    "current_summary": "GridRectangle teaching is functional and recoverable, but the perspective Viewer does not give enough exact row/column confidence before Apply for a novice operator.",
+    "next_action": "Prototype the smallest live grid locator or orthographic teaching aid in the existing selection-review owner, then verify exact selection, normal Viewer navigation, and no-action boundaries in Wide and Compact."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "A novice operator cannot reliably predict the exact grid row and column selected from the perspective Viewer before applying a GridRectangle ROI.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "An ROI can be applied to the wrong surface region, forcing rework and potentially producing a plausible but unintended measurement if the operator does not notice the mismatch."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Before Apply, the operator can see the exact candidate row, column, row count, and column count in the current teaching context.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "The aid remains readable and bounded in Wide and Compact and does not obscure the taught surfaces or required actions.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "Orbit, pan, zoom, picking, ROI adjustment, Enter Apply, Esc Cancel, and the explicit no-execution teaching contract remain intact.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "A focused actual-EXE workflow proves correct reference and measurement region selection from an initially non-orthographic camera without corrective redraw.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0015"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current behavior contract",
+      "location": "docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md",
+      "summary": "The study records the perspective screen-to-grid ambiguity and preserves the existing explicit Apply boundary."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "actual Release EXE operator observation",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-thickness-10-recipe-ux-performance/before/wide-initial.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-thickness-10-recipe-ux-performance/recipes/01-nominal.ov3d-recipe.json",
+      "observation": "While teaching the first dual-surface Thickness recipe in the perspective Viewer, the initial screen-space ROI mapped to the wrong grid region and required correction. Once exact GridRectangle coordinates were known, the same coordinates replayed deterministically across all ten same-size inputs.",
+      "observed_at": "2026-08-17T19:10:00+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-17T21:36:14.4764462+09:00",
+  "updated_at": "2026-08-17T21:36:14.4764462+09:00"
+}

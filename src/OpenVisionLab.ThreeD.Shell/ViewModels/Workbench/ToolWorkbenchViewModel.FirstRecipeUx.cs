@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Input;
 using OpenVisionLab;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell;
 using OpenVisionLab.ThreeD.Viewer;
 
@@ -13,8 +14,10 @@ public sealed partial class ToolWorkbenchViewModel
 {
     internal const string EmptyFirstRecipeStarterId = "none";
     internal const string ThicknessFirstRecipeStarterId = "thickness";
+    internal const string CompatibleVariantStarterId = "compatible-grid-variant";
 
     private bool isFirstRecipeSetupVisible;
+    private bool isCompatibleVariantSetup;
     private string firstRecipeName = "new-inspection";
     private string firstRecipeFolderPath = string.Empty;
     private string firstRecipeSourcePath = string.Empty;
@@ -23,6 +26,7 @@ public sealed partial class ToolWorkbenchViewModel
     private FirstRecipeSetupPreference? rememberedFirstRecipeSetup;
     private string firstRecipeSetupPath = string.Empty;
     private RelayCommand createFirstRecipeCommand = null!;
+    private RelayCommand beginCompatibleSourceVariantCommand = null!;
 
     public event EventHandler? BrowseFirstRecipeFolderRequested;
     public event EventHandler? BrowseFirstRecipeSourceRequested;
@@ -30,6 +34,7 @@ public sealed partial class ToolWorkbenchViewModel
     public ObservableCollection<ToolWorkbenchFirstRecipeStarterOption> FirstRecipeStarterOptions { get; } = [];
 
     public ICommand CreateFirstRecipeCommand => createFirstRecipeCommand;
+    public ICommand BeginCompatibleSourceVariantCommand => beginCompatibleSourceVariantCommand;
     public ICommand BrowseFirstRecipeFolderCommand { get; private set; } = null!;
     public ICommand BrowseFirstRecipeSourceCommand { get; private set; } = null!;
     public ICommand ResetFirstRecipeSetupCommand { get; private set; } = null!;
@@ -39,6 +44,22 @@ public sealed partial class ToolWorkbenchViewModel
     {
         get => isFirstRecipeSetupVisible;
         private set => SetField(ref isFirstRecipeSetupVisible, value);
+    }
+
+    public bool IsCompatibleVariantSetup
+    {
+        get => isCompatibleVariantSetup;
+        private set
+        {
+            if (SetField(ref isCompatibleVariantSetup, value))
+            {
+                OnPropertyChanged(nameof(FirstRecipeSetupTitle));
+                OnPropertyChanged(nameof(FirstRecipeSetupDetailText));
+                OnPropertyChanged(nameof(FirstRecipeCreateLabel));
+                OnPropertyChanged(nameof(IsFirstRecipeStarterEditable));
+                OnPropertyChanged(nameof(IsFirstRecipeSetupMemoryAvailable));
+            }
+        }
     }
 
     public string FirstRecipeName
@@ -99,6 +120,22 @@ public sealed partial class ToolWorkbenchViewModel
     public string FirstRecipeStarterDetail =>
         SelectedFirstRecipeStarter?.Detail ?? Localization.FirstRecipeNoStarterDetail;
 
+    public string FirstRecipeSetupTitle => IsCompatibleVariantSetup
+        ? Localization.CompatibleVariantSetup
+        : Localization.FirstRecipeSetup;
+
+    public string FirstRecipeSetupDetailText => IsCompatibleVariantSetup
+        ? Localization.CompatibleVariantSetupDetail
+        : Localization.FirstRecipeSetupDetail;
+
+    public string FirstRecipeCreateLabel => IsCompatibleVariantSetup
+        ? Localization.CompatibleVariantCreate
+        : Localization.FirstRecipeCreate;
+
+    public bool IsFirstRecipeStarterEditable => !IsCompatibleVariantSetup;
+
+    public bool IsFirstRecipeSetupMemoryAvailable => !IsCompatibleVariantSetup;
+
     public string FirstRecipeTargetPath => TryBuildFirstRecipeTargetPath(out var path)
         ? path
         : Localization.FirstRecipeTargetUnavailable;
@@ -106,7 +143,10 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsFirstRecipeSetupValid => GetFirstRecipeSetupValidationError() is null;
 
     public string FirstRecipeSetupStatus =>
-        GetFirstRecipeSetupValidationError() ?? Localization.FirstRecipeReadyToCreate;
+        GetFirstRecipeSetupValidationError()
+        ?? (IsCompatibleVariantSetup
+            ? Localization.CompatibleVariantReady
+            : Localization.FirstRecipeReadyToCreate);
 
     public bool HasRecipeIdentity => !string.IsNullOrWhiteSpace(RecipePath);
 
@@ -165,6 +205,9 @@ public sealed partial class ToolWorkbenchViewModel
         createFirstRecipeCommand = new RelayCommand(
             _ => NewTeachingRecipeRequested?.Invoke(this, EventArgs.Empty),
             _ => IsFirstRecipeSetupValid);
+        beginCompatibleSourceVariantCommand = new RelayCommand(
+            _ => BeginCompatibleSourceVariantSetup(),
+            _ => CanBeginCompatibleSourceVariant());
         BrowseFirstRecipeFolderCommand = new RelayCommand(
             _ => BrowseFirstRecipeFolderRequested?.Invoke(this, EventArgs.Empty));
         BrowseFirstRecipeSourceCommand = new RelayCommand(
@@ -176,12 +219,30 @@ public sealed partial class ToolWorkbenchViewModel
 
     public void BeginFirstRecipeSetup()
     {
+        IsCompatibleVariantSetup = false;
         var setup = rememberedFirstRecipeSetup;
         FirstRecipeName = setup?.RecipeName ?? "new-inspection";
         FirstRecipeFolderPath = setup?.FolderPath ?? string.Empty;
         FirstRecipeSourcePath = setup?.SourcePath ?? string.Empty;
         RememberFirstRecipeSetup = setup is not null;
         RefreshFirstRecipeStarterOptions(setup?.StarterId ?? EmptyFirstRecipeStarterId);
+        IsFirstRecipeSetupVisible = true;
+        NotifyFirstRecipeSetupDraftChanged();
+    }
+
+    public void BeginCompatibleSourceVariantSetup()
+    {
+        if (!CanBeginCompatibleSourceVariant())
+        {
+            return;
+        }
+
+        IsCompatibleVariantSetup = true;
+        FirstRecipeName = $"{RecipeName.Trim()}-variant";
+        FirstRecipeFolderPath = Path.GetDirectoryName(Path.GetFullPath(RecipePath!))!;
+        FirstRecipeSourcePath = Source.Path;
+        RememberFirstRecipeSetup = false;
+        RefreshFirstRecipeStarterOptions(CompatibleVariantStarterId);
         IsFirstRecipeSetupVisible = true;
         NotifyFirstRecipeSetupDraftChanged();
     }
@@ -202,8 +263,11 @@ public sealed partial class ToolWorkbenchViewModel
             FirstRecipeName.Trim(),
             Path.GetFullPath(FirstRecipeFolderPath.Trim()),
             Path.GetFullPath(FirstRecipeSourcePath.Trim()),
-            SelectedFirstRecipeStarter?.Id ?? EmptyFirstRecipeStarterId,
-            targetPath);
+            IsCompatibleVariantSetup
+                ? CompatibleVariantStarterId
+                : SelectedFirstRecipeStarter?.Id ?? EmptyFirstRecipeStarterId,
+            targetPath,
+            IsCompatibleVariantSetup);
         message = Localization.FirstRecipeReadyToCreate;
         return true;
     }
@@ -241,6 +305,14 @@ public sealed partial class ToolWorkbenchViewModel
 
     public bool CompleteFirstRecipeSetup(out string message)
     {
+        if (IsCompatibleVariantSetup)
+        {
+            IsFirstRecipeSetupVisible = false;
+            IsCompatibleVariantSetup = false;
+            message = Localization.FirstRecipeSetupNotRemembered;
+            return true;
+        }
+
         var setup = new FirstRecipeSetupPreference(
             1,
             FirstRecipeName.Trim(),
@@ -255,8 +327,42 @@ public sealed partial class ToolWorkbenchViewModel
         return persisted;
     }
 
+    public bool TryCreateCompatibleSourceVariant(
+        ToolWorkbenchFirstRecipeSetup setup,
+        ToolRecipeSelectionSourceBinding newBinding,
+        out string message)
+    {
+        ArgumentNullException.ThrowIfNull(setup);
+        ArgumentNullException.ThrowIfNull(newBinding);
+
+        var error = GetCompatibleVariantValidationError(setup.SourcePath, newBinding);
+        if (error is not null)
+        {
+            message = error;
+            return false;
+        }
+
+        SetC3DSourceFromLoadedViewer(setup.SourcePath, newBinding);
+        MutateRecipe(() =>
+        {
+            RecipeName = setup.RecipeName;
+            for (var index = 0; index < Selections.Count; index++)
+            {
+                Selections[index] = Selections[index] with { SourceBinding = newBinding };
+            }
+            RecipePath = null;
+        });
+        ClearValidationSet();
+        SetValidationSetDefinitionDirty(false);
+        AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
+        var saved = TrySaveTeachingRecipe(setup.RecipePath, out message);
+        NotifyFirstRecipeUx();
+        return saved;
+    }
+
     private void ResetFirstRecipeSetup()
     {
+        IsCompatibleVariantSetup = false;
         _ = TryDeleteFirstRecipeSetupPreference(out _);
         rememberedFirstRecipeSetup = null;
         FirstRecipeName = "new-inspection";
@@ -279,6 +385,15 @@ public sealed partial class ToolWorkbenchViewModel
     private void RefreshFirstRecipeStarterOptions(string selectedId)
     {
         FirstRecipeStarterOptions.Clear();
+        if (string.Equals(selectedId, CompatibleVariantStarterId, StringComparison.Ordinal))
+        {
+            FirstRecipeStarterOptions.Add(new ToolWorkbenchFirstRecipeStarterOption(
+                CompatibleVariantStarterId,
+                Localization.CompatibleVariantStarter,
+                Localization.CompatibleVariantStarterDetail));
+            SelectedFirstRecipeStarter = FirstRecipeStarterOptions[0];
+            return;
+        }
         FirstRecipeStarterOptions.Add(new ToolWorkbenchFirstRecipeStarterOption(
             EmptyFirstRecipeStarterId,
             Localization.FirstRecipeNoStarter,
@@ -324,6 +439,17 @@ public sealed partial class ToolWorkbenchViewModel
         if (!string.Equals(Path.GetExtension(FirstRecipeSourcePath.Trim()), ".C3D", StringComparison.OrdinalIgnoreCase))
         {
             return Localization.FirstRecipeSourceMustBeC3D;
+        }
+        if (IsCompatibleVariantSetup)
+        {
+            var binding = TryReadSourceBinding(FirstRecipeSourcePath.Trim());
+            var variantError = binding is null
+                ? Localization.SourceUnreadable
+                : GetCompatibleVariantValidationError(FirstRecipeSourcePath.Trim(), binding);
+            if (variantError is not null)
+            {
+                return variantError;
+            }
         }
         if (SelectedFirstRecipeStarter is null)
         {
@@ -442,6 +568,51 @@ public sealed partial class ToolWorkbenchViewModel
         createFirstRecipeCommand?.RaiseCanExecuteChanged();
     }
 
+    private bool CanBeginCompatibleSourceVariant() =>
+        !string.IsNullOrWhiteSpace(RecipePath)
+        && loadedSourceBinding is not null
+        && AreSelectionsCompatibleWithSourceVariant();
+
+    private string? GetCompatibleVariantValidationError(
+        string sourcePath,
+        ToolRecipeSelectionSourceBinding newBinding)
+    {
+        if (!CanBeginCompatibleSourceVariant())
+        {
+            return loadedSourceBinding is null || string.IsNullOrWhiteSpace(RecipePath)
+                ? Localization.CompatibleVariantCurrentRecipeRequired
+                : Localization.CompatibleVariantSelectionUnsupported;
+        }
+        if (string.Equals(
+                Path.GetFullPath(sourcePath),
+                Path.GetFullPath(Source.Path),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return Localization.CompatibleVariantSourceMustDiffer;
+        }
+        if (newBinding.GridWidth != loadedSourceBinding!.GridWidth
+            || newBinding.GridHeight != loadedSourceBinding.GridHeight)
+        {
+            return string.Format(
+                Localization.CompatibleVariantGridMismatchFormat,
+                loadedSourceBinding.GridWidth,
+                loadedSourceBinding.GridHeight,
+                newBinding.GridWidth,
+                newBinding.GridHeight);
+        }
+        return null;
+    }
+
+    private bool AreSelectionsCompatibleWithSourceVariant() => Selections.All(selection =>
+        string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridRectangle, StringComparison.Ordinal)
+        && selection.GridRectangle is not null
+        && string.Equals(selection.RootSourceId, Source.Id, StringComparison.Ordinal)
+        && string.Equals(selection.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+        && string.IsNullOrWhiteSpace(selection.SourceBinding.OwnerEntityId)
+        && selection.Points is null
+        && selection.Rows is null
+        && selection.OrientedBox3D is null);
+
     private void NotifyFirstRecipeUx()
     {
         OnPropertyChanged(nameof(LocalizedSourceReadinessSummary));
@@ -450,6 +621,12 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(LocalizedRecipeSaveBlocker));
         OnPropertyChanged(nameof(LocalizedRecipeStateSummary));
         OnPropertyChanged(nameof(FirstRecipeStarterDetail));
+        OnPropertyChanged(nameof(FirstRecipeSetupTitle));
+        OnPropertyChanged(nameof(FirstRecipeSetupDetailText));
+        OnPropertyChanged(nameof(FirstRecipeCreateLabel));
+        OnPropertyChanged(nameof(IsFirstRecipeStarterEditable));
+        OnPropertyChanged(nameof(IsFirstRecipeSetupMemoryAvailable));
+        beginCompatibleSourceVariantCommand?.RaiseCanExecuteChanged();
     }
 
     private sealed record FirstRecipeSetupPreference(
@@ -465,7 +642,8 @@ public sealed record ToolWorkbenchFirstRecipeSetup(
     string FolderPath,
     string SourcePath,
     string StarterId,
-    string RecipePath);
+    string RecipePath,
+    bool IsCompatibleSourceVariant = false);
 
 public sealed record ToolWorkbenchFirstRecipeStarterOption(
     string Id,

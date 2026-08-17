@@ -56,7 +56,7 @@ internal static class RunRecordWriter
             result.Status,
             result.Message,
             result.Elapsed.TotalMilliseconds,
-            result.Metrics.Select(metric => new InspectionRunMetric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status)).ToArray(),
+            ToMetrics(result.Metrics),
             result.Overlays.Select(overlay => new InspectionRunOverlay(overlay.Id, overlay.Kind, overlay.Label, overlay.Status, overlay.SourceEntityId)).ToArray(),
             viewerContractPath is null ? "NotCompared" : "Matched",
             new InspectionRunArtifacts(
@@ -147,12 +147,9 @@ internal static class RunRecordWriter
         var recordedAt = DateTimeOffset.UtcNow;
         var recipeHash = HashFile(recipePath);
         var sourceHash = HashFile(sourcePath);
-        var steps = execution.Steps.Select(step =>
-            ToStepResult(
-                step.Order - 1,
-                document.Steps[step.Order - 1],
-                step.Result,
-                step.OutputContentSha256)).ToArray();
+        var steps = ToolRecipeOrderedGraphRunRecordProjection.Create(
+            document,
+            execution);
         var metrics = steps.SelectMany(step => step.Metrics).ToArray();
         var overlays = steps.SelectMany(step => step.Overlays).ToArray();
         var thresholdCorrectionEvidence =
@@ -277,7 +274,10 @@ internal static class RunRecordWriter
         };
 
     private static InspectionRunMetric[] ToMetrics(IEnumerable<Metric> metrics) =>
-        metrics.Select(metric => new InspectionRunMetric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status)).ToArray();
+        metrics
+            .Where(metric => double.IsFinite(metric.Value))
+            .Select(metric => new InspectionRunMetric(metric.Name, metric.Kind, metric.Value, metric.Unit, metric.Status))
+            .ToArray();
 
     private static InspectionRunOverlay[] ToOverlays(IEnumerable<Overlay> overlays) =>
         overlays.Select(overlay => new InspectionRunOverlay(overlay.Id, overlay.Kind, overlay.Label, overlay.Status, overlay.SourceEntityId)).ToArray();

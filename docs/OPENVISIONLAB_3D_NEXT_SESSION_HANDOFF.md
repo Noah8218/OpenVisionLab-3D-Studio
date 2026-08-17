@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-16
+Date: 2026-08-17
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -113,6 +113,30 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   remains unchanged, and both fixed `-ValidateOnly` modes pass. Preserve
   `OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md` and the
   `20260816-pl0014-language-popup` D-backed evidence root.
+- `PL-0015` is complete: ten varied synthetic C3D Thickness recipes created
+  through the actual Release Shell match `Pass 4 / Fail 5 / Error 1` under
+  ordered Runner replay. Recipe Center's grid-compatible variant preserves
+  direct-grid ROI identities and coordinates, steps, routes, and parameters,
+  safely rebinds the new same-size C3D identity, saves a separate recipe, and
+  invokes no Preview, Publish, Run, or Validation. Repeated authoring fell
+  from 33 to 11 actions. The fixture targets pass at variant ready no later
+  than `1.916 s`, replay at or below `244.75 ms`, and Thickness step at or
+  below `15.02 ms`. Controlled Error Run Records now omit non-finite metrics.
+  Preserve
+  `OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md`,
+  `.proofline/issues/PL-0015.json` through `PL-0017.json`, and the
+  `20260817-thickness-10-recipe-ux-performance` D-backed evidence root.
+- `PL-0016` is complete: Validate runs a saved supported current recipe through
+  the same ordered graph engine as Runner, writes schema `1.5` evidence, and
+  immediately feeds Results. Editing invalidates evidence and requires save;
+  open, Preview, Publish, compatible variant, save, and reopen do not auto-run.
+  Ten actual Release EXE runs match `Pass 4 / Fail 5 / Error 1`, expected state
+  `10/10`, and Runner status/metrics/step/output/hash parity `10/10`. Ordered
+  duration is p50 `468.425 ms`, p95 `533.351 ms`, and max `533.351 ms`, within
+  the current sample-class p95 `600 ms` and max `750 ms` regression guards.
+  Preserve `OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md`,
+  `.proofline/issues/PL-0016.json`, and the
+  `20260817-pl0016-shell-ordered-thickness-run` D-backed evidence root.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -143,8 +167,11 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0014` Studio language-popup theme and bounds is complete. No
-dependency-ready software slice is currently selected.
+`PL-0015` and `PL-0016` are complete.
+
+1. `PL-0017 coordinate-confident grid ROI teaching` is the selected software
+   slice. Recommended
+   model: `gpt-5.6-sol`; reasoning effort: `medium`.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits
@@ -252,5 +279,23 @@ Scope: Complete PL-0014 shared semantic language-selector popup, bounded Wide/Co
 Acceptance criteria: Korean/English normal, open, selected, keyboard-focus, pointer-hover, click/open, and disabled semantics remain dark and legible -> pass; Wide/Compact controls and popups stay bounded -> pass; language updates and survives normal restart without recipe/source/ROI/result/Preview/Publish/Run mutation -> pass
 Verification: Debug and Release 0/0; Workbench docking 87/87; actual current Release EXE Wide 1920x1040 and Compact 1280x760 on DISPLAY2 with Korean/English popup, focus, selection, and hover evidence; refreshed fixed Wide/Compact -ValidateOnly pass; git diff --check pass
 Evidence: docs/OPENVISIONLAB_3D_LANGUAGE_SELECTOR_POPUP_20260816.md, .proofline/issues/PL-0014.json, D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0014-language-popup/, this file
-Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work still requires representative input and accepted budgets
+Boundary / next dependency: at PL-0014 closure no dependency-ready software slice was selected; the PL-0015 record below supersedes that priority state; product-owner unaided Wide/Compact R0 remains external; large-C3D work still requires representative input and accepted budgets
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0015 ten-sample synthetic Thickness EXE study, safe same-grid recipe variants, measured workflow/replay targets, and controlled-Error Run Record serialization
+Acceptance criteria: ten inputs/previews/recipes -> pass; expected Pass 4 / Fail 5 / Error 1 -> pass; repeated workflow <=12 actions -> pass at 11; variant ready <=2.5 s -> pass at <=1.916 s observed; replay <=250 ms -> pass at <=244.75 ms; step <=20 ms -> pass at <=15.02 ms; current Wide/Compact review -> pass within documented capture limits
+Verification: Release 0/0; Recipe Manager/WPG 52/52; height measurement 56/56; artifact-owned Runner 19/19; ten ordered replays matched; sample 9 controlled Error record serialized; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md; .proofline/issues/PL-0015.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-thickness-10-recipe-ux-performance/
+Boundary / next dependency: synthetic raw-height is not physical metrology; owner R0 remains external; PL-0016 owns Shell full-Run parity and PL-0017 owns coordinate-confident grid ROI teaching
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0016 Shell explicit ordered Run for saved supported Thickness recipes, shared Runner projection, Run Record/Results routing, no-auto-run invalidation, current UI states, and ten-sample interaction budget
+Acceptance criteria: valid saved Thickness enables Run and exact invalid/unsupported reasons disable it -> pass; Pass/Fail/Error status, metrics, step/output/content identities and Run Record match Runner -> pass 10/10; edits/Preview/Publish/save/reopen do not auto-run -> pass; Wide/Compact current-build ready/pressed/result states are themed, readable, bounded, and keyboard reachable -> pass
+Verification: Release 0/0; ordered Run 13/13; Tool Recipe teaching 50/50; Run Record history 12/12; Recipe Manager/WPG 52/52; Shell options 40/40; ten actual EXE Runs and expected states 10/10; Runner parity 10/10; p95 533.351 ms <= 600 ms and max 533.351 ms <= 750 ms; Wide/Compact monitor intersection and current direct-click review pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md; .proofline/issues/PL-0016.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/
+Boundary / next dependency: synthetic raw-height is not physical metrology; product-owner unaided R0 remains external; PL-0017 owns coordinate-confident grid ROI teaching; large-C3D claims require a representative maximum input and accepted budgets
 ```

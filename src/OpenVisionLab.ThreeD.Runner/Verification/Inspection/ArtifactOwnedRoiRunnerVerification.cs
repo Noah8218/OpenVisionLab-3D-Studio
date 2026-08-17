@@ -150,6 +150,45 @@ internal static class ArtifactOwnedRoiRunnerVerification
                 && reopened.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion,
                 $"schema={reopened.SchemaVersion};selections={reopenedBindings.Length};owner={reopenedBindings[0].OwnerEntityId};hash={reopenedBindings[0].ContentSha256}"));
 
+            var nonFiniteRecordPath = Path.Combine(root, "non-finite-metric.run-record.json");
+            RunRecordWriter.Write(
+                new RunArtifactOptions(nonFiniteRecordPath, null, null, null),
+                recipePath,
+                "tool-recipe",
+                document.SchemaVersion,
+                sourcePath,
+                document.Source.Id,
+                document.Source.Unit,
+                null,
+                new ToolResult(
+                    "Non-finite metric fixture",
+                    ResultStatus.Error,
+                    "Controlled error result",
+                    TimeSpan.Zero,
+                    [
+                        new Metric("Finite", MetricKind.Deviation, 1d, document.Source.Unit),
+                        new Metric("Positive infinity", MetricKind.Deviation, double.PositiveInfinity, document.Source.Unit),
+                        new Metric("Negative infinity", MetricKind.Deviation, double.NegativeInfinity, document.Source.Unit),
+                        new Metric("Not a number", MetricKind.Deviation, double.NaN, document.Source.Unit)
+                    ],
+                    []),
+                reportPath,
+                null);
+            var nonFiniteRecord = JsonSerializer.Deserialize<InspectionRunRecord>(
+                File.ReadAllText(nonFiniteRecordPath),
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
+                });
+            checks.Add(("Run Record preserves controlled Error while omitting non-finite JSON metrics",
+                nonFiniteRecord is { Status: ResultStatus.Error, Metrics.Count: 1 }
+                && nonFiniteRecord.Metrics[0].Name == "Finite"
+                && nonFiniteRecord.Metrics[0].Value == 1d,
+                nonFiniteRecord is null
+                    ? "record=null"
+                    : $"status={nonFiniteRecord.Status};metrics={string.Join(',', nonFiniteRecord.Metrics.Select(metric => metric.Name))}"));
+
             if (runArtifacts.Requested && orderedAll.Output is not null)
             {
                 RunRecordWriter.WriteOrdered(

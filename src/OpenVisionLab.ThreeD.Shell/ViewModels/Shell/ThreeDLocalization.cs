@@ -174,6 +174,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(FirstRecipeSource), nameof(FirstRecipeStarter), nameof(FirstRecipeNoStarter), nameof(FirstRecipeNoStarterDetail),
         nameof(FirstRecipeThicknessStarter), nameof(FirstRecipeThicknessStarterDetail), nameof(FirstRecipeRememberSetup),
         nameof(FirstRecipeTargetFile), nameof(FirstRecipeReset), nameof(FirstRecipeCreate),
+        nameof(CompatibleVariant), nameof(CompatibleVariantSetup), nameof(CompatibleVariantSetupDetail),
+        nameof(CompatibleVariantStarter), nameof(CompatibleVariantStarterDetail), nameof(CompatibleVariantCreate),
+        nameof(CompatibleVariantReady), nameof(CompatibleVariantCurrentRecipeRequired),
+        nameof(CompatibleVariantSelectionUnsupported), nameof(CompatibleVariantSourceMustDiffer),
+        nameof(CompatibleVariantGridMismatchFormat),
         nameof(FirstRecipeNameRequired), nameof(FirstRecipeNameInvalid), nameof(FirstRecipeFolderRequired),
         nameof(FirstRecipeFolderMissing), nameof(FirstRecipeSourceRequired), nameof(FirstRecipeSourceMissing),
         nameof(FirstRecipeSourceMustBeC3D), nameof(FirstRecipeStarterRequired), nameof(FirstRecipeAlreadyExists),
@@ -833,6 +838,17 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FirstRecipeTargetFile => T("ThreeD.RecipeCenter.FirstTarget", "생성할 파일", "Target file");
     public string FirstRecipeReset => T("ThreeD.RecipeCenter.FirstReset", "기본값으로 재설정", "Reset to defaults");
     public string FirstRecipeCreate => T("ThreeD.RecipeCenter.FirstCreate", "레시피 만들기", "Create recipe");
+    public string CompatibleVariant => T("ThreeD.RecipeCenter.CompatibleVariant", "같은 격자 변형 만들기", "Create grid-compatible variant");
+    public string CompatibleVariantSetup => T("ThreeD.RecipeCenter.CompatibleVariantSetup", "같은 격자 C3D 변형", "Grid-compatible C3D variant");
+    public string CompatibleVariantSetupDetail => T("ThreeD.RecipeCenter.CompatibleVariantSetupDetail", "현재 단계, 직접 C3D 격자 ROI, 파라미터를 유지하고 같은 크기의 다른 C3D 입력으로 복제합니다. Preview, Publish, Run은 실행하지 않습니다.", "Keep the current steps, direct C3D grid ROIs, and parameters while rebinding to another C3D input with the same grid size. Preview, Publish, and Run are not invoked.");
+    public string CompatibleVariantStarter => T("ThreeD.RecipeCenter.CompatibleVariantStarter", "현재 레시피 설정 유지", "Keep current recipe setup");
+    public string CompatibleVariantStarterDetail => T("ThreeD.RecipeCenter.CompatibleVariantStarterDetail", "단계, 직접 C3D 격자 ROI, 파라미터와 입력 경로를 유지합니다. 새 C3D의 격자 크기가 같을 때만 만들 수 있습니다.", "Keeps steps, direct C3D grid ROIs, parameters, and routes. Creation is allowed only when the new C3D has the same grid size.");
+    public string CompatibleVariantCreate => T("ThreeD.RecipeCenter.CompatibleVariantCreate", "변형 만들기", "Create variant");
+    public string CompatibleVariantReady => T("ThreeD.RecipeCenter.CompatibleVariantReady", "같은 격자 입력이 확인되었습니다. 만들기 전에는 현재 레시피나 검사 결과가 변경되지 않습니다.", "The compatible-grid input is verified. The current recipe and inspection results remain unchanged until Create.");
+    public string CompatibleVariantCurrentRecipeRequired => T("ThreeD.RecipeCenter.CompatibleVariantCurrentRequired", "먼저 저장된 레시피와 읽을 수 있는 C3D 입력을 여세요.", "Open a saved recipe with a readable C3D input first.");
+    public string CompatibleVariantSelectionUnsupported => T("ThreeD.RecipeCenter.CompatibleVariantSelectionUnsupported", "이 레시피에는 재사용할 수 없는 점, 박스, 대응점 또는 파생 높이장 선택이 있습니다. 직접 C3D 격자 ROI 레시피만 변형으로 만들 수 있습니다.", "This recipe contains point, box, correspondence, or derived-height-field selections that cannot be reused safely. Only direct C3D grid-ROI recipes can create this variant.");
+    public string CompatibleVariantSourceMustDiffer => T("ThreeD.RecipeCenter.CompatibleVariantSourceMustDiffer", "현재 레시피와 다른 C3D 입력을 선택하세요.", "Select a C3D input different from the current recipe source.");
+    public string CompatibleVariantGridMismatchFormat => T("ThreeD.RecipeCenter.CompatibleVariantGridMismatch", "C3D 격자 크기가 다릅니다. 현재 {0} x {1}, 선택 {2} x {3}입니다.", "The C3D grid size differs. Current: {0} x {1}; selected: {2} x {3}.");
     public string FirstRecipeNameRequired => T("ThreeD.RecipeCenter.FirstNameRequired", "레시피 이름을 입력하세요.", "Enter a recipe name.");
     public string FirstRecipeNameInvalid => T("ThreeD.RecipeCenter.FirstNameInvalid", "파일 이름에 사용할 수 있는 레시피 이름을 입력하세요.", "Enter a recipe name that is valid as a file name.");
     public string FirstRecipeFolderRequired => T("ThreeD.RecipeCenter.FirstFolderRequired", "레시피 폴더를 선택하세요.", "Select a recipe folder.");

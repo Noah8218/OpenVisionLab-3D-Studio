@@ -42,6 +42,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -101,6 +102,19 @@
                                 Margin="0,6,0,0"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal">
+                        <ui:Button x:Name="RunCurrentRecipeButton"
+                                   Margin="0,0,6,0"
+                                   Padding="10,4"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon PlayCircle24}"
+                                   Command="{Binding RunTeachingRecipeCommand}"
+                                   Content="{shell:ThreeDText Key=ThreeD.Command.RunCurrentRecipe, Korean='현재 레시피 실행', English='Run current recipe'}"
+                                   ToolTip="{Binding OrderedRunCapabilitySummary}"
+                                   IsTabStop="True"
+                                   KeyboardNavigation.TabIndex="9"
+                                   AutomationProperties.AutomationId="RunCurrentRecipeButton"
+                                   AutomationProperties.Name="Run current saved recipe"
+                                   AutomationProperties.HelpText="{Binding OrderedRunCapabilitySummary}" />
                         <Button x:Name="RunValidationSampleSetButton"
                                 Padding="10,4"
                                 Command="{Binding RunValidationSetCommand}"
@@ -123,6 +137,42 @@
                                 AutomationProperties.Name="{Binding Localization.ValidationWorkspaceOpenInTeach}"
                                 AutomationProperties.HelpText="{Binding Localization.ValidationWorkspaceOpenInTeachHint}" />
                     </StackPanel>
+                    <Border Grid.Row="2"
+                            Grid.ColumnSpan="2"
+                            Margin="0,7,0,0"
+                            Padding="8,6"
+                            Background="{DynamicResource ThreeD.PanelBrush}"
+                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            AutomationProperties.AutomationId="CurrentRecipeRunStatus">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Margin="0,0,8,0"
+                                    Padding="7,3"
+                                    VerticalAlignment="Top"
+                                    Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
+                                <TextBlock FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding OrderedRunStatus}" />
+                            </Border>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           FontSize="10"
+                                           Text="{Binding OrderedRunCapabilitySummary}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,2,0,0"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           FontSize="9.5"
+                                           Text="{Binding OrderedRunEvidenceSummary}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding CurrentOrderedRunRecordPath}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
             <TabControl x:Name="ReviewTabs"

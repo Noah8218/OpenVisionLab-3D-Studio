@@ -458,6 +458,8 @@ public partial class MainWindow : Window
             smoke.SurfaceMatchCollectionNavigationFocusHoverSmoke;
         var recipeHealthNavigationPressedSmoke =
             smoke.RecipeHealthNavigationPressedSmoke;
+        var currentRecipeRunReadySmoke = smoke.CurrentRecipeRunReadySmoke;
+        var currentRecipeRunPressedSmoke = smoke.CurrentRecipeRunPressedSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var workbenchRunLogSmoke = smoke.WorkbenchRunLogSmoke;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
@@ -560,6 +562,13 @@ public partial class MainWindow : Window
                 if (workbenchRunLogSmoke)
                 {
                     ToolWorkbench.ActivateSessionLogPane();
+                }
+                if (currentRecipeRunReadySmoke || currentRecipeRunPressedSmoke)
+                {
+                    _viewModel.IsValidateWorkspaceSelected = true;
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
                 }
 
                 if (asyncC3DLoadSmokePath is not null
@@ -1487,6 +1496,13 @@ public partial class MainWindow : Window
                             this,
                             shellScreenshotPath,
                             screenshotQualityReportPath)
+                        : currentRecipeRunPressedSmoke
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "RunCurrentRecipeButton",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "CurrentRecipeRunPressed")
                         : await CaptureWindowWithRetryAsync(
                             this,
                             shellScreenshotPath,
@@ -1496,6 +1512,62 @@ public partial class MainWindow : Window
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
                     return;
+                }
+                if (shellScreenshotPath is not null)
+                {
+                    AppendWindowMonitorEvidence(
+                        this,
+                        screenshotQualityReportPath);
+                }
+                if (currentRecipeRunPressedSmoke)
+                {
+                    if (!_viewModel.Workbench.HasOrderedRunResult
+                        && !_viewModel.Workbench.IsOrderedRunRunning)
+                    {
+                        var runButton = FindVisualDescendants<System.Windows.Controls.Button>(this)
+                            .FirstOrDefault(button =>
+                                System.Windows.Automation.AutomationProperties.GetAutomationId(button)
+                                == "RunCurrentRecipeButton");
+                        if (runButton is not { IsEnabled: true })
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Pressed current-recipe Run could not activate the enabled button after capture.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+
+                        if (runButton.Command?.CanExecute(runButton.CommandParameter) != true)
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Pressed current-recipe Run button command rejected activation after capture.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+
+                        runButton.Command.Execute(runButton.CommandParameter);
+                        if (!string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                        {
+                            File.AppendAllLines(
+                                Path.GetFullPath(screenshotQualityReportPath),
+                            [
+                                "Activation|scope=CurrentRecipeRunPressed|mode=bound-command-after-held-capture"
+                            ]);
+                        }
+                    }
+
+                    var runDeadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(30);
+                    while (!_viewModel.Workbench.HasOrderedRunResult
+                        && DateTimeOffset.UtcNow < runDeadline)
+                    {
+                        await Task.Delay(50);
+                    }
+                    if (!_viewModel.Workbench.HasOrderedRunResult)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Pressed current-recipe Run did not complete an ordered graph execution.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
                 }
 
                 if (viewerPopoutScreenshotPath is not null
@@ -3414,6 +3486,27 @@ public partial class MainWindow : Window
                 bindToWorkbench: false);
         if (!sourceLoaded)
         {
+            return;
+        }
+
+        if (setup.IsCompatibleSourceVariant)
+        {
+            if (!_viewer.TryGetCurrentC3DSourceBinding(setup.SourcePath, out var variantBinding))
+            {
+                ShowFirstRecipeCreateFailure(_viewModel.Workbench.Localization.SourceUnreadable);
+                return;
+            }
+            if (!_viewModel.Workbench.TryCreateCompatibleSourceVariant(
+                    setup,
+                    variantBinding,
+                    out var variantMessage))
+            {
+                ShowFirstRecipeCreateFailure(variantMessage);
+                return;
+            }
+            _viewModel.ClearCurrentRunEvidenceForRecipeContext();
+            _viewModel.Workbench.CompleteFirstRecipeSetup(out _);
+            ActivateWorkbenchAfterRecipeLifecycle();
             return;
         }
 

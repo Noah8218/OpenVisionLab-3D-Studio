@@ -210,6 +210,13 @@
                                        Command="{Binding SaveTeachingRecipeAsCommand}"
                                        ToolTip="Ctrl+Shift+S"
                                        AutomationProperties.Name="{Binding Localization.SaveAs}" />
+                            <ui:Button Margin="6,0,0,0"
+                                       Content="{Binding Localization.CompatibleVariant}"
+                                       Icon="{ui:SymbolIcon SaveCopy24}"
+                                       Command="{Binding BeginCompatibleSourceVariantCommand}"
+                                       ToolTip="{Binding Localization.CompatibleVariantSetupDetail}"
+                                       AutomationProperties.AutomationId="BeginCompatibleSourceVariant"
+                                       AutomationProperties.Name="{Binding Localization.CompatibleVariant}" />
                         </WrapPanel>
                     </Grid>
                 </Border>
@@ -350,13 +357,13 @@
                                        Symbol="DocumentAdd24" />
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   Text="{Binding Localization.FirstRecipeSetup}" />
+                                   Text="{Binding FirstRecipeSetupTitle}" />
                     </StackPanel>
                     <TextBlock Grid.Row="1"
                                Margin="25,4,0,0"
                                FontSize="10"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                               Text="{Binding Localization.FirstRecipeSetupDetail}"
+                               Text="{Binding FirstRecipeSetupDetailText}"
                                TextWrapping="Wrap" />
 
                     <Grid Grid.Row="2" Margin="0,12,0,0">
@@ -441,6 +448,7 @@
                             </Grid.ColumnDefinitions>
                             <ComboBox Height="30"
                                       VerticalContentAlignment="Center"
+                                      IsEnabled="{Binding IsFirstRecipeStarterEditable}"
                                       ItemsSource="{Binding FirstRecipeStarterOptions}"
                                       DisplayMemberPath="Name"
                                       SelectedItem="{Binding SelectedFirstRecipeStarter, Mode=TwoWay}"
@@ -465,7 +473,18 @@
                             <CheckBox Content="{Binding Localization.FirstRecipeRememberSetup}"
                                       IsChecked="{Binding RememberFirstRecipeSetup, Mode=TwoWay}"
                                       AutomationProperties.AutomationId="RememberFirstRecipeSetup"
-                                      AutomationProperties.Name="{Binding Localization.FirstRecipeRememberSetup}" />
+                                      AutomationProperties.Name="{Binding Localization.FirstRecipeRememberSetup}">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFirstRecipeSetupMemoryAvailable}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
                             <TextBlock Margin="0,7,0,0"
                                        FontSize="9"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
@@ -510,7 +529,18 @@
                                    Icon="{ui:SymbolIcon ArrowReset24}"
                                    Command="{Binding ResetFirstRecipeSetupCommand}"
                                    AutomationProperties.AutomationId="ResetFirstRecipeSetup"
-                                   AutomationProperties.Name="{Binding Localization.FirstRecipeReset}" />
+                                   AutomationProperties.Name="{Binding Localization.FirstRecipeReset}">
+                            <ui:Button.Style>
+                                <Style TargetType="ui:Button">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFirstRecipeSetupMemoryAvailable}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Button.Style>
+                        </ui:Button>
                         <ui:Button Grid.Column="1"
                                    Margin="7,0,0,0"
                                    Content="{Binding Localization.Cancel}"
@@ -520,7 +550,7 @@
                                    AutomationProperties.Name="{Binding Localization.Cancel}" />
                         <ui:Button Grid.Column="3"
                                    Margin="14,0,0,0"
-                                   Content="{Binding Localization.FirstRecipeCreate}"
+                                   Content="{Binding FirstRecipeCreateLabel}"
                                    Icon="{ui:SymbolIcon DocumentAdd24}"
                                    Command="{Binding CreateFirstRecipeCommand}"
                                    Appearance="Primary"

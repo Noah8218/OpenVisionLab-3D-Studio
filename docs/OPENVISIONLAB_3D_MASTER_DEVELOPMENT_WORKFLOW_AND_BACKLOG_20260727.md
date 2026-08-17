@@ -165,7 +165,89 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Studio language popup - 2026-08-16
+### Current execution checkpoint - Shell ordered Thickness Run - 2026-08-17
+
+`PL-0016` is Complete. Validate now exposes one explicit `Run current recipe`
+action for a saved, source-ready recipe whose ordered steps have typed replay
+adapters. The action uses the existing `ToolRecipeOrderedGraphExecution`
+engine, writes schema `1.5` Run Record evidence, and projects it immediately
+into Results. Studio and Runner now share one ordered-step Run Record
+projection instead of duplicating result arithmetic or identity policy.
+
+Editing invalidates current evidence and requires save before another Run.
+Open, Preview, Publish, compatible-variant creation, layout, save, and reopen
+do not invoke full Run. Exact ready/incomplete/unsupported reasons, Running,
+Pass/Fail/Error, key metric, output identity/hash, and record state remain
+together in Validate.
+
+Ten current Release EXE processes at Compact `1280 x 760` match the expected
+`Pass 4 / Fail 5 / Error 1`; status, metrics, ordered step identity, output
+identity, output hash, and Error representation match production Runner
+records `10/10`. Ordered Run duration is p50 `468.425 ms`, p95
+`533.351 ms`, and max `533.351 ms`, passing the current fixture-class
+interaction budget p95 `<= 600 ms` and max `<= 750 ms`. This excludes EXE
+startup and is not a maximum-input or production SLA.
+
+Focused checks pass ordered Run `13/13`, Tool Recipe teaching `50/50`, Run
+Record history `12/12`, Recipe Manager/WPG `52/52`, and Shell options `40/40`.
+Release builds with `0` warnings and `0` errors. Current Wide and Compact
+ready, held pointer-down, executed Fail, and linked Results evidence remains
+readable, themed, bounded, and on the dynamically selected leftmost monitor.
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md`;
+- `.proofline/issues/PL-0016.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-pl0016-shell-ordered-thickness-run\`.
+
+The evidence-bounded commercial authoring-readiness reassessment is `8.5/10`.
+This is a qualitative workflow judgment, not telemetry, release acceptance,
+certified usability, production approval, or physical-metrology evidence.
+The capability inventory is unchanged. `PL-0017` coordinate-confident grid
+ROI teaching is the selected next software priority. Recommended model:
+`gpt-5.6-sol`; reasoning effort: `medium`. Product-owner unaided Wide/Compact
+R0 remains the separate acceptance priority and requires owner operation
+rather than model execution.
+
+### Previous execution checkpoint - Thickness 10-sample EXE UX and performance - 2026-08-17
+
+`PL-0015` is Complete. Ten generated `1280 x 840` C3D height fields cover
+nominal, lower and upper boundary, below/above tolerance, noise, gradient,
+missing data, insufficient data, and a local defect. The actual Release Shell
+EXE created ten current-schema Thickness recipes and explicitly Previewed and
+Published each controlled result when Publish was permitted. Ordered Runner
+replay matched `Pass 4 / Fail 5 / Error 1`.
+
+Recipe Center now creates a grid-compatible source variant from a saved
+recipe. It keeps direct C3D `GridRectangle` ROI identities and coordinates,
+ordered steps, routes, and parameters; rebinds them to a different same-size
+C3D identity; rejects unsafe selection types and grid-size mismatch; saves a
+new recipe; and does not invoke Preview, Publish, Run, or Validation. The
+observed repeated workflow decreased from 33 to 11 actions. Variant readiness
+was observed no later than `1.916 s`; fresh-process ordered replay remained at
+or below `244.75 ms`; and the Thickness step remained at or below `15.02 ms`
+for these fixtures. These are workstation regression targets, not production
+or maximum-input SLAs.
+
+The insufficient-data controlled Error also exposed non-finite metrics that
+prevented JSON Run Record export. The writer now omits non-finite JSON metrics
+without changing the controlled Error state or message. Release builds `0/0`;
+Recipe Manager/WPG passes `52/52`; height measurement passes `56/56`; and the
+artifact-owned Runner passes `19/19`, including this regression. Actual Wide
+and Compact current-build evidence remains bounded on leftmost `DISPLAY2`.
+Preserve:
+
+- `docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md`;
+- `.proofline/issues/PL-0015.json` through `PL-0017.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-thickness-10-recipe-ux-performance\`.
+
+At this checkpoint, the evidence-bounded commercial authoring-readiness
+reassessment was `8.2/10`.
+This is a qualitative workflow judgment, not telemetry, release acceptance,
+certified usability, production approval, or physical-metrology evidence.
+The capability inventory was unchanged. `PL-0016` was the selected next
+software priority and is superseded by the completed checkpoint above.
+
+### Previous execution checkpoint - Studio language popup - 2026-08-16
 
 `PL-0014` is Complete. The responsive width style on
 `StudioLanguageSelector` now derives from the existing shared ComboBox style
@@ -193,10 +275,11 @@ launching the application. Preserve:
 The evidence-bounded commercial authoring-readiness reassessment is `8.0/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence. The
-capability inventory is unchanged. No dependency-ready software slice is
-currently selected. Product-owner unaided Wide/Compact R0 remains the next
-acceptance priority; it requires owner operation, so no model execution is
-recommended. The large-C3D candidate remains blocked on its representative
+capability inventory was unchanged and no dependency-ready software slice was
+selected at that checkpoint. The current PL-0015 checkpoint above supersedes
+that software-priority statement. Product-owner unaided Wide/Compact R0
+remains the next acceptance priority; it requires owner operation, so no
+model execution is recommended. The large-C3D candidate remains blocked on its representative
 input and accepted memory/load-time limits.
 
 ### Previous execution checkpoint - Tool Library search context - 2026-08-16
@@ -2839,7 +2922,20 @@ The owner explicitly left the layout-only stream and completed item 11 on
     width style retains the shared semantic ComboBox base, Wide and Compact
     labels remain visible, language persists, and inspection state is not
     executed or mutated.
-31. `Large-C3D memory/performance target` - Blocked; prerequisite:
+31. `PL-0015 Thickness same-grid variant and 10-sample EXE baseline` -
+    Complete; ten varied synthetic recipes match `Pass 4 / Fail 5 / Error 1`,
+    repeated authoring falls from 33 to 11 actions, measured fixture targets
+    pass, and controlled Error Run Records omit non-finite JSON metrics.
+32. `PL-0016 Shell ordered Run for Thickness` - Complete; one explicit saved
+    current-recipe action uses the shared ordered engine, writes schema `1.5`
+    evidence into Results, preserves no-auto-run contracts, matches ten
+    Runner records, and meets the current fixture-class interaction budget.
+33. `PL-0017 coordinate-confident grid ROI teaching` - Open and selected;
+    show exact live
+    grid location or an equivalent orthographic teaching aid before Apply
+    without changing Viewer navigation or explicit teaching contracts.
+    Recommended model: `gpt-5.6-sol`; reasoning effort: `medium`.
+34. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.

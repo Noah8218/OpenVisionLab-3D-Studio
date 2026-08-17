@@ -1,0 +1,151 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0016",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Run supported ordered Thickness recipes from the Shell",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "2026-08-17 actual Release EXE ten-recipe UX study",
+    "summary": "The valid Thickness recipes Previewed and Published in the Shell and replayed in Runner, but the Shell full-Run command did not support the same ordered Thickness execution.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "The saved current recipe now runs explicitly in Studio through the shared ordered graph, writes Results-ready evidence, preserves no-auto-run boundaries, matches Runner across ten Thickness samples, and passes current UI and performance checks."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "The Shell explicit full-Run command does not execute a valid supported Thickness recipe that the production Runner replays deterministically.",
+        "evidence_refs": [
+          "E1",
+          "E2"
+        ]
+      }
+    ],
+    "impact": "The operator loop stops at Preview and Publish inside Studio and requires a separate Runner process to perform the recipe's explicit ordered Run."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Run is enabled for a valid supported Thickness recipe and unavailable with an exact reason for incomplete or unsupported recipes.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E6"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Shell Run status, metrics, ordered step identity, controlled output identity, and Run Record agree with Runner for Pass, Fail, and Error samples.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E5",
+        "E6"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Run remains explicit and does not occur during edits, compatible-variant creation, Preview, Publish, layout changes, restore, save, or reopen.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E6"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Current Wide and Compact Run status and next-action evidence are themed, readable, bounded, and keyboard reachable.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E5",
+        "E6"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0015"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current Shell owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.FilterExecution.cs",
+      "summary": "RunTeachingRecipeCommand currently owns the Shell full-Run eligibility and execution path."
+    },
+    {
+      "kind": "current Runner owner",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Application/RunnerApplication.cs",
+      "summary": "Production Runner already replays the ten valid current-schema Thickness recipes deterministically."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "actual Release EXE and source-path confirmation",
+      "location": "docs/OPENVISIONLAB_3D_THICKNESS_10_SAMPLE_EXE_UX_PERFORMANCE_STUDY_20260817.md; src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.FilterExecution.cs",
+      "observation": "During the ten-recipe actual Shell session, explicit Preview and Publish worked for Thickness but Ctrl+F5/full Run did not execute it. Source inspection confirms RunTeachingRecipeCommand eligibility and execution are owned by the filter-oriented path, while Runner replayed all ten Thickness recipes.",
+      "observed_at": "2026-08-17T21:20:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "implementation and shared-contract inspection",
+      "location": "src/OpenVisionLab.ThreeD.Tools/Validation/ToolRecipeOrderedGraphRunRecordProjection.cs; src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.FilterExecution.cs; src/OpenVisionLab.ThreeD.Shell/ViewModels/Shell/ShellOrderedRunRecordWriter.cs; src/OpenVisionLab.ThreeD.Shell/ViewModels/Shell/ShellMainWindowViewModel.cs; src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RecipePipelineReviewView.xaml",
+      "observation": "Studio exposes one saved-current-recipe Run command, uses ToolRecipeOrderedGraphExecution and the same ordered-step Run Record projection as Runner, writes schema 1.5 evidence, routes it into Results, and invalidates evidence on recipe edits without invoking Run from edit, Preview, Publish, save, or reopen.",
+      "observed_at": "2026-08-17T22:51:08+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "focused executable contract verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/logs/ordered-run-verification-final.txt",
+      "observation": "The current Release executable passes 13/13 checks covering valid saved readiness, no automatic Run on open/Preview/Publish/save/reopen, Pass/Fail/Error record projection, exact metric and identity parity, edit invalidation, and unsupported-step reason.",
+      "observed_at": "2026-08-17T22:51:08+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "actual Release EXE Wide and Compact UI evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/after/",
+      "observation": "Wide 1920x1040 and Compact 1280x760 ready and held pointer-down captures are accepted with selected-monitor intersection true. Latest-build direct clicks show readable Fail state, metric, output hash, saved Run Record, and linked Results with no overlap, required-text clipping, horizontal scrolling, or platform-light theme leak.",
+      "observed_at": "2026-08-17T22:51:08+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "ten-sample actual EXE parity and performance",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/logs/ten-sample-shell-run-summary.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/logs/ten-sample-shell-run-parity.txt",
+      "observation": "Ten fresh Release EXE processes exit successfully and match expected Pass 4 / Fail 5 / Error 1. Shell and production Runner status, metrics, step identity, output identity, and output content hash agree 10/10. Ordered duration is p50 468.425 ms, p95 533.351 ms, and max 533.351 ms, within the sample-class 600 ms p95 and 750 ms max guards.",
+      "observed_at": "2026-08-17T22:51:08+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "final repository verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/logs/final-release-build.txt; docs/OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md",
+      "observation": "The final solution Release build completes with zero warnings and zero errors; final ordered Run verification passes 13/13, final Shell option verification passes 40/40, and git diff --check passes.",
+      "observed_at": "2026-08-17T22:51:08+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-17T22:51:08+09:00",
+      "from": "open",
+      "to": "resolved",
+      "summary": "Resolved after the shared ordered Run path, Results-ready evidence, no-auto-run boundaries, ten-sample Runner parity, current Wide/Compact UI review, and final verification all passed."
+    }
+  ],
+  "created_at": "2026-08-17T21:36:14.4764462+09:00",
+  "updated_at": "2026-08-17T22:51:08+09:00"
+}
