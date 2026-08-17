@@ -98,8 +98,7 @@ supplying the 3D numeric algorithm:
 - the detected points, fitted line, and result summary are reviewed together;
 - changing parameters requires another explicit Preview or Run Review.
 
-Commercial 3D workbench research already recorded in this repository adds the
-same product lesson: a feature tool is useful only when its input, overlay,
+The product requirement is that a feature tool is useful only when its input, overlay,
 quality evidence, and downstream identity are visible in one repeatable step.
 
 ## UI-First Design
@@ -580,7 +579,7 @@ Verification:
   - Current EdgePointSet contract, Edge Tools rule, teaching template,
     Workbench Properties/state, Viewer interaction contracts, and handoff read.
   - Current 2D Line PropertyGrid/result-review behavior reviewed read-only.
-  - Existing commercial review and current product target checked.
+  - Current product target checked.
 Evidence: docs/OPENVISIONLAB_3D_LINE_FIT_TYPED_ADAPTER_DESIGN_20260719.md
 Boundary / next dependency: owner approval or requested changes to the nine
 decisions. Do not implement Line Fit until that decision is recorded.

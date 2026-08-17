@@ -11,12 +11,12 @@ uncommitted SurfaceModel foundation and this matching slice.
 
 ## Product Decision
 
-This slice applies a GoPxL benchmark principle without copying its interface.
+This slice applies an OpenVisionLab product principle.
 
 - OpenVisionLab operator problem: measured scene evidence previously had no
   identified preparation artifact, and SurfaceModel matching had no bounded
   deterministic pose or explicit coverage contract.
-- Adapted principle: keep input identity, configuration, transformed evidence,
+- Product principle: keep input identity, configuration, transformed evidence,
   and result evidence linked.
 - Independent OpenVisionLab design: WPF-neutral Core contracts, atomic Data
   persistence, pure Tools preparation/search/scoring, and headless Runner
@@ -24,8 +24,7 @@ This slice applies a GoPxL benchmark principle without copying its interface.
 - Evidence: canonical hashes, known-pose recovery, occlusion coverage,
   fail-closed cases, regressions, and fixed R0 package validation.
 
-No GoPxL theme, colors, topology, panel proportions, names, assets, icon
-artwork, or code are used. No full layout redesign is approved or implemented.
+No full layout redesign is approved or implemented.
 
 ## Implemented Contract
 
@@ -205,8 +204,8 @@ This completion does not prove:
   production tolerance;
 - sensor, PLC, robot, cloud, or production-line integration.
 
-The controlled fixture is numerical contract evidence, not a metrology or
-commercial-product equivalence claim.
+The controlled fixture is numerical contract evidence, not a physical-metrology
+or product-equivalence claim.
 
 ## Completion Record
 

@@ -4,7 +4,6 @@ Updated: 2026-07-18
 
 ## Decision
 
-> **Superseded UI direction (2026-07-19):** The former single-left-surface teaching layout is replaced by the approved Recipe Manager window + Recipe Navigator + Tool Lab + Compare Workspace direction in [GoPxL-Informed Tool Lab Direction](OPENVISIONLAB_3D_GOPXL_TOOL_LAB_DIRECTION_20260719.md). This document retains the teaching persistence and explicit-execution contracts until those contracts are revised explicitly.
 
 Finish generic **teaching/authoring** before implementing a generic inspection algorithm executor.
 

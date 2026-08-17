@@ -11,7 +11,7 @@ One complete dual-ROI Thickness inspection can now be expanded into a
 reviewable `4 columns x 2 rows` candidate and explicitly applied as eight
 ordinary, independently editable Thickness steps.
 
-This closes the repeated-Tab authoring gap identified in the GoPxL workflow
+This closes the repeated-Tab authoring gap identified in the OpenVisionLab workflow
 comparison without adding automatic part detection or hidden inspection
 execution.
 

@@ -208,8 +208,7 @@ The corrective Viewer checkpoint is recorded in
   - The ROI display-height control did not make the Y-height/Z-row coordinate
     distinction clear.
 - Corrective implementation:
-  `docs/OPENVISIONLAB_3D_COMMERCIAL_ROI_WORKFLOW_AND_REVIEW_MODE_20260726.md`
-  records the official commercial-tool comparison, primary ROI actions,
+  records the primary ROI actions,
   explicit post-`2/2` review mode, Enter Apply/Esc Cancel, height-axis label,
   shortcut set, and current Release actual-pointer evidence.
 - Boundary: the direct owner result remains the only completion evidence for
@@ -220,7 +219,7 @@ The corrective Viewer checkpoint is recorded in
 - Status: active, awaiting direct owner result
 - Source commit:
   `a9c4bd945630ef6a3474da8da5314efcfbb7bc19` plus the uncommitted
-  startup, Inspection Flow, shortcut, and commercial ROI workflow corrections
+  startup, Inspection Flow, shortcut, and ROI workflow corrections
 - Build: Release, `0` warnings and `0` errors
 - Session start: `2026-07-26T20:15:40.7767437+09:00`
 - Process: PID `27588`, responsive visible window `OpenVisionLab 3D Studio`

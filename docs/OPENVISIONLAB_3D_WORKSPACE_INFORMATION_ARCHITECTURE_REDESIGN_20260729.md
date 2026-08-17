@@ -94,21 +94,21 @@ until source implementation changes. The remaining owner replay must be
 replaced with a new stage-navigation replay after this redesign is
 implemented; the historical click path cannot close the redesigned workspace.
 
-## Product and commercial grounding
+## Product grounding
 
 This design preserves the current product identity:
 
 > A local, file-first, deterministic 2.5D/3D rule-based inspection workbench
 > for identified height fields, point clouds, and meshes.
 
-It follows the already-reviewed commercial-video lessons:
+It follows these OpenVisionLab requirements:
 
-- GoPxL: make the inspection chain understandable, keep one selected-tool
+- Make the inspection chain understandable, keep one selected-tool
   editing surface, and let the visual teaching surface dominate when teaching;
-- SICK Nova and MERLIC: separate configuration, teaching/execution, and
+- Separate configuration, teaching/execution, and
   visible per-region results;
-- HALCON: separate model/data preparation from matching result diagnosis;
-- Zivid and Photoneo: expose source quality and visual feedback in the task
+- Separate model/data preparation from matching result diagnosis;
+- Expose source quality and visual feedback in the task
   where they are needed instead of turning the whole product into a permanent
   device dashboard.
 
@@ -665,7 +665,7 @@ dedicated validation, results, responsive, and owner-acceptance path.
 Status: Complete
 Scope: review of the current all-in-one Workspace and a generic top-stage information architecture for Setup, Teach, Validate, Results, Calibration, and opt-in Advanced diagnostics
 Acceptance criteria: current UI/source responsibility conflict identified -> pass; tool composition separated from source/ROI/parameter teaching -> pass; detection placed behind explicit Preview in Teach -> pass; validation and Run Record evidence assigned separate owners -> pass; Wide/Compact wireframes and transition guards -> pass; bounded implementation queue -> pass
-Verification: current Wide/Compact captures inspected; Shell workspace projection, ToolRecipeWorkbenchView composition, RecipePipelineReviewView size/ownership, prior v3 contracts, master backlog, commercial-video direction, and current handoff reviewed
+Verification: current Wide/Compact captures inspected; Shell workspace projection, ToolRecipeWorkbenchView composition, RecipePipelineReviewView size/ownership, prior v3 contracts, master backlog, and current handoff reviewed
 Evidence: docs/OPENVISIONLAB_3D_WORKSPACE_INFORMATION_ARCHITECTURE_REDESIGN_20260729.md and artifacts/current/20260729-completeness-threshold-assistance/after-completeness-threshold-{wide,compact}.png
 Boundary / next dependency: this record closes the design scope. IA-1 through IA-3 are implemented and evidenced in the Setup/Teach, dedicated Validate, and dedicated Results completion documents. IA-4 owner unaided stage replay is the only remaining information-architecture gate. SurfaceModel J-01/J-03/J-04 remains paused behind it.
 ```

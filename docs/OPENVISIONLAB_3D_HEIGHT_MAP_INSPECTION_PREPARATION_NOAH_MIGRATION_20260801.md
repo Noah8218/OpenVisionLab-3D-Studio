@@ -34,7 +34,7 @@ Included:
 Excluded:
 
 - any change to UI, visible text, layout, theme, Viewer color policy, or
-  GoPxL-inspired interaction design;
+  task-centered interaction design;
 - recipe execution on load, Preview, Publish, Run, or Validation side effects;
 - Dual Surface Thickness and Height Deviation numerical migration;
 - Landmark Correspondence, declared mesh-normal quality, repeatability, or

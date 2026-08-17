@@ -13,10 +13,8 @@ execution and assessment identities across every repetition.
 
 The operator problem is silent search-cost growth: wider authored rotation
 ranges can multiply matching work even when the final pose and decision remain
-correct. The commercial-workbench principle adapted here is explicit,
-action-linked runtime evidence. OpenVisionLab implements that principle as an
-independent Release verification contract, not as copied competitor UI,
-terminology, theme, layout, or assets.
+correct. The product requirement is explicit, action-linked runtime evidence.
+OpenVisionLab implements it as a Release verification contract.
 
 ## Included scope
 

@@ -51,21 +51,11 @@ distances and links both the SurfaceModel and key-point artifact SHA-256. It
 does not own WPF types, marker size, color, normal-vector display length, pose,
 score, or decision.
 
-## Product and commercial boundary
+## Product boundary
 
-This slice adapts the commercial principle that model preparation and debug
-evidence should be inspectable instead of hidden. It does not copy a
-competitor UI, parameter set, algorithm, or screen layout.
-
-The HALCON terminology is deliberately not claimed as equivalent. Its
-official documentation says the surface model is created by sampling the 3D
-object model, while `find_surface_model` selects key points from the sampled
-scene during matching. J-07 is a bounded model-side representative-point
-artifact for OpenVisionLab and is not a claim that HALCON's scene-key-point
-algorithm was reproduced:
-
-- <https://www.mvtec.com/doc/halcon/2511/en/create_surface_model.html>
-- <https://www.mvtec.com/doc/halcon/2511/en/find_surface_model.html>
+Model preparation and debug evidence must be inspectable instead of hidden.
+J-07 is a bounded OpenVisionLab model-side representative-point artifact; it
+does not claim algorithmic equivalence outside its documented contract.
 
 ## Ownership and refactor proof
 
@@ -207,7 +197,7 @@ Evidence: This document and the D-backed
 
 Boundary / next dependency: This is a model-side representative-point and
 debug-evidence contract. It does not use key points in matching, add a Viewer
-renderer or UI, infer acquisition/view direction, reproduce HALCON scene key
-points, or prove human usability, real-part robustness, metrology,
+renderer or UI, infer acquisition/view direction, claim equivalence with an
+unrelated key-point algorithm, or prove human usability, real-part robustness, metrology,
 cross-hardware performance, or production readiness. Next is `B-12`, which
 unblocks `K-04`; `L-13` remains independently dependency-ready.

@@ -9,10 +9,9 @@ Data/Layers, Tool/Inspector, Evidence Workbench, and linked evidence surfaces
 now use the existing OpenVisionLab graphite semantic resources instead of the
 former white/platform-light palette.
 
-This repair applies the commercial workflow principle that one task surface
-should use one coherent visual system. It preserves OpenVisionLab colors,
-terminology, docking topology, and controls; it does not copy a competitor's
-theme, proportions, assets, or industrial-platform scope.
+This repair applies the OpenVisionLab requirement that one task surface use one
+coherent visual system. It preserves the product's colors, terminology, docking
+topology, controls, and bounded platform scope.
 
 ## Operator problem and root cause
 

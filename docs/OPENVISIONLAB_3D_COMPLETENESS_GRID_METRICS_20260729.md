@@ -6,14 +6,13 @@ Status: Complete for `H-02/H-03/H-04`
 
 ## Product-direction source
 
-This slice implements the next bounded item derived from the review of all 11
-owner-supplied commercial videos:
+This slice implements three OpenVisionLab completeness requirements:
 
-- SICK Nova: task-oriented presence/completeness inspection with clear
+- task-oriented presence/completeness inspection with clear
   per-region evidence;
-- MVTec MERLIC: Height Image cells as a first-class completeness inspection
+- Height Image cells as a first-class completeness inspection
   surface;
-- GoPxL: separate recipe authoring, selected-tool editing, explicit
+- separate recipe authoring, selected-tool editing, explicit
   execution, and result evidence.
 
 OpenVisionLab remains a local, file-first, deterministic 2.5D/3D rule-based

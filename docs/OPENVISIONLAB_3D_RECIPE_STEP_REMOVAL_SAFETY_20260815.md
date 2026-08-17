@@ -42,12 +42,10 @@ The ViewModel owns the mutation policy and impact calculation. `MainWindow`
 owns only localized confirmation presentation. This keeps the existing
 explicit-action contract and does not add a new service or abstraction.
 
-## Commercial lesson retained
+## Product principle
 
-Commercial workbenches such as GoPxL make consequential actions and their
-next effect explicit. OpenVisionLab adapts that workflow principle by showing
-the exact local step and selection impact before mutation. It does not copy a
-competitor screen, terminology, color system, icon artwork, topology, or code.
+Consequential actions and their next effect must be explicit. OpenVisionLab
+shows the exact local step and selection impact before mutation.
 
 ## Verification
 

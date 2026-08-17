@@ -19,13 +19,13 @@ creation, the operator can see and edit:
 can be edited or reset. Missing folders or sources are explained in place and
 disable Create. Reset returns to safe defaults and clears the saved setup.
 
-## Product and commercial boundary
+## Product boundary
 
 The operator problem was excessive context switching before teaching could
-begin. The retained GoPxL/commercial lesson is to keep related first-use
+begin. The product requirement is to keep related first-use
 configuration and its next action in one coherent surface. The implementation
 uses OpenVisionLab names, theme resources, typed input routing, lifecycle, and
-layout; it does not copy a competitor screen, visual identity, asset, or code.
+layout.
 
 This remains a local, file-first deterministic inspection workflow. It does
 not add camera, acquisition, PLC, robot, cloud, account, deployment, or
@@ -109,7 +109,7 @@ Evidence-bounded workflow judgment:
 | Area | Before | After | Basis |
 |---|---:|---:|---|
 | First-use efficiency | 6.5/10 | 8.5/10 | Four contexts consolidated; confirmed setup restores visibly and safely |
-| Commercial authoring readiness | 7.4/10 | 7.8/10 | Compatible Add, contextual teaching, health navigation, and first-use creation now align |
+| Operator authoring readiness | 7.4/10 | 7.8/10 | Compatible Add, contextual teaching, health navigation, and first-use creation now align |
 
 These are qualitative product-workflow judgments, not telemetry, release
 acceptance, certified usability, production approval, or physical-metrology

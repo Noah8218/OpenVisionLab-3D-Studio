@@ -134,7 +134,6 @@ Create these folders only when implementation begins.
 | C3D Grayscale/Thermal Color Map evidence | `docs/OPENVISIONLAB_3D_C3D_COLOR_MAPS_20260715.md` |
 | Fixed nominal/actual Part 1 product evidence | `docs/OPENVISIONLAB_3D_NIST_NOMINAL_ACTUAL_END_TO_END_20260714.md` |
 | Fixed nominal/actual Part 2 product evidence | `docs/OPENVISIONLAB_3D_NIST_PART2_VISIBLE_WORKFLOW_20260715.md` |
-| Library/engine choice | `docs/OPENVISIONLAB_3D_RESEARCH_NOTES_20260706.md` |
 | Local sample data | `docs/OPENVISIONLAB_3D_SAMPLE_DATA.md` |
 | Next session | `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md` |
 | Code and MVVM rules | `docs/OPENVISIONLAB_3D_CODE_RULES.md` |

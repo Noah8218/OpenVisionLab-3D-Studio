@@ -6,8 +6,8 @@ Status: Current
 This file is a short continuation snapshot. The canonical inventory and
 development queue are in
 `OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`.
-Historical session detail through 2026-08-04 is preserved in
-`archive/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF_HISTORY_THROUGH_20260804.md`.
+Private research and former chronological records are intentionally outside the
+tracked public tree.
 
 ## Product Identity
 
@@ -24,7 +24,7 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
 - Inventory: read the canonical current table in the master backlog; this
   handoff intentionally does not duplicate its mutable counts.
 - Inspection Workspace v3: `7/8`; `A-01` remains Partial.
-- GoPxL-inspired Workbench v4: `3/3` complete.
+- Inspection Workbench v4: `3/3` complete.
 - Studio numerical migration debt: zero under the current decreasing guard.
 - Vendored Vision SDK package: `OpenVisionLab.Vision3D 3.0.0`, built from
   committed `OpenVisionLab-Vision-SDK` source
@@ -148,6 +148,11 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   Preserve `OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md`,
   `.proofline/issues/PL-0017.json`, and the
   `20260817-pl0017-grid-roi-coordinate-confidence` D-backed evidence root.
+- `PL-0018` is complete for the current public tree: private market research,
+  vendor comparisons, supplied-media reviews, and former chronological records
+  are excluded from tracked documentation. Required license and attribution
+  records remain. The pre-cleanup documents are retained only in the owner's
+  local private archive; Git history was not rewritten.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -178,7 +183,7 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015`, `PL-0016`, and `PL-0017` are complete. No dependency-ready
+`PL-0015` through `PL-0018` are complete. No dependency-ready
 software slice is currently selected.
 
 The large-C3D memory/performance candidate remains blocked until a
@@ -224,12 +229,12 @@ inspect the currently vendored public API before implementation.
 
 ## Documentation Consolidation
 
-The 2026-08-05 documentation pass:
+The current documentation boundary:
 
 - established the master backlog as the single inventory/queue owner;
-- replaced append-only active handoffs with short current entry points;
-- archived the former handoff and project-instruction chronologies without
-  deleting their evidence;
+- keeps active handoffs as short current entry points;
+- keeps private research and former chronological records outside the tracked
+  public tree;
 - added `docs/README.md` as the documentation map;
 - retained current user documentation and verified local links/script paths;
 - registered the external public-sample retention blocker as `PL-0003`.

@@ -161,7 +161,7 @@ does not trigger any Thickness, Warpage, affine, or re-grid work.
 
 ## Workbench and Tool Lab design
 
-The step is shown as one typed GoPxL-style route with visible ports:
+The step is shown as one typed workflow route with visible ports:
 
 ```text
 Inputs: Raw C3D | Published PlaneFeature | Measurement GridRectangle

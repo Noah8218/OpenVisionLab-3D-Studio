@@ -31,13 +31,11 @@ The policy stays with the existing Workbench ViewModel owner and reuses the
 existing Application Log surface. No cache, service, export type, or storage
 abstraction was introduced.
 
-## Commercial lesson retained
+## Product principle
 
-GoPxL and other commercial inspection workbenches make current state and the
-location of durable evidence clear. OpenVisionLab applies that abstract
-workflow principle by stating exactly what remains in memory and where all
-Workbench events are durably rolled. It does not copy competitor colors,
-proportions, topology, names, assets, icon artwork, or code.
+OpenVisionLab makes current state and the location of durable evidence clear by
+stating exactly what remains in memory and where all Workbench events are
+durably rolled.
 
 ## Verification
 

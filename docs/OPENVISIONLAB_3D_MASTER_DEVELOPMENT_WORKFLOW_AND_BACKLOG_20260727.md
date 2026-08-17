@@ -2,8 +2,8 @@
 
 Date: 2026-07-27
 
-Status: Current execution source of truth for commercial-video-derived product
-development after Inspection Workspace v3
+Status: Current execution source of truth for OpenVisionLab product development
+after Inspection Workspace v3
 
 This document is the single owner of the current capability inventory,
 dependency graph, and development queue. `AGENTS.md` owns operating rules;
@@ -12,8 +12,7 @@ closure, design, and audit documents preserve historical evidence.
 
 ## Purpose
 
-This document converts the commercial-video review into an executable product
-development system.
+This document defines the executable OpenVisionLab product-development system.
 
 It answers five questions for every future chat:
 
@@ -27,9 +26,7 @@ Read this document after:
 
 - `AGENTS.md`;
 - `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`;
-- `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`;
-- `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`;
-- `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`.
+- `docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md`.
 
 ## Product identity
 
@@ -52,12 +49,10 @@ The operator:
 The Viewer is a synchronized teaching and evidence surface. It is not the
 entire product.
 
-Commercial products are benchmark evidence, not visual templates. Adapt
-principles such as current-task clarity, linked configuration/Viewer/evidence,
-progressive disclosure, and explicit status. Do not copy themes, exact panel
-geometry, screen topology, terminology, assets, or icon artwork. A
-benchmark-driven item closes against an OpenVisionLab operator problem and
-product contract, not screenshot similarity.
+OpenVisionLab uses independent product requirements: current-task clarity,
+linked configuration/Viewer/evidence, progressive disclosure, and explicit
+status. Each item closes against an OpenVisionLab operator problem, product
+contract, and current-build evidence.
 
 ## Product workflow target
 
@@ -120,11 +115,9 @@ Current inventory count:
 ## Current maturity and first gate
 
 - Inspection Workspace v3 is `7/8` bounded slices (`87.5%`) complete.
-- GoPxL-inspired Workbench v4 is `3/3` delivery slices complete. Authoring,
+- Inspection Workbench v4 is `3/3` delivery slices complete. Authoring,
   evidence-linked Validate/Results, the graphite visual system, and safe
-  presentation-only layout persistence are closed. Preserve
-  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md` and
-  `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md`.
+  presentation-only layout persistence are closed.
 - The 2026-07-30 Viewer single-row and Height color-range slice is complete:
   the loaded Single Viewer shares one common top row, the persistent left HUD
   is removed, and the right legend remaps Height colors through display-only
@@ -165,6 +158,16 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
+### Current documentation checkpoint - Public documentation boundary - 2026-08-18
+
+`PL-0018` is Complete for the current tracked tree. Private market research,
+vendor comparisons, supplied-media reviews, and former chronological records
+are excluded from repository documentation and distributions. The pre-cleanup
+documents are retained only in the owner's local private archive. Required
+software licenses, notices, dependency attribution, and public-sample
+attribution remain tracked. This cleanup changes no product behavior,
+capability count, or maturity judgment, and it does not rewrite Git history.
+
 ### Current execution checkpoint - Coordinate-confident grid ROI teaching - 2026-08-17
 
 `PL-0017` is Complete. GridRectangle capture now enters the existing Top
@@ -192,7 +195,7 @@ monitor. Preserve:
 - `.proofline/issues/PL-0017.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-pl0017-grid-roi-coordinate-confidence\`.
 
-The evidence-bounded commercial authoring-readiness reassessment is `8.6/10`.
+The evidence-bounded operator authoring-readiness reassessment is `8.6/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence. The
 capability inventory is unchanged and no dependency-ready software slice is
@@ -234,7 +237,7 @@ Preserve:
 - `.proofline/issues/PL-0016.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-pl0016-shell-ordered-thickness-run\`.
 
-The evidence-bounded commercial authoring-readiness reassessment is `8.5/10`.
+The evidence-bounded operator authoring-readiness reassessment is `8.5/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence.
 The capability inventory is unchanged. `PL-0017` coordinate-confident grid
@@ -275,7 +278,7 @@ Preserve:
 - `.proofline/issues/PL-0015.json` through `PL-0017.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-thickness-10-recipe-ux-performance\`.
 
-At this checkpoint, the evidence-bounded commercial authoring-readiness
+At this checkpoint, the evidence-bounded operator authoring-readiness
 reassessment was `8.2/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence.
@@ -307,7 +310,7 @@ launching the application. Preserve:
 - `.proofline/issues/PL-0014.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0014-language-popup\`.
 
-The evidence-bounded commercial authoring-readiness reassessment is `8.0/10`.
+The evidence-bounded operator authoring-readiness reassessment is `8.0/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence. The
 capability inventory was unchanged and no dependency-ready software slice was
@@ -337,7 +340,7 @@ catalog after another recipe opens. Both refreshed fixed-package
 - `.proofline/issues/PL-0012.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0012-tool-search-context\`.
 
-The evidence-bounded commercial authoring-readiness reassessment is `7.9/10`.
+The evidence-bounded operator authoring-readiness reassessment is `7.9/10`.
 This is a qualitative workflow judgment, not telemetry, release acceptance,
 certified usability, production approval, or physical-metrology evidence. The
 capability inventory is unchanged. `PL-0014` language-popup theme and bounds is
@@ -370,7 +373,7 @@ launching the application. Preserve:
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260815-pl0013-first-use-setup\`.
 
 The evidence-bounded workflow reassessment is first-use efficiency `8.5/10`
-and commercial authoring readiness `7.8/10`. These are qualitative judgments,
+and operator authoring readiness `7.8/10`. These are qualitative judgments,
 not telemetry, release acceptance, certified usability, production approval,
 or physical-metrology claims. This slice does not change capability inventory.
 `PL-0012` search-context correction is completed in the current checkpoint
@@ -393,7 +396,7 @@ dynamically selected leftmost `DISPLAY2` shows reachable health actions,
 automatic reveal of step 17, and a correctly themed held pointer-down state.
 The refreshed fixed package passes both Wide and Compact `-ValidateOnly`
 without launching the application. The UX study's evidence-bounded current
-reassessment is Compact long-chain overview `7.5/10` and commercial authoring
+reassessment is Compact long-chain overview `7.5/10` and operator authoring
 readiness `7.4/10`; these are workflow judgments, not telemetry, release
 acceptance, or physical-metrology claims. Preserve:
 
@@ -875,20 +878,6 @@ leftmost-monitor evidence, and both R0 `-ValidateOnly` modes pass. Preserve:
 Inventory was `131 C / 17 P / 62 N / 9 E / 16 O` at that checkpoint.
 Human-owner R0 remains external. Its former next item `K-09` is superseded by
 the current K-09 closure above.
-
-### Historical product-owner conversation priority - Layout continuation - 2026-08-01
-
-The product owner selected the layout/UI-design stream for the next
-conversation. Use
-`docs/OPENVISIONLAB_3D_LAYOUT_REDESIGN_CONVERSATION_HANDOFF_20260801.md` as
-the active entry point. Begin with a fresh current-build Wide `1920 x 1040`
-and Compact `1280 x 760` integrity audit, then select one bounded
-evidence-backed operator problem. Preserve all completed Workbench v4, Viewer,
-top dock-tab, Authoring integrity/side-collapse, first-use clarity,
-presentation-only layout persistence, and theme closures.
-
-This layout-only priority was explicitly superseded when the owner approved
-J-12 on 2026-08-03. Human-owner R0 remains an external acceptance task.
 
 ### Current execution checkpoint - Validation-statistics Noah migration - 2026-08-01
 
@@ -1413,7 +1402,7 @@ At this checkpoint inventory was `106 C / 17 P / 86 N / 9 E / 16 O` and
 `J-01/J-03/J-04 SurfaceModel` was next. The newer SurfaceModel checkpoint
 above supersedes that inventory and priority.
 
-### Current execution checkpoint - GoPxL-inspired Workbench v4 - 2026-07-30
+### Current execution checkpoint - Inspection Workbench v4 - 2026-07-30
 
 The Shell now owns one 56-pixel Job Bar and one responsive left
 responsibility rail. Workbench and Teach internal modes compose the same
@@ -1434,12 +1423,6 @@ Release passes `0/0`, Workbench docking `71/71`, Inspection Workspace
 structure `17/17`. Application-only Wide `1920 x 1040` and Compact
 `1280 x 760` Validate/Results captures pass. Layout reopen passes
 Missing -> Restored and corrupt fallback without execution.
-
-Preserve:
-
-- `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md`;
-- `docs/OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_EVIDENCE_AND_SAFE_LAYOUT_20260730.md`;
-- `artifacts/current/20260730-gopxl-workbench-v4-evidence-and-layout/`.
 
 Inventory remains `104 C / 17 P / 88 N / 9 E / 16 O`. The refreshed fixed
 R0 hash package passes Wide/Compact `-ValidateOnly`. Immediate: the human
@@ -1689,12 +1672,6 @@ counts, command readiness, or visible Advanced navigation. `A-01` stays
 `Partial`; `A-10` returns from `Complete` to `Partial`. The authoritative
 inventory is therefore `103 C / 18 P / 88 N / 9 E / 16 O`.
 
-Preserve:
-
-- `docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md`;
-- `artifacts/current/20260729-novice-stage-navigation-video-review/`;
-- `scripts/run-novice-stage-navigation-video-review.ps1`.
-
 Immediate: repair stable stage-host ownership and add actual MainWindow
 integration assertions, then repeat the Wide/Compact simulated-novice replay
 and the owner's unaided R0. Do not begin SurfaceModel until this gate passes
@@ -1890,16 +1867,11 @@ Preserve
 `docs/OPENVISIONLAB_3D_THRESHOLD_ASSISTANT_HARDENING_20260729.md` and
 `artifacts/current/20260729-threshold-assistant-hardening/`.
 
-The earlier 11-video analysis is a durable product-direction input, not a
-one-time audit. Future items must trace to the source-by-source lessons in
-`docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`
-and the operator-focused findings in
-`docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`: GoPxL responsibility
-separation, SICK evidence-based threshold/completeness, HALCON explicit model
-and scene preparation plus pose/score diagnostics, MERLIC Height Image cell
-inspection, and Zivid/Photoneo source-quality trust. This direction does not
-authorize camera, reconstruction, factory-integration, cloud, or implicit
-execution scope.
+Current product direction requires responsibility separation, evidence-based
+threshold and completeness decisions, explicit model/scene preparation,
+pose/score diagnostics, Height Image cell inspection, and source-quality trust.
+It does not authorize camera, reconstruction, factory-integration, cloud, or
+implicit execution scope.
 
 `L-11 threshold-correction evidence in Run Record` is complete. Ordered graph
 Run Record schema `1.5` now embeds one read-only snapshot of the existing
@@ -1981,7 +1953,7 @@ default/expanded/compact screenshot quality. Preserve
 `artifacts/current/20260728-threshold-candidates/`.
 
 The durable next-chat startup request, current working-tree boundary, full
-commercial-video-derived priority train summary, and next
+priority-train summary, and next
 `J-01/J-03/J-04` acceptance boundary are maintained in
 `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
 
@@ -2085,7 +2057,7 @@ That checkpoint was the persisted numeric contract before rendering.
 The newer E-09 checkpoint above closes the Viewer outline and pointer handles.
 
 The current Wide and Compact synchronized ROI captures were reviewed against
-the v3 and GoPxL-derived interaction contracts. One concrete v3 acceptance
+the v3 and task-centered interaction contracts. One concrete v3 acceptance
 gap was corrected:
 
 - the global Review ribbon is now the only visible primary ROI Apply/Cancel
@@ -2657,10 +2629,10 @@ Do not recommend model spending until the required physical evidence exists.
 | N-07 | E | Production tolerance and guard-band decision | Process owner | Approved acceptance limits |
 | N-08 | E | Certified claim wording and report boundary | N-05 to N-07 | Owner/legal/metrology review |
 
-## Deliberately deferred commercial-platform features
+## Deliberately deferred platform features
 
-These were visible in the supplied videos but are not current backlog items.
-They require an explicit product-scope change.
+These capabilities are not current backlog items. They require an explicit
+product-scope change.
 
 | ID | Status | Deferred capability | Reason |
 | --- | --- | --- | --- |
@@ -2809,7 +2781,7 @@ A slice is `Complete` only when:
 - current-source UI evidence exists when visible behavior changed;
 - no unresolved core TODO remains;
 - the durable handoff names the next eligible item;
-- the result does not overclaim physical calibration or commercial-platform
+- the result does not overclaim physical calibration or excluded platform
   scope.
 
 ## Current executable queue
@@ -2970,16 +2942,20 @@ The owner explicitly left the layout-only stream and completed item 11 on
     shows exact live row/column starts and counts before Apply, and actual
     one-drag reference/measurement target teaching preserves navigation,
     adjustment, explicit Apply/Cancel, and no-execution contracts.
-34. `Large-C3D memory/performance target` - Blocked; prerequisite:
+34. `PL-0018 public documentation privacy boundary` - Complete; private market
+    research, vendor comparisons, supplied-media reviews, and former
+    chronological records are outside the tracked tree and distributions;
+    required licenses and attribution remain tracked; the verified pre-cleanup
+    archive is local-only; Git history was not rewritten.
+35. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.
 
 ## Documentation decision
 
-This master backlog supersedes short feature lists in older commercial-review
-documents when selecting future work. Older documents remain evidence for
-their completed historical slices.
+This master backlog is the sole owner of current feature selection. Private
+research and former chronological records are not tracked or distributed.
 
 Current document authority is:
 
@@ -2988,10 +2964,9 @@ Current document authority is:
 3. `OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md` for the current handoff;
 4. `OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md` for the next-chat
    entry prompt;
-5. `docs/archive/` and dated documents for state-at-the-time evidence.
 
 Do not duplicate mutable Git status, unpushed-commit claims, or current
-inventory tables in historical documents.
+inventory tables in dated evidence documents.
 
 Do not mark a backlog item `C` based only on:
 
@@ -3001,41 +2976,3 @@ Do not mark a backlog item `C` based only on:
 - XML/JSON validity alone;
 - one successful execution without semantic result evidence;
 - an adjacent feature with a similar name.
-
-## Completion record
-
-Status: Complete
-
-Scope: Commercial-video direction expanded into a complete product workflow,
-release-train order, detailed status inventory, dependency graph, evidence
-gates, execution loop, Definition of Done, explicit deferred scope, and a
-20-item first executable queue. At creation, the inventory contained 234
-unique items: 65 Complete, 17 Partial, 127 New, 9 External prerequisite, and
-16 Out of scope. Current execution status is maintained in the inventory
-table above.
-
-Acceptance criteria:
-
-- full workflow from source identity through persistence -> pass;
-- developed/partial/new/external/out-of-scope classification -> pass;
-- commercial-video-derived functional backlog -> pass;
-- dependencies and closure evidence per item -> pass;
-- release-train and per-item development workflow -> pass;
-- future-chat selection and durable closure rules -> pass.
-
-Verification: Cross-checked against the current tool catalog, recipe selection
-kinds, Viewer/Height Map state, Validation Set, current commercial-video
-analysis, Inspection Workspace v3 handoff, and current completion documents.
-Markdown whitespace and referenced handoff links are checked in the owning
-documentation task.
-
-Evidence:
-
-- this document;
-- `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`;
-- `artifacts/current/20260727-commercial-video-direction/`;
-- current `AGENTS.md` and next-session handoff.
-
-Boundary / next dependency: This planning task is complete. R0 remains an
-external owner replay prerequisite. Physical metrology and deferred
-commercial-platform scope remain unverified or out of scope.

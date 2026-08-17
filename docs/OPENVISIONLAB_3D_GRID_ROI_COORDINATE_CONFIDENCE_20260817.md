@@ -15,19 +15,18 @@ The normal contract is unchanged: drawing and adjustment create only a draft;
 Enter or **Apply ROI / selection** commits it, Esc or **Cancel** discards it,
 and neither path invokes Preview, Publish, Run, or Validation.
 
-## Operator Problem And Commercial Boundary
+## Operator Problem And Product Boundary
 
 The actual ten-recipe study found one wrong-region attempt because a
 Perspective screen rectangle did not make the resulting grid row and column
 obvious. Wide exposed the values only in a deep tool panel, while Compact hid
 that panel during teaching.
 
-The commercial/GoPxL lesson retained is abstract task-context clarity: keep
+The retained workflow principle is task-context clarity: keep
 the current teaching state, exact spatial identity, and next action together.
 The implementation remains an independent OpenVisionLab design using the
 existing Viewer Top command, draft coordinate owner, semantic theme resources,
-and explicit teaching lifecycle. No competitor screen, topology, color, name,
-asset, icon artwork, or code was copied.
+and explicit teaching lifecycle.
 
 Camera, lighting, PLC, industrial I/O, robot, cloud, accounts, deployment, and
 production-line control remain excluded. Synthetic raw-height evidence is not
@@ -94,7 +93,7 @@ Durable evidence:
 
 ## Maturity And Remaining Priority
 
-The evidence-bounded commercial authoring-readiness assessment moves from
+The evidence-bounded operator authoring-readiness assessment moves from
 `8.5/10` to `8.6/10`. This is a qualitative workflow judgment: exact
 coordinate feedback and a deterministic teaching view remove the observed
 wrong-region retry, but product-owner unaided Wide/Compact R0 remains open.

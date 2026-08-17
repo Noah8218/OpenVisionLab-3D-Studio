@@ -171,6 +171,6 @@ and the regression reports in the same folder.
 
 Boundary / next dependency: the current visible Workbench is intentionally
 unchanged. The default XAML must now be recomposed against these owners before
-the GoPxL-informed workflow can be evaluated visually. Physical datum,
+the OpenVisionLab workflow can be evaluated visually. Physical datum,
 calibration, units, uncertainty, and production tolerances remain external
 prerequisites for certified thickness.

@@ -28,7 +28,7 @@ Clearing the Workbench evidence also clears the Viewer presentation. Showing
 or clearing evidence does not edit the source, recipe, ROI, selected step, or
 dirty state and does not execute Preview, Publish, Run, or Validation.
 
-## Benchmark adaptation
+## Product principle
 
 Operator problem:
 
@@ -37,7 +37,7 @@ Operator problem:
 - separate Runner and Workbench execution paths could drift without an exact
   parity gate.
 
-Abstract commercial lesson adapted:
+OpenVisionLab requirements:
 
 - keep configuration, Viewer geometry, and numeric evidence linked;
 - keep the dominant Viewer visually primary;
@@ -48,10 +48,7 @@ Independent OpenVisionLab result:
 
 - the existing graphite/teal visual system, terminology, command row, dock
   layout, and responsive rail are preserved;
-- no GoPxL theme, colors, proportions, topology, labels, assets, or icons were
-  copied;
-- the evidence panel is a small OpenVisionLab-specific scientific overlay,
-  not a reconstruction of a competitor screen.
+- the evidence panel is a small OpenVisionLab-specific scientific overlay.
 
 ## Contract and ownership
 

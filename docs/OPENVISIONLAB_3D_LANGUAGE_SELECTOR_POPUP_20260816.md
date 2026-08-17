@@ -17,11 +17,10 @@ Compact remains inside the 60-pixel navigation rail with a 52-pixel selector,
 `EN`; Wide continues to render `한국어` and `English`. No new theme, control,
 settings surface, dependency, or language service was introduced.
 
-This applies the commercial-workbench principle that a persistent utility must
+This applies the product requirement that a persistent utility must
 remain immediately recognizable in every layout. The implementation stays
 independent: it preserves OpenVisionLab terminology, graphite resources,
-file-first persistence, and explicit Preview/Publish/Run contracts rather than
-copying a competitor screen or theme.
+file-first persistence, and explicit Preview/Publish/Run contracts.
 
 ## Root Cause And Ownership
 
@@ -77,7 +76,7 @@ Representative before/after files:
 
 ## Maturity Reassessment
 
-The evidence-bounded commercial authoring-readiness judgment advances from
+The evidence-bounded operator authoring-readiness judgment advances from
 `7.9/10` after `PL-0012` to `8.0/10`. The remaining known recipe-authoring
 study theme leak is removed, and the language utility is now readable without
 extra navigation in both supported layouts.
@@ -95,5 +94,5 @@ Scope: Retain the shared semantic language-selector ComboBox popup, keep Korean/
 Acceptance criteria: normal/open/selected/keyboard-focus/pointer-hover/click-open/disabled semantics remain dark and legible -> pass; Wide/Compact selector and popup bounds remain usable -> pass; language survives normal restart without recipe/source/ROI/result/Preview/Publish/Run mutation -> pass
 Verification: Debug and Release 0/0; Workbench docking 87/87; actual Release EXE Wide and Compact on DISPLAY2 with Korean/English popup, selection, focus, and hover evidence; refreshed fixed Wide/Compact -ValidateOnly pass; git diff --check pass
 Evidence: this document; .proofline/issues/PL-0014.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0014-language-popup/
-Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work still requires representative input and accepted budgets; no numerical, recipe-schema, Viewer, docking, or commercial-platform scope changed
+Boundary / next dependency: product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work still requires representative input and accepted budgets; no numerical, recipe-schema, Viewer, docking, or excluded-platform scope changed
 ```

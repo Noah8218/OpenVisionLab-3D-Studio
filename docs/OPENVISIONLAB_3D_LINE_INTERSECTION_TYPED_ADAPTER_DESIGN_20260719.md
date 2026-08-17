@@ -215,7 +215,7 @@ copied automatically between the two rows.
 
 ## Workbench and Tool Lab UX
 
-The product retains its bounded, GoPxL-inspired chain rather than a generic
+The product retains its bounded, task-centered chain rather than a generic
 node canvas. The Recipe Navigator and read-only Flow Map show the two incoming
 named `LineFeature` entities and one outgoing `CornerAnchor` so the user can
 trace source and result without guessing the connection.

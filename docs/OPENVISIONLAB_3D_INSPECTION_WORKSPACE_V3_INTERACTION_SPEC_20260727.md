@@ -5,8 +5,8 @@ Status: Complete for interaction design and implementation mapping
 
 ## Outcome
 
-This specification converts the supplied GoPxL video findings into an
-OpenVisionLab-owned interaction contract. It is the required design gate before
+This specification defines an OpenVisionLab-owned interaction contract. It is
+the required design gate before
 changing the current default Workbench.
 
 The first implementation target is the exact
@@ -374,8 +374,6 @@ gate.
 
 ## Evidence
 
-- `docs/OPENVISIONLAB_3D_GOPXL_VIDEO_WORKFLOW_GAP_AND_REDIRECTION_20260727.md`
-- `artifacts/current/20260727-gopxl-gap-analysis/`
 - `artifacts/current/20260727-inspection-workspace-v3/`
 
 ## Completion record

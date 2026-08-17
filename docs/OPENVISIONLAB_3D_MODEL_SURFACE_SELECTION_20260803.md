@@ -24,14 +24,8 @@ The bounded version-1 policy is:
 
 The last boundary is deliberate. Hidden-surface removal in a projection is
 viewpoint dependent, while the current product has no approved acquisition or
-view direction (`B-12`). The official HALCON preparation and projection
-references also separate general model preparation from projection-time hidden
-surface removal:
-
-- https://www.mvtec.com/doc/halcon/2405/en/prepare_object_model_3d.html
-- https://www.mvtec.com/doc/halcon/12/en/project_object_model_3d.html
-
-Therefore `unobservable` is an explicit authored role in this slice, not an
+view direction (`B-12`). Therefore `unobservable` is an explicit authored role
+in this slice, not an
 automatic visibility claim. `K-04` remains blocked on `B-12`.
 
 ## Ownership and dependency direction

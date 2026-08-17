@@ -145,10 +145,9 @@ Screenshot capture can pause WPF continuation and was excluded from timing.
    Prerequisite: owner operation and observer record. Recommended model: none;
    reasoning effort: none.
 
-The commercial lesson retained is shorter context-preserving variant setup,
-linked authoring/evidence, progressive disclosure, and a visible next action.
-No competitor screen, theme, topology, name, asset, icon artwork, or code was
-copied. Camera, PLC, robot, cloud, account, deployment, and production-line
+The product principle is shorter context-preserving variant setup, linked
+authoring/evidence, progressive disclosure, and a visible next action. Camera,
+PLC, robot, cloud, account, deployment, and production-line
 control remain excluded.
 
 ## Implementation And Verification

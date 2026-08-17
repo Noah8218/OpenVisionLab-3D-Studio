@@ -10,8 +10,6 @@ The current `1920 x 1040` and `1280 x 760` synchronized ROI captures were
 reviewed against:
 
 - `OPENVISIONLAB_3D_INSPECTION_WORKSPACE_V3_INTERACTION_SPEC_20260727.md`;
-- `OPENVISIONLAB_3D_GOPXL_VIDEO_WORKFLOW_GAP_AND_REDIRECTION_20260727.md`;
-- `OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`.
 
 The implementation direction was correct: Catalog, Recipe Chain, Selected
 Tool, and Viewer were composed as specified; Reference and Measurement ROI

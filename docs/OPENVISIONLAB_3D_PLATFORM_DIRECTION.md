@@ -4,8 +4,7 @@ Updated: 2026-07-07
 
 Status: Active Reference for the foundational product boundary. Use
 `OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md` for the
-current commercial comparison, maturity decision, inventory, and development
-gates.
+current maturity decision, inventory, and development gates.
 
 OpenVisionLab 3D Studio should become a rule-based 3D inspection workbench. The first deliverable is not a full inspection platform; it is a reliable 3D viewer that can support measurable validation. 3D algorithm development starts after the viewer completion gate passes.
 
@@ -25,7 +24,6 @@ Load 3D data
   -> replay from runner
 ```
 
-Commercial 3D vision tools use their 3D viewers as inspection workbenches, not passive model previews. The recurring pattern is acquisition review, region teaching, alignment, measurement, deviation/color-map review, tolerance judgment, and report evidence. See `docs/OPENVISIONLAB_3D_VIEWER_USAGE_RESEARCH_20260706.md` for the checked source notes and the derived development track.
 
 ## 2. Non-Goals For The First Phase
 

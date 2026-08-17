@@ -1,7 +1,7 @@
 # OpenVisionLab 3D Documentation Map
 
 This index separates current instructions from user documentation, durable
-contracts, completion evidence, and historical records.
+contracts, and completion evidence.
 
 ## Current Authority
 
@@ -42,10 +42,6 @@ Dated documents preserve their recorded scope and do not override it.
 
 - [Master development workflow and backlog](OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md) — full
   235-item inventory and evidence gates.
-- [Approved GoPxL benchmark direction](OPENVISIONLAB_3D_GOPXL_BENCHMARK_APPROVED_DIRECTION_20260731.md) — approved
-  benchmark principles without visual copying.
-- [Workbench v4 layout contract](OPENVISIONLAB_3D_GOPXL_WORKBENCH_V4_LAYOUT_CONTRACT_20260730.md) — current
-  Workbench layout contract.
 - [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) —
   Tool-only numerical ownership.
 - [Vision SDK package boundary](OPENVISIONLAB_3D_VISION_SDK_PACKAGE_BOUNDARY_20260805.md) — vendored
@@ -91,7 +87,7 @@ External prerequisites do not become complete because a document is old.
   Wide/Compact localized UI evidence.
 - [EXE recipe-authoring UX study](OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md) -
   ten current-format recipes saved and reopened through the Release EXE,
-  typed-composition and first-use friction, commercial/GoPxL principle
+  typed-composition and first-use friction, operator-workflow
   evaluation, post-`PL-0011` maturity reassessment, and the original
   `PL-0013`/`PL-0012`/`PL-0014` finding order.
 - [Recipe health navigation](OPENVISIONLAB_3D_RECIPE_HEALTH_NAVIGATION_20260815.md) -
@@ -128,17 +124,23 @@ Use filename/topic search to locate a closure:
 rg --files docs | rg "SURFACE_MATCH|ACQUISITION|VALIDATION|NOAH"
 ```
 
-## Historical Records
+## Private Research Boundary
 
-[The documentation archive](archive/README.md) contains former append-only handoffs and project-instruction
-snapshots. These files preserve state-at-the-time claims, including old
-versions, priorities, working-tree notes, and evidence inventories. They are
-not current instructions.
+Private market research, vendor comparisons, supplied-media reviews, and former
+chronological archives are not tracked or distributed. Public documentation
+contains only OpenVisionLab-owned requirements, contracts, implementation
+decisions, verification evidence, and required license or attribution records.
 
-Older design, concept, prototype, commercial review, and failed/incomplete
-replay documents may remain in `docs/` because other evidence links reference
-them. Their top status must identify Historical, Superseded, or Active
-Reference when the distinction is otherwise ambiguous.
+## 2026-08-18 Public Documentation Boundary
+
+```text
+Status: Complete
+Scope: Current tracked documentation excludes private market research, vendor comparisons, supplied-media reviews, and former chronological archives while preserving OpenVisionLab contracts and required legal attribution
+Acceptance criteria: verified owner-local pre-cleanup archive -> pass; restricted names, domains, and dedicated document names in the current public tree -> 0; local Markdown links -> 52/52; LICENSE, NOTICE, and public-sample attribution unchanged -> pass; application source changes -> 0
+Verification: full Release build 0 warnings/0 errors; git diff --check pass; Proofline PL-0018 valid
+Evidence: AGENTS.md; this index; master backlog; current handoff; .proofline/issues/PL-0018.json; owner-local private archive; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0018-public-document-boundary/logs/dotnet-build-release.log
+Boundary / next dependency: this proves the current tracked tree and distributions, not removal from existing Git history; history rewrite and force-push require separate explicit approval; product-owner unaided Wide/Compact R0 remains external
+```
 
 ## Status Vocabulary
 
@@ -153,14 +155,3 @@ Reference when the distinction is otherwise ambiguous.
 
 Avoid verbose custom status sentences when one vocabulary term plus a short
 boundary note is sufficient.
-
-## 2026-08-05 Consolidation Record
-
-```text
-Status: Complete
-Scope: Documentation authority, current handoffs, historical preservation, navigation index, selected stale-status banners, and external-retention issue registration
-Acceptance criteria: master is the only inventory/queue owner -> pass; active handoffs are short -> pass; former operating/handoff bodies preserved -> pass; stale current Push claims removed -> pass; external sensitive-data blocker remains visible -> pass
-Verification: archived body tails 3/3 exact; local Markdown links 47/47; user-document script references 6/6; active stale Git claims 0; duplicated inventory snapshots outside master 0; Proofline v2 issues 3/3 valid; git diff --check pass
-Evidence: AGENTS.md; this index; current and archived handoffs; master backlog; .proofline/issues/PL-0003.json
-Boundary / next dependency: no product code or UI changed; human-owner Wide/Compact R0 remains external; PL-0003 requires GitHub Support to process open ticket #4633618 and the resulting old-object access outcome to be verified
-```

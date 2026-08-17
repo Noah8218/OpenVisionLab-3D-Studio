@@ -19,8 +19,7 @@ explicit sampling parameters; atomic save/load; and fail-closed
 point/triangle/normal/sample validation.
 
 This is a reusable software foundation, not a matching UI or a complete
-surface matcher. It does not copy GoPxL layout, theme, terminology, assets, or
-code. It addresses the OpenVisionLab requirement for explicit source
+surface matcher. It addresses the OpenVisionLab requirement for explicit source
 identity, deterministic preparation, and replayable evidence.
 
 ## Included scope

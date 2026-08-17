@@ -16,25 +16,22 @@ The enabled Advanced gear also produces no visible transition.
 
 The prior structural/non-mutation checks and generated captures remain useful
 implementation evidence, but they did not prove the extracted view after live
-dock recomposition. Preserve the recorded blocker and corrective gate in:
-
-- `docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md`;
-- `artifacts/current/20260729-novice-stage-navigation-video-review/`.
+dock recomposition. The recorded blocker and corrective gate remain below.
 
 ## Direction assessment
 
 The current product direction remains correct: OpenVisionLab 3D Studio is a
 local, file-first, deterministic 2.5D/3D rule-based inspection workbench.
-Commercial GUI review supports separating operator responsibilities instead
-of keeping every proven capability visible at once:
+The Results workspace separates operator responsibilities instead of keeping
+every proven capability visible at once:
 
-| Commercial lesson | OpenVisionLab decision |
+| Product requirement | OpenVisionLab decision |
 | --- | --- |
-| GoPxL separates configuration, teaching, run review, and diagnostics | Results is a dedicated stage, not a lower dock under the Viewer |
-| SICK Nova separates Configure and Run | Results contains recorded evidence and no recipe mutation command |
-| MERLIC presents inspection results by region and status | Run Record keeps ordered step status and evidence visible |
-| HALCON exposes deep fit and matching diagnostics on demand | Fit, intersection, correspondence, messages, and performance remain in explicit Advanced/Tool Labs |
-| Zivid and Photoneo use task-specific work surfaces | Results local navigation changes the evidence surface without changing the inspection state |
+| Separate configuration, teaching, run review, and diagnostics | Results is a dedicated stage, not a lower dock under the Viewer |
+| Separate Configure and Run | Results contains recorded evidence and no recipe mutation command |
+| Present inspection results by region and status | Run Record keeps ordered step status and evidence visible |
+| Expose deep fit and matching diagnostics on demand | Fit, intersection, correspondence, messages, and performance remain in explicit Advanced/Tool Labs |
+| Use task-specific work surfaces | Results local navigation changes the evidence surface without changing the inspection state |
 
 This does not expand the product into camera acquisition, PLC/robot/HMI,
 stereo reconstruction, cloud/factory management, physical calibration, or
@@ -125,7 +122,7 @@ Status: Incomplete
 Scope: IA-3 dedicated Results structure exists, but actual MainWindow stage-host integration is blank
 Acceptance criteria: full-height Results ownership -> pass; visible Run Record/Output Compare/Reports labels and content in actual Release -> fail; visible Advanced round trip -> fail; non-mutation contracts -> pass in focused verification; current application-only Wide/Compact replay -> fail
 Verification: prior build and focused checks remain green; actual user32/UI Automation video replay exposes empty localization/content/command bindings
-Evidence: docs/OPENVISIONLAB_3D_DEDICATED_RESULTS_WORKSPACE_20260729.md, docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md, artifacts/current/20260729-results-workspace-extraction/, and artifacts/current/20260729-novice-stage-navigation-video-review/
+Evidence: docs/OPENVISIONLAB_3D_DEDICATED_RESULTS_WORKSPACE_20260729.md and artifacts/current/20260729-results-workspace-extraction/
 Boundary / next dependency: repair stage-host ownership, add live MainWindow integration assertions, and repeat IA-4 before owner R0 or SurfaceModel
 ```
 

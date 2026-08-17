@@ -13,9 +13,8 @@ Published and Candidate evidence, compare coverage/RMSE/decision/hash, publish
 the exact candidate without re-running it, or discard it and return to the
 published baseline.
 
-This is an OpenVisionLab workflow solution, not a GoPxL screen copy. The
-operator problem was the risk of losing the known result while experimenting.
-The adapted commercial principle is linked configuration, Viewer, and evidence
+The operator problem was the risk of losing the known result while
+experimenting. The product principle is linked configuration, Viewer, and evidence
 with an explicit next action. The implementation keeps the existing graphite
 theme, OpenVisionLab terminology, responsive rail, and explicit execution
 contracts.
@@ -78,8 +77,7 @@ and preserved Studio parity. See
   names are localized for English/Korean where this slice owns the text.
 - Icon-only discard and output actions use the existing symbol library and have
   localized tooltips, accessible names, and stable AutomationIds.
-- The card reuses graphite semantic brushes and shared controls. No competitor
-  colors, assets, proportions, or screen topology were copied.
+- The card reuses graphite semantic brushes and shared controls.
 
 Fresh current-build review covered:
 

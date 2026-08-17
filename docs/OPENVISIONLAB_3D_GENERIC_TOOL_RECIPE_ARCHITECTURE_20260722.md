@@ -22,7 +22,7 @@ Recipe Manager
   -> headless Runner replay
 ```
 
-This follows the useful GoPxL pattern—catalog, ordered tool chain, selected-tool configuration, 3D output display, and explicit outputs—without copying its visual design or expanding into sensor/controller platform scope.
+This OpenVisionLab architecture uses a catalog, ordered tool chain, selected-tool configuration, 3D output display, and explicit outputs without expanding into sensor/controller platform scope.
 
 ## Canonical ownership
 

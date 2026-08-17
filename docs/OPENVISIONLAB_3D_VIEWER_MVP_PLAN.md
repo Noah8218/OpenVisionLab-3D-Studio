@@ -39,7 +39,8 @@ Reason:
 
 Risks:
 
-- SharpGL gives less out of the box than HelixToolkit, Eyeshot, or VTK, so camera control, picking, model loading, and overlays must be implemented or wrapped deliberately.
+- SharpGL requires deliberate implementation or wrapping for camera control,
+  picking, model loading, and overlays.
 - WPF/OpenGL integration and screenshot capture must be verified on the target PC before feature work expands.
 - Large models, point clouds, STEP/IGES, and CAD topology are not part of the first SharpGL MVP.
 
@@ -48,7 +49,6 @@ Deferred alternatives:
 - HelixToolkit WPF/SharpDX if SharpGL cannot meet basic WPF rendering, picking, or screenshot needs.
 - ActiViz/VTK if point-cloud/volume/scientific visualization becomes dominant.
 - Open CASCADE Technology when STEP/IGES/BRep topology becomes a must-have, not for the first viewer.
-- AB4D, Eyeshot, or HOOPS only if the project explicitly accepts commercial SDK cost for engineering/CAD viewer acceleration.
 
 ## 3. Viewer Acceptance Checks
 

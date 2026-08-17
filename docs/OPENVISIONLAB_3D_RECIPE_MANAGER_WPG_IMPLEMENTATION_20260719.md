@@ -1,7 +1,6 @@
 # OpenVisionLab 3D Recipe Manager + WPG Implementation Evidence
 
 Date: 2026-07-19
-Status: Complete for the original local Recipe Manager v1 lifecycle scope; its former docked Workbench placement is superseded by the 2026-07-19 approved [GoPxL-Informed Tool Lab Direction](OPENVISIONLAB_3D_GOPXL_TOOL_LAB_DIRECTION_20260719.md).
 
 ## Outcome
 

@@ -3,18 +3,17 @@
 Date: 2026-08-15
 Status: Complete software-slice evidence for `PL-0011`
 
-## Operator Problem And Commercial Lesson
+## Operator Problem And Product Principle
 
 The seventeen-step EXE-authored study recipe exceeded the Compact Flow
 viewport. The former global requirement badge did not identify which steps or
 requirements needed attention, so an operator had to scan the chain and move
 between panels.
 
-The adopted commercial principle is current-task clarity: summarize the
+The product principle is current-task clarity: summarize the
 recipe, expose the exact next requirement, and keep configuration, Viewer, and
 evidence linked. The implementation keeps OpenVisionLab terminology, graphite
-theme, explicit Preview/Publish/Run actions, and file-first identity. It does
-not copy GoPxL layout, artwork, names, proportions, or code.
+theme, explicit Preview/Publish/Run actions, and file-first identity.
 
 ## Delivered Contract
 

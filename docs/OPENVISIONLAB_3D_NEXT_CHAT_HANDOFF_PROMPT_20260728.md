@@ -48,9 +48,13 @@ complete with explicit saved-recipe ordered Run, Results evidence, Runner
 parity, and the no-auto-run contract. PL-0017 is complete: GridRectangle
 teaching enters Top orthographic, shows exact live row/column starts and counts,
 and actual one-drag reference/measurement target evidence preserves explicit
-Apply/Cancel and no-execution behavior. Read the three dated 2026-08-17 closure
-documents and their Proofline issues when that evidence is relevant. No
-dependency-ready software slice is currently selected. The product owner's
+  Apply/Cancel and no-execution behavior. Read the three dated 2026-08-17 closure
+  documents and their Proofline issues when that evidence is relevant.
+  PL-0018 keeps private market research, vendor comparisons, supplied-media
+  reviews, and former chronological records outside tracked public
+  documentation while retaining required license and attribution records.
+  The local private archive is owner-only and Git history was not rewritten.
+  No dependency-ready software slice is currently selected. The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
 operation, not model execution. A large-C3D memory/performance target still
 needs a representative maximum input and accepted process-memory/load-time
@@ -77,11 +81,9 @@ Do not modify OpenVisionLab_Dev, commit, push, merge, or release without the
 user's explicit authorization.
 
 Before acting, state the immediate priority, remaining project priority,
-product identity, maturity source, commercial workflow lesson, and excluded
-commercial-platform scope.
+product identity, maturity source, retained workflow principle, and excluded
+platform scope.
 ```
 
-The former long continuation prompt is preserved at
-`archive/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_HISTORY_THROUGH_20260804.md`.
-It is historical evidence and must not override the current files listed
-above.
+Private research and former chronological records are not part of the tracked
+public documentation.

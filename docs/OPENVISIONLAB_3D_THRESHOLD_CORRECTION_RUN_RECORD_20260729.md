@@ -6,15 +6,10 @@ Status: Complete for `L-11`
 
 ## Product-direction source
 
-This slice continues the approved 11-video product direction recorded in:
-
-- `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`;
-- `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`.
-
-The direct lesson remains SICK Nova's evidence-based threshold workflow, with
-OpenVisionLab's stricter separation of deterministic suggestion, explicit
+This slice implements OpenVisionLab's evidence-based threshold workflow with
+strict separation of deterministic suggestion, explicit
 operator correction, development replay, Held-out replay, and durable
-reporting. GoPxL's separation of recipe, selected-tool editing, execution, and
+reporting. The separation of recipe, selected-tool editing, execution, and
 results also remains intact.
 
 Camera acquisition, stereo reconstruction, PLC/robot/fieldbus, cloud/plant

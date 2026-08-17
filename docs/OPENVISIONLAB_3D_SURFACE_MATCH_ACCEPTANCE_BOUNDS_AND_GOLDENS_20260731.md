@@ -79,17 +79,15 @@ therefore produce identical raw and assessment identities in both hosts.
 - selected evidence is presentation-only and can be cleared without changing
   recipe, source, ROI, Preview, Publish, Run, or Validation state;
 - the Viewer uses the existing OpenVisionLab graphite role system and compact
-  evidence card rather than copying a competitor theme, panel topology, or
-  visual assets.
+  evidence card.
 
-## GoPxL benchmark adaptation
+## OpenVisionLab product principle
 
-The abstract principle adapted from the benchmark is linked
-configuration/Viewer/evidence with progressive disclosure. The independent
+The product principle is linked configuration/Viewer/evidence with progressive
+disclosure. The
 OpenVisionLab implementation keeps the existing Authoring responsibility
 rail, typed PropertyGrid, explicit action contracts, dominant Viewer, and
-OpenVisionLab terminology. Similarity to a GoPxL screenshot was not an
-acceptance criterion.
+OpenVisionLab terminology.
 
 ## Controlled golden evidence
 

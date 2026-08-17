@@ -7,8 +7,7 @@ Status: Complete for the bounded presentation-only command-bar slice
 ## User goal
 
 Make the 3D Viewer easier to scan by reducing persistent labels and moving
-familiar presentation commands to icons, using the supplied GoPxL Viewer as
-the density reference.
+familiar presentation commands to icons.
 
 ## Scope and boundaries
 

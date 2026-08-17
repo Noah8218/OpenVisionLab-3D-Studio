@@ -17,31 +17,18 @@ It does not extrude every sample vertically to a ground plane. The default
 remains the owner-approved line-based `Wireframe`; Points, Surface, and
 Surface + Edges remain explicit display choices.
 
-The supplied `Thickness_Teaching.mp4` and `Warpage_Teaching.mp4` show the same
-product model: the whole map first appears in a fitted top/height-map view,
-then perspective is used to inspect shape. The previous fixed
+The product model shows the whole map first in a fitted top/height-map view,
+then uses perspective to inspect shape. The previous fixed
 `yaw 34 / pitch 52 / distance 13.2 / target 0` load presentation obscured this
 model even though the source mapping and neighbor topology were correct.
 
-## Commercial reference
+## Product interaction contract
 
-LMI GoPxL documents separate Surface/Top and Perspective modes, a zoom-to-fit
-command, pan/orbit/zoom, and simplified display density when zoomed out:
-
-- <https://am.lmi3d.com/manuals/gopxl/gopxl-1.2/LMILaserLineProfiler/Content/WebInterface/Acquire/DataViewer/DataViewer1.htm>
-- <https://am.lmi3d.com/manuals/gopxl/gopxl-1.2/LMILaserLineProfiler/Content/WebInterface/Acquire/DataViewer/SurfaceMode.htm>
-
-Its Mesh surface mode connects surface samples with polygons. Its optional
-Sidewall display can hide/show nearly vertical polygons without changing scan
-data or measurements. OpenVisionLab 3D does not silently remove steep
-connections: such behavior needs an explicit display option and source-unit
-policy before implementation.
-
-GoPxL centers the clicked point on Perspective double-click. The owner
-explicitly chose double-click Fit for this product, so OpenVisionLab 3D follows
-that local interaction contract instead of copying GoPxL exactly:
-
-- <https://am.lmi3d.com/manuals/gopxl/gopxl-1.2/LMILaserLineProfiler/Content/WebInterface/InterfaceOverview/Keyboard_and_mouse_shortcuts.htm>
+OpenVisionLab separates Surface/Top and Perspective modes and provides explicit
+zoom-to-fit, pan, orbit, zoom, and display-density behavior. It does not
+silently remove steep connections; any such behavior requires an explicit
+display option and source-unit policy. The owner selected double-click Fit for
+Perspective mode.
 
 ## Implemented behavior
 

@@ -8,10 +8,8 @@ Backlog scope: `B-11`, `B-16`
 
 ## Decision
 
-OpenVisionLab uses commercial products as workflow references, not as visual
-templates. This slice therefore does not copy GoPxL colors, theme, panel
-proportions, labels, icons, assets, or screen topology. It advances an
-OpenVisionLab-specific prerequisite: source data must state which inspection
+This slice advances an OpenVisionLab-specific prerequisite: source data must
+state which inspection
 channels actually exist before later tools consume them.
 
 The product owner also authorized dependency-safe software development before

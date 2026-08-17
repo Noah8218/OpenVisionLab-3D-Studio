@@ -84,10 +84,9 @@ ten directly runnable modern recipes.
 6. The Affine template preserves seventeen explicit, independently named
    steps and source/result identities.
 
-These strengths fit the approved commercial lesson: keep the operator's
+These strengths fit the approved product principle: keep the operator's
 current state and next action visible while preserving explicit execution and
-evidence boundaries. They are OpenVisionLab behavior, not copied GoPxL
-layout, colors, names, assets, or code.
+evidence boundaries.
 
 ## Prioritized Findings
 
@@ -242,17 +241,16 @@ Durable issue: `PL-0013`.
    starter. Values must be validated on reopen, shown to the user, and never
    shared silently across unrelated projects.
 
-## Commercial And GoPxL Evaluation
+## Independent Product Evaluation
 
-The approved GoPxL-inspired direction remains correct at the principle level:
+The approved task-centered direction remains correct at the principle level:
 current-task clarity, linked configuration/Viewer/evidence, progressive
 disclosure, purposeful icons, collapsible support panes, and explicit status
 and next action. The study shows that the visual shell already expresses much
 of that direction, but multi-tool authoring still exposes internal panel and
 type boundaries to the operator.
 
-The next improvement should therefore not copy a commercial screen. It should
-adapt the commercial lesson into an OpenVisionLab-specific typed authoring
+The next improvement should extend the OpenVisionLab-specific typed authoring
 contract: compatible route first, one visible next action, recipe health at a
 glance, and explicit Preview/Publish/Run.
 
@@ -265,7 +263,7 @@ glance, and explicit Preview/Publish/Run.
 | Multi-tool typed authoring | 7.0/10 | Current Add resolves a compatible typed artifact, exposes the proposed route, blocks unavailable transformed-only tools, and gives legacy mismatches a direct non-executing repair action. |
 | First-use efficiency | 6.5/10 | Add now opens one contextual dual-ROI setup path, but recipe identity/source creation and save remain split. |
 | Compact long-chain overview | 4.5/10 | Seventeen-step chain persists, but only part is visible and requirement locations are not summarized. |
-| Current commercial authoring readiness | 7.0/10 | Typed insertion and dual-ROI setup are coherent and non-executing; recipe-wide health, first-use setup, and long-chain navigation remain incomplete. |
+| Current operator authoring readiness | 7.0/10 | Typed insertion and dual-ROI setup are coherent and non-executing; recipe-wide health, first-use setup, and long-chain navigation remain incomplete. |
 
 The scores are an evidence-bounded product judgment, not instrumented
 telemetry. They apply only to the observed file-first recipe-authoring
@@ -278,7 +276,7 @@ outside the product scope.
 | Area | Current score | Change evidence |
 | --- | ---: | --- |
 | Compact long-chain overview | 7.5/10 | Exact six-state counts, direct owning-step/requirement detail, non-wrapping navigation, and automatic reveal of step 17 now pass in current Release Compact English/Korean. |
-| Current commercial authoring readiness | 7.4/10 | Compatible insertion, contextual dual-ROI setup, and recipe-wide health are coherent and non-executing; first-use creation, stale search context, and the language popup remain open. |
+| Current operator authoring readiness | 7.4/10 | Compatible insertion, contextual dual-ROI setup, and recipe-wide health are coherent and non-executing; first-use creation, stale search context, and the language popup remain open. |
 
 These current scores supersede only the corresponding `4.5/10` and `7.0/10`
 study-baseline rows. They remain an evidence-bounded product judgment, not

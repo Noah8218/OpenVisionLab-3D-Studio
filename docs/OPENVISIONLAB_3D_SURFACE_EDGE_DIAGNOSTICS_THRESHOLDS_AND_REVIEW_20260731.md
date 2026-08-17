@@ -16,10 +16,9 @@ pose, raw scores, and diagnostic overlays linked by canonical identities.
 
 The operator problem was that equal surface coverage could hide a missing
 physical edge and the previous Viewer could not explain the edge direction or
-the resulting decision. The adapted commercial-workflow principle is linked
+the resulting decision. The product principle is linked
 configuration, Viewer, and evidence. OpenVisionLab keeps its own graphite
-roles, terminology, layout, assets, and explicit Apply/Preview/Run contracts;
-no competitor theme or screen topology was copied.
+roles, terminology, layout, assets, and explicit Apply/Preview/Run contracts.
 
 ## Included scope
 

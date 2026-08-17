@@ -12,9 +12,8 @@ The abrupt white block made the parameter surface look like a separate product
 and weakened the visual relationship between the selected step and its
 configuration.
 
-GoPxL remains a workflow benchmark only. This repair adapts the abstract
-principle that one task surface should have one coherent visual system. It does
-not copy GoPxL colors, proportions, assets, topology, or control artwork.
+This repair applies the OpenVisionLab principle that one task surface should
+have one coherent visual system.
 
 ## Completed scope
 

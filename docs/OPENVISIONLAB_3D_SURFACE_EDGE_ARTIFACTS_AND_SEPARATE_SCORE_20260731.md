@@ -14,9 +14,7 @@ surface pose. The existing surface coverage remains unchanged. The Viewer
 shows both channels as distinct evidence and explicitly labels the edge score
 as diagnostic rather than Pass/Fail policy.
 
-This adapts the commercial-workflow principle that configuration, Viewer, and
-evidence should stay linked. It does not copy a competitor's theme, screen
-topology, proportions, terminology, assets, or icon artwork.
+The product principle is that configuration, Viewer, and evidence stay linked.
 
 ## Included scope
 

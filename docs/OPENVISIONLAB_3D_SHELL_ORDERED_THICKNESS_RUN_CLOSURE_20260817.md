@@ -21,18 +21,17 @@ ready, no parameter draft or other execution is active, and every ordered
 step has a supported typed adapter. The visible capability text gives the
 exact blocking reason.
 
-## Product And Commercial Boundary
+## Product Boundary
 
 The OpenVisionLab problem was a broken operator handoff: Preview and Publish
 were available in Studio, but the same valid Thickness recipe required a
 separate Runner process for full execution and evidence review.
 
-The commercial/GoPxL lesson retained here is the abstract principle of keeping
+The product principle is to keep
 the current task, explicit execution, controlled result, and evidence link in
-one understandable workflow. The implementation is independent: it uses
-OpenVisionLab terms, visual resources, ordered graph contracts, stable
-identities, and Results model. No competitor color, topology, name, asset,
-icon artwork, or code was copied.
+one understandable workflow. The implementation uses OpenVisionLab terms,
+visual resources, ordered graph contracts, stable identities, and Results
+model.
 
 Camera, lighting, PLC, industrial I/O, robot, cloud, accounts, deployment, and
 production-line control remain excluded. Synthetic raw-height evidence is not
@@ -121,7 +120,7 @@ Durable evidence:
 
 ## Maturity And Remaining Priority
 
-The evidence-bounded commercial authoring-readiness assessment moves from
+The evidence-bounded operator authoring-readiness assessment moves from
 `8.2/10` to `8.5/10`. This is a qualitative workflow judgment: the primary
 operator loop now reaches a controlled Run and Results inside Studio, but
 coordinate-confident ROI teaching and product-owner unaided Wide/Compact R0

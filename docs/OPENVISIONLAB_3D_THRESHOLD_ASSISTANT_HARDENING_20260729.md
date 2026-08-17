@@ -6,20 +6,8 @@ Status: Complete for `I-12`, `I-13`, and `I-15`
 
 ## Product-direction source
 
-This slice is part of the approved commercial-video-derived development
-direction, not an isolated UI enhancement.
-
-All 11 owner-supplied GoPxL, SICK Nova, HALCON/MERLIC, Zivid Studio, and
-Photoneo videos were previously reviewed individually. The durable
-source-by-source evidence is:
-
-- `docs/OPENVISIONLAB_3D_COMMERCIAL_VIDEO_DIRECTION_AND_PRIORITY_20260727.md`;
-- `docs/OPENVISIONLAB_3D_INDUSTRIAL_UX_AUDIT_20260728.md`;
-- `artifacts/current/20260727-commercial-video-direction/`;
-- `artifacts/current/20260728-industrial-3d-ux-audit/`.
-
-The direct lesson for this slice comes from the SICK Nova 3D Presence
-Inspection workflow: Good and Bad observations may suggest limits, but the
+This slice is part of the approved OpenVisionLab development direction, not an
+isolated UI enhancement. Good and Bad observations may suggest limits, but the
 operator must see whether the sample evidence is credible and must explicitly
 review and apply any change. The implementation preserves OpenVisionLab's
 stronger Held-out separation and explicit execution lifecycle instead of

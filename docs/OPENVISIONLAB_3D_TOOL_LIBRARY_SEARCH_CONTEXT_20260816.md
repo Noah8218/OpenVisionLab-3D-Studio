@@ -19,7 +19,7 @@ and none of these transitions invokes Preview, Publish, Run, or Validation.
 
 This is the shortest deterministic fix for the ten-recipe EXE study finding:
 the previous recipe's term could remain unnoticed and hide tools needed for the
-next recipe. It follows the commercial-workbench principle that the visible
+next recipe. It follows the product principle that the visible
 catalog should match the current authoring context, while keeping
 OpenVisionLab's existing terminology, graphite theme, explicit execution
 contracts, and file-first recipe model.
@@ -61,7 +61,7 @@ that independently reproduced defect remains `PL-0014`.
 
 ## Maturity Reassessment
 
-The evidence-bounded commercial authoring-readiness judgment advances from
+The evidence-bounded operator authoring-readiness judgment advances from
 `7.8/10` after `PL-0013` to `7.9/10`. The change removes repeated clear/retype
 friction and a misleading hidden catalog state, but it does not close the
 language-popup defect or the product owner's unaided Wide/Compact R0.
@@ -78,5 +78,5 @@ Scope: Clear Tool Library search only after successful recipe open, new-recipe c
 Acceptance criteria: successful context change leaves no hidden stale filter -> pass; failure retains visible query -> pass; behavior is deterministic and invokes no Preview/Publish/Run -> pass; current-build Wide/Compact and English/Korean states remain reachable and themed -> pass
 Verification: Debug and Release 0/0; Tool Recipe teaching 50/50; Workbench docking 84/84; actual Release EXE Compact English and Wide Korean on DISPLAY2; refreshed fixed Wide/Compact -ValidateOnly pass; git diff --check pass
 Evidence: this document; .proofline/issues/PL-0012.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260816-pl0012-tool-search-context/
-Boundary / next dependency: PL-0014 owns the separately reproduced platform-light blank language popup; product-owner unaided Wide/Compact R0 remains external; no numerical, recipe-schema, persisted-search, Viewer, docking, or commercial-platform scope changed
+Boundary / next dependency: PL-0014 owns the separately reproduced platform-light blank language popup; product-owner unaided Wide/Compact R0 remains external; no numerical, recipe-schema, persisted-search, Viewer, docking, or excluded-platform scope changed
 ```

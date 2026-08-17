@@ -15,10 +15,7 @@ five-sample manifest is not rendered, and Run All is disabled.
 
 The prior structural, deterministic Validation Set, and non-mutation checks
 remain useful. They did not prove the extracted Validate view after live dock
-recomposition. Preserve the blocker and corrective gate in:
-
-- `docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md`;
-- `artifacts/current/20260729-novice-stage-navigation-video-review/`.
+recomposition. The blocker and corrective gate remain below.
 
 ## Direction assessment
 
@@ -27,16 +24,16 @@ local, file-first, deterministic 2.5D/3D inspection workbench, but its proven
 capabilities must be separated by operator responsibility instead of remaining
 visible together.
 
-The owner-supplied commercial GUI review directly informed this slice:
+The Validate workspace follows these product requirements:
 
-| Commercial lesson | OpenVisionLab decision |
+| Product requirement | OpenVisionLab decision |
 | --- | --- |
-| GoPxL separates configuration, teaching, monitoring, and diagnostics | Keep real Setup, Teach, Validate, and Results stages |
-| SICK Nova separates Configure and Run and makes limits explicit | Keep sample replay and threshold review in Validate, not Teach |
-| SICK Presence Inspection uses Good/Bad evidence before an explicit limit decision | Preserve Good/Bad/Held-out roles, deterministic candidates, Review/Cancel/Apply, and explicit replay |
-| MERLIC keeps preparation flow readable while exposing region-level evidence | Keep sample and selected-step metrics/overlays linked without showing every table at once |
-| Zivid Studio uses short analyze/propose/review/apply assistants | Keep threshold correction bounded and explicit; do not turn it into autonomous recipe mutation |
-| HALCON exposes deep evidence when requested | Retain advanced evidence docks as opt-in diagnostics, not the default operator screen |
+| Separate configuration, teaching, monitoring, and diagnostics | Keep real Setup, Teach, Validate, and Results stages |
+| Separate Configure and Run and make limits explicit | Keep sample replay and threshold review in Validate, not Teach |
+| Use Good/Bad evidence before an explicit limit decision | Preserve Good/Bad/Held-out roles, deterministic candidates, Review/Cancel/Apply, and explicit replay |
+| Keep preparation readable while exposing region-level evidence | Keep sample and selected-step metrics/overlays linked without showing every table at once |
+| Use short analyze/propose/review/apply assistants | Keep threshold correction bounded and explicit; do not turn it into autonomous recipe mutation |
+| Expose deep evidence when requested | Retain advanced evidence docks as opt-in diagnostics, not the default operator screen |
 
 This does not expand the product into camera acquisition, PLC/robot/HMI,
 stereo reconstruction, cloud/factory management, physical calibration, or
@@ -122,7 +119,7 @@ Status: Incomplete
 Scope: IA-2 / A-10 dedicated Validate structure exists, but actual MainWindow stage-host integration is blank
 Acceptance criteria: full-height Validate ownership -> pass; visible five-section labels and accessible names -> fail; matching five-sample manifest and enabled Run All -> fail; failure-to-Teach live path -> not reachable; deterministic Validation Set contracts -> pass in focused verification
 Verification: prior build and focused checks remain green; actual user32/UI Automation video replay exposes empty localization/content/command bindings
-Evidence: docs/OPENVISIONLAB_3D_DEDICATED_VALIDATE_WORKSPACE_20260729.md, docs/OPENVISIONLAB_3D_NOVICE_STAGE_NAVIGATION_VIDEO_REVIEW_20260729.md, artifacts/current/20260729-validate-workspace-extraction/, and artifacts/current/20260729-novice-stage-navigation-video-review/
+Evidence: docs/OPENVISIONLAB_3D_DEDICATED_VALIDATE_WORKSPACE_20260729.md and artifacts/current/20260729-validate-workspace-extraction/
 Boundary / next dependency: A-01 and A-10 remain Partial until stage-host ownership is repaired and actual Release replay passes
 ```
 

@@ -9,10 +9,9 @@ shows one read-only quality status in the Job Bar beside recipe, source, and
 alignment context. The status answers the operator's first source-trust
 question without requiring the Source Quality support pane to remain open.
 
-The implementation adapts the commercial workflow principle of keeping the
-current task and its evidence linked. It retains OpenVisionLab terminology,
-graphite semantic roles, layout, and explicit execution contracts; it does not
-copy a competitor's theme, proportions, assets, or screen topology.
+The implementation keeps the current task and its evidence linked. It retains
+OpenVisionLab terminology, graphite semantic roles, layout, and explicit
+execution contracts.
 
 ## Operator problem and selected design
 

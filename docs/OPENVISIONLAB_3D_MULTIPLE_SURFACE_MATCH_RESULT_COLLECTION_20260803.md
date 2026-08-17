@@ -11,11 +11,10 @@ made a scene containing two valid copies look like a single-result inspection
 and left no stable identity with which later workflow could navigate or review
 individual occurrences.
 
-The adapted commercial-workflow principle is current-result clarity: keep the
+The product principle is current-result clarity: keep the
 configuration, selected result, Viewer evidence, and status visibly linked.
 OpenVisionLab implements that principle with its own terminology and existing
-Workbench/Viewer layout. No competitor theme, screen topology, asset, name, or
-control geometry is copied.
+Workbench/Viewer layout.
 
 ## Closed scope
 

@@ -10,7 +10,7 @@ Scope: make the first inspection workflow start without an implicit sample and g
 
 ## Product decision
 
-OpenVisionLab 3D Studio is an explainable local rule-based 3D inspection recipe workbench. It follows the useful GoPxL Tools/Chaining pattern of typed tools, visible INPUT -> OUTPUT flow, contextual configuration, and explicit execution. It does not adopt camera, PLC, robot, cloud, account, or production-controller scope.
+OpenVisionLab 3D Studio is an explainable local rule-based 3D inspection recipe workbench. It follows the useful task-centered tool chaining pattern of typed tools, visible INPUT -> OUTPUT flow, contextual configuration, and explicit execution. It does not adopt camera, PLC, robot, cloud, account, or production-controller scope.
 
 The first inspection contract is:
 

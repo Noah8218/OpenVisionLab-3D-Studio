@@ -27,10 +27,9 @@ order, match-ID suffix, and decision for scanning.
 
 The `J-12` selector proved that retained matches could be selected without
 execution, but a dropdown-only path made ordered result review unnecessarily
-slow. The adapted commercial-workflow principle is explicit current result and
+slow. The product principle is explicit current result and
 next safe action. The implementation uses OpenVisionLab terminology, existing
-graphite theme resources, and existing arrow symbols; it does not reproduce a
-competitor layout, artwork, or screen topology.
+graphite theme resources, and existing arrow symbols.
 
 This slice changes presentation only. It does not:
 

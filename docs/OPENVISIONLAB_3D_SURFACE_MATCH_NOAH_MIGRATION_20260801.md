@@ -134,12 +134,11 @@ had left the Shell EXE timestamp older than the newest source. A full Release
 Rebuild refreshed the binary set; hashes were recalculated rather than the
 stale-source guard being bypassed, and both validation-only modes then passed.
 
-## UI and benchmark boundary
+## UI boundary
 
 This slice changes no UI, UX, layout, visible text, docking, theme, or
 responsive behavior. New before/after screenshots are therefore not
-applicable. Existing GoPxL-derived principles remain workflow guidance only;
-no competitor theme, assets, proportions, topology, or naming were copied.
+applicable.
 
 ## Evidence
 

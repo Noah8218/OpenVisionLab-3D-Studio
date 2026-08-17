@@ -1,9 +1,8 @@
 # AGENTS.md
 
 This file defines the active working agreement for Codex in this repository.
-Historical project instructions are preserved in
-`docs/archive/AGENTS_PROJECT_HISTORY_THROUGH_20260804.md` and are not current
-instructions.
+Private market research, vendor comparisons, supplied-media reviews, and former
+chronological records are intentionally excluded from the tracked public tree.
 
 ## Document Authority
 
@@ -16,7 +15,7 @@ Use one owner for each kind of information:
    handoff and external prerequisites.
 4. `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md` owns only the
    next-chat entry prompt.
-5. Dated closure, design, audit, and experiment documents are evidence for
+5. Dated OpenVisionLab closure, design, audit, and experiment documents are evidence for
    their recorded scope. They do not override the master backlog.
 
 Do not copy mutable Git status, unpushed-commit claims, or current priority
@@ -40,12 +39,12 @@ At the start of a new chat, after a handoff, or when asked to continue:
 1. Run `git status --short` and `git log --oneline -5`.
 2. Read this file, the next-chat prompt, the current handoff, the master
    backlog, and the specific active contract for the requested work.
-3. Use `docs/README.md` to locate user, development, architecture, evidence,
-   and historical documents.
+3. Use `docs/README.md` to locate user, development, architecture, and evidence
+   documents.
 4. Before implementation, documentation edits, or command-driven follow-up,
    tell the user the immediate priority, remaining project priority, product
-   identity, current maturity source, commercial lesson being adapted, and
-   commercial-platform scope that remains excluded.
+   identity, current maturity source, retained workflow principle, and excluded
+   platform scope.
 
 Do not treat a narrow screenshot, smoke test, or old completion record as a
 replacement for current product orientation.
@@ -71,7 +70,7 @@ As of the 2026-08-17 PL-0017 coordinate-confident grid ROI teaching closure:
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
 - Inspection Workspace v3: `7/8`; `A-01` remains Partial.
-- GoPxL-inspired Workbench v4: `3/3` complete.
+- Inspection Workbench v4: `3/3` complete.
 - Current acceptance priority: product-owner unaided Wide and Compact R0.
 - `PL-0009` compatible Add/input-route correctness, `PL-0010` contextual
   add/configure/teach/repair, and `PL-0011` recipe-health navigation are
@@ -146,17 +145,19 @@ chronology to this file.
 - Do not split cohesive code solely by file length. A partial type is not an
   architectural boundary.
 
-## Commercial Benchmark Boundary
+## Independent Design Boundary
 
-- Commercial products, including GoPxL, provide workflow principles rather
-  than a screen, theme, or implementation template.
-- Adapt current-task clarity, linked configuration/Viewer/evidence,
+- Tracked documentation contains only OpenVisionLab-owned requirements,
+  contracts, implementation decisions, and verification evidence.
+- Private market research, vendor comparisons, and supplied-media reviews stay
+  outside the repository and all distributions.
+- Preserve current-task clarity, linked configuration/Viewer/evidence,
   progressive disclosure, purposeful familiar icons, collapsible support
   panes, and explicit status/next-action feedback.
-- Do not copy competitor colors, proportions, topology, names, assets, icon
-  artwork, or code. Preserve OpenVisionLab terminology and visual identity.
-- A benchmark-driven change must name the OpenVisionLab operator problem, the
-  abstract principle, and why the independent design fits this product.
+- Each design change must name the OpenVisionLab operator problem, the product
+  principle, and why the independent design fits this product.
+- Preserve required software licenses, notices, dependency attribution, and
+  public-sample attribution; privacy cleanup must not remove legal records.
 
 ## Human R0
 
@@ -180,7 +181,7 @@ chronology to this file.
 - README media must show only the application window and expose no desktop,
   taskbar, unrelated application, path, account, notification, or private data.
 - Root distributions retain `LICENSE`, `NOTICE`, and required attribution.
-- Dated closure and historical documents remain evidence. Add a clear
+- Dated OpenVisionLab closure and verification documents remain evidence. Add a clear
   Historical/Superseded banner instead of rewriting their recorded outcome.
 
 ## UI And Layout Integrity

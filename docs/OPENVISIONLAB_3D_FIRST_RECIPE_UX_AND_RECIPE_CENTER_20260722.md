@@ -22,23 +22,22 @@ passing first-task-usability claim. The owner's real first-use attempt on
 first-time-operator gate is reopened until the acceptance protocol below
 passes.
 
-## Commercial pattern used
+## Product workflow pattern
 
-The workbench adopts the useful responsibility split demonstrated by GoPxL:
+The workbench uses this responsibility split:
 
 ```text
 Tool Library -> ordered Tool Flow -> Inputs / Parameters / Outputs -> 3D Viewer
 ```
 
-The separate recipe window adopts the useful start-center responsibility
-demonstrated by MVTec MERLIC:
+The separate recipe window owns the start-center responsibility:
 
 ```text
 New -> Open -> Current work -> Recent work and details
 ```
 
-These are workflow references, not a visual copy. OpenVisionLab keeps its own
-navy/light/teal theme, WPF-UI icon language, explicit Preview/Publish/Run
+OpenVisionLab keeps its own navy/light/teal theme, WPF-UI icon language,
+explicit Preview/Publish/Run
 contract, typed entity IDs, PropertyGrid editing, and dockable views.
 
 ## UI ownership

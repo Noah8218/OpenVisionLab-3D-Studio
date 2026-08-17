@@ -110,7 +110,7 @@ Prove that Viewer and Runner geometric results generalize beyond one fixed ident
 
 - A second genuinely distinct measured/nominal pair with redistribution-safe or locally traceable provenance.
 - An independently known non-identity rigid transform or alignment truth.
-- External reference output from CloudCompare, ZEISS INSPECT, PolyWorks, Geomagic Control X, or another trusted implementation.
+- External reference output from an independently trusted implementation.
 
 Do not spend implementation effort fabricating these prerequisites from the existing NIST derivative. Synthetic cases may test errors, but they cannot prove cross-data generalization.
 
