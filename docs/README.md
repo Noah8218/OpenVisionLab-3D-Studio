@@ -65,6 +65,10 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Grid ROI coordinate confidence](OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md) -
+  `PL-0017` automatic Top-view GridRectangle teaching, exact live draft
+  coordinates, actual-pointer reference/measurement proof, Wide/Compact
+  evidence, and unchanged explicit Apply/Cancel/no-execution behavior.
 - [Shell ordered Thickness Run closure](OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md) -
   `PL-0016` one-action current-recipe Run, shared Runner projection,
   Run Record/Results routing, no-auto-run contract, ten actual EXE results and

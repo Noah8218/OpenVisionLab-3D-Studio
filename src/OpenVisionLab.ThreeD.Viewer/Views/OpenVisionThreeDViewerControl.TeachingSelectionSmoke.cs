@@ -68,6 +68,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         var initialResults = viewModel.ResultEntities;
         var initialCamera = CaptureCameraSnapshot();
         var finalCamera = initialCamera;
+        var seededMoveStart = default(Point);
+        var seededMoveEnd = default(Point);
+        var seededMoveFirstPoint = default(HeightGridPoint);
+        var seededMoveSecondPoint = default(HeightGridPoint);
+        var hasSeededMovePath = false;
         var originalPointer = default(Point);
         var hasOriginalPointer = false;
         Window? hostWindow = null;
@@ -147,22 +152,52 @@ public sealed partial class OpenVisionThreeDViewerControl
                     out var hoverBottomRight,
                     out var hoverBottomLeft))
             {
+                var baselineRectangle = dragBaselineRectangle!;
                 var hoverCenter = new Point(
                     (hoverTopLeft.X + hoverTopRight.X + hoverBottomRight.X + hoverBottomLeft.X) * 0.25,
                     (hoverTopLeft.Y + hoverTopRight.Y + hoverBottomRight.Y + hoverBottomLeft.Y) * 0.25);
                 if (TryGetTeachingGridRectangleCenterScreenPoint(
                         capture.SelectionId,
-                        dragBaselineRectangle!,
+                        baselineRectangle,
                         out var projectedCenter))
                 {
                     hoverCenter = projectedCenter;
+                    var binding = viewModel.TeachingCaptureSourceBinding;
+                    if (binding is not null)
+                    {
+                        var targetRow = baselineRectangle.Row + baselineRectangle.RowCount
+                            <= binding.GridHeight - baselineRectangle.RowCount
+                                ? baselineRectangle.Row + baselineRectangle.RowCount
+                                : Math.Max(0, baselineRectangle.Row - baselineRectangle.RowCount);
+                        var targetColumn = baselineRectangle.Column + baselineRectangle.ColumnCount
+                            <= binding.GridWidth - baselineRectangle.ColumnCount
+                                ? baselineRectangle.Column + baselineRectangle.ColumnCount
+                                : Math.Max(0, baselineRectangle.Column - baselineRectangle.ColumnCount);
+                        var targetRectangle = baselineRectangle with
+                        {
+                            Row = targetRow,
+                            Column = targetColumn
+                        };
+                        hasSeededMovePath = TryGetTeachingGridRectangleCenterScreenPoint(
+                                capture.SelectionId,
+                                targetRectangle,
+                                out seededMoveEnd)
+                            && TryPickC3DPoint(hoverCenter, out seededMoveFirstPoint)
+                            && TryPickC3DPoint(seededMoveEnd, out seededMoveSecondPoint)
+                            && (seededMoveFirstPoint.Row != seededMoveSecondPoint.Row
+                                || seededMoveFirstPoint.Column != seededMoveSecondPoint.Column);
+                        if (hasSeededMovePath)
+                        {
+                            seededMoveStart = hoverCenter;
+                        }
+                    }
                 }
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(hoverCenter));
                 await Task.Delay(120);
                 moveHoverMode = GetTeachingGridRectangleEditMode(
                         hoverCenter,
                         capture.SelectionId,
-                        dragBaselineRectangle!)
+                        baselineRectangle)
                     .ToString();
                 moveHoverCursor = Viewport.Cursor?.ToString() ?? "(null)";
                 moveHoverStatus = viewModel.ViewerStatus;
@@ -170,30 +205,52 @@ public sealed partial class OpenVisionThreeDViewerControl
                     && viewModel.ViewerStatus.Contains("move area", StringComparison.Ordinal);
             }
 
-            var foundFirst = editsExistingCandidate
-                ? TryFindTeachingCapturePickPointNear(
-                    dragBaselineRectangle!.Row + dragBaselineRectangle.RowCount / 2,
-                    dragBaselineRectangle.Column + dragBaselineRectangle.ColumnCount / 2,
-                    out var firstLocalPoint,
-                    out var firstPoint)
-                : TryFindTeachingCapturePickPoint(
-                    new HashSet<(int Row, int Column)>(),
-                    out firstLocalPoint,
-                    out firstPoint);
+            Point firstLocalPoint;
+            HeightGridPoint firstPoint;
+            var foundFirst = true;
+            if (editsExistingCandidate && hasSeededMovePath)
+            {
+                firstLocalPoint = seededMoveStart;
+                firstPoint = seededMoveFirstPoint;
+            }
+            else
+            {
+                foundFirst = editsExistingCandidate
+                    ? TryFindTeachingCapturePickPointNear(
+                        dragBaselineRectangle!.Row + dragBaselineRectangle.RowCount / 2,
+                        dragBaselineRectangle.Column + dragBaselineRectangle.ColumnCount / 2,
+                        out firstLocalPoint,
+                        out firstPoint)
+                    : TryFindTeachingCapturePickPoint(
+                        new HashSet<(int Row, int Column)>(),
+                        out firstLocalPoint,
+                        out firstPoint);
+            }
             if (!foundFirst)
             {
                 throw new InvalidOperationException("No first pickable rendered grid cell was found.");
             }
 
-            var foundSecond = editsExistingCandidate
-                ? TryFindTeachingCapturePickPoint(
-                    new HashSet<(int Row, int Column)> { (firstPoint.Row, firstPoint.Column) },
-                    out var secondLocalPoint,
-                    out var secondPoint)
-                : TryFindTeachingCapturePickPoint(
-                    new HashSet<(int Row, int Column)> { (firstPoint.Row, firstPoint.Column) },
-                    out secondLocalPoint,
-                    out secondPoint);
+            Point secondLocalPoint;
+            HeightGridPoint secondPoint;
+            var foundSecond = true;
+            if (editsExistingCandidate && hasSeededMovePath)
+            {
+                secondLocalPoint = seededMoveEnd;
+                secondPoint = seededMoveSecondPoint;
+            }
+            else
+            {
+                foundSecond = editsExistingCandidate
+                    ? TryFindTeachingCapturePickPoint(
+                        new HashSet<(int Row, int Column)> { (firstPoint.Row, firstPoint.Column) },
+                        out secondLocalPoint,
+                        out secondPoint)
+                    : TryFindTeachingCapturePickPoint(
+                        new HashSet<(int Row, int Column)> { (firstPoint.Row, firstPoint.Column) },
+                        out secondLocalPoint,
+                        out secondPoint);
+            }
             if (!foundSecond
                 || (firstPoint.Row == secondPoint.Row && firstPoint.Column == secondPoint.Column))
             {
@@ -382,6 +439,173 @@ public sealed partial class OpenVisionThreeDViewerControl
         return passed;
     }
 
+    public async Task<(bool Passed, ToolRecipeGridRectangle? Candidate, string Failure)>
+        RunTeachingTargetRectanglePointerSmokeAsync(
+            ToolRecipeGridRectangle target,
+            string? reportPath)
+    {
+        var lines = new List<string>
+        {
+            "OpenVisionLab 3D target GridRectangle pointer smoke"
+        };
+        var failure = string.Empty;
+        ToolRecipeGridRectangle? candidateRectangle = null;
+        var initialAppliedCount = viewModel.AppliedTeachingSelections.Count;
+        var initialPreview = viewModel.PreviewToolResult;
+        var initialResults = viewModel.ResultEntities;
+        var initialCamera = CaptureCameraSnapshot();
+        var originalPointer = default(Point);
+        var hasOriginalPointer = false;
+        Window? hostWindow = null;
+        var originalTopmost = false;
+        pointerInputMouseDownCount = 0;
+        pointerInputMouseMoveCount = 0;
+        pointerInputMouseUpCount = 0;
+
+        try
+        {
+            var capture = TeachingCaptureSnapshot;
+            if (capture is not
+                {
+                    IsActive: true,
+                    Kind: ToolRecipeSelectionKinds.GridRectangle,
+                    RequiredPointCount: 2,
+                    CapturedPointCount: 0
+                })
+            {
+                throw new InvalidOperationException(
+                    "Target GridRectangle smoke requires an empty active 2-corner capture.");
+            }
+            if (!viewModel.IsTopOrthographicView)
+            {
+                throw new InvalidOperationException(
+                    "Target GridRectangle smoke requires the automatic Top orthographic teaching view.");
+            }
+
+            hostWindow = Window.GetWindow(this)
+                ?? throw new InvalidOperationException("Viewer is not attached to a visible WPF window.");
+            originalTopmost = hostWindow.Topmost;
+            hostWindow.Topmost = true;
+            hostWindow.Activate();
+            hostWindow.Focus();
+            await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            await Task.Delay(220);
+            initialCamera = CaptureCameraSnapshot();
+
+            if (!TryGetTeachingGridRectangleScreenCorners(
+                    capture.SelectionId,
+                    target,
+                    out var topLeft,
+                    out _,
+                    out var bottomRight,
+                    out _))
+            {
+                throw new InvalidOperationException("The target ROI could not be projected into the current Viewer.");
+            }
+
+            hasOriginalPointer = WindowsPointerInput.TryGetPosition(out originalPointer);
+            pointerInputRegressionActive = true;
+            await SendTeachingDragAsync(hostWindow, topLeft, bottomRight, MouseButton.Left);
+            if (TeachingCaptureSnapshot is not
+                {
+                    IsActive: true,
+                    CapturedPointCount: 2,
+                    CanApply: true
+                }
+                || !TryGetC3DTeachingCandidate(out var candidate, out _)
+                || candidate?.GridRectangle is not { } rectangle)
+            {
+                throw new InvalidOperationException("One target drag did not produce an applicable GridRectangle candidate.");
+            }
+
+            candidateRectangle = rectangle;
+            var firstRow = Math.Max(target.Row, rectangle.Row);
+            var lastRow = Math.Min(
+                target.Row + target.RowCount,
+                rectangle.Row + rectangle.RowCount);
+            var firstColumn = Math.Max(target.Column, rectangle.Column);
+            var lastColumn = Math.Min(
+                target.Column + target.ColumnCount,
+                rectangle.Column + rectangle.ColumnCount);
+            var intersection = (long)Math.Max(0, lastRow - firstRow)
+                * Math.Max(0, lastColumn - firstColumn);
+            var targetArea = (long)target.RowCount * target.ColumnCount;
+            var targetCoverage = targetArea == 0 ? 0.0 : intersection / (double)targetArea;
+            var authoredUnchanged = viewModel.AppliedTeachingSelections.Count == initialAppliedCount;
+            var executionUnchanged = ReferenceEquals(initialPreview, viewModel.PreviewToolResult)
+                && ReferenceEquals(initialResults, viewModel.ResultEntities);
+            var cameraUnchanged = CaptureCameraSnapshot() == initialCamera;
+            var routedEventsPassed = pointerInputMouseDownCount == 1
+                && pointerInputMouseMoveCount >= 1
+                && pointerInputMouseUpCount == 1;
+            var passed = targetCoverage >= 0.80
+                && authoredUnchanged
+                && executionUnchanged
+                && cameraUnchanged
+                && routedEventsPassed;
+            if (!passed)
+            {
+                failure = "The one-drag candidate did not preserve target coverage, camera, authored state, execution state, or routed input.";
+            }
+
+            lines.Add($"Target|{target}");
+            lines.Add($"Candidate|{rectangle}|targetCoverage={targetCoverage:F4}");
+            lines.Add($"View|topOrthographic={viewModel.IsTopOrthographicView}|cameraUnchanged={cameraUnchanged}");
+            lines.Add($"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}");
+            lines.Add($"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}");
+            lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{failure}");
+            WriteTargetRectanglePointerReport(reportPath, lines);
+            if (!passed)
+            {
+                SetSmokeFailure(failure);
+            }
+            RenderNow();
+            return (passed, candidateRectangle, failure);
+        }
+        catch (Exception exception)
+        {
+            failure = exception.Message;
+            lines.Add($"Target|{target}");
+            lines.Add($"Candidate|{candidateRectangle?.ToString() ?? "(none)"}");
+            lines.Add($"Result=FAIL|{failure}");
+            WriteTargetRectanglePointerReport(reportPath, lines);
+            SetSmokeFailure(failure);
+            RenderNow();
+            return (false, candidateRectangle, failure);
+        }
+        finally
+        {
+            pointerInputRegressionActive = false;
+            if (hasOriginalPointer)
+            {
+                try
+                {
+                    WindowsPointerInput.MoveTo(originalPointer);
+                }
+                catch (Win32Exception)
+                {
+                    // Pointer restoration is best effort after evidence capture.
+                }
+            }
+            if (hostWindow is not null)
+            {
+                hostWindow.Topmost = originalTopmost;
+            }
+        }
+    }
+
+    private static void WriteTargetRectanglePointerReport(string? reportPath, IReadOnlyList<string> lines)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            return;
+        }
+
+        var fullPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllLines(fullPath, lines, new UTF8Encoding(false));
+    }
+
     private async Task<TeachingCapturePointerSmokeResult> RunTeachingCapturePointerSmokeCoreAsync(
         bool cancelWhenReady,
         bool exerciseNavigationGestures)
@@ -395,6 +619,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var firstClickPassed = false;
         var orbitPassed = !exerciseNavigationGestures;
         var panPassed = !exerciseNavigationGestures;
+        var zoomPassed = !exerciseNavigationGestures;
         var contextMenuPassed = !exerciseNavigationGestures;
         var contextMenuBindingsPassed = !exerciseNavigationGestures;
         var secondClickPassed = false;
@@ -528,6 +753,17 @@ public sealed partial class OpenVisionThreeDViewerControl
                     && TargetChanged(orbitCamera, panCamera)
                     && TeachingCaptureSnapshot.CapturedPointCount == pointsBeforeGestures;
 
+                var zoomPoint = new Point(viewportWidth * 0.64, viewportHeight * 0.54);
+                var orthographicHeightBeforeZoom = viewModel.OrthographicHeight;
+                var distanceBeforeZoom = viewModel.CameraDistance;
+                await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(zoomPoint));
+                WindowsPointerInput.Wheel(120);
+                await Task.Delay(180);
+                zoomPassed = (viewModel.IsTopOrthographicView
+                        ? viewModel.OrthographicHeight < orthographicHeightBeforeZoom
+                        : viewModel.CameraDistance < distanceBeforeZoom)
+                    && TeachingCaptureSnapshot.CapturedPointCount == pointsBeforeGestures;
+
                 var menuPoint = new Point(viewportWidth * 0.56, viewportHeight * 0.42);
                 await SendTeachingRightClickAsync(hostWindow, menuPoint);
                 contextMenuPassed = await Dispatcher.InvokeAsync(
@@ -617,7 +853,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 : 3;
             routedEventsPassed = pointerInputMouseDownCount >= requiredButtonEvents
                 && (!exerciseNavigationGestures || pointerInputMouseMoveCount >= 2)
-                && pointerInputMouseUpCount >= requiredButtonEvents;
+                && pointerInputMouseUpCount >= requiredButtonEvents
+                && (!exerciseNavigationGestures || pointerInputMouseWheelCount >= 1);
         }
         catch (Exception exception)
         {
@@ -652,6 +889,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var passed = firstClickPassed
             && orbitPassed
             && panPassed
+            && zoomPassed
             && contextMenuPassed
             && contextMenuBindingsPassed
             && secondClickPassed
@@ -675,6 +913,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             firstClickPassed,
             orbitPassed,
             panPassed,
+            zoomPassed,
             contextMenuPassed,
             contextMenuBindingsPassed,
             secondClickPassed,
@@ -688,6 +927,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             pointerInputMouseDownCount,
             pointerInputMouseMoveCount,
             pointerInputMouseUpCount,
+            pointerInputMouseWheelCount,
             initialAppliedCount,
             initialResultCount,
             initialPreviewStatus.ToString(),
@@ -924,9 +1164,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             "TeachingCapturePointerSmoke",
             $"Result|pass={result.Passed}|windowActivated={result.WindowActivated}|cancelWhenReady={result.CancelWhenReady}|navigationGestures={result.NavigationGesturesExercised}",
             $"Capture|firstClick={result.FirstClickPassed}|secondClick={result.SecondClickPassed}|undo={result.UndoPassed}|repick={result.RepickPassed}|candidate={result.CandidatePassed}|cancel={result.CancelPassed}",
-            $"Gestures|orbit={result.OrbitPassed}|pan={result.PanPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}",
+            $"Gestures|orbit={result.OrbitPassed}|pan={result.PanPassed}|zoom={result.ZoomPassed}|contextMenu={result.ContextMenuPassed}|contextMenuBindings={result.ContextMenuBindingsPassed}",
             $"Boundaries|authoredOnly={result.AuthoredOnlyPassed}|previewResultUnchanged={result.PreviewResultUnchanged}|appliedBefore={result.InitialAppliedCount}|previewStatus={result.InitialPreviewStatus}|resultCount={result.InitialResultCount}",
-            $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}",
+            $"RoutedEvents|pass={result.RoutedEventsPassed}|mouseDown={result.MouseDownCount}|mouseMove={result.MouseMoveCount}|mouseUp={result.MouseUpCount}|mouseWheel={result.MouseWheelCount}",
             $"Points|first={result.FirstLocator}|second={result.SecondLocator}",
             $"OrbitCamera|before={FormatCameraSnapshot(result.InitialCamera)}|after={FormatCameraSnapshot(result.OrbitCamera)}",
             $"PanCamera|before={FormatCameraSnapshot(result.OrbitCamera)}|after={FormatCameraSnapshot(result.PanCamera)}",
@@ -951,6 +1191,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         bool FirstClickPassed,
         bool OrbitPassed,
         bool PanPassed,
+        bool ZoomPassed,
         bool ContextMenuPassed,
         bool ContextMenuBindingsPassed,
         bool SecondClickPassed,
@@ -964,6 +1205,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         int MouseDownCount,
         int MouseMoveCount,
         int MouseUpCount,
+        int MouseWheelCount,
         int InitialAppliedCount,
         int InitialResultCount,
         string InitialPreviewStatus,

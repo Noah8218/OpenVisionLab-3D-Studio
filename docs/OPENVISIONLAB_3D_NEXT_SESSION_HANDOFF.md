@@ -137,6 +137,17 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   Preserve `OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md`,
   `.proofline/issues/PL-0016.json`, and the
   `20260817-pl0016-shell-ordered-thickness-run` D-backed evidence root.
+- `PL-0017` is complete: GridRectangle capture enters the existing Top
+  orthographic fit and the teaching ribbon shows exact start column, start row,
+  column count, and row count before Apply. Final actual Release EXE Wide and
+  Compact captures pass on the dynamically selected leftmost monitor. The
+  saved Thickness reference and measurement targets were each retaught from
+  Perspective with one actual drag, target coverage `0.9756` and `1.0000`,
+  explicit Apply, stable route restoration, and no Preview or Run. Focused
+  checks pass `56/56`, `50/50`, `64/64`, `87/87`, `25/25`, and `40/40`.
+  Preserve `OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md`,
+  `.proofline/issues/PL-0017.json`, and the
+  `20260817-pl0017-grid-roi-coordinate-confidence` D-backed evidence root.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -167,11 +178,8 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015` and `PL-0016` are complete.
-
-1. `PL-0017 coordinate-confident grid ROI teaching` is the selected software
-   slice. Recommended
-   model: `gpt-5.6-sol`; reasoning effort: `medium`.
+`PL-0015`, `PL-0016`, and `PL-0017` are complete. No dependency-ready
+software slice is currently selected.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits
@@ -298,4 +306,13 @@ Acceptance criteria: valid saved Thickness enables Run and exact invalid/unsuppo
 Verification: Release 0/0; ordered Run 13/13; Tool Recipe teaching 50/50; Run Record history 12/12; Recipe Manager/WPG 52/52; Shell options 40/40; ten actual EXE Runs and expected states 10/10; Runner parity 10/10; p95 533.351 ms <= 600 ms and max 533.351 ms <= 750 ms; Wide/Compact monitor intersection and current direct-click review pass; git diff --check pass
 Evidence: docs/OPENVISIONLAB_3D_SHELL_ORDERED_THICKNESS_RUN_CLOSURE_20260817.md; .proofline/issues/PL-0016.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0016-shell-ordered-thickness-run/
 Boundary / next dependency: synthetic raw-height is not physical metrology; product-owner unaided R0 remains external; PL-0017 owns coordinate-confident grid ROI teaching; large-C3D claims require a representative maximum input and accepted budgets
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0017 GridRectangle Top-view teaching entry, always-visible exact draft coordinates, Wide/Compact layout, actual-pointer reference/measurement teaching, and unchanged explicit Apply/Cancel/no-execution behavior
+Acceptance criteria: C1 exact row/column/counts before Apply -> pass; C2 Wide/Compact readable and bounded -> pass; C3 navigation, adjustment, Enter/Esc and no-execution contracts -> pass; C4 reference and measurement targets from Perspective with no corrective redraw -> pass
+Verification: Release 0/0; height measurement 56/56; Tool Recipe teaching 50/50; workspace selection 64/64; docking 87/87; teaching capture 25/25; Shell options 40/40; code structure 29/29; final actual Release Wide/Compact and dual-target pointer smokes pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md; .proofline/issues/PL-0017.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/
+Boundary / next dependency: synthetic raw-height is not physical metrology; product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work requires a representative maximum input and accepted budgets
 ```

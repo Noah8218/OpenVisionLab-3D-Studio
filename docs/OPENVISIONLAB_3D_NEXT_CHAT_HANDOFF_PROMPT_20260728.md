@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-16
+Updated: 2026-08-17
 Status: Current continuation entry point
 
 Use the following request to start the next development chat:
@@ -41,12 +41,20 @@ now complete: successful recipe open, new-recipe creation, and compatible Add
 clear Tool Library search while failed operations retain the visible query
 without execution. PL-0014 is now complete: the language selector retains the
 shared graphite ComboBox popup, Wide and Compact labels remain visible, and
-language persistence does not execute or mutate inspection state. No
+language persistence does not execute or mutate inspection state. PL-0015 is
+complete with ten varied synthetic Thickness recipes, safe same-grid variants,
+measured fixture-class targets, and controlled Error records. PL-0016 is
+complete with explicit saved-recipe ordered Run, Results evidence, Runner
+parity, and the no-auto-run contract. PL-0017 is complete: GridRectangle
+teaching enters Top orthographic, shows exact live row/column starts and counts,
+and actual one-drag reference/measurement target evidence preserves explicit
+Apply/Cancel and no-execution behavior. Read the three dated 2026-08-17 closure
+documents and their Proofline issues when that evidence is relevant. No
 dependency-ready software slice is currently selected. The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
-operation, not model execution. A large-C3D memory/performance target still needs
-a representative maximum input and accepted process-memory/load-time limits;
-do not spend model tokens on it until those prerequisites exist.
+operation, not model execution. A large-C3D memory/performance target still
+needs a representative maximum input and accepted process-memory/load-time
+limits; do not spend model tokens on it until those prerequisites exist.
 PL-0006 release-policy reconciliation is complete: the current
 repository has no release or tag, and historical v0.1.0-rc.1 candidate
 evidence is not a current distribution claim. Creating or republishing a

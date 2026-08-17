@@ -66,7 +66,7 @@ replacement for current product orientation.
 
 ## Current Product Target
 
-As of the 2026-08-17 PL-0016 Shell ordered Thickness Run closure:
+As of the 2026-08-17 PL-0017 coordinate-confident grid ROI teaching closure:
 
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
@@ -77,10 +77,11 @@ As of the 2026-08-17 PL-0016 Shell ordered Thickness Run closure:
   add/configure/teach/repair, and `PL-0011` recipe-health navigation are
   complete. `PL-0013` first-use recipe/source/task setup, `PL-0012`
   search-context correction, `PL-0014` language-popup correction, and
-  `PL-0015` same-grid Thickness variant and 10-sample EXE baseline, and
-  `PL-0016` Shell ordered Run with Results evidence are also complete. Read
-  the master backlog for the selected next software slice and
-  current order rather than copying it here. The separate
+  `PL-0015` same-grid Thickness variant and 10-sample EXE baseline,
+  `PL-0016` Shell ordered Run with Results evidence, and `PL-0017` exact
+  coordinate/Top-view grid ROI teaching are also complete. No
+  dependency-ready software slice is currently selected; read the master
+  backlog for current order rather than copying it here. The separate
   large-C3D candidate remains blocked by a representative maximum input and
   accepted memory/load-time limits. Missing R0 does not globally prohibit a
   newly approved deterministic software slice.

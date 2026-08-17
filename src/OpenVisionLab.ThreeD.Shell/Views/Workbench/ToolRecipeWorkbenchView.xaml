@@ -348,6 +348,10 @@
                                 Visibility="{Binding Workbench.IsSelectionCandidateActive, Converter={StaticResource BoolToVisibilityConverter}}"
                                 AutomationProperties.AutomationId="TeachingSelectionCaptureRibbon">
                             <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -394,6 +398,61 @@
                                         </StackPanel>
                                     </ui:Button>
                                 </WrapPanel>
+                                <Border Grid.Row="1"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,5,0,0"
+                                        Padding="6,4"
+                                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                        BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="2"
+                                        Visibility="{Binding Workbench.IsTeachingGridRectangleEditorEnabled, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        AutomationProperties.AutomationId="GridRectangleCandidateCoordinates"
+                                        AutomationProperties.Name="Exact grid candidate coordinates">
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <TextBlock Margin="0,0,12,0"
+                                                   FontSize="9.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.ExactGridCandidate, Korean='정확한 그리드 후보 · X=열, Z=행', English='Exact grid candidate · X=column, Z=row'}" />
+                                        <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
+                                            <TextBlock FontSize="9.5"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{views:ThreeDText Key=ThreeD.Workspace.StartColumnCompact, Korean='시작 X', English='Start X'}" />
+                                            <TextBlock Margin="4,0,0,0"
+                                                       FontSize="9.5"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Workbench.TeachingGridRectangleColumn}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
+                                            <TextBlock FontSize="9.5"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{views:ThreeDText Key=ThreeD.Workspace.StartRowCompact, Korean='시작 Z', English='Start Z'}" />
+                                            <TextBlock Margin="4,0,0,0"
+                                                       FontSize="9.5"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Workbench.TeachingGridRectangleRow}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,12,0" Orientation="Horizontal">
+                                            <TextBlock FontSize="9.5"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{views:ThreeDText Key=ThreeD.Workspace.ColumnCountCompact, Korean='X 길이', English='X length'}" />
+                                            <TextBlock Margin="4,0,0,0"
+                                                       FontSize="9.5"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Workbench.TeachingGridRectangleColumnCount}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="9.5"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{views:ThreeDText Key=ThreeD.Workspace.RowCountCompact, Korean='Z 길이', English='Z length'}" />
+                                            <TextBlock Margin="4,0,0,0"
+                                                       FontSize="9.5"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Workbench.TeachingGridRectangleRowCount}" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                </Border>
                             </Grid>
                         </Border>
                     </Grid>

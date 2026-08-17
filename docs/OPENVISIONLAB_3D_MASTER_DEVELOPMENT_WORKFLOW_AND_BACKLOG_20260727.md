@@ -165,7 +165,42 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current execution checkpoint - Shell ordered Thickness Run - 2026-08-17
+### Current execution checkpoint - Coordinate-confident grid ROI teaching - 2026-08-17
+
+`PL-0017` is Complete. GridRectangle capture now enters the existing Top
+orthographic fit and keeps exact start column, start row, column count, and row
+count beside Apply and Cancel. Wide no longer requires the operator to find a
+deep numeric section, and Compact no longer hides the only exact values.
+
+Current Release EXE evidence starts from Perspective and teaches the saved
+Thickness reference and measurement targets with one actual drag each. Target
+coverage is `0.9756` and `1.0000`; stable routes are restored by explicit
+Apply, no corrective redraw is needed, and Preview/Run remain untouched.
+Actual pointer checks retain orbit, pan, wheel zoom, picking/context bindings,
+Undo/repick, Esc Cancel, Enter/explicit Apply, move, resize, display-height
+adjustment, and camera/authored/execution boundaries.
+
+Release builds with `0` warnings and `0` errors. Focused checks pass Height
+Measurement Workbench `56/56`, Tool Recipe teaching `50/50`, Inspection
+Workspace selection `64/64`, Workbench docking/theme `87/87`, Teaching capture
+ViewModel `25/25`, and Shell options `40/40`. Current Wide `1920 x 1040`
+English and Compact `1280 x 760` Korean screenshots pass quality on attempt 1,
+remain bounded and themed, and intersect the dynamically selected leftmost
+monitor. Preserve:
+
+- `docs/OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md`;
+- `.proofline/issues/PL-0017.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260817-pl0017-grid-roi-coordinate-confidence\`.
+
+The evidence-bounded commercial authoring-readiness reassessment is `8.6/10`.
+This is a qualitative workflow judgment, not telemetry, release acceptance,
+certified usability, production approval, or physical-metrology evidence. The
+capability inventory is unchanged and no dependency-ready software slice is
+selected. Product-owner unaided Wide/Compact R0 remains the acceptance
+priority and requires owner operation rather than model execution. The
+large-C3D candidate remains blocked by its missing input and accepted budgets.
+
+### Previous execution checkpoint - Shell ordered Thickness Run - 2026-08-17
 
 `PL-0016` is Complete. Validate now exposes one explicit `Run current recipe`
 action for a saved, source-ready recipe whose ordered steps have typed replay
@@ -2930,11 +2965,11 @@ The owner explicitly left the layout-only stream and completed item 11 on
     current-recipe action uses the shared ordered engine, writes schema `1.5`
     evidence into Results, preserves no-auto-run contracts, matches ten
     Runner records, and meets the current fixture-class interaction budget.
-33. `PL-0017 coordinate-confident grid ROI teaching` - Open and selected;
-    show exact live
-    grid location or an equivalent orthographic teaching aid before Apply
-    without changing Viewer navigation or explicit teaching contracts.
-    Recommended model: `gpt-5.6-sol`; reasoning effort: `medium`.
+33. `PL-0017 coordinate-confident grid ROI teaching` - Complete; GridRectangle
+    capture enters the existing Top orthographic fit, the teaching ribbon
+    shows exact live row/column starts and counts before Apply, and actual
+    one-drag reference/measurement target teaching preserves navigation,
+    adjustment, explicit Apply/Cancel, and no-execution contracts.
 34. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;

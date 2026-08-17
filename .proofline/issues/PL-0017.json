@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "open",
-    "current_summary": "GridRectangle teaching is functional and recoverable, but the perspective Viewer does not give enough exact row/column confidence before Apply for a novice operator.",
-    "next_action": "Prototype the smallest live grid locator or orthographic teaching aid in the existing selection-review owner, then verify exact selection, normal Viewer navigation, and no-action boundaries in Wide and Compact."
+    "status": "resolved",
+    "current_summary": "Perspective grid teaching hid exact draft coordinates and caused a wrong-region retry. GridRectangle capture now enters the existing Top orthographic fit and shows exact row, column, row count, and column count beside Apply/Cancel. Current Release Wide/Compact, focused regressions, direct operator review, and one-drag reference/measurement target evidence pass without Preview or Run."
   },
   "problem": {
     "claims": [
@@ -37,22 +36,31 @@
     {
       "id": "C1",
       "text": "Before Apply, the operator can see the exact candidate row, column, row count, and column count in the current teaching context.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     },
     {
       "id": "C2",
       "text": "The aid remains readable and bounded in Wide and Compact and does not obscure the taught surfaces or required actions.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E3"
+      ]
     },
     {
       "id": "C3",
       "text": "Orbit, pan, zoom, picking, ROI adjustment, Enter Apply, Esc Cancel, and the explicit no-execution teaching contract remain intact.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E2",
+        "E5"
+      ]
     },
     {
       "id": "C4",
       "text": "A focused actual-EXE workflow proves correct reference and measurement region selection from an initially non-orthographic camera without corrective redraw.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4"
+      ]
     }
   ],
   "relations": [
@@ -76,9 +84,54 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-thickness-10-recipe-ux-performance/before/wide-initial.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-thickness-10-recipe-ux-performance/recipes/01-nominal.ov3d-recipe.json",
       "observation": "While teaching the first dual-surface Thickness recipe in the perspective Viewer, the initial screen-space ROI mapped to the wrong grid region and required correction. Once exact GridRectangle coordinates were known, the same coordinates replayed deterministically across all ten same-size inputs.",
       "observed_at": "2026-08-17T19:10:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "current Release build and focused verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-release-build.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-tool-height-measurement-workbench.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-tool-recipe-teaching.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-inspection-workspace-selection.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-workbench-docking.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-teaching-capture-viewmodel.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/logs/final-verify-shell-smoke-command-line.txt",
+      "observation": "The current solution builds Release with 0 warnings and 0 errors. Related verification passes Height Measurement Workbench 56/56, Tool Recipe teaching 50/50, Inspection Workspace selection 64/64, Workbench docking/theme 87/87, Teaching capture ViewModel 25/25, and Shell command-line options 40/40.",
+      "observed_at": "2026-08-17T23:37:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "actual Release EXE Wide and Compact UI evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/wide-after.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/wide-teaching.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/compact-after.png; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/compact-teaching.txt",
+      "observation": "From initially Perspective teaching, Wide English and Compact Korean both enter Top orthographic and show exact row, column, row count, and column count beside Apply/Cancel. Both layouts are readable, bounded, semantically themed, pass screenshot quality on attempt 1, and intersect the dynamically selected leftmost monitor.",
+      "observed_at": "2026-08-17T23:38:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "actual Release EXE targeted pointer teaching",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/dual-target-teaching.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/coordinate-confidence-reference-pointer.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/coordinate-confidence-measurement-pointer.txt",
+      "observation": "The saved Thickness reference and measurement targets were each retaught from an initially Perspective workflow with one actual drag and no corrective redraw. Candidate target coverage was 0.9756 and 1.0000; exact coordinates were visible, explicit Apply restored both stable routes, and Preview/Run remained unchanged.",
+      "observed_at": "2026-08-17T23:38:10+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "actual Release EXE interaction and lifecycle evidence",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/wide-teaching.drag-pointer.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/measurement-create-applied.cancel-pointer.txt; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/after/measurement-create-applied.txt",
+      "observation": "Actual pointer verification passes orbit, pan, wheel zoom, picking/context bindings, Undo, repick, Esc Cancel, a second capture, explicit Apply, ROI move, resize, and display-height adjustment. Authored state remains unchanged until Apply and Preview/Run results remain unchanged throughout teaching.",
+      "observed_at": "2026-08-17T23:41:00+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-17T23:15:00+09:00",
+      "from": "open",
+      "to": "doing",
+      "summary": "Started the bounded PL-0017 implementation after current Release EXE Wide and Compact reproduction."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-17T23:45:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Completed coordinate-confident GridRectangle teaching with exact visible draft coordinates, existing Top orthographic entry, current Wide/Compact and one-drag target evidence, and preserved navigation and explicit no-execution contracts."
+    }
+  ],
   "created_at": "2026-08-17T21:36:14.4764462+09:00",
-  "updated_at": "2026-08-17T21:36:14.4764462+09:00"
+  "updated_at": "2026-08-17T23:45:00+09:00"
 }

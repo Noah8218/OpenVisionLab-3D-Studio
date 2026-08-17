@@ -113,6 +113,11 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             return;
         }
 
+        if (string.Equals(args.Kind, ToolRecipeSelectionKinds.GridRectangle, StringComparison.Ordinal))
+        {
+            viewer.UseTopView();
+        }
+
         ApplyViewerTeachingCaptureState(viewer.TeachingCaptureSnapshot);
     }
 

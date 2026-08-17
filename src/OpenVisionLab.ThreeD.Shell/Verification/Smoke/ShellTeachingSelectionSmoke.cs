@@ -1,7 +1,9 @@
 using System.IO;
 using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
+using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification.Smoke;
 
@@ -16,6 +18,16 @@ internal static class ShellTeachingSelectionSmoke
         var mode = modeValue.Trim().ToLowerInvariant();
         var workbench = viewModel.Workbench;
         var step = workbench.SelectedPipelineStep;
+        if (mode == "coordinate-confidence-dual-target-applied")
+        {
+            return await RunCoordinateConfidenceDualTargetAsync(
+                viewModel,
+                viewer,
+                workbench,
+                step,
+                reportPath);
+        }
+
         var isDualMeasurementCreate = mode == "dual-measurement-create-applied";
         if (isDualMeasurementCreate)
         {
@@ -75,6 +87,26 @@ internal static class ShellTeachingSelectionSmoke
         bool ExecutionStateUnchanged() =>
             ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
             && ReferenceEquals(resultEntitiesBefore, viewer.ViewModel.ResultEntities);
+
+        bool CoordinateConfidenceReady(TeachingCaptureState state, out string detail)
+        {
+            var rectangle = state.Points is [var first, var second]
+                ? new ToolRecipeGridRectangle(
+                    Math.Min(first.Locator.Row, second.Locator.Row),
+                    Math.Min(first.Locator.Column, second.Locator.Column),
+                    Math.Abs(second.Locator.Row - first.Locator.Row) + 1,
+                    Math.Abs(second.Locator.Column - first.Locator.Column) + 1)
+                : null;
+            var exactCandidateVisible = rectangle is not null
+                && workbench.IsTeachingGridRectangleEditorEnabled
+                && workbench.TeachingGridRectangleRow == rectangle.Row
+                && workbench.TeachingGridRectangleColumn == rectangle.Column
+                && workbench.TeachingGridRectangleRowCount == rectangle.RowCount
+                && workbench.TeachingGridRectangleColumnCount == rectangle.ColumnCount;
+            var topGridView = viewer.ViewModel.IsTopOrthographicView;
+            detail = $"CoordinateConfidence|topOrthographic={topGridView}|exactCandidateVisible={exactCandidateVisible}|row={workbench.TeachingGridRectangleRow}|column={workbench.TeachingGridRectangleColumn}|rowCount={workbench.TeachingGridRectangleRowCount}|columnCount={workbench.TeachingGridRectangleColumnCount}";
+            return topGridView && exactCandidateVisible;
+        }
 
         if (step is null)
         {
@@ -137,9 +169,12 @@ internal static class ShellTeachingSelectionSmoke
             }
 
             var state = viewer.TeachingCaptureSnapshot;
+            var coordinateConfidenceReady = CoordinateConfidenceReady(state, out var coordinateDetail);
+            lines.Add(coordinateDetail);
             var readyPassed = state.CapturedPointCount == 2
                 && state.RequiredPointCount == 2
                 && state.CanApply
+                && coordinateConfidenceReady
                 && AuthoredStateUnchanged()
                 && ExecutionStateUnchanged();
             if (mode == "replace-drag-applied")
@@ -207,9 +242,14 @@ internal static class ShellTeachingSelectionSmoke
         }
 
         var cancelCandidateState = viewer.TeachingCaptureSnapshot;
+        var cancelCandidateCoordinatesReady = CoordinateConfidenceReady(
+            cancelCandidateState,
+            out var cancelCandidateCoordinateDetail);
+        lines.Add($"First{cancelCandidateCoordinateDetail}");
         if (!cancelCandidateState.IsActive
             || cancelCandidateState.CapturedPointCount != 2
             || !cancelCandidateState.CanApply
+            || !cancelCandidateCoordinatesReady
             || !workbench.CancelTeachingSelectionCaptureCommand.CanExecute(null))
         {
             return Complete(false, "Actual Viewer pointer capture did not produce a cancellable 2-point candidate.");
@@ -241,8 +281,13 @@ internal static class ShellTeachingSelectionSmoke
         }
 
         var candidateState = viewer.TeachingCaptureSnapshot;
+        var candidateCoordinatesReady = CoordinateConfidenceReady(
+            candidateState,
+            out var candidateCoordinateDetail);
+        lines.Add($"Second{candidateCoordinateDetail}");
         if (candidateState.CapturedPointCount != 2
             || !candidateState.CanApply
+            || !candidateCoordinatesReady
             || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
         {
             return Complete(false, "Second actual Viewer pointer capture did not produce an applicable 2-point candidate.");
@@ -271,4 +316,135 @@ internal static class ShellTeachingSelectionSmoke
                 : "Applying the Viewer candidate did not satisfy recipe persistence or execution-boundary checks.");
     }
 
+    private static async Task<bool> RunCoordinateConfidenceDualTargetAsync(
+        ShellMainWindowViewModel viewModel,
+        OpenVisionThreeDViewerControl viewer,
+        ToolWorkbenchViewModel workbench,
+        ToolWorkbenchPipelineStepItem? step,
+        string? reportPath)
+    {
+        var lines = new List<string>
+        {
+            "OpenVisionLab 3D coordinate-confident dual-target teaching smoke",
+            $"Step={step?.Id ?? "(none)"}"
+        };
+
+        bool Complete(bool passed, string message)
+        {
+            lines.Add($"Result={(passed ? "PASS" : "FAIL")}|{message}");
+            ShellSmokeArtifacts.WriteTextReport(reportPath, lines, withoutBom: true);
+            Console.WriteLine(lines[^1]);
+            if (!passed)
+            {
+                viewModel.SetViewerSmokeFailed(message);
+            }
+            return passed;
+        }
+
+        if (step is not { ToolId: "thickness" }
+            || step.InputEntityIds.Count != 3
+            || workbench.Selections.FirstOrDefault(selection =>
+                string.Equals(selection.Id, step.InputEntityIds[1], StringComparison.Ordinal))
+                is not { GridRectangle: { } referenceTarget } referenceBefore
+            || workbench.Selections.FirstOrDefault(selection =>
+                string.Equals(selection.Id, step.InputEntityIds[2], StringComparison.Ordinal))
+                is not { GridRectangle: { } measurementTarget } measurementBefore)
+        {
+            return Complete(false, "The dual-target smoke requires one complete selected Thickness step.");
+        }
+
+        var startedPerspective = viewer.ViewModel.IsPerspectiveView;
+        var previewBefore = viewer.ViewModel.PreviewToolResult;
+        var resultsBefore = viewer.ViewModel.ResultEntities;
+        var referenceId = referenceBefore.Id;
+        var measurementId = measurementBefore.Id;
+        lines.Add($"Start|perspective={startedPerspective}|reference={referenceTarget}|measurement={measurementTarget}");
+
+        if (!workbench.RemovePlaneFlatnessMeasurementRoiCommand.CanExecute(null)
+            || !workbench.RemovePlaneFlatnessReferenceRoiCommand.CanExecute(null))
+        {
+            return Complete(false, "The saved Thickness ROIs could not enter a clean dual-target reteach.");
+        }
+        workbench.RemovePlaneFlatnessMeasurementRoiCommand.Execute(null);
+        workbench.RemovePlaneFlatnessReferenceRoiCommand.Execute(null);
+        if (workbench.Selections.Any(selection =>
+                string.Equals(selection.Id, referenceId, StringComparison.Ordinal)
+                || string.Equals(selection.Id, measurementId, StringComparison.Ordinal))
+            || !workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null))
+        {
+            return Complete(false, "The saved Thickness ROIs were not removed without changing the selected step.");
+        }
+
+        workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var evidenceDirectory = string.IsNullOrWhiteSpace(reportPath)
+            ? null
+            : Path.GetDirectoryName(Path.GetFullPath(reportPath));
+        var referencePointerReport = evidenceDirectory is null
+            ? null
+            : Path.Combine(evidenceDirectory, "coordinate-confidence-reference-pointer.txt");
+        var referenceResult = await viewer.RunTeachingTargetRectanglePointerSmokeAsync(
+            referenceTarget,
+            referencePointerReport);
+        var referenceCoordinatesVisible = CandidateMatchesWorkbench(
+            workbench,
+            referenceResult.Candidate);
+        lines.Add($"ReferenceCandidate|top={viewer.ViewModel.IsTopOrthographicView}|coordinatesVisible={referenceCoordinatesVisible}|candidate={referenceResult.Candidate}");
+        if (!referenceResult.Passed
+            || !referenceCoordinatesVisible
+            || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+        {
+            return Complete(false, $"Reference ROI one-drag teaching failed: {referenceResult.Failure}");
+        }
+        workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+        if (!workbench.BeginTeachingSelectionCaptureCommand.CanExecute(null))
+        {
+            return Complete(false, "Measurement ROI did not become the next explicit teaching role.");
+        }
+        workbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var measurementPointerReport = evidenceDirectory is null
+            ? null
+            : Path.Combine(evidenceDirectory, "coordinate-confidence-measurement-pointer.txt");
+        var measurementResult = await viewer.RunTeachingTargetRectanglePointerSmokeAsync(
+            measurementTarget,
+            measurementPointerReport);
+        var measurementCoordinatesVisible = CandidateMatchesWorkbench(
+            workbench,
+            measurementResult.Candidate);
+        lines.Add($"MeasurementCandidate|top={viewer.ViewModel.IsTopOrthographicView}|coordinatesVisible={measurementCoordinatesVisible}|candidate={measurementResult.Candidate}");
+        if (!measurementResult.Passed
+            || !measurementCoordinatesVisible
+            || !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null))
+        {
+            return Complete(false, $"Measurement ROI one-drag teaching failed: {measurementResult.Failure}");
+        }
+        workbench.ApplyTeachingSelectionCaptureCommand.Execute(null);
+        await viewer.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+        var routeRestored = step.InputEntityIds.Count == 3
+            && string.Equals(step.InputEntityIds[1], referenceId, StringComparison.Ordinal)
+            && string.Equals(step.InputEntityIds[2], measurementId, StringComparison.Ordinal);
+        var executionUnchanged = ReferenceEquals(previewBefore, viewer.ViewModel.PreviewToolResult)
+            && ReferenceEquals(resultsBefore, viewer.ViewModel.ResultEntities);
+        lines.Add($"Final|routeRestored={routeRestored}|executionUnchanged={executionUnchanged}|captureActive={viewer.TeachingCaptureSnapshot.IsActive}");
+        return Complete(
+            startedPerspective
+            && routeRestored
+            && executionUnchanged
+            && !viewer.TeachingCaptureSnapshot.IsActive,
+            "Reference and Measurement ROIs were each retaught from an initially Perspective workflow with one actual Top-view drag, exact visible coordinates, explicit Apply, and no Preview or Run.");
+    }
+
+    private static bool CandidateMatchesWorkbench(
+        ToolWorkbenchViewModel workbench,
+        ToolRecipeGridRectangle? candidate) =>
+        candidate is not null
+        && workbench.IsTeachingGridRectangleEditorEnabled
+        && workbench.TeachingGridRectangleRow == candidate.Row
+        && workbench.TeachingGridRectangleColumn == candidate.Column
+        && workbench.TeachingGridRectangleRowCount == candidate.RowCount
+        && workbench.TeachingGridRectangleColumnCount == candidate.ColumnCount;
 }
