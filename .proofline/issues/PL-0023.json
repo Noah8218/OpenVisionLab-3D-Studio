@@ -16,9 +16,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "Verified-feature commit rules, distinct version/publication states, a forward changelog, and current Run Record CI coverage are implemented and locally verified; intentional commit and remote push remain.",
-    "next_action": "Commit the explicit governance scope, push main, verify the exact remote commit, then record final publication evidence."
+    "status": "resolved",
+    "current_summary": "Verified-feature governance is documented and enforced by the expanded CI gate; the qualified feature, governance, and headless-check commits are pushed to main and the exact remote head passed the complete Windows workflow."
   },
   "objective": {
     "summary": "Make verified feature commits, product-version movement, release qualification, publication, and public readback distinct and auditable states.",
@@ -54,7 +53,9 @@
     {
       "id": "C4",
       "text": "Documentation, YAML, Proofline, diff, Release build, focused checks, commit scope, and remote push are verified and recorded.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E4"
+      ]
     }
   ],
   "relations": [
@@ -102,9 +103,25 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0023-version-governance/verification",
       "observation": "The new CI command set ran locally after a Debug solution build with 0 warnings and 0 errors: Completeness 30/30, artifact-owned Runner 19/19, Surface Match 23/23, Source Quality 18/18, ordered Run 15/15, history 12/12, and structure 29/29 all passed.",
       "observed_at": "2026-08-18T11:46:40+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "test",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32093834200",
+      "observation": "Commits e6e3776 (qualified PL-0019 through PL-0022 feature scope), 7da72bd (version governance), and 81e835f (deterministic headless Workbench verification) were pushed to main. Local final qualification passed a Release solution build with 0 warnings and 0 errors, all six current Workbench checks (87/87, 64/64, 84/84, 52/52, 6/6, 40/40), Proofline validation, and git diff hygiene. Remote main exactly matched 81e835fc98850e9ca3c82f12b367c648912599b5, and Windows CI run 32093834200 completed successfully including both current Workbench and new Run Record contract steps.",
+      "observed_at": "2026-08-18T12:07:33+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-18T12:07:33+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after the documented commit/version gates, expanded Run Record CI coverage, three intentional main commits, and the exact pushed head all passed local and hosted verification."
+    }
+  ],
   "created_at": "2026-08-18T11:35:00+09:00",
-  "updated_at": "2026-08-18T11:46:40+09:00"
+  "updated_at": "2026-08-18T12:07:33+09:00"
 }

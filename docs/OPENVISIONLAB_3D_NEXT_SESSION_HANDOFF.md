@@ -188,6 +188,15 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   readable. Preserve
   `OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md` and
   `.proofline/issues/PL-0022.json`.
+- `PL-0023` is complete: verified feature commits, development version,
+  CI-qualified baseline, frozen release candidate, publication, and public
+  readback are distinct recorded states. `CHANGELOG.md` owns forward user
+  changes, the Windows workflow includes the current Run Record gates, and
+  headless Workbench visibility checks are deterministic. Main commits
+  `e6e3776`, `7da72bd`, and `81e835f` passed GitHub Actions run `32093834200`.
+  Product version remains `0.1.1-dev`; no tag or release was created. Preserve
+  `OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` and
+  `.proofline/issues/PL-0023.json`.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -220,7 +229,7 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015` through `PL-0022` are complete. The next dependency-ready software
+`PL-0015` through `PL-0023` are complete. The next dependency-ready software
 priority is `L-14 privacy-safe support/diagnostic bundle`; its first contract
 must use an explicit manifest and omit sensitive source bytes by default |
 Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`.
