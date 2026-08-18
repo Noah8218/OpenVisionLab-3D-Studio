@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-17
+Updated: 2026-08-18
 Status: Current continuation entry point
 
 Use the following request to start the next development chat:
@@ -48,13 +48,31 @@ complete with explicit saved-recipe ordered Run, Results evidence, Runner
 parity, and the no-auto-run contract. PL-0017 is complete: GridRectangle
 teaching enters Top orthographic, shows exact live row/column starts and counts,
 and actual one-drag reference/measurement target evidence preserves explicit
-  Apply/Cancel and no-execution behavior. Read the three dated 2026-08-17 closure
-  documents and their Proofline issues when that evidence is relevant.
+  Apply/Cancel and no-execution behavior. Read the dated 2026-08-17 closure
+  documents and the 2026-08-18 PL-0019 timing closure with their Proofline
+  issues when that evidence is relevant.
   PL-0018 keeps private market research, vendor comparisons, supplied-media
   reviews, and former chronological records outside tracked public
   documentation while retaining required license and attribution records.
   The local private archive is owner-only and Git history was not rewritten.
-  No dependency-ready software slice is currently selected. The product owner's
+  PL-0019 / L-09 is complete: Run Record schema 1.7 exposes existing ordered
+  and persisted Surface Match stage timing consistently in JSON, HTML, CSV,
+  Runner, and Results without rerunning algorithms. Compact Results keeps the
+  timing and evidence columns visible together. PL-0020 / L-10 is complete:
+  its schema 1.8 contract preserves the exact identified Source Quality report across
+  ordered Shell/Runner execution, JSON, HTML, CSV, text, and Results without
+  a second source load or analysis; mismatch fails before inspection and
+  legacy/non-raw routes are explicit Unavailable. PL-0021 is complete: the
+  Viewer bottom status persistently shows the existing selected X/Y/Z and C3D
+  raw height beside camera/unit context, including a localized empty state,
+  without adding hover scanning or inspection execution. PL-0022 / L-12 is
+  complete: current Run Record schema 1.9 retains the exact typed Completeness
+  grid output and exposes matching JSON, readable HTML, and structured CSV
+  child rows without rerunning inspection; missing or malformed current
+  evidence fails closed and schema 1.8 remains readable. The next
+  dependency-ready software priority is L-14 privacy-safe support/diagnostic
+  bundle; use gpt-5.6-sol with medium reasoning effort and omit sensitive
+  source bytes by default. The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
 operation, not model execution. A large-C3D memory/performance target still
 needs a representative maximum input and accepted process-memory/load-time

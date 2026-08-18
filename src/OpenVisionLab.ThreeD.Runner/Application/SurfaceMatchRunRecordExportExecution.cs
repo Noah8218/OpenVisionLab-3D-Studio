@@ -11,6 +11,7 @@ internal static class SurfaceMatchRunRecordExportExecution
         string executionPath,
         string? scorePath,
         string? assessmentPath,
+        string? runtimePath,
         string reportPath,
         RunArtifactOptions outputs)
     {
@@ -35,6 +36,9 @@ internal static class SurfaceMatchRunRecordExportExecution
                 ? null
                 : SurfaceEdgeDiagnosticReviewArtifactStore.LoadAssessment(
                     assessmentPath);
+            var runtime = string.IsNullOrWhiteSpace(runtimePath)
+                ? null
+                : SurfaceMatchAssessmentArtifactStore.LoadRuntime(runtimePath);
 
             var fullReportPath = Path.GetFullPath(reportPath);
             RunRecordWriter.WriteSurfaceMatch(
@@ -46,6 +50,7 @@ internal static class SurfaceMatchRunRecordExportExecution
                 execution,
                 score,
                 assessment,
+                runtime,
                 fullReportPath);
             Directory.CreateDirectory(
                 Path.GetDirectoryName(fullReportPath)
@@ -60,6 +65,7 @@ internal static class SurfaceMatchRunRecordExportExecution
                     $"Execution|path={Path.GetFullPath(executionPath)}|sha256={execution.ContentSha256}|pose={execution.PoseResult.ContentSha256}|state={execution.PoseResult.State}",
                     $"Score|path={(scorePath is null ? "(none)" : Path.GetFullPath(scorePath))}|sha256={score?.ContentSha256 ?? "(none)"}",
                     $"Assessment|path={(assessmentPath is null ? "(none)" : Path.GetFullPath(assessmentPath))}|sha256={assessment?.ContentSha256 ?? "(none)"}",
+                    $"Runtime|path={(runtimePath is null ? "(none)" : Path.GetFullPath(runtimePath))}|state={(runtime is null ? "Unavailable" : "Available")}|matchingRecomputed=false",
                     $"Outputs|json={outputs.JsonPath ?? "(none)"}|html={outputs.HtmlPath ?? "(none)"}|csv={outputs.CsvPath ?? "(none)"}"
                 ],
                 new UTF8Encoding(false));

@@ -210,29 +210,46 @@ internal static class ArtifactOwnedRoiRunnerVerification
                     };
                     var record = JsonSerializer.Deserialize<InspectionRunRecord>(
                         File.ReadAllText(runArtifacts.JsonPath), jsonOptions);
-                    checks.Add(("schema 1.3 JSON preserves ordered A3 and seven measurement steps",
-                        record is { SchemaVersion: "1.3", Step: null, Steps.Count: 8 }
+                    checks.Add(("schema 1.9 JSON explicitly marks unavailable Source Quality for the legacy A2 route and preserves ordered evidence",
+                        record is { SchemaVersion: "1.9", Step: null, Steps.Count: 8 }
+                        && record.SourceQualityEvidence is
+                        {
+                            State: InspectionRunSourceQualityEvidenceState.Unavailable,
+                            Report: null
+                        } sourceQuality
+                        && sourceQuality.TryValidate(record.Source, out _)
                         && record.Steps.Select(step => step.Id).SequenceEqual([
                             "step.regrid", "step.thickness", "step.warpage", "step.plane-flatness",
                             "step.point-pair", "step.gap-flush", "step.volume", "step.cross-section"])
-                        && record.Steps.All(step => step.InputEntityIds.Count > 0 && !string.IsNullOrWhiteSpace(step.OutputEntityId)),
-                        record is null ? "record=null" : $"schema={record.SchemaVersion};steps={record.Steps?.Count ?? 0};legacyStep={record.Step?.Id ?? "null"}"));
+                        && record.Steps.All(step =>
+                            step.InputEntityIds.Count > 0
+                            && !string.IsNullOrWhiteSpace(step.OutputEntityId)
+                            && step.Timing is { State: InspectionRunTimingState.Available }
+                            && step.Timing.TryValidate(out _)
+                            && step.Timing.TotalElapsedMilliseconds == step.ElapsedMilliseconds),
+                        record is null ? "record=null" : $"schema={record.SchemaVersion};quality={record.SourceQualityEvidence?.State};steps={record.Steps?.Count ?? 0};legacyStep={record.Step?.Id ?? "null"}"));
                 }
                 if (runArtifacts.HtmlPath is not null)
                 {
                     var html = File.ReadAllText(runArtifacts.HtmlPath);
-                    checks.Add(("HTML exposes ordered step identity and per-step metrics",
+                    checks.Add(("HTML explicitly exposes unavailable Source Quality and ordered step evidence",
                         html.Contains("8 ordered steps", StringComparison.Ordinal)
                         && document.Steps.Skip(2).All(step => html.Contains(step.Id, StringComparison.Ordinal))
+                        && html.Contains(InspectionRunTiming.ToolExecutionStage, StringComparison.Ordinal)
+                        && html.Contains("Source Quality evidence", StringComparison.Ordinal)
+                        && html.Contains("Unavailable", StringComparison.Ordinal)
                         && html.Contains("H range", StringComparison.Ordinal),
                         $"bytes={new FileInfo(runArtifacts.HtmlPath).Length}"));
                 }
                 if (runArtifacts.CsvPath is not null)
                 {
                     var csv = File.ReadAllText(runArtifacts.CsvPath);
-                    checks.Add(("CSV exposes ordered typed routing and per-step metrics",
+                    checks.Add(("CSV explicitly exposes unavailable Source Quality and ordered typed routing",
                         csv.StartsWith("runId,recordedAtUtc,recipeIndex,stepId,toolId", StringComparison.Ordinal)
                         && document.Steps.Skip(2).All(step => csv.Contains(step.Id, StringComparison.Ordinal))
+                        && csv.Contains(InspectionRunTiming.ToolExecutionStage, StringComparison.Ordinal)
+                        && csv.Contains("sourceQualitySha256", StringComparison.Ordinal)
+                        && csv.Contains("Unavailable", StringComparison.Ordinal)
                         && csv.Contains("derived.height-field", StringComparison.Ordinal),
                         $"lines={File.ReadLines(runArtifacts.CsvPath).Count()}"));
                 }

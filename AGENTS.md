@@ -65,7 +65,7 @@ replacement for current product orientation.
 
 ## Current Product Target
 
-As of the 2026-08-17 PL-0017 coordinate-confident grid ROI teaching closure:
+As of the 2026-08-18 PL-0022 Completeness cell-export closure:
 
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
@@ -78,8 +78,14 @@ As of the 2026-08-17 PL-0017 coordinate-confident grid ROI teaching closure:
   search-context correction, `PL-0014` language-popup correction, and
   `PL-0015` same-grid Thickness variant and 10-sample EXE baseline,
   `PL-0016` Shell ordered Run with Results evidence, and `PL-0017` exact
-  coordinate/Top-view grid ROI teaching are also complete. No
-  dependency-ready software slice is currently selected; read the master
+  coordinate/Top-view grid ROI teaching, `PL-0018` public documentation
+  privacy boundary, `PL-0019` Run Record/Results stage timing, and `PL-0020`
+  exact Source Quality Run Record evidence are also complete. `PL-0021`
+  persistently exposes the existing selected `X / Y / Z` in the Viewer bottom
+  status. `PL-0022` / `L-12` preserves exact Completeness cell evidence in
+  schema `1.9` JSON, HTML, and CSV without rerunning inspection. `L-14`
+  privacy-safe support/diagnostic bundle is the selected next dependency-ready
+  software slice; read the master
   backlog for current order rather than copying it here. The separate
   large-C3D candidate remains blocked by a representative maximum input and
   accepted memory/load-time limits. Missing R0 does not globally prohibit a

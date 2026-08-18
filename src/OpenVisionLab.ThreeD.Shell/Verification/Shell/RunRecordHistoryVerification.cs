@@ -62,8 +62,16 @@ internal static class RunRecordHistoryVerification
                 "schema 1.5 record loads into ordered Run Record view",
                 viewModel.InspectionSteps.Count == 1
                 && viewModel.InspectionStepSummary.Contains("1.5", StringComparison.Ordinal)
-                && viewModel.InspectionStepSummary.Contains("Pass", StringComparison.Ordinal),
-                viewModel.InspectionStepSummary);
+                && viewModel.InspectionStepSummary.Contains("Pass", StringComparison.Ordinal)
+                && viewModel.InspectionSteps[0].Timing is "사용 불가" or "Unavailable"
+                && viewModel.SourceQualityState == "Unavailable"
+                && (viewModel.SourceQualitySummary.Contains(
+                        "legacy",
+                        StringComparison.OrdinalIgnoreCase)
+                    || viewModel.SourceQualitySummary.Contains(
+                        "이전",
+                        StringComparison.Ordinal)),
+                $"{viewModel.InspectionStepSummary};timing={viewModel.InspectionSteps.FirstOrDefault()?.Timing};sourceQuality={viewModel.SourceQualityState}:{viewModel.SourceQualitySummary}");
             Check(
                 "available threshold correction preserves before suggested manual development and Held-out identities",
                 viewModel.ThresholdCorrectionState == "Available"
@@ -156,6 +164,7 @@ internal static class RunRecordHistoryVerification
                 && viewModel.InspectionStepSummary.Contains("1.3", StringComparison.Ordinal)
                 && viewModel.InspectionStepSummary.Contains("Fail", StringComparison.Ordinal)
                 && viewModel.ThresholdCorrectionState == "Unavailable"
+                && viewModel.SourceQualityState == "Unavailable"
                 && viewModel.RecentRunRecords.Count == 2
                 && PathsEqual(viewModel.RecentRunRecords[0].Path, second.Json),
                 secondMessage);
@@ -195,7 +204,8 @@ internal static class RunRecordHistoryVerification
                 && normalStartup.SelectedRecentRunRecord is null
                 && normalStartup.InspectionSteps.Count == 0
                 && !normalStartup.OpenRunRecordCommand.CanExecute(null)
-                && normalStartup.ThresholdCorrectionState == "Unavailable",
+                && normalStartup.ThresholdCorrectionState == "Unavailable"
+                && normalStartup.SourceQualityState == "Unavailable",
                 normalStartup.InspectionStepSummary);
 
             normalStartup.LoadRunRecord(first.Json, out _);
@@ -206,7 +216,8 @@ internal static class RunRecordHistoryVerification
                 && normalStartup.SelectedRecentRunRecord is null
                 && normalStartup.InspectionSteps.Count == 0
                 && !normalStartup.OpenRunRecordCommand.CanExecute(null)
-                && !normalStartup.ExportRunRecordCommand.CanExecute(null),
+                && !normalStartup.ExportRunRecordCommand.CanExecute(null)
+                && normalStartup.SourceQualityState == "Unavailable",
                 $"recent={normalStartup.RecentRunRecords.Count}; steps={normalStartup.InspectionSteps.Count}");
         }
         catch (Exception exception)

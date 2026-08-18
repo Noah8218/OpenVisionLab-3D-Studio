@@ -1000,8 +1000,30 @@
         </Border>
 
         <Border DockPanel.Dock="Bottom" Background="#111827" Padding="10,6">
-            <TextBlock Foreground="#f9fafb"
-                       Text="{Binding BottomStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Foreground="#f9fafb"
+                           ToolTip="{Binding BottomStatus, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                           Text="{Binding BottomStatus, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                <StackPanel Grid.Row="1"
+                            Margin="0,3,0,0"
+                            HorizontalAlignment="Right"
+                            Orientation="Horizontal"
+                            ToolTip="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                            AutomationProperties.AutomationId="ViewerCoordinateStatus"
+                            AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.CoordinateStatus, Korean='좌표 X / Y / Z', English='Coordinates X / Y / Z'}"
+                            AutomationProperties.HelpText="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}}">
+                    <TextBlock Foreground="#67e8f9"
+                               FontWeight="SemiBold"
+                               Text="{localization:ViewerText Key=ThreeD.Viewer.CoordinateStatusPrefix, Korean='좌표 X / Y / Z: ', English='Coordinates X / Y / Z: '}" />
+                    <TextBlock Foreground="#67e8f9"
+                               FontWeight="SemiBold"
+                               Text="{Binding PickCoordinate, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                </StackPanel>
+            </Grid>
         </Border>
 
         <Grid>

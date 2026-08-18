@@ -715,8 +715,16 @@ internal static class SyntheticAffineInspectionPlateVerification
                     PropertyNameCaseInsensitive = true,
                     Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
                 });
-            checks.Add(Check("schema 1.4 JSON preserves the complete general graph",
-                record is { SchemaVersion: "1.4", Step: null, Steps.Count: 27 }
+            checks.Add(Check("schema 1.9 JSON preserves exact Source Quality and the complete general graph",
+                record is { SchemaVersion: "1.9", Step: null, Steps.Count: 27 }
+                && record.SourceQualityEvidence is
+                {
+                    State: InspectionRunSourceQualityEvidenceState.Available,
+                    Report: not null
+                } sourceQuality
+                && execution.SourceQuality is not null
+                && sourceQuality.SourceQualitySha256 == SourceQualityReportContentIdentity.CalculateSha256(execution.SourceQuality)
+                && sourceQuality.TryValidate(record.Source, out _)
                 && record.Steps.Select(step => step.Id).SequenceEqual(document.Steps.Select(step => step.Id))
                 && record.Steps.All(step => !string.IsNullOrWhiteSpace(step.OutputContentSha256))
                 && record.Status == execution.Status,
@@ -727,9 +735,12 @@ internal static class SyntheticAffineInspectionPlateVerification
         if (options.HtmlPath is not null)
         {
             var html = File.ReadAllText(options.HtmlPath);
-            checks.Add(Check("HTML exposes all ordered routes, elapsed time, hashes, metrics, and overlays",
+            checks.Add(Check("HTML exposes Source Quality and all ordered routes, elapsed time, hashes, metrics, and overlays",
                 html.Contains("27 ordered steps", StringComparison.Ordinal)
                 && document.Steps.All(step => html.Contains(step.Id, StringComparison.Ordinal))
+                && execution.SourceQuality is not null
+                && html.Contains("Source Quality evidence", StringComparison.Ordinal)
+                && html.Contains(execution.SourceQuality.Coverage.InvalidCellMask.Sha256, StringComparison.Ordinal)
                 && html.Contains("Output SHA-256", StringComparison.Ordinal)
                 && html.Contains("Overlays", StringComparison.Ordinal),
                 $"bytes={new FileInfo(options.HtmlPath).Length}"));
@@ -737,9 +748,12 @@ internal static class SyntheticAffineInspectionPlateVerification
         if (options.CsvPath is not null)
         {
             var csv = File.ReadAllText(options.CsvPath);
-            checks.Add(Check("CSV exposes every step including feature-only evidence rows",
+            checks.Add(Check("CSV exposes Source Quality and every step including feature-only evidence rows",
                 csv.StartsWith("runId,recordedAtUtc,recipeIndex,stepId,toolId", StringComparison.Ordinal)
                 && document.Steps.All(step => csv.Contains(step.Id, StringComparison.Ordinal))
+                && execution.SourceQuality is not null
+                && csv.Contains("sourceQualitySha256", StringComparison.Ordinal)
+                && csv.Contains(execution.SourceQuality.Coverage.InvalidCellMask.Sha256, StringComparison.Ordinal)
                 && csv.Contains("outputContentSha256", StringComparison.Ordinal)
                 && csv.Contains("overlayIds", StringComparison.Ordinal),
                 $"lines={File.ReadLines(options.CsvPath).Count()}"));

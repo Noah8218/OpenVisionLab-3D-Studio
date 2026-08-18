@@ -13,13 +13,15 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     string OutputEntityId,
     string? OutputContentSha256,
     ToolResult Result,
-    string Evidence);
+    string Evidence,
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
 
 public sealed record ToolRecipeOrderedGraphExecutionResult(
     ResultStatus Status,
     string Message,
     TimeSpan Duration,
     string SourceContentSha256,
+    SourceQualityReport? SourceQuality,
     ToolRecipeDocument ReboundDocument,
     IReadOnlyList<ToolRecipeOrderedGraphStepResult> Steps);
 
@@ -104,6 +106,7 @@ public static class ToolRecipeOrderedGraphExecution
     public static ToolRecipeOrderedGraphExecutionResult Execute(
         ToolRecipeDocument document,
         string sourcePath,
+        SourceQualityReport? existingSourceQuality = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -114,6 +117,7 @@ public static class ToolRecipeOrderedGraphExecution
             return Error(document, string.Empty, capabilityMessage, stopwatch.Elapsed, []);
         }
 
+        SourceQualityReport? sourceQuality = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -143,6 +147,9 @@ public static class ToolRecipeOrderedGraphExecution
                 identity.ContentSha256,
                 identity.GridWidth,
                 identity.GridHeight);
+            sourceQuality = existingSourceQuality is null
+                ? C3DSourceQualityAnalyzer.Create(snapshot)
+                : RequireCompatibleSourceQuality(existingSourceQuality, snapshot);
             var rebound = RebindRawSource(document, path, snapshot);
             var artifacts = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
@@ -163,7 +170,10 @@ public static class ToolRecipeOrderedGraphExecution
                     step.OutputEntityId,
                     OutputContentSha256(execution.Output),
                     execution.Result,
-                    Evidence(execution.Result, execution.Output)));
+                    Evidence(execution.Result, execution.Output),
+                    execution.Output is ToolRecipeHeightMeasurementOutput measurement
+                        ? measurement.CompletenessGrid
+                        : null));
 
                 if (execution.Output is not null)
                 {
@@ -183,7 +193,8 @@ public static class ToolRecipeOrderedGraphExecution
                         identity.ContentSha256,
                         $"Step {index + 1} '{step.ToolName}' stopped ordered replay: {execution.Result.Message}",
                         stopwatch.Elapsed,
-                        steps);
+                        steps,
+                        sourceQuality);
                 }
                 if (execution.Output is C3DTransformedHeightField transformed
                     && !transformed.MeetsMinimumCoverage)
@@ -194,7 +205,8 @@ public static class ToolRecipeOrderedGraphExecution
                         identity.ContentSha256,
                         $"Step {index + 1} '{step.ToolName}' did not meet its authored Publish coverage gate.",
                         stopwatch.Elapsed,
-                        steps);
+                        steps,
+                        sourceQuality);
                 }
             }
 
@@ -205,6 +217,7 @@ public static class ToolRecipeOrderedGraphExecution
                 $"Executed {steps.Count} authored typed step(s) in recipe order.",
                 stopwatch.Elapsed,
                 identity.ContentSha256,
+                sourceQuality,
                 rebound,
                 steps);
         }
@@ -221,8 +234,51 @@ public static class ToolRecipeOrderedGraphExecution
             or OverflowException)
         {
             stopwatch.Stop();
-            return Error(document, string.Empty, exception.Message, stopwatch.Elapsed, []);
+            return Error(
+                document,
+                string.Empty,
+                exception.Message,
+                stopwatch.Elapsed,
+                [],
+                sourceQuality);
         }
+    }
+
+    private static SourceQualityReport RequireCompatibleSourceQuality(
+        SourceQualityReport report,
+        C3DHeightFieldSnapshot snapshot)
+    {
+        if (report.SchemaVersion != SourceQualityReport.CurrentSchemaVersion
+            || !string.Equals(
+                report.Source.EntityId,
+                snapshot.EntityId,
+                StringComparison.OrdinalIgnoreCase)
+            || report.Source.ByteLength != snapshot.ByteLength
+            || !string.Equals(
+                report.Source.ContentSha256,
+                snapshot.ContentSha256,
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                report.Source.RootSourceSha256,
+                snapshot.RootSourceSha256,
+                StringComparison.OrdinalIgnoreCase)
+            || report.Grid.Width != snapshot.Width
+            || report.Grid.Height != snapshot.Height
+            || report.Grid.CellCount != snapshot.Values.Length
+            || !string.Equals(
+                report.Coordinates.Unit,
+                snapshot.Unit,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                report.Coordinates.FrameId,
+                snapshot.FrameId,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "Existing Source Quality does not match the exact ordered-run source identity, grid, unit, or frame.");
+        }
+
+        return report;
     }
 
     private static StepExecution ExecuteStep(
@@ -479,12 +535,14 @@ public static class ToolRecipeOrderedGraphExecution
         string sourceContentSha256,
         string message,
         TimeSpan duration,
-        IReadOnlyList<ToolRecipeOrderedGraphStepResult> steps) =>
+        IReadOnlyList<ToolRecipeOrderedGraphStepResult> steps,
+        SourceQualityReport? sourceQuality = null) =>
         new(
             ResultStatus.Error,
             message,
             duration,
             sourceContentSha256,
+            sourceQuality,
             document,
             steps);
 

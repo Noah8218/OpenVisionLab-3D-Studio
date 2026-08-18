@@ -105,12 +105,18 @@ internal static class RunRecordWriter
                 document.Steps[item.RecipeIndex],
                 item.Output.Result)));
 
+        var runSource = new InspectionRunSource(
+            document.Source.Id,
+            Path.GetFullPath(sourcePath),
+            sourceHash,
+            new FileInfo(sourcePath).Length,
+            document.Source.Unit);
         var record = new InspectionRunRecord(
-            "1.3",
+            "1.9",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
-            new InspectionRunSource(document.Source.Id, Path.GetFullPath(sourcePath), sourceHash, new FileInfo(sourcePath).Length, document.Source.Unit),
+            runSource,
             result.ToolName,
             result.Status,
             result.Message,
@@ -127,7 +133,10 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.CsvPath)))
         {
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
-            Steps = steps
+            Steps = steps,
+            SourceQualityEvidence =
+                InspectionRunSourceQualityEvidence.Unavailable(
+                    "This ordered execution path did not supply Source Quality evidence.")
         };
 
         WriteOutputs(options, record);
@@ -156,12 +165,24 @@ internal static class RunRecordWriter
             ToolRecipeThresholdCorrectionRunRecordProjection.Create(
                 recipePath,
                 document);
+        var runSource = new InspectionRunSource(
+            document.Source.Id,
+            Path.GetFullPath(sourcePath),
+            sourceHash,
+            new FileInfo(sourcePath).Length,
+            document.Source.Unit);
+        var sourceQuality = execution.SourceQuality is null
+            ? InspectionRunSourceQualityEvidence.Unavailable(
+                "Source Quality was unavailable because the ordered source could not be analyzed.")
+            : InspectionRunSourceQualityEvidence.Available(
+                runSource,
+                execution.SourceQuality);
         var record = new InspectionRunRecord(
-            "1.5",
+            "1.9",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
-            new InspectionRunSource(document.Source.Id, Path.GetFullPath(sourcePath), sourceHash, new FileInfo(sourcePath).Length, document.Source.Unit),
+            runSource,
             "Ordered Tool Recipe Replay",
             execution.Status,
             execution.Message,
@@ -179,6 +200,7 @@ internal static class RunRecordWriter
         {
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
             Steps = steps,
+            SourceQualityEvidence = sourceQuality,
             ThresholdCorrectionEvidence = thresholdCorrectionEvidence
         };
 
@@ -194,6 +216,7 @@ internal static class RunRecordWriter
         SurfaceMatchExecutionArtifact execution,
         SurfaceAndEdgeMatchScoreArtifact? score,
         SurfaceAndEdgeMatchAssessmentArtifact? assessment,
+        SurfaceMatchRuntimeReport? runtime,
         string runnerReportPath)
     {
         if (!options.Requested) return;
@@ -207,14 +230,21 @@ internal static class RunRecordWriter
         var recordedAt = DateTimeOffset.UtcNow;
         var recipeHash = HashFile(recipePath);
         var source = scene.SourceQuality.Source;
+        var runSource = new InspectionRunSource(
+            source.EntityId,
+            source.Path,
+            source.RootSourceSha256,
+            source.ByteLength,
+            scene.Unit);
         var status = assessment?.Decision == SurfaceMatchDecision.Pass
             ? ResultStatus.Pass
             : ResultStatus.Fail;
         var message = assessment is null
             ? execution.PoseResult.RejectionReason
             : $"Surface/edge assessment: {assessment.Decision} ({assessment.Reason}).";
+        var timing = CreateSurfaceMatchTiming(execution, assessment, runtime);
         var record = new InspectionRunRecord(
-            "1.6",
+            "1.9",
             $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
             recordedAt,
             new InspectionRunRecipe(
@@ -222,18 +252,13 @@ internal static class RunRecordWriter
                 document.SchemaVersion,
                 Path.GetFullPath(recipePath),
                 recipeHash),
-            new InspectionRunSource(
-                source.EntityId,
-                source.Path,
-                source.RootSourceSha256,
-                source.ByteLength,
-                scene.Unit),
+            runSource,
             "Surface Match",
             status,
             string.IsNullOrWhiteSpace(message)
                 ? "Identified Surface Match evidence exported without recomputation."
                 : message,
-            0.0,
+            timing.TotalElapsedMilliseconds ?? 0.0,
             [],
             [],
             "NotCompared",
@@ -246,7 +271,12 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.CsvPath)))
         {
             ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
-            SurfaceMatchEvidence = evidence
+            SourceQualityEvidence =
+                InspectionRunSourceQualityEvidence.Available(
+                    runSource,
+                    scene.SourceQuality),
+            SurfaceMatchEvidence = evidence,
+            Timing = timing
         };
 
         WriteOutputs(options, record);
@@ -270,8 +300,59 @@ internal static class RunRecordWriter
             ToMetrics(result.Metrics),
             ToOverlays(result.Overlays))
         {
-            OutputContentSha256 = outputContentSha256
+            OutputContentSha256 = outputContentSha256,
+            Timing = CreateToolTiming(result.Elapsed.TotalMilliseconds)
         };
+
+    private static InspectionRunTiming CreateToolTiming(
+        double elapsedMilliseconds) =>
+        InspectionRunTiming.Available(
+            InspectionRunTiming.StopwatchClock,
+            elapsedMilliseconds,
+            [
+                new InspectionRunStageTiming(
+                    InspectionRunTiming.ToolExecutionStage,
+                    elapsedMilliseconds)
+            ],
+            "Existing ToolResult elapsed observation; no additional execution.");
+
+    private static InspectionRunTiming CreateSurfaceMatchTiming(
+        SurfaceMatchExecutionArtifact execution,
+        SurfaceAndEdgeMatchAssessmentArtifact? assessment,
+        SurfaceMatchRuntimeReport? runtime)
+    {
+        if (runtime is null)
+        {
+            return InspectionRunTiming.Unavailable(
+                "No persisted Surface Match runtime evidence was supplied.");
+        }
+
+        if (!SurfaceMatchAssessmentArtifactValidator.InspectRuntime(
+                runtime,
+                out var runtimeEvidence)
+            || !string.Equals(
+                runtime.ExecutionContentSha256,
+                execution.ContentSha256,
+                StringComparison.Ordinal)
+            || assessment is null
+            || !string.Equals(
+                runtime.AssessmentContentSha256,
+                assessment.ContentSha256,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "Surface Match runtime does not match the identified execution and assessment: "
+                + runtimeEvidence);
+        }
+
+        return InspectionRunTiming.Available(
+            runtime.Clock,
+            runtime.TotalMilliseconds,
+            runtime.Stages.Select(stage => new InspectionRunStageTiming(
+                stage.StageId,
+                TimeSpan.FromTicks(stage.ElapsedTicks).TotalMilliseconds)),
+            "Persisted Surface Match runtime evidence; matching was not recomputed.");
+    }
 
     private static InspectionRunMetric[] ToMetrics(IEnumerable<Metric> metrics) =>
         metrics
@@ -307,8 +388,12 @@ internal static class RunRecordWriter
             : string.Join(Environment.NewLine, record.Metrics.Select(metric =>
                 $"<tr><td>{Encode(metric.Name)}</td><td>{Encode(metric.Kind.ToString())}</td><td>{Format(metric.Value)}</td><td>{Encode(metric.Unit)}</td><td>{Encode(metric.Status?.ToString() ?? string.Empty)}</td></tr>"));
         var tableHeader = hasSteps
-            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
+            ? "<tr><th>Order</th><th>Step ID</th><th>Tool</th><th>Route</th><th>Step status</th><th>Elapsed ms</th><th>Stage timing</th><th>Output SHA-256</th><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Metric status</th><th>Overlays</th></tr>"
             : "<tr><th>Metric</th><th>Kind</th><th>Value</th><th>Unit</th><th>Status</th></tr>";
+        var timingSection = FormatTimingHtml(record.Timing);
+        var sourceQualitySection =
+            FormatSourceQualityHtml(record.SourceQualityEvidence);
+        var completenessSection = FormatCompletenessHtml(record.Steps);
         var thresholdCorrectionSection =
             record.SurfaceMatchEvidence is null
                 ? FormatThresholdCorrectionHtml(
@@ -322,7 +407,7 @@ internal static class RunRecordWriter
         <head>
           <meta charset="utf-8">
           <title>OpenVisionLab 3D Inspection Run</title>
-          <style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#111827}h1{font-size:22px}dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;margin-top:16px}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.Pass{color:#047857}.Fail,.Error{color:#b91c1c}</style>
+          <style>body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#111827}h1{font-size:22px}dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}.table-scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;margin-top:16px}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.Pass{color:#047857}.Fail,.Error{color:#b91c1c}</style>
         </head>
         <body>
           <h1>OpenVisionLab 3D Inspection Run</h1>
@@ -342,6 +427,9 @@ internal static class RunRecordWriter
             <dt>Platform</dt><dd>{{Encode(FormatPlatform(record.ExecutionEnvironment))}}</dd>
           </dl>
           <p>{{Encode(record.Message)}}</p>
+          {{timingSection}}
+          {{sourceQualitySection}}
+          {{completenessSection}}
           {{thresholdCorrectionSection}}
           {{surfaceMatchSection}}
           <table><thead>{{tableHeader}}</thead><tbody>
@@ -351,6 +439,46 @@ internal static class RunRecordWriter
         </html>
         """;
         File.WriteAllText(path, html, new UTF8Encoding(false));
+    }
+
+    private static string FormatCompletenessHtml(
+        IReadOnlyList<InspectionRunStepResult>? steps)
+    {
+        var outputs = (steps ?? [])
+            .Where(step => step.CompletenessGrid is not null)
+            .Select(step => (Step: step, Output: step.CompletenessGrid!))
+            .ToArray();
+        if (outputs.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var rows = string.Join(
+            Environment.NewLine,
+            outputs.SelectMany(item => item.Output.Cells.Select(cell =>
+                $"<tr><td>{Encode(item.Step.Id)}</td><td>{Encode(cell.CellId)}</td>"
+                + $"<td>{cell.GridRow}, {cell.GridColumn}</td>"
+                + $"<td>{cell.Region.Row}, {cell.Region.Column} · {cell.Region.RowCount} × {cell.Region.ColumnCount}</td>"
+                + $"<td>{cell.TotalCellCount} / {cell.FiniteCellCount} / {cell.MissingCellCount}</td>"
+                + $"<td>{Format(cell.FiniteCoverageRatio)}</td>"
+                + $"<td>{FormatNullable(cell.MeanRawHeight)}</td>"
+                + $"<td>{Format(cell.ReferenceMeanRawHeight)}</td>"
+                + $"<td>{FormatNullable(cell.ReferenceRelativeMeanRawHeight)}</td>"
+                + $"<td>{Encode(item.Output.Unit)} / {Encode(item.Output.FrameId)}</td>"
+                + $"<td class=\"{cell.Decision}\">{Encode(cell.Decision?.ToString() ?? string.Empty)}</td>"
+                + $"<td>{Encode(cell.DecisionReason)}</td>"
+                + $"<td>{Encode(item.Output.ContentSha256)}</td></tr>")));
+
+        return $"""
+               <section>
+                 <h2>Completeness cell results</h2>
+                 <p>Grid and source-region coordinates are zero-based. Nullable heights remain empty.</p>
+                 <div class="table-scroll"><table>
+                   <thead><tr><th>Step ID</th><th>Cell ID</th><th>Grid row, column</th><th>Region row, column · size</th><th>Total / finite / missing</th><th>Finite coverage</th><th>Mean raw height</th><th>Reference mean raw height</th><th>Reference-relative mean raw height</th><th>Unit / frame</th><th>Decision</th><th>Reason</th><th>Completeness SHA-256</th></tr></thead>
+                   <tbody>{rows}</tbody>
+                 </table></div>
+               </section>
+               """;
     }
 
     private static string FormatThresholdCorrectionHtml(
@@ -424,6 +552,72 @@ internal static class RunRecordWriter
                  {parameterTable}
                  {development}
                  {heldOut}
+               </section>
+               """;
+    }
+
+    private static string FormatSourceQualityHtml(
+        InspectionRunSourceQualityEvidence? evidence)
+    {
+        if (evidence?.Report is not { } report)
+        {
+            return $"""
+                   <section>
+                     <h2>Source Quality evidence</h2>
+                     <p><strong>State:</strong> {Encode(evidence?.State.ToString() ?? "Unavailable")}</p>
+                     <p>{Encode(evidence?.Message ?? "This legacy Run Record did not record Source Quality evidence.")}</p>
+                   </section>
+                   """;
+        }
+
+        var channels = string.Join(
+            Environment.NewLine,
+            report.Channels.Select(channel =>
+                $"<tr><td>{Encode(channel.Channel.ToString())}</td><td>{Encode(channel.State.ToString())}</td><td>{Encode(channel.Evidence)}</td></tr>"));
+        return $"""
+               <section>
+                 <h2>Source Quality evidence</h2>
+                 <dl>
+                   <dt>State</dt><dd>{evidence.State}</dd>
+                   <dt>Report SHA-256</dt><dd>{evidence.SourceQualitySha256}</dd>
+                   <dt>Source entity</dt><dd>{Encode(report.Source.EntityId)}</dd>
+                   <dt>Grid</dt><dd>{report.Grid.Width} x {report.Grid.Height} ({report.Grid.CellCount} cells)</dd>
+                   <dt>Coverage</dt><dd>{report.Coverage.ValidSampleCount} valid ({Format(report.Coverage.ValidRatio)}); {report.Coverage.MissingSampleCount} missing ({Format(report.Coverage.MissingRatio)})</dd>
+                   <dt>Invalid-cell mask</dt><dd>{Encode(report.Coverage.InvalidCellMask.Encoding)}; {report.Coverage.InvalidCellMask.ByteLength} bytes; SHA-256 {report.Coverage.InvalidCellMask.Sha256}</dd>
+                   <dt>Height</dt><dd>{Encode(report.Height.ScalarMeaning)}; min {FormatNullable(report.Height.Minimum)}; max {FormatNullable(report.Height.Maximum)}; mean {FormatNullable(report.Height.Mean)}</dd>
+                   <dt>Coordinates</dt><dd>{Encode(report.Coordinates.FrameId)}; {Encode(report.Coordinates.Unit)}; {Encode(report.Coordinates.CoordinateConvention)}</dd>
+                   <dt>Provenance</dt><dd>{Encode(report.Provenance)}</dd>
+                   <dt>Derived</dt><dd>{report.IsDerived}</dd>
+                 </dl>
+                 <table><thead><tr><th>Channel</th><th>State</th><th>Evidence</th></tr></thead><tbody>{channels}</tbody></table>
+               </section>
+               """;
+    }
+
+    private static string FormatTimingHtml(InspectionRunTiming? timing)
+    {
+        if (timing is null)
+        {
+            return string.Empty;
+        }
+
+        var stages = timing.State == InspectionRunTimingState.Available
+            ? string.Join(
+                Environment.NewLine,
+                timing.Stages.Select(stage =>
+                    $"<tr><td>{Encode(stage.StageId)}</td><td>{Format(stage.ElapsedMilliseconds)}</td></tr>"))
+            : string.Empty;
+        var table = stages.Length == 0
+            ? string.Empty
+            : $"<table><thead><tr><th>Stage</th><th>Elapsed ms</th></tr></thead><tbody>{stages}</tbody></table>";
+        return $"""
+               <section>
+                 <h2>Execution timing</h2>
+                 <p><strong>State:</strong> {timing.State}</p>
+                 <p>{Encode(timing.Message)}</p>
+                 <p><strong>Clock:</strong> {Encode(timing.Clock)}</p>
+                 <p><strong>Total:</strong> {FormatNullable(timing.TotalElapsedMilliseconds)} ms</p>
+                 {table}
                </section>
                """;
     }
@@ -573,12 +767,25 @@ internal static class RunRecordWriter
                 Csv(unit),
                 Csv(sourceSha256)));
 
+        AddSourceQualityCsvRows(Add, record.SourceQualityEvidence);
+
         Add("identity", "modelArtifactId", evidence.ModelArtifactId, string.Empty, evidence.ModelContentSha256);
         Add("identity", "sceneArtifactId", evidence.SceneArtifactId, string.Empty, evidence.SceneContentSha256);
         Add("identity", "executionContentSha256", execution.ContentSha256, string.Empty, execution.ContentSha256);
         Add("pose", "state", poseResult.State.ToString(), string.Empty, poseResult.ContentSha256);
         Add("pose", "evaluatedCandidateCount", poseResult.EvaluatedCandidateCount.ToString(CultureInfo.InvariantCulture), "count", poseResult.ContentSha256);
         Add("pose", "rejectionReason", poseResult.RejectionReason ?? string.Empty, string.Empty, poseResult.ContentSha256);
+        var timing = record.Timing;
+        Add("timing", "state", timing?.State.ToString() ?? "Unavailable", string.Empty, execution.ContentSha256);
+        Add("timing", "clock", timing?.Clock ?? string.Empty, string.Empty, execution.ContentSha256);
+        Add("timing", "totalElapsedMilliseconds", timing?.TotalElapsedMilliseconds is { } total ? Format(total) : string.Empty, "ms", execution.ContentSha256);
+        if (timing is not null)
+        {
+            foreach (var stage in timing.Stages)
+            {
+                Add("timing", stage.StageId, Format(stage.ElapsedMilliseconds), "ms", execution.ContentSha256);
+            }
+        }
         if (poseResult.Pose is { } pose)
         {
             Add("pose", "sourceFrameId", pose.SourceFrameId, string.Empty, poseResult.ContentSha256);
@@ -641,6 +848,39 @@ internal static class RunRecordWriter
         add(component, "maximumCorrespondenceDistance", Format(maximumDistance), unit, sourceSha256);
     }
 
+    private static void AddSourceQualityCsvRows(
+        Action<string, string, string, string, string> add,
+        InspectionRunSourceQualityEvidence? evidence)
+    {
+        var reportSha = evidence?.SourceQualitySha256 ?? string.Empty;
+        add("source-quality", "state", evidence?.State.ToString() ?? "Unavailable", string.Empty, reportSha);
+        if (evidence?.Report is not { } report)
+        {
+            add("source-quality", "message", evidence?.Message ?? "Legacy Run Record", string.Empty, reportSha);
+            return;
+        }
+
+        add("source-quality", "reportSha256", evidence.SourceQualitySha256, string.Empty, reportSha);
+        add("source-quality", "gridWidth", report.Grid.Width.ToString(CultureInfo.InvariantCulture), "cells", reportSha);
+        add("source-quality", "gridHeight", report.Grid.Height.ToString(CultureInfo.InvariantCulture), "cells", reportSha);
+        add("source-quality", "cellCount", report.Grid.CellCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        add("source-quality", "validSampleCount", report.Coverage.ValidSampleCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        add("source-quality", "missingSampleCount", report.Coverage.MissingSampleCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        add("source-quality", "validRatio", Format(report.Coverage.ValidRatio), "ratio", reportSha);
+        add("source-quality", "missingRatio", Format(report.Coverage.MissingRatio), "ratio", reportSha);
+        add("source-quality", "invalidCellMaskSha256", report.Coverage.InvalidCellMask.Sha256, string.Empty, reportSha);
+        add("source-quality", "frameId", report.Coordinates.FrameId, string.Empty, reportSha);
+        add("source-quality", "unit", report.Coordinates.Unit, string.Empty, reportSha);
+        add("source-quality", "coordinateConvention", report.Coordinates.CoordinateConvention, string.Empty, reportSha);
+        add("source-quality", "provenance", report.Provenance, string.Empty, reportSha);
+        add("source-quality", "isDerived", report.IsDerived.ToString(CultureInfo.InvariantCulture), string.Empty, reportSha);
+        foreach (var channel in report.Channels)
+        {
+            add("source-quality-channel", $"{channel.Channel}.state", channel.State.ToString(), string.Empty, reportSha);
+            add("source-quality-channel", $"{channel.Channel}.evidence", channel.Evidence, string.Empty, reportSha);
+        }
+    }
+
     private static void AddAssessmentRows(
         Action<string, string, string, string, string> add,
         string component,
@@ -657,18 +897,25 @@ internal static class RunRecordWriter
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch" };
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason" };
         lines.AddRange(record.Steps!.SelectMany(step =>
-            step.Metrics.Count == 0
-                ? [FormatMultiStepCsvRow(record, step, null)]
-                : step.Metrics.Select(metric => FormatMultiStepCsvRow(record, step, metric))));
+        {
+            var stepRows = step.Metrics.Count == 0
+                ? [FormatMultiStepCsvRow(record, step, null, null)]
+                : step.Metrics.Select(metric =>
+                    FormatMultiStepCsvRow(record, step, metric, null));
+            var cellRows = step.CompletenessGrid?.Cells.Select(cell =>
+                FormatMultiStepCsvRow(record, step, null, cell)) ?? [];
+            return stepRows.Concat(cellRows);
+        }));
         File.WriteAllLines(path, lines, new UTF8Encoding(false));
     }
 
     private static string FormatMultiStepCsvRow(
         InspectionRunRecord record,
         InspectionRunStepResult step,
-        InspectionRunMetric? metric) =>
+        InspectionRunMetric? metric,
+        C3DCompletenessCellMetric? cell) =>
         string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
@@ -680,6 +927,9 @@ internal static class RunRecordWriter
             Csv(step.OutputEntityId),
             Csv(step.Status.ToString()),
             Csv(Format(step.ElapsedMilliseconds)),
+            Csv(step.Timing?.State.ToString() ?? "Unavailable"),
+            Csv(step.Timing?.Clock ?? string.Empty),
+            Csv(FormatStageTimings(step.Timing)),
             Csv(step.OutputContentSha256 ?? string.Empty),
             Csv(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray())),
             Csv(metric?.Name ?? string.Empty),
@@ -689,7 +939,41 @@ internal static class RunRecordWriter
             Csv(metric?.Status?.ToString() ?? string.Empty),
             Csv(record.Recipe.Sha256),
             Csv(record.Source.Sha256),
-            Csv(record.ViewerRunnerMatchState));
+            Csv(record.ViewerRunnerMatchState),
+            Csv(record.SourceQualityEvidence?.State.ToString() ?? "Unavailable"),
+            Csv(record.SourceQualityEvidence?.SourceQualitySha256 ?? string.Empty),
+            Csv(FormatSourceQualityGrid(record.SourceQualityEvidence)),
+            Csv(record.SourceQualityEvidence?.Report?.Coverage.ValidSampleCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.Coverage.MissingSampleCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report is { } quality ? Format(quality.Coverage.ValidRatio) : string.Empty),
+            Csv(record.SourceQualityEvidence?.Report is { } missingQuality ? Format(missingQuality.Coverage.MissingRatio) : string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.Coverage.InvalidCellMask.Sha256 ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.Coordinates.FrameId ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.Coordinates.Unit ?? string.Empty),
+            Csv(record.SourceQualityEvidence?.Report?.Provenance ?? string.Empty),
+            Csv(FormatSourceQualityChannels(record.SourceQualityEvidence)),
+            Csv(cell is not null ? "completenessCell" : metric is not null ? "stepMetric" : "step"),
+            Csv(step.CompletenessGrid?.ContentSha256 ?? string.Empty),
+            Csv(step.CompletenessGrid?.Unit ?? string.Empty),
+            Csv(step.CompletenessGrid?.FrameId ?? string.Empty),
+            Csv(cell?.CellId ?? string.Empty),
+            Csv(cell?.GridRow.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.GridColumn.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.Region.Row.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.Region.Column.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.Region.RowCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.Region.ColumnCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.TotalCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.FiniteCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell?.MissingCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+            Csv(cell is null ? string.Empty : Format(cell.FiniteCoverageRatio)),
+            Csv(cell?.MeanRawHeight is { } mean ? Format(mean) : string.Empty),
+            Csv(cell is null ? string.Empty : Format(cell.ReferenceMeanRawHeight)),
+            Csv(cell?.ReferenceRelativeMeanRawHeight is { } relative
+                ? Format(relative)
+                : string.Empty),
+            Csv(cell?.Decision?.ToString() ?? string.Empty),
+            Csv(cell?.DecisionReason ?? string.Empty));
 
     private static string FormatHtmlStepRow(
         InspectionRunStepResult step,
@@ -697,10 +981,34 @@ internal static class RunRecordWriter
         $"<tr><td>{step.RecipeIndex + 1}</td><td>{Encode(step.Id)}</td><td>{Encode(step.ToolName)}</td>"
         + $"<td>{Encode($"{FormatIds(step.InputEntityIds)} -> {step.OutputEntityId}")}</td>"
         + $"<td class=\"{step.Status}\">{step.Status}</td><td>{Format(step.ElapsedMilliseconds)}</td>"
+        + $"<td>{Encode(FormatStageTimings(step.Timing))}</td>"
         + $"<td>{Encode(step.OutputContentSha256 ?? string.Empty)}</td><td>{Encode(metric?.Name ?? string.Empty)}</td>"
         + $"<td>{Encode(metric?.Kind.ToString() ?? string.Empty)}</td><td>{(metric is null ? string.Empty : Format(metric.Value))}</td>"
         + $"<td>{Encode(metric?.Unit ?? string.Empty)}</td><td>{Encode(metric?.Status?.ToString() ?? string.Empty)}</td>"
         + $"<td>{Encode(FormatIds(step.Overlays.Select(overlay => overlay.Id).ToArray()))}</td></tr>";
+
+    private static string FormatStageTimings(InspectionRunTiming? timing) =>
+        timing is not { State: InspectionRunTimingState.Available }
+            ? "Unavailable"
+            : string.Join(
+                "; ",
+                timing.Stages.Select(stage =>
+                    $"{stage.StageId}={Format(stage.ElapsedMilliseconds)} ms"));
+
+    private static string FormatSourceQualityGrid(
+        InspectionRunSourceQualityEvidence? evidence) =>
+        evidence?.Report is { } report
+            ? $"{report.Grid.Width}x{report.Grid.Height}"
+            : string.Empty;
+
+    private static string FormatSourceQualityChannels(
+        InspectionRunSourceQualityEvidence? evidence) =>
+        evidence?.Report is { } report
+            ? string.Join(
+                "; ",
+                report.Channels.Select(channel =>
+                    $"{channel.Channel}={channel.State}:{channel.Evidence}"))
+            : string.Empty;
 
     private static InspectionRunEnvironment CreateExecutionEnvironment(string recipePath)
     {

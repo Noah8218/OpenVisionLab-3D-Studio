@@ -60,6 +60,11 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private string thresholdCorrectionState = "Unavailable";
     private string thresholdCorrectionSummary =
         "No threshold-correction evidence was recorded.";
+    private string sourceQualityState = "Unavailable";
+    private string sourceQualitySummary =
+        "No Source Quality evidence was recorded.";
+    private string sourceQualityDetail =
+        "No Source Quality evidence was recorded.";
     private int selectedEvidenceTabIndex;
     private ShellWorkspaceMode selectedWorkspaceMode = ShellWorkspaceMode.Workbench;
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
@@ -656,6 +661,24 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public string SourceQualityState
+    {
+        get => sourceQualityState;
+        private set => SetField(ref sourceQualityState, value);
+    }
+
+    public string SourceQualitySummary
+    {
+        get => sourceQualitySummary;
+        private set => SetField(ref sourceQualitySummary, value);
+    }
+
+    public string SourceQualityDetail
+    {
+        get => sourceQualityDetail;
+        private set => SetField(ref sourceQualityDetail, value);
+    }
+
     private void OnWorkbenchOrderedRunCompleted(
         object? sender,
         ToolWorkbenchOrderedRunCompletedEventArgs args)
@@ -711,6 +734,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         RunSnapshotSummary = "Viewer smoke failed | Status: ViewerFailed | Key metric: No recipe metric | Evidence: Blocked";
         RunSnapshotEvidence = $"Shell: {FormatShellScreenshotTarget(root)} | Runner: not created | UI: viewer smoke output";
         InspectionStepSummary = "Viewer smoke: Failed";
+        RefreshSourceQuality(null);
         RefreshThresholdCorrection(null);
         InspectionSteps.Clear();
         InspectionSteps.Add(new InspectionStepItem("1", "Viewer smoke", "Failed", string.IsNullOrWhiteSpace(viewerStatus) ? "Viewer smoke failed before recipe comparison." : viewerStatus));
@@ -776,6 +800,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             "No current recipe Run Record is loaded.");
         InspectionSteps.Clear();
         RecipeRunHistory.Clear();
+        RefreshSourceQuality(null);
         RefreshThresholdCorrection(null);
         StatusText = "Viewer hosted | current recipe evidence cleared";
     }
@@ -907,6 +932,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         InspectionRunRecord? runRecord)
     {
         InspectionSteps.Clear();
+        RefreshSourceQuality(runRecord);
         RefreshThresholdCorrection(runRecord);
 
         var evidenceState = comparisonState == "Runner/UI contract matched" ? "Matched" : "Pending";
@@ -955,6 +981,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private void RefreshInspectionStepsFromRecord(InspectionRunRecord record)
     {
         InspectionSteps.Clear();
+        RefreshSourceQuality(record);
         RefreshThresholdCorrection(record);
         var orderedRunSteps = record.Steps ?? [];
         foreach (var step in orderedRunSteps)
@@ -970,7 +997,18 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
                 (step.RecipeIndex + 1).ToString(CultureInfo.InvariantCulture),
                 step.ToolName,
                 step.Status.ToString(),
-                $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}{outputHash}"));
+                $"{step.Id} | {string.Join(";", step.InputEntityIds)} -> {step.OutputEntityId} | {metricSummary}{outputHash}",
+                FormatTiming(step.Timing)));
+        }
+        if (orderedRunSteps.Count == 0
+            && record.SurfaceMatchEvidence is not null)
+        {
+            InspectionSteps.Add(new InspectionStepItem(
+                "1",
+                record.ToolName,
+                record.Status.ToString(),
+                record.SurfaceMatchEvidence.Execution.ContentSha256,
+                FormatTiming(record.Timing)));
         }
         InspectionStepSummary = string.Format(
             CultureInfo.CurrentCulture,
@@ -978,6 +1016,83 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             record.SchemaVersion,
             orderedRunSteps.Count,
             record.Status);
+    }
+
+    private static string FormatTiming(InspectionRunTiming? timing)
+    {
+        if (timing is null || !timing.TryValidate(out _)
+            || timing.State != InspectionRunTimingState.Available)
+        {
+            return L("사용 불가", "Unavailable");
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{timing.TotalElapsedMilliseconds:F3} ms · {string.Join("; ", timing.Stages.Select(stage => $"{stage.StageId} {stage.ElapsedMilliseconds:F3} ms"))}");
+    }
+
+    private void RefreshSourceQuality(InspectionRunRecord? runRecord)
+    {
+        var evidence = runRecord?.SourceQualityEvidence;
+        if (evidence is null)
+        {
+            SourceQualityState = "Unavailable";
+            SourceQualitySummary = runRecord is null
+                ? L(
+                    "Run Record가 로드되지 않았습니다.",
+                    "No Run Record is loaded.")
+                : L(
+                    "이전 Run Record에는 소스 품질 증거가 없습니다.",
+                    "This legacy Run Record did not record Source Quality evidence.");
+            SourceQualityDetail = SourceQualitySummary;
+            return;
+        }
+
+        if (evidence.Report is not { } report)
+        {
+            SourceQualityState = "Unavailable";
+            SourceQualitySummary = evidence.Message;
+            SourceQualityDetail = evidence.Message;
+            return;
+        }
+
+        if (runRecord is null)
+        {
+            SourceQualityState = "Mismatch";
+            SourceQualitySummary =
+                "Source Quality cannot be validated without its Run Record source.";
+            SourceQualityDetail = SourceQualitySummary;
+            return;
+        }
+
+        if (!evidence.TryValidate(runRecord.Source, out var validationMessage))
+        {
+            SourceQualityState = "Mismatch";
+            SourceQualitySummary = validationMessage;
+            SourceQualityDetail = validationMessage;
+            return;
+        }
+
+        SourceQualityState = report.Coverage.MissingSampleCount > 0
+            ? "Warning"
+            : "Pass";
+        SourceQualitySummary = string.Format(
+            CultureInfo.CurrentCulture,
+            L(
+                "{0} × {1} · 유효 {2:P1} · 누락 {3:P1}",
+                "{0} × {1} · valid {2:P1} · missing {3:P1}"),
+            report.Grid.Width,
+            report.Grid.Height,
+            report.Coverage.ValidRatio,
+            report.Coverage.MissingRatio);
+        SourceQualityDetail = string.Join(
+            Environment.NewLine,
+            $"SHA-256 {evidence.SourceQualitySha256}",
+            $"{L("유효", "Valid")} {report.Coverage.ValidSampleCount:N0} · {L("누락", "Missing")} {report.Coverage.MissingSampleCount:N0}",
+            $"{L("누락 셀 맵", "Invalid-cell mask")} SHA-256 {report.Coverage.InvalidCellMask.Sha256}",
+            $"{L("좌표", "Coordinates")} {report.Coordinates.FrameId} · {report.Coordinates.Unit} · {report.Coordinates.CoordinateConvention}",
+            $"{L("출처", "Provenance")} {report.Provenance}",
+            $"{L("채널", "Channels")} {string.Join("; ", report.Channels.Select(channel => $"{channel.Channel}={channel.State}: {channel.Evidence}"))}");
     }
 
     private void RefreshThresholdCorrection(InspectionRunRecord? runRecord)
@@ -1638,12 +1753,18 @@ public sealed class RecipeRunHistoryItem
 
 public sealed class InspectionStepItem
 {
-    public InspectionStepItem(string order, string stage, string status, string evidence)
+    public InspectionStepItem(
+        string order,
+        string stage,
+        string status,
+        string evidence,
+        string timing = "")
     {
         Order = order;
         Stage = stage;
         Status = status;
         Evidence = evidence;
+        Timing = timing;
     }
 
     public string Order { get; }
@@ -1651,6 +1772,8 @@ public sealed class InspectionStepItem
     public string Stage { get; }
 
     public string Status { get; }
+
+    public string Timing { get; }
 
     public string Evidence { get; }
 }

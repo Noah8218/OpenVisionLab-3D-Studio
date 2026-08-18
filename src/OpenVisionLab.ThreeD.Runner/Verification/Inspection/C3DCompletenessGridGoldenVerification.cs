@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -53,6 +56,92 @@ internal static class C3DCompletenessGridGoldenVerification
         var policyGraph = ToolRecipeOrderedGraphExecution.Execute(
             policyRecipe,
             sourcePath);
+        var policyRunSteps = ToolRecipeOrderedGraphRunRecordProjection.Create(
+            policyRecipe,
+            policyGraph);
+        var runRecordJsonPath = Path.Combine(
+            directory,
+            "known-completeness-grid-run-record.json");
+        var runRecordHtmlPath = Path.Combine(
+            directory,
+            "known-completeness-grid-run-record.html");
+        var runRecordCsvPath = Path.Combine(
+            directory,
+            "known-completeness-grid-run-record.csv");
+        var runnerReportPath = Path.Combine(
+            directory,
+            "known-completeness-grid-runner.txt");
+        File.WriteAllText(runnerReportPath, "Completeness Grid export fixture.");
+        RunRecordWriter.WriteOrderedGraph(
+            new RunArtifactOptions(
+                runRecordJsonPath,
+                runRecordHtmlPath,
+                runRecordCsvPath,
+                null),
+            policyRecipePath,
+            policyRecipe,
+            sourcePath,
+            policyGraph,
+            runnerReportPath,
+            null);
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+        var runRecordJson = File.ReadAllText(runRecordJsonPath);
+        var exportedRecord = JsonSerializer.Deserialize<InspectionRunRecord>(
+            runRecordJson,
+            jsonOptions);
+        var exportedCompleteness = exportedRecord?.Steps?[0].CompletenessGrid;
+        var runRecordHtml = File.ReadAllText(runRecordHtmlPath);
+        var runRecordCsvLines = File.ReadAllLines(runRecordCsvPath);
+        var completenessCsvRows = runRecordCsvLines
+            .Where(line => line.Contains(
+                "\"completenessCell\"",
+                StringComparison.Ordinal))
+            .ToArray();
+
+        var legacyJson = JsonNode.Parse(runRecordJson)!.AsObject();
+        legacyJson["SchemaVersion"] = "1.8";
+        legacyJson["Steps"]![0]!.AsObject().Remove("CompletenessGrid");
+        var legacyRecord = JsonSerializer.Deserialize<InspectionRunRecord>(
+            legacyJson.ToJsonString(),
+            jsonOptions);
+
+        var missingEvidenceRejected = ProjectionFails(
+            policyRecipe,
+            policyGraph with
+            {
+                Steps =
+                [
+                    policyGraph.Steps[0] with { CompletenessGrid = null }
+                ]
+            });
+        var malformedEvidenceRejected = ProjectionFails(
+            policyRecipe,
+            policyGraph with
+            {
+                Steps =
+                [
+                    policyGraph.Steps[0] with
+                    {
+                        CompletenessGrid = policyOutput is null
+                            ? null
+                            : policyOutput with
+                            {
+                                Cells =
+                                [
+                                    policyOutput.Cells[0] with
+                                    {
+                                        MissingCellCount = 99
+                                    },
+                                    .. policyOutput.Cells.Skip(1)
+                                ]
+                            }
+                    }
+                ]
+            });
         var allValidSource = CreateAllValidFixture();
         var allValidSourcePath = Path.Combine(
             directory,
@@ -274,6 +363,71 @@ internal static class C3DCompletenessGridGoldenVerification
                     StringComparison.Ordinal),
                 $"status={policyGraph.Status};sha={policyGraph.Steps.FirstOrDefault()?.OutputContentSha256};evidence={policyGraph.Steps.FirstOrDefault()?.Evidence}"),
             Check(
+                "ordered-projection-reuses-exact-cell-evidence",
+                ReferenceEquals(
+                    policyRunSteps[0].CompletenessGrid,
+                    policyGraph.Steps[0].CompletenessGrid)
+                && policyRunSteps[0].CompletenessGrid?.ContentSha256
+                    == policyOutput?.ContentSha256,
+                $"sameInstance={ReferenceEquals(policyRunSteps[0].CompletenessGrid, policyGraph.Steps[0].CompletenessGrid)};sha={policyRunSteps[0].CompletenessGrid?.ContentSha256}"),
+            Check(
+                "run-record-preserves-exact-typed-cells",
+                exportedRecord?.SchemaVersion == "1.9"
+                && exportedCompleteness?.ContentSha256
+                    == policyOutput?.ContentSha256
+                && exportedCompleteness?.Cells.SequenceEqual(
+                    policyOutput?.Cells ?? []) == true,
+                $"schema={exportedRecord?.SchemaVersion};sha={exportedCompleteness?.ContentSha256};cells={exportedCompleteness?.Cells.Count}"),
+            Check(
+                "html-exports-readable-child-rows",
+                runRecordHtml.Contains(
+                    "<h2>Completeness cell results</h2>",
+                    StringComparison.Ordinal)
+                && runRecordHtml.Contains(
+                    "r001.c001",
+                    StringComparison.Ordinal)
+                && runRecordHtml.Contains(
+                    "finite mean missing",
+                    StringComparison.Ordinal)
+                && runRecordHtml.Contains(
+                    policyOutput?.ContentSha256 ?? "missing",
+                    StringComparison.Ordinal),
+                $"bytes={new FileInfo(runRecordHtmlPath).Length}"),
+            Check(
+                "csv-exports-structured-child-rows",
+                runRecordCsvLines[0].Contains(
+                    "rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn",
+                    StringComparison.Ordinal)
+                && completenessCsvRows.Length == 4
+                && completenessCsvRows.All(line =>
+                    policyOutput is not null
+                    && line.Contains(
+                        $"\"{policyOutput.ContentSha256}\",\"raw-height\",\"frame.c3d-grid-index\"",
+                        StringComparison.Ordinal))
+                && completenessCsvRows.Any(line => line.Contains(
+                    "\"r001.c001\",\"0\",\"0\",\"2\",\"0\",\"2\",\"2\",\"4\",\"4\",\"0\",\"1\"",
+                    StringComparison.Ordinal))
+                && completenessCsvRows.Any(line => line.Contains(
+                    "\"r002.c002\"",
+                    StringComparison.Ordinal)
+                    && line.Contains(
+                        "finite mean missing",
+                        StringComparison.Ordinal)),
+                $"rows={completenessCsvRows.Length};lines={runRecordCsvLines.Length}"),
+            Check(
+                "legacy-record-without-cell-evidence-remains-readable",
+                legacyRecord is { SchemaVersion: "1.8", Steps.Count: 1 }
+                && legacyRecord.Steps[0].CompletenessGrid is null,
+                $"schema={legacyRecord?.SchemaVersion};steps={legacyRecord?.Steps?.Count};cells={legacyRecord?.Steps?[0].CompletenessGrid?.Cells.Count}"),
+            Check(
+                "missing-current-cell-evidence-fails-closed",
+                missingEvidenceRejected,
+                $"rejected={missingEvidenceRejected}"),
+            Check(
+                "malformed-current-cell-evidence-fails-closed",
+                malformedEvidenceRejected,
+                $"rejected={malformedEvidenceRejected}"),
+            Check(
                 "all-pass-aggregate",
                 allPass.Output?.CompletenessGrid is
                 {
@@ -323,7 +477,8 @@ internal static class C3DCompletenessGridGoldenVerification
             $"Fixture|path={sourcePath}|evidenceRecipe={recipePath}|policyRecipe={policyRecipePath}|width={source.Width}|height={source.Height}|sourceSha256={source.ContentSha256}",
             $"Output|sha256={output?.ContentSha256}|cells={output?.Cells.Count}|referenceMean={output?.ReferenceMeanRawHeight}|coverage=1,0.75,0.5,0",
             $"PolicyOutput|sha256={policyOutput?.ContentSha256}|pass={policyOutput?.PassedCellCount}|fail={policyOutput?.FailedCellCount}|aggregate={policyOutput?.AggregateStatus}",
-            $"Runner|evidenceStatus={graph.Status}|policyStatus={policyGraph.Status}|policySha256={policyGraph.Steps.FirstOrDefault()?.OutputContentSha256}"
+            $"Runner|evidenceStatus={graph.Status}|policyStatus={policyGraph.Status}|policySha256={policyGraph.Steps.FirstOrDefault()?.OutputContentSha256}",
+            $"RunRecord|json={runRecordJsonPath}|html={runRecordHtmlPath}|csv={runRecordCsvPath}|schema={exportedRecord?.SchemaVersion}|cells={exportedCompleteness?.Cells.Count}"
         };
         lines.AddRange(cases.Select(item =>
             $"{item.Name}|{(item.Passed ? "PASS" : "FAIL")}|{item.Evidence}"));
@@ -495,4 +650,21 @@ internal static class C3DCompletenessGridGoldenVerification
         bool passed,
         string evidence) =>
         (name, passed, evidence);
+
+    private static bool ProjectionFails(
+        ToolRecipeDocument document,
+        ToolRecipeOrderedGraphExecutionResult execution)
+    {
+        try
+        {
+            _ = ToolRecipeOrderedGraphRunRecordProjection.Create(
+                document,
+                execution);
+            return false;
+        }
+        catch (InvalidDataException)
+        {
+            return true;
+        }
+    }
 }

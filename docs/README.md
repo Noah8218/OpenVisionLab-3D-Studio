@@ -61,6 +61,22 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Completeness per-cell Run Record export](OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md) -
+  `PL-0022/L-12` exact typed ordered cell evidence in schema `1.9`, matching
+  JSON/HTML/CSV child rows, fail-closed current evidence validation, legacy
+  readability, affected regressions, and refreshed R0 inputs.
+- [Viewer coordinate status](OPENVISIONLAB_3D_VIEWER_COORDINATE_STATUS_20260818.md) -
+  `PL-0021` persistent localized selected `X / Y / Z` and raw-height status,
+  explicit empty state, actual pointer regression, and current Release
+  Wide/Compact evidence without changing selection or execution behavior.
+- [Source Quality Run Record evidence](OPENVISIONLAB_3D_SOURCE_QUALITY_RUN_RECORD_CLOSURE_20260818.md) -
+  `PL-0020/L-10` exact identified Source Quality evidence across ordered
+  execution, schema `1.8`, JSON/HTML/CSV/text/Results, fail-closed mismatch,
+  explicit legacy/A2 fallback, Wide/Compact UI, and refreshed R0 inputs.
+- [Standard per-step timing evidence](OPENVISIONLAB_3D_STANDARD_STAGE_TIMING_CLOSURE_20260818.md) -
+  `PL-0019` shared observational timing contract, ordered and Surface Match
+  projections, JSON/HTML/CSV/Results parity, Compact density correction,
+  legacy handling, and refreshed R0 inputs.
 - [Grid ROI coordinate confidence](OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md) -
   `PL-0017` automatic Top-view GridRectangle teaching, exact live draft
   coordinates, actual-pointer reference/measurement proof, Wide/Compact

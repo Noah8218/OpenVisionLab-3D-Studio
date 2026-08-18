@@ -431,7 +431,10 @@ public sealed partial class ToolWorkbenchViewModel
         try
         {
             var execution = await Task.Run(() =>
-                ToolRecipeOrderedGraphExecution.Execute(document, Source.Path));
+                ToolRecipeOrderedGraphExecution.Execute(
+                    document,
+                    Source.Path,
+                    SourceQuality.Report));
             orderedRunResult = execution;
             foreach (var step in PipelineSteps)
             {

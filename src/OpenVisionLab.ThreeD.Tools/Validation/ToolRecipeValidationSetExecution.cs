@@ -163,7 +163,7 @@ public static class ToolRecipeValidationSetExecution
             var execution = ToolRecipeOrderedGraphExecution.Execute(
                 document,
                 sourcePath,
-                cancellationToken);
+                cancellationToken: cancellationToken);
             var steps = execution.Steps
                 .Select(step => new ToolRecipeValidationStepResult(
                     step.Order,

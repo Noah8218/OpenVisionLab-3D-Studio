@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-17
+Date: 2026-08-18
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -127,7 +127,8 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   `.proofline/issues/PL-0015.json` through `PL-0017.json`, and the
   `20260817-thickness-10-recipe-ux-performance` D-backed evidence root.
 - `PL-0016` is complete: Validate runs a saved supported current recipe through
-  the same ordered graph engine as Runner, writes schema `1.5` evidence, and
+  the same ordered graph engine as Runner. Its original closure wrote schema
+  `1.5`; current records use schema `1.9` after PL-0019/PL-0020/PL-0022 and
   immediately feeds Results. Editing invalidates evidence and requires save;
   open, Preview, Publish, compatible variant, save, and reopen do not auto-run.
   Ten actual Release EXE runs match `Pass 4 / Fail 5 / Error 1`, expected state
@@ -153,6 +154,40 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   are excluded from tracked documentation. Required license and attribution
   records remain. The pre-cleanup documents are retained only in the owner's
   local private archive; Git history was not rewritten.
+- `PL-0019` / `L-09` is complete: Run Record schema `1.7` projects existing
+  ordered-step `tool-execution` timing and persisted Surface Match
+  `pose-search`/`execution-artifact`/`acceptance-evaluation` timing into one
+  observational contract. JSON, HTML, CSV, Runner, and Results agree; missing
+  legacy timing is explicit, mismatched runtime fails closed, and reporting
+  does not rerun algorithms. Compact Results keeps number, tool, state,
+  execution time, and evidence visible together. Preserve
+  `OPENVISIONLAB_3D_STANDARD_STAGE_TIMING_CLOSURE_20260818.md` and
+  `.proofline/issues/PL-0019.json`.
+- `PL-0020` / `L-10` is complete: its closure introduced Run Record schema
+  `1.8`; current schema `1.9` preserves
+  the exact identified Source Quality report already used by ordered
+  execution. Shell reuses its loaded report; Runner uses its one source
+  snapshot; mismatched identity fails before inspection; legacy and non-raw
+  A2 routes remain explicit `Unavailable`. JSON, HTML, CSV, Shell/Runner text,
+  and Results agree on report/grid/coverage/mask/frame/unit/provenance/channel
+  evidence. Compact shows the complete grid and coverage summary without
+  clipping. Preserve
+  `OPENVISIONLAB_3D_SOURCE_QUALITY_RUN_RECORD_CLOSURE_20260818.md` and
+  `.proofline/issues/PL-0020.json`.
+- `PL-0021` is complete: the persistent Viewer bottom status shows the
+  existing selected `X / Y / Z` coordinate and C3D raw height beside the
+  camera/unit context. Empty selection is explicit, Wide/Compact are bounded,
+  and no hover scan, duplicate picking, or inspection execution was added.
+  Preserve `OPENVISIONLAB_3D_VIEWER_COORDINATE_STATUS_20260818.md` and
+  `.proofline/issues/PL-0021.json`.
+- `PL-0022` / `L-12` is complete: Run Record schema `1.9` retains the exact
+  typed Completeness grid output produced by ordered execution. JSON, readable
+  HTML, and structured CSV `completenessCell` rows agree on all four known
+  cells without source reload or algorithm re-execution. Missing or malformed
+  current evidence fails closed; schema `1.8` and unrelated records remain
+  readable. Preserve
+  `OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md` and
+  `.proofline/issues/PL-0022.json`.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -173,8 +208,10 @@ acceptance.
 - Procedure: `OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
 - Launcher: `../scripts/start-human-owner-r0.ps1`.
 - Automated `-ValidateOnly` does not close the owner gate.
-- The owner reported the observed Wide run as pass. The Compact run was
-  interrupted by the recipe-authoring study and is not counted as passed.
+- The 2026-08-18 PL-0022 current-source Release rebuild and refreshed nine-input
+  fixed-hash package pass both `-ValidateOnly` modes on `\\.\DISPLAY2`.
+- An earlier observed Wide run used a superseded binary and does not count.
+  Both current-package layouts must restart from Wide and pass unaided.
 - Recommended model: none.
 - Reasoning effort: none.
 
@@ -183,8 +220,10 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015` through `PL-0018` are complete. No dependency-ready
-software slice is currently selected.
+`PL-0015` through `PL-0022` are complete. The next dependency-ready software
+priority is `L-14 privacy-safe support/diagnostic bundle`; its first contract
+must use an explicit manifest and omit sensitive source bytes by default |
+Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits
@@ -320,4 +359,40 @@ Acceptance criteria: C1 exact row/column/counts before Apply -> pass; C2 Wide/Co
 Verification: Release 0/0; height measurement 56/56; Tool Recipe teaching 50/50; workspace selection 64/64; docking 87/87; teaching capture 25/25; Shell options 40/40; code structure 29/29; final actual Release Wide/Compact and dual-target pointer smokes pass; git diff --check pass
 Evidence: docs/OPENVISIONLAB_3D_GRID_ROI_COORDINATE_CONFIDENCE_20260817.md; .proofline/issues/PL-0017.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260817-pl0017-grid-roi-coordinate-confidence/
 Boundary / next dependency: synthetic raw-height is not physical metrology; product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected; large-C3D work requires a representative maximum input and accepted budgets
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0019 shared observational stage timing for ordered steps and persisted Surface Match evidence, JSON/HTML/CSV/Runner/Results projection, legacy handling, Compact Results density, and refreshed R0 package
+Acceptance criteria: shared clocked finite timing excluded from identity/acceptance -> pass; existing ordered elapsed projected without extra execution -> pass; persisted Surface Match stages with unavailable/mismatch boundaries -> pass; JSON/HTML/CSV/Runner/Results parity and legacy readability -> pass; focused verification, Release, Wide/Compact EXE, no-auto-run, and R0 ValidateOnly -> pass
+Verification: Release 0/0; ordered Run 13/13; Surface Match 22/22; artifact-owned Runner 19/19; Run Record history 12/12; docking/theme 87/87; Shell options 40/40; structure 29/29; Wide/Compact actual EXE quality and monitor intersection pass; R0 Wide/Compact ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_STANDARD_STAGE_TIMING_CLOSURE_20260818.md; .proofline/issues/PL-0019.json; C:/Users/USER/AppData/Local/Temp/OpenVisionLab-3D-Studio/20260818-pl0019-standard-stage-timing/
+Boundary / next dependency: owner R0 remains external; timing is observational rather than a production SLA; the PL-0020 record below supersedes this checkpoint's former L-10 next priority
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0020/L-10 exact Source Quality evidence across ordered execution, schema 1.8 Run Record, JSON/HTML/CSV/Shell/Runner text, Results, legacy/unavailable handling, fail-closed mismatch, and refreshed R0 package
+Acceptance criteria: exact identified report retained -> pass; Shell and Runner avoid a second source load/execution -> pass; export and Results parity -> pass; mismatch fails before inspection and legacy/non-raw routes are explicit Unavailable -> pass; Release/focused/Wide/Compact/R0 verification -> pass
+Verification: Release 0/0; ordered Run 15/15; history 12/12; Source Quality 18/18; A2 compatibility 22/22; general Runner 21/21; Surface Match 23/23; docking 87/87; Shell options 40/40; structure 29/29; actual Runner text/JSON/HTML/CSV mask parity; Wide/Compact EXE quality and monitor intersection; R0 Wide/Compact ValidateOnly
+Evidence: docs/OPENVISIONLAB_3D_SOURCE_QUALITY_RUN_RECORD_CLOSURE_20260818.md; .proofline/issues/PL-0020.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0020-source-quality-run-record/
+Boundary / next dependency: owner R0 remains external; synthetic raw-height is not metrology; L-12 Completeness per-cell result export is the selected next dependency-ready software priority
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0021 persistent Viewer bottom-status display of the existing selected X/Y/Z coordinate, C3D raw height, localized empty state, accessibility metadata, and Wide/Compact layout
+Acceptance criteria: selected and empty states visible -> pass; existing PickCoordinate reused -> pass; camera/unit context retained without clipping -> pass; no execution or selection side effect -> pass; current-build UI/regression/R0 validation -> pass
+Verification: Viewer display/runtime 103/103; docking/theme 87/87; Shell options 40/40; actual pointer regression pass; structure 29/29; Release 0/0; Wide/Compact screenshot quality and leftmost-monitor intersection pass; R0 Wide/Compact ValidateOnly pass
+Evidence: docs/OPENVISIONLAB_3D_VIEWER_COORDINATE_STATUS_20260818.md; .proofline/issues/PL-0021.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0021-viewer-coordinate-status/
+Boundary / next dependency: owner R0 remains external; displayed raw software coordinates are not calibrated metrology; L-12 Completeness per-cell result export remains the selected next dependency-ready software priority
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0022/L-12 exact Completeness cell evidence in schema 1.9 Run Records and JSON, readable HTML, and structured CSV child-row export without rerunning inspection
+Acceptance criteria: exact typed ordered output retained -> pass; cell identity/coordinates/regions/counts/coverage/nullable heights/unit/frame/decision/reason/hash parity -> pass; missing or malformed current evidence fails closed -> pass; legacy and unrelated records remain readable -> pass; focused and affected verification -> pass
+Verification: Release 0/0; Completeness 30/30; JSON/HTML/CSV parity 4/4; artifact-owned Runner 22/22; Synthetic Affine 21/21; Surface Match 23/23; ordered Run 15/15; history 12/12; docking/theme 87/87; Shell options 40/40; structure 29/29; Wide/Compact R0 ValidateOnly pass
+Evidence: docs/OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md; .proofline/issues/PL-0022.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0022-completeness-cell-export/
+Boundary / next dependency: controlled browser policy prevented direct local-file visual rendering, but HTML structure and exact cell parity passed; owner R0 remains external; L-14 privacy-safe support/diagnostic bundle is selected next
 ```

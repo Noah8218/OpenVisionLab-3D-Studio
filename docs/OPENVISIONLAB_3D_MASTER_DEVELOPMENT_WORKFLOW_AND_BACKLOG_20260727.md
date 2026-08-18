@@ -105,9 +105,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 139 |
+| Complete `C` | 140 |
 | Partial `P` | 17 |
-| New `N` | 54 |
+| New `N` | 53 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 235 |
@@ -168,6 +168,137 @@ software licenses, notices, dependency attribution, and public-sample
 attribution remain tracked. This cleanup changes no product behavior,
 capability count, or maturity judgment, and it does not rewrite Git history.
 
+### Previous Viewer checkpoint - Selected coordinate status - 2026-08-18
+
+`PL-0021` is Complete. The Viewer bottom status now keeps the existing selected
+`X / Y / Z` coordinate beside the persistent camera and unit context. C3D
+picks retain their existing raw height, and an empty selection is explicit.
+The implementation binds to the existing `PickCoordinate` owner and adds no
+hover scan, coordinate calculation, selection route, or inspection action.
+
+Current Release Wide `1920 x 1040` and Compact `1280 x 760` selected and empty
+states are readable and bounded. Actual pointer pick/navigation passes, as do
+Viewer runtime `103/103`, docking/theme `87/87`, Shell options `40/40`,
+structure `29/29`, Release `0/0`, and refreshed Wide/Compact R0
+`-ValidateOnly`. Preserve:
+
+- `docs/OPENVISIONLAB_3D_VIEWER_COORDINATE_STATUS_20260818.md`;
+- `.proofline/issues/PL-0021.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0021-viewer-coordinate-status\`.
+
+This presentation improvement changed no inventory count or `8.6/10`
+maturity judgment. At this checkpoint `L-12` was selected next; the current
+execution checkpoint below supersedes that priority state.
+
+### Current execution checkpoint - Completeness per-cell export - 2026-08-18
+
+`PL-0022` / `L-12` is Complete. Run Record schema `1.9` retains the exact
+typed Completeness grid output already produced by ordered execution. JSON
+keeps the typed hierarchy, HTML exposes readable grouped cell rows, and CSV
+adds structured `completenessCell` child rows. Cell identity, grid and source
+region coordinates, sample counts, finite coverage, nullable raw-height
+values, reference values, unit, frame, decision, reason, and content SHA-256
+remain consistent without source reload or algorithm re-execution.
+
+Successful current Completeness steps fail closed when cell evidence is
+missing or malformed. Non-Completeness steps are unchanged, and schema `1.8`
+records without the optional field remain readable. Release builds `0/0`;
+Completeness passes `30/30`; artifact-owned Runner `22/22`; Synthetic Affine
+`21/21`; Surface Match `23/23`; ordered Run `15/15`; history `12/12`;
+docking/theme `87/87`; Shell options `40/40`; structure `29/29`; and exact
+JSON/HTML/CSV parity passes `4/4`. Refreshed Wide and Compact R0
+`-ValidateOnly` also pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md`;
+- `.proofline/issues/PL-0022.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0022-completeness-cell-export\`.
+
+Inventory is `142 C / 17 P / 51 N / 9 E / 16 O`. Authoring readiness remains
+`8.6/10`: evidence granularity improved, but the owner's unaided R0 is still
+external. The next dependency-ready software priority is `L-14 privacy-safe
+support/diagnostic bundle` | Recommended model: `gpt-5.6-sol` | Reasoning
+effort: `medium`.
+
+### Current acceptance package checkpoint - Human-owner R0 - 2026-08-18
+
+The current-source Release, including PL-0015 through PL-0022, rebuilds with
+`0` warnings and `0` errors. The refreshed nine-input fixed-hash package passes
+Wide and Compact `-ValidateOnly` on the dynamically selected leftmost monitor,
+`\\.\DISPLAY2` at `[-1920,365,1920,1080]`. Earlier owner observations used a
+superseded binary and cannot close this gate; both layouts must restart from
+Wide and pass unaided. Preserve the execution contract and current validation
+logs named in `OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
+
+### Previous execution checkpoint - Source Quality Run Record evidence - 2026-08-18
+
+`PL-0020` / `L-10` is Complete. Run Record schema `1.8` carries the exact
+identified Source Quality report already used by ordered execution. Shell
+reuses its loaded report, Runner derives it from its one loaded source
+snapshot, and reporting does not reload the source or rerun quality analysis.
+Source entity, bytes, content/root SHA-256, grid, unit, and frame are checked;
+a mismatched supplied report fails before any inspection step executes.
+Legacy and non-raw A2 routes remain readable with explicit `Unavailable`.
+
+JSON, HTML, CSV, Shell text, Runner text, and Results expose the same report
+hash, grid, coverage, invalid-cell mask, coordinate, provenance, and channel
+evidence. The Compact Results card was tightened until the complete
+`4 × 4 · 유효 100.0% · 누락 0.0%` decision summary remained visible.
+
+Release builds with `0` warnings and `0` errors. Focused checks pass ordered
+Run `15/15`, Run Record history `12/12`, Source Quality workspace `18/18`,
+artifact-owned A2 compatibility `22/22`, general Runner `21/21`, Surface Match
+export `23/23`, Workbench docking/theme `87/87`, Shell options `40/40`, and
+structure/ownership `29/29`. Actual Runner text/JSON/HTML/CSV mask identities
+match. Current Release Wide `1920 x 1040` and Compact `1280 x 760` captures
+pass quality on attempt 1 and intersect the dynamically selected leftmost
+monitor. Refreshed Wide and Compact R0 `-ValidateOnly` checks pass without
+launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_SOURCE_QUALITY_RUN_RECORD_CLOSURE_20260818.md`;
+- `.proofline/issues/PL-0020.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0020-source-quality-run-record\`.
+
+At this checkpoint inventory was `141 C / 17 P / 52 N / 9 E / 16 O` and
+`L-12` was selected next. The current Completeness checkpoint above supersedes
+those inventory and queue statements.
+
+### Previous execution checkpoint - Standard per-step timing evidence - 2026-08-18
+
+`PL-0019` / `L-09` is Complete. Run Record schema `1.7` adds one
+WPF-neutral observational timing contract with an explicit clock, observed
+total, stable stage IDs, and `Available` or `Unavailable` state. Ordered
+preparation and inspection steps project their existing `ToolResult.Elapsed`
+as `tool-execution`; persisted Surface Match runtime projects
+`pose-search`, `execution-artifact`, and `acceptance-evaluation`. Reporting
+does not rerun either path, and timing remains outside deterministic hashes and
+acceptance decisions. Missing Surface Match runtime is explicit; mismatched
+runtime identity fails closed.
+
+JSON, HTML, CSV, Runner, and Shell Results expose the same timing values.
+Legacy schema `1.3`/`1.5` records remain readable with timing shown as
+Unavailable. Results adds one execution-time column; Compact reduces only
+redundant descriptive density and uses proportional columns so number, tool,
+state, timing, and evidence remain visible together.
+
+Release builds with `0` warnings and `0` errors. Focused checks pass ordered
+Run `13/13`, Surface Match export `22/22`, artifact-owned Runner `19/19`, Run
+Record history `12/12`, Workbench docking/theme `87/87`, and Shell options
+`40/40`; structure/ownership passes `29/29`. Actual Release Wide
+`1920 x 1040` and Compact `1280 x 760` captures
+pass quality on attempt 1 and intersect the dynamically selected leftmost
+monitor. Refreshed Wide and Compact R0 `-ValidateOnly` checks pass without
+launching the application. Preserve:
+
+- `docs/OPENVISIONLAB_3D_STANDARD_STAGE_TIMING_CLOSURE_20260818.md`;
+- `.proofline/issues/PL-0019.json`;
+- the current task evidence root recorded in the closure document.
+
+At this checkpoint, inventory was `140 C / 17 P / 53 N / 9 E / 16 O`.
+Authoring readiness remained
+`8.6/10`: this slice improved result observability but did not replace the
+owner's unaided R0. The PL-0020 checkpoint above supersedes its former next
+priority.
+
 ### Current execution checkpoint - Coordinate-confident grid ROI teaching - 2026-08-17
 
 `PL-0017` is Complete. GridRectangle capture now enters the existing Top
@@ -202,6 +333,8 @@ capability inventory is unchanged and no dependency-ready software slice is
 selected. Product-owner unaided Wide/Compact R0 remains the acceptance
 priority and requires owner operation rather than model execution. The
 large-C3D candidate remains blocked by its missing input and accepted budgets.
+That former software-priority statement is superseded by the PL-0019 current
+checkpoint above, which selects `L-10` next.
 
 ### Previous execution checkpoint - Shell ordered Thickness Run - 2026-08-17
 
@@ -211,6 +344,8 @@ adapters. The action uses the existing `ToolRecipeOrderedGraphExecution`
 engine, writes schema `1.5` Run Record evidence, and projects it immediately
 into Results. Studio and Runner now share one ordered-step Run Record
 projection instead of duplicating result arithmetic or identity policy.
+Schema `1.5` records this earlier closure; PL-0019 supersedes the current
+writer with schema `1.7` while retaining legacy readability.
 
 Editing invalidates current evidence and requires save before another Run.
 Open, Preview, Publish, compatible-variant creation, layout, save, and reopen
@@ -2567,11 +2702,11 @@ verification only.
 | L-06 | C | Viewer/Runner comparison evidence | None | Current parity gates |
 | L-07 | C | Local structured session logging | None | Logging verification |
 | L-08 | P | Performance timing exists in reports/diagnostics but is not uniform for every future stage | None | Current performance evidence |
-| L-09 | N | Standard per-step stage timing contract for preparation and matching | D-04 or J-08 | Timing fields in UI and Run Record |
-| L-10 | N | Source Quality report included in Run Record | B-07 | Same source-quality identity in UI/Runner |
+| L-09 | C | Standard per-step stage timing contract for preparation and matching | D-04 or J-08 | Schema `1.7`; ordered `tool-execution`; persisted Surface Match three-stage timing; JSON/HTML/CSV/Results parity; legacy unavailable fallback |
+| L-10 | C | Source Quality report included in Run Record | B-07 | Schema `1.8`; exact identified report reused by Shell/Runner execution; JSON/HTML/CSV/text/Results parity; explicit legacy/A2 unavailable; mismatch fails before steps |
 | L-11 | C | Threshold-correction evidence included in Run Record | I-11 | Schema `1.5`, exact before/suggested/manual/development/Held-out JSON/HTML and Workbench parity, `10/10` fail-closed projection checks |
-| L-12 | N | Completeness per-cell result export | H-06 | HTML/CSV child rows |
-| L-13 | C | Surface-match pose/score component export | J-16 | Schema `1.6`, focused `19/19`, JSON/HTML/CSV exact identified-value parity, direct CLI, NoMatch/legacy/fail-closed evidence |
+| L-12 | C | Completeness per-cell result export | H-06 | Schema `1.9`; exact typed ordered output; JSON hierarchy; readable HTML and structured CSV child rows; missing/malformed current evidence fails closed; legacy schema `1.8` readable; `30/30` focused and `4/4` parity |
+| L-13 | C | Surface-match pose/score component export | J-16 | Current schema `1.7` retains the schema-`1.6` identified-value contract; focused timing/export `22/22`, direct CLI, NoMatch/legacy/fail-closed evidence |
 | L-14 | N | One support/diagnostic bundle for recipe, log excerpt, source identity, quality report, and current result | B-07 | Bundle manifest and missing-sensitive-data policy |
 | L-15 | P | Validation is local ordered sample replay, not production batch/history | None | Current boundary retained |
 | L-16 | O | Plant database, long-term trend/SPC service, and retention policy | Product-scope decision | Not scheduled |
@@ -2947,7 +3082,29 @@ The owner explicitly left the layout-only stream and completed item 11 on
     chronological records are outside the tracked tree and distributions;
     required licenses and attribution remain tracked; the verified pre-cleanup
     archive is local-only; Git history was not rewritten.
-35. `Large-C3D memory/performance target` - Blocked; prerequisite:
+35. `PL-0019 / L-09 standard per-step timing evidence` - Complete; schema
+    `1.7` projects existing ordered-step and persisted Surface Match timing
+    into one observational contract across JSON, HTML, CSV, Runner, and Shell
+    Results without rerunning algorithms or changing deterministic identity.
+36. `PL-0020 / L-10 Source Quality evidence in Run Record` - Complete;
+    schema `1.8` preserves the exact identified report across ordered Shell
+    and Runner execution, JSON, HTML, CSV, text, and Results without a second
+    source load or analysis; mismatch fails closed and legacy/A2 routes are
+    explicitly unavailable.
+37. `PL-0021 Viewer selected-coordinate status` - Complete; the bottom status
+    persistently exposes the existing selected `X / Y / Z` and C3D raw height,
+    includes a localized empty state, and preserves existing picking and
+    explicit execution contracts.
+38. `PL-0022 / L-12 Completeness per-cell result export` - Complete; schema
+    `1.9` retains the exact ordered typed grid output and exposes matching
+    JSON, readable HTML, and structured CSV child rows without rerunning
+    inspection; current missing/malformed evidence fails closed and schema
+    `1.8` remains readable.
+39. `L-14 privacy-safe support/diagnostic bundle` - Selected next
+    dependency-ready software priority; define an explicit manifest and omit
+    sensitive source bytes by default | Recommended model: `gpt-5.6-sol` |
+    Reasoning effort: `medium`.
+40. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.

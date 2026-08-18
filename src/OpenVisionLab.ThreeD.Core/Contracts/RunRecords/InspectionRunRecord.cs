@@ -18,6 +18,12 @@ public sealed record InspectionRunRecord(
     public InspectionRunEnvironment? ExecutionEnvironment { get; init; }
     public InspectionRunStep? Step { get; init; }
     public IReadOnlyList<InspectionRunStepResult>? Steps { get; init; }
+    public InspectionRunTiming? Timing { get; init; }
+    public InspectionRunSourceQualityEvidence? SourceQualityEvidence
+    {
+        get;
+        init;
+    }
     public InspectionRunThresholdCorrectionEvidence? ThresholdCorrectionEvidence
     {
         get;
@@ -27,6 +33,109 @@ public sealed record InspectionRunRecord(
     {
         get;
         init;
+    }
+}
+
+public enum InspectionRunSourceQualityEvidenceState
+{
+    Available,
+    Unavailable
+}
+
+/// <summary>
+/// Read-only snapshot of source quality observed for the exact Run Record
+/// source. Reporting never reloads the source or recalculates this report.
+/// </summary>
+public sealed record InspectionRunSourceQualityEvidence(
+    string SchemaVersion,
+    InspectionRunSourceQualityEvidenceState State,
+    string Message,
+    string SourceQualitySha256,
+    SourceQualityReport? Report)
+{
+    public const string CurrentSchemaVersion = "1.0";
+
+    public static InspectionRunSourceQualityEvidence Available(
+        InspectionRunSource source,
+        SourceQualityReport report)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(report);
+        var evidence = new InspectionRunSourceQualityEvidence(
+            CurrentSchemaVersion,
+            InspectionRunSourceQualityEvidenceState.Available,
+            "Source Quality was captured from the exact source used by this run.",
+            SourceQualityReportContentIdentity.CalculateSha256(report),
+            report);
+        if (!evidence.TryValidate(source, out var message))
+        {
+            throw new InvalidDataException(
+                $"Run Record Source Quality is incompatible: {message}");
+        }
+
+        return evidence;
+    }
+
+    public static InspectionRunSourceQualityEvidence Unavailable(
+        string message) => new(
+            CurrentSchemaVersion,
+            InspectionRunSourceQualityEvidenceState.Unavailable,
+            message,
+            string.Empty,
+            null);
+
+    public bool TryValidate(
+        InspectionRunSource source,
+        out string validationMessage)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (SchemaVersion != CurrentSchemaVersion)
+        {
+            validationMessage =
+                $"Unsupported Source Quality evidence schema '{SchemaVersion}'.";
+            return false;
+        }
+
+        if (State == InspectionRunSourceQualityEvidenceState.Unavailable)
+        {
+            var valid = Report is null
+                && string.IsNullOrEmpty(SourceQualitySha256)
+                && !string.IsNullOrWhiteSpace(Message);
+            validationMessage = valid
+                ? "Source Quality is explicitly unavailable."
+                : "Unavailable Source Quality must contain only a reason.";
+            return valid;
+        }
+
+        if (Report is null
+            || Report.SchemaVersion != SourceQualityReport.CurrentSchemaVersion
+            || string.IsNullOrWhiteSpace(Message)
+            || !string.Equals(
+                SourceQualitySha256,
+                SourceQualityReportContentIdentity.CalculateSha256(Report),
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                source.EntityId,
+                Report.Source.EntityId,
+                StringComparison.OrdinalIgnoreCase)
+            || source.ByteLength != Report.Source.ByteLength
+            || !string.Equals(
+                source.Sha256,
+                Report.Source.RootSourceSha256,
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                source.Unit,
+                Report.Coordinates.Unit,
+                StringComparison.Ordinal))
+        {
+            validationMessage =
+                "Source entity, byte length, SHA-256, unit, or report identity does not match.";
+            return false;
+        }
+
+        validationMessage =
+            $"Source Quality contains {Report.Coverage.ValidSampleCount} valid and {Report.Coverage.MissingSampleCount} missing sample(s).";
+        return true;
     }
 }
 
@@ -115,7 +224,113 @@ public sealed record InspectionRunStepResult(
     IReadOnlyList<InspectionRunOverlay> Overlays)
 {
     public string? OutputContentSha256 { get; init; }
+    public InspectionRunTiming? Timing { get; init; }
+    public C3DCompletenessGridMetricOutput? CompletenessGrid { get; init; }
 }
+
+public enum InspectionRunTimingState
+{
+    Available,
+    Unavailable
+}
+
+/// <summary>
+/// Observational execution timing. It is report evidence only and must never
+/// participate in deterministic artifact identity or acceptance decisions.
+/// </summary>
+public sealed record InspectionRunTiming(
+    string SchemaVersion,
+    InspectionRunTimingState State,
+    string Clock,
+    string Message,
+    double? TotalElapsedMilliseconds,
+    IReadOnlyList<InspectionRunStageTiming> Stages)
+{
+    public const string CurrentSchemaVersion = "1.0";
+    public const string StopwatchClock = "System.Diagnostics.Stopwatch";
+    public const string ToolExecutionStage = "tool-execution";
+
+    public static InspectionRunTiming Available(
+        string clock,
+        double totalElapsedMilliseconds,
+        IEnumerable<InspectionRunStageTiming> stages,
+        string message)
+    {
+        var timing = new InspectionRunTiming(
+            CurrentSchemaVersion,
+            InspectionRunTimingState.Available,
+            clock,
+            message,
+            totalElapsedMilliseconds,
+            stages.ToArray());
+        if (!timing.TryValidate(out var validationMessage))
+        {
+            throw new InvalidDataException(
+                $"Run timing is invalid: {validationMessage}");
+        }
+
+        return timing;
+    }
+
+    public static InspectionRunTiming Unavailable(string message) => new(
+        CurrentSchemaVersion,
+        InspectionRunTimingState.Unavailable,
+        string.Empty,
+        message,
+        null,
+        []);
+
+    public bool TryValidate(out string validationMessage)
+    {
+        if (SchemaVersion != CurrentSchemaVersion)
+        {
+            validationMessage = $"Unsupported timing schema '{SchemaVersion}'.";
+            return false;
+        }
+
+        if (State == InspectionRunTimingState.Unavailable)
+        {
+            var valid = string.IsNullOrEmpty(Clock)
+                && TotalElapsedMilliseconds is null
+                && Stages is { Count: 0 }
+                && !string.IsNullOrWhiteSpace(Message);
+            validationMessage = valid
+                ? "Timing is explicitly unavailable."
+                : "Unavailable timing must contain only a reason.";
+            return valid;
+        }
+
+        var stages = Stages ?? [];
+        var stageIds = stages.Select(stage => stage.StageId).ToArray();
+        var total = TotalElapsedMilliseconds;
+        if (string.IsNullOrWhiteSpace(Clock)
+            || string.IsNullOrWhiteSpace(Message)
+            || total is null
+            || !double.IsFinite(total.Value)
+            || total.Value < 0.0
+            || stages.Count == 0
+            || stageIds.Any(string.IsNullOrWhiteSpace)
+            || stageIds.Distinct(StringComparer.Ordinal).Count() != stageIds.Length
+            || stages.Any(stage => !double.IsFinite(stage.ElapsedMilliseconds)
+                                   || stage.ElapsedMilliseconds < 0.0))
+        {
+            validationMessage = "Available timing fields are missing or invalid.";
+            return false;
+        }
+
+        var stageTotal = stages.Sum(stage => stage.ElapsedMilliseconds);
+        var tolerance = Math.Max(1e-6, total.Value * 1e-9);
+        var totalsMatch = Math.Abs(stageTotal - total.Value) <= tolerance;
+        validationMessage = totalsMatch
+            ? $"Timing contains {stages.Count} stage(s)."
+            : $"Stage total {stageTotal:R} does not match observed total {total.Value:R}.";
+        return totalsMatch;
+    }
+}
+
+public sealed record InspectionRunStageTiming(
+    string StageId,
+    double ElapsedMilliseconds);
 
 public sealed record InspectionRunMetric(
     string Name,

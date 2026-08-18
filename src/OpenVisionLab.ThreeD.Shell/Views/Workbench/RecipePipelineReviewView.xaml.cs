@@ -147,6 +147,8 @@ public partial class RecipePipelineReviewView : UserControl
                 RestoreStandardValidationLayout();
                 break;
         }
+
+        ApplyRunRecordLayout();
     }
 
     public void ActivateFlowMap() => SelectReviewTab(1);
@@ -184,7 +186,12 @@ public partial class RecipePipelineReviewView : UserControl
         && RunRecordOpenJsonButton is not null
         && RunRecordExportButton is not null
         && RecentRunRecordCombo is not null
-        && RunRecordOpenRecentButton is not null;
+        && RunRecordOpenRecentButton is not null
+        && RunRecordEvidenceSummary is not null
+        && string.Equals(
+            AutomationProperties.GetAutomationId(RunRecordEvidenceSummary),
+            "RunRecordEvidenceSummary",
+            StringComparison.Ordinal);
 
     public void ActivateValidationSet() => SelectReviewTab(4);
 
@@ -398,7 +405,37 @@ public partial class RecipePipelineReviewView : UserControl
 
     private void RecipePipelineReviewView_SizeChanged(
         object sender,
-        SizeChangedEventArgs e) => ApplyValidationPrimaryLayout();
+        SizeChangedEventArgs e)
+    {
+        ApplyValidationPrimaryLayout();
+        ApplyRunRecordLayout();
+    }
+
+    private void ApplyRunRecordLayout()
+    {
+        var compactResults = presentationMode == RecipeReviewPresentationMode.Results
+            && ActualHeight > 0
+            && ActualHeight < 360;
+        RunRecordDetailText.Visibility = compactResults
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        RunRecordHeader.Margin = compactResults
+            ? new Thickness(4, 0, 4, 3)
+            : new Thickness(4, 0, 4, 6);
+        RunRecordEvidenceSummary.Margin = compactResults
+            ? new Thickness(4, 0, 4, 3)
+            : new Thickness(4, 0, 4, 7);
+        RunRecordEvidenceSummary.Padding = compactResults
+            ? new Thickness(6, 3, 6, 3)
+            : new Thickness(8, 6, 8, 6);
+        RunRecordThresholdDetails.Visibility = compactResults
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        RunRecordThresholdDetails.MaxHeight = compactResults ? 28 : 54;
+        RunRecordActions.Margin = compactResults
+            ? new Thickness(4, 1, 4, 3)
+            : new Thickness(4, 1, 4, 7);
+    }
 
     private void ApplyValidationPrimaryLayout()
     {

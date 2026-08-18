@@ -59,8 +59,91 @@ public static class ToolRecipeOrderedGraphRunRecordProjection
                         overlay.SourceEntityId))
                     .ToArray())
             {
-                OutputContentSha256 = step.OutputContentSha256
+                OutputContentSha256 = step.OutputContentSha256,
+                Timing = CreateToolTiming(step.Result.Elapsed.TotalMilliseconds),
+                CompletenessGrid = ValidateCompletenessGrid(recipeStep, step)
             };
         }).ToArray();
     }
+
+    private static C3DCompletenessGridMetricOutput? ValidateCompletenessGrid(
+        ToolRecipeStep recipeStep,
+        ToolRecipeOrderedGraphStepResult step)
+    {
+        var output = step.CompletenessGrid;
+        if (output is null)
+        {
+            if (string.Equals(
+                    recipeStep.ToolId,
+                    "completeness-grid",
+                    StringComparison.Ordinal)
+                && step.Result.Status is not (ResultStatus.Error or ResultStatus.NotRun))
+            {
+                throw new InvalidDataException(
+                    $"Completeness output for successful step '{recipeStep.Id}' is missing.");
+            }
+
+            return null;
+        }
+
+        var cells = output.Cells ?? [];
+        var valid = string.Equals(
+                recipeStep.ToolId,
+                "completeness-grid",
+                StringComparison.Ordinal)
+            && string.Equals(
+                recipeStep.OutputEntityId,
+                output.OutputEntityId,
+                StringComparison.Ordinal)
+            && string.Equals(
+                step.OutputContentSha256,
+                output.ContentSha256,
+                StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(output.Unit)
+            && !string.IsNullOrWhiteSpace(output.FrameId)
+            && !string.IsNullOrWhiteSpace(output.ContentSha256)
+            && double.IsFinite(output.ReferenceMeanRawHeight)
+            && cells.Count == output.Profile.Rows * output.Profile.Columns
+            && cells.Select(cell => cell.CellId)
+                .Distinct(StringComparer.Ordinal).Count() == cells.Count
+            && cells.All(cell =>
+                !string.IsNullOrWhiteSpace(cell.CellId)
+                && cell.GridRow >= 0
+                && cell.GridColumn >= 0
+                && cell.Region.Row >= 0
+                && cell.Region.Column >= 0
+                && cell.Region.RowCount > 0
+                && cell.Region.ColumnCount > 0
+                && cell.TotalCellCount > 0
+                && cell.FiniteCellCount >= 0
+                && cell.MissingCellCount >= 0
+                && cell.FiniteCellCount + cell.MissingCellCount
+                    == cell.TotalCellCount
+                && double.IsFinite(cell.FiniteCoverageRatio)
+                && cell.FiniteCoverageRatio is >= 0.0 and <= 1.0
+                && (cell.MeanRawHeight is not { } mean || double.IsFinite(mean))
+                && (cell.ReferenceRelativeMeanRawHeight is not { } relative
+                    || double.IsFinite(relative))
+                && (cell.Decision is null
+                    || !string.IsNullOrWhiteSpace(cell.DecisionReason)));
+        if (!valid)
+        {
+            throw new InvalidDataException(
+                $"Completeness output for step '{recipeStep.Id}' is incomplete or incompatible with its ordered Run evidence.");
+        }
+
+        return output;
+    }
+
+    private static InspectionRunTiming CreateToolTiming(
+        double elapsedMilliseconds) =>
+        InspectionRunTiming.Available(
+            InspectionRunTiming.StopwatchClock,
+            elapsedMilliseconds,
+            [
+                new InspectionRunStageTiming(
+                    InspectionRunTiming.ToolExecutionStage,
+                    elapsedMilliseconds)
+            ],
+            "Existing ToolResult elapsed observation; no additional execution.");
 }

@@ -47,6 +47,8 @@ internal static class RunnerCommandRouter
             ReadOption(args, "--surface-match-score");
         var surfaceMatchAssessmentPath =
             ReadOption(args, "--surface-match-assessment");
+        var surfaceMatchRuntimePath =
+            ReadOption(args, "--surface-match-runtime");
         var toolRecipeSourcePath = ReadOption(args, "--source");
         var toolTeachingFilterPath = ReadOption(args, "--tool-teaching-filter");
         var toolTeachingRemoveOutliersPath =
@@ -224,7 +226,8 @@ internal static class RunnerCommandRouter
             || surfaceMatchModelPath is not null
             || surfaceMatchScenePath is not null
             || surfaceMatchScorePath is not null
-            || surfaceMatchAssessmentPath is not null)
+            || surfaceMatchAssessmentPath is not null
+            || surfaceMatchRuntimePath is not null)
         {
             if (toolRecipePath is null
                 || surfaceMatchModelPath is null
@@ -233,10 +236,12 @@ internal static class RunnerCommandRouter
                 || reportPath is null
                 || !runArtifacts.Requested
                 || (surfaceMatchScorePath is null)
-                    != (surfaceMatchAssessmentPath is null))
+                    != (surfaceMatchAssessmentPath is null)
+                || (surfaceMatchRuntimePath is not null
+                    && surfaceMatchAssessmentPath is null))
             {
                 Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
+                    "Usage: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] [--surface-match-runtime <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
                 return 2;
             }
 
@@ -247,6 +252,7 @@ internal static class RunnerCommandRouter
                 surfaceMatchExecutionPath,
                 surfaceMatchScorePath,
                 surfaceMatchAssessmentPath,
+                surfaceMatchRuntimePath,
                 reportPath,
                 runArtifacts);
         }
@@ -1081,7 +1087,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-registration-acceptance --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-vision-sdk-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <path> [--source <c3d>] --report <path> [--run-record <json> --html-report <html> --csv-report <csv>]");
-        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --tool-recipe <recipe> --surface-match-model <json> --surface-match-scene <json> --surface-match-execution <json> [--surface-match-score <json> --surface-match-assessment <json>] [--surface-match-runtime <json>] --report <txt> [--run-record <json> --html-report <html> --csv-report <csv>]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --labeled-validation-recipe <recipe> --report <json>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --threshold-correction-recipe <recipe> --threshold-candidate-id <id> [--threshold-manual-values <Name=Value;...>] --report <json>");
     }

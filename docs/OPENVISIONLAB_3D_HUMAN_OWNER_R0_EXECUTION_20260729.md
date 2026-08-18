@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-08-16
+Date: 2026-08-18
 Status: Blocked - the current fixed-input package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `C11F97D93002D2036A2E7D6793A4F73821362FAB109D88C542D66BEFCDE199D0` |
-| Shell assembly | `07973250904F37C98747AC61FCCD2F4ADFBC4562BCB2DA63BAFFB7D71BFAAD4F` |
-| Core assembly | `79BFA87CFDBB2220D89FF7995E9C83C0263C7417C28AD108F808DB03355AA9EB` |
-| Data assembly | `1CF32D44B50676E522846E5285866FCDAB1386F42A7916EBC423E8B9F041EA27` |
-| Tools assembly | `E3C516E2E9CC3EC17C366E6E41BFB6330210D7EAFF1F1836F7887A8D9C6A2D00` |
-| Viewer assembly | `E17F3F309FBCC5B4D6DDBF6196DBEC93ECCBB667E59D0407BCF071A3CF525F32` |
-| Docking assembly | `C4B5FE22AE05F2C345666A8ED405BEB5C3012FD889B06D6355C12BB2D5D12BCF` |
+| Release EXE | `5AABE7CD46878D47A1D5FA9440075C15146C09AAB87998E7B5EA2EA6EEC8381A` |
+| Shell assembly | `522A48242C28BDFFA7D099B7CF88D098D9459D8EB2D85C8FA7893D5400007AA4` |
+| Core assembly | `CEC488E10A277B632CC2A878C209C19D7B3FCFE4D6FDBB5278B56BA2E1B432B8` |
+| Data assembly | `27D19CEDDBECD347F9A4743541649D541B218B7A69CCC6F9368037CB26A3FA92` |
+| Tools assembly | `1B5766C3CB1C9D62113698C7CF85BC1DF0DF46398FFD9BF1B5849D3A36753026` |
+| Viewer assembly | `BECBAE6636AEE1C402FA6278D12247B02CAD537E0733352357158FFC3411A27E` |
+| Docking assembly | `5F9C83ECE59BE5E1AC27AD973DB653331395FF560BDAD2D5EAD68E2E9ABC4DC4` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,27 +52,28 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-08-16 current-source Release rebuild supersedes every previous fixed
-binary set and includes PL-0009 compatible Add routing, PL-0010 contextual
-step setup, PL-0011 recipe-health navigation, PL-0013 confirmed first-use
-recipe/source/task setup, PL-0012 Tool Library search-context reset, PL-0014
-language-popup correction, bounded Workbench run-log retention, recipe-step
-removal safety, immutable C3D loaded-snapshot
-correction, and truthful A1/A2/A3 alignment-status correction in addition to the
-`OpenVisionLab.Vision3D 3.0.0` migration, B-12, K-04, L-13, and PL-0002. R0
-must use the hashes above and restart from Wide; no result from an earlier
-binary set can close this gate.
+The 2026-08-18 current-source Release rebuild supersedes every previous fixed
+binary set. In addition to the prior authoring, integrity, SDK-migration, and
+evidence corrections, it includes PL-0015 same-grid Thickness variants,
+PL-0016 ordered Shell Run with Results evidence, and PL-0017
+coordinate-confident Top-view grid ROI teaching, PL-0019 standard per-step
+timing evidence, and PL-0020 Source Quality Run Record evidence with Compact
+Results density, PL-0021 persistent Viewer selected-coordinate status, and
+PL-0022 exact Completeness per-cell Run Record export.
+R0 must use the hashes above and restart from Wide; no result
+from an earlier binary set can close this gate.
 
 The launcher selects the monitor with the smallest `Bounds.Left`, reports its
 device name and bounds, places the application there, and fails closed if the
 actual application window does not intersect that monitor. On the current
-workstation the 2026-08-16 validation selected `\\.\DISPLAY2` with bounds
+workstation the 2026-08-18 validation selected `\\.\DISPLAY2` with bounds
 `[-1920,365,1920,1080]`.
 
-The 2026-08-06 Wide handoff launch verified actual window bounds
+An earlier 2026-08-18 package Wide launch verified actual window bounds
 `[-1920,365,1920,1040]` intersect that monitor and left the application open
-for owner operation. This proves launch placement only; the Wide acceptance
-rows remain Pending until the owner reports the unaided outcome.
+for owner operation. PL-0022 refreshed the fixed binaries afterward, so that
+placement is superseded. The launcher will recheck placement when the owner
+starts the current package; both acceptance rows remain Pending.
 
 The product owner's 2026-07-31 direction allows dependency-ready software
 development to continue before this R0 is performed. This sheet still gates
@@ -185,20 +186,22 @@ Scope: Prepared a non-automated current-Release launcher and an observer-only
 Wide/Compact R0 acceptance record.
 Acceptance criteria: fixed inputs identified -> Pass; input hashes recorded ->
 Pass; stale-Release guard -> Pass; Wide/Compact validation-only checks ->
-Pass; current-package actual launch placement -> Pending with owner run; Wide
+Pass; current-package actual launch placement -> Pending until owner launch; Wide
 owner run -> Pending; Compact owner run -> Pending.
 Verification: the PL-0014-, PL-0012-, PL-0013-, run-log-retention-, recipe-step-removal-,
-C3D-snapshot-, and alignment-status-corrected current source was rebuilt in
-Release with `0` warnings and `0` errors on 2026-08-16. Both process-local
-`-ValidateOnly` commands passed,
+C3D-snapshot-, alignment-status-, PL-0015-, PL-0016-, PL-0017-, PL-0019-,
+PL-0020-, PL-0021-, and PL-0022-corrected
+current source was rebuilt in Release with `0` warnings and `0` errors on
+2026-08-18. Both process-local `-ValidateOnly` commands passed,
 enforced the refreshed nine-input fixed hashes above, confirmed the Release
 was newer than current source, selected `\\.\DISPLAY2` as the leftmost
-monitor, and launched no application. The earlier actual-window placement
-evidence belongs to the superseded pre-migration binary and is not reused as
-current-package owner evidence.
+monitor, and launched no application. Actual placement will be checked by the
+launcher when the owner begins each current-package run.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260816-pl0014-language-popup\reports\r0-wide-validate-only.txt`
-plus `r0-compact-validate-only.txt` in the same directory.
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0022-completeness-cell-export\verification\human-owner-r0-wide-validate.txt`
+plus `human-owner-r0-compact-validate.txt` in the same directory. Earlier
+launch evidence belongs to a superseded package and does not close the current
+owner run.
 Boundary / next dependency: the product owner must personally complete both
 unaided runs before `A-01` or Workspace v3 acceptance can advance. A newly
 approved deterministic software slice may proceed independently, but it

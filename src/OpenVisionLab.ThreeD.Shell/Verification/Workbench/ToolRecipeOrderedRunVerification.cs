@@ -98,17 +98,27 @@ internal static class ToolRecipeOrderedRunVerification
 
             var reopenedShell = CreateShell(root, "reopen", runRoot);
             var reopenRunCount = 0;
-            reopenedShell.Workbench.OrderedRunCompleted += (_, _) => reopenRunCount++;
+            ToolRecipeOrderedGraphExecutionResult? reopenedExecution = null;
+            reopenedShell.Workbench.OrderedRunCompleted += (_, args) =>
+            {
+                reopenRunCount++;
+                reopenedExecution = args.Execution;
+            };
             var reopened = reopenedShell.Workbench.TryOpenTeachingRecipe(
                 passRecipePath,
                 out var reopenMessage);
+            var uiSourceQuality = WaitForSourceQuality(
+                reopenedShell.Workbench.SourceQuality);
             Check(
                 "reopen restores the saved recipe without running it",
                 reopened
+                && uiSourceQuality is not null
                 && reopenRunCount == 0
                 && !reopenedShell.Workbench.HasOrderedRunResult
                 && reopenedShell.Workbench.RunTeachingRecipeCommand.CanExecute(null),
-                reopened ? reopenedShell.Workbench.OrderedRunCapabilitySummary : reopenMessage);
+                reopened
+                    ? $"{reopenedShell.Workbench.OrderedRunCapabilitySummary};sourceQuality={uiSourceQuality is not null}"
+                    : reopenMessage);
 
             var runCompleted = reopenedShell.Workbench.RunTeachingRecipeAsync()
                 .GetAwaiter().GetResult();
@@ -119,11 +129,40 @@ internal static class ToolRecipeOrderedRunVerification
                 runCompleted
                 && reopenRunCount == 1
                 && record is not null
+                && record.SchemaVersion == "1.9"
                 && record.Status == ResultStatus.Pass
                 && record.Steps?.Count == 1
+                && record.SourceQualityEvidence is
+                {
+                    State: InspectionRunSourceQualityEvidenceState.Available,
+                    Report: not null
+                } sourceQualityEvidence
+                && sourceQualityEvidence.TryValidate(record.Source, out _)
                 && reopenedShell.InspectionSteps.Count == 1
+                && reopenedShell.InspectionSteps[0].Timing.Contains(
+                    InspectionRunTiming.ToolExecutionStage,
+                    StringComparison.Ordinal)
                 && reopenedShell.RunSnapshotSummary.Contains("Pass", StringComparison.OrdinalIgnoreCase),
-                $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; status={record?.Status}");
+                $"completed={runCompleted}; fullRuns={reopenRunCount}; record={recordPath}; schema={record?.SchemaVersion}; status={record?.Status}; sourceQuality={record?.SourceQualityEvidence?.State}; timing={reopenedShell.InspectionSteps.FirstOrDefault()?.Timing}");
+            Check(
+                "Shell reuses the exact loaded Source Quality report and Results exposes its decision evidence",
+                uiSourceQuality is not null
+                && reopenedExecution is not null
+                && ReferenceEquals(uiSourceQuality, reopenedExecution.SourceQuality)
+                && record?.SourceQualityEvidence?.SourceQualitySha256
+                    == SourceQualityReportContentIdentity.CalculateSha256(
+                        uiSourceQuality)
+                && reopenedShell.SourceQualityState == "Pass"
+                && reopenedShell.SourceQualitySummary.Contains(
+                    "4 × 4",
+                    StringComparison.Ordinal)
+                && reopenedShell.SourceQualityDetail.Contains(
+                    uiSourceQuality.Coverage.InvalidCellMask.Sha256,
+                    StringComparison.Ordinal)
+                && reopenedShell.SourceQualityDetail.Contains(
+                    "Height=Available",
+                    StringComparison.Ordinal),
+                $"sameInstance={ReferenceEquals(uiSourceQuality, reopenedExecution?.SourceQuality)};state={reopenedShell.SourceQualityState};summary={reopenedShell.SourceQualitySummary};sha={record?.SourceQualityEvidence?.SourceQualitySha256}");
 
             var directExecution = ToolRecipeOrderedGraphExecution.Execute(
                 passDocument,
@@ -134,7 +173,7 @@ internal static class ToolRecipeOrderedRunVerification
             var recordStep = record?.Steps?.SingleOrDefault();
             var projectedStep = runnerProjection.SingleOrDefault();
             Check(
-                "Studio and Runner share status, metric, step, output, and content identities",
+                "Studio and Runner share status, metric, identity, and timing contracts",
                 record is not null
                 && record.Status == directExecution.Status
                 && recordStep is not null
@@ -143,13 +182,53 @@ internal static class ToolRecipeOrderedRunVerification
                 && recordStep.Status == projectedStep.Status
                 && recordStep.OutputEntityId == projectedStep.OutputEntityId
                 && recordStep.OutputContentSha256 == projectedStep.OutputContentSha256
-                && recordStep.Metrics.SequenceEqual(projectedStep.Metrics),
-                $"status={record?.Status}/{directExecution.Status}; step={recordStep?.Id}/{projectedStep?.Id}; output={recordStep?.OutputEntityId}; hash={recordStep?.OutputContentSha256}");
+                && recordStep.Metrics.SequenceEqual(projectedStep.Metrics)
+                && recordStep.Timing is { State: InspectionRunTimingState.Available } timing
+                && timing.TryValidate(out _)
+                && timing.Clock == InspectionRunTiming.StopwatchClock
+                && timing.TotalElapsedMilliseconds == recordStep.ElapsedMilliseconds
+                && timing.Stages is
+                [
+                    {
+                        StageId: InspectionRunTiming.ToolExecutionStage
+                    }
+                ]
+                && projectedStep.Timing is { State: InspectionRunTimingState.Available } projectedTiming
+                && projectedTiming.TryValidate(out _)
+                && projectedTiming.Clock == InspectionRunTiming.StopwatchClock
+                && projectedTiming.TotalElapsedMilliseconds == projectedStep.ElapsedMilliseconds
+                && projectedTiming.Stages is
+                [
+                    {
+                        StageId: InspectionRunTiming.ToolExecutionStage
+                    }
+                ],
+                $"status={record?.Status}/{directExecution.Status}; step={recordStep?.Id}/{projectedStep?.Id}; output={recordStep?.OutputEntityId}; hash={recordStep?.OutputContentSha256}; studioTiming={recordStep?.Timing?.TotalElapsedMilliseconds:G17};runnerTiming={projectedStep?.Timing?.TotalElapsedMilliseconds:G17}");
             Check(
                 "Thickness Pass metric remains exact",
                 recordStep?.Metrics.Single(metric => metric.Name == "Mean").Value is { } mean
                 && Math.Abs(mean - 5d) <= 1e-12,
                 $"mean={recordStep?.Metrics.SingleOrDefault(metric => metric.Name == "Mean")?.Value:G17}");
+            var mismatchedSourceQuality = uiSourceQuality! with
+            {
+                Source = uiSourceQuality.Source with
+                {
+                    EntityId = "source.c3d.other"
+                }
+            };
+            var mismatchedExecution = ToolRecipeOrderedGraphExecution.Execute(
+                passDocument,
+                sourcePath,
+                mismatchedSourceQuality);
+            Check(
+                "mismatched existing Source Quality fails closed before inspection",
+                mismatchedExecution.Status == ResultStatus.Error
+                && mismatchedExecution.Steps.Count == 0
+                && mismatchedExecution.SourceQuality is null
+                && mismatchedExecution.Message.Contains(
+                    "does not match",
+                    StringComparison.OrdinalIgnoreCase),
+                $"status={mismatchedExecution.Status};steps={mismatchedExecution.Steps.Count};quality={mismatchedExecution.SourceQuality is not null};message={mismatchedExecution.Message}");
 
             var selectedStep = reopenedShell.Workbench.SelectedPipelineStep!;
             selectedStep.Parameters.Single(parameter => parameter.Name == "MaximumThickness").Value = "4.9";
@@ -209,8 +288,14 @@ internal static class ToolRecipeOrderedRunVerification
                 "Error execution remains Error in the same Run Record projection",
                 errorExecution.Status == ResultStatus.Error
                 && errorRecord?.Status == ResultStatus.Error
+                && errorRecord.SourceQualityEvidence is
+                {
+                    State: InspectionRunSourceQualityEvidenceState.Unavailable,
+                    Report: null
+                } unavailableQuality
+                && unavailableQuality.TryValidate(errorRecord.Source, out _)
                 && errorRecord.Metrics.Count == 0,
-                $"execution={errorExecution.Status}; record={errorRecord?.Status}; message={errorExecution.Message}");
+                $"execution={errorExecution.Status}; record={errorRecord?.Status}; sourceQuality={errorRecord?.SourceQualityEvidence?.State}; message={errorExecution.Message}");
 
             var unsupportedDocument = passDocument with
             {
@@ -253,6 +338,20 @@ internal static class ToolRecipeOrderedRunVerification
             recentRunRecordsPath: Path.Combine(root, $"recent-runs-{name}.json"),
             recentRecipesPath: Path.Combine(root, $"recent-recipes-{name}.json"),
             orderedRunRecordRoot: runRoot);
+
+    private static SourceQualityReport? WaitForSourceQuality(
+        SourceQualityWorkspaceViewModel workspace)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (workspace.Report is null
+               && !workspace.HasError
+               && DateTimeOffset.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
+        }
+
+        return workspace.Report;
+    }
 
     private static ToolRecipeDocument CreateThicknessDocument(
         string sourcePath,

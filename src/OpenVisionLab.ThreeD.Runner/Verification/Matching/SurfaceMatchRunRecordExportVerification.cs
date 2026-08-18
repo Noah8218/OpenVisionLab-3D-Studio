@@ -54,6 +54,30 @@ internal static class SurfaceMatchRunRecordExportVerification
         var assessment =
             SurfaceEdgeDiagnosticReviewArtifactStore.LoadAssessment(
                 assessmentPath);
+        var runtimePath = Path.Combine(
+            directory,
+            "edge-score.surface-match-runtime.json");
+        var runtime = new SurfaceMatchRuntimeReport(
+            SurfaceMatchRuntimeReport.CurrentSchemaVersion,
+            SurfaceMatchRuntimeReport.CurrentClock,
+            execution.ContentSha256,
+            assessment.ContentSha256,
+            [
+                new SurfaceMatchRuntimeStage(
+                    SurfaceMatchRuntimeReport.PoseSearchStage,
+                    TimeSpan.FromMilliseconds(12.5).Ticks),
+                new SurfaceMatchRuntimeStage(
+                    SurfaceMatchRuntimeReport.ExecutionArtifactStage,
+                    TimeSpan.FromMilliseconds(1.25).Ticks),
+                new SurfaceMatchRuntimeStage(
+                    SurfaceMatchRuntimeReport.AcceptanceEvaluationStage,
+                    TimeSpan.FromMilliseconds(0.25).Ticks)
+            ],
+            TimeSpan.FromMilliseconds(14).Ticks,
+            DateTimeOffset.UnixEpoch);
+        SurfaceMatchAssessmentArtifactStore.SaveRuntime(
+            runtimePath,
+            runtime);
         var recipePath = Path.Combine(
             directory,
             "surface-match-export.recipe.json");
@@ -93,7 +117,8 @@ internal static class SurfaceMatchRunRecordExportVerification
             File.ReadAllBytes(scenePath),
             File.ReadAllBytes(executionPath),
             File.ReadAllBytes(scorePath),
-            File.ReadAllBytes(assessmentPath)
+            File.ReadAllBytes(assessmentPath),
+            File.ReadAllBytes(runtimePath)
         };
         var exitCode = SurfaceMatchRunRecordExportExecution.Run(
             recipePath,
@@ -102,6 +127,7 @@ internal static class SurfaceMatchRunRecordExportVerification
             executionPath,
             scorePath,
             assessmentPath,
+            runtimePath,
             exportReportPath,
             new RunArtifactOptions(
                 jsonPath,
@@ -148,11 +174,47 @@ internal static class SurfaceMatchRunRecordExportVerification
             && File.Exists(csvPath),
             $"exit={exitCode};json={File.Exists(jsonPath)};html={File.Exists(htmlPath)};csv={File.Exists(csvPath)}");
         Check(
-            "run-record-schema-1.6",
-            record?.SchemaVersion == "1.6"
+            "run-record-schema-1.9",
+            record?.SchemaVersion == "1.9"
             && exported?.SchemaVersion
                 == InspectionRunSurfaceMatchEvidence.CurrentSchemaVersion,
             $"record={record?.SchemaVersion};surface={exported?.SchemaVersion}");
+        Check(
+            "prepared-scene-source-quality-is-projected-verbatim",
+            record?.SourceQualityEvidence is
+            {
+                State: InspectionRunSourceQualityEvidenceState.Available,
+                Report: not null
+            } sourceQualityEvidence
+            && sourceQualityEvidence.TryValidate(record.Source, out _)
+            && sourceQualityEvidence.SourceQualitySha256
+                == scene.SourceQualitySha256
+            && sourceQualityEvidence.Report.Source == scene.SourceQuality.Source
+            && sourceQualityEvidence.Report.Grid == scene.SourceQuality.Grid
+            && sourceQualityEvidence.Report.Coverage.ValidSampleCount
+                == scene.SourceQuality.Coverage.ValidSampleCount
+            && sourceQualityEvidence.Report.Channels.Select(channel =>
+                    (channel.Channel, channel.State, channel.Evidence))
+                .SequenceEqual(scene.SourceQuality.Channels.Select(channel =>
+                    (channel.Channel, channel.State, channel.Evidence))),
+            $"state={record?.SourceQualityEvidence?.State};sha256={record?.SourceQualityEvidence?.SourceQualitySha256};scene={scene.SourceQualitySha256}");
+        Check(
+            "persisted-stage-timing-is-projected-without-reexecution",
+            record?.Timing is { State: InspectionRunTimingState.Available } timing
+            && timing.TryValidate(out _)
+            && timing.Clock == SurfaceMatchRuntimeReport.CurrentClock
+            && timing.TotalElapsedMilliseconds == 14d
+            && timing.Stages.Select(stage => stage.StageId).SequenceEqual([
+                SurfaceMatchRuntimeReport.PoseSearchStage,
+                SurfaceMatchRuntimeReport.ExecutionArtifactStage,
+                SurfaceMatchRuntimeReport.AcceptanceEvaluationStage
+            ])
+            && timing.Stages.Select(stage => stage.ElapsedMilliseconds).SequenceEqual([
+                12.5d,
+                1.25d,
+                0.25d
+            ]),
+            $"state={record?.Timing?.State};totalMs={record?.Timing?.TotalElapsedMilliseconds:G17};stages={string.Join(',', record?.Timing?.Stages.Select(stage => stage.StageId) ?? [])}");
         Check(
             "exact-model-scene-execution-identities",
             exported?.ModelContentSha256 == model.ContentSha256
@@ -221,6 +283,14 @@ internal static class SurfaceMatchRunRecordExportVerification
             execution.PoseResult.ContentSha256,
             score.ContentSha256,
             assessment.ContentSha256,
+            scene.SourceQualitySha256,
+            scene.SourceQuality.Coverage.InvalidCellMask.Sha256,
+            scene.SourceQuality.Provenance,
+            scene.SourceQuality.Channels[0].Evidence,
+            SurfaceMatchRuntimeReport.PoseSearchStage,
+            SurfaceMatchRuntimeReport.ExecutionArtifactStage,
+            SurfaceMatchRuntimeReport.AcceptanceEvaluationStage,
+            runtime.TotalMilliseconds.ToString("R", CultureInfo.InvariantCulture),
             score.SurfaceScore.CoverageRatio.ToString("R", CultureInfo.InvariantCulture),
             score.EdgeScore.CoverageRatio.ToString("R", CultureInfo.InvariantCulture),
             execution.PoseResult.Pose!.TranslationX.ToString("R", CultureInfo.InvariantCulture),
@@ -262,8 +332,9 @@ internal static class SurfaceMatchRunRecordExportVerification
             && sourceArtifactBytes[1].SequenceEqual(File.ReadAllBytes(scenePath))
             && sourceArtifactBytes[2].SequenceEqual(File.ReadAllBytes(executionPath))
             && sourceArtifactBytes[3].SequenceEqual(File.ReadAllBytes(scorePath))
-            && sourceArtifactBytes[4].SequenceEqual(File.ReadAllBytes(assessmentPath)),
-            "model=true;scene=true;execution=true;score=true;assessment=true");
+            && sourceArtifactBytes[4].SequenceEqual(File.ReadAllBytes(assessmentPath))
+            && sourceArtifactBytes[5].SequenceEqual(File.ReadAllBytes(runtimePath)),
+            "model=true;scene=true;execution=true;score=true;assessment=true;runtime=true");
 
         var flatScore = SurfaceEdgeArtifactStore.LoadScore(
             Path.Combine(directory, "edge-score.flat.score.json"));
@@ -305,6 +376,42 @@ internal static class SurfaceMatchRunRecordExportVerification
                     score,
                     assessment)),
             "tamperedModelIdentity=true");
+        Check(
+            "mismatched-runtime-fails-closed",
+            ThrowsInvalidData(() => RunRecordWriter.WriteSurfaceMatch(
+                new RunArtifactOptions(
+                    Path.Combine(directory, "runtime-mismatch.json"),
+                    null,
+                    null,
+                    null),
+                recipePath,
+                ToolRecipeDocumentStore.Load(recipePath),
+                model,
+                scene,
+                execution,
+                score,
+                assessment,
+                runtime with { ExecutionContentSha256 = new string('A', 64) },
+                exportReportPath)),
+            $"execution={execution.ContentSha256};runtimeExecution={new string('A', 64)}");
+        Check(
+            "mismatched-runtime-assessment-fails-closed",
+            ThrowsInvalidData(() => RunRecordWriter.WriteSurfaceMatch(
+                new RunArtifactOptions(
+                    Path.Combine(directory, "runtime-assessment-mismatch.json"),
+                    null,
+                    null,
+                    null),
+                recipePath,
+                ToolRecipeDocumentStore.Load(recipePath),
+                model,
+                scene,
+                execution,
+                score,
+                assessment,
+                runtime with { AssessmentContentSha256 = new string('B', 64) },
+                exportReportPath)),
+            $"assessment={assessment.ContentSha256};runtimeAssessment={new string('B', 64)}");
 
         var noMatchCoverage = new SurfaceCoverageEvaluation(
             SurfaceCoverageEvaluation.CurrentSemantics,
@@ -368,6 +475,7 @@ internal static class SurfaceMatchRunRecordExportVerification
             noMatchExecution,
             null,
             null,
+            null,
             exportReportPath);
         var noMatchRecord =
             JsonSerializer.Deserialize<InspectionRunRecord>(
@@ -376,6 +484,8 @@ internal static class SurfaceMatchRunRecordExportVerification
         Check(
             "no-match-json-html-csv-remain-explicit",
             noMatchRecord?.Status == ResultStatus.Fail
+            && noMatchRecord.Timing is { State: InspectionRunTimingState.Unavailable }
+            && noMatchRecord.Timing.TryValidate(out _)
             && noMatchRecord.SurfaceMatchEvidence?.Execution.PoseResult.State
                 == RigidSurfacePoseSearchState.NoMatch
             && noMatchRecord.SurfaceMatchEvidence.Score is null
@@ -408,8 +518,9 @@ internal static class SurfaceMatchRunRecordExportVerification
         Check(
             "legacy-run-record-remains-readable",
             legacyRoundTrip?.SchemaVersion == "1.5"
-            && legacyRoundTrip.SurfaceMatchEvidence is null,
-            $"schema={legacyRoundTrip?.SchemaVersion};surfaceEvidence={legacyRoundTrip?.SurfaceMatchEvidence is not null}");
+            && legacyRoundTrip.SurfaceMatchEvidence is null
+            && legacyRoundTrip.Timing is null,
+            $"schema={legacyRoundTrip?.SchemaVersion};surfaceEvidence={legacyRoundTrip?.SurfaceMatchEvidence is not null};timing={legacyRoundTrip?.Timing is not null}");
 
         lines.Add(
             $"Summary|passed={passed}|total={total}|failed={total - passed}");
