@@ -319,6 +319,11 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
             VisibleContextualStepSetupActionCount: 1,
         };
 
+    public string ContextualSelectedStepSetupState =>
+        DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView selectedTool
+            ? $"card={selectedTool.IsContextualStepSetupVisible}; catalogReturn={selectedTool.HasDirectToolCatalogReturn}; status={selectedTool.HasVisibleStepSetupStatus}; actions={selectedTool.VisibleContextualStepSetupActionCount}"
+            : $"content={DockWorkspace.ToolInspectorContent?.GetType().Name ?? "null"}";
+
     public bool HasExclusiveSelectedToolWorkspaceSurface =>
         DockWorkspace.ToolInspectorContent is SelectedToolWorkspaceView
         {

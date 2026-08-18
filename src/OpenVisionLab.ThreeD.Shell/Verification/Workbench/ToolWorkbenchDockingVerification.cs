@@ -367,7 +367,7 @@ internal static class ToolWorkbenchDockingVerification
             Check(
                 "dual-ROI Selected Tool keeps input requirements, one next action, and catalog return together",
                 stageWorkbench.HasContextualSelectedStepSetup,
-                $"contextualSetup={stageWorkbench.HasContextualSelectedStepSetup}");
+                stageWorkbench.ContextualSelectedStepSetupState);
             Check(
                 "Initial Workbench mode composes the unified Authoring cockpit",
                 stageWorkbench.OperatorStage == OpenVisionOperatorStage.Teach

@@ -18,11 +18,12 @@ public partial class SelectedToolWorkspaceView : UserControl
     public bool IsContextualStepSetupVisible =>
         SelectedToolSetupCard.Visibility == Visibility.Visible;
 
+    // Inspect each control's own contract even when a headless dock pane is inactive.
     public bool HasDirectToolCatalogReturn =>
-        SelectedToolSetupBackToToolsButton.IsVisible;
+        SelectedToolSetupBackToToolsButton.Visibility == Visibility.Visible;
 
     public bool HasVisibleStepSetupStatus =>
-        SelectedToolSetupStatusText.IsVisible
+        SelectedToolSetupStatusText.Visibility == Visibility.Visible
         && !string.IsNullOrWhiteSpace(SelectedToolSetupStatusText.Text);
 
     public int VisibleContextualStepSetupActionCount =>
@@ -34,7 +35,7 @@ public partial class SelectedToolWorkspaceView : UserControl
             SelectedToolSetupApplyRoiButton,
             SelectedToolSetupApplyParametersButton,
             SelectedToolSetupPreviewButton,
-        }.Count(button => button.IsVisible);
+        }.Count(button => button.Visibility == Visibility.Visible);
 
     public bool CommitPendingParameterEdit(out string message) =>
         StepPropertyGrid.CommitPendingEdit(out message);
