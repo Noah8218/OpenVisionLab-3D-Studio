@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Release And Version Policy
 
-Updated: 2026-08-06
+Updated: 2026-08-18
 
 ## Scope
 
@@ -17,12 +17,57 @@ repository has no release or tag for that candidate.
 | Product and assembly package version | `Directory.Build.props` / `OpenVisionLabProductVersion` | `0.1.1-dev` |
 | Viewer Host API | `Directory.Build.props` / `OpenVisionLabViewerHostApiVersion` | `1.0` |
 | Viewer bundle manifest schema | `scripts/build-viewer-dll.ps1` | `1.0` |
-| Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` | `1.6` latest; `1.5` ordered graph, `1.3` bounded multi-step, and `1.2` single-step output retained |
+| Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` and `ShellOrderedRunRecordWriter` | `1.9` current ordered/Surface Match output; `1.8` Source Quality predecessor and older optional-field forms remain readable; `1.2` single-step output retained |
 | Recipe schema | `ToolRecipeDocument.CurrentSchemaVersion` and each recipe's `schemaVersion` | Generic `ToolRecipeDocument` currently `1.5`; earlier `1.0` through `1.4` forms remain explicitly bounded |
 
 Do not duplicate a product or Host API version in another source file. Generated assemblies, Viewer manifests, and Run Records consume the central MSBuild values.
 
 Windows CI enforces that `Directory.Build.props`, the uploaded Viewer manifest, and the generated Run Record agree on product and Host API versions. It also reports the manifest and Run Record schema values in the Actions summary.
+
+## Verified Development Commit Gate
+
+A normal feature commit is allowed only when all applicable items below pass:
+
+1. the feature has one resolved Proofline issue or durable completion record;
+2. acceptance criteria identify the exact completed behavior and boundaries;
+3. focused checks and a proportional build pass on the exact tree to commit;
+4. UI changes include current-build Wide/Compact evidence and affected states;
+5. the master backlog, current handoff, document map, and changelog are updated
+   only where their owned information changed;
+6. tracked JSON and local Markdown links validate, and `git diff --check`
+   passes;
+7. generated D-backed evidence, private research, supplied-media review, and
+   private comparison material are absent from the staged tree;
+8. staged paths contain only the approved feature scope.
+
+Default to one independently releasable feature per commit. Several completed
+items may share one commit only when they modified an inseparable common
+contract and the combined tree, rather than artificial intermediate states,
+is what passed the recorded build and regressions. Record every included item
+and the reason for the joint qualification.
+
+The current product version stays `0.1.1-dev` after an ordinary verified
+feature commit. Do not add a version-bump script while the product version has
+one central source in `Directory.Build.props`; direct central editing is less
+error-prone than another synchronization layer.
+
+## Version And Publication States
+
+Treat these as distinct, ordered states:
+
+| State | Required evidence | What it does not prove |
+| --- | --- | --- |
+| Verified development commit | Resolved scope, focused checks, build, docs, clean staged diff | Hosted CI, package qualification, or release readiness |
+| Pushed development baseline | Exact remote commit and branch | Hosted CI success or publication |
+| CI-qualified baseline | Exact successful Actions run for the pushed commit | Installed package behavior or owner R0 |
+| Frozen release candidate | Approved version, clean commit, immutable artifact path, size, SHA-256, manifest identity, full release gate | Public availability |
+| Published release | Exact tag/release or distribution upload response | Propagation or downloadable-asset equality |
+| Public readback complete | Public version, metadata, downloaded size/SHA-256, and package identity match the frozen candidate | Physical metrology or production approval |
+
+Record failures and superseded candidates; never overwrite them into a pass.
+`CHANGELOG.md` records user-visible changes, while dated closure documents
+record verification detail. Neither substitutes for a frozen-candidate
+qualification record.
 
 ## Product Version
 
@@ -68,7 +113,9 @@ Rules:
 1. Start from a clean tracked working tree and synchronized branch.
 2. Set `OpenVisionLabProductVersion` and `Version` to the same `-rc.N` value in `Directory.Build.props`.
 3. Change Host API, Run Record, manifest, or recipe versions only when the corresponding contract changed.
-4. Update release notes, commit the intended RC changes, and confirm the tracked working tree is clean.
+4. Move the completed `CHANGELOG.md` entries into the intended version, update
+   release notes, commit the RC changes, and confirm the tracked working tree
+   is clean.
 5. Build and verify the Viewer DLL boundary:
 
 ```powershell
@@ -78,7 +125,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-viewer-dll-ho
 ```
 
 6. Run the fixed data-loading matrix and relevant algorithm golden suites.
-7. Generate one latest-schema multi-step Run Record and one schema `1.2` compatibility record. Confirm product, Host API, Git, .NET, OS, and architecture identity are not `unknown`; Git tree state must be `clean`. Confirm every stable step ID and typed input/output entity ID agrees across JSON, HTML, CSV, and the Shell view. Tracked recipe JSON must contain LF line endings only, and the recorded recipe SHA-256 must match the exact executed file bytes.
+7. Generate one latest-schema multi-step Run Record, one immediate-predecessor
+   compatibility record, and the retained schema `1.2` single-step record.
+   Confirm product, Host API, Git, .NET, OS, and architecture identity are not
+   `unknown`; Git tree state must be `clean`. Confirm every stable step ID and
+   typed input/output entity ID agrees across JSON, HTML, CSV, and the Shell
+   view. Tracked recipe JSON must contain LF line endings only, and the
+   recorded recipe SHA-256 must match the exact executed file bytes.
 8. Check direct and transitive NuGet packages:
 
 ```powershell
@@ -137,14 +190,16 @@ Known limitations:
 
 ## Current Repository Release State
 
-Verified on 2026-08-06:
+Verified on 2026-08-18:
 
 - [GitHub Releases](https://github.com/Noah8218/OpenVisionLab-3D-Studio/releases)
   reports no releases.
 - [GitHub Tags](https://github.com/Noah8218/OpenVisionLab-3D-Studio/tags)
   exposes no tag, and `git ls-remote --tags origin` returns zero tag refs.
-- Remote `main` is
-  `8400b89a788b2a59affb713833001fff15c6aff0`.
+- The most recently qualified and pushed feature baseline is
+  `e6e3776bd3d43496ac133112dac010a18482f45d` on remote `main`; it contains
+  PL-0019 through PL-0022. Later documentation-only governance commits do not
+  retroactively change that feature qualification evidence.
 - Historical commit `ac57687` exists in the local object database, but it is
   not an ancestor of the current `main` and has no current remote ref.
 - Therefore `v0.1.0-rc.1` and its recorded ZIP must not be described as a

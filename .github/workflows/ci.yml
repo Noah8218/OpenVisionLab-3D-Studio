@@ -92,6 +92,27 @@ jobs:
           dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-shell-smoke-command-line (Join-Path $artifactDir 'shell-command-line.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Shell command-line verification failed.' }
 
+      - name: Verify current Run Record contracts
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $artifactDir = 'artifacts\ci\current-run-records'
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-c3d-completeness-grid --report (Join-Path $artifactDir 'completeness-grid.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Completeness Run Record verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-artifact-owned-roi-runner --report (Join-Path $artifactDir 'artifact-owned-runner.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Artifact-owned Run Record verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Runner\OpenVisionLab.ThreeD.Runner.csproj -c Debug --no-build -- --verify-surface-match-run-record-export --report (Join-Path $artifactDir 'surface-match.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Surface Match Run Record verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-source-quality-workspace (Join-Path $artifactDir 'source-quality.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Source Quality Run Record verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-current-recipe-ordered-run (Join-Path $artifactDir 'ordered-run.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Ordered Run Record verification failed.' }
+          dotnet run --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Debug --no-build -- --verify-run-record-history (Join-Path $artifactDir 'history.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Run Record history verification failed.' }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-code-structure.ps1 -ReportPath (Join-Path $artifactDir 'code-structure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Code structure verification failed.' }
+
       - name: Verify typed C3D Median Filter adapter
         shell: pwsh
         timeout-minutes: 5

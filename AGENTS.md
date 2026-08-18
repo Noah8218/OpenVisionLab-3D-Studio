@@ -226,6 +226,23 @@ chronology to this file.
 - Do not use destructive reset or checkout commands unless explicitly asked.
 - Commit only the approved repository and scope.
 - Do not commit generated local test evidence from D-backed paths.
+- A feature commit requires a resolved durable issue or completion record,
+  current focused verification, a successful proportional build, updated
+  owning documentation, valid tracked JSON and links, and `git diff --check`.
+- Default to one independently releasable feature per commit. Stage explicit
+  paths; do not use an unrelated dirty worktree as a feature bundle.
+- An accumulated commit may contain several completed items only when they
+  share an inseparable contract or source boundary and the exact combined
+  tree is the state that passed the recorded build and regressions. Name every
+  included item in the durable evidence and use one qualification-oriented
+  commit message.
+- Keep development commit, hosted CI result, release-candidate qualification,
+  publication, and public artifact readback as separate states. A push proves
+  none of the later states by itself.
+- Do not change the product version merely because a feature was committed.
+  Version movement follows
+  `docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` and requires an explicitly
+  approved release target.
 - Commit and push require explicit user authorization; pushing does not imply
   permission to merge a feature branch or create a release.
 

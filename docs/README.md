@@ -12,6 +12,7 @@ contracts, and completion evidence.
 | Current handoff and external prerequisites | [Current session handoff](OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md) |
 | Next-chat entry prompt | [Next-chat entry prompt](OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md) |
 | Release/version policy | [Release/version policy](OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md) |
+| Forward user-visible change log | [Changelog](../CHANGELOG.md) |
 | Vision SDK algorithm boundary | [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) |
 
 Only the master backlog owns the current inventory and development queue.

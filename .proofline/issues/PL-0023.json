@@ -1,0 +1,110 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0023",
+    "aliases": [],
+    "type": "maintenance",
+    "mode": "simple",
+    "title": "Harden verified-feature commit and version governance",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "2026-08-18 owner request",
+    "summary": "The owner requested stricter version control so only completed, verified, and documented features are committed and pushed.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "Verified-feature commit rules, distinct version/publication states, a forward changelog, and current Run Record CI coverage are implemented and locally verified; intentional commit and remote push remain.",
+    "next_action": "Commit the explicit governance scope, push main, verify the exact remote commit, then record final publication evidence."
+  },
+  "objective": {
+    "summary": "Make verified feature commits, product-version movement, release qualification, publication, and public readback distinct and auditable states.",
+    "constraints": [
+      "Do not change the product version, create a tag, or publish a release without a separately approved release candidate.",
+      "Reuse the existing centralized MSBuild version source and existing verification commands instead of adding a duplicate version system.",
+      "Keep public documentation OpenVisionLab-owned and exclude private research, vendor comparisons, and local test artifacts.",
+      "Commit only the currently verified PL-0019 through PL-0022 scope and its governance documentation."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Repository rules define when a feature may be committed, when separate feature commits are required, and the bounded exception for inseparable jointly verified changes.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Version policy and changelog distinguish development identity, verified commit, release candidate qualification, publication, and public readback without moving the current product version.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Windows CI runs the newest stage-timing, Source Quality, Completeness cell-export, ordered Run, history, unrelated-export, and structure regression gates.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Documentation, YAML, Proofline, diff, Release build, focused checks, commit scope, and remote push are verified and recorded.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0022"
+    }
+  ],
+  "context": [
+    {
+      "kind": "version authority",
+      "location": "Directory.Build.props",
+      "summary": "Product and assembly version already have one central source and should not be duplicated."
+    },
+    {
+      "kind": "release policy",
+      "location": "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md",
+      "summary": "The existing policy owns semantic versioning, release candidates, contract versions, tags, and release gates."
+    },
+    {
+      "kind": "continuous integration",
+      "location": ".github/workflows/ci.yml",
+      "summary": "The current workflow has broad legacy coverage but does not invoke the newest Run Record contract verifiers."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "inspection",
+      "location": "AGENTS.md",
+      "observation": "Repository rules now require resolved scope, current focused verification, proportional build, owning documentation, valid JSON/links, diff hygiene, explicit staging, and one independently releasable feature per commit, with a bounded jointly verified common-contract exception.",
+      "observed_at": "2026-08-18T11:46:40+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "inspection",
+      "location": "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md",
+      "observation": "The policy and new CHANGELOG.md keep product version 0.1.1-dev while separating verified commit, pushed baseline, CI qualification, frozen candidate, publication, and public readback; the existing single MSBuild version source is retained without a redundant bump script.",
+      "observed_at": "2026-08-18T11:46:40+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0023-version-governance/verification",
+      "observation": "The new CI command set ran locally after a Debug solution build with 0 warnings and 0 errors: Completeness 30/30, artifact-owned Runner 19/19, Surface Match 23/23, Source Quality 18/18, ordered Run 15/15, history 12/12, and structure 29/29 all passed.",
+      "observed_at": "2026-08-18T11:46:40+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-18T11:35:00+09:00",
+  "updated_at": "2026-08-18T11:46:40+09:00"
+}
