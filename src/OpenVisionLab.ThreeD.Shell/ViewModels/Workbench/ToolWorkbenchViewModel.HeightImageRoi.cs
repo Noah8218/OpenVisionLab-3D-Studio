@@ -23,7 +23,7 @@ public sealed partial class ToolWorkbenchViewModel
         out string message)
     {
         ArgumentNullException.ThrowIfNull(rectangle);
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? loadedSourceBinding;
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
         if (!IsTeachingSelectionCaptureActive
             || SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
             || binding is null)
@@ -101,16 +101,13 @@ public sealed partial class ToolWorkbenchViewModel
             : SelectedStepTeachingSelection is null
                 ? InspectionWorkspaceRegionLifecycleState.Missing
                 : InspectionWorkspaceRegionLifecycleState.Applied;
+        var gridRectangleDraft = TeachingCaptureSession.GridRectangleDraft;
         var candidate = IsTeachingSelectionCaptureActive
-                        && teachingGridRectangleRowCount > 0
-                        && teachingGridRectangleColumnCount > 0
-            ? new ToolRecipeGridRectangle(
-                teachingGridRectangleRow,
-                teachingGridRectangleColumn,
-                teachingGridRectangleRowCount,
-                teachingGridRectangleColumnCount)
+                        && gridRectangleDraft.RowCount > 0
+                        && gridRectangleDraft.ColumnCount > 0
+            ? gridRectangleDraft
             : null;
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? loadedSourceBinding;
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
         HeightImageViewer.RoiWorkspace.SetProjection(new HeightImageRoiProjection(
             SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
             && binding is not null,

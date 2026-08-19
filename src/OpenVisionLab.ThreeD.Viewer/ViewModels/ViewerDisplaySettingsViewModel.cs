@@ -56,6 +56,10 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     private ViewerColorMap selectedColorMap = ViewerColorMap.Height;
     private bool fallbackApplied;
     private string fallbackSummary = "No display fallback.";
+    private int displaySettingsRevision;
+    private double pointSize = 2.0;
+    private string selectedRenderDensity = "Balanced";
+    private string renderDensitySummary = FormatRenderDensitySummary("Balanced");
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? RenderSettingsChanged;
@@ -103,7 +107,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
                 OnPropertyChanged(nameof(EffectiveGeometryStyle));
                 OnPropertyChanged(nameof(EffectiveSummary));
                 OnPropertyChanged(nameof(EffectiveSettings));
-                RenderSettingsChanged?.Invoke(this, EventArgs.Empty);
+                NotifyRenderSettingsChanged();
             }
         }
     }
@@ -142,6 +146,68 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     public string EffectiveSummary =>
         $"{ActiveSource} | {EffectiveGeometryStyle} | {EffectiveColorMap} | Display only";
 
+    public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
+
+    public int DisplaySettingsRevision => displaySettingsRevision;
+
+    public double PointSize
+    {
+        get => pointSize;
+        set => SetField(ref pointSize, Math.Clamp(value, 1.0, 6.0));
+    }
+
+    public string SelectedRenderDensity
+    {
+        get => selectedRenderDensity;
+        set
+        {
+            var mode = RenderDensityModes.Contains(value) ? value : "Balanced";
+            if (string.Equals(selectedRenderDensity, mode, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            selectedRenderDensity = mode;
+            renderDensitySummary = FormatRenderDensitySummary(mode);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(RenderDensitySummary));
+            OnPropertyChanged(nameof(C3DMaxRenderedPoints));
+            OnPropertyChanged(nameof(LazMaxSampledPoints));
+            OnPropertyChanged(nameof(ImportedMeshMaxRenderedTriangles));
+            OnPropertyChanged(nameof(NominalActualMaxDisplaySamples));
+        }
+    }
+
+    public string RenderDensitySummary => renderDensitySummary;
+
+    public int C3DMaxRenderedPoints => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 140000,
+        _ => 55000
+    };
+
+    public int LazMaxSampledPoints => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 150000,
+        _ => 50000
+    };
+
+    public int ImportedMeshMaxRenderedTriangles => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 180000,
+        _ => 60000
+    };
+
+    public int NominalActualMaxDisplaySamples => SelectedRenderDensity switch
+    {
+        "Fast" => 25000,
+        "Detailed" => 150000,
+        _ => 60000
+    };
+
     internal ViewerDisplaySettingsSnapshot EffectiveSettings =>
         new(activeSource, selectedGeometryStyle, selectedColorMap, IsDisplayOnly);
 
@@ -173,7 +239,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(EffectiveGeometryStyle));
             OnPropertyChanged(nameof(EffectiveSummary));
             OnPropertyChanged(nameof(EffectiveSettings));
-            RenderSettingsChanged?.Invoke(this, EventArgs.Empty);
+            NotifyRenderSettingsChanged();
         }
     }
 
@@ -315,7 +381,7 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(EffectiveColorMap));
             OnPropertyChanged(nameof(EffectiveSummary));
             OnPropertyChanged(nameof(EffectiveSettings));
-            RenderSettingsChanged?.Invoke(this, EventArgs.Empty);
+            NotifyRenderSettingsChanged();
         }
     }
 
@@ -337,6 +403,20 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             ? $"Deviation requires an active result for {ActiveSource}; using {fallbackColorMap}. Display only."
             : $"Color Map '{requested}' is unavailable for {ActiveSource}; using {fallbackColorMap}. Display only.";
     }
+
+    private void NotifyRenderSettingsChanged()
+    {
+        displaySettingsRevision = unchecked(displaySettingsRevision + 1);
+        OnPropertyChanged(nameof(DisplaySettingsRevision));
+        RenderSettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static string FormatRenderDensitySummary(string mode) => mode switch
+    {
+        "Fast" => "Fast: up to 25,000 C3D points / 25,000 LAZ/LAS points / 25,000 mesh triangles",
+        "Detailed" => "Detailed: up to 140,000 C3D points / 150,000 LAZ/LAS points / 180,000 mesh triangles",
+        _ => "Balanced: up to 55,000 C3D points / 50,000 LAZ/LAS points / 60,000 mesh triangles"
+    };
 
     private void SetFallback(string summary)
     {

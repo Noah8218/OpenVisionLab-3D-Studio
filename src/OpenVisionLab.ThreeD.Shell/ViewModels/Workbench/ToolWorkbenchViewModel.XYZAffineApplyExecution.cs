@@ -33,10 +33,10 @@ public sealed partial class ToolWorkbenchViewModel
                 string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.Ordinal)
                 && string.Equals(step.OutputEntityId, output.OutputEntityId, StringComparison.OrdinalIgnoreCase))
             || !string.Equals(Source.Id, output.RootSourceEntityId, StringComparison.OrdinalIgnoreCase)
-            || loadedSourceBinding is null
-            || !string.Equals(loadedSourceBinding.ContentSha256, output.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
-            || loadedSourceBinding.GridWidth != output.SourceGridWidth
-            || loadedSourceBinding.GridHeight != output.SourceGridHeight)
+            || SourceSession.SourceBinding is null
+            || !string.Equals(SourceSession.SourceBinding.ContentSha256, output.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
+            || SourceSession.SourceBinding.GridWidth != output.SourceGridWidth
+            || SourceSession.SourceBinding.GridHeight != output.SourceGridHeight)
         {
             message = "Synthetic smoke A2 identity does not match the selected Re-grid route and loaded recipe source.";
             return false;

@@ -86,6 +86,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? InspectionTaskChanged;
     public event EventHandler? OpenRunRecordRequested;
     public event EventHandler? ExportRunRecordRequested;
+    public event EventHandler? ExportPrivacySafeSupportBundleRequested;
     public event EventHandler<EvidenceArtifactOpenRequestEventArgs>? OpenEvidenceArtifactRequested;
 
     public ShellMainWindowViewModel(
@@ -122,6 +123,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         languageOptions = OpenVisionLanguageService.GetLanguageOptions();
         selectedLanguageOption = languageOptions.FirstOrDefault(option => option.Language == OpenVisionLanguageService.CurrentLanguage)
             ?? languageOptions[0];
+        ResultsWorkspace = new ResultsWorkspaceViewModel();
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
         InspectionSteps.CollectionChanged += (_, _) =>
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
@@ -166,6 +168,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         ExportRunRecordCommand = new RelayCommand(
             _ => ExportRunRecordRequested?.Invoke(this, EventArgs.Empty),
             _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
+        ExportPrivacySafeSupportBundleCommand = new RelayCommand(
+            _ => ExportPrivacySafeSupportBundleRequested?.Invoke(this, EventArgs.Empty),
+            _ => !string.IsNullOrWhiteSpace(currentRunRecordPath));
         LoadRecentRunRecords();
         if (hasStartupEvidenceOverrides)
         {
@@ -195,7 +200,9 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ICommand SelectRunRecordCommand { get; }
     public ICommand OpenRecentRunRecordCommand { get; }
     public ICommand ExportRunRecordCommand { get; }
+    public ICommand ExportPrivacySafeSupportBundleCommand { get; }
     public ToolWorkbenchViewModel Workbench { get; }
+    public ResultsWorkspaceViewModel ResultsWorkspace { get; }
     public CalibrationCenterViewModel Calibration { get; }
     public ThreeDLocalization Localization => ThreeDLocalization.Shared;
     public IReadOnlyList<OpenVisionLanguageOption> LanguageOptions => languageOptions;
@@ -1325,6 +1332,43 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ExportPrivacySafeSupportBundle(string targetRoot, out string message)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(currentRunRecordPath)
+                || !File.Exists(currentRunRecordPath))
+            {
+                message = Localization.RunRecordOpenFailed;
+                return false;
+            }
+
+            var outputPath = PrivacySafeSupportBundleWriter.Write(
+                currentRunRecordPath,
+                targetRoot,
+                Workbench.RunLog.ToArray());
+            StatusText = string.Format(
+                CultureInfo.CurrentCulture,
+                Localization.SupportBundleExportedFormat,
+                outputPath);
+            message = outputPath;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or NotSupportedException
+            or JsonException
+            or InvalidDataException
+            or InvalidOperationException
+            or OverflowException
+            or System.Security.Cryptography.CryptographicException)
+        {
+            message = exception.Message;
+            return false;
+        }
+    }
+
     private void LoadRecentRunRecords()
     {
         try
@@ -1401,6 +1445,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         ((RelayCommand)OpenCsvReportCommand).RaiseCanExecuteChanged();
         ((RelayCommand)OpenRunRecordFolderCommand).RaiseCanExecuteChanged();
         ((RelayCommand)ExportRunRecordCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)ExportPrivacySafeSupportBundleCommand).RaiseCanExecuteChanged();
     }
 
     private void RequestEvidenceArtifact(string label, string? path)

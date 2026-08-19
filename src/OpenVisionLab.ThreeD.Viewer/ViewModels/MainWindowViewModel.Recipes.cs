@@ -133,13 +133,6 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private static string FormatRenderDensitySummary(string mode) => mode switch
-    {
-        "Fast" => "Fast: up to 25,000 C3D points / 25,000 LAZ/LAS points / 25,000 mesh triangles",
-        "Detailed" => "Detailed: up to 140,000 C3D points / 150,000 LAZ/LAS points / 180,000 mesh triangles",
-        _ => "Balanced: up to 55,000 C3D points / 50,000 LAZ/LAS points / 60,000 mesh triangles"
-    };
-
     private static IReadOnlyList<SourceEntity> CreateSourceEntities(
         ModelTransform c3DTransform,
         string glbName,

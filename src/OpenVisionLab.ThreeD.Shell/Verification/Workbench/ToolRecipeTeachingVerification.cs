@@ -456,6 +456,15 @@ internal static class ToolRecipeTeachingVerification
                 && reopened.SelectedPipelineStep?.ToolName == "Filter",
                 openMessage);
             Check(
+                "recipe session owns reopened identity, lifecycle, and validation state",
+                reopened.RecipeSession.SchemaVersion == reopened.RecipeSchemaVersion
+                && reopened.RecipeSession.Name == reopened.RecipeName
+                && reopened.RecipeSession.Path == reopened.RecipePath
+                && reopened.RecipeSession.IsDirty == reopened.IsDirty
+                && reopened.RecipeSession.StorageValidation.IsValid == reopened.CanSaveTeachingRecipe
+                && reopened.RecipeSession.SourceBindingErrors.Count == 0,
+                $"schema={reopened.RecipeSession.SchemaVersion}; path={reopened.RecipeSession.Path}; dirty={reopened.RecipeSession.IsDirty}; storageValid={reopened.RecipeSession.StorageValidation.IsValid}");
+            Check(
                 "step instance name survives save and reopen",
                 reopened.PipelineSteps.Single(step => step.ToolId == "thickness").ToolName == "Tab 1 Thickness",
                 reopened.PipelineSteps.Single(step => step.ToolId == "thickness").ToolName);

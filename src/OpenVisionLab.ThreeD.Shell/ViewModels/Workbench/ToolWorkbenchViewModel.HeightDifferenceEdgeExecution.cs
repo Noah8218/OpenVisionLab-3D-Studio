@@ -167,7 +167,7 @@ public sealed partial class ToolWorkbenchViewModel
         out string message)
     {
         var step = PipelineSteps.SingleOrDefault(item => string.Equals(item.Id, stepId, StringComparison.OrdinalIgnoreCase));
-        if (step is null || loadedSourceBinding is null)
+        if (step is null || SourceSession.SourceBinding is null)
         {
             message = "Smoke Edge step or verified source binding is unavailable.";
             return false;
@@ -180,7 +180,7 @@ public sealed partial class ToolWorkbenchViewModel
             ToolRecipeSelectionKinds.GridRectangle,
             Source.Id,
             Source.FrameId,
-            loadedSourceBinding,
+            SourceSession.SourceBinding,
             rectangle,
             null,
             null);

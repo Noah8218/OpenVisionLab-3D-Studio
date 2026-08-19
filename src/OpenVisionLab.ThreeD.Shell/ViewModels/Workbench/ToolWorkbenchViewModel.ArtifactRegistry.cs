@@ -155,9 +155,9 @@ public sealed partial class ToolWorkbenchViewModel
             string.Empty,
             Source.Unit,
             Source.FrameId,
-            loadedSourceBinding?.ContentSha256 ?? string.Empty,
+            SourceSession.SourceBinding?.ContentSha256 ?? string.Empty,
             sourceReady
-                ? $"{loadedSourceBinding!.GridWidth} × {loadedSourceBinding.GridHeight} verified C3D source."
+                ? $"{SourceSession.SourceBinding!.GridWidth} × {SourceSession.SourceBinding.GridHeight} verified C3D source."
                 : SourceReadinessSummary,
             null,
             "Source");

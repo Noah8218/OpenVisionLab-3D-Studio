@@ -59,14 +59,14 @@ public sealed partial class ToolWorkbenchViewModel
         OrientedBox3DApplyRequestedEventArgs args)
     {
         var selection = args.Selection;
-        if (loadedSourceBinding is null
+        if (SourceSession.SourceBinding is null
             || selection.Kind != ToolRecipeSelectionKinds.OrientedBox3D
             || selection.OrientedBox3D is null
             || !string.Equals(selection.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
             || !string.Equals(selection.FrameId, Source.FrameId, StringComparison.Ordinal)
             || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(
                 selection.SourceBinding,
-                loadedSourceBinding)
+                SourceSession.SourceBinding)
             || ToolRecipeOrientedBox3DGeometry.Validate(selection.OrientedBox3D).Count > 0)
         {
             OrientedBoxEditor.SetStatus(

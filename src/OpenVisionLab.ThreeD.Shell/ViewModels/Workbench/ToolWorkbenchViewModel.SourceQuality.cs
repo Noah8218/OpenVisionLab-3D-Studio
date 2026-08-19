@@ -86,9 +86,14 @@ public sealed partial class ToolWorkbenchViewModel
         ToolRecipeAcquisitionProvenance provenance)
     {
         ArgumentNullException.ThrowIfNull(provenance);
-        var directionChanged = sourceAcquisitionProvenance?.AcquisitionDirection
+        var directionChanged = SourceSession.SourceAcquisitionProvenance?.AcquisitionDirection
             != provenance.AcquisitionDirection;
-        MutateRecipe(() => sourceAcquisitionProvenance = provenance);
+        var changed = SourceSession.SetSourceAcquisitionProvenance(provenance);
+        if (changed)
+        {
+            MutateRecipe(() => { });
+        }
+        SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         if (directionChanged)
         {
             InvalidateSurfaceEdgeAcquisitionDirectionEvidence();

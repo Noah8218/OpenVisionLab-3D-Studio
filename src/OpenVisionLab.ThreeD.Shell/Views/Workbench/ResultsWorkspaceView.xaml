@@ -4,7 +4,11 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="ResultsWorkspace">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
     <Grid Background="{DynamicResource ThreeD.PanelBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -130,8 +134,10 @@
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceRunRecord}"
-                                     IsChecked="True"
-                                     Click="RunRecordNavigation_Click"
+                                     IsChecked="{Binding ResultsWorkspace.IsRunRecordSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ResultsWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="RunRecord"
                                      AutomationProperties.AutomationId="ResultsRunRecordNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceRunRecord}" />
                         <RadioButton x:Name="OutputCompareNavigation"
@@ -139,7 +145,10 @@
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceOutputCompare}"
-                                     Click="OutputCompareNavigation_Click"
+                                     IsChecked="{Binding ResultsWorkspace.IsOutputCompareSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ResultsWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="OutputCompare"
                                      AutomationProperties.AutomationId="ResultsOutputCompareNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceOutputCompare}" />
                         <RadioButton x:Name="ReportsNavigation"
@@ -147,7 +156,10 @@
                                      Padding="10,8"
                                      GroupName="ResultsWorkspaceSection"
                                      Content="{Binding Localization.ResultsWorkspaceReports}"
-                                     Click="ReportsNavigation_Click"
+                                     IsChecked="{Binding ResultsWorkspace.IsReportsSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ResultsWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Reports"
                                      AutomationProperties.AutomationId="ResultsReportsNavigation"
                                      AutomationProperties.Name="{Binding Localization.ResultsWorkspaceReports}" />
                     </WrapPanel>
@@ -170,16 +182,17 @@
             <Grid Grid.Row="1">
                 <workbench:RecipePipelineReviewView x:Name="RunRecordReview"
                                                     Margin="12,4,12,12"
+                                                    Visibility="{Binding ResultsWorkspace.IsRunRecordSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                     DataContext="{Binding Workbench}"
                                                     RunRecordSteps="{Binding DataContext.InspectionSteps, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
                                                     RunRecordSummary="{Binding DataContext.InspectionStepSummary, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
                                                     RunRecordContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=workbench:ResultsWorkspaceView}}"
                                                     AutomationProperties.AutomationId="ResultsRunRecordWorkspace" />
                 <workbench:OutputCompareView x:Name="OutputCompareWorkspace"
-                                             Visibility="Collapsed"
+                                             Visibility="{Binding ResultsWorkspace.IsOutputCompareSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                              DataContext="{Binding Workbench}" />
                 <ScrollViewer x:Name="ReportsWorkspace"
-                              Visibility="Collapsed"
+                              Visibility="{Binding ResultsWorkspace.IsReportsSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                               VerticalScrollBarVisibility="Auto">
                     <Grid Margin="18">
                         <Grid.RowDefinitions>
@@ -218,7 +231,8 @@
                                            Text="{Binding InspectionStepSummary}" />
                             </StackPanel>
                         </Border>
-                        <WrapPanel Grid.Row="2" Margin="0,14,0,0">
+                        <StackPanel Grid.Row="2" Margin="0,14,0,0">
+                            <WrapPanel>
                             <ui:Button Margin="0,0,6,6"
                                        Appearance="Secondary"
                                        Icon="{ui:SymbolIcon FolderOpen24}"
@@ -241,6 +255,15 @@
                                        Command="{Binding OpenCsvReportCommand}" />
                             <ui:Button Margin="0,0,6,6"
                                        Appearance="Primary"
+                                       Icon="{ui:SymbolIcon DocumentLock24}"
+                                       Content="{Binding Localization.SupportBundleExport}"
+                                       Command="{Binding ExportPrivacySafeSupportBundleCommand}"
+                                       ToolTip="{Binding Localization.SupportBundleToolTip}"
+                                       AutomationProperties.AutomationId="ReportsPrivacySafeSupportBundleButton"
+                                       AutomationProperties.Name="{Binding Localization.SupportBundleExport}"
+                                       AutomationProperties.HelpText="{Binding Localization.SupportBundleToolTip}" />
+                            <ui:Button Margin="0,0,6,6"
+                                       Appearance="Secondary"
                                        Icon="{ui:SymbolIcon SaveCopy24}"
                                        Content="{Binding Localization.RunRecordExport}"
                                        Command="{Binding ExportRunRecordCommand}" />
@@ -249,7 +272,13 @@
                                        Icon="{ui:SymbolIcon Folder24}"
                                        Content="{Binding Localization.RunRecordOpenFolder}"
                                        Command="{Binding OpenRunRecordFolderCommand}" />
-                        </WrapPanel>
+                            </WrapPanel>
+                            <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       FontSize="10"
+                                       Text="{Binding Localization.SupportBundlePrivacyNotice}"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.Name="{Binding Localization.SupportBundlePrivacyNotice}" />
+                        </StackPanel>
                     </Grid>
                 </ScrollViewer>
             </Grid>

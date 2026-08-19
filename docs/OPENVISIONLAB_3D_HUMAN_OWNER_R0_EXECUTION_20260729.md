@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `5AABE7CD46878D47A1D5FA9440075C15146C09AAB87998E7B5EA2EA6EEC8381A` |
-| Shell assembly | `522A48242C28BDFFA7D099B7CF88D098D9459D8EB2D85C8FA7893D5400007AA4` |
-| Core assembly | `CEC488E10A277B632CC2A878C209C19D7B3FCFE4D6FDBB5278B56BA2E1B432B8` |
-| Data assembly | `27D19CEDDBECD347F9A4743541649D541B218B7A69CCC6F9368037CB26A3FA92` |
-| Tools assembly | `1B5766C3CB1C9D62113698C7CF85BC1DF0DF46398FFD9BF1B5849D3A36753026` |
-| Viewer assembly | `BECBAE6636AEE1C402FA6278D12247B02CAD537E0733352357158FFC3411A27E` |
-| Docking assembly | `5F9C83ECE59BE5E1AC27AD973DB653331395FF560BDAD2D5EAD68E2E9ABC4DC4` |
+| Release EXE | `51589C44E833179D8D181AB5BB10FE4567661C20ACCFB31321AD2907856BC696` |
+| Shell assembly | `703F7148696980BE34871DC4D9668453B0094D561451D039A7CFF457C0C07833` |
+| Core assembly | `F5CE88B9B2E43052D0660214A5EC9D16D608364CC26D4833218B9EAD0FC7D327` |
+| Data assembly | `86A990D1D45D7E4E415235A6BA5ABC7D1E89C30173E3EE62F70679A5B3216BC5` |
+| Tools assembly | `AB3E8286D5B52DEA0506F77C24E6FCA514656DA503AC268632A35560968F66D6` |
+| Viewer assembly | `685CAC6A5FBFFAF39D377F38EB9B14952D17A31FFCA4AC82A0A9D0813A690A3B` |
+| Docking assembly | `874EBD8C17FF81CB37BA3EC63DD2E6264FBC5ECB739261A5B50D8E2E4A8AB37D` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -59,7 +59,8 @@ PL-0016 ordered Shell Run with Results evidence, and PL-0017
 coordinate-confident Top-view grid ROI teaching, PL-0019 standard per-step
 timing evidence, and PL-0020 Source Quality Run Record evidence with Compact
 Results density, PL-0021 persistent Viewer selected-coordinate status, and
-PL-0022 exact Completeness per-cell Run Record export.
+PL-0022 exact Completeness per-cell Run Record export, and PL-0024/L-14
+privacy-safe support bundle export.
 R0 must use the hashes above and restart from Wide; no result
 from an earlier binary set can close this gate.
 
@@ -71,7 +72,7 @@ workstation the 2026-08-18 validation selected `\\.\DISPLAY2` with bounds
 
 An earlier 2026-08-18 package Wide launch verified actual window bounds
 `[-1920,365,1920,1040]` intersect that monitor and left the application open
-for owner operation. PL-0022 refreshed the fixed binaries afterward, so that
+for owner operation. PL-0024 refreshed the fixed binaries afterward, so that
 placement is superseded. The launcher will recheck placement when the owner
 starts the current package; both acceptance rows remain Pending.
 

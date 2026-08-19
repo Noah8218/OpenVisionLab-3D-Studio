@@ -13,8 +13,9 @@ You will:
 3. review the source and the taught ROIs;
 4. Preview and Publish one selected Thickness step;
 5. Run the complete eight-step recipe;
-6. review results and saved evidence; and
-7. understand how validation sample roles are used.
+6. review results and saved evidence;
+7. create a privacy-safe support bundle; and
+8. understand how validation sample roles are used.
 
 Preview, Publish, Run, and Run sample set are separate explicit actions. Merely
 opening a recipe, selecting a step, changing visibility, or restoring saved
@@ -136,7 +137,27 @@ A failed step means an authored acceptance rule was not satisfied. An error
 means the application could not produce a valid inspection result for that
 step. Do not treat an error as an out-of-tolerance measurement.
 
-## 8. Save and reopen
+## 8. Create a privacy-safe support bundle
+
+Use this path when a support engineer needs current diagnostic evidence:
+
+1. Open **Results → Run Record** after selecting a current Run Record.
+2. Choose **Export privacy-safe support bundle**.
+3. Select an output folder. Export starts only after this explicit action.
+4. Review the created ZIP before sharing it.
+
+The ZIP contains an auditable manifest, sanitized recipe, at most the newest
+200 in-memory session-log entries, source identity, recorded Source Quality,
+and the current result. By default it does not contain raw 3D source or mesh
+bytes, absolute file paths, the full application log, or user and machine
+identity. Missing recipe or legacy Source Quality evidence is reported as
+unavailable rather than fabricated. The separate **Export result bundle**
+action is a full evidence export and is not the privacy-safe sharing path.
+
+Creating the support bundle does not run Preview, Publish, Run, or Validation,
+and it does not change the recipe, selection, or current result.
+
+## 9. Save and reopen
 
 1. Use **Ctrl+Shift+S** to save a copy before changing tutorial parameters.
 2. Close and reopen that saved recipe.
@@ -146,7 +167,7 @@ step. Do not treat an error as an out-of-tolerance measurement.
 Restoration does not execute Preview, Publish, Run, or validation. Use the
 explicit command again when you want new evidence.
 
-## 9. Understand Validation samples
+## 10. Understand Validation samples
 
 Validation uses operator-assigned expected roles and application-produced run
 states. These are different concepts.
@@ -174,7 +195,7 @@ Add samples → assign expected roles → Run sample set → review results
 Changing between these review sections does not start inspection. Only **Run
 sample set** executes the validation set.
 
-## 10. Common recovery cases
+## 11. Common recovery cases
 
 ### The recipe opens but the source is missing
 

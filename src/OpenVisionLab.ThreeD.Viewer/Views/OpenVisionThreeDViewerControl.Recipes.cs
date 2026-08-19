@@ -913,59 +913,20 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullRecipePath = recipeFile.Path;
-            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
-            var grid = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
-            c3dSample = grid;
-            SetC3DSampleStatus();
-            var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
-                recipe.Source.EntityId,
-                recipe.Source.Name,
-                grid.Min,
-                grid.Max,
-                grid.Mean,
-                grid.ValidSampleCount,
-                recipe.Rule.PeakTolerance,
-                recipe.Source.Unit));
-
-            viewModel.ClearPlaneFlatnessRecipeStep();
-            viewModel.ClearPointPairDimensionsRecipeStep();
-            viewModel.ClearGapFlushRecipeStep();
-            viewModel.ClearVolumeRecipeStep();
-            viewModel.ClearCrossSectionRecipeStep();
-            viewModel.SetC3DHeightDeviationPreview(result);
-            viewModel.UseC3DHeightDeviationRuleSmokeScene();
-            viewModel.SetRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath, recipe.Source.Unit, recipe.Rule.PeakTolerance);
-            viewModel.SetC3DAlignment(recipe.Transform ?? ModelTransform.Identity, recipe.Transform is null ? "Recipe identity alignment" : "Recipe alignment", recipe.Source.Name);
-            ApplyRecipeRoiStep(recipe.RoiStep);
-            if (recipe.PlaneFlatness is { } planeFlatness)
-            {
-                viewModel.SetPlaneFlatnessRecipeStep(planeFlatness);
-                if (planeFlatness.Enabled)
-                {
-                    PreviewC3DPlaneFlatness();
-                }
-            }
-            if (recipe.Volume is { } volume)
-            {
-                viewModel.SetVolumeRecipeStep(volume);
-                if (volume.Enabled)
-                {
-                    PreviewC3DVolume();
-                }
-            }
-            if (recipe.CrossSection is { } crossSection)
-            {
-                viewModel.SetCrossSectionRecipeStep(crossSection);
-                if (crossSection.Enabled)
-                {
-                    PreviewC3DCrossSection();
-                }
-            }
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"Recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            var plan = HeightDeviationRecipeLoadPlan.Create(
+                recipeFile,
+                recipe,
+                viewModel.C3DMaxRenderedPoints);
+            c3dSample = plan.Grid;
+            return HeightDeviationRecipeApplyCoordinator.Apply(
+                plan,
+                viewModel,
+                isSmoke,
+                SetC3DSampleStatus,
+                ApplyRecipeRoiStep,
+                PreviewC3DPlaneFlatness,
+                PreviewC3DVolume,
+                PreviewC3DCrossSection);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
@@ -1210,32 +1171,19 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return false;
             }
 
-            var fullRecipePath = Path.GetFullPath(path);
-            var recipeDirectory = Path.GetDirectoryName(fullRecipePath)!;
             var sourcePath = ResolveCurrentRecipeSourcePath();
-            var sourceRecipePath = Path.GetRelativePath(recipeDirectory, sourcePath).Replace('\\', '/');
-            var recipe = new HeightDeviationRecipe(
-                HeightDeviationRecipe.SupportedRecipeType,
-                "1.0",
-                new HeightDeviationRecipeSource(
-                    MainWindowViewModel.C3DEntityId,
-                    viewModel.RecipeSourceName,
-                    sourceRecipePath,
-                    viewModel.RecipeSourceUnit),
-                new HeightDeviationRecipeRule(viewModel.RecipePeakTolerance),
-                viewModel.C3DModelTransform,
-                CreateCurrentRoiStepRecipe(),
-                viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null,
-                viewModel.VolumeConfigured ? viewModel.CreateVolumeRecipeStep() : null,
-                viewModel.CrossSectionConfigured ? viewModel.CreateCrossSectionRecipeStep() : null);
+            var saved = HeightDeviationRecipeSaveCoordinator.Save(
+                path,
+                isSmoke,
+                viewModel,
+                sourcePath,
+                CreateCurrentRoiStepRecipe());
+            if (saved)
+            {
+                SetRecipeValidationOk();
+            }
 
-            recipe.Save(fullRecipePath);
-            viewModel.SetRecipeSaved(fullRecipePath);
-            SetRecipeValidationOk();
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke recipe saved: {Path.GetFileName(fullRecipePath)}"
-                : $"Recipe saved: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            return saved;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {

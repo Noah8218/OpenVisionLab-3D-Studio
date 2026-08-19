@@ -1,15 +1,9 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Workbench;
-
-public enum ResultsWorkspaceSection
-{
-    RunRecord,
-    OutputCompare,
-    Reports
-}
 
 public partial class ResultsWorkspaceView : UserControl
 {
@@ -18,10 +12,11 @@ public partial class ResultsWorkspaceView : UserControl
         InitializeComponent();
         RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
         Loaded += (_, _) => RunRecordReview.SetPresentationMode(RecipeReviewPresentationMode.Results);
-        SetSection(ResultsWorkspaceSection.RunRecord);
     }
 
-    public ResultsWorkspaceSection ActiveSection { get; private set; }
+    public ResultsWorkspaceSection ActiveSection =>
+        (DataContext as ShellMainWindowViewModel)?.ResultsWorkspace.ActiveSection
+        ?? ResultsWorkspaceSection.RunRecord;
 
     public bool IsReadOnlyComposition =>
         RunRecordReview.PresentationMode == RecipeReviewPresentationMode.Results
@@ -29,6 +24,9 @@ public partial class ResultsWorkspaceView : UserControl
 
     public bool HasRunRecordHistoryControls =>
         RunRecordReview.HasRunRecordHistoryControls;
+
+    public bool HasPrivacySafeSupportBundleControls =>
+        RunRecordReview.HasPrivacySafeSupportBundleControls;
 
     public bool HasLocalizedNavigationAndAdvancedRoute =>
         HasAccessibleText(RunRecordNavigation)
@@ -50,28 +48,8 @@ public partial class ResultsWorkspaceView : UserControl
             StringComparison.Ordinal)
         && HasAccessibleText(ResultsFixInTeachButton);
 
-    public void SetSection(ResultsWorkspaceSection section)
-    {
-        ActiveSection = section;
-        RunRecordNavigation.IsChecked = section == ResultsWorkspaceSection.RunRecord;
-        OutputCompareNavigation.IsChecked = section == ResultsWorkspaceSection.OutputCompare;
-        ReportsNavigation.IsChecked = section == ResultsWorkspaceSection.Reports;
-        RunRecordReview.Visibility =
-            section == ResultsWorkspaceSection.RunRecord ? Visibility.Visible : Visibility.Collapsed;
-        OutputCompareWorkspace.Visibility =
-            section == ResultsWorkspaceSection.OutputCompare ? Visibility.Visible : Visibility.Collapsed;
-        ReportsWorkspace.Visibility =
-            section == ResultsWorkspaceSection.Reports ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void RunRecordNavigation_Click(object sender, RoutedEventArgs args) =>
-        SetSection(ResultsWorkspaceSection.RunRecord);
-
-    private void OutputCompareNavigation_Click(object sender, RoutedEventArgs args) =>
-        SetSection(ResultsWorkspaceSection.OutputCompare);
-
-    private void ReportsNavigation_Click(object sender, RoutedEventArgs args) =>
-        SetSection(ResultsWorkspaceSection.Reports);
+    public void SetSection(ResultsWorkspaceSection section) =>
+        (DataContext as ShellMainWindowViewModel)?.ResultsWorkspace.SelectSection(section);
 
     private static bool HasAccessibleText(ContentControl control) =>
         !string.IsNullOrWhiteSpace(control.Content?.ToString())

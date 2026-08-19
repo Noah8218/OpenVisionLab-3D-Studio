@@ -52,6 +52,59 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsAuxiliaryFocused));
     }
 
+    public bool TrySetLayout(
+        ViewerWorkspaceLayout value,
+        IEnumerable<string> availableContentIds,
+        string? preferredContentId)
+    {
+        ArgumentNullException.ThrowIfNull(availableContentIds);
+        if (value != ViewerWorkspaceLayout.Single)
+        {
+            var available = availableContentIds
+                .Select(NormalizeIdentity)
+                .Where(id => id.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (available.Length == 0)
+            {
+                return false;
+            }
+
+            ReconcileContents(available, preferredContentId);
+            if (string.IsNullOrWhiteSpace(auxiliaryContentId))
+            {
+                return false;
+            }
+        }
+
+        SetLayout(value);
+        if (value == ViewerWorkspaceLayout.Single)
+        {
+            FocusSlot(MainSlotId);
+        }
+        return true;
+    }
+
+    public bool TryOpenAuxiliaryContent(
+        string contentId,
+        IEnumerable<string> availableContentIds)
+    {
+        ArgumentNullException.ThrowIfNull(availableContentIds);
+        var normalized = NormalizeIdentity(contentId);
+        if (normalized.Length == 0
+            || !availableContentIds
+                .Select(NormalizeIdentity)
+                .Contains(normalized, StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        PinAuxiliaryContent(normalized);
+        SetLayout(ViewerWorkspaceLayout.SplitVertical);
+        FocusSlot(AuxiliarySlotId);
+        return true;
+    }
+
     public void PinAuxiliaryContent(string? contentId)
     {
         var normalized = NormalizeIdentity(contentId);

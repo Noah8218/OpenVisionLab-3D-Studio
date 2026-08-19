@@ -20,6 +20,8 @@
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Presentation\OpenVisionLab.ThreeD.Presentation.csproj" />
+    <ProjectReference Include="..\OpenVisionLab.ThreeD.Reporting\OpenVisionLab.ThreeD.Reporting.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Tools\OpenVisionLab.ThreeD.Tools.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Viewer\OpenVisionLab.ThreeD.Viewer.csproj" />
     <ProjectReference Include="..\OpenVisionLab.Logging\OpenVisionLab.Logging.csproj" />

@@ -20,9 +20,14 @@ Effective: 2026-07-26
 Core
   <- Data
   <- Tools
+  <- Reporting
   <- Runner
 
 Core + Data + Tools
+  <- Viewer
+  <- Shell
+
+Presentation
   <- Viewer
   <- Shell
 
@@ -33,6 +38,8 @@ Viewer
 - `Core`: 단위, 좌표 변환, 엔터티, 결과, metric, overlay 같은 런타임 중립 계약을 소유한다.
 - `Data`: C3D/GLB/STL/LAS/LAZ 파싱과 파일 기반 데이터 모델을 소유한다.
 - `Tools`: WPF/SharpGL에 의존하지 않는 규칙, recipe adapter, 수치 실행을 소유한다.
+- `Presentation`: Shell과 Viewer가 함께 쓰는 .NET 10 WPF 명령과 실제 두 소비자가 있는 순수 Converter/Behavior를 소유한다. 도메인 상태와 실행 정책은 소유하지 않는다.
+- `Reporting`: Shell과 Runner가 함께 쓰는 runtime-neutral Run Record identity, 조립, 공통 serialization을 소유한다. 검사 실행, UI 상태, artifact 선택은 소유하지 않는다.
 - `Runner`: CLI 라우팅, 비-UI replay, 보고서 작성을 소유한다.
 - `Viewer`: 카메라, picking, OpenGL 렌더링, 화면 전용 상태와 Viewer 입력 adapter를 소유한다.
 - `Shell`: WPF composition, docking, 파일 대화상자, Workbench 화면 흐름을 소유한다.

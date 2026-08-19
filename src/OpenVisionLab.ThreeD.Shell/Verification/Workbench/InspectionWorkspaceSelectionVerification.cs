@@ -156,6 +156,7 @@ internal static class InspectionWorkspaceSelectionVerification
                 "one corner remains Drawing and Apply stays disabled",
                 workbench.SelectedToolWorkspace.ActiveRegion?.Lifecycle == InspectionWorkspaceRegionLifecycleState.Drawing
                 && workbench.TeachingSelectionCapturedPointCount == 1
+                && workbench.TeachingCaptureSession.CapturedPointCount == 1
                 && !workbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null),
                 $"lifecycle={workbench.SelectedToolWorkspace.ActiveRegion?.Lifecycle}; progress={workbench.TeachingSelectionCaptureProgress}");
 
@@ -172,6 +173,7 @@ internal static class InspectionWorkspaceSelectionVerification
             Check(
                 "Cancel returns a new Reference ROI to Missing without mutation",
                 !workbench.IsTeachingSelectionCaptureActive
+                && !workbench.TeachingCaptureSession.IsActive
                 && workbench.SelectedToolWorkspace.Regions[0].Lifecycle == InspectionWorkspaceRegionLifecycleState.Missing
                 && thickness.InputEntityIdsText == routeBeforeTransientCapture
                 && thickness.State == stateBeforeTransientCapture
@@ -750,6 +752,7 @@ internal static class InspectionWorkspaceSelectionVerification
                 && roiWorkbench.HeightImageViewer.RoiWorkspace.Lifecycle
                     == InspectionWorkspaceRegionLifecycleState.Review
                 && heightImageDraftEvents.LastOrDefault() == reviewCandidate
+                && roiWorkbench.TeachingCaptureSession.GridRectangleDraft == reviewCandidate
                 && roiWorkbench.ApplyTeachingSelectionCaptureCommand.CanExecute(null),
                 $"candidate={reviewCandidate}; lifecycle={roiWorkbench.HeightImageViewer.RoiWorkspace.Lifecycle}; events={heightImageDraftEvents.Count}");
 

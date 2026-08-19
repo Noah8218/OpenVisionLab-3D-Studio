@@ -16,8 +16,6 @@ public sealed partial class ToolWorkbenchViewModel
     private RelayCommand discardSelectedStepParameterDraftCommand = null!;
     private RelayCommand markSelectedStepParameterDraftDirtyCommand = null!;
     private readonly ToolWorkbenchStepPropertySession stepPropertySession = new();
-    private ToolRecipeSource? openedSourceIdentity;
-    private IReadOnlyList<string> sourceIdentityErrors = [];
     private readonly string recentRecipesPath;
 
     public event EventHandler<ToolWorkbenchRecipePathRequestEventArgs>? OpenRecentTeachingRecipeRequested;
@@ -63,8 +61,8 @@ public sealed partial class ToolWorkbenchViewModel
         || IsValidationSetDefinitionDirty
         || HasPendingStepParameterChanges;
 
-    public bool IsSourceReadyForRecipe => sourceIdentityErrors.Count == 0
-        && loadedSourceBinding is not null
+    public bool IsSourceReadyForRecipe => SourceSession.SourceIdentityErrors.Count == 0
+        && SourceSession.SourceBinding is not null
         && File.Exists(Source.Path)
         && string.Equals(Source.Format, "C3D", StringComparison.OrdinalIgnoreCase);
 
@@ -74,11 +72,11 @@ public sealed partial class ToolWorkbenchViewModel
             ? $"Source: unsupported format ({Source.Format})"
             : !File.Exists(Source.Path)
                 ? "Source: missing - relink required"
-                : sourceIdentityErrors.Count > 0
+                : SourceSession.SourceIdentityErrors.Count > 0
                     ? "Source: identity mismatch - relink required"
-                    : loadedSourceBinding is null
+                    : SourceSession.SourceBinding is null
                         ? "Source: unreadable"
-                        : $"Source: ready | {loadedSourceBinding.GridWidth} x {loadedSourceBinding.GridHeight}";
+                        : $"Source: ready | {SourceSession.SourceBinding.GridWidth} x {SourceSession.SourceBinding.GridHeight}";
 
     public string ViewerSourceSummary => IsSourceReadyForRecipe
         ? $"Source: {Source.Name}"
@@ -267,9 +265,9 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(SelectedStepAdapterStatus));
     }
 
-    private void CaptureOpenedSourceIdentity(ToolRecipeSource source) => openedSourceIdentity = source;
+    private void CaptureOpenedSourceIdentity(ToolRecipeSource source) => SourceSession.CaptureOpenedSourceIdentity(source);
 
-    private void AcceptCurrentSourceIdentity() => openedSourceIdentity = null;
+    private void AcceptCurrentSourceIdentity() => SourceSession.AcceptCurrentSourceIdentity();
 
     private void RefreshSourceIdentityState()
     {
@@ -286,11 +284,11 @@ public sealed partial class ToolWorkbenchViewModel
         {
             errors.Add($"The recipe source file is missing: {Source.Path}");
         }
-        else if (loadedSourceBinding is null)
+        else if (SourceSession.SourceBinding is null)
         {
             errors.Add("The recipe source exists but its C3D identity could not be read.");
         }
-        else if (openedSourceIdentity is { } expected)
+        else if (SourceSession.OpenedSourceIdentity is { } expected)
         {
             var actualLength = new FileInfo(Source.Path).Length;
             if (expected.ByteLength is { } expectedLength && expectedLength != actualLength)
@@ -299,19 +297,19 @@ public sealed partial class ToolWorkbenchViewModel
             }
 
             if (!string.IsNullOrWhiteSpace(expected.ContentSha256)
-                && !string.Equals(expected.ContentSha256, loadedSourceBinding.ContentSha256, StringComparison.OrdinalIgnoreCase))
+                && !string.Equals(expected.ContentSha256, SourceSession.SourceBinding.ContentSha256, StringComparison.OrdinalIgnoreCase))
             {
                 errors.Add("Source SHA-256 does not match the recipe identity.");
             }
 
-            if (expected.GridWidth is { } width && width != loadedSourceBinding.GridWidth
-                || expected.GridHeight is { } height && height != loadedSourceBinding.GridHeight)
+            if (expected.GridWidth is { } width && width != SourceSession.SourceBinding.GridWidth
+                || expected.GridHeight is { } height && height != SourceSession.SourceBinding.GridHeight)
             {
-                errors.Add($"Source grid mismatch: recipe {expected.GridWidth} x {expected.GridHeight}, actual {loadedSourceBinding.GridWidth} x {loadedSourceBinding.GridHeight}.");
+                errors.Add($"Source grid mismatch: recipe {expected.GridWidth} x {expected.GridHeight}, actual {SourceSession.SourceBinding.GridWidth} x {SourceSession.SourceBinding.GridHeight}.");
             }
         }
 
-        sourceIdentityErrors = errors;
+        SourceSession.SetSourceIdentityErrors(errors);
         OnPropertyChanged(nameof(IsSourceReadyForRecipe));
         OnPropertyChanged(nameof(SourceReadinessSummary));
         OnPropertyChanged(nameof(ViewerSourceSummary));

@@ -61,16 +61,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private bool syncingNominalMeshVisibility;
     private bool lazSampleVisible;
     private bool measurementVisible = true;
-    private string selectedEntity = "Generated Unit Cube";
-    private string pickCoordinate = "(none)";
     private string lastScreenshotPath = "(none)";
     private string viewerStatus = "Ready: generated cube and point cloud loaded";
     private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
     private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
-    private int displaySettingsRevision;
-    private double pointSize = 2.0;
-    private string selectedRenderDensity = "Balanced";
-    private string renderDensitySummary = FormatRenderDensitySummary("Balanced");
     private string pointCloudPointCount = "(pending)";
     private string c3DSamplePointCount = "(not loaded)";
     private string c3DSampleSummary = "C3D sample hidden";
@@ -90,9 +84,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private bool lazSourceColorAvailable;
     private Vector3 lazFitCenter = Vector3.Zero;
     private double lazFitDistance = 220.0;
-    private string selectedSelectionMode = "Point";
-    private string selectionSummary = "Point selection: generated point cloud peak";
-    private bool selectionOverlayVisible = true;
     private bool resultOverlayVisible;
     private string resultSummary = "Result overlay hidden";
     private string recipeSummary = "Recipe: current C3D height deviation\nSource: Thickness Coupon v1\nTolerance: 1200.000 raw-height";
@@ -337,18 +328,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private double lazSamplePercent = double.NaN;
     private int lazSampleStride;
     private readonly ViewerInspectionSession inspectionSession = new();
-    private double cameraTargetX = 2.05;
-    private double cameraTargetY = -0.25;
-    private double cameraTargetZ;
-    private ViewerProjectionMode projectionMode = ViewerProjectionMode.Perspective;
-    private double orthographicHeight = 10.0;
-    private double savedPerspectiveYaw = 38.0;
-    private double savedPerspectivePitch = 24.0;
-    private double savedPerspectiveDistance = 9.2;
-    private double savedPerspectiveTargetX = 2.05;
-    private double savedPerspectiveTargetY = -0.25;
-    private double savedPerspectiveTargetZ;
-    private bool hasSavedPerspectiveCamera;
+    internal ViewerCameraSession CameraSession { get; } = new();
+    internal ViewerSelectionSession SelectionSession { get; } = new();
     private readonly RelayCommand applyRoiAlignmentCommand;
     private readonly RelayCommand fitPlaneCommand;
     private readonly RelayCommand teachThicknessRoiCommand;
@@ -442,7 +423,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<string> ColorModes => Display.AvailableColorMaps;
 
-    public string[] RenderDensityModes { get; } = ["Fast", "Balanced", "Detailed"];
+    public string[] RenderDensityModes => Display.RenderDensityModes;
 
     public string[] SelectionModes { get; } = ["Point", ProfileSelectionMode, "Two Point Measure", "Plane Distance", "Plane Flatness", ThicknessRoiSelectionMode, WarpageRoiSelectionMode, "ROI Step Compare", "Gap / Flush", "Volume", "Cross-section Dimensions", "Box ROI", "Section Plane"];
 
@@ -678,12 +659,38 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         {
             ViewerStatus = Display.FallbackSummary;
         }
+
+        if (args.PropertyName == nameof(ViewerDisplaySettingsViewModel.DisplaySettingsRevision))
+        {
+            OnPropertyChanged(nameof(DisplaySettingsRevision));
+        }
+
+        if (args.PropertyName == nameof(ViewerDisplaySettingsViewModel.PointSize))
+        {
+            OnPropertyChanged(nameof(PointSize));
+            ViewerStatus = string.Create(
+                CultureInfo.InvariantCulture,
+                $"Point size: {Display.PointSize:F1}px");
+        }
+
+        if (args.PropertyName == nameof(ViewerDisplaySettingsViewModel.SelectedRenderDensity))
+        {
+            OnPropertyChanged(nameof(SelectedRenderDensity));
+            OnPropertyChanged(nameof(RenderDensitySummary));
+            OnPropertyChanged(nameof(C3DMaxRenderedPoints));
+            OnPropertyChanged(nameof(LazMaxSampledPoints));
+            OnPropertyChanged(nameof(ImportedMeshMaxRenderedTriangles));
+            OnPropertyChanged(nameof(NominalActualMaxDisplaySamples));
+            NominalActual.ConfigureNextDisplaySampling(
+                Display.SelectedRenderDensity,
+                Display.NominalActualMaxDisplaySamples);
+            ViewerStatus = $"Render density: {Display.SelectedRenderDensity}";
+        }
     }
 
     private void OnDisplayRenderSettingsChanged(object? sender, EventArgs args)
     {
         var settings = Display.EffectiveSettings;
-        DisplaySettingsRevision = unchecked(DisplaySettingsRevision + 1);
         OnPropertyChanged(nameof(SelectedColorMode));
         OnPropertyChanged(nameof(SelectedGeometryStyle));
         RefreshPointCloudColorLegend();
@@ -737,77 +744,29 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public string SelectedGeometryStyle => Display.EffectiveGeometryStyle;
 
-    public int DisplaySettingsRevision
-    {
-        get => displaySettingsRevision;
-        private set => SetField(ref displaySettingsRevision, value);
-    }
+    public int DisplaySettingsRevision => Display.DisplaySettingsRevision;
 
     public double PointSize
     {
-        get => pointSize;
-        set
-        {
-            var clamped = Math.Clamp(value, 1.0, 6.0);
-            if (SetField(ref pointSize, clamped))
-            {
-                ViewerStatus = string.Create(CultureInfo.InvariantCulture, $"Point size: {clamped:F1}px");
-            }
-        }
+        get => Display.PointSize;
+        set => Display.PointSize = value;
     }
 
     public string SelectedRenderDensity
     {
-        get => selectedRenderDensity;
-        set
-        {
-            var mode = RenderDensityModes.Contains(value) ? value : "Balanced";
-            if (SetField(ref selectedRenderDensity, mode))
-            {
-                RenderDensitySummary = FormatRenderDensitySummary(mode);
-                OnPropertyChanged(nameof(C3DMaxRenderedPoints));
-                OnPropertyChanged(nameof(LazMaxSampledPoints));
-                OnPropertyChanged(nameof(ImportedMeshMaxRenderedTriangles));
-                OnPropertyChanged(nameof(NominalActualMaxDisplaySamples));
-                NominalActual.ConfigureNextDisplaySampling(mode, NominalActualMaxDisplaySamples);
-                ViewerStatus = $"Render density: {mode}";
-            }
-        }
+        get => Display.SelectedRenderDensity;
+        set => Display.SelectedRenderDensity = value;
     }
 
-    public string RenderDensitySummary
-    {
-        get => renderDensitySummary;
-        private set => SetField(ref renderDensitySummary, value);
-    }
+    public string RenderDensitySummary => Display.RenderDensitySummary;
 
-    public int C3DMaxRenderedPoints => SelectedRenderDensity switch
-    {
-        "Fast" => 25000,
-        "Detailed" => 140000,
-        _ => 55000
-    };
+    public int C3DMaxRenderedPoints => Display.C3DMaxRenderedPoints;
 
-    public int LazMaxSampledPoints => SelectedRenderDensity switch
-    {
-        "Fast" => 25000,
-        "Detailed" => 150000,
-        _ => 50000
-    };
+    public int LazMaxSampledPoints => Display.LazMaxSampledPoints;
 
-    public int ImportedMeshMaxRenderedTriangles => SelectedRenderDensity switch
-    {
-        "Fast" => 25000,
-        "Detailed" => 180000,
-        _ => 60000
-    };
+    public int ImportedMeshMaxRenderedTriangles => Display.ImportedMeshMaxRenderedTriangles;
 
-    public int NominalActualMaxDisplaySamples => SelectedRenderDensity switch
-    {
-        "Fast" => 25000,
-        "Detailed" => 150000,
-        _ => 60000
-    };
+    public int NominalActualMaxDisplaySamples => Display.NominalActualMaxDisplaySamples;
 
     public string PointCloudPointCount
     {
@@ -885,11 +844,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public string SelectedSelectionMode
     {
-        get => selectedSelectionMode;
+        get => SelectionSession.SelectedMode;
         set
         {
-            if (SetField(ref selectedSelectionMode, value))
+            if (SelectionSession.SelectedMode != value)
             {
+                SelectionSession.SelectedMode = value;
+                OnPropertyChanged(nameof(SelectedSelectionMode));
                 SelectionSummary = value switch
                 {
                     "Box ROI" => "Box ROI: viewer state only",
@@ -912,17 +873,26 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public string SelectionSummary
     {
-        get => selectionSummary;
-        set => SetField(ref selectionSummary, value);
+        get => SelectionSession.Summary;
+        set
+        {
+            if (SelectionSession.Summary != value)
+            {
+                SelectionSession.Summary = value;
+                OnPropertyChanged(nameof(SelectionSummary));
+            }
+        }
     }
 
     public bool SelectionOverlayVisible
     {
-        get => selectionOverlayVisible;
+        get => SelectionSession.OverlayVisible;
         set
         {
-            if (SetField(ref selectionOverlayVisible, value))
+            if (SelectionSession.OverlayVisible != value)
             {
+                SelectionSession.OverlayVisible = value;
+                OnPropertyChanged(nameof(SelectionOverlayVisible));
                 ViewerStatus = value ? "Selection overlay visible" : "Selection overlay hidden";
             }
         }
@@ -1647,14 +1617,28 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public string SelectedEntity
     {
-        get => selectedEntity;
-        set => SetField(ref selectedEntity, value);
+        get => SelectionSession.SelectedEntity;
+        set
+        {
+            if (SelectionSession.SelectedEntity != value)
+            {
+                SelectionSession.SelectedEntity = value;
+                OnPropertyChanged(nameof(SelectedEntity));
+            }
+        }
     }
 
     public string PickCoordinate
     {
-        get => pickCoordinate;
-        set => SetField(ref pickCoordinate, value);
+        get => SelectionSession.PickCoordinate;
+        set
+        {
+            if (SelectionSession.PickCoordinate != value)
+            {
+                SelectionSession.PickCoordinate = value;
+                OnPropertyChanged(nameof(PickCoordinate));
+            }
+        }
     }
 
     public string LastScreenshotPath
@@ -1675,19 +1659,33 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         set => SetField(ref bottomStatus, value);
     }
 
-    public double YawDegrees { get; set; } = 38.0;
+    public double YawDegrees
+    {
+        get => CameraSession.YawDegrees;
+        set => CameraSession.YawDegrees = value;
+    }
 
-    public double PitchDegrees { get; set; } = 24.0;
+    public double PitchDegrees
+    {
+        get => CameraSession.PitchDegrees;
+        set => CameraSession.PitchDegrees = value;
+    }
 
-    public double CameraDistance { get; set; } = 9.2;
+    public double CameraDistance
+    {
+        get => CameraSession.Distance;
+        set => CameraSession.Distance = value;
+    }
 
     public ViewerProjectionMode ProjectionMode
     {
-        get => projectionMode;
+        get => CameraSession.ProjectionMode;
         private set
         {
-            if (SetField(ref projectionMode, value))
+            if (CameraSession.ProjectionMode != value)
             {
+                CameraSession.ProjectionMode = value;
+                OnPropertyChanged(nameof(ProjectionMode));
                 OnPropertyChanged(nameof(IsTopOrthographicView));
                 OnPropertyChanged(nameof(IsPerspectiveView));
                 RefreshCommandCanExecute();
@@ -1701,26 +1699,55 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
 
     public double OrthographicHeight
     {
-        get => orthographicHeight;
-        private set => SetField(ref orthographicHeight, Math.Max(0.01, value));
+        get => CameraSession.OrthographicHeight;
+        private set
+        {
+            var clampedValue = Math.Max(0.01, value);
+            if (CameraSession.OrthographicHeight != clampedValue)
+            {
+                CameraSession.OrthographicHeight = clampedValue;
+                OnPropertyChanged(nameof(OrthographicHeight));
+            }
+        }
     }
 
     public double CameraTargetX
     {
-        get => cameraTargetX;
-        set => SetField(ref cameraTargetX, value);
+        get => CameraSession.TargetX;
+        set
+        {
+            if (CameraSession.TargetX != value)
+            {
+                CameraSession.TargetX = value;
+                OnPropertyChanged(nameof(CameraTargetX));
+            }
+        }
     }
 
     public double CameraTargetY
     {
-        get => cameraTargetY;
-        set => SetField(ref cameraTargetY, value);
+        get => CameraSession.TargetY;
+        set
+        {
+            if (CameraSession.TargetY != value)
+            {
+                CameraSession.TargetY = value;
+                OnPropertyChanged(nameof(CameraTargetY));
+            }
+        }
     }
 
     public double CameraTargetZ
     {
-        get => cameraTargetZ;
-        set => SetField(ref cameraTargetZ, value);
+        get => CameraSession.TargetZ;
+        set
+        {
+            if (CameraSession.TargetZ != value)
+            {
+                CameraSession.TargetZ = value;
+                OnPropertyChanged(nameof(CameraTargetZ));
+            }
+        }
     }
 
     public bool DeviationLegendVisible

@@ -1,5 +1,6 @@
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
 namespace OpenVisionLab.ThreeD.Shell.Verification;
@@ -337,7 +338,55 @@ internal static class ShellVerificationCommandRouter
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
         const string validationSetVerificationOption = "--verify-validation-set";
         const string runRecordHistoryVerificationOption = "--verify-run-record-history";
+        const string privacySafeSupportBundleVerificationOption =
+            "--verify-privacy-safe-support-bundle";
         const string orderedRunVerificationOption = "--verify-current-recipe-ordered-run";
+        const string viewerRecipeLoadPlanVerificationOption =
+            "--verify-viewer-recipe-load-plan";
+        var viewerRecipeLoadPlanVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                viewerRecipeLoadPlanVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (viewerRecipeLoadPlanVerificationIndex >= 0)
+        {
+            if (viewerRecipeLoadPlanVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{viewerRecipeLoadPlanVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = ViewerRecipeLoadPlanVerification.Verify(
+                args[viewerRecipeLoadPlanVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+        var privacySafeSupportBundleVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                privacySafeSupportBundleVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (privacySafeSupportBundleVerificationIndex >= 0)
+        {
+            if (privacySafeSupportBundleVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{privacySafeSupportBundleVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = PrivacySafeSupportBundleVerification.Verify(
+                args[privacySafeSupportBundleVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
         var orderedRunVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(orderedRunVerificationOption, StringComparison.OrdinalIgnoreCase));

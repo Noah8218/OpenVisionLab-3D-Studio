@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="RecipePipelineReview">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -54,10 +55,13 @@
                                      VerticalAlignment="Center"
                                      Content="{Binding Localization.ValidationWorkspaceSamples}"
                                      GroupName="ValidationWorkspaceSection"
-                                     IsChecked="True"
+                                     IsChecked="{Binding ValidationWorkspace.IsSamplesSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Samples"
                                      AutomationProperties.AutomationId="ValidationSamplesNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceSamples}"
-                                     Click="ValidationSamplesNavigation_Click" />
+                                     />
                         <RadioButton x:Name="ValidationResultsNavigation"
                                      Margin="0,0,14,0"
                                      VerticalAlignment="Center"
@@ -65,7 +69,10 @@
                                      GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationResultsNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceResults}"
-                                     Click="ValidationResultsNavigation_Click" />
+                                     IsChecked="{Binding ValidationWorkspace.IsResultsSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Results" />
                         <RadioButton x:Name="ValidationFailuresNavigation"
                                      Margin="0,0,14,0"
                                      VerticalAlignment="Center"
@@ -73,7 +80,10 @@
                                      GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationFailuresNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceFailures}"
-                                     Click="ValidationFailuresNavigation_Click" />
+                                     IsChecked="{Binding ValidationWorkspace.IsFailuresSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Failures" />
                         <RadioButton x:Name="ValidationThresholdNavigation"
                                      Margin="0,0,14,0"
                                      VerticalAlignment="Center"
@@ -81,14 +91,20 @@
                                      GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationThresholdNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceThresholds}"
-                                     Click="ValidationThresholdNavigation_Click" />
+                                     IsChecked="{Binding ValidationWorkspace.IsThresholdsSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="Thresholds" />
                         <RadioButton x:Name="ValidationHeldOutNavigation"
                                      VerticalAlignment="Center"
                                      Content="{Binding Localization.ValidationWorkspaceHeldOut}"
                                      GroupName="ValidationWorkspaceSection"
                                      AutomationProperties.AutomationId="ValidationHeldOutNavigation"
                                      AutomationProperties.Name="{Binding Localization.ValidationWorkspaceHeldOut}"
-                                     Click="ValidationHeldOutNavigation_Click" />
+                                     IsChecked="{Binding ValidationWorkspace.IsHeldOutSelected, Mode=OneWay}"
+                                     behaviors:CheckedCommandBehavior.IsEnabled="True"
+                                     behaviors:CheckedCommandBehavior.Command="{Binding ValidationWorkspace.SelectSectionCommand}"
+                                     behaviors:CheckedCommandBehavior.CommandParameter="HeldOut" />
                     </WrapPanel>
                     <TextBlock Grid.Row="1"
                                Margin="0,7,12,0"
@@ -647,10 +663,9 @@
                                        FontWeight="SemiBold"
                                        Text="{Binding RunRecordSummary, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </StackPanel>
-                        <WrapPanel x:Name="RunRecordActions"
-                                   Grid.Row="2"
-                                   Margin="4,1,4,7"
-                                   VerticalAlignment="Center">
+                        <StackPanel Grid.Row="2" Margin="4,1,4,7">
+                            <WrapPanel x:Name="RunRecordActions"
+                                       VerticalAlignment="Center">
                                 <ui:Button x:Name="RunRecordOpenButton"
                                            Margin="0,0,3,4"
                                            Appearance="Secondary"
@@ -681,6 +696,16 @@
                                            Command="{Binding RunRecordContext.OpenCsvReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                            AutomationProperties.AutomationId="RunRecordOpenCsvButton"
                                            AutomationProperties.Name="{Binding Localization.RunRecordOpenCsv}" />
+                                <ui:Button x:Name="SupportBundleButton"
+                                           Margin="0,0,3,4"
+                                           Appearance="Primary"
+                                           Icon="{ui:SymbolIcon DocumentLock24}"
+                                           Content="{Binding Localization.SupportBundleExport}"
+                                           Command="{Binding RunRecordContext.ExportPrivacySafeSupportBundleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           ToolTip="{Binding Localization.SupportBundleToolTip}"
+                                           AutomationProperties.AutomationId="PrivacySafeSupportBundleButton"
+                                           AutomationProperties.Name="{Binding Localization.SupportBundleExport}"
+                                           AutomationProperties.HelpText="{Binding Localization.SupportBundleToolTip}" />
                                 <ui:Button x:Name="RunRecordExportButton"
                                            Margin="0,0,3,4"
                                            Appearance="Secondary"
@@ -729,7 +754,16 @@
                                        Visibility="{Binding HasItems, ElementName=RecentRunRecordCombo, Converter={StaticResource BooleanToVisibilityConverter}}"
                                        AutomationProperties.AutomationId="RunRecordOpenRecentButton"
                                        AutomationProperties.Name="{Binding Localization.RunRecordOpenRecent}" />
-                        </WrapPanel>
+                            </WrapPanel>
+                            <TextBlock x:Name="SupportBundlePrivacyNotice"
+                                       Margin="1,0,1,0"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       FontSize="9.5"
+                                       Text="{Binding Localization.SupportBundlePrivacyNotice}"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.AutomationId="SupportBundlePrivacyNotice"
+                                       AutomationProperties.Name="{Binding Localization.SupportBundlePrivacyNotice}" />
+                        </StackPanel>
                         <Border x:Name="RunRecordEvidenceSummary"
                                 Grid.Row="1"
                                 Margin="4,0,4,7"
@@ -1419,13 +1453,13 @@
                                                FontSize="10"
                                                FontWeight="SemiBold"
                                                Text="{Binding Localization.ValidationSetSelectedRecord}" />
-                                    <ListBox x:Name="ValidationSetStepsList"
+        <ListBox x:Name="ValidationSetStepsList"
                                              Grid.Row="1"
                                              Background="Transparent"
                                              BorderThickness="0"
                                              ItemsSource="{Binding SelectedValidationSetSteps}"
                                              SelectedItem="{Binding SelectedValidationSetStep, Mode=TwoWay}"
-                                             SelectionChanged="ValidationSetStepsList_SelectionChanged"
+                                             behaviors:ScrollIntoViewOnSelectionChangedBehavior.IsEnabled="True"
                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                                         <ListBox.ItemTemplate>

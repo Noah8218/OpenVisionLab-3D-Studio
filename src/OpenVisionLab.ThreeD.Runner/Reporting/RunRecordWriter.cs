@@ -5,10 +5,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Tools;
 
 internal sealed record RunArtifactOptions(
@@ -22,12 +21,6 @@ internal sealed record RunArtifactOptions(
 
 internal static class RunRecordWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     public static void Write(
         RunArtifactOptions options,
         string recipePath,
@@ -153,42 +146,10 @@ internal static class RunRecordWriter
     {
         if (!options.Requested) return;
 
-        var recordedAt = DateTimeOffset.UtcNow;
-        var recipeHash = HashFile(recipePath);
-        var sourceHash = HashFile(sourcePath);
-        var steps = ToolRecipeOrderedGraphRunRecordProjection.Create(
+        var record = OrderedRunRecordFactory.Create(
+            OrderedRunRecordIdentity.Create(recipePath, sourcePath),
             document,
-            execution);
-        var metrics = steps.SelectMany(step => step.Metrics).ToArray();
-        var overlays = steps.SelectMany(step => step.Overlays).ToArray();
-        var thresholdCorrectionEvidence =
-            ToolRecipeThresholdCorrectionRunRecordProjection.Create(
-                recipePath,
-                document);
-        var runSource = new InspectionRunSource(
-            document.Source.Id,
-            Path.GetFullPath(sourcePath),
-            sourceHash,
-            new FileInfo(sourcePath).Length,
-            document.Source.Unit);
-        var sourceQuality = execution.SourceQuality is null
-            ? InspectionRunSourceQualityEvidence.Unavailable(
-                "Source Quality was unavailable because the ordered source could not be analyzed.")
-            : InspectionRunSourceQualityEvidence.Available(
-                runSource,
-                execution.SourceQuality);
-        var record = new InspectionRunRecord(
-            "1.9",
-            $"run-{recordedAt:yyyyMMddTHHmmssfffZ}-{recipeHash[..12].ToLowerInvariant()}",
-            recordedAt,
-            new InspectionRunRecipe("tool-recipe", document.SchemaVersion, Path.GetFullPath(recipePath), recipeHash),
-            runSource,
-            "Ordered Tool Recipe Replay",
-            execution.Status,
-            execution.Message,
-            execution.Duration.TotalMilliseconds,
-            metrics,
-            overlays,
+            execution,
             viewerContractPath is null ? "NotCompared" : "Matched",
             new InspectionRunArtifacts(
                 Path.GetFullPath(runnerReportPath),
@@ -196,13 +157,8 @@ internal static class RunRecordWriter
                 FullOptionalPath(options.ViewerScreenshotPath),
                 FullOptionalPath(options.JsonPath),
                 FullOptionalPath(options.HtmlPath),
-                FullOptionalPath(options.CsvPath)))
-        {
-            ExecutionEnvironment = CreateExecutionEnvironment(recipePath),
-            Steps = steps,
-            SourceQualityEvidence = sourceQuality,
-            ThresholdCorrectionEvidence = thresholdCorrectionEvidence
-        };
+                FullOptionalPath(options.CsvPath)),
+            CreateExecutionEnvironment(recipePath));
 
         WriteOutputs(options, record);
     }
@@ -372,8 +328,7 @@ internal static class RunRecordWriter
 
     private static void WriteJson(string path, InspectionRunRecord record)
     {
-        EnsureDirectory(path);
-        File.WriteAllText(path, JsonSerializer.Serialize(record, JsonOptions), new UTF8Encoding(false));
+        InspectionRunRecordJson.Write(path, record);
     }
 
     private static void WriteHtml(string path, InspectionRunRecord record)

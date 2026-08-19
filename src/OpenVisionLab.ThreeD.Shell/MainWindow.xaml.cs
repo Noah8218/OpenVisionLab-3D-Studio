@@ -11,6 +11,8 @@ using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
+using OpenVisionLab.ThreeD.Shell.Coordination;
+using OpenVisionLab.ThreeD.Shell.Dialogs;
 using OpenVisionLab.ThreeD.Shell.Layout;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Recipe;
@@ -37,43 +39,16 @@ public partial class MainWindow : Window
     private readonly OpenVisionThreeDViewerControl _viewer;
     private readonly ShellMainWindowViewModel _viewModel;
     private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
-    private readonly EventHandler _profileViewRequestedHandler;
-    private readonly EventHandler _refreshRecipeComparisonRequestedHandler;
-    private readonly EventHandler _saveRecipeRequestedHandler;
-    private readonly EventHandler _applyRoiAlignmentRequestedHandler;
-    private readonly EventHandler _fitPlaneRequestedHandler;
-    private readonly EventHandler _publishInspectionResultRequestedHandler;
-    private readonly EventHandler _calibrationLoadStudyRequestedHandler;
-    private readonly EventHandler<EvidenceArtifactOpenRequestEventArgs> _openEvidenceArtifactRequestedHandler;
-    private readonly EventHandler _openRunRecordRequestedHandler;
-    private readonly EventHandler _exportRunRecordRequestedHandler;
-    private readonly EventHandler _workbenchNewTeachingRecipeRequestedHandler;
-    private readonly EventHandler _workbenchBrowseFirstRecipeFolderRequestedHandler;
-    private readonly EventHandler _workbenchBrowseFirstRecipeSourceRequestedHandler;
-    private readonly EventHandler _workbenchSaveTeachingRecipeRequestedHandler;
-    private readonly EventHandler _workbenchSaveTeachingRecipeAsRequestedHandler;
-    private readonly EventHandler _workbenchOpenToolLibraryRequestedHandler;
-    private readonly EventHandler _workbenchSelectedStepSetupRequestedHandler;
-    private readonly EventHandler _workbenchOpenTeachingRecipeRequestedHandler;
-    private readonly EventHandler<ToolWorkbenchStepRemovalRequestEventArgs> _workbenchRemoveSelectedStepRequestedHandler;
-    private readonly EventHandler<ToolWorkbenchRecipePathRequestEventArgs> _workbenchOpenRecentTeachingRecipeRequestedHandler;
-    private readonly EventHandler _workbenchLoadC3DSourceRequestedHandler;
-    private readonly EventHandler _workbenchCancelC3DSourceLoadRequestedHandler;
     private readonly WorkbenchViewerTeachingCoordinator _workbenchViewerTeaching;
-    private readonly EventHandler<ToolWorkbenchToolLabRequestEventArgs> _workbenchToolLabRequestedHandler;
-    private readonly EventHandler _workbenchSelectValidationSetSourcesRequestedHandler;
-    private readonly EventHandler _workbenchValidationSetComparisonRequestedHandler;
     private readonly WorkbenchViewerDisplayCoordinator _workbenchViewerDisplay;
+    private readonly ShellEvidenceDialogController _evidenceDialogs;
+    private readonly RecipeFileDialogService _recipeFileDialogs;
+    private readonly ShellWorkbenchLifecycleController _workbenchLifecycle;
+    private readonly ShellRequestCoordinator _requestCoordinator;
     private readonly PropertyChangedEventHandler _viewModelPropertyChangedHandler;
     private readonly EventHandler _inspectionTaskChangedHandler;
-    private StudioLayoutProfileStore? studioLayoutStore;
-    private StudioLayoutProfile? pendingStudioLayoutProfile;
-    private bool canAutoSaveStudioLayout;
-    private StudioLayoutLoadStatus? studioLayoutLoadStatus;
-    private RecipeManagerWindow? recipeManagerWindow;
+    private readonly StudioLayoutController _studioLayout;
     private readonly ToolLabWindowManager _toolLabWindows;
-    private CancellationTokenSource? c3dSourceLoadCancellation;
-    private double lastWorkbenchSourceBindingMilliseconds;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
 
     private FilterToolLabWindow? filterToolLabWindow => _toolLabWindows.Filter;
@@ -105,6 +80,39 @@ public partial class MainWindow : Window
         _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, ShowMissingToolLabStep);
+        _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
+            _viewModel.Workbench,
+            _viewer,
+            () => ToolWorkbench.IsBottomPaneExpanded = false);
+        _recipeFileDialogs = new RecipeFileDialogService(GetRecipeLifecycleDialogOwner);
+        _workbenchLifecycle = new ShellWorkbenchLifecycleController(
+            this,
+            _viewer,
+            _viewModel,
+            _recipeFileDialogs,
+            _workbenchViewerTeaching,
+            new ShellWorkbenchLifecycleCallbacks
+            {
+                ShowLoadSourceFailure = ShowLoadSourceFailure,
+                ShowRecipeSaveFailure = ShowRecipeSaveFailure,
+                ShowFirstRecipeCreateFailure = ShowFirstRecipeCreateFailure,
+                ShowFirstRecipeSetupPersistenceFailure = ShowFirstRecipeSetupPersistenceFailure,
+                ShowRecipeFileUnavailable = ShowRecipeFileUnavailable,
+                ShowRecipeOpenFailure = ShowRecipeOpenFailure,
+                ShowRecipeSourceNotReady = ShowRecipeSourceNotReady,
+                ShowRecipeSourceLoadFailure = ShowRecipeSourceLoadFailure,
+                ShowParameterApplyFailure = ShowParameterApplyFailure,
+                ConfirmUnsavedRecipeChanges = () => ToLifecycleDialogChoice(ConfirmUnsavedRecipeChanges()),
+                ConfirmPendingParameterChanges = () => ToLifecycleDialogChoice(ConfirmPendingParameterChanges()),
+                CommitPendingParameterEdit = () =>
+                {
+                    var success = ToolWorkbench.CommitPendingParameterEdit(out var message);
+                    return (success, message);
+                },
+                DiscardPendingParameterChanges = () => _viewModel.Workbench.DiscardSelectedStepParameterDraft(),
+                ActivateWorkbench = ActivateWorkbenchAfterRecipeLifecycle,
+                DialogText = DialogText
+            });
         if (Workspace.ProfileContent is Views.Workbench.HeightProfileView advancedHeightProfileView)
         {
             advancedHeightProfileView.DataContext = _viewer.ViewModel;
@@ -131,62 +139,50 @@ public partial class MainWindow : Window
 
         _viewerHostStateChangedHandler = OnViewerHostStateChanged;
         _viewer.HostStateChanged += _viewerHostStateChangedHandler;
-        _profileViewRequestedHandler = OnProfileViewRequested;
-        _viewer.ProfileViewRequested += _profileViewRequestedHandler;
         _viewer.EnableSmokeFromCommandLine(ownsApplicationLifecycle: false);
 
-        _refreshRecipeComparisonRequestedHandler = (_, _) => _viewModel.RefreshRecipeComparison();
-        _saveRecipeRequestedHandler = (_, _) => _viewer.SaveCurrentRecipeWithDialog();
-        _applyRoiAlignmentRequestedHandler = (_, _) => _viewer.ApplyRoiReferenceAlignment();
-        _fitPlaneRequestedHandler = (_, _) => _viewer.FitC3DReferencePlane();
-        _publishInspectionResultRequestedHandler = (_, _) => OnPublishInspectionResultRequested();
-        _calibrationLoadStudyRequestedHandler = OnCalibrationLoadStudyRequested;
-        _openEvidenceArtifactRequestedHandler = OnOpenEvidenceArtifactRequested;
-        _openRunRecordRequestedHandler = OnOpenRunRecordRequested;
-        _exportRunRecordRequestedHandler = OnExportRunRecordRequested;
-        _workbenchNewTeachingRecipeRequestedHandler = OnWorkbenchNewTeachingRecipeRequested;
-        _workbenchBrowseFirstRecipeFolderRequestedHandler = OnWorkbenchBrowseFirstRecipeFolderRequested;
-        _workbenchBrowseFirstRecipeSourceRequestedHandler = OnWorkbenchBrowseFirstRecipeSourceRequested;
-        _workbenchSaveTeachingRecipeRequestedHandler = OnWorkbenchSaveTeachingRecipeRequested;
-        _workbenchSaveTeachingRecipeAsRequestedHandler = OnWorkbenchSaveTeachingRecipeAsRequested;
-        _workbenchOpenToolLibraryRequestedHandler = OnWorkbenchOpenToolLibraryRequested;
-        _workbenchSelectedStepSetupRequestedHandler = OnWorkbenchSelectedStepSetupRequested;
-        _workbenchOpenTeachingRecipeRequestedHandler = OnWorkbenchOpenTeachingRecipeRequested;
-        _workbenchRemoveSelectedStepRequestedHandler = OnWorkbenchRemoveSelectedStepRequested;
-        _workbenchOpenRecentTeachingRecipeRequestedHandler = OnWorkbenchOpenRecentTeachingRecipeRequested;
-        _workbenchLoadC3DSourceRequestedHandler = OnWorkbenchLoadC3DSourceRequested;
-        _workbenchCancelC3DSourceLoadRequestedHandler = OnWorkbenchCancelC3DSourceLoadRequested;
-        _workbenchToolLabRequestedHandler = OnWorkbenchToolLabRequested;
-        _workbenchSelectValidationSetSourcesRequestedHandler = OnWorkbenchSelectValidationSetSourcesRequested;
-        _workbenchValidationSetComparisonRequestedHandler = OnWorkbenchValidationSetComparisonRequested;
-        _viewModel.RefreshRecipeComparisonRequested += _refreshRecipeComparisonRequestedHandler;
-        _viewModel.SaveRecipeRequested += _saveRecipeRequestedHandler;
-        _viewModel.ApplyRoiAlignmentRequested += _applyRoiAlignmentRequestedHandler;
-        _viewModel.FitPlaneRequested += _fitPlaneRequestedHandler;
-        _viewModel.PublishInspectionResultRequested += _publishInspectionResultRequestedHandler;
-        _viewModel.Calibration.LoadStudyRequested += _calibrationLoadStudyRequestedHandler;
-        _viewModel.OpenEvidenceArtifactRequested += _openEvidenceArtifactRequestedHandler;
-        _viewModel.OpenRunRecordRequested += _openRunRecordRequestedHandler;
-        _viewModel.ExportRunRecordRequested += _exportRunRecordRequestedHandler;
-        _viewModel.Workbench.NewTeachingRecipeRequested += _workbenchNewTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.BrowseFirstRecipeFolderRequested += _workbenchBrowseFirstRecipeFolderRequestedHandler;
-        _viewModel.Workbench.BrowseFirstRecipeSourceRequested += _workbenchBrowseFirstRecipeSourceRequestedHandler;
-        _viewModel.Workbench.SaveTeachingRecipeRequested += _workbenchSaveTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.SaveTeachingRecipeAsRequested += _workbenchSaveTeachingRecipeAsRequestedHandler;
-        _viewModel.Workbench.OpenToolLibraryRequested += _workbenchOpenToolLibraryRequestedHandler;
-        _viewModel.Workbench.SelectedStepSetupRequested += _workbenchSelectedStepSetupRequestedHandler;
-        _viewModel.Workbench.OpenTeachingRecipeRequested += _workbenchOpenTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.RemoveSelectedStepRequested += _workbenchRemoveSelectedStepRequestedHandler;
-        _viewModel.Workbench.OpenRecentTeachingRecipeRequested += _workbenchOpenRecentTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.LoadC3DSourceRequested += _workbenchLoadC3DSourceRequestedHandler;
-        _viewModel.Workbench.CancelC3DSourceLoadRequested += _workbenchCancelC3DSourceLoadRequestedHandler;
-        _viewModel.Workbench.ToolLabRequested += _workbenchToolLabRequestedHandler;
-        _viewModel.Workbench.SelectValidationSetSourcesRequested += _workbenchSelectValidationSetSourcesRequestedHandler;
-        _viewModel.Workbench.ValidationSetComparisonRequested += _workbenchValidationSetComparisonRequestedHandler;
-        _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
-            _viewModel.Workbench,
+        _evidenceDialogs = new ShellEvidenceDialogController(
+            this,
+            _viewModel,
+            new ShellEvidenceDialogErrors
+            {
+                ArtifactMissing = ShowEvidenceArtifactMissing,
+                ArtifactOpenFailure = ShowEvidenceArtifactOpenFailure,
+                RunRecordOpenFailure = ShowRunRecordOpenFailure,
+                RunRecordExportFailure = ShowRunRecordExportFailure
+            });
+        _requestCoordinator = new ShellRequestCoordinator(
             _viewer,
-            () => ToolWorkbench.IsBottomPaneExpanded = false);
+            _viewModel,
+            new ShellRequestCallbacks
+            {
+                ProfileView = OnProfileViewRequested,
+                RefreshRecipeComparison = (_, _) => _viewModel.RefreshRecipeComparison(),
+                SaveRecipe = (_, _) => _viewer.SaveCurrentRecipeWithDialog(),
+                ApplyRoiAlignment = (_, _) => _viewer.ApplyRoiReferenceAlignment(),
+                FitPlane = (_, _) => _viewer.FitC3DReferencePlane(),
+                PublishInspectionResult = (_, _) => OnPublishInspectionResultRequested(),
+                CalibrationLoadStudy = OnCalibrationLoadStudyRequested,
+                OpenEvidenceArtifact = _evidenceDialogs.OpenEvidenceArtifact,
+                OpenRunRecord = _evidenceDialogs.OpenRunRecord,
+                ExportRunRecord = _evidenceDialogs.ExportRunRecord,
+                ExportPrivacySafeSupportBundle = _evidenceDialogs.ExportPrivacySafeSupportBundle,
+                NewTeachingRecipe = _workbenchLifecycle.NewTeachingRecipeRequested,
+                BrowseFirstRecipeFolder = _workbenchLifecycle.BrowseFirstRecipeFolderRequested,
+                BrowseFirstRecipeSource = _workbenchLifecycle.BrowseFirstRecipeSourceRequested,
+                SaveTeachingRecipe = _workbenchLifecycle.SaveTeachingRecipeRequested,
+                SaveTeachingRecipeAs = _workbenchLifecycle.SaveTeachingRecipeAsRequested,
+                OpenToolLibrary = OnWorkbenchOpenToolLibraryRequested,
+                SelectedStepSetup = OnWorkbenchSelectedStepSetupRequested,
+                OpenTeachingRecipe = _workbenchLifecycle.OpenTeachingRecipeRequested,
+                RemoveSelectedStep = OnWorkbenchRemoveSelectedStepRequested,
+                OpenRecentTeachingRecipe = _workbenchLifecycle.OpenRecentTeachingRecipeRequested,
+                LoadC3DSource = _workbenchLifecycle.LoadC3DSourceRequested,
+                CancelC3DSourceLoad = (_, _) => _workbenchLifecycle.CancelC3DSourceLoad(),
+                ToolLab = OnWorkbenchToolLabRequested,
+                SelectValidationSetSources = OnWorkbenchSelectValidationSetSourcesRequested,
+                ValidationSetComparison = OnWorkbenchValidationSetComparisonRequested
+            });
         _workbenchViewerDisplay = new WorkbenchViewerDisplayCoordinator(
             _viewModel,
             _viewer,
@@ -198,28 +194,37 @@ public partial class MainWindow : Window
         ConfigureCalibrationStudyFromCommandLine();
         ConfigureToolTeachingRecipeFromCommandLine();
         RestoreStartupRunRecordAfterRecipeLoad();
-        RestoreMostRecentWorkbenchRecipe();
+        if (!IsAutomatedShellRun())
+        {
+            _workbenchLifecycle.RestoreMostRecentWorkbenchRecipe();
+        }
         ConfigureOutputCompareFromCommandLine();
         ConfigureValidationSetFromCommandLine();
         ConfigureWorkbenchBottomPaneFromCommandLine();
         ConfigureC3DSourceLoadProgressFromCommandLine();
         _workbenchViewerTeaching.SyncAppliedSelections();
-        ConfigureStudioLayoutPersistence();
+        _studioLayout = new StudioLayoutController(
+            this,
+            ToolWorkbench,
+            Workspace,
+            _viewModel,
+            IsAutomatedShellRun(),
+            GetCommandLineValue("--smoke-layout-profile"),
+            GetCommandLineValue("--smoke-layout-state-report"));
         Loaded += ConfigureViewerViewFromCommandLine;
-        Loaded += RestoreStudioLayoutOnLoaded;
         Loaded += EnsureWorkbenchViewerSourceConsistency;
         EnableShellSmokeFromCommandLine();
     }
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!IsAutomatedShellRun() && !TryResolveWorkbenchChanges("closing 3D Studio"))
+        if (!IsAutomatedShellRun() && !_workbenchLifecycle.TryResolveWorkbenchChanges("closing 3D Studio"))
         {
             e.Cancel = true;
             return;
         }
 
-        SaveStudioLayout();
+        _studioLayout.Save();
         base.OnClosing(e);
     }
 
@@ -339,41 +344,15 @@ public partial class MainWindow : Window
     {
         OVLog.Write(LogCategory.System, LogLevel.Info, "OpenVisionLab 3D Studio shutdown.");
         _viewer.HostStateChanged -= _viewerHostStateChangedHandler;
-        _viewer.ProfileViewRequested -= _profileViewRequestedHandler;
-        _viewModel.RefreshRecipeComparisonRequested -= _refreshRecipeComparisonRequestedHandler;
-        _viewModel.SaveRecipeRequested -= _saveRecipeRequestedHandler;
-        _viewModel.ApplyRoiAlignmentRequested -= _applyRoiAlignmentRequestedHandler;
-        _viewModel.FitPlaneRequested -= _fitPlaneRequestedHandler;
-        _viewModel.PublishInspectionResultRequested -= _publishInspectionResultRequestedHandler;
-        _viewModel.Calibration.LoadStudyRequested -= _calibrationLoadStudyRequestedHandler;
-        _viewModel.OpenEvidenceArtifactRequested -= _openEvidenceArtifactRequestedHandler;
-        _viewModel.OpenRunRecordRequested -= _openRunRecordRequestedHandler;
-        _viewModel.ExportRunRecordRequested -= _exportRunRecordRequestedHandler;
-        _viewModel.Workbench.NewTeachingRecipeRequested -= _workbenchNewTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.BrowseFirstRecipeFolderRequested -= _workbenchBrowseFirstRecipeFolderRequestedHandler;
-        _viewModel.Workbench.BrowseFirstRecipeSourceRequested -= _workbenchBrowseFirstRecipeSourceRequestedHandler;
-        _viewModel.Workbench.SaveTeachingRecipeRequested -= _workbenchSaveTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.SaveTeachingRecipeAsRequested -= _workbenchSaveTeachingRecipeAsRequestedHandler;
-        _viewModel.Workbench.OpenToolLibraryRequested -= _workbenchOpenToolLibraryRequestedHandler;
-        _viewModel.Workbench.SelectedStepSetupRequested -= _workbenchSelectedStepSetupRequestedHandler;
-        _viewModel.Workbench.OpenTeachingRecipeRequested -= _workbenchOpenTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.RemoveSelectedStepRequested -= _workbenchRemoveSelectedStepRequestedHandler;
-        _viewModel.Workbench.OpenRecentTeachingRecipeRequested -= _workbenchOpenRecentTeachingRecipeRequestedHandler;
-        _viewModel.Workbench.LoadC3DSourceRequested -= _workbenchLoadC3DSourceRequestedHandler;
-        _viewModel.Workbench.CancelC3DSourceLoadRequested -= _workbenchCancelC3DSourceLoadRequestedHandler;
-        _viewModel.Workbench.ToolLabRequested -= _workbenchToolLabRequestedHandler;
-        _viewModel.Workbench.SelectValidationSetSourcesRequested -= _workbenchSelectValidationSetSourcesRequestedHandler;
-        _viewModel.Workbench.ValidationSetComparisonRequested -= _workbenchValidationSetComparisonRequestedHandler;
+        _requestCoordinator.Dispose();
         _workbenchViewerDisplay.Dispose();
         _workbenchViewerTeaching.Dispose();
         _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
         _viewModel.InspectionTaskChanged -= _inspectionTaskChangedHandler;
         Loaded -= _shellSmokeLoadedHandler;
         Loaded -= EnsureWorkbenchViewerSourceConsistency;
-        Loaded -= RestoreStudioLayoutOnLoaded;
-        c3dSourceLoadCancellation?.Cancel();
-        c3dSourceLoadCancellation?.Dispose();
-        c3dSourceLoadCancellation = null;
+        _studioLayout.Dispose();
+        _workbenchLifecycle.Dispose();
         base.OnClosed(e);
     }
 
@@ -460,6 +439,7 @@ public partial class MainWindow : Window
             smoke.RecipeHealthNavigationPressedSmoke;
         var currentRecipeRunReadySmoke = smoke.CurrentRecipeRunReadySmoke;
         var currentRecipeRunPressedSmoke = smoke.CurrentRecipeRunPressedSmoke;
+        var supportBundlePressedSmoke = smoke.SupportBundlePressedSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var workbenchRunLogSmoke = smoke.WorkbenchRunLogSmoke;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
@@ -580,9 +560,9 @@ public partial class MainWindow : Window
                         asyncC3DLoadSmokeReportPath,
                         asyncC3DLoadCancelAt,
                         asyncC3DLoadExpectFailure,
-                        path => LoadWorkbenchC3DSourceAsync(path, showFailureDialog: false),
-                        IsViewerSourceAlreadyLoaded,
-                        () => lastWorkbenchSourceBindingMilliseconds))
+                         path => _workbenchLifecycle.LoadWorkbenchC3DSourceAsync(path, showFailureDialog: false),
+                         _workbenchLifecycle.IsViewerSourceAlreadyLoaded,
+                         () => _workbenchLifecycle.LastWorkbenchSourceBindingMilliseconds))
                 {
                     _viewModel.SetViewerSmokeFailed("Asynchronous C3D load smoke did not keep the Dispatcher responsive or activate the target source.");
                     Application.Current.Shutdown(1);
@@ -590,7 +570,10 @@ public partial class MainWindow : Window
                 }
 
                 if (smoke.SourceQualitySmoke
-                    && !await RunSourceQualitySmokeAsync(sourceQualitySmokeReportPath))
+                    && !await ShellSourceQualitySmoke.RunAsync(
+                        _viewModel.Workbench,
+                        Dispatcher,
+                        sourceQualitySmokeReportPath))
                 {
                     _viewModel.SetViewerSmokeFailed(
                         "Source Quality did not become ready or changed authored/execution state.");
@@ -629,8 +612,8 @@ public partial class MainWindow : Window
                         newRecipeLifecycleSmokeSourcePath,
                         smoke.NewRecipeLifecycleSmokeStarterId ?? ToolWorkbenchViewModel.EmptyFirstRecipeStarterId,
                         newRecipeLifecycleSmokeReportPath,
-                        ShowRecipeManagerWindow,
-                        ClickUnsavedRecipeDoNotSaveForSmokeAsync))
+                         _workbenchLifecycle.ShowRecipeManagerWindow,
+                         _workbenchLifecycle.ClickUnsavedRecipeDoNotSaveForSmokeAsync))
                 {
                     _viewModel.SetViewerSmokeFailed("New recipe lifecycle smoke did not create and open a clean zero-step recipe.");
                     Application.Current.Shutdown(1);
@@ -649,10 +632,10 @@ public partial class MainWindow : Window
                         _viewModel,
                         openRecipeLifecycleSmokePath,
                         openRecipeLifecycleSmokeReportPath,
-                        ShowRecipeManagerWindow,
-                        OpenWorkbenchRecipe,
-                        () => recipeManagerWindow?.IsVisible == true,
-                        IsViewerSourceAlreadyLoaded))
+                         _workbenchLifecycle.ShowRecipeManagerWindow,
+                         _workbenchLifecycle.OpenWorkbenchRecipe,
+                         () => _workbenchLifecycle.IsRecipeManagerVisible,
+                         _workbenchLifecycle.IsViewerSourceAlreadyLoaded))
                 {
                     _viewModel.SetViewerSmokeFailed("Open recipe lifecycle smoke did not activate the saved recipe in Workbench.");
                     Application.Current.Shutdown(1);
@@ -660,16 +643,16 @@ public partial class MainWindow : Window
                 }
                 if (recipeManagerScreenshotPath is not null)
                 {
-                    ShowRecipeManagerWindow();
-                    var firstRecipeManagerWindow = recipeManagerWindow;
-                    ShowRecipeManagerWindow();
-                    if (!ReferenceEquals(firstRecipeManagerWindow, recipeManagerWindow))
+                    _workbenchLifecycle.ShowRecipeManagerWindow();
+                    var firstRecipeManagerWindow = _workbenchLifecycle.RecipeManagerWindow;
+                    _workbenchLifecycle.ShowRecipeManagerWindow();
+                    if (!ReferenceEquals(firstRecipeManagerWindow, _workbenchLifecycle.RecipeManagerWindow))
                     {
                         _viewModel.SetViewerSmokeFailed("Recipe Manager smoke opened more than one window instance.");
                         Application.Current.Shutdown(1);
                         return;
                     }
-                    ConfigureFirstRecipeSetupForSmoke(smoke);
+                    _workbenchLifecycle.ConfigureFirstRecipeSetupForSmoke(smoke);
                 }
 
                 if (messageDialogScreenshotPath is not null)
@@ -1496,6 +1479,13 @@ public partial class MainWindow : Window
                             this,
                             shellScreenshotPath,
                             screenshotQualityReportPath)
+                        : supportBundlePressedSmoke
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "PrivacySafeSupportBundleButton",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "PrivacySafeSupportBundlePressed")
                         : currentRecipeRunPressedSmoke
                         ? await CaptureButtonPressedForSmokeAsync(
                             this,
@@ -1585,16 +1575,16 @@ public partial class MainWindow : Window
                 }
 
                 if (recipeManagerScreenshotPath is not null
-                    && (recipeManagerWindow is null
+                     && (_workbenchLifecycle.RecipeManagerWindow is null
                         || !(smoke.FirstRecipeCreatePressedSmoke
                             ? await CaptureButtonPressedForSmokeAsync(
-                                recipeManagerWindow,
+                                 _workbenchLifecycle.RecipeManagerWindow,
                                 "CreateFirstRecipe",
                                 recipeManagerScreenshotPath,
                                 recipeManagerScreenshotQualityReportPath,
                                 "FirstRecipeCreatePressed")
                             : await CaptureWindowWithRetryAsync(
-                                recipeManagerWindow,
+                                 _workbenchLifecycle.RecipeManagerWindow,
                                 recipeManagerScreenshotPath,
                                 recipeManagerScreenshotQualityReportPath,
                                 "RecipeManager"))))
@@ -1603,10 +1593,10 @@ public partial class MainWindow : Window
                     Application.Current.Shutdown(1);
                     return;
                 }
-                if (recipeManagerScreenshotPath is not null && recipeManagerWindow is not null)
+                if (recipeManagerScreenshotPath is not null && _workbenchLifecycle.RecipeManagerWindow is not null)
                 {
                     AppendWindowMonitorEvidence(
-                        recipeManagerWindow,
+                        _workbenchLifecycle.RecipeManagerWindow,
                         recipeManagerScreenshotQualityReportPath);
                 }
 
@@ -2170,72 +2160,6 @@ public partial class MainWindow : Window
         return boundaryPreserved
             ? null
             : "Acquisition provenance visual-state smoke changed recipe or execution state.";
-    }
-
-    private async Task<bool> RunSourceQualitySmokeAsync(string? reportPath)
-    {
-        var quality = _viewModel.Workbench.SourceQuality;
-        var timeout = Stopwatch.StartNew();
-        while (!quality.HasReport
-               && !quality.HasError
-               && timeout.Elapsed < TimeSpan.FromSeconds(15))
-        {
-            await Task.Delay(25);
-        }
-
-        var beforeDirty = _viewModel.Workbench.IsDirty;
-        var beforeStepCount = _viewModel.Workbench.PipelineSteps.Count;
-        var beforeSelectionCount = _viewModel.Workbench.Selections.Count;
-        var beforeLogCount = _viewModel.Workbench.RunLog.Count;
-        var beforePreviewRunning = _viewModel.Workbench.IsSelectedStepPreviewRunning;
-        _viewModel.Workbench.SelectSourceQualityCommand.Execute(null);
-        await Dispatcher.InvokeAsync(() => { });
-
-        var expectedGlobalKind = quality.Report?.Coverage.MissingSampleCount > 0
-            ? "Warning"
-            : "Pass";
-        var passed = quality.HasReport
-                      && !quality.IsLoading
-                      && !quality.HasError
-                      && _viewModel.Workbench.IsCurrentSourceQualityStatusVisible
-                      && string.Equals(
-                          _viewModel.Workbench.CurrentSourceQualityStatusKind,
-                          expectedGlobalKind,
-                          StringComparison.Ordinal)
-                      && !string.IsNullOrWhiteSpace(
-                          _viewModel.Workbench.CurrentSourceQualitySummary)
-                      && !string.IsNullOrWhiteSpace(
-                          _viewModel.Workbench.CurrentSourceQualityDetail)
-                      && _viewModel.Workbench.IsSourceQualityWorkspaceVisible
-                     && !_viewModel.Workbench.HasSelectedPipelineStep
-                     && _viewModel.Workbench.IsDirty == beforeDirty
-                     && _viewModel.Workbench.PipelineSteps.Count == beforeStepCount
-                     && _viewModel.Workbench.Selections.Count == beforeSelectionCount
-                     && _viewModel.Workbench.RunLog.Count == beforeLogCount
-                     && _viewModel.Workbench.IsSelectedStepPreviewRunning == beforePreviewRunning;
-
-        if (!string.IsNullOrWhiteSpace(reportPath))
-        {
-            var sourceReport = quality.Report;
-            var fullReportPath = Path.GetFullPath(reportPath);
-            Directory.CreateDirectory(
-                Path.GetDirectoryName(fullReportPath) ?? Environment.CurrentDirectory);
-            File.WriteAllLines(
-                fullReportPath,
-                [
-                    $"SourceQualityWorkspaceSmoke|{(passed ? "Pass" : "Fail")}|viewOnly=true|recipeChanged=false|inspectionRun=false",
-                    $"State|loading={quality.IsLoading}|hasReport={quality.HasReport}|hasError={quality.HasError}|visible={_viewModel.Workbench.IsSourceQualityWorkspaceVisible}|selectedStep={_viewModel.Workbench.SelectedPipelineStep?.Id ?? "(none)"}",
-                    $"GlobalStatus|visible={_viewModel.Workbench.IsCurrentSourceQualityStatusVisible}|kind={_viewModel.Workbench.CurrentSourceQualityStatusKind}|summary={_viewModel.Workbench.CurrentSourceQualitySummary}|detail={_viewModel.Workbench.CurrentSourceQualityDetail.Replace(Environment.NewLine, " | ")}",
-                    $"Source|name={quality.SourceName}|grid={sourceReport?.Grid.Width ?? 0}x{sourceReport?.Grid.Height ?? 0}|cells={sourceReport?.Grid.CellCount ?? 0}|valid={sourceReport?.Coverage.ValidSampleCount ?? 0}|validRatio={sourceReport?.Coverage.ValidRatio ?? 0:R}|missing={sourceReport?.Coverage.MissingSampleCount ?? 0}|missingRatio={sourceReport?.Coverage.MissingRatio ?? 0:R}",
-                    $"Height|min={sourceReport?.Height.Minimum?.ToString("R") ?? "null"}|max={sourceReport?.Height.Maximum?.ToString("R") ?? "null"}|mean={sourceReport?.Height.Mean?.ToString("R") ?? "null"}|bins={sourceReport?.Height.Distribution?.BinCount ?? 0}|peak={sourceReport?.Height.Distribution?.PeakBinIndex ?? -1}",
-                    $"Mask|bytes={sourceReport?.Coverage.InvalidCellMask.ByteLength ?? 0}|sha256={quality.MaskSha256}",
-                    $"Channels|count={quality.Channels.Count}|available={string.Join(',', quality.Channels.Where(channel => channel.IsAvailable).Select(channel => channel.Name))}",
-                    $"Boundary|dirty={beforeDirty}->{_viewModel.Workbench.IsDirty}|steps={beforeStepCount}->{_viewModel.Workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{_viewModel.Workbench.Selections.Count}|logs={beforeLogCount}->{_viewModel.Workbench.RunLog.Count}|previewRunning={beforePreviewRunning}->{_viewModel.Workbench.IsSelectedStepPreviewRunning}",
-                    $"Error|{quality.Error}"
-                ]);
-        }
-
-        return passed;
     }
 
     private async Task<bool> RunHeightImageDisplayRangeSmokeAsync(
@@ -3166,140 +3090,31 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnWorkbenchLoadC3DSourceRequested(object? sender, EventArgs args)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Title = DialogText("ThreeD.FileDialog.LoadC3D.Title", "레시피 티칭용 C3D 입력 불러오기", "Load C3D Input for Recipe Teaching"),
-            Filter = DialogText("ThreeD.FileDialog.LoadC3D.Filter", "C3D 높이 맵 (*.C3D)|*.C3D|모든 파일 (*.*)|*.*", "C3D height map (*.C3D)|*.C3D|All files (*.*)|*.*"),
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        if (dialog.ShowDialog(this) != true)
-        {
-            return;
-        }
+    private void OnWorkbenchLoadC3DSourceRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.LoadC3DSourceRequested(sender, args);
 
-        if (IsViewerSourceAlreadyLoaded(dialog.FileName))
-        {
-            SetWorkbenchC3DSourceFromViewer(Path.GetFullPath(dialog.FileName));
-            _viewer.ViewModel.HudDetailsVisible = false;
-            return;
-        }
-
-        await LoadWorkbenchC3DSourceAsync(dialog.FileName);
-    }
-
-    private async Task<bool> LoadWorkbenchC3DSourceAsync(
+    private Task<bool> LoadWorkbenchC3DSourceAsync(
         string path,
         bool showFailureDialog = true,
-        bool bindToWorkbench = true)
-    {
-        var cancellation = new CancellationTokenSource();
-        c3dSourceLoadCancellation = cancellation;
-        lastWorkbenchSourceBindingMilliseconds = 0.0;
-        var stopwatch = Stopwatch.StartNew();
-        _viewModel.Workbench.BeginC3DSourceLoad(path);
-        var progress = new Progress<double>(_viewModel.Workbench.ReportC3DSourceLoadProgress);
+        bool bindToWorkbench = true) =>
+        _workbenchLifecycle.LoadWorkbenchC3DSourceAsync(path, showFailureDialog, bindToWorkbench);
 
-        try
-        {
-            if (await _viewer.LoadC3DSourceAsync(path, cancellation.Token, progress)
-                && _viewer.CurrentC3DSourcePath is { } sourcePath)
-            {
-                if (bindToWorkbench)
-                {
-                    SetWorkbenchC3DSourceFromViewer(sourcePath);
-                }
-                _viewer.ViewModel.HudDetailsVisible = false;
-                _viewModel.Workbench.CompleteC3DSourceLoad(sourcePath, stopwatch.ElapsedMilliseconds);
-                return true;
-            }
-
-            _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
-            if (showFailureDialog)
-            {
-                ShowLoadSourceFailure(_viewer.HostState.ViewerStatus);
-            }
-            return false;
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-            _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
-            return false;
-        }
-        finally
-        {
-            if (ReferenceEquals(c3dSourceLoadCancellation, cancellation))
-            {
-                c3dSourceLoadCancellation = null;
-            }
-            cancellation.Dispose();
-        }
-    }
-
-    private void OnWorkbenchCancelC3DSourceLoadRequested(object? sender, EventArgs args)
-    {
-        c3dSourceLoadCancellation?.Cancel();
-    }
+    private void OnWorkbenchCancelC3DSourceLoadRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.CancelC3DSourceLoad();
 
     private void OpenRecipeManagerRequested(object? sender, EventArgs args)
     {
         ShowRecipeManagerWindow();
     }
 
-    private void ShowRecipeManagerWindow()
-    {
-        if (recipeManagerWindow is null)
-        {
-            recipeManagerWindow = new RecipeManagerWindow
-            {
-                Owner = this,
-                DataContext = _viewModel.Workbench
-            };
-            recipeManagerWindow.Closed += (_, _) => recipeManagerWindow = null;
-        }
+    private void ShowRecipeManagerWindow() => _workbenchLifecycle.ShowRecipeManagerWindow();
 
-        recipeManagerWindow.Show();
-        recipeManagerWindow.Activate();
-    }
-
-    private void ConfigureFirstRecipeSetupForSmoke(ShellSmokeCommandLineOptions smoke)
-    {
-        if (string.IsNullOrWhiteSpace(smoke.FirstRecipeSetupSmokeState))
-        {
-            return;
-        }
-
-        _viewModel.Workbench.BeginFirstRecipeSetup();
-        _viewModel.Workbench.FirstRecipeName = smoke.FirstRecipeSetupName ?? "Thickness first inspection";
-        _viewModel.Workbench.FirstRecipeFolderPath = smoke.FirstRecipeSetupFolderPath ?? string.Empty;
-        _viewModel.Workbench.FirstRecipeSourcePath = smoke.FirstRecipeSetupSourcePath ?? string.Empty;
-        var starterId = smoke.FirstRecipeSetupStarterId
-            ?? (string.Equals(smoke.FirstRecipeSetupSmokeState, "valid", StringComparison.OrdinalIgnoreCase)
-                ? ToolWorkbenchViewModel.ThicknessFirstRecipeStarterId
-                : ToolWorkbenchViewModel.EmptyFirstRecipeStarterId);
-        _viewModel.Workbench.SelectedFirstRecipeStarter = _viewModel.Workbench.FirstRecipeStarterOptions
-            .First(option => string.Equals(option.Id, starterId, StringComparison.Ordinal));
-        _viewModel.Workbench.RememberFirstRecipeSetup = smoke.FirstRecipeSetupRememberSmoke;
-        if (smoke.FirstRecipeStarterPopupSmoke && recipeManagerWindow is not null)
-        {
-            recipeManagerWindow.UpdateLayout();
-            var starter = FindVisualDescendants<System.Windows.Controls.ComboBox>(recipeManagerWindow)
-                .FirstOrDefault(comboBox =>
-                    System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
-                    == "FirstRecipeStarter");
-            if (starter is not null)
-            {
-                starter.Focus();
-                starter.IsDropDownOpen = true;
-            }
-        }
-    }
+    private void ConfigureFirstRecipeSetupForSmoke(ShellSmokeCommandLineOptions smoke) =>
+        _workbenchLifecycle.ConfigureFirstRecipeSetupForSmoke(smoke);
 
     private void OnWorkbenchOpenToolLibraryRequested(object? sender, EventArgs args)
     {
-        recipeManagerWindow?.Close();
+        _workbenchLifecycle.CloseRecipeManager();
         if (!_viewModel.IsWorkbenchWorkspaceSelected)
         {
             _viewModel.IsWorkbenchWorkspaceSelected = true;
@@ -3467,120 +3282,28 @@ public partial class MainWindow : Window
     private bool ShowRegridHeightMapToolLabWindow(bool showMissingRegridMessage, bool preserveSelectedStep = false) =>
         _toolLabWindows.ShowRegridHeightMap(showMissingRegridMessage, preserveSelectedStep);
 
-    private async void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args)
-    {
-        if (!_viewModel.Workbench.TryGetFirstRecipeSetup(out var setup, out _))
-        {
-            return;
-        }
+    private void OnWorkbenchNewTeachingRecipeRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.NewTeachingRecipeRequested(sender, args);
 
-        if (!TryResolveWorkbenchChanges("creating a new recipe"))
-        {
-            return;
-        }
+    private void OnWorkbenchBrowseFirstRecipeFolderRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.BrowseFirstRecipeFolderRequested(sender, args);
 
-        var sourceLoaded = IsViewerSourceAlreadyLoaded(setup.SourcePath)
-            || await LoadWorkbenchC3DSourceAsync(
-                setup.SourcePath,
-                showFailureDialog: true,
-                bindToWorkbench: false);
-        if (!sourceLoaded)
-        {
-            return;
-        }
+    private void OnWorkbenchBrowseFirstRecipeSourceRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.BrowseFirstRecipeSourceRequested(sender, args);
 
-        if (setup.IsCompatibleSourceVariant)
-        {
-            if (!_viewer.TryGetCurrentC3DSourceBinding(setup.SourcePath, out var variantBinding))
-            {
-                ShowFirstRecipeCreateFailure(_viewModel.Workbench.Localization.SourceUnreadable);
-                return;
-            }
-            if (!_viewModel.Workbench.TryCreateCompatibleSourceVariant(
-                    setup,
-                    variantBinding,
-                    out var variantMessage))
-            {
-                ShowFirstRecipeCreateFailure(variantMessage);
-                return;
-            }
-            _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-            _viewModel.Workbench.CompleteFirstRecipeSetup(out _);
-            ActivateWorkbenchAfterRecipeLifecycle();
-            return;
-        }
+    private Window GetRecipeLifecycleDialogOwner() => _workbenchLifecycle.GetRecipeLifecycleDialogOwner();
 
-        _viewModel.Workbench.CreateNewTeachingRecipe(setup.RecipeName);
-        _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-        SetWorkbenchC3DSourceFromViewer(setup.SourcePath);
-        if (!_viewModel.Workbench.TryApplyFirstRecipeStarter(setup.StarterId, out var starterMessage))
+    private static ShellLifecycleDialogChoice ToLifecycleDialogChoice(WpfMessageDialogResult result) =>
+        result switch
         {
-            ShowFirstRecipeCreateFailure(starterMessage);
-            return;
-        }
-        if (!_viewModel.Workbench.TrySaveTeachingRecipe(setup.RecipePath, out var message))
-        {
-            ShowRecipeSaveFailure(message);
-            return;
-        }
-
-        if (!_viewModel.Workbench.CompleteFirstRecipeSetup(out var persistenceMessage))
-        {
-            ShowFirstRecipeSetupPersistenceFailure(persistenceMessage);
-        }
-        ActivateWorkbenchAfterRecipeLifecycle();
-    }
-
-    private void OnWorkbenchBrowseFirstRecipeFolderRequested(object? sender, EventArgs args)
-    {
-        var current = _viewModel.Workbench.FirstRecipeFolderPath.Trim();
-        var dialog = new OpenFolderDialog
-        {
-            Title = DialogText(
-                "ThreeD.FileDialog.FirstRecipeFolder.Title",
-                "새 레시피를 저장할 폴더 선택",
-                "Select Folder for New Recipe"),
-            Multiselect = false,
-            InitialDirectory = Directory.Exists(current) ? current : null
+            WpfMessageDialogResult.Yes => ShellLifecycleDialogChoice.Yes,
+            WpfMessageDialogResult.No => ShellLifecycleDialogChoice.No,
+            _ => ShellLifecycleDialogChoice.Cancel
         };
-        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true)
-        {
-            _viewModel.Workbench.FirstRecipeFolderPath = dialog.FolderName;
-        }
-    }
-
-    private void OnWorkbenchBrowseFirstRecipeSourceRequested(object? sender, EventArgs args)
-    {
-        var source = _viewModel.Workbench.FirstRecipeSourcePath.Trim();
-        var folder = _viewModel.Workbench.FirstRecipeFolderPath.Trim();
-        var dialog = new OpenFileDialog
-        {
-            Title = DialogText(
-                "ThreeD.FileDialog.FirstRecipeSource.Title",
-                "새 레시피의 C3D 입력 선택",
-                "Select C3D Input for New Recipe"),
-            Filter = DialogText(
-                "ThreeD.FileDialog.LoadC3D.Filter",
-                "C3D 높이 맵 (*.C3D)|*.C3D|모든 파일 (*.*)|*.*",
-                "C3D height map (*.C3D)|*.C3D|All files (*.*)|*.*"),
-            CheckFileExists = true,
-            Multiselect = false,
-            InitialDirectory = File.Exists(source)
-                ? Path.GetDirectoryName(source)
-                : Directory.Exists(folder) ? folder : null
-        };
-        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) == true)
-        {
-            _viewModel.Workbench.FirstRecipeSourcePath = dialog.FileName;
-        }
-    }
-
-    private Window GetRecipeLifecycleDialogOwner() =>
-        recipeManagerWindow?.IsVisible == true ? recipeManagerWindow : this;
 
     private void ActivateWorkbenchAfterRecipeLifecycle()
     {
-        recipeManagerWindow?.Hide();
+        _workbenchLifecycle.HideRecipeManager();
         if (!_viewModel.IsWorkbenchWorkspaceSelected)
         {
             _viewModel.IsWorkbenchWorkspaceSelected = true;
@@ -3592,68 +3315,13 @@ public partial class MainWindow : Window
         Activate();
     }
 
-    private bool IsViewerSourceAlreadyLoaded(string path)
-    {
-        if (_viewer.CurrentC3DSourcePath is not { } currentPath)
-        {
-            return false;
-        }
-        return string.Equals(
-            Path.GetFullPath(currentPath),
-            Path.GetFullPath(path),
-            StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsViewerSourceAlreadyLoaded(string path) => _workbenchLifecycle.IsViewerSourceAlreadyLoaded(path);
 
-    private void SetWorkbenchC3DSourceFromViewer(string path, bool markDirty = true)
-    {
-        var sourceBindingStart = Stopwatch.GetTimestamp();
-        if (!_viewer.TryGetCurrentC3DSourceBinding(path, out var sourceBinding))
-        {
-            throw new InvalidOperationException(
-                "The Viewer source identity is unavailable or does not match the requested C3D path.");
-        }
+    private void SetWorkbenchC3DSourceFromViewer(string path, bool markDirty = true) =>
+        _workbenchLifecycle.SetWorkbenchC3DSourceFromViewer(path, markDirty);
 
-        _viewModel.Workbench.SetC3DSourceFromLoadedViewer(path, sourceBinding, markDirty);
-        if (markDirty)
-        {
-            _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-        }
-        lastWorkbenchSourceBindingMilliseconds =
-            Stopwatch.GetElapsedTime(sourceBindingStart).TotalMilliseconds;
-    }
-
-    private async Task<bool> ClickUnsavedRecipeDoNotSaveForSmokeAsync()
-    {
-        var buttonText = DialogText(
-            "ThreeD.Dialog.UnsavedRecipe.DoNotSave",
-            "저장 안 함",
-            "Don't Save");
-        for (var attempt = 0; attempt < 40; attempt++)
-        {
-            await Task.Delay(100).ConfigureAwait(false);
-            var clicked = await Dispatcher.InvokeAsync(() =>
-            {
-                var dialog = Application.Current.Windows
-                    .OfType<WpfMessageDialogWindow>()
-                    .FirstOrDefault(window => window.IsVisible);
-                var button = dialog is null
-                    ? null
-                    : FindVisualDescendants<System.Windows.Controls.Button>(dialog)
-                        .FirstOrDefault(candidate => string.Equals(candidate.Content?.ToString(), buttonText, StringComparison.Ordinal));
-                if (button is null)
-                {
-                    return false;
-                }
-                button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-                return true;
-            });
-            if (clicked)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
+    private Task<bool> ClickUnsavedRecipeDoNotSaveForSmokeAsync() =>
+        _workbenchLifecycle.ClickUnsavedRecipeDoNotSaveForSmokeAsync();
 
     private static Task<bool> CaptureRecipeHealthNavigationPressedForSmokeAsync(
         Window window,
@@ -3952,207 +3620,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnWorkbenchSaveTeachingRecipeRequested(object? sender, EventArgs args)
-    {
-        if (TryResolveParameterDraft())
-        {
-            SaveWorkbenchRecipe(forceDialog: false);
-        }
-    }
+    private void OnWorkbenchSaveTeachingRecipeRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.SaveTeachingRecipeRequested(sender, args);
 
-    private void OnWorkbenchSaveTeachingRecipeAsRequested(object? sender, EventArgs args)
-    {
-        if (TryResolveParameterDraft())
-        {
-            SaveWorkbenchRecipe(forceDialog: true);
-        }
-    }
+    private void OnWorkbenchSaveTeachingRecipeAsRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.SaveTeachingRecipeAsRequested(sender, args);
 
-    private bool SaveWorkbenchRecipe(bool forceDialog)
-    {
-        var path = _viewModel.Workbench.RecipePath;
-        if (forceDialog || string.IsNullOrWhiteSpace(path))
-        {
-            var dialog = new SaveFileDialog
-            {
-                Title = forceDialog
-                    ? DialogText("ThreeD.FileDialog.SaveRecipeAs.Title", "3D 검사 레시피 다른 이름으로 저장", "Save 3D Inspection Recipe As")
-                    : DialogText("ThreeD.FileDialog.SaveRecipe.Title", "3D 검사 레시피 저장", "Save 3D Inspection Recipe"),
-                Filter = DialogText("ThreeD.FileDialog.SaveRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json)|*.ov3d-recipe.json|기존 티칭 레시피 (*.ov3d-teach.json)|*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json)|*.ov3d-recipe.json|Legacy teaching recipe (*.ov3d-teach.json)|*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
-                FileName = string.IsNullOrWhiteSpace(path) ? "inspection-recipe.ov3d-recipe.json" : Path.GetFileName(path),
-                InitialDirectory = string.IsNullOrWhiteSpace(path) ? null : Path.GetDirectoryName(path),
-                OverwritePrompt = true
-            };
-            if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) != true)
-            {
-                return false;
-            }
+    private bool SaveWorkbenchRecipe(bool forceDialog) =>
+        _workbenchLifecycle.TrySaveWorkbenchRecipe(forceDialog);
 
-            path = dialog.FileName;
-        }
-
-        if (_viewModel.Workbench.TrySaveTeachingRecipe(path, out var message))
-        {
-            return true;
-        }
-
-        ShowRecipeSaveFailure(message);
-        return false;
-    }
-
-    private void OnWorkbenchOpenTeachingRecipeRequested(object? sender, EventArgs args)
-    {
-        if (!TryResolveWorkbenchChanges("opening another recipe"))
-        {
-            return;
-        }
-
-        var dialog = new OpenFileDialog
-        {
-            Title = DialogText("ThreeD.FileDialog.OpenRecipe.Title", "3D 검사 레시피 열기", "Open 3D Inspection Recipe"),
-            Filter = DialogText("ThreeD.FileDialog.OpenRecipe.Filter", "OpenVisionLab 3D 검사 레시피 (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON 파일 (*.json)|*.json|모든 파일 (*.*)|*.*", "OpenVisionLab 3D inspection recipe (*.ov3d-recipe.json;*.ov3d-teach.json)|*.ov3d-recipe.json;*.ov3d-teach.json|JSON files (*.json)|*.json|All files (*.*)|*.*"),
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        if (dialog.ShowDialog(GetRecipeLifecycleDialogOwner()) != true)
-        {
-            return;
-        }
-
-        OpenWorkbenchRecipe(dialog.FileName);
-    }
+    private void OnWorkbenchOpenTeachingRecipeRequested(object? sender, EventArgs args) =>
+        _workbenchLifecycle.OpenTeachingRecipeRequested(sender, args);
 
     private void OnWorkbenchOpenRecentTeachingRecipeRequested(
         object? sender,
-        ToolWorkbenchRecipePathRequestEventArgs args)
-    {
-        if (!TryResolveWorkbenchChanges("opening a recent recipe"))
-        {
-            return;
-        }
+        ToolWorkbenchRecipePathRequestEventArgs args) =>
+        _workbenchLifecycle.OpenRecentTeachingRecipeRequested(sender, args);
 
-        OpenWorkbenchRecipe(args.Path);
-    }
+    private void OpenWorkbenchRecipe(string path) => _workbenchLifecycle.OpenWorkbenchRecipe(path);
 
-    private void OpenWorkbenchRecipe(string path)
-    {
-        if (!File.Exists(path))
-        {
-            ShowRecipeFileUnavailable(path);
-            return;
-        }
+    private void RestoreMostRecentWorkbenchRecipe() => _workbenchLifecycle.RestoreMostRecentWorkbenchRecipe();
 
-        if (!_viewModel.Workbench.TryOpenTeachingRecipe(path, out var message))
-        {
-            ShowRecipeOpenFailure(message);
-            return;
-        }
-
-        _viewModel.ClearCurrentRunEvidenceForRecipeContext();
-        ActivateWorkbenchAfterRecipeLifecycle();
-
-        var source = _viewModel.Workbench.Source;
-        if (!_viewModel.Workbench.IsSourceReadyForRecipe)
-        {
-            _viewer.ClearC3DTeachingSource(_viewModel.Workbench.SourceReadinessSummary);
-            _viewModel.UpdateC3DSampleVisible(false);
-            ShowRecipeSourceNotReady();
-            return;
-        }
-
-        if (IsViewerSourceAlreadyLoaded(source.Path))
-        {
-            _workbenchViewerTeaching.SyncAppliedSelections();
-            return;
-        }
-
-        if (!_viewer.LoadC3DSource(source.Path))
-        {
-            var loadFailure = _viewer.HostState.ViewerStatus;
-            _viewer.ClearC3DTeachingSource("Recipe source could not be loaded. Relink a valid C3D source.");
-            _viewModel.UpdateC3DSampleVisible(false);
-            ShowRecipeSourceLoadFailure(loadFailure);
-            return;
-        }
-
-        if (_viewer.CurrentC3DSourcePath is { } loadedSourcePath)
-        {
-            SetWorkbenchC3DSourceFromViewer(loadedSourcePath);
-            _workbenchViewerTeaching.SyncAppliedSelections();
-        }
-    }
-
-    private void RestoreMostRecentWorkbenchRecipe()
-    {
-        if (IsAutomatedShellRun() || !string.IsNullOrWhiteSpace(_viewModel.Workbench.RecipePath))
-        {
-            return;
-        }
-
-        var path = _viewModel.Workbench.MostRecentAvailableRecipePath;
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        OVLog.Write(
-            LogCategory.UI,
-            LogLevel.Info,
-            $"Workbench[Open] Restoring most recent recipe | path={path} | preview=false | run=false | publish=false.");
-        OpenWorkbenchRecipe(path);
-    }
-
-    private bool TryResolveWorkbenchChanges(string _)
-    {
-        if (!TryResolveParameterDraft())
-        {
-            return false;
-        }
-
-        if (!_viewModel.Workbench.IsDirty
-            && !_viewModel.Workbench.IsValidationSetDefinitionDirty)
-        {
-            return true;
-        }
-
-        var result = ConfirmUnsavedRecipeChanges();
-        return result switch
-        {
-            WpfMessageDialogResult.Yes => SaveWorkbenchRecipe(forceDialog: false),
-            WpfMessageDialogResult.No => true,
-            _ => false
-        };
-    }
-
-    private bool TryResolveParameterDraft()
-    {
-        if (!_viewModel.Workbench.HasPendingStepParameterChanges)
-        {
-            return true;
-        }
-
-        var result = ConfirmPendingParameterChanges();
-        if (result == WpfMessageDialogResult.Cancel)
-        {
-            return false;
-        }
-
-        if (result == WpfMessageDialogResult.No)
-        {
-            _viewModel.Workbench.DiscardSelectedStepParameterDraft();
-            return true;
-        }
-
-        if (!ToolWorkbench.CommitPendingParameterEdit(out var message)
-            || !_viewModel.Workbench.TryApplySelectedStepParameterDraft(out message))
-        {
-            _viewModel.Workbench.ReportParameterDraftCommitError(message);
-            ShowParameterApplyFailure(message);
-            return false;
-        }
-
-        return true;
-    }
+    private bool TryResolveWorkbenchChanges(string reason) => _workbenchLifecycle.TryResolveWorkbenchChanges(reason);
 
     private static bool IsAutomatedShellRun() => Environment.GetCommandLineArgs().Any(argument =>
         argument.StartsWith("--smoke-", StringComparison.OrdinalIgnoreCase)
@@ -4179,232 +3668,10 @@ public partial class MainWindow : Window
         "ThreeDStudio",
         "recent-recipes.json");
 
-    private static string GetPersistentStudioLayoutPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OpenVisionLab",
-        "ThreeDStudio",
-        "studio-layout-v1.json");
-
-    private void ConfigureStudioLayoutPersistence()
-    {
-        var explicitPath = GetCommandLineValue("--smoke-layout-profile");
-        if (IsAutomatedShellRun() && string.IsNullOrWhiteSpace(explicitPath))
-        {
-            return;
-        }
-
-        studioLayoutStore = new StudioLayoutProfileStore(
-            string.IsNullOrWhiteSpace(explicitPath)
-                ? GetPersistentStudioLayoutPath()
-                : explicitPath);
-        var result = studioLayoutStore.Load();
-        studioLayoutLoadStatus = result.Status;
-        pendingStudioLayoutProfile = result.Profile;
-        canAutoSaveStudioLayout = result.CanAutoSave;
-        ApplyWindowPlacement(result.Profile.Window);
-        _viewModel.ReportLayoutStatus(result.Message);
-        OVLog.Write(
-            LogCategory.UI,
-            result.Status is StudioLayoutLoadStatus.Corrupt
-                or StudioLayoutLoadStatus.Incompatible
-                ? LogLevel.Warning
-                : LogLevel.Info,
-            $"Studio layout | status={result.Status} | path={studioLayoutStore.Path} | {result.Message}");
-    }
-
-    private void RestoreStudioLayoutOnLoaded(object sender, RoutedEventArgs args)
-    {
-        Loaded -= RestoreStudioLayoutOnLoaded;
-        if (pendingStudioLayoutProfile is not { } profile)
-        {
-            return;
-        }
-
-        ToolWorkbench.ApplyDockPresentationState(profile.Workbench);
-        Workspace.ApplyPresentationState(profile.Advanced);
-        WriteStudioLayoutSmokeReport(profile);
-        pendingStudioLayoutProfile = null;
-    }
-
-    private void WriteStudioLayoutSmokeReport(StudioLayoutProfile profile)
-    {
-        var reportPath = GetCommandLineValue("--smoke-layout-state-report");
-        if (string.IsNullOrWhiteSpace(reportPath))
-        {
-            return;
-        }
-
-        var fullPath = Path.GetFullPath(reportPath);
-        Directory.CreateDirectory(
-            Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
-        File.WriteAllLines(
-            fullPath,
-            [
-                "OpenVisionLab 3D Studio layout restore smoke",
-                $"LoadStatus={studioLayoutLoadStatus}",
-                $"SchemaVersion={profile.SchemaVersion}",
-                $"Stage={ToolWorkbench.OperatorStage}",
-                $"RecipeDirty={_viewModel.Workbench.IsDirty}",
-                $"ParameterDraft={_viewModel.Workbench.HasPendingStepParameterChanges}",
-                $"RoiCapture={_viewModel.Workbench.IsSelectionCandidateActive}",
-                $"PreviewRunning={_viewModel.Workbench.IsSelectedStepPreviewRunning}",
-                $"ValidationRunning={_viewModel.Workbench.IsValidationSetRunning}",
-                $"WorkbenchPrimary={profile.Workbench.PrimaryContentId}",
-                $"WorkbenchSupport={profile.Workbench.SupportContentId}",
-                "RestoreContract=presentation-only; recipeChanged=false; inspectionRun=false",
-            ]);
-    }
-
-    private void ApplyWindowPlacement(StudioWindowPlacement? placement)
-    {
-        if (placement is null)
-        {
-            return;
-        }
-
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        WindowState = WindowState.Normal;
-        Left = placement.Left;
-        Top = placement.Top;
-        Width = placement.Width;
-        Height = placement.Height;
-        if (placement.IsMaximized)
-        {
-            WindowState = WindowState.Maximized;
-        }
-    }
-
-    private void SaveStudioLayout()
-    {
-        if (studioLayoutStore is null || !canAutoSaveStudioLayout)
-        {
-            return;
-        }
-
-        try
-        {
-            var bounds = WindowState == WindowState.Normal
-                ? new Rect(Left, Top, Width, Height)
-                : RestoreBounds;
-            var placement = bounds.IsEmpty
-                ? null
-                : new StudioWindowPlacement(
-                    bounds.Left,
-                    bounds.Top,
-                    bounds.Width,
-                    bounds.Height,
-                    WindowState == WindowState.Maximized);
-            studioLayoutStore.Save(new StudioLayoutProfile(
-                StudioLayoutProfile.CurrentSchemaVersion,
-                placement,
-                ToolWorkbench.CaptureDockPresentationState(),
-                Workspace.CapturePresentationState()));
-            OVLog.Write(
-                LogCategory.UI,
-                LogLevel.Info,
-                $"Studio layout saved | path={studioLayoutStore.Path} | presentationOnly=true | inspectionRun=false");
-        }
-        catch (Exception exception) when (exception is IOException
-            or UnauthorizedAccessException
-            or NotSupportedException
-            or ArgumentException)
-        {
-            OVLog.Write(
-                LogCategory.UI,
-                LogLevel.Warning,
-                $"Studio layout save failed | path={studioLayoutStore.Path} | {exception}");
-        }
-    }
-
     private void ResetStudioLayoutRequested(object sender, EventArgs args)
-    {
-        ToolWorkbench.ResetDockPresentationState();
-        Workspace.ResetPresentationState();
-        WindowState = WindowState.Maximized;
-        canAutoSaveStudioLayout = true;
-        try
-        {
-            studioLayoutStore?.Reset();
-            _viewModel.ReportLayoutStatus(
-                "Saved layout reset to safe defaults. Recipe and run state were unchanged.");
-            OVLog.Write(
-                LogCategory.UI,
-                LogLevel.Info,
-                "Studio layout reset | presentationOnly=true | recipeChanged=false | inspectionRun=false");
-        }
-        catch (Exception exception) when (exception is IOException
-            or UnauthorizedAccessException
-            or NotSupportedException)
-        {
-            _viewModel.ReportLayoutStatus(
-                $"Layout defaults are active, but the saved file could not be removed: {exception.Message}");
-            OVLog.Write(
-                LogCategory.UI,
-                LogLevel.Warning,
-                $"Studio layout reset file removal failed | {exception}");
-        }
-    }
+        => _studioLayout.Reset();
 
-    private void SyncWorkbenchSourceFromViewer()
-    {
-        if (_viewer.CurrentC3DSourcePath is { } sourcePath
-            && string.IsNullOrWhiteSpace(_viewModel.Workbench.Source.Path))
-        {
-            SetWorkbenchC3DSourceFromViewer(sourcePath, markDirty: false);
-        }
-    }
-
-    private void OnOpenEvidenceArtifactRequested(object? sender, EvidenceArtifactOpenRequestEventArgs args)
-    {
-        if (!File.Exists(args.Path) && !Directory.Exists(args.Path))
-        {
-            ShowEvidenceArtifactMissing(args.Label, args.Path);
-            return;
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo(args.Path) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            ShowEvidenceArtifactOpenFailure(args.Label, args.Path, ex.Message);
-        }
-    }
-
-    private void OnOpenRunRecordRequested(object? sender, EventArgs args)
-    {
-        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
-        var dialog = new OpenFileDialog
-        {
-            Title = english ? "Open Run Record" : "\uC2E4\uD589 \uAE30\uB85D \uC5F4\uAE30",
-            Filter = english
-                ? "OpenVisionLab Run Record (*.json)|*.json|All files (*.*)|*.*"
-                : "OpenVisionLab \uC2E4\uD589 \uAE30\uB85D (*.json)|*.json|\uBAA8\uB4E0 \uD30C\uC77C (*.*)|*.*",
-            CheckFileExists = true,
-            Multiselect = false
-        };
-        if (dialog.ShowDialog(this) == true
-            && !_viewModel.LoadRunRecord(dialog.FileName, out var message))
-        {
-            ShowRunRecordOpenFailure(message);
-        }
-    }
-
-    private void OnExportRunRecordRequested(object? sender, EventArgs args)
-    {
-        var english = OpenVisionLanguageService.CurrentLanguage == OpenVisionLanguage.English;
-        var dialog = new OpenFolderDialog
-        {
-            Title = english ? "Export Run Record Bundle" : "\uC2E4\uD589 \uAE30\uB85D \uBB36\uC74C \uB0B4\uBCF4\uB0B4\uAE30",
-            Multiselect = false
-        };
-        if (dialog.ShowDialog(this) == true
-            && !_viewModel.ExportCurrentRunRecordBundle(dialog.FolderName, out var message))
-        {
-            ShowRunRecordExportFailure(message);
-        }
-    }
+    private void SyncWorkbenchSourceFromViewer() => _workbenchLifecycle.SyncWorkbenchSourceFromViewer();
 
     private void OnViewerHostStateChanged(object? sender, ViewerHostStateChangedEventArgs args)
     {

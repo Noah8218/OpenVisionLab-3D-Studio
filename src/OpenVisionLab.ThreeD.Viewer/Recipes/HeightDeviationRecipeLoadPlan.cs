@@ -1,0 +1,41 @@
+using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Tools;
+
+namespace OpenVisionLab.ThreeD.Viewer.Recipes;
+
+internal sealed record HeightDeviationRecipeLoadPlan(
+    string FullRecipePath,
+    string SourcePath,
+    HeightDeviationRecipe Recipe,
+    C3DHeightGrid Grid,
+    ToolResult PreviewResult)
+{
+    public static HeightDeviationRecipeLoadPlan Create(
+        ViewerRecipeFile recipeFile,
+        HeightDeviationRecipe recipe,
+        int maxRenderedPoints)
+    {
+        ArgumentNullException.ThrowIfNull(recipeFile);
+        ArgumentNullException.ThrowIfNull(recipe);
+
+        var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
+        var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints);
+        var previewResult = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
+            recipe.Source.EntityId,
+            recipe.Source.Name,
+            grid.Min,
+            grid.Max,
+            grid.Mean,
+            grid.ValidSampleCount,
+            recipe.Rule.PeakTolerance,
+            recipe.Source.Unit));
+
+        return new(
+            recipeFile.Path,
+            sourcePath,
+            recipe,
+            grid,
+            previewResult);
+    }
+}

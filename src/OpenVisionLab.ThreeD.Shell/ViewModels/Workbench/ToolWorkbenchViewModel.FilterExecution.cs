@@ -499,7 +499,7 @@ public sealed partial class ToolWorkbenchViewModel
             this,
             new ToolWorkbenchFilterDisplayRequestEventArgs(
                 Source.Path,
-                loadedSourceBinding?.ContentSha256 ?? string.Empty,
+                SourceSession.SourceBinding?.ContentSha256 ?? string.Empty,
                 true));
         SetFilterSummary("Showing the original taught C3D source. Preview output remains available.");
     }

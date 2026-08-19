@@ -1,4 +1,5 @@
 using System.Collections;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -13,19 +14,11 @@ public enum RecipeReviewPresentationMode
     Results
 }
 
-public enum ValidationWorkspaceSection
-{
-    Samples,
-    Results,
-    Failures,
-    Thresholds,
-    HeldOut
-}
-
 public partial class RecipePipelineReviewView : UserControl
 {
     private readonly ControlTemplate standardReviewTabsTemplate;
     private RecipeReviewPresentationMode presentationMode;
+    private RecipePipelineReviewValidationViewModel? validationWorkspace;
 
     public event EventHandler? ActiveReviewChanged;
 
@@ -53,6 +46,7 @@ public partial class RecipePipelineReviewView : UserControl
         standardReviewTabsTemplate = ReviewTabs.Template;
         ReviewTabs.SelectionChanged += ReviewTabs_SelectionChanged;
         SizeChanged += RecipePipelineReviewView_SizeChanged;
+        DataContextChanged += RecipePipelineReviewView_DataContextChanged;
     }
 
     public RecipeReviewPresentationMode PresentationMode => presentationMode;
@@ -62,8 +56,8 @@ public partial class RecipePipelineReviewView : UserControl
         && ValidationWorkspaceNavigation.Visibility == Visibility.Visible
         && ReviewTabs.SelectedIndex == 4;
 
-    public ValidationWorkspaceSection ValidationSection { get; private set; } =
-        ValidationWorkspaceSection.Samples;
+    public ValidationWorkspaceSection ValidationSection =>
+        validationWorkspace?.Section ?? ValidationWorkspaceSection.Samples;
 
     public bool HasLocalizedValidationNavigation =>
         HasAccessibleText(ValidationSamplesNavigation)
@@ -193,6 +187,18 @@ public partial class RecipePipelineReviewView : UserControl
             "RunRecordEvidenceSummary",
             StringComparison.Ordinal);
 
+    public bool HasPrivacySafeSupportBundleControls =>
+        SupportBundleButton is not null
+        && SupportBundlePrivacyNotice is not null
+        && string.Equals(
+            AutomationProperties.GetAutomationId(SupportBundleButton),
+            "PrivacySafeSupportBundleButton",
+            StringComparison.Ordinal)
+        && string.Equals(
+            AutomationProperties.GetAutomationId(SupportBundlePrivacyNotice),
+            "SupportBundlePrivacyNotice",
+            StringComparison.Ordinal);
+
     public void ActivateValidationSet() => SelectReviewTab(4);
 
     public bool IsValidationSetSelected => ReviewTabs.SelectedIndex == 4;
@@ -220,37 +226,15 @@ public partial class RecipePipelineReviewView : UserControl
         !string.IsNullOrWhiteSpace(control.Content?.ToString())
         && !string.IsNullOrWhiteSpace(AutomationProperties.GetName(control));
 
-    private void ValidationSetStepsList_SelectionChanged(object sender, SelectionChangedEventArgs args)
-    {
-        if (sender is ListBox { SelectedItem: { } selected } list)
-        {
-            list.ScrollIntoView(selected);
-        }
-    }
-
-    private void ValidationSamplesNavigation_Click(object sender, RoutedEventArgs e) =>
-        SetValidationSection(ValidationWorkspaceSection.Samples);
-
-    private void ValidationResultsNavigation_Click(object sender, RoutedEventArgs e) =>
-        SetValidationSection(ValidationWorkspaceSection.Results);
-
-    private void ValidationFailuresNavigation_Click(object sender, RoutedEventArgs e) =>
-        SetValidationSection(ValidationWorkspaceSection.Failures);
-
-    private void ValidationThresholdNavigation_Click(object sender, RoutedEventArgs e) =>
-        SetValidationSection(ValidationWorkspaceSection.Thresholds);
-
-    private void ValidationHeldOutNavigation_Click(object sender, RoutedEventArgs e) =>
-        SetValidationSection(ValidationWorkspaceSection.HeldOut);
-
     public void SetValidationSection(ValidationWorkspaceSection section)
     {
-        ValidationSection = section;
-        ValidationSamplesNavigation.IsChecked = section == ValidationWorkspaceSection.Samples;
-        ValidationResultsNavigation.IsChecked = section == ValidationWorkspaceSection.Results;
-        ValidationFailuresNavigation.IsChecked = section == ValidationWorkspaceSection.Failures;
-        ValidationThresholdNavigation.IsChecked = section == ValidationWorkspaceSection.Thresholds;
-        ValidationHeldOutNavigation.IsChecked = section == ValidationWorkspaceSection.HeldOut;
+        validationWorkspace?.SelectSection(section);
+        ApplyValidationSectionLayout();
+    }
+
+    private void ApplyValidationSectionLayout()
+    {
+        var section = ValidationSection;
 
         var usesPrimaryReview = section is ValidationWorkspaceSection.Samples
             or ValidationWorkspaceSection.Results
@@ -306,25 +290,29 @@ public partial class RecipePipelineReviewView : UserControl
                 : Visibility.Collapsed;
 
         ApplyValidationPrimaryLayout();
-
-        if (samplesOnly
-            && DataContext is ToolWorkbenchViewModel samplesWorkbench
-            && samplesWorkbench.ValidationSetFilter != ValidationSetStatusFilter.All)
-        {
-            samplesWorkbench.SetValidationSetFilterCommand.Execute("All");
-        }
-
         ApplyThresholdSection(section);
-
-        if (section == ValidationWorkspaceSection.Failures
-            && DataContext is ToolWorkbenchViewModel workbench
-            && workbench.SelectedValidationSetSample?.Status is not ("Fail" or "Error"))
-        {
-            workbench.SelectedValidationSetSample =
-                workbench.ValidationSetSamples.FirstOrDefault(
-                    sample => sample.Status is "Fail" or "Error");
-        }
     }
+
+    private void RecipePipelineReviewView_DataContextChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (validationWorkspace is not null)
+        {
+            validationWorkspace.PropertyChanged -= ValidationWorkspace_PropertyChanged;
+        }
+
+        validationWorkspace = (e.NewValue as ToolWorkbenchViewModel)?.ValidationWorkspace;
+        if (validationWorkspace is not null)
+        {
+            validationWorkspace.PropertyChanged += ValidationWorkspace_PropertyChanged;
+        }
+
+        ApplyValidationSectionLayout();
+    }
+
+    private void ValidationWorkspace_PropertyChanged(object? sender, PropertyChangedEventArgs e) =>
+        ApplyValidationSectionLayout();
 
     private void ApplyThresholdSection(ValidationWorkspaceSection section)
     {

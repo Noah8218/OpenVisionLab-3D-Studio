@@ -45,6 +45,46 @@ internal static class ViewerDisplaySettingsViewModelVerification
                     ViewerColorMap.Height,
                     IsDisplayOnly: true),
                 initialSettings.ToString());
+            Check(
+                "initial render density",
+                viewModel.PointSize == 2.0
+                && viewModel.SelectedRenderDensity == "Balanced"
+                && viewModel.C3DMaxRenderedPoints == 55000
+                && viewModel.LazMaxSampledPoints == 50000
+                && viewModel.ImportedMeshMaxRenderedTriangles == 60000
+                && viewModel.NominalActualMaxDisplaySamples == 60000,
+                viewModel.RenderDensitySummary);
+            viewModel.PointSize = 9.0;
+            Check(
+                "point size owner clamps existing range",
+                viewModel.PointSize == 6.0,
+                viewModel.PointSize.ToString("F1", CultureInfo.InvariantCulture));
+            viewModel.SelectedRenderDensity = "Fast";
+            Check(
+                "fast render density budgets",
+                viewModel.C3DMaxRenderedPoints == 25000
+                && viewModel.LazMaxSampledPoints == 25000
+                && viewModel.ImportedMeshMaxRenderedTriangles == 25000
+                && viewModel.NominalActualMaxDisplaySamples == 25000
+                && viewModel.RenderDensitySummary.StartsWith("Fast:", StringComparison.Ordinal),
+                viewModel.RenderDensitySummary);
+            viewModel.SelectedRenderDensity = "Detailed";
+            Check(
+                "detailed render density budgets",
+                viewModel.C3DMaxRenderedPoints == 140000
+                && viewModel.LazMaxSampledPoints == 150000
+                && viewModel.ImportedMeshMaxRenderedTriangles == 180000
+                && viewModel.NominalActualMaxDisplaySamples == 150000
+                && viewModel.RenderDensitySummary.StartsWith("Detailed:", StringComparison.Ordinal),
+                viewModel.RenderDensitySummary);
+            viewModel.SelectedRenderDensity = "Unsupported";
+            Check(
+                "unsupported render density keeps existing Balanced fallback",
+                viewModel.SelectedRenderDensity == "Balanced"
+                && viewModel.C3DMaxRenderedPoints == 55000
+                && renderChanges == 0
+                && viewModel.DisplaySettingsRevision == 0,
+                $"density={viewModel.SelectedRenderDensity}|renders={renderChanges}|revision={viewModel.DisplaySettingsRevision}");
 
             viewModel.SelectedGeometryStyle = "Surface";
             Check("geometry bridge guard", viewModel.SelectedGeometryStyle == "Points" && viewModel.FallbackApplied, viewModel.FallbackSummary);
@@ -309,11 +349,59 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "zero stride rejected");
 
             var rootViewModel = new MainWindowViewModel();
+            Check(
+                "selection session defaults",
+                rootViewModel.SelectionSession.SelectedMode == "Point"
+                && rootViewModel.SelectionSession.SelectedEntity == "Generated Unit Cube"
+                && rootViewModel.SelectionSession.PickCoordinate == "(none)"
+                && rootViewModel.SelectionSession.OverlayVisible,
+                $"mode={rootViewModel.SelectedSelectionMode}|entity={rootViewModel.SelectedEntity}|pick={rootViewModel.PickCoordinate}|overlay={rootViewModel.SelectionOverlayVisible}");
+            var selectionNotifications = new HashSet<string>(StringComparer.Ordinal);
+            rootViewModel.PropertyChanged += (_, args) =>
+            {
+                if (!string.IsNullOrWhiteSpace(args.PropertyName))
+                {
+                    selectionNotifications.Add(args.PropertyName);
+                }
+            };
+            rootViewModel.SelectedSelectionMode = "Box ROI";
+            rootViewModel.SelectedEntity = "Verification Entity";
+            rootViewModel.PickCoordinate = "X 1, Y 2, Z 3";
+            rootViewModel.SelectionOverlayVisible = false;
+            Check(
+                "selection session root facade",
+                rootViewModel.SelectionSession.SelectedMode == "Box ROI"
+                && rootViewModel.SelectionSession.SelectedEntity == "Verification Entity"
+                && rootViewModel.SelectionSession.PickCoordinate == "X 1, Y 2, Z 3"
+                && !rootViewModel.SelectionSession.OverlayVisible
+                && rootViewModel.SelectionSummary == "Box ROI: viewer state only"
+                && selectionNotifications.Contains(nameof(MainWindowViewModel.SelectedSelectionMode))
+                && selectionNotifications.Contains(nameof(MainWindowViewModel.SelectedEntity))
+                && selectionNotifications.Contains(nameof(MainWindowViewModel.PickCoordinate))
+                && selectionNotifications.Contains(nameof(MainWindowViewModel.SelectionOverlayVisible)),
+                string.Join(",", selectionNotifications.OrderBy(name => name, StringComparer.Ordinal)));
+            rootViewModel.SelectedSelectionMode = "Point";
+            rootViewModel.SelectedEntity = "Generated Unit Cube";
+            rootViewModel.PickCoordinate = "(none)";
+            rootViewModel.SelectionOverlayVisible = true;
             var previewRequests = 0;
             var publishRequests = 0;
             rootViewModel.NominalActual.PreviewRequested += (_, _) => previewRequests++;
             rootViewModel.NominalActual.PublishRequested += (_, _) => publishRequests++;
             var nominalState = rootViewModel.NominalActual.State;
+
+            rootViewModel.PointSize = 10.0;
+            rootViewModel.SelectedRenderDensity = "Fast";
+            Check(
+                "root display compatibility facade",
+                rootViewModel.PointSize == 6.0
+                && rootViewModel.Display.PointSize == 6.0
+                && rootViewModel.SelectedRenderDensity == "Fast"
+                && rootViewModel.Display.SelectedRenderDensity == "Fast"
+                && rootViewModel.C3DMaxRenderedPoints == 25000
+                && rootViewModel.NominalActual.NextPreviewDisplayDensity == "Fast"
+                && rootViewModel.NominalActual.NextPreviewDisplaySampleBudget == 25000,
+                $"point={rootViewModel.PointSize:F1}|density={rootViewModel.SelectedRenderDensity}|budget={rootViewModel.NominalActual.NextPreviewDisplaySampleBudget}");
 
             rootViewModel.Display.SelectedColorMap = "Solid";
             Check(
@@ -387,6 +475,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "Top orthographic state is explicit",
                 rootViewModel.IsTopOrthographicView
                 && !rootViewModel.IsPerspectiveView
+                && rootViewModel.CameraSession.HasSavedPerspective
                 && rootViewModel.YawDegrees == 0.0
                 && rootViewModel.PitchDegrees == 90.0
                 && rootViewModel.OrthographicHeight > 0.0
@@ -404,6 +493,7 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 "Perspective restore returns prior camera",
                 rootViewModel.IsPerspectiveView
                 && !rootViewModel.IsTopOrthographicView
+                && rootViewModel.CameraSession.HasSavedPerspective
                 && Math.Abs(rootViewModel.CameraDistance - savedPerspectiveDistance) < 0.000001,
                 rootViewModel.BottomStatus);
             var geometryRevision = rootViewModel.DisplaySettingsRevision;

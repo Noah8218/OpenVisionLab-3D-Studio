@@ -53,31 +53,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private ToolWorkbenchReferenceItem? selectedReference;
     private ToolRecipeSelection? selectedCompatibleSelection;
     private ToolRecipeLandmarkCorrespondence? selectedCorrespondenceRow;
-    private ToolRecipeValidationResult validation = new([], []);
-    private ToolRecipeValidationResult storageValidation = new([], []);
-    private IReadOnlyList<string> sourceBindingErrors = [];
     private bool suppressRecipeRefresh;
     private bool deferSelectedStepStateRefresh;
-    private string recipeSchemaVersion = ToolRecipeDocument.CurrentSchemaVersion;
-    private string recipeName = "Untitled 3D Inspection";
-    private string? recipePath;
     private string newReferenceId = "reference.fixture-landmarks";
     private string newReferenceName = "Fixture landmarks";
     private string newReferenceKind = "Landmark set";
-    private bool isDirty;
-    private ToolRecipeSelectionSourceBinding? loadedSourceBinding;
-    private ToolRecipeAcquisitionProvenance? sourceAcquisitionProvenance;
-    private bool isTeachingSelectionCaptureActive;
-    private string? teachingSelectionCaptureStepId;
-    private int teachingSelectionCapturedPointCount;
-    private int teachingSelectionRequiredPointCount;
-    private bool canApplyTeachingSelectionCapture;
-    private bool captureAdditionalLevelSurfaceReference;
-    private string teachingSelectionCaptureMessage = "Capture is inactive.";
-    private int teachingGridRectangleRow;
-    private int teachingGridRectangleColumn;
-    private int teachingGridRectangleRowCount;
-    private int teachingGridRectangleColumnCount;
     private bool suppressTeachingGridRectangleDraftChanged;
     private string correspondenceSourceEntityId = string.Empty;
     private string correspondenceReferenceLandmarkId = "fixture.landmark.01";
@@ -228,12 +208,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         Localization.PropertyChanged += OnCompatibleToolCatalogLocalizationChanged;
         Localization.PropertyChanged += OnTeachingLocalizationChanged;
         InitializeValidationSet();
+        ValidationWorkspace = new RecipePipelineReviewValidationViewModel(this);
         InitializeLineFitDiagnostics();
 
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
         SelectedTool = Tools[0];
         RefreshRecipeState();
     }
+
+    internal ToolWorkbenchTeachingCaptureSession TeachingCaptureSession { get; } = new();
+
+    internal ToolWorkbenchRecipeSession RecipeSession { get; } = new();
+    internal ToolWorkbenchSourceSession SourceSession { get; } = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler? NewTeachingRecipeRequested;
@@ -269,8 +255,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     public ToolWorkbenchSourceItem Source { get; }
+    public RecipePipelineReviewValidationViewModel ValidationWorkspace { get; }
     public ToolRecipeAcquisitionProvenance? SourceAcquisitionProvenance =>
-        sourceAcquisitionProvenance;
+        SourceSession.SourceAcquisitionProvenance;
     public SharedHeightCursorSession SharedHeightCursor { get; }
     public HeightImageViewerViewModel HeightImageViewer { get; }
     public OrientedBox3DEditorViewModel OrientedBoxEditor { get; }
@@ -482,16 +469,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string RecipeName
     {
-        get => recipeName;
+        get => RecipeSession.Name;
         set
         {
             var normalized = value ?? string.Empty;
-            if (recipeName == normalized)
+            if (!RecipeSession.SetName(normalized))
             {
                 return;
             }
 
-            recipeName = normalized;
             OnPropertyChanged();
             if (!suppressRecipeRefresh)
             {
@@ -504,10 +490,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string? RecipePath
     {
-        get => recipePath;
+        get => RecipeSession.Path;
         private set
         {
-            if (recipePath == value)
+            if (!RecipeSession.SetPath(value))
             {
                 return;
             }
@@ -515,7 +501,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             InvalidateOrderedRun(Localize(
                 "레시피가 바뀌어 이전 실행 증거가 현재 컨텍스트에서 해제되었습니다.",
                 "The recipe changed, so the previous Run evidence was detached from the current context."));
-            recipePath = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RecipePathSummary));
             OnPropertyChanged(nameof(RecipeStateSummary));
@@ -525,9 +510,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool IsDirty => isDirty;
+    public bool IsDirty => RecipeSession.IsDirty;
 
-    public string RecipeSchemaVersion => recipeSchemaVersion;
+    public string RecipeSchemaVersion => RecipeSession.SchemaVersion;
 
     public string NewReferenceId
     {
@@ -670,12 +655,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         || IsRegridHeightFieldPreviewRunning
         || IsMeasurementPreviewRunning;
 
-    public bool CanSaveTeachingRecipe => storageValidation.IsValid
-        && sourceBindingErrors.Count == 0;
+    public bool CanSaveTeachingRecipe => RecipeSession.StorageValidation.IsValid
+        && RecipeSession.SourceBindingErrors.Count == 0;
 
-    public bool IsTeachingRecipeExecutionReady => validation.IsValid
-        && sourceBindingErrors.Count == 0
-        && sourceIdentityErrors.Count == 0;
+    public bool IsTeachingRecipeExecutionReady => RecipeSession.Validation.IsValid
+        && RecipeSession.SourceBindingErrors.Count == 0
+        && SourceSession.SourceIdentityErrors.Count == 0;
 
     public bool IsRecipeSaveBlocked => !CanSaveTeachingRecipe;
 
@@ -691,17 +676,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ? "No taught step selected"
         : $"Step {SelectedPipelineStep.Order}: {SelectedPipelineStep.ToolName}";
 
-    public string ValidationSummary => sourceIdentityErrors.Count > 0
-            ? $"Recipe source needs {sourceIdentityErrors.Count} correction(s) before Preview or Run."
-        : sourceBindingErrors.Count > 0
-        ? $"Teaching has {sourceBindingErrors.Count} stale source selection(s); recapture or replace them before saving."
-        : validation.IsValid
-        ? validation.Warnings.Count == 0
+    public string ValidationSummary => SourceSession.SourceIdentityErrors.Count > 0
+            ? $"Recipe source needs {SourceSession.SourceIdentityErrors.Count} correction(s) before Preview or Run."
+        : RecipeSession.SourceBindingErrors.Count > 0
+        ? $"Teaching has {RecipeSession.SourceBindingErrors.Count} stale source selection(s); recapture or replace them before saving."
+        : RecipeSession.Validation.IsValid
+        ? RecipeSession.Validation.Warnings.Count == 0
             ? "Inspection recipe is structurally valid. Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
-            : $"Inspection recipe is valid with {validation.Warnings.Count} warning(s). Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
-        : storageValidation.IsValid
-            ? $"Teaching needs {validation.Errors.Count} correction(s) before Preview or Run. The draft can still be saved."
-            : $"Teaching needs {storageValidation.Errors.Count + sourceBindingErrors.Count} structural correction(s) before it can be saved.";
+            : $"Inspection recipe is valid with {RecipeSession.Validation.Warnings.Count} warning(s). Typed tool rows support explicit Preview/Publish; whole-recipe Run stays blocked until every routed step has an executor."
+        : RecipeSession.StorageValidation.IsValid
+            ? $"Teaching needs {RecipeSession.Validation.Errors.Count} correction(s) before Preview or Run. The draft can still be saved."
+            : $"Teaching needs {RecipeSession.StorageValidation.Errors.Count + RecipeSession.SourceBindingErrors.Count} structural correction(s) before it can be saved.";
 
     public string RecipePathSummary => string.IsNullOrWhiteSpace(RecipePath)
         ? "Not saved yet"
@@ -711,15 +696,15 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         get
         {
-            var validationState = sourceIdentityErrors.Count > 0
-                ? $"Source needs {sourceIdentityErrors.Count} correction(s)"
-                : sourceBindingErrors.Count > 0
-                ? $"{sourceBindingErrors.Count} stale selection(s)"
-                : validation.IsValid
-                ? validation.Warnings.Count == 0 ? "Valid" : $"Valid, {validation.Warnings.Count} warning(s)"
-                : storageValidation.IsValid
-                    ? $"{validation.Errors.Count} execution requirement(s)"
-                    : $"{storageValidation.Errors.Count} structural correction(s)";
+            var validationState = SourceSession.SourceIdentityErrors.Count > 0
+                ? $"Source needs {SourceSession.SourceIdentityErrors.Count} correction(s)"
+                : RecipeSession.SourceBindingErrors.Count > 0
+                ? $"{RecipeSession.SourceBindingErrors.Count} stale selection(s)"
+                : RecipeSession.Validation.IsValid
+                ? RecipeSession.Validation.Warnings.Count == 0 ? "Valid" : $"Valid, {RecipeSession.Validation.Warnings.Count} warning(s)"
+                : RecipeSession.StorageValidation.IsValid
+                    ? $"{RecipeSession.Validation.Errors.Count} execution requirement(s)"
+                    : $"{RecipeSession.StorageValidation.Errors.Count} structural correction(s)";
             var saveState = IsDirty || IsValidationSetDefinitionDirty
                 ? "Modified"
                 : string.IsNullOrWhiteSpace(RecipePath) ? "Unsaved" : "Saved";
@@ -814,18 +799,18 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public string ThicknessRoiTeachingDetail => Localization.ThicknessRoiTeachingDetail;
 
-    public bool IsTeachingSelectionCaptureActive => isTeachingSelectionCaptureActive;
+    public bool IsTeachingSelectionCaptureActive => TeachingCaptureSession.IsActive;
 
     public bool IsSelectionCandidateActive =>
         IsTeachingSelectionCaptureActive || OrientedBoxEditor.IsDraftOpen;
 
     public bool IsPipelineReviewExpanded => !IsSelectionCandidateActive && HasPipelineSteps;
 
-    public int TeachingSelectionCapturedPointCount => teachingSelectionCapturedPointCount;
+    public int TeachingSelectionCapturedPointCount => TeachingCaptureSession.CapturedPointCount;
 
-    public int TeachingSelectionRequiredPointCount => teachingSelectionRequiredPointCount;
+    public int TeachingSelectionRequiredPointCount => TeachingCaptureSession.RequiredPointCount;
 
-    public bool CanApplyTeachingSelectionCapture => canApplyTeachingSelectionCapture;
+    public bool CanApplyTeachingSelectionCapture => TeachingCaptureSession.CanApply;
 
     public bool IsTeachingGridRectangleEditorVisible =>
         SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
@@ -838,26 +823,34 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public int TeachingGridRectangleRow
     {
-        get => teachingGridRectangleRow;
-        set => SetTeachingGridRectangleDraftValue(ref teachingGridRectangleRow, value);
+        get => TeachingCaptureSession.GridRectangleDraft.Row;
+        set => SetTeachingGridRectangleDraftValue(
+            TeachingCaptureSession.GridRectangleDraft with { Row = value },
+            nameof(TeachingGridRectangleRow));
     }
 
     public int TeachingGridRectangleColumn
     {
-        get => teachingGridRectangleColumn;
-        set => SetTeachingGridRectangleDraftValue(ref teachingGridRectangleColumn, value);
+        get => TeachingCaptureSession.GridRectangleDraft.Column;
+        set => SetTeachingGridRectangleDraftValue(
+            TeachingCaptureSession.GridRectangleDraft with { Column = value },
+            nameof(TeachingGridRectangleColumn));
     }
 
     public int TeachingGridRectangleRowCount
     {
-        get => teachingGridRectangleRowCount;
-        set => SetTeachingGridRectangleDraftValue(ref teachingGridRectangleRowCount, value);
+        get => TeachingCaptureSession.GridRectangleDraft.RowCount;
+        set => SetTeachingGridRectangleDraftValue(
+            TeachingCaptureSession.GridRectangleDraft with { RowCount = value },
+            nameof(TeachingGridRectangleRowCount));
     }
 
     public int TeachingGridRectangleColumnCount
     {
-        get => teachingGridRectangleColumnCount;
-        set => SetTeachingGridRectangleDraftValue(ref teachingGridRectangleColumnCount, value);
+        get => TeachingCaptureSession.GridRectangleDraft.ColumnCount;
+        set => SetTeachingGridRectangleDraftValue(
+            TeachingCaptureSession.GridRectangleDraft with { ColumnCount = value },
+            nameof(TeachingGridRectangleColumnCount));
     }
 
     public bool IsTeachingGridRectangleDraftValid =>
@@ -957,7 +950,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private bool CanEditCorrespondenceRows =>
         IsSelectedStepCorrespondence
-        && loadedSourceBinding is not null
+        && SourceSession.SourceBinding is not null
         && !string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
         && !string.IsNullOrWhiteSpace(CorrespondenceReferenceLandmarkId)
         && !string.IsNullOrWhiteSpace(CorrespondenceReferenceFrameId)
@@ -1065,7 +1058,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         clearPreviewMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
 
         stageStart = Stopwatch.GetTimestamp();
-        loadedSourceBinding = sourceBinding;
+        SourceSession.SetSourceBinding(sourceBinding);
         AcceptCurrentSourceIdentity();
         identityMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         if (!sourcePathChanged)
@@ -1090,9 +1083,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit = "raw-height";
             Source.FrameId = "frame.c3d-grid-index";
             Source.Path = fullPath;
-            sourceAcquisitionProvenance = CreateUnavailableSourceAcquisitionProvenance();
+            SourceSession.SetSourceAcquisitionProvenance(CreateUnavailableSourceAcquisitionProvenance());
         }, markDirty);
-        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         InvalidateSurfaceEdgeAcquisitionDirectionEvidence();
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         recipeStateMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
@@ -1123,7 +1116,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshRecipeState();
         if (!CanSaveTeachingRecipe)
         {
-            message = string.Join(Environment.NewLine, storageValidation.Errors.Concat(sourceBindingErrors));
+            message = string.Join(
+                Environment.NewLine,
+                RecipeSession.StorageValidation.Errors.Concat(RecipeSession.SourceBindingErrors));
             AppendLog("Warning", $"Recipe save rejected | errors={message.Replace(Environment.NewLine, " | ", StringComparison.Ordinal)}");
             return false;
         }
@@ -1157,7 +1152,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             var fullPath = Path.GetFullPath(path);
             var document = ResolveRelativeSourcePath(ToolRecipeDocumentStore.Load(fullPath), fullPath);
             ApplyDocument(document);
-            loadedSourceBinding = TryReadSourceBinding(document.Source.Path);
+            SourceSession.SetSourceBinding(TryReadSourceBinding(document.Source.Path));
             BeginSourceQualityLoad();
             RefreshRecipeState();
             RecipePath = fullPath;
@@ -1190,11 +1185,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         MutateRecipe(() =>
         {
-            loadedSourceBinding = null;
+            SourceSession.SetSourceBinding(null);
             AcceptCurrentSourceIdentity();
             SourceQuality.Clear();
-            sourceAcquisitionProvenance = CreateUnavailableSourceAcquisitionProvenance();
-            recipeSchemaVersion = ToolRecipeDocument.CurrentSchemaVersion;
+            SourceSession.SetSourceAcquisitionProvenance(CreateUnavailableSourceAcquisitionProvenance());
+            RecipeSession.SetSchemaVersion(ToolRecipeDocument.CurrentSchemaVersion);
             RecipeName = string.IsNullOrWhiteSpace(name)
                 ? "Untitled 3D Inspection"
                 : name.Trim();
@@ -1211,7 +1206,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             SelectedReference = null;
             RecipePath = null;
         }, markDirty: false);
-        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         SetDirty(false);
         ClearValidationSet();
@@ -1471,10 +1466,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             return;
         }
 
-        var existing = captureAdditionalLevelSurfaceReference
+        var existing = TeachingCaptureSession.IsAdditionalLevelSurfaceReference
             ? null
             : SelectedStepTeachingSelection;
-        teachingSelectionCaptureStepId = step.Id;
+        TeachingCaptureSession.SetOwningStep(step.Id);
         UpdateTeachingGridRectangleDraft(existing?.GridRectangle);
         SetTeachingSelectionCaptureState(
             active: true,
@@ -1487,7 +1482,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             new ToolWorkbenchTeachingCaptureRequestEventArgs(
                 step.Id,
                 existing?.Id ?? CreateSelectionId(step, requirement),
-                existing?.Name ?? (captureAdditionalLevelSurfaceReference
+                existing?.Name ?? (TeachingCaptureSession.IsAdditionalLevelSurfaceReference
                     ? $"Level Surface reference {Math.Max(2, step.InputEntityIds.Count)}"
                     : IsSelectedStepDualRoiMeasurement
                         ? CreatePlaneFlatnessSelectionName(step)
@@ -1503,7 +1498,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             // The Viewer may switch the displayed artifact before it starts the new
             // capture. That transition clears the preceding Viewer state, so commit
             // the owning step only after the synchronous begin request has settled.
-            teachingSelectionCaptureStepId = step.Id;
+            TeachingCaptureSession.SetOwningStep(step.Id);
         }
         AppendLog(
             "Teach",
@@ -1524,7 +1519,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void BeginAdditionalLevelSurfaceReferenceCapture()
     {
-        captureAdditionalLevelSurfaceReference = true;
+        TeachingCaptureSession.BeginAdditionalLevelSurfaceReference();
         BeginTeachingSelectionCapture();
     }
 
@@ -1554,10 +1549,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         suppressTeachingGridRectangleDraftChanged = true;
         try
         {
-            teachingGridRectangleRow = rectangle?.Row ?? 0;
-            teachingGridRectangleColumn = rectangle?.Column ?? 0;
-            teachingGridRectangleRowCount = rectangle?.RowCount ?? 0;
-            teachingGridRectangleColumnCount = rectangle?.ColumnCount ?? 0;
+            TeachingCaptureSession.SetGridRectangleDraft(rectangle);
             OnPropertyChanged(nameof(TeachingGridRectangleRow));
             OnPropertyChanged(nameof(TeachingGridRectangleColumn));
             OnPropertyChanged(nameof(TeachingGridRectangleRowCount));
@@ -1594,9 +1586,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             AppendLog("Warning", $"Selection apply rejected | role={GetActiveTeachingRoleName()} | reason={message}");
             return false;
         }
-        if (!string.Equals(teachingSelectionCaptureStepId, step.Id, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(TeachingCaptureSession.OwningStepId, step.Id, StringComparison.OrdinalIgnoreCase))
         {
-            message = $"The teaching capture belongs to '{teachingSelectionCaptureStepId ?? "(none)"}', not the selected step '{step.Id}'.";
+            message = $"The teaching capture belongs to '{TeachingCaptureSession.OwningStepId ?? "(none)"}', not the selected step '{step.Id}'.";
             AppendLog("Warning", $"Selection apply rejected | role={GetActiveTeachingRoleName()} | reason={message}");
             return false;
         }
@@ -1751,7 +1743,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void AddOrUpdateCorrespondenceRow()
     {
-        if (!CanEditCorrespondenceRows || SelectedPipelineStep is null || loadedSourceBinding is null)
+        if (!CanEditCorrespondenceRows || SelectedPipelineStep is null || SourceSession.SourceBinding is null)
         {
             return;
         }
@@ -1799,7 +1791,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet,
             Source.Id,
             Source.FrameId,
-            loadedSourceBinding,
+            SourceSession.SourceBinding,
             null,
             null,
             rows,
@@ -1880,7 +1872,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshRecipeState();
         var message = IsTeachingRecipeExecutionReady
             ? "Teaching recipe validation passed."
-            : $"Teaching recipe validation found {validation.Errors.Count + sourceBindingErrors.Count} error(s).";
+            : $"Teaching recipe validation found {RecipeSession.Validation.Errors.Count + RecipeSession.SourceBindingErrors.Count} error(s).";
         AppendLog("Validate", message);
         OVLog.Write(LogCategory.UI, IsTeachingRecipeExecutionReady ? LogLevel.Info : LogLevel.Warning, message);
     }
@@ -1924,7 +1916,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
         MutateRecipe(() =>
         {
-            recipeSchemaVersion = document.SchemaVersion;
+            RecipeSession.SetSchemaVersion(document.SchemaVersion);
             RecipeName = document.Name;
             Source.Id = document.Source.Id;
             Source.Name = document.Source.Name;
@@ -1932,7 +1924,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit = document.Source.Unit;
             Source.FrameId = document.Source.FrameId;
             Source.Path = document.Source.Path;
-            sourceAcquisitionProvenance = document.Source.AcquisitionProvenance;
+            SourceSession.SetSourceAcquisitionProvenance(document.Source.AcquisitionProvenance);
 
             foreach (var existing in References)
             {
@@ -1982,13 +1974,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                   ?? PipelineSteps.FirstOrDefault();
             SelectedReference = References.FirstOrDefault();
         }, markDirty);
-        SourceQuality.LoadAcquisitionProvenance(sourceAcquisitionProvenance, Source.FrameId);
+        SourceQuality.LoadAcquisitionProvenance(SourceSession.SourceAcquisitionProvenance, Source.FrameId);
         OnPropertyChanged(nameof(SourceAcquisitionProvenance));
         OnPropertyChanged(nameof(RecipeSchemaVersion));
     }
 
     private ToolRecipeDocument CreateDocument() => new(
-        recipeSchemaVersion,
+        RecipeSession.SchemaVersion,
         RecipeName.Trim(),
         new ToolRecipeSource(
             Source.Id.Trim(),
@@ -1997,11 +1989,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             Source.Unit.Trim(),
             Source.FrameId.Trim(),
             Source.Path.Trim(),
-            loadedSourceBinding is null ? null : new FileInfo(Source.Path.Trim()).Length,
-            loadedSourceBinding?.ContentSha256,
-            loadedSourceBinding?.GridWidth,
-            loadedSourceBinding?.GridHeight,
-            sourceAcquisitionProvenance),
+            SourceSession.SourceBinding is null ? null : new FileInfo(Source.Path.Trim()).Length,
+            SourceSession.SourceBinding?.ContentSha256,
+            SourceSession.SourceBinding?.GridWidth,
+            SourceSession.SourceBinding?.GridHeight,
+            SourceSession.SourceAcquisitionProvenance),
         References.Select(reference => new ToolRecipeReference(reference.Id.Trim(), reference.Name.Trim(), reference.Kind.Trim())).ToArray(),
         PipelineSteps.Select(step => new ToolRecipeStep(
             step.Id.Trim(),
@@ -2012,7 +2004,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             step.OutputEntityId.Trim(),
             step.Parameters.Select(parameter => new ToolRecipeParameter(parameter.Name, parameter.Value)).ToArray(),
             step.DualRoiRouting)).ToArray(),
-        string.Equals(recipeSchemaVersion, ToolRecipeDocument.LegacySchemaVersion, StringComparison.Ordinal)
+        string.Equals(RecipeSession.SchemaVersion, ToolRecipeDocument.LegacySchemaVersion, StringComparison.Ordinal)
             && Selections.Count == 0
                 ? null
                 : Selections.ToArray());
@@ -2060,36 +2052,37 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var stageStarted = Stopwatch.GetTimestamp();
         RefreshSourceIdentityState();
         var document = CreateDocument();
-        validation = ToolRecipeValidator.Validate(document);
-        storageValidation = ToolRecipeValidator.ValidateForStorage(document);
-        sourceBindingErrors = ValidateSelectionSourceBindings();
+        RecipeSession.SetValidation(
+            ToolRecipeValidator.Validate(document),
+            ToolRecipeValidator.ValidateForStorage(document),
+            ValidateSelectionSourceBindings());
         lastRecipeValidationMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
 
         stageStarted = Stopwatch.GetTimestamp();
         ValidationMessages.Clear();
-        foreach (var error in validation.Errors)
+        foreach (var error in RecipeSession.Validation.Errors)
         {
             ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
         }
 
-        foreach (var warning in validation.Warnings)
+        foreach (var warning in RecipeSession.Validation.Warnings)
         {
             ValidationMessages.Add(new ToolWorkbenchValidationItem("Warning", warning));
         }
 
-        foreach (var error in sourceBindingErrors)
+        foreach (var error in RecipeSession.SourceBindingErrors)
         {
             ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
         }
 
-        foreach (var error in sourceIdentityErrors)
+        foreach (var error in SourceSession.SourceIdentityErrors)
         {
             ValidationMessages.Add(new ToolWorkbenchValidationItem("Error", error));
         }
 
         RebuildEntities();
         RefreshTeachingSelectionContext();
-        OrientedBoxEditor.Synchronize(document.Source, loadedSourceBinding, Selections);
+        OrientedBoxEditor.Synchronize(document.Source, SourceSession.SourceBinding, Selections);
         lastRecipeEntityRebuildMilliseconds = Stopwatch.GetElapsedTime(stageStarted).TotalMilliseconds;
 
         stageStarted = Stopwatch.GetTimestamp();
@@ -2311,14 +2304,14 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 continue;
             }
 
-            if (loadedSourceBinding is null)
+            if (SourceSession.SourceBinding is null)
             {
                 errors.Add($"Selection '{selection.Id}' cannot be verified because the C3D source identity is unavailable.");
                 continue;
             }
 
             if (!string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
-                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, loadedSourceBinding))
+                || !ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, SourceSession.SourceBinding))
             {
                 errors.Add($"Selection '{selection.Id}' is stale because the C3D source bytes or grid dimensions changed.");
             }
@@ -2336,9 +2329,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 && output is not null
                 && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
         }
-        return loadedSourceBinding is not null
+        return SourceSession.SourceBinding is not null
             && string.Equals(selection.FrameId, Source.FrameId, StringComparison.OrdinalIgnoreCase)
-            && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, loadedSourceBinding);
+            && ToolRecipeSelectionSourceBindingVerifier.BindingsEqual(selection.SourceBinding, SourceSession.SourceBinding);
     }
 
     private bool TryGetSelectionCaptureContext(
@@ -2369,9 +2362,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             }
         }
 
-        binding = loadedSourceBinding!;
+        binding = SourceSession.SourceBinding!;
         frameId = Source.FrameId;
-        return loadedSourceBinding is not null;
+        return SourceSession.SourceBinding is not null;
     }
 
     private static ToolRecipeSelectionSourceBinding? TryReadSourceBinding(string path)
@@ -2398,11 +2391,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         bool canApply,
         string message)
     {
-        isTeachingSelectionCaptureActive = active;
-        teachingSelectionCapturedPointCount = capturedPointCount;
-        teachingSelectionRequiredPointCount = requiredPointCount;
-        canApplyTeachingSelectionCapture = canApply;
-        teachingSelectionCaptureMessage = message;
+        TeachingCaptureSession.SetState(active, capturedPointCount, requiredPointCount, canApply);
+        NotifyTeachingSelectionCaptureStateChanged();
+    }
+
+    private void NotifyTeachingSelectionCaptureStateChanged()
+    {
         OnPropertyChanged(nameof(IsTeachingSelectionCaptureActive));
         OnPropertyChanged(nameof(IsSelectionCandidateActive));
         OnPropertyChanged(nameof(IsPipelineReviewExpanded));
@@ -2420,20 +2414,21 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void ClearTeachingSelectionCaptureState(string message)
     {
-        teachingSelectionCaptureStepId = null;
-        captureAdditionalLevelSurfaceReference = false;
-        SetTeachingSelectionCaptureState(false, 0, 0, false, message);
+        TeachingCaptureSession.Clear();
+        NotifyTeachingSelectionCaptureStateChanged();
         UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
     }
 
-    private void SetTeachingGridRectangleDraftValue(ref int field, int value, [CallerMemberName] string? propertyName = null)
+    private void SetTeachingGridRectangleDraftValue(
+        ToolRecipeGridRectangle rectangle,
+        string propertyName)
     {
-        if (field == value)
+        if (TeachingCaptureSession.GridRectangleDraft == rectangle)
         {
             return;
         }
 
-        field = value;
+        TeachingCaptureSession.SetGridRectangleDraft(rectangle);
         OnPropertyChanged(propertyName);
         RefreshTeachingGridRectangleDraftState();
         if (suppressTeachingGridRectangleDraftChanged
@@ -2445,12 +2440,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
         TeachingGridRectangleDraftChanged?.Invoke(
             this,
-            new ToolWorkbenchGridRectangleDraftChangedEventArgs(
-                new ToolRecipeGridRectangle(
-                    TeachingGridRectangleRow,
-                    TeachingGridRectangleColumn,
-                    TeachingGridRectangleRowCount,
-                    TeachingGridRectangleColumnCount)));
+            new ToolWorkbenchGridRectangleDraftChangedEventArgs(rectangle));
     }
 
     private void RefreshTeachingGridRectangleDraftState()
@@ -2463,7 +2453,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private bool TryValidateTeachingGridRectangleDraft(out string message)
     {
-        var binding = SelectedStepTeachingSelection?.SourceBinding ?? loadedSourceBinding;
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
         if (binding is null || binding.GridWidth <= 0 || binding.GridHeight <= 0)
         {
             message = "The selected ROI has no current source-grid identity.";
@@ -2504,12 +2494,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void PromoteRecipeSchemaForSelection()
     {
-        if (string.Equals(recipeSchemaVersion, ToolRecipeDocument.CurrentSchemaVersion, StringComparison.Ordinal))
+        if (string.Equals(RecipeSession.SchemaVersion, ToolRecipeDocument.CurrentSchemaVersion, StringComparison.Ordinal))
         {
             return;
         }
 
-        recipeSchemaVersion = ToolRecipeDocument.CurrentSchemaVersion;
+        RecipeSession.SetSchemaVersion(ToolRecipeDocument.CurrentSchemaVersion);
         OnPropertyChanged(nameof(RecipeSchemaVersion));
     }
 
@@ -2607,7 +2597,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         };
         var baseId =
             $"selection.{NormalizeId(step.Id.StartsWith("step.", StringComparison.OrdinalIgnoreCase) ? step.Id[5..] : step.Id)}.{suffix}";
-        if (!captureAdditionalLevelSurfaceReference
+        if (!TeachingCaptureSession.IsAdditionalLevelSurfaceReference
             || !string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal))
         {
             return baseId;
@@ -2751,12 +2741,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     private void SetDirty(bool value)
     {
-        if (isDirty == value)
+        if (!RecipeSession.SetDirty(value))
         {
             return;
         }
 
-        isDirty = value;
         if (value)
         {
             InvalidateOrderedRun(Localize(

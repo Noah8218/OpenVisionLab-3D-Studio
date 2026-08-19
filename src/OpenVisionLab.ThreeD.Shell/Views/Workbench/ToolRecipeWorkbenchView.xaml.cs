@@ -538,6 +538,12 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
     public bool HasRunRecordHistoryControls =>
         DockWorkspace.ResultsContent is ResultsWorkspaceView { HasRunRecordHistoryControls: true };
 
+    public bool HasPrivacySafeSupportBundleControls =>
+        DockWorkspace.ResultsContent is ResultsWorkspaceView
+        {
+            HasPrivacySafeSupportBundleControls: true
+        };
+
     public void ActivateValidationSet()
     {
         NavigateToStage(ShellWorkspaceMode.Inspect);

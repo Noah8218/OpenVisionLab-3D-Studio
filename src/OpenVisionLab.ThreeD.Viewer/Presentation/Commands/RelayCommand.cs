@@ -1,33 +1,27 @@
 using System;
 using System.Windows.Input;
+using PresentationRelayCommand = OpenVisionLab.ThreeD.Presentation.Commands.RelayCommand;
 
 namespace OpenVisionLab.ThreeD.Viewer;
 
 public sealed class RelayCommand : ICommand
 {
-    private readonly Func<object?, bool>? canExecute;
-    private readonly Action<object?> execute;
+    private readonly PresentationRelayCommand inner;
 
     public RelayCommand(Action<object?> execute, Func<object?, bool>? canExecute = null)
     {
-        this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
-        this.canExecute = canExecute;
+        inner = new PresentationRelayCommand(execute, canExecute);
     }
 
-    public event EventHandler? CanExecuteChanged;
-
-    public bool CanExecute(object? parameter) => canExecute?.Invoke(parameter) ?? true;
-
-    public void Execute(object? parameter)
+    public event EventHandler? CanExecuteChanged
     {
-        if (!CanExecute(parameter))
-        {
-            return;
-        }
-
-        execute(parameter);
+        add => inner.CanExecuteChanged += value;
+        remove => inner.CanExecuteChanged -= value;
     }
 
-    public void RaiseCanExecuteChanged() =>
-        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    public bool CanExecute(object? parameter) => inner.CanExecute(parameter);
+
+    public void Execute(object? parameter) => inner.Execute(parameter);
+
+    public void RaiseCanExecuteChanged() => inner.RaiseCanExecuteChanged();
 }

@@ -8,6 +8,7 @@ using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Layout;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Shell.Views.Shell;
 using OpenVisionLab.ThreeD.Shell.Views.Workbench;
 
@@ -297,9 +298,12 @@ internal static class ToolWorkbenchDockingVerification
                 $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsProblemsSelected}");
             workbench.ActivateRunRecord();
             Check(
-                "Workbench Run Record exposes open, recent, and export controls in the docked Pipeline pane",
-                workbench.IsBottomPaneAttached && workbench.IsRunRecordSelected && workbench.HasRunRecordHistoryControls,
-                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsRunRecordSelected}, controls={workbench.HasRunRecordHistoryControls}");
+                "Workbench Run Record exposes open, recent, full-export, and privacy-safe support controls in the docked Pipeline pane",
+                workbench.IsBottomPaneAttached
+                && workbench.IsRunRecordSelected
+                && workbench.HasRunRecordHistoryControls
+                && workbench.HasPrivacySafeSupportBundleControls,
+                $"attached={workbench.IsBottomPaneAttached}, selected={workbench.IsRunRecordSelected}, history={workbench.HasRunRecordHistoryControls}, support={workbench.HasPrivacySafeSupportBundleControls}");
             workbench.ActivateOutputComparePane();
             Check(
                 "Workbench Output Compare command selects a floatable pane with usable default height",

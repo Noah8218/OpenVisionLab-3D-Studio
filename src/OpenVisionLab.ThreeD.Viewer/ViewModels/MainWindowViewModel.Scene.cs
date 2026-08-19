@@ -101,7 +101,7 @@ public sealed partial class MainWindowViewModel
         }
 
         ProjectionMode = ViewerProjectionMode.Perspective;
-        hasSavedPerspectiveCamera = false;
+        CameraSession.ClearSavedPerspective();
         if (useTopInspectionView)
         {
             YawDegrees = 0.0;
@@ -134,7 +134,7 @@ public sealed partial class MainWindowViewModel
 
         if (ProjectionMode == ViewerProjectionMode.Perspective)
         {
-            SavePerspectiveCamera();
+            CameraSession.SavePerspective();
         }
 
         ProjectionMode = ViewerProjectionMode.TopOrthographic;
@@ -155,15 +155,15 @@ public sealed partial class MainWindowViewModel
         }
 
         ProjectionMode = ViewerProjectionMode.Perspective;
-        if (hasSavedPerspectiveCamera)
+        if (CameraSession.TryGetSavedPerspective(out var savedPerspective))
         {
-            YawDegrees = savedPerspectiveYaw;
-            PitchDegrees = savedPerspectivePitch;
-            CameraDistance = savedPerspectiveDistance;
+            YawDegrees = savedPerspective.YawDegrees;
+            PitchDegrees = savedPerspective.PitchDegrees;
+            CameraDistance = savedPerspective.Distance;
             SetCameraTarget(
-                savedPerspectiveTargetX,
-                savedPerspectiveTargetY,
-                savedPerspectiveTargetZ);
+                savedPerspective.TargetX,
+                savedPerspective.TargetY,
+                savedPerspective.TargetZ);
         }
         else
         {
@@ -183,7 +183,7 @@ public sealed partial class MainWindowViewModel
 
         ProjectionMode = ViewerProjectionMode.Perspective;
         PitchDegrees = 80.0;
-        hasSavedPerspectiveCamera = false;
+        CameraSession.ClearSavedPerspective();
         ViewerStatus = "Perspective orbit from Top view";
         UpdateCameraStatus();
     }
@@ -191,7 +191,7 @@ public sealed partial class MainWindowViewModel
     public void Reset()
     {
         ProjectionMode = ViewerProjectionMode.Perspective;
-        hasSavedPerspectiveCamera = false;
+        CameraSession.ClearSavedPerspective();
         YawDegrees = 38.0;
         PitchDegrees = 24.0;
         CameraDistance = 9.2;
@@ -200,17 +200,6 @@ public sealed partial class MainWindowViewModel
         PickCoordinate = "(none)";
         ViewerStatus = "Camera reset";
         UpdateCameraStatus();
-    }
-
-    private void SavePerspectiveCamera()
-    {
-        savedPerspectiveYaw = YawDegrees;
-        savedPerspectivePitch = PitchDegrees;
-        savedPerspectiveDistance = CameraDistance;
-        savedPerspectiveTargetX = CameraTargetX;
-        savedPerspectiveTargetY = CameraTargetY;
-        savedPerspectiveTargetZ = CameraTargetZ;
-        hasSavedPerspectiveCamera = true;
     }
 
     public void UsePointCloudSmokeScene()

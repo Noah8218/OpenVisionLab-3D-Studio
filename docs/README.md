@@ -14,6 +14,7 @@ contracts, and completion evidence.
 | Release/version policy | [Release/version policy](OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md) |
 | Forward user-visible change log | [Changelog](../CHANGELOG.md) |
 | Vision SDK algorithm boundary | [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) |
+| Current MVVM/library refactor | [MVVM and library refactor plan](OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md) |
 
 Only the master backlog owns the current inventory and development queue.
 Dated documents preserve their recorded scope and do not override it.
@@ -49,6 +50,8 @@ Dated documents preserve their recorded scope and do not override it.
   package provenance and consumer boundary.
 - [Human-owner R0 procedure](OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md) — current external
   Wide/Compact owner acceptance procedure.
+- [MVVM and library refactor plan](OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md) —
+  current `PL-0025` ownership map, checkpoints, proof conditions, and DLL/package policy.
 
 ## Current External Blockers
 
@@ -62,6 +65,10 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Privacy-safe support bundle](OPENVISIONLAB_3D_PRIVACY_SAFE_SUPPORT_BUNDLE_20260818.md) -
+  `PL-0024/L-14` six-entry ZIP contract, payload hashes, bounded and sanitized
+  evidence, fail-closed identity checks, no-execution behavior, localized
+  Wide/Compact UI, and refreshed R0 inputs.
 - [Completeness per-cell Run Record export](OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md) -
   `PL-0022/L-12` exact typed ordered cell evidence in schema `1.9`, matching
   JSON/HTML/CSV child rows, fail-closed current evidence validation, legacy

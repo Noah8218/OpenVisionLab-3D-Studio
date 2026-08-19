@@ -156,14 +156,14 @@ public sealed partial class ToolWorkbenchViewModel
             ? $"{Localization.SourceUnsupportedFormat} ({Source.Format})"
             : !File.Exists(Source.Path)
                 ? Localization.SourceMissing
-                : sourceIdentityErrors.Count > 0
+                : SourceSession.SourceIdentityErrors.Count > 0
                     ? Localization.SourceIdentityMismatch
-                    : loadedSourceBinding is null
+                    : SourceSession.SourceBinding is null
                         ? Localization.SourceUnreadable
                         : string.Format(
                             Localization.SourceReadyFormat,
-                            loadedSourceBinding.GridWidth,
-                            loadedSourceBinding.GridHeight);
+                            SourceSession.SourceBinding.GridWidth,
+                            SourceSession.SourceBinding.GridHeight);
 
     public string LocalizedRecipePathSummary => string.IsNullOrWhiteSpace(RecipePath)
         ? Localization.NotSavedYet
@@ -175,17 +175,17 @@ public sealed partial class ToolWorkbenchViewModel
     {
         get
         {
-            var validationState = sourceIdentityErrors.Count > 0
-                ? string.Format(Localization.SourceCorrectionsFormat, sourceIdentityErrors.Count)
-                : sourceBindingErrors.Count > 0
-                    ? string.Format(Localization.StaleSelectionsFormat, sourceBindingErrors.Count)
-                    : validation.IsValid
-                        ? validation.Warnings.Count == 0
+            var validationState = SourceSession.SourceIdentityErrors.Count > 0
+                ? string.Format(Localization.SourceCorrectionsFormat, SourceSession.SourceIdentityErrors.Count)
+                : RecipeSession.SourceBindingErrors.Count > 0
+                    ? string.Format(Localization.StaleSelectionsFormat, RecipeSession.SourceBindingErrors.Count)
+                    : RecipeSession.Validation.IsValid
+                        ? RecipeSession.Validation.Warnings.Count == 0
                             ? Localization.Valid
-                            : string.Format(Localization.ValidWarningsFormat, validation.Warnings.Count)
-                        : storageValidation.IsValid
-                            ? string.Format(Localization.ExecutionRequirementsFormat, validation.Errors.Count)
-                            : string.Format(Localization.CorrectionsFormat, storageValidation.Errors.Count);
+                            : string.Format(Localization.ValidWarningsFormat, RecipeSession.Validation.Warnings.Count)
+                        : RecipeSession.StorageValidation.IsValid
+                            ? string.Format(Localization.ExecutionRequirementsFormat, RecipeSession.Validation.Errors.Count)
+                            : string.Format(Localization.CorrectionsFormat, RecipeSession.StorageValidation.Errors.Count);
             var saveState = IsDirty || IsValidationSetDefinitionDirty
                 ? Localization.Modified
                 : string.IsNullOrWhiteSpace(RecipePath)
@@ -570,7 +570,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     private bool CanBeginCompatibleSourceVariant() =>
         !string.IsNullOrWhiteSpace(RecipePath)
-        && loadedSourceBinding is not null
+        && SourceSession.SourceBinding is not null
         && AreSelectionsCompatibleWithSourceVariant();
 
     private string? GetCompatibleVariantValidationError(
@@ -579,7 +579,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         if (!CanBeginCompatibleSourceVariant())
         {
-            return loadedSourceBinding is null || string.IsNullOrWhiteSpace(RecipePath)
+            return SourceSession.SourceBinding is null || string.IsNullOrWhiteSpace(RecipePath)
                 ? Localization.CompatibleVariantCurrentRecipeRequired
                 : Localization.CompatibleVariantSelectionUnsupported;
         }
@@ -590,13 +590,13 @@ public sealed partial class ToolWorkbenchViewModel
         {
             return Localization.CompatibleVariantSourceMustDiffer;
         }
-        if (newBinding.GridWidth != loadedSourceBinding!.GridWidth
-            || newBinding.GridHeight != loadedSourceBinding.GridHeight)
+        if (newBinding.GridWidth != SourceSession.SourceBinding!.GridWidth
+            || newBinding.GridHeight != SourceSession.SourceBinding.GridHeight)
         {
             return string.Format(
                 Localization.CompatibleVariantGridMismatchFormat,
-                loadedSourceBinding.GridWidth,
-                loadedSourceBinding.GridHeight,
+                SourceSession.SourceBinding.GridWidth,
+                SourceSession.SourceBinding.GridHeight,
                 newBinding.GridWidth,
                 newBinding.GridHeight);
         }

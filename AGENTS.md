@@ -65,7 +65,7 @@ replacement for current product orientation.
 
 ## Current Product Target
 
-As of the 2026-08-18 PL-0022 Completeness cell-export closure:
+As of the 2026-08-18 PL-0024 privacy-safe support-bundle closure:
 
 - The master backlog's current inventory table is canonical. Read it rather
   than copying its counts into this file.
@@ -83,10 +83,12 @@ As of the 2026-08-18 PL-0022 Completeness cell-export closure:
   exact Source Quality Run Record evidence are also complete. `PL-0021`
   persistently exposes the existing selected `X / Y / Z` in the Viewer bottom
   status. `PL-0022` / `L-12` preserves exact Completeness cell evidence in
-  schema `1.9` JSON, HTML, and CSV without rerunning inspection. `L-14`
-  privacy-safe support/diagnostic bundle is the selected next dependency-ready
-  software slice; read the master
-  backlog for current order rather than copying it here. The separate
+  schema `1.9` JSON, HTML, and CSV without rerunning inspection. `PL-0024` /
+  `L-14` creates one explicit privacy-safe support ZIP from current evidence,
+  with an auditable manifest and no raw source bytes, absolute paths, full
+  logs, or workstation/user identity by default. No dependency-ready software
+  slice is selected after that closure; read the master backlog for current
+  order rather than copying it here. The separate
   large-C3D candidate remains blocked by a representative maximum input and
   accepted memory/load-time limits. Missing R0 does not globally prohibit a
   newly approved deterministic software slice.

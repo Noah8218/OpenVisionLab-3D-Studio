@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-18
+Date: 2026-08-19
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -197,6 +197,15 @@ excluded. Raw-height and synthetic evidence are not calibrated metrology.
   Product version remains `0.1.1-dev`; no tag or release was created. Preserve
   `OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md` and
   `.proofline/issues/PL-0023.json`.
+- `PL-0024` / `L-14` is complete: Results and Run Record expose one explicit
+  privacy-safe support ZIP. Its six entries are manifest-hashed, recipe and
+  log text are sanitized, the in-memory log excerpt is capped at 200 newest
+  entries, exact recorded Source Quality is reused, and raw source bytes,
+  absolute paths, full logs, and user/machine identity are omitted by default.
+  Invalid quality identity fails closed and export does not execute inspection
+  or mutate product state. Preserve
+  `OPENVISIONLAB_3D_PRIVACY_SAFE_SUPPORT_BUNDLE_20260818.md` and
+  `.proofline/issues/PL-0024.json`.
 - The Library-Noah-to-Vision-SDK migration is complete on main commit
   `8400b89a788b2a59affb713833001fff15c6aff0`:
   package/bridge/structure `1/1`, `26/26`, and `29/29`; Runner/Shell `46/46`
@@ -217,7 +226,7 @@ acceptance.
 - Procedure: `OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
 - Launcher: `../scripts/start-human-owner-r0.ps1`.
 - Automated `-ValidateOnly` does not close the owner gate.
-- The 2026-08-18 PL-0022 current-source Release rebuild and refreshed nine-input
+- The 2026-08-18 PL-0024 current-source Release rebuild and refreshed nine-input
   fixed-hash package pass both `-ValidateOnly` modes on `\\.\DISPLAY2`.
 - An earlier observed Wide run used a superseded binary and does not count.
   Both current-package layouts must restart from Wide and pass unaided.
@@ -229,10 +238,47 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015` through `PL-0023` are complete. The next dependency-ready software
-priority is `L-14 privacy-safe support/diagnostic bundle`; its first contract
-must use an explicit manifest and omit sensitive source bytes by default |
-Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`.
+`PL-0015` through `PL-0024` remain complete. The original `PL-0025` evidence
+remains valid for its named Presentation, Reporting, layout, request,
+recipe/source session, Viewer display/camera/selection, and Behavior
+extractions, but its repository-wide completion claim is superseded by the
+2026-08-19 audit.
+
+`PL-0026` is the current software queue item. The audit confirmed that the
+`49/49` structure guard and Release build pass while broader MVVM work remains:
+Viewer code-behind still owns recipe workflow and direct rule execution; the
+Workbench root remains a 33-file partial type; MainWindow retains extensive
+smoke orchestration; Results/Validation Views own navigation state; and Tool
+Lab windows repeat lifecycle code.
+
+M2 and M3 are complete, and M4a/M4b/M4c are complete for the first Viewer
+recipe boundary. `ResultsWorkspaceView.ActiveSection` and
+`RecipePipelineReviewView.ValidationSection` now belong to child ViewModels
+with commands, and the Source Quality workspace smoke is owned by
+`Verification/Smoke/ShellSourceQualitySmoke.cs`. The Views retain presentation
+layout and thin request adapters; `MainWindow` retains only the smoke
+invocation and failure callback wiring. Height Deviation source loading and
+rule preparation and apply/state orchestration now belong to
+`Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs`,
+`Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs`, and
+`Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs`; the View retains
+validation and rendering callbacks. Current Wide/Compact exact-source Source
+Quality and recipe-load/apply/save screenshots and focused checks are recorded
+in the M3/M4 evidence folders.
+
+The next implementation slice is only M4d: move Height Deviation rule/Preview
+orchestration, or select the next recipe-family boundary, in a small
+independently verifiable boundary, preserving file-dialog/rendering adapters
+and public host compatibility. Preserve presentation-only behavior and do not
+execute or mutate recipe/source/ROI/result state.
+
+- Contract and low-cost-model slices:
+  `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`, section 12.
+- Historical checkpoint: `../.proofline/issues/PL-0025.json`.
+- Current durable issue: `../.proofline/issues/PL-0026.json`.
+- Recommended model: `gpt-5.6-terra`.
+- Reasoning effort: `medium`.
+- Stop after M4d verification and update the issue before selecting M5.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits
@@ -257,6 +303,10 @@ requires GitHub processing and a fresh resulting reachability check.
 3. `OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md`.
 4. `OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md`.
 5. The active contract or closure document for the requested scope.
+6. For MVVM continuation, read section 12 of
+   `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md` and
+   `.proofline/issues/PL-0026.json`; do not rely on the former PL-0025 closure
+   sentence.
 
 For algorithm work, also read
 `OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md` and
@@ -403,5 +453,14 @@ Scope: Complete PL-0022/L-12 exact Completeness cell evidence in schema 1.9 Run 
 Acceptance criteria: exact typed ordered output retained -> pass; cell identity/coordinates/regions/counts/coverage/nullable heights/unit/frame/decision/reason/hash parity -> pass; missing or malformed current evidence fails closed -> pass; legacy and unrelated records remain readable -> pass; focused and affected verification -> pass
 Verification: Release 0/0; Completeness 30/30; JSON/HTML/CSV parity 4/4; artifact-owned Runner 22/22; Synthetic Affine 21/21; Surface Match 23/23; ordered Run 15/15; history 12/12; docking/theme 87/87; Shell options 40/40; structure 29/29; Wide/Compact R0 ValidateOnly pass
 Evidence: docs/OPENVISIONLAB_3D_COMPLETENESS_CELL_EXPORT_CLOSURE_20260818.md; .proofline/issues/PL-0022.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0022-completeness-cell-export/
-Boundary / next dependency: controlled browser policy prevented direct local-file visual rendering, but HTML structure and exact cell parity passed; owner R0 remains external; L-14 privacy-safe support/diagnostic bundle is selected next
+Boundary / next dependency: controlled browser policy prevented direct local-file visual rendering, but HTML structure and exact cell parity passed; owner R0 remains external; its former L-14 next priority is completed in the PL-0024 record below
+```
+
+```text
+Status: Complete
+Scope: Complete PL-0024/L-14 explicit privacy-safe support ZIP with six documented entries, payload hashes, sanitized and bounded current evidence, fail-closed identity handling, and localized Results/Run Record actions
+Acceptance criteria: manifest schema/privacy/run/payload length and SHA -> pass; recipe/log/source/quality/result contents and default omissions -> pass; collision safety/unavailable/fail-closed/no-mutation behavior -> pass; localized themed accessible Wide/Compact action and privacy notice -> pass; focused/regression/Release/UI/R0/documentation/Proofline/diff gates -> pass
+Verification: Release 0/0; privacy bundle 14/14; history 12/12; docking/theme 87/87; Shell options 41/41; structure 29/29; current Release Wide/Compact screenshot quality, monitor intersection, and held pointer-down pass; actual button opens the native folder picker; R0 Wide/Compact ValidateOnly pass; git diff --check pass
+Evidence: docs/OPENVISIONLAB_3D_PRIVACY_SAFE_SUPPORT_BUNDLE_20260818.md; .proofline/issues/PL-0024.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0024-support-bundle/
+Boundary / next dependency: native folder-picker final confirmation was not completed by automation, while the writer and ViewModel export path pass 14/14; product-owner unaided Wide/Compact R0 remains external; no dependency-ready software slice is selected
 ```

@@ -357,21 +357,19 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void SetViewerWorkspaceLayout(ViewerWorkspaceLayout layout)
     {
-        if (layout != ViewerWorkspaceLayout.Single)
+        var available = ViewerWorkspaceCandidates;
+        var preferred = GetPreferredViewerWorkspaceContentId(
+            available,
+            preferHeightImage: ViewerWorkspace.Layout == ViewerWorkspaceLayout.Single);
+        if (!ViewerWorkspace.TrySetLayout(
+                layout,
+                available.Select(candidate => candidate.Id),
+                preferred))
         {
-            ReconcileViewerWorkspaceContents(
-                preferHeightImage: ViewerWorkspace.Layout == ViewerWorkspaceLayout.Single);
-            if (string.IsNullOrWhiteSpace(ViewerWorkspace.AuxiliaryContentId))
-            {
-                return;
-            }
+            return;
         }
 
-        ViewerWorkspace.SetLayout(layout);
-        if (layout == ViewerWorkspaceLayout.Single)
-        {
-            FocusViewerWorkspaceSlot(ViewerWorkspaceSession.MainSlotId);
-        }
+        WorkspaceSelection.FocusViewerSlot(ViewerWorkspace.FocusedSlotId);
 
         RaiseViewerWorkspaceCanExecuteChanged();
     }
@@ -394,20 +392,21 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void OpenHeightImage()
     {
-        if (GetViewerWorkspaceCandidate(HeightImageViewerContentId) is null)
+        if (!ViewerWorkspace.TryOpenAuxiliaryContent(
+                HeightImageViewerContentId,
+                ViewerWorkspaceCandidates.Select(candidate => candidate.Id)))
         {
             return;
         }
 
-        ViewerWorkspace.PinAuxiliaryContent(HeightImageViewerContentId);
-        ViewerWorkspace.SetLayout(ViewerWorkspaceLayout.SplitVertical);
-        FocusViewerWorkspaceSlot(ViewerWorkspaceSession.AuxiliarySlotId);
+        WorkspaceSelection.FocusViewerSlot(ViewerWorkspace.FocusedSlotId);
         RaiseViewerWorkspaceCanExecuteChanged();
     }
 
-    private void ReconcileViewerWorkspaceContents(bool preferHeightImage = false)
+    private string? GetPreferredViewerWorkspaceContentId(
+        IReadOnlyList<ViewerWorkspaceCandidateItem> available,
+        bool preferHeightImage)
     {
-        var available = ViewerWorkspaceCandidates;
         var preferredCompareId = new[]
         {
             CompareSlotBArtifactId,
@@ -416,10 +415,16 @@ public sealed partial class ToolWorkbenchViewModel
         }.FirstOrDefault(id => available.Any(candidate =>
             candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact
             && string.Equals(candidate.Id, id, StringComparison.OrdinalIgnoreCase)));
-        var preferred = preferHeightImage
-                        && available.Any(candidate => candidate.Kind == ViewerWorkspaceCandidateKind.HeightImage)
+        return preferHeightImage
+               && available.Any(candidate => candidate.Kind == ViewerWorkspaceCandidateKind.HeightImage)
             ? HeightImageViewerContentId
             : preferredCompareId ?? available.FirstOrDefault()?.Id;
+    }
+
+    private void ReconcileViewerWorkspaceContents(bool preferHeightImage = false)
+    {
+        var available = ViewerWorkspaceCandidates;
+        var preferred = GetPreferredViewerWorkspaceContentId(available, preferHeightImage);
 
         if (preferHeightImage && !string.IsNullOrWhiteSpace(preferred))
         {

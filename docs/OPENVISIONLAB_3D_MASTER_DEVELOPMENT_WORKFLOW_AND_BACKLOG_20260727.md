@@ -158,6 +158,36 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
+### Current architecture checkpoint - MVVM continuation - 2026-08-19
+
+`PL-0026` is the selected dependency-ready software maintenance item. The
+original `PL-0025` checkpoint introduced valid shared Presentation and
+Reporting owners plus several concrete Shell, Workbench, and Viewer sessions,
+but a whole-repository audit superseded its broad completion claim. The current
+`49/49` structure guard and Release build pass do not prove that every View is
+thin or that the large partial root types are composition facades.
+
+The remaining work is ordered in
+`OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md` section 12. M2
+and M3 are complete, and M4a/M4b/M4c are complete for the Height Deviation
+load/apply/save path: Results/Validation navigation state is owned by child
+ViewModels and commands, and the Source Quality workspace smoke is owned by
+`Verification/Smoke/ShellSourceQualitySmoke.cs`; `MainWindow` retains only
+invocation and failure callback wiring for that group. Height Deviation source
+loading, apply/state orchestration, and recipe saving now belong to
+`Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs`,
+`Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs`, and
+`Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs`; the View retains
+validation and rendering adapters. M4d is the next bounded slice: move
+Height Deviation rule/Preview orchestration or select the next recipe-family
+boundary while preserving file-dialog/rendering adapters and public host
+compatibility. Recommended model: `gpt-5.6-terra`; reasoning effort: `medium`.
+Complete and verify one milestone before selecting the next, and do not attempt
+the full Viewer or Workbench refactor in one lower-cost model turn. This
+maintenance checkpoint changes no capability inventory count.
+Product-owner unaided Wide/Compact R0 remains the separate acceptance gate and
+must use a refreshed fixed package if refactoring changes its binary.
+
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 
 `PL-0018` is Complete for the current tracked tree. Private market research,
@@ -190,7 +220,58 @@ This presentation improvement changed no inventory count or `8.6/10`
 maturity judgment. At this checkpoint `L-12` was selected next; the current
 execution checkpoint below supersedes that priority state.
 
-### Current execution checkpoint - Completeness per-cell export - 2026-08-18
+### Historical execution checkpoint - PL-0025 named extractions - 2026-08-19
+
+`PL-0025` introduced the shared Presentation command owner, runtime-neutral
+Reporting owner, and named Shell, Viewer, and Workbench sessions. Its focused
+checks and Release build remain evidence for those concrete extractions only.
+The 2026-08-19 whole-repository audit found broader View-owned workflow,
+Workbench root cohesion, Shell smoke ownership, and duplicate Tool Lab
+lifecycle work that the former completion guard did not cover. Therefore the
+current architecture checkpoint and queue are `PL-0026` above; do not use this
+historical checkpoint as the current priority or as repository-wide MVVM
+completion evidence. Preserve:
+
+- `docs/OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`;
+- `.proofline/issues/PL-0025.json`.
+
+The product-owner unaided Wide/Compact R0 remains a separate acceptance
+priority. Continue only the bounded `PL-0026` milestone selected above.
+
+### Previous execution checkpoint - Privacy-safe support bundle - 2026-08-18
+
+`PL-0024` / `L-14` is Complete. One explicit Results and Run Record action
+creates a collision-safe ZIP containing exactly `manifest.json`,
+`recipe.json`, `log-excerpt.json`, `source-identity.json`,
+`source-quality.json`, and `current-result.json`. The manifest records the
+privacy mode plus every payload's byte length and SHA-256. Recipe free-form
+text and paths are sanitized; the log excerpt is newest-first and capped at
+200 entries; source identity retains hash, size, unit, and frame without source
+bytes; exact already-recorded Source Quality is reused; and the current result
+retains decision, metrics, overlays, and timing without artifact or execution-
+environment paths.
+
+Raw 3D source or mesh bytes, absolute paths, full application logs, and user or
+machine identity are omitted by default. Missing recipe and legacy Source
+Quality evidence are explicit Unavailable payloads, while invalid current
+Source Quality identity fails closed without leaving a ZIP. Export does not
+run inspection, reload a source, recalculate quality, or mutate recipe,
+selection, Preview, published output, or Run Record state. Release builds
+`0/0`; focused privacy checks pass `14/14`; history `12/12`; docking/theme
+`87/87`; Shell options `41/41`; structure `29/29`; current Wide/Compact actual-
+EXE layout and held pointer-down evidence pass; and refreshed R0
+`-ValidateOnly` inputs pass. Preserve:
+
+- `docs/OPENVISIONLAB_3D_PRIVACY_SAFE_SUPPORT_BUNDLE_20260818.md`;
+- `.proofline/issues/PL-0024.json`;
+- `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0024-support-bundle\`.
+
+Inventory is `143 C / 17 P / 50 N / 9 E / 16 O`. Authoring readiness remains
+`8.6/10`: support-sharing safety improved, but the owner's unaided R0 is still
+external. Its former no-selected-software state is superseded by the current
+`PL-0026` architecture checkpoint above.
+
+### Previous execution checkpoint - Completeness per-cell export - 2026-08-18
 
 `PL-0022` / `L-12` is Complete. Run Record schema `1.9` retains the exact
 typed Completeness grid output already produced by ordered execution. JSON
@@ -213,15 +294,13 @@ JSON/HTML/CSV parity passes `4/4`. Refreshed Wide and Compact R0
 - `.proofline/issues/PL-0022.json`;
 - `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0022-completeness-cell-export\`.
 
-Inventory is `142 C / 17 P / 51 N / 9 E / 16 O`. Authoring readiness remains
-`8.6/10`: evidence granularity improved, but the owner's unaided R0 is still
-external. The next dependency-ready software priority is `L-14 privacy-safe
-support/diagnostic bundle` | Recommended model: `gpt-5.6-sol` | Reasoning
-effort: `medium`.
+At that checkpoint inventory was `142 C / 17 P / 51 N / 9 E / 16 O` and
+authoring readiness was `8.6/10`. Its former `L-14` next-priority statement is
+superseded by the completed PL-0024 checkpoint above.
 
 ### Current acceptance package checkpoint - Human-owner R0 - 2026-08-18
 
-The current-source Release, including PL-0015 through PL-0022, rebuilds with
+The current-source Release, including PL-0015 through PL-0024, rebuilds with
 `0` warnings and `0` errors. The refreshed nine-input fixed-hash package passes
 Wide and Compact `-ValidateOnly` on the dynamically selected leftmost monitor,
 `\\.\DISPLAY2` at `[-1920,365,1920,1080]`. Earlier owner observations used a
@@ -2707,7 +2786,7 @@ verification only.
 | L-11 | C | Threshold-correction evidence included in Run Record | I-11 | Schema `1.5`, exact before/suggested/manual/development/Held-out JSON/HTML and Workbench parity, `10/10` fail-closed projection checks |
 | L-12 | C | Completeness per-cell result export | H-06 | Schema `1.9`; exact typed ordered output; JSON hierarchy; readable HTML and structured CSV child rows; missing/malformed current evidence fails closed; legacy schema `1.8` readable; `30/30` focused and `4/4` parity |
 | L-13 | C | Surface-match pose/score component export | J-16 | Current schema `1.7` retains the schema-`1.6` identified-value contract; focused timing/export `22/22`, direct CLI, NoMatch/legacy/fail-closed evidence |
-| L-14 | N | One support/diagnostic bundle for recipe, log excerpt, source identity, quality report, and current result | B-07 | Bundle manifest and missing-sensitive-data policy |
+| L-14 | C | One privacy-safe support bundle for recipe, bounded log excerpt, source identity, quality report, and current result | B-07 | PL-0024; six-entry ZIP, manifest payload hashes, default sensitive-data omissions, fail-closed identity checks, `14/14` focused verification, and Wide/Compact evidence |
 | L-15 | P | Validation is local ordered sample replay, not production batch/history | None | Current boundary retained |
 | L-16 | O | Plant database, long-term trend/SPC service, and retention policy | Product-scope decision | Not scheduled |
 
@@ -3100,10 +3179,11 @@ The owner explicitly left the layout-only stream and completed item 11 on
     JSON, readable HTML, and structured CSV child rows without rerunning
     inspection; current missing/malformed evidence fails closed and schema
     `1.8` remains readable.
-39. `L-14 privacy-safe support/diagnostic bundle` - Selected next
-    dependency-ready software priority; define an explicit manifest and omit
-    sensitive source bytes by default | Recommended model: `gpt-5.6-sol` |
-    Reasoning effort: `medium`.
+39. `PL-0024 / L-14 privacy-safe support/diagnostic bundle` - Complete; one
+    explicit action creates a six-entry, manifest-hashed ZIP with sanitized and
+    bounded current evidence while omitting raw source bytes, absolute paths,
+    full logs, and workstation/user identity by default. No dependency-ready
+    software slice is currently selected.
 40. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;

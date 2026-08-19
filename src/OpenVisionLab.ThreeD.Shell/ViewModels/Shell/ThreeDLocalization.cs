@@ -77,10 +77,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(CancelThicknessRepeat), nameof(ThicknessGroupFormat), nameof(StepParameters),
         nameof(PipelineValidation), nameof(RunRecord), nameof(RunRecordTitle), nameof(RunRecordDetail),
         nameof(RunRecordOpen), nameof(RunRecordOpenCurrent), nameof(RunRecordOpenHtml), nameof(RunRecordOpenCsv),
-        nameof(RunRecordOpenFolder), nameof(RunRecordExport), nameof(RunRecordRecent), nameof(RunRecordOpenRecent),
+        nameof(RunRecordOpenFolder), nameof(RunRecordExport), nameof(SupportBundleExport),
+        nameof(SupportBundlePrivacyNotice), nameof(SupportBundleToolTip),
+        nameof(RunRecordRecent), nameof(RunRecordOpenRecent),
         nameof(RunRecordSummaryFormat), nameof(RunRecordThresholdCorrection),
         nameof(RunRecordThresholdCorrectionDetail), nameof(RunRecordOpenFailed),
-        nameof(RunRecordExportedFormat), nameof(ResultsWorkspaceTitle),
+        nameof(RunRecordExportedFormat), nameof(SupportBundleExportedFormat), nameof(ResultsWorkspaceTitle),
         nameof(ResultsWorkspaceDetail), nameof(ResultsWorkspaceRunRecord),
         nameof(ResultsWorkspaceOutputCompare), nameof(ResultsWorkspaceReports),
         nameof(ResultsWorkspaceReportsDetail), nameof(ResultsWorkspaceAdvanced),
@@ -485,6 +487,18 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RunRecordOpenCsv => T("ThreeD.Command.RunRecordOpenCsv", "CSV \uC5F4\uAE30", "Open CSV");
     public string RunRecordOpenFolder => T("ThreeD.Command.RunRecordOpenFolder", "\uD3F4\uB354 \uC5F4\uAE30", "Open folder");
     public string RunRecordExport => T("ThreeD.Command.RunRecordExport", "\uACB0\uACFC \uBB36\uC74C \uB0B4\uBCF4\uB0B4\uAE30", "Export bundle");
+    public string SupportBundleExport => T(
+        "ThreeD.Command.SupportBundleExport",
+        "개인정보 안전 지원 번들",
+        "Privacy-safe support bundle");
+    public string SupportBundlePrivacyNotice => T(
+        "ThreeD.Workbench.SupportBundlePrivacyNotice",
+        "원본 3D 데이터·절대경로·사용자/PC 정보는 기본 포함하지 않습니다.",
+        "Raw 3D data, absolute paths, and user/machine identity are excluded by default.");
+    public string SupportBundleToolTip => T(
+        "ThreeD.Command.SupportBundleToolTip",
+        "현재 레시피 설정, 최근 세션 로그, 소스 식별값, 품질 증거와 결과를 개인정보 안전 ZIP으로 만듭니다. 공유 전 내용을 확인하세요.",
+        "Create a privacy-safe ZIP with recipe settings, a recent session-log excerpt, source identity, quality evidence, and the current result. Review it before sharing.");
     public string RunRecordRecent => T("ThreeD.Workbench.RunRecordRecent", "\uCD5C\uADFC \uC2E4\uD589 \uAE30\uB85D", "Recent Run Records");
     public string RunRecordOpenRecent => T("ThreeD.Command.RunRecordOpenRecent", "\uC120\uD0DD \uAE30\uB85D \uC5F4\uAE30", "Open selected");
     public string RunRecordSummaryFormat => T("ThreeD.Workbench.RunRecordSummaryFormat", "Run Record \uC2A4\uD0A4\uB9C8 {0} | \uC21C\uC11C\uD615 \uB2E8\uACC4 {1}\uAC1C | \uCD5C\uC885 {2}", "Run Record schema {0} | Ordered steps: {1} | Overall: {2}");
@@ -494,6 +508,10 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RunRecordThresholdCorrectionDetail => T("ThreeD.Workbench.RunRecordThresholdCorrectionDetail", "\uC2E4\uD589 \uC2DC\uC810\uC758 sidecar\uB97C \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uBCF4\uC874\uD569\uB2C8\uB2E4. \uC2E4\uD589\u00B7\uC801\uC6A9\u00B7\uC7AC\uC0DD\uC740 \uC218\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only sidecar snapshot at run time; it never executes, applies, or replays inspection.");
     public string RunRecordOpenFailed => T("ThreeD.Message.RunRecordOpenFailed", "\uC2E4\uD589 \uAE30\uB85D\uC744 \uC77D\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. JSON \uD30C\uC77C\uACFC \uC2A4\uD0A4\uB9C8\uB97C \uD655\uC778\uD558\uC138\uC694.", "The Run Record could not be read. Check the JSON file and schema.");
     public string RunRecordExportedFormat => T("ThreeD.Message.RunRecordExportedFormat", "\uC2E4\uD589 \uAE30\uB85D \uBB36\uC74C\uC744 \uB0B4\uBCF4\uB0C8\uC2B5\uB2C8\uB2E4: {0}", "Run Record bundle exported: {0}");
+    public string SupportBundleExportedFormat => T(
+        "ThreeD.Message.SupportBundleExportedFormat",
+        "개인정보 안전 지원 번들을 만들었습니다: {0}",
+        "Privacy-safe support bundle created: {0}");
     public string ResultsWorkspaceTitle => T("ThreeD.Results.Title", "\uACB0\uACFC \uAC80\uD1A0", "Results review");
     public string ResultsWorkspaceDetail => T("ThreeD.Results.Detail", "\uAE30\uB85D\uB41C \uC2E4\uD589\u00B7\uCD9C\uB825\u00B7\uBCF4\uACE0\uC11C \uC99D\uAC70\uB97C \uC77D\uAE30 \uC804\uC6A9\uC73C\uB85C \uAC80\uD1A0\uD569\uB2C8\uB2E4.", "Review recorded run, output, and report evidence without changing the recipe.");
     public string ResultsWorkspaceRunRecord => T("ThreeD.Results.RunRecord", "\uC2E4\uD589 \uAE30\uB85D", "Run record");

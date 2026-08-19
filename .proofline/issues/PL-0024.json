@@ -1,0 +1,126 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0024",
+    "aliases": [
+      "L-14"
+    ],
+    "type": "feature",
+    "mode": "simple",
+    "title": "Add privacy-safe support diagnostic bundle",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "2026-08-18 owner-approved master backlog priority",
+    "summary": "The owner selected L-14 so one shareable diagnostic bundle can collect the current recipe and evidence without exposing source bytes or private workstation identity by default.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0024/L-14 is complete: one explicit Results and Run Record action creates a collision-safe six-entry privacy-safe support ZIP with manifest hashes, sanitized and bounded evidence, fail-closed identity checks, and no inspection or product-state mutation."
+  },
+  "objective": {
+    "summary": "Create one explicit privacy-safe support ZIP for the current Run Record containing an auditable manifest, sanitized recipe, bounded session log excerpt, source identity, Source Quality evidence, and current result.",
+    "constraints": [
+      "Omit source and mesh bytes, absolute paths, full application logs, workstation identity, and user identity by default.",
+      "Do not execute inspection, reload the source, recalculate Source Quality, or mutate recipe, selection, preview, published output, or Run Record state.",
+      "Use the current Run Record and existing in-memory Workbench session log; do not add a second diagnostic or logging framework.",
+      "Use one collision-safe ZIP with an explicit manifest and standard-library compression only.",
+      "Keep missing or incompatible recipe and quality evidence explicit instead of silently fabricating or omitting it."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The ZIP manifest identifies its schema, privacy mode, current run, every payload name/size/SHA-256, included data classes, and default omissions.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The bundle contains a sanitized recipe, at most 200 newest session log entries, source identity, exact already-recorded Source Quality evidence, and current result without source bytes, absolute paths, user identity, or machine identity.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Export is collision-safe and fail-closed for an invalid current Run Record, reports missing or mismatched optional evidence explicitly, and causes no inspection execution or product-state mutation.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Results exposes one localized, accessible, semantically themed support-bundle action with a visible privacy boundary in Wide and Compact layouts.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused privacy checks, affected regressions, Release build, current Wide/Compact actual-EXE evidence, documentation, Proofline validation, and diff hygiene pass.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0022"
+    }
+  ],
+  "context": [
+    {
+      "kind": "existing export owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Shell/ShellMainWindowViewModel.cs",
+      "summary": "The Results Run Record workflow already owns current evidence selection and collision-safe artifact export."
+    },
+    {
+      "kind": "source evidence contract",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/RunRecords/InspectionRunRecord.cs",
+      "summary": "The current Run Record already retains identified source, Source Quality, step results, and environment evidence but also contains paths that must not be copied verbatim."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0024-support-bundle/reports/privacy-safe-support-bundle-release-final.txt",
+      "observation": "Release focused verification passed 14/14: the six-entry manifest contract, SHA-256 payload integrity, sanitized recipe and bounded log, source and quality identity, result projection, collision handling, unavailable evidence, fail-closed mismatch, and ViewModel no-mutation path all passed.",
+      "observed_at": "2026-08-18T13:37:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "ui",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0024-support-bundle/after/",
+      "observation": "Current Release Wide 1920x1040 and Compact 1280x760 captures show the localized accessible privacy-safe action and visible omission notice without required-text clipping; held pointer-down remains semantically themed and the window intersects the selected leftmost monitor.",
+      "observed_at": "2026-08-18T13:28:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260818-pl0024-support-bundle/reports/",
+      "observation": "Release build passed with 0 warnings and 0 errors; Run Record history 12/12, docking/theme 87/87, Shell options 41/41, structure 29/29, and refreshed Wide/Compact R0 ValidateOnly passed. Public docs and the durable closure record were updated; final diff hygiene is recorded in the closure document.",
+      "observed_at": "2026-08-18T13:39:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-18T13:39:38+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Implemented and verified the privacy-safe support bundle, localized UI, documentation, and refreshed R0 fixed inputs."
+    }
+  ],
+  "created_at": "2026-08-18T13:06:48+09:00",
+  "updated_at": "2026-08-18T13:39:38+09:00"
+}

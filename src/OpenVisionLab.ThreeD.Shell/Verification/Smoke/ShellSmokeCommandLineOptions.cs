@@ -154,6 +154,8 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-current-recipe-run-ready");
     public bool CurrentRecipeRunPressedSmoke =>
         HasFlag("--smoke-current-recipe-run-pressed");
+    public bool SupportBundlePressedSmoke =>
+        HasFlag("--smoke-support-bundle-pressed");
     public bool FirstRecipeSetupRememberSmoke => HasFlag("--smoke-first-recipe-remember");
     public bool FirstRecipeStarterPopupSmoke => HasFlag("--smoke-first-recipe-starter-popup");
     public bool FirstRecipeCreatePressedSmoke => HasFlag("--smoke-first-recipe-create-pressed");
@@ -227,6 +229,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || SurfaceMatchCollectionNavigationFocusHoverSmoke
         || CurrentRecipeRunReadySmoke
         || CurrentRecipeRunPressedSmoke
+        || SupportBundlePressedSmoke
         || WorkbenchRunLogSmoke
         || WorkbenchInteractionReportPath is not null
         || SurfaceMatchCollectionPath is not null;

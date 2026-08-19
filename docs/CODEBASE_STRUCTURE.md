@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Codebase Structure
 
-Updated: 2026-07-26
+Updated: 2026-08-19
 
 This repository contains the SharpGL WPF Viewer Foundation, docked inspection Shell, shared data/tool contracts, typed inspection recipes, headless Runner, and repeatable trust evidence.
 
@@ -11,7 +11,18 @@ The current structural baseline and development rules are recorded in:
 
 `App` is the WPF lifecycle entry point; `ShellVerificationCommandRouter` owns
 Shell verification dispatch. `MainWindow` remains the composition/View-adapter
-owner, while `WorkbenchViewerDisplayCoordinator` owns non-teaching
+root. `StudioLayoutController` owns layout persistence,
+`ShellRequestCoordinator` owns presentation-request subscription lifetime,
+`ShellEvidenceDialogController` owns evidence/Run Record dialogs, and
+`RecipeFileDialogService` owns recipe Save/Open selection, while
+`ShellWorkbenchLifecycleController` owns recipe/source lifecycle and its smoke
+hooks. Within the Workbench, `ViewerWorkspaceSession` owns layout and
+auxiliary-slot state transitions; `ToolWorkbenchViewModel` maps recipe/artifact
+candidates and synchronizes inspection selection state.
+The Shell `Behaviors` folder owns reusable WPF-only interactions; for example,
+`ScrollIntoViewOnSelectionChangedBehavior` keeps virtualized recipe and
+validation lists aligned without owning workflow state.
+`WorkbenchViewerDisplayCoordinator` owns non-teaching
 Workbench-to-Viewer display subscriptions and `ShellToolLabSmoke` owns Tool Lab
 smoke-window orchestration. `RunnerCommandRouter` selects CLI operations and
 `RunnerApplication` owns non-UI recipe execution/reporting. Shared model
@@ -26,19 +37,21 @@ transforms are calculated by `Core.ModelTransform.Apply`.
 | `docs/` | Exists | Direction, research, viewer MVP, sample data, and handoff documents. |
 | `3D/` | Exists | Local Thickness/Warpage sample C3D files with PNG previews plus `PublicSamples` GLB/STL/LAS/LAZ import-test data. Treat as sample input data, not source code. |
 | `OpenVisionLab.ThreeDStudio.slnx` | Exists | Solution file for the 3D Studio app. |
-| `OpenVisionLab.ThreeDStudio.sln` | Exists | Standard Visual Studio solution for the same 12 code projects as `.slnx`, including shared Logging, Localization, and MessageDialogs projects. Projects are grouped under the `src` solution folder while `src` remains the on-disk source root. |
+| `OpenVisionLab.ThreeDStudio.sln` | Exists | Standard Visual Studio solution for the same 14 code projects as `.slnx`, including shared Presentation, Reporting, Logging, Localization, and MessageDialogs projects. Projects are grouped under the `src` solution folder while `src` remains the on-disk source root. |
 | `scripts/` | Exists | Repeatable local smoke and validation entry points. |
 | `src/OpenVisionLab.ThreeD.Core/` | Exists | Minimal 3D source/result/layer/metric/overlay/tool-result contracts, typed nominal/actual input/result identities and fingerprints, plus shared contract-line formatting for Viewer and Runner evidence. Source geometry and result evidence stay separate here. |
 | `src/OpenVisionLab.ThreeD.Data/` | Exists | Shared non-UI C3D height-grid loader, exact-byte verified full-resolution height-field snapshots, imported triangle-mesh data model, GLB/STL/LAS/LAZ loaders, the one-pass binary-STL inspection reader, and the ordered binary-PLY vertex reader used by Runner evidence and typed execution. |
 | `src/OpenVisionLab.ThreeD.Docking.Controls/` | Exists | Dedicated WPF docking wrapper project. It owns the AvalonDock package reference and exposes workbench content slots so the Shell app does not use raw docking APIs directly. |
+| `src/OpenVisionLab.ThreeD.Presentation/` | Exists | Shared .NET 10 WPF presentation primitives. It owns the generic `RelayCommand` implementation used by Shell and the Viewer compatibility surface. Feature-specific state, converters, and interactions remain with their owning feature until a second consumer proves a shared boundary. |
+| `src/OpenVisionLab.ThreeD.Reporting/` | Exists | Shared runtime-neutral ordered Run Record identity, schema `1.9` composition, and JSON output. Shell and Runner retain route-specific artifact locations, Shell text, and Runner HTML/CSV/environment policy while consuming one exact record owner. |
 | `src/OpenVisionLab.ThreeD.Runner/` | Exists | Non-UI recipe runner for typed inspection replay, Viewer contract comparison, durable reports, format probes, and controlled goldens. `RunnerCommandRouter` owns CLI selection; `RunnerApplication` owns recipe execution/reporting. |
-| `src/OpenVisionLab.ThreeD.Shell/` | Exists | WPF workspace shell hosting docking, Viewer, and Workbench views. ViewModels own bindable workflow state and commands. Shell Views retain explicit adapters for file/message dialogs, docking, PropertyGrid flush, OpenGL/pointer hosting, and WPF screenshot smoke. |
+| `src/OpenVisionLab.ThreeD.Shell/` | Exists | WPF workspace shell hosting docking, Viewer, and Workbench views. ViewModels own bindable workflow state and commands. `ToolWorkbenchTeachingCaptureSession` owns transient teaching-capture lifetime, progress, and the atomic grid-rectangle ROI draft. `ToolWorkbenchRecipeSession` owns recipe schema/name/path/dirty state and authored/storage/source-binding validation results while the Workbench root retains normalization, persistence, execution invalidation, notifications, source identity validation, and Viewer coordination. `Behaviors/` owns reusable WPF-only presentation interactions. Shell Views retain explicit adapters for file/message dialogs, docking, PropertyGrid flush, OpenGL/pointer hosting, and WPF screenshot smoke. |
 | `src/OpenVisionLab.ThreeD.Tools/` | Exists | Render-independent rule algorithms, including the strict C3D Median Filter v1 recipe adapter, recipe/acceptance models, runtime-neutral registration acceptance, the BVH distance index, and full-query nominal/actual execution. Depends on Core and Data, not WPF or SharpGL. |
-| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Separately releasable SharpGL WPF Viewer DLL for Shell, Studio, and external WPF hosting. Owns the viewer UI, ViewModels including the measured/nominal presentation workflow, Viewer-local immutable display settings and normalized display palettes, the C3D sampled-grid display proxy, render loop, camera/picking/rendering helpers, screenshot smoke path, and the smoke-only Windows pointer bridge used to route real WPF click/orbit/pan/zoom evidence. Durable camera, selection, and effective display state remain in ViewModels/models; native input and SharpGL proxy rendering remain in the WPF/rendering boundary. The C3D proxy and palettes are display-only and do not replace source-cell or full-query inspection geometry. The Viewer does not own the shared numerical comparison executor. `scripts/build-viewer-dll.ps1` emits its validated dependency bundle and hash manifest. User-facing labels use `Imported Mesh` for the shared GLB/STL path and `LAZ/LAS` for point-cloud display while older contract/CLI names stay compatible. |
+| `src/OpenVisionLab.ThreeD.Viewer/` | Exists | Separately releasable SharpGL WPF Viewer DLL for Shell, Studio, and external WPF hosting. Owns the viewer UI, ViewModels including the measured/nominal presentation workflow, Viewer-local immutable display settings and normalized display palettes, the C3D sampled-grid display proxy, render loop, camera/picking/rendering helpers, screenshot smoke path, and the smoke-only Windows pointer bridge used to route real WPF click/orbit/pan/zoom evidence. `ViewerDisplaySettingsViewModel` owns geometry/color settings plus point size, render density, display budgets, summary, and revision. `ViewerCameraSession` owns camera/projection state and saved-Perspective snapshot lifetime. `ViewerSelectionSession` owns selection mode, selected entity, pick coordinate, summary, and overlay visibility. `Recipes/HeightDeviationRecipeLoadPlan`, `HeightDeviationRecipeApplyCoordinator`, and `HeightDeviationRecipeSaveCoordinator` own the first Height Deviation recipe load/apply/save policy outside the WPF View; the View retains validation, dialogs, rendering, and callback adapters. The root ViewModel keeps delegating compatibility properties and cross-feature selection-summary policy. Native input and SharpGL proxy rendering remain in the WPF/rendering boundary. The C3D proxy and palettes are display-only and do not replace source-cell or full-query inspection geometry. The Viewer does not own the shared numerical comparison executor. `scripts/build-viewer-dll.ps1` emits its validated dependency bundle and hash manifest. User-facing labels use `Imported Mesh` for the shared GLB/STL path and `LAZ/LAS` for point-cloud display while older contract/CLI names stay compatible. |
 | `src/OpenVisionLab.ThreeDStudio/` | Exists | Thin WPF desktop host for the reusable viewer control. Keeps the standalone viewer smoke entry point while the main workspace Shell matures. |
 | `recipes/` | Exists | Local recipe samples for runner smoke. |
 
-There is a minimal core contract library, shared data loader, first tool library, runner, docking wrapper, shell app, and hostable viewer control. There is no test project yet.
+There is a minimal core contract library, shared data loader, first tool library, shared presentation and reporting primitives, runner, docking wrapper, shell app, and hostable viewer control. There is no test project yet.
 
 ## 1.1 Viewer and Main ViewModel Layout
 
@@ -50,7 +63,10 @@ The large Viewer and its main ViewModel are organized as partial classes. These 
 | `...ViewerControl.Host.cs` | Host API, ViewModel event subscriptions, and shell-facing visibility state. |
 | `...ViewerControl.Smoke.cs` | Command-line smoke configuration and smoke-only pointer regression setup. |
 | `...ViewerControl.Viewport.cs` | SharpGL viewport lifecycle, draw-loop entry points, pointer gestures, and frame telemetry. |
-| `...ViewerControl.Recipes.cs` | Viewer commands, recipe load/save/validation, ROI editing, and capture orchestration. |
+| `...ViewerControl.Recipes.cs` | WPF recipe commands, validation, ROI editing, file-dialog/rendering adapters, and capture orchestration; Height Deviation load/apply/save policy is delegated to the non-WPF recipe owners below. |
+| `src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs` | Non-WPF Height Deviation recipe source resolution, C3D loading, and controlled rule preparation. |
+| `src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs` | Non-WPF Height Deviation recipe ViewModel state/application sequence; WPF rendering and preview callbacks are supplied by the View. |
+| `src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs` | Non-WPF Height Deviation recipe construction, source-path mapping, persistence, and saved-state update. |
 | `...ViewerControl.Inspection.cs` | Sample inspection setup plus C3D preview/measurement orchestration. |
 | `...ViewerControl.Rendering.cs` | OpenGL camera, overlays, C3D/mesh/LAZ rendering, and render caches. |
 | `...ViewerControl.Picking.cs` | Ray picking, two-point/ROI selection, and camera pan helpers. |
@@ -84,7 +100,7 @@ Create these folders only when implementation begins.
 | Planned Path | Create When | Responsibility |
 | --- | --- | --- |
 | `scripts/run-data-loading-matrix-smoke.ps1` | Exists | Runs the current 3D data loading matrix smoke, including expected loader failures and contract checks. |
-| `scripts/verify-code-structure.ps1` | Exists | Verifies solution project parity, runtime-neutral Core/Data/Tools/Runner dependencies, command-router ownership, Workbench Viewer display ownership, and removal of duplicate model-transform implementations. |
+| `scripts/verify-code-structure.ps1` | Exists | Verifies solution project parity, runtime-neutral Core/Data/Tools/Runner dependencies, command-router ownership, Shell lifecycle ownership, Workbench and Viewer display-state ownership, reusable WPF Behavior ownership, and removal of duplicate model-transform implementations. |
 | `scripts/verify-c3d-geometry-performance.ps1` | Exists | Runs the fixed 4-style by 3-density C3D 31-frame performance matrix and verifies static-cache, topology, screenshot, and measurement contracts. |
 | `scripts/verify-nist-nominal-actual-render-density.ps1` | Exists | Runs the fixed ignored NIST comparison in Fast/Balanced/Detailed Viewer modes and proves distinct display sampling with identical normalized full-query measurement and published evidence. |
 | `3D/PublicSamples/` | Exists | Small GLB/STL/LAS/LAZ sample models for import tests, with source/license/hash notes. |

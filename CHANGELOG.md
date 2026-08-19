@@ -19,6 +19,10 @@ released; publication state is owned by the release and version policy.
 - Added persistent selected `X / Y / Z` and C3D raw-height status in the Viewer.
 - Added Run Record stage timing, exact Source Quality evidence, and exact
   Completeness per-cell JSON, HTML, and CSV results.
+- Added an explicit privacy-safe support ZIP with a manifest, sanitized recipe,
+  bounded session-log excerpt, source identity, Source Quality evidence, and
+  current result while excluding raw 3D bytes and private workstation data by
+  default.
 
 ### Improved
 

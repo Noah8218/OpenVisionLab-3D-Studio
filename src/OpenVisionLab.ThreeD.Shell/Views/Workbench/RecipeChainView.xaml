@@ -5,6 +5,7 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
+             xmlns:behaviors="clr-namespace:OpenVisionLab.ThreeD.Shell.Behaviors"
              AutomationProperties.AutomationId="RecipeChain">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -262,7 +263,7 @@
                      Grid.Row="3"
                      ItemsSource="{Binding PipelineSteps}"
                      SelectedItem="{Binding SelectedPipelineStep, Mode=TwoWay}"
-                     SelectionChanged="RecipeStepListSelectionChanged"
+                     behaviors:ScrollIntoViewOnSelectionChangedBehavior.IsEnabled="True"
                      Background="Transparent"
                      BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"

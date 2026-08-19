@@ -98,9 +98,15 @@ $allowedReferences = @{
         "src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj"
         "src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj"
     )
+    "src/OpenVisionLab.ThreeD.Reporting/OpenVisionLab.ThreeD.Reporting.csproj" = @(
+        "src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj"
+        "src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj"
+        "src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj"
+    )
     "src/OpenVisionLab.ThreeD.Runner/OpenVisionLab.ThreeD.Runner.csproj" = @(
         "src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj"
         "src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj"
+        "src/OpenVisionLab.ThreeD.Reporting/OpenVisionLab.ThreeD.Reporting.csproj"
         "src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj"
     )
 }
@@ -131,11 +137,189 @@ foreach ($projectPath in $allowedReferences.Keys | Sort-Object) {
     ) "useWpf=$usesWpf|forbiddenPackages=$($forbiddenPackages -join ',')"
 }
 
+$presentationReferences = @{
+    "src/OpenVisionLab.ThreeD.Presentation/OpenVisionLab.ThreeD.Presentation.csproj" = @()
+    "src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj" = @(
+        "src/OpenVisionLab.Localization/OpenVisionLab.Localization.csproj"
+        "src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj"
+        "src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj"
+        "src/OpenVisionLab.ThreeD.Presentation/OpenVisionLab.ThreeD.Presentation.csproj"
+        "src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj"
+    )
+    "src/OpenVisionLab.ThreeD.Shell/OpenVisionLab.ThreeD.Shell.csproj" = @(
+        "src/OpenVisionLab.Localization/OpenVisionLab.Localization.csproj"
+        "src/OpenVisionLab.Logging.Controls/OpenVisionLab.Logging.Controls.csproj"
+        "src/OpenVisionLab.Logging/OpenVisionLab.Logging.csproj"
+        "src/OpenVisionLab.ThreeD.Core/OpenVisionLab.ThreeD.Core.csproj"
+        "src/OpenVisionLab.ThreeD.Data/OpenVisionLab.ThreeD.Data.csproj"
+        "src/OpenVisionLab.ThreeD.Docking.Controls/OpenVisionLab.ThreeD.Docking.Controls.csproj"
+        "src/OpenVisionLab.ThreeD.Presentation/OpenVisionLab.ThreeD.Presentation.csproj"
+        "src/OpenVisionLab.ThreeD.Reporting/OpenVisionLab.ThreeD.Reporting.csproj"
+        "src/OpenVisionLab.ThreeD.Tools/OpenVisionLab.ThreeD.Tools.csproj"
+        "src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj"
+        "src/OpenVisionLab.Wpf.MessageDialogs/OpenVisionLab.Wpf.MessageDialogs.csproj"
+    )
+}
+
+foreach ($projectPath in $presentationReferences.Keys | Sort-Object) {
+    $fullProjectPath = Join-Path $repoRoot $projectPath
+    [xml]$projectXml = [System.IO.File]::ReadAllText($fullProjectPath)
+    $actualReferences = @(
+        $projectXml.Project.ItemGroup.ProjectReference |
+            Where-Object { $_ -and $_.Include } |
+            ForEach-Object {
+                Convert-ToRepoPath (Join-Path (Split-Path -Parent $fullProjectPath) $_.Include)
+            } |
+            Sort-Object -Unique
+    )
+    Compare-ProjectSet "Dependencies:$projectPath" $presentationReferences[$projectPath] $actualReferences
+}
+
+$presentationCommandPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Presentation/Commands/RelayCommand.cs"
+$shellGlobalUsingsPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/GlobalUsings.cs"
+$viewerCompatibilityCommandPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Presentation/Commands/RelayCommand.cs"
+$presentationCommandSource = if (Test-Path -LiteralPath $presentationCommandPath) {
+    [System.IO.File]::ReadAllText($presentationCommandPath)
+} else {
+    ""
+}
+$shellGlobalUsingsSource = if (Test-Path -LiteralPath $shellGlobalUsingsPath) {
+    [System.IO.File]::ReadAllText($shellGlobalUsingsPath)
+} else {
+    ""
+}
+$viewerCompatibilityCommandSource = if (Test-Path -LiteralPath $viewerCompatibilityCommandPath) {
+    [System.IO.File]::ReadAllText($viewerCompatibilityCommandPath)
+} else {
+    ""
+}
+Add-Check "SharedPresentationCommandOwnership" (
+    $presentationCommandSource -match "public sealed class RelayCommand" -and
+    $shellGlobalUsingsSource -match "OpenVisionLab\.ThreeD\.Presentation\.Commands\.RelayCommand" -and
+    $viewerCompatibilityCommandSource -match "PresentationRelayCommand" -and
+    $viewerCompatibilityCommandSource -notmatch "private readonly Func<object\?, bool>\? canExecute"
+) "Shell uses Presentation command owner; Viewer retains a delegating public compatibility surface"
+
+$orderedRunRecordFactoryPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Reporting/RunRecords/OrderedRunRecordFactory.cs"
+$runRecordJsonPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Reporting/RunRecords/InspectionRunRecordJson.cs"
+$shellOrderedRunRecordWriterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Shell/ShellOrderedRunRecordWriter.cs"
+$runnerRunRecordWriterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Runner/Reporting/RunRecordWriter.cs"
+$shellOrderedRunRecordWriterSource = if (Test-Path -LiteralPath $shellOrderedRunRecordWriterPath) {
+    [System.IO.File]::ReadAllText($shellOrderedRunRecordWriterPath)
+} else {
+    ""
+}
+$runnerRunRecordWriterSource = if (Test-Path -LiteralPath $runnerRunRecordWriterPath) {
+    [System.IO.File]::ReadAllText($runnerRunRecordWriterPath)
+} else {
+    ""
+}
+Add-Check "SharedOrderedRunRecordOwnership" (
+    (Test-Path -LiteralPath $orderedRunRecordFactoryPath) -and
+    (Test-Path -LiteralPath $runRecordJsonPath) -and
+    $shellOrderedRunRecordWriterSource -match "OrderedRunRecordFactory\.Create" -and
+    $shellOrderedRunRecordWriterSource -match "InspectionRunRecordJson\.Write" -and
+    $shellOrderedRunRecordWriterSource -notmatch "new InspectionRunRecord\(" -and
+    $runnerRunRecordWriterSource -match "OrderedRunRecordFactory\.Create" -and
+    $runnerRunRecordWriterSource -match "InspectionRunRecordJson\.Write"
+) "Reporting owns ordered graph record composition and shared JSON output; Shell and Runner retain route-specific artifact policy"
+
 $appPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/App.xaml.cs"
 $mainWindowPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/MainWindow.xaml.cs"
+$studioLayoutControllerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Layout/StudioLayoutController.cs"
+$shellRequestCoordinatorPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Coordination/ShellRequestCoordinator.cs"
+$shellEvidenceDialogControllerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Dialogs/ShellEvidenceDialogController.cs"
+$recipeFileDialogServicePath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Dialogs/RecipeFileDialogService.cs"
+$shellWorkbenchLifecycleControllerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Coordination/ShellWorkbenchLifecycleController.cs"
+$mainWindowSource = if (Test-Path -LiteralPath $mainWindowPath) {
+    [System.IO.File]::ReadAllText($mainWindowPath)
+} else {
+    ""
+}
+$studioLayoutControllerSource = if (Test-Path -LiteralPath $studioLayoutControllerPath) {
+    [System.IO.File]::ReadAllText($studioLayoutControllerPath)
+} else {
+    ""
+}
+$shellRequestCoordinatorSource = if (Test-Path -LiteralPath $shellRequestCoordinatorPath) {
+    [System.IO.File]::ReadAllText($shellRequestCoordinatorPath)
+} else {
+    ""
+}
+$shellEvidenceDialogControllerSource = if (Test-Path -LiteralPath $shellEvidenceDialogControllerPath) {
+    [System.IO.File]::ReadAllText($shellEvidenceDialogControllerPath)
+} else {
+    ""
+}
+$recipeFileDialogServiceSource = if (Test-Path -LiteralPath $recipeFileDialogServicePath) {
+    [System.IO.File]::ReadAllText($recipeFileDialogServicePath)
+} else {
+    ""
+}
+$shellWorkbenchLifecycleControllerSource = if (Test-Path -LiteralPath $shellWorkbenchLifecycleControllerPath) {
+    [System.IO.File]::ReadAllText($shellWorkbenchLifecycleControllerPath)
+} else {
+    ""
+}
+Add-Check "StudioLayoutControllerOwnership" (
+    $studioLayoutControllerSource -match "internal sealed class StudioLayoutController" -and
+    $studioLayoutControllerSource -match "StudioLayoutProfileStore" -and
+    $studioLayoutControllerSource -match "public void Save\(\)" -and
+    $studioLayoutControllerSource -match "public void Reset\(\)" -and
+    $mainWindowSource -match "new StudioLayoutController\(" -and
+    $mainWindowSource -match "_studioLayout\.Save\(\)" -and
+    $mainWindowSource -match "_studioLayout\.Reset\(\)" -and
+    $mainWindowSource -notmatch "StudioLayoutProfileStore\? _studioLayoutStore" -and
+    $mainWindowSource -notmatch "ConfigureStudioLayoutPersistence" -and
+    $mainWindowSource -notmatch "SaveStudioLayout\("
+) "StudioLayoutController owns layout load/save/reset; MainWindow retains only lifecycle delegation"
+Add-Check "ShellRequestCoordinatorOwnership" (
+    $shellRequestCoordinatorSource -match "internal sealed class ShellRequestCoordinator" -and
+    $shellRequestCoordinatorSource -match "ProfileViewRequested \+= callbacks\.ProfileView" -and
+    $shellRequestCoordinatorSource -match "ValidationSetComparisonRequested -= callbacks\.ValidationSetComparison" -and
+    $mainWindowSource -match "new ShellRequestCoordinator\(" -and
+    $mainWindowSource -match "_requestCoordinator\.Dispose\(\)" -and
+    $mainWindowSource -notmatch "_profileViewRequestedHandler" -and
+    $mainWindowSource -notmatch "_workbenchValidationSetComparisonRequestedHandler"
+) "ShellRequestCoordinator owns presentation-request subscription lifetime; MainWindow supplies explicit WPF callbacks"
+Add-Check "ShellEvidenceDialogOwnership" (
+    $shellEvidenceDialogControllerSource -match "internal sealed class ShellEvidenceDialogController" -and
+    $shellEvidenceDialogControllerSource -match "OpenFileDialog" -and
+    $shellEvidenceDialogControllerSource -match "OpenFolderDialog" -and
+    $shellEvidenceDialogControllerSource -match "ExportPrivacySafeSupportBundle" -and
+    $mainWindowSource -match "new ShellEvidenceDialogController\(" -and
+    $mainWindowSource -match "_evidenceDialogs\.OpenEvidenceArtifact" -and
+    $mainWindowSource -notmatch "OnOpenEvidenceArtifactRequested" -and
+    $mainWindowSource -notmatch "OnExportPrivacySafeSupportBundleRequested"
+) "ShellEvidenceDialogController owns evidence and Run Record dialog adapters; MainWindow only composes callbacks"
+Add-Check "RecipeFileDialogOwnership" (
+    $recipeFileDialogServiceSource -match "internal sealed class RecipeFileDialogService" -and
+    $recipeFileDialogServiceSource -match "TrySelectSavePath" -and
+    $recipeFileDialogServiceSource -match "TrySelectOpenPath" -and
+    $mainWindowSource -match "new RecipeFileDialogService\(" -and
+    $shellWorkbenchLifecycleControllerSource -match "_recipeFileDialogs\.TrySelectSavePath" -and
+    $shellWorkbenchLifecycleControllerSource -match "_recipeFileDialogs\.TrySelectOpenPath" -and
+    $mainWindowSource -notmatch "Save 3D Inspection Recipe As" -and
+    $mainWindowSource -notmatch "Open 3D Inspection Recipe"
+) "RecipeFileDialogService owns recipe Save/Open selection; MainWindow retains lifecycle policy"
+Add-Check "ShellWorkbenchLifecycleOwnership" (
+    $shellWorkbenchLifecycleControllerSource -match "internal sealed class ShellWorkbenchLifecycleController" -and
+    $shellWorkbenchLifecycleControllerSource -match "LoadWorkbenchC3DSourceAsync" -and
+    $shellWorkbenchLifecycleControllerSource -match "OpenWorkbenchRecipe" -and
+    $shellWorkbenchLifecycleControllerSource -match "TryResolveWorkbenchChanges" -and
+    $shellWorkbenchLifecycleControllerSource -match "ClickUnsavedRecipeDoNotSaveForSmokeAsync" -and
+    $mainWindowSource -match "new ShellWorkbenchLifecycleController\(" -and
+    $mainWindowSource -match "_workbenchLifecycle\.Dispose\(\)" -and
+    $mainWindowSource -notmatch "RecipeManagerWindow\? recipeManagerWindow" -and
+    $mainWindowSource -notmatch "CancellationTokenSource\? c3dSourceLoadCancellation" -and
+    $mainWindowSource -notmatch "double lastWorkbenchSourceBindingMilliseconds"
+) "ShellWorkbenchLifecycleController owns recipe/source lifecycle state and smoke hooks; MainWindow retains composition wrappers"
 $runnerProgramPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Runner/Program.cs"
 $workbenchViewModelPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs"
+$workbenchViewModelDirectory = Split-Path -Parent $workbenchViewModelPath
 $viewerWorkspaceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ViewerWorkspaceSession.cs"
+$workbenchRecipeSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchRecipeSession.cs"
+$workbenchSourceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchSourceSession.cs"
 $workbenchViewPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ToolRecipeWorkbenchView.xaml"
 $viewerWorkspaceViewPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ViewerWorkspaceView.xaml"
 $thicknessRepeatServicePath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Authoring/ThicknessRepeatGridAuthoringService.cs"
@@ -180,7 +364,43 @@ $appSource = [System.IO.File]::ReadAllText($appPath)
 $mainWindowSource = [System.IO.File]::ReadAllText($mainWindowPath)
 $runnerProgramSource = [System.IO.File]::ReadAllText($runnerProgramPath)
 $workbenchViewModelSource = [System.IO.File]::ReadAllText($workbenchViewModelPath)
+$workbenchViewModelFamilySource = @(
+    Get-ChildItem -LiteralPath $workbenchViewModelDirectory -Filter "ToolWorkbenchViewModel*.cs" -File -Recurse |
+        ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }
+) -join "`n"
+$viewerWorkspaceSessionSource = [System.IO.File]::ReadAllText($viewerWorkspaceSessionPath)
+$workbenchViewerWorkspaceSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.ViewerWorkspace.cs"))
 $workbenchViewSource = [System.IO.File]::ReadAllText($workbenchViewPath)
+$scrollIntoViewBehaviorPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Behaviors/ScrollIntoViewOnSelectionChangedBehavior.cs"
+$recipeChainViewSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RecipeChainView.xaml"))
+$recipePipelineReviewViewSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RecipePipelineReviewView.xaml"))
+$recipeChainCodeBehindSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RecipeChainView.xaml.cs"))
+$recipePipelineReviewCodeBehindSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/RecipePipelineReviewView.xaml.cs"))
+$resultsWorkspaceViewSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ResultsWorkspaceView.xaml"))
+$resultsWorkspaceCodeBehindSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ResultsWorkspaceView.xaml.cs"))
+$workspaceNavigationViewModelsSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/WorkspaceNavigationViewModels.cs"))
+$mainWindowSmokeSourceQualitySource = $mainWindowSource
+$shellSourceQualitySmokeSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Verification/Smoke/ShellSourceQualitySmoke.cs"))
+$viewerDisplaySettingsSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/ViewerDisplaySettingsViewModel.cs"))
+$viewerCameraSessionSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/ViewerCameraSession.cs"))
+$viewerSelectionSessionSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/ViewerSelectionSession.cs"))
+$viewerRootViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/MainWindowViewModel.cs"))
+$viewerSceneViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/MainWindowViewModel.Scene.cs"))
+$workbenchTeachingCaptureSessionSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchTeachingCaptureSession.cs"))
+$workbenchRecipeSessionSource = [System.IO.File]::ReadAllText($workbenchRecipeSessionPath)
+$workbenchSourceSessionSource = [System.IO.File]::ReadAllText($workbenchSourceSessionPath)
+$workbenchRootViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs"))
+$viewerRecipeViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/MainWindowViewModel.Recipes.cs"))
+$viewerRecipeRecipesSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs"))
+$viewerRecipeApplyCoordinatorSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs"))
+$viewerRecipeSaveCoordinatorSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs"))
+$viewerRecipeViewSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Recipes.cs"))
+$viewerHeightDeviationApplySource = [System.Text.RegularExpressions.Regex]::Match(
+    $viewerRecipeViewSource,
+    "private bool ApplyHeightDeviationRecipe[\s\S]*?(?=private bool ApplyC3DThicknessRecipe)").Value
+$viewerHeightDeviationSaveSource = [System.Text.RegularExpressions.Regex]::Match(
+    $viewerRecipeViewSource,
+    "private bool SaveCurrentHeightDeviationRecipe[\s\S]*?(?=private bool SaveCurrentLazTwoPointRecipe)").Value
 
 Add-Check "ShellVerificationRouter" (
     $appSource -match "ShellVerificationCommandRouter\.IsVerificationRequest" -and
@@ -202,6 +422,172 @@ Add-Check "ViewerWorkspaceCompositionOwner" (
     (Test-Path -LiteralPath $viewerWorkspaceSessionPath) -and
     (Test-Path -LiteralPath $viewerWorkspaceViewPath)
 ) "Workbench owns the presentation session and the View composes Viewer hosts"
+Add-Check "ViewerWorkspaceStateOwner" (
+    $viewerWorkspaceSessionSource -match "public bool TrySetLayout\(" -and
+    $viewerWorkspaceSessionSource -match "public bool TryOpenAuxiliaryContent\(" -and
+    $workbenchViewerWorkspaceSource -match "ViewerWorkspace\.TrySetLayout\(" -and
+    $workbenchViewerWorkspaceSource -match "ViewerWorkspace\.TryOpenAuxiliaryContent\(" -and
+    $workbenchViewerWorkspaceSource -notmatch "ViewerWorkspace\.SetLayout\(" -and
+    $workbenchViewerWorkspaceSource -notmatch "ViewerWorkspace\.FocusSlot\(ViewerWorkspaceSession\.MainSlotId\)"
+) "ViewerWorkspaceSession owns layout and auxiliary-slot transitions; Workbench maps candidates and selection state"
+Add-Check "ViewerDisplayStateOwner" (
+    $viewerDisplaySettingsSource -match "public double PointSize" -and
+    $viewerDisplaySettingsSource -match "public string SelectedRenderDensity" -and
+    $viewerDisplaySettingsSource -match "public int C3DMaxRenderedPoints" -and
+    $viewerDisplaySettingsSource -match "private static string FormatRenderDensitySummary" -and
+    $viewerRootViewModelSource -match "get => Display\.PointSize" -and
+    $viewerRootViewModelSource -match "get => Display\.SelectedRenderDensity" -and
+    $viewerRootViewModelSource -notmatch "private double pointSize" -and
+    $viewerRootViewModelSource -notmatch "private string selectedRenderDensity" -and
+    $viewerRootViewModelSource -notmatch "private string renderDensitySummary" -and
+    $viewerRecipeViewModelSource -notmatch "FormatRenderDensitySummary"
+) "ViewerDisplaySettingsViewModel owns point size, render-density budgets, summary, and revision; MainWindowViewModel retains compatibility bindings"
+Add-Check "ViewerCameraStateOwner" (
+    $viewerCameraSessionSource -match "internal sealed class ViewerCameraSession" -and
+    $viewerCameraSessionSource -match "public void SavePerspective\(\)" -and
+    $viewerCameraSessionSource -match "public bool TryGetSavedPerspective" -and
+    $viewerRootViewModelSource -match "internal ViewerCameraSession CameraSession \{ get; \} = new\(\);" -and
+    $viewerRootViewModelSource -notmatch "private double cameraTargetX" -and
+    $viewerRootViewModelSource -notmatch "private ViewerProjectionMode projectionMode" -and
+    $viewerRootViewModelSource -notmatch "private double savedPerspectiveYaw" -and
+    $viewerRootViewModelSource -notmatch "private bool hasSavedPerspectiveCamera" -and
+    $viewerSceneViewModelSource -match "CameraSession\.SavePerspective\(\)" -and
+    $viewerSceneViewModelSource -match "CameraSession\.TryGetSavedPerspective" -and
+    $viewerSceneViewModelSource -notmatch "private void SavePerspectiveCamera\(\)"
+) "ViewerCameraSession owns camera/projection state and saved-perspective lifetime; MainWindowViewModel retains compatibility bindings"
+Add-Check "ViewerSelectionStateOwner" (
+    $viewerSelectionSessionSource -match "internal sealed class ViewerSelectionSession" -and
+    $viewerSelectionSessionSource -match "public string SelectedEntity" -and
+    $viewerSelectionSessionSource -match "public string PickCoordinate" -and
+    $viewerSelectionSessionSource -match "public string SelectedMode" -and
+    $viewerSelectionSessionSource -match "public string Summary" -and
+    $viewerSelectionSessionSource -match "public bool OverlayVisible" -and
+    $viewerRootViewModelSource -match "internal ViewerSelectionSession SelectionSession \{ get; \} = new\(\);" -and
+    $viewerRootViewModelSource -notmatch "private string selectedEntity" -and
+    $viewerRootViewModelSource -notmatch "private string pickCoordinate" -and
+    $viewerRootViewModelSource -notmatch "private string selectedSelectionMode" -and
+    $viewerRootViewModelSource -notmatch "private string selectionSummary" -and
+    $viewerRootViewModelSource -notmatch "private bool selectionOverlayVisible"
+) "ViewerSelectionSession owns selection mode, entity, pick, summary, and overlay state; MainWindowViewModel retains policy and compatibility bindings"
+Add-Check "WorkbenchTeachingCaptureStateOwner" (
+    $workbenchTeachingCaptureSessionSource -match "internal sealed class ToolWorkbenchTeachingCaptureSession" -and
+    $workbenchTeachingCaptureSessionSource -match "public void SetState\(" -and
+    $workbenchTeachingCaptureSessionSource -match "public ToolRecipeGridRectangle GridRectangleDraft" -and
+    $workbenchTeachingCaptureSessionSource -match "public void SetGridRectangleDraft\(" -and
+    $workbenchTeachingCaptureSessionSource -match "public void Clear\(\)" -and
+    $workbenchRootViewModelSource -match "internal ToolWorkbenchTeachingCaptureSession TeachingCaptureSession \{ get; \} = new\(\);" -and
+    $workbenchRootViewModelSource -match "TeachingCaptureSession\.SetState\(" -and
+    $workbenchRootViewModelSource -match "TeachingCaptureSession\.Clear\(\)" -and
+    $workbenchRootViewModelSource -notmatch "private bool isTeachingSelectionCaptureActive" -and
+    $workbenchRootViewModelSource -notmatch "private string\? teachingSelectionCaptureStepId" -and
+    $workbenchRootViewModelSource -notmatch "private int teachingSelectionCapturedPointCount" -and
+    $workbenchRootViewModelSource -notmatch "private bool canApplyTeachingSelectionCapture" -and
+    $workbenchRootViewModelSource -notmatch "private bool captureAdditionalLevelSurfaceReference" -and
+    $workbenchRootViewModelSource -notmatch "private int teachingGridRectangleRow" -and
+    $workbenchRootViewModelSource -notmatch "private int teachingGridRectangleColumn" -and
+    $workbenchRootViewModelSource -notmatch "private int teachingGridRectangleRowCount" -and
+    $workbenchRootViewModelSource -notmatch "private int teachingGridRectangleColumnCount"
+) "ToolWorkbenchTeachingCaptureSession owns transient capture lifetime, progress, and ROI draft data; ToolWorkbenchViewModel retains recipe policy, validation, notifications, and Viewer coordination"
+Add-Check "WorkbenchRecipeStateOwner" (
+    $workbenchRecipeSessionSource -match "internal sealed class ToolWorkbenchRecipeSession" -and
+    $workbenchRecipeSessionSource -match "public bool SetSchemaVersion\(" -and
+    $workbenchRecipeSessionSource -match "public bool SetName\(" -and
+    $workbenchRecipeSessionSource -match "public bool SetPath\(" -and
+    $workbenchRecipeSessionSource -match "public bool SetDirty\(" -and
+    $workbenchRecipeSessionSource -match "public void SetValidation\(" -and
+    $workbenchRootViewModelSource -match "internal ToolWorkbenchRecipeSession RecipeSession \{ get; \} = new\(\);" -and
+    $workbenchRootViewModelSource -match "RecipeSession\.SetValidation\(" -and
+    $workbenchRootViewModelSource -notmatch "private string recipeSchemaVersion" -and
+    $workbenchRootViewModelSource -notmatch "private string recipeName" -and
+    $workbenchRootViewModelSource -notmatch "private string\? recipePath" -and
+    $workbenchRootViewModelSource -notmatch "private bool isDirty" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeValidationResult validation" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeValidationResult storageValidation" -and
+    $workbenchRootViewModelSource -notmatch "private IReadOnlyList<string> sourceBindingErrors"
+) "ToolWorkbenchRecipeSession owns recipe identity, path, dirty state, and validation results; ToolWorkbenchViewModel retains normalization, persistence, execution invalidation, and notifications"
+Add-Check "WorkbenchSourceStateOwner" (
+    $workbenchSourceSessionSource -match "internal sealed class ToolWorkbenchSourceSession" -and
+    $workbenchSourceSessionSource -match "public ToolRecipeSelectionSourceBinding\? SourceBinding" -and
+    $workbenchSourceSessionSource -match "public ToolRecipeAcquisitionProvenance\? SourceAcquisitionProvenance" -and
+    $workbenchSourceSessionSource -match "public ToolRecipeSource\? OpenedSourceIdentity" -and
+    $workbenchSourceSessionSource -match "public IReadOnlyList<string> SourceIdentityErrors" -and
+    $workbenchSourceSessionSource -match "public bool SetSourceBinding" -and
+    $workbenchSourceSessionSource -match "public bool SetSourceAcquisitionProvenance" -and
+    $workbenchSourceSessionSource -match "public void CaptureOpenedSourceIdentity" -and
+    $workbenchSourceSessionSource -match "public bool SetSourceIdentityErrors" -and
+    $workbenchRootViewModelSource -match "internal ToolWorkbenchSourceSession SourceSession \{ get; \} = new\(\);" -and
+    $workbenchViewModelFamilySource -match "SourceSession\.SetSourceBinding\(" -and
+    $workbenchViewModelFamilySource -match "SourceSession\.SetSourceAcquisitionProvenance\(" -and
+    $workbenchViewModelFamilySource -match "SourceSession\.SetSourceIdentityErrors\(" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeSelectionSourceBinding\? loadedSourceBinding" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeAcquisitionProvenance\? sourceAcquisitionProvenance" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeSource\? openedSourceIdentity" -and
+    $workbenchRootViewModelSource -notmatch "private IReadOnlyList<string> sourceIdentityErrors" -and
+    $workbenchRootViewModelSource -notmatch "private ToolRecipeSelectionSourceBinding\\?\\s*SourceSession\\.SourceBinding"
+) "ToolWorkbenchSourceSession owns loaded source identity, provenance, opened-source snapshot, and source-identity errors while ToolWorkbenchViewModel retains runtime policy"
+Add-Check "ScrollIntoViewBehaviorBoundary" (
+    (Test-Path -LiteralPath $scrollIntoViewBehaviorPath) -and
+    ([System.IO.File]::ReadAllText($scrollIntoViewBehaviorPath) -match "DependencyProperty.RegisterAttached") -and
+    ([System.IO.File]::ReadAllText($scrollIntoViewBehaviorPath) -match "ScrollIntoView") -and
+    $recipeChainViewSource -match 'ScrollIntoViewOnSelectionChangedBehavior.IsEnabled="True"' -and
+    $recipePipelineReviewViewSource -match 'ScrollIntoViewOnSelectionChangedBehavior.IsEnabled="True"' -and
+    $recipeChainCodeBehindSource -notmatch "RecipeStepListSelectionChanged" -and
+    $recipePipelineReviewCodeBehindSource -notmatch "ValidationSetStepsList_SelectionChanged"
+) "Shell owns the reusable WPF selection-scroll behavior; Views no longer duplicate ListBox event handlers"
+Add-Check "ResultsValidationNavigationViewModelBoundary" (
+    $workspaceNavigationViewModelsSource -match "class ResultsWorkspaceViewModel" -and
+    $workspaceNavigationViewModelsSource -match "class RecipePipelineReviewValidationViewModel" -and
+    $workspaceNavigationViewModelsSource -match "SelectSectionCommand" -and
+    $workspaceNavigationViewModelsSource -match "SetValidationSetFilterCommand\.Execute" -and
+    $workspaceNavigationViewModelsSource -match "SelectedValidationSetSample =" -and
+    $resultsWorkspaceViewSource -match "ResultsWorkspace\.SelectSectionCommand" -and
+    $resultsWorkspaceViewSource -match "ResultsWorkspace\.IsRunRecordSelected" -and
+    $resultsWorkspaceCodeBehindSource -match "ResultsWorkspace\.SelectSection\(section\)" -and
+    $resultsWorkspaceCodeBehindSource -notmatch "enum ResultsWorkspaceSection" -and
+    $resultsWorkspaceCodeBehindSource -notmatch "Navigation_Click" -and
+    $recipePipelineReviewCodeBehindSource -match "validationWorkspace\?\.SelectSection\(section\)" -and
+    $recipePipelineReviewCodeBehindSource -notmatch "Navigation_Click" -and
+    $recipePipelineReviewCodeBehindSource -notmatch "SetValidationSetFilterCommand\.Execute" -and
+    $recipePipelineReviewCodeBehindSource -notmatch "SelectedValidationSetSample\s*=\s*\r?\n\s*workbench\.ValidationSetSamples"
+) "Results and Validation section state/commands belong to child ViewModels; Views retain binding, layout, and thin request adapters"
+Add-Check "ShellSourceQualitySmokeBoundary" (
+    $shellSourceQualitySmokeSource -match "internal static class ShellSourceQualitySmoke" -and
+    $shellSourceQualitySmokeSource -match "public static async Task<bool> RunAsync" -and
+    $shellSourceQualitySmokeSource -match "viewOnly=true\|recipeChanged=false\|inspectionRun=false" -and
+    $mainWindowSmokeSourceQualitySource -match "ShellSourceQualitySmoke\.RunAsync" -and
+    $mainWindowSmokeSourceQualitySource -notmatch "RunSourceQualitySmokeAsync" -and
+    $mainWindowSmokeSourceQualitySource -notmatch 'SourceQualityWorkspaceSmoke\|\{\(passed \? "Pass" : "Fail"\)'
+) "Source Quality smoke policy and report ownership moved to Verification/Smoke; MainWindow retains invocation and failure callback"
+Add-Check "ViewerHeightDeviationRecipeLoadBoundary" (
+    $viewerRecipeRecipesSource -match "internal sealed record HeightDeviationRecipeLoadPlan" -and
+    $viewerRecipeRecipesSource -match "static HeightDeviationRecipeLoadPlan Create" -and
+    $viewerRecipeRecipesSource -match "C3DHeightGrid\.Load\(" -and
+    $viewerRecipeRecipesSource -match "HeightDeviationRule\.Evaluate\(" -and
+    $viewerHeightDeviationApplySource -match "HeightDeviationRecipeLoadPlan\.Create\(" -and
+    $viewerHeightDeviationApplySource -notmatch "C3DHeightGrid\.Load\(sourcePath, viewModel\.C3DMaxRenderedPoints\)" -and
+    $viewerHeightDeviationApplySource -notmatch "HeightDeviationRule\.Evaluate\(new HeightDeviationRuleInput"
+) "Height Deviation recipe source loading and rule preparation moved to an independent recipe owner; View retains state/render application"
+Add-Check "ViewerHeightDeviationRecipeApplyBoundary" (
+    $viewerRecipeApplyCoordinatorSource -match "internal static class HeightDeviationRecipeApplyCoordinator" -and
+    $viewerRecipeApplyCoordinatorSource -match "public static bool Apply\(" -and
+    $viewerRecipeApplyCoordinatorSource -match "SetRecipeLoaded\(" -and
+    $viewerRecipeApplyCoordinatorSource -match "SetC3DAlignment\(" -and
+    $viewerRecipeApplyCoordinatorSource -match "applyRoiStep\(" -and
+    $viewerHeightDeviationApplySource -match "HeightDeviationRecipeApplyCoordinator\.Apply\(" -and
+    $viewerHeightDeviationApplySource -notmatch "viewModel\.ClearPlaneFlatnessRecipeStep\(\)" -and
+    $viewerHeightDeviationApplySource -notmatch "viewModel\.SetRecipeLoaded\(" -and
+    $viewerHeightDeviationApplySource -notmatch "viewModel\.SetC3DAlignment\("
+) "Height Deviation recipe state/application sequence belongs to the non-WPF coordinator; View supplies only rendering and ROI/preview callbacks"
+Add-Check "ViewerHeightDeviationRecipeSaveBoundary" (
+    $viewerRecipeSaveCoordinatorSource -match "internal static class HeightDeviationRecipeSaveCoordinator" -and
+    $viewerRecipeSaveCoordinatorSource -match "public static bool Save\(" -and
+    $viewerRecipeSaveCoordinatorSource -match "new HeightDeviationRecipe\(" -and
+    $viewerRecipeSaveCoordinatorSource -match "recipe\.Save\(" -and
+    $viewerRecipeSaveCoordinatorSource -match "SetRecipeSaved\(" -and
+    $viewerHeightDeviationSaveSource -match "HeightDeviationRecipeSaveCoordinator\.Save\(" -and
+    $viewerHeightDeviationSaveSource -notmatch "new HeightDeviationRecipe\(" -and
+    $viewerHeightDeviationSaveSource -notmatch "recipe\.Save\(fullRecipePath\)"
+) "Height Deviation recipe construction, relative source mapping, persistence, and saved-state update belong to the non-WPF coordinator; View retains validation and source/ROI input"
 Add-Check "ThicknessRepeatGridAuthoringBoundary" (
     (Test-Path -LiteralPath $thicknessRepeatServicePath) -and
     (Test-Path -LiteralPath $thicknessRepeatSessionPath) -and
