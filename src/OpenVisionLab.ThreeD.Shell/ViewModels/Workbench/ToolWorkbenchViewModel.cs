@@ -23,6 +23,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     internal const int MaximumRunLogEntries = 3000;
 
     private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
+    private readonly ToolWorkbenchRemoveOutlierExecutionOwner removeOutlierExecutionOwner;
+    private readonly ToolWorkbenchLevelSurfaceExecutionOwner levelSurfaceExecutionOwner;
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
@@ -119,6 +121,28 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             () => CanSetFilterKernel(5),
             () => SetFilterKernel(7),
             () => CanSetFilterKernel(7));
+        removeOutlierExecutionOwner = new ToolWorkbenchRemoveOutlierExecutionOwner(
+            () => IsSelectedStepRemoveOutlierPixels,
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            CreateDocument,
+            () => RecipePath,
+            sender => ReferenceEquals(sender, Source),
+            (category, message) => AppendLog(category, message),
+            args => FilterDisplayRequested?.Invoke(this, args),
+            RefreshRemoveOutlierStateFromOwner);
+        levelSurfaceExecutionOwner = new ToolWorkbenchLevelSurfaceExecutionOwner(
+            () => IsSelectedStepLevelSurface,
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            CreateDocument,
+            () => RecipePath,
+            sender => ReferenceEquals(sender, Source),
+            (category, message) => AppendLog(category, message),
+            args => FilterDisplayRequested?.Invoke(this, args),
+            RefreshLevelSurfaceStateFromOwner);
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         InitializeOrientedBox3DEditing();
@@ -1348,6 +1372,49 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 RefreshMeasurementExecutionState();
                 break;
         }
+    }
+
+    private void RefreshRemoveOutlierStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepRemoveOutlierPixels));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsRemoveOutlierPreviewRunning));
+        OnPropertyChanged(nameof(RemoveOutlierExecutionSummary));
+        OnPropertyChanged(nameof(RemoveOutlierRuleSummary));
+        OnPropertyChanged(nameof(RemoveOutlierOutputSummary));
+        OnPropertyChanged(nameof(RemoveOutlierMaskSummary));
+        OnPropertyChanged(nameof(CurrentRemoveOutlierPreviewOutput));
+        OnPropertyChanged(nameof(CurrentRemoveOutlierMask));
+        OnPropertyChanged(nameof(CurrentRemoveOutlierPreviewPath));
+        OnPropertyChanged(nameof(HasCurrentRemoveOutlierPreview));
+        OnPropertyChanged(nameof(IsRemoveOutlierPreviewStale));
+        OnPropertyChanged(nameof(IsRemoveOutlierPreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshLevelSurfaceStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepLevelSurface));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsLevelSurfacePreviewRunning));
+        OnPropertyChanged(nameof(LevelSurfaceExecutionSummary));
+        OnPropertyChanged(nameof(LevelSurfaceReferenceSummary));
+        OnPropertyChanged(nameof(LevelSurfaceTransformSummary));
+        OnPropertyChanged(nameof(LevelSurfaceResidualSummary));
+        OnPropertyChanged(nameof(LevelSurfaceOutputSummary));
+        OnPropertyChanged(nameof(CurrentLevelSurfacePreviewOutput));
+        OnPropertyChanged(nameof(CurrentLevelSurfaceTransform));
+        OnPropertyChanged(nameof(CurrentLevelSurfaceOutputSlopeX));
+        OnPropertyChanged(nameof(CurrentLevelSurfaceOutputSlopeZ));
+        OnPropertyChanged(nameof(CurrentLevelSurfacePreviewPath));
+        OnPropertyChanged(nameof(HasCurrentLevelSurfacePreview));
+        OnPropertyChanged(nameof(IsLevelSurfacePreviewStale));
+        OnPropertyChanged(nameof(IsLevelSurfacePreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
     }
 
     private void RequestSelectedStepRemoval()

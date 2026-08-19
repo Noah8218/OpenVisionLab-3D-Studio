@@ -266,10 +266,12 @@ validation and rendering callbacks. Current Wide/Compact exact-source Source
 Quality and recipe-load/apply/save screenshots and focused checks are recorded
 in the M3/M4 evidence folders.
 
-M5 filter-family extraction is first-pass complete with build/hygiene verification:
-`ToolWorkbenchFilterExecutionOwner` now owns filter execution state and command
-ownership, while file-dialog/rendering adapters and public host compatibility are
-preserved.
+M5 filter-tool-family extraction is first-pass complete with build/hygiene
+verification for Filter, Remove Outlier Pixels, and Level Surface:
+`ToolWorkbenchFilterExecutionOwner`, `ToolWorkbenchRemoveOutlierExecutionOwner`, and
+`ToolWorkbenchLevelSurfaceExecutionOwner` now own step execution state and
+command-related state for their steps, while file-dialog/rendering adapters and
+public host compatibility are preserved.
 
 M6 is complete: Tool Lab window lifecycle and selected-step behavior are now
 centralized in `ToolLabWindowBase`; all ToolLab windows inherit it and local

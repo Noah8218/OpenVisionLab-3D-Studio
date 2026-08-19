@@ -19,7 +19,7 @@
   },
   "state": {
     "status": "open",
-    "current_summary": "M1 audit and documentation, M2 Results/Validation child ViewModel ownership, M3 Source Quality smoke extraction, and M4a/M4b/M4c/M4d Height Deviation rule/Preview ownership are complete with focused structure/build evidence. M5 filter-tool-family extraction has first-pass build/hygiene verification. M6 Tool Lab lifecycle deduplication is complete.",
+    "current_summary": "M1 audit and documentation, M2 Results/Validation child ViewModel ownership, M3 Source Quality smoke extraction, and M4a/M4b/M4c/M4d Height Deviation rule/Preview ownership are complete with focused structure/build evidence. M5 now has first-pass extraction for Filter, Remove Outlier Pixels, and Level Surface execution ownership with build/diff verification. M6 Tool Lab lifecycle deduplication is complete.",
     "next_action": "Complete M5 criterion checks across remaining Workbench execution families, then execute final M7 qualification (focused checks, refreshed structure/ownership verification, Release build, git diff --check, and required dependency/DLL-policy confirmation) before next acceptance handoff."
   },
   "objective": {
@@ -250,6 +250,13 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260819-pl0026-m6/",
       "observation": "PL-0026 M6 consolidated Tool Lab lifecycle behavior into `ToolLabWindowBase` and aligned ToolLab XAML roots to inherit the shared base. `dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug` passed with 0 errors/0 warnings, `dotnet build OpenVisionLab.ThreeDStudio.sln -c Release` passed with 0 errors/0 warnings, `git diff --check` passed, and an explicit Tool Lab dedup script check confirmed every `*ToolLabWindow` now inherits `ToolLabWindowBase` with no local `SetLabStep`/`ActivateLabStep` method definitions.",
       "observed_at": "2026-08-19T19:10:00+09:00"
+    },
+    {
+      "id": "E11",
+      "kind": "verification",
+      "location": "OpenVisionLab-3D-Studio repository root (local build + diff + test verification)",
+      "observation": "PL-0026 M5 introduced ToolWorkbenchRemoveOutlierExecutionOwner and ToolWorkbenchLevelSurfaceExecutionOwner to move execution state and command ownership out of ToolWorkbenchViewModel. The refactor retained existing contracts, including FilterDisplay display routing and stale/published state transitions. `dotnet build OpenVisionLab.ThreeDStudio.sln -c Release` passed with 0 errors/0 warnings, `dotnet test OpenVisionLab.ThreeDStudio.sln --no-build` completed with no discovered tests, and `git diff --check` passed.",
+      "observed_at": "2026-08-19T19:35:00+09:00"
     }
   ],
   "events": [

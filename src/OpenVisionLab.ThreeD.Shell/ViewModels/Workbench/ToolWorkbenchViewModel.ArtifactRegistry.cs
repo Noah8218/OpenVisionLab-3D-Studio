@@ -166,19 +166,16 @@ public sealed partial class ToolWorkbenchViewModel
     private ToolWorkbenchArtifactItem CreateStepArtifact(ToolWorkbenchPipelineStepItem step)
     {
         if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
-            && levelSurfacePreview is
-            {
-                Output: { } leveledOutput,
-                Transform: { } levelingTransform
-            })
+            && CurrentLevelSurfacePreviewOutput is { } leveledOutput
+            && CurrentLevelSurfaceTransform is { } levelingTransform)
         {
             return new ToolWorkbenchArtifactItem(
                 leveledOutput.EntityId,
                 step.ToolName,
                 "LeveledHeightField + LevelingTransform",
-                isLevelSurfacePreviewStale
+                IsLevelSurfacePreviewStale
                     ? "Stale"
-                    : isLevelSurfacePreviewPublished
+                    : IsLevelSurfacePreviewPublished
                         ? "Published"
                         : "Preview",
                 Source.Id,
@@ -195,19 +192,16 @@ public sealed partial class ToolWorkbenchViewModel
                 step.ToolId,
                 "remove-outlier-pixels",
                 StringComparison.Ordinal)
-            && removeOutlierPreview is
-            {
-                Output: { } outlierOutput,
-                OutlierMask: { } outlierMask
-            })
+            && CurrentRemoveOutlierPreviewOutput is { } outlierOutput
+            && CurrentRemoveOutlierMask is { } outlierMask)
         {
             return new ToolWorkbenchArtifactItem(
                 outlierOutput.EntityId,
                 step.ToolName,
                 "FilteredHeightField",
-                isRemoveOutlierPreviewStale
+                IsRemoveOutlierPreviewStale
                     ? "Stale"
-                    : isRemoveOutlierPreviewPublished
+                    : IsRemoveOutlierPreviewPublished
                         ? "Published"
                         : "Preview",
                 Source.Id,

@@ -194,26 +194,23 @@ public sealed partial class ToolWorkbenchViewModel
     private SelectedToolOutputEvidence CreateSelectedToolOutputEvidence()
     {
         if (IsSelectedStepRemoveOutlierPixels
-            && removeOutlierPreview is
-            {
-                Result.Status: var outlierStatus,
-                OutlierMask: { } outlierMask
-            })
+            && CurrentRemoveOutlierPreviewOutput is not null
+            && CurrentRemoveOutlierMask is { } outlierMask)
         {
             return new SelectedToolOutputEvidence(
                 "Removed outliers",
                 outlierMask.OutlierCellCount.ToString(
                     CultureInfo.InvariantCulture),
                 "count",
-                outlierStatus.ToString());
+                IsRemoveOutlierPreviewRunning
+                    ? "Preview running"
+                    : IsRemoveOutlierPreviewPublished
+                        ? "Published"
+                        : "Preview");
         }
 
         if (IsSelectedStepLevelSurface
-            && levelSurfacePreview is
-            {
-                Result.Status: var levelStatus,
-                Transform: { } transform
-            })
+            && CurrentLevelSurfaceTransform is { } transform)
         {
             return new SelectedToolOutputEvidence(
                 "Reference RMS",
@@ -221,7 +218,11 @@ public sealed partial class ToolWorkbenchViewModel
                     "G6",
                     CultureInfo.InvariantCulture),
                 transform.SourceUnit,
-                levelStatus.ToString());
+                IsLevelSurfacePreviewPublished
+                    ? "Published"
+                    : IsLevelSurfacePreviewRunning
+                        ? "Preview running"
+                        : "Preview");
         }
 
         if (SelectedPipelineStep is not { } step
