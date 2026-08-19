@@ -22,6 +22,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 {
     internal const int MaximumRunLogEntries = 3000;
 
+    private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
@@ -101,6 +102,23 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             "frame.c3d-grid-index",
             string.Empty);
         Source.PropertyChanged += OnRecipePartChanged;
+        filterExecutionOwner = new ToolWorkbenchFilterExecutionOwner(
+            () => PreviewSelectedStepAsync(),
+            CanPreviewSelectedStep,
+            () => RunTeachingRecipeAsync(),
+            CanRunTeachingRecipe,
+            PublishSelectedStep,
+            CanPublishSelectedStep,
+            CancelSelectedPreview,
+            () => IsSelectedStepPreviewRunning,
+            CanShowFilterSource,
+            ShowFilterSource,
+            () => SetFilterKernel(3),
+            () => CanSetFilterKernel(3),
+            () => SetFilterKernel(5),
+            () => CanSetFilterKernel(5),
+            () => SetFilterKernel(7),
+            () => CanSetFilterKernel(7));
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         InitializeOrientedBox3DEditing();

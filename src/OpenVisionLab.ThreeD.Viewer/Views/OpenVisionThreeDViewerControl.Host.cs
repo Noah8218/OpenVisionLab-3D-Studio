@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Localization;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -302,7 +303,15 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (args.PropertyName == nameof(MainWindowViewModel.RecipePeakTolerance))
             {
-                ConfigureC3DHeightDeviationRule();
+                if (c3dSample is not null)
+                {
+                    HeightDeviationRuleCoordinator.ApplyToViewModel(
+                        viewModel,
+                        c3dSample,
+                        viewModel.RecipeSourceName,
+                        viewModel.RecipePeakTolerance,
+                        viewModel.RecipeSourceUnit);
+                }
             }
 
             if ((args.PropertyName == nameof(MainWindowViewModel.SelectedSelectionMode)

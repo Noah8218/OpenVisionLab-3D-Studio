@@ -6,52 +6,27 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class XYZAffineApplyToolLabWindow : Window
+public partial class XYZAffineApplyToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
     private string displayedSourcePath = string.Empty;
 
     public XYZAffineApplyToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "xyz-affine-apply", "Apply XYZ Affine Tool Lab requires an Apply XYZ Affine step.")
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
-        SetLabStep(step);
         InitializeComponent();
-        DataContext = workbench;
+        DataContext = Workbench;
         SourceViewerHost.Content = sourceViewer;
         OutputViewerHost.Content = outputViewer;
-        Loaded += (_, _) => RefreshViews();
-        Activated += (_, _) => ActivateLabStep();
         Closed += OnClosed;
-        workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        Workbench.PropertyChanged += OnWorkbenchPropertyChanged;
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    public override void RefreshViews()
     {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Apply XYZ Affine Tool Lab requires an Apply XYZ Affine step.", nameof(step));
-        }
-        labStepId = step.Id;
-        ActivateLabStep();
-    }
-
-    public void ActivateLabStep()
-    {
-        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
-        {
-            workbench.SelectPipelineStepCommand.Execute(labStepId);
-        }
-    }
-
-    public void RefreshViews()
-    {
-        ActivateLabStep();
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        var sourcePath = Path.GetFullPath(workbench.Source.Path);
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        var sourcePath = Path.GetFullPath(Workbench.Source.Path);
         if (!string.Equals(displayedSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
         {
             sourceViewer.ShowC3DWorkbenchResult(sourcePath, "Raw C3D | A2 source (column / raw-height / row)");
@@ -62,9 +37,9 @@ public partial class XYZAffineApplyToolLabWindow : Window
 
     private void UpdateOutputViewer()
     {
-        if (workbench.CurrentAffineApplyOutput is { } output)
+        if (Workbench.CurrentAffineApplyOutput is { } output)
         {
-            outputViewer.ShowWorkbenchAffineApply(output, workbench.IsAffineApplyPreviewPublished, standaloneReferenceDisplay: true);
+            outputViewer.ShowWorkbenchAffineApply(output, Workbench.IsAffineApplyPreviewPublished, standaloneReferenceDisplay: true);
             return;
         }
 
@@ -88,5 +63,5 @@ public partial class XYZAffineApplyToolLabWindow : Window
     private void RefreshViewsButton_Click(object sender, RoutedEventArgs args) => RefreshViews();
 
     private void OnClosed(object? sender, EventArgs args) =>
-        workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+        Workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
 }

@@ -1,53 +1,41 @@
 using System.Windows;
-using System.IO;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class TwoPointLineToolLabWindow : Window
+public partial class TwoPointLineToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
 
     public TwoPointLineToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "two-point-line", "Expected a 2-Point Line step.", activateOnActivated: false)
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
         InitializeComponent();
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
-        DataContext = workbench;
-        SetLabStep(step);
+        DataContext = Workbench;
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    public override void RefreshViews()
     {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "two-point-line", StringComparison.Ordinal)) throw new ArgumentException("Expected a 2-Point Line step.", nameof(step));
-        labStepId = step.Id;
-        RefreshViews();
-    }
-
-    public void RefreshViews()
-    {
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
-        outputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | 2-Point Line is overlay evidence, not a new surface");
-        if (workbench.CurrentTwoPointLineOutput is { } output && string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.OrdinalIgnoreCase))
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
+        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | 2-Point Line is overlay evidence, not a new surface");
+        if (Workbench.CurrentTwoPointLineOutput is { } output && IsActiveStep)
         {
-            inputViewer.ShowWorkbenchTwoPointLine(output, workbench.IsTwoPointLinePreviewPublished);
-            outputViewer.ShowWorkbenchTwoPointLine(output, workbench.IsTwoPointLinePreviewPublished);
+            inputViewer.ShowWorkbenchTwoPointLine(output, Workbench.IsTwoPointLinePreviewPublished);
+            outputViewer.ShowWorkbenchTwoPointLine(output, Workbench.IsTwoPointLinePreviewPublished);
         }
     }
 
     public void ShowTwoPointLineResult(ToolWorkbenchTwoPointLineDisplayRequestEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
-        outputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | 2-Point Line overlay evidence");
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
+        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | 2-Point Line overlay evidence");
         inputViewer.ShowWorkbenchTwoPointLine(args.Output, args.IsPublished);
         outputViewer.ShowWorkbenchTwoPointLine(args.Output, args.IsPublished);
     }

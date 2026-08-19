@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Localization;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -321,7 +322,15 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
         c3dSample = loadDefaultSamples ? LoadDefaultC3DSample() : null;
         importedMesh = loadDefaultSamples ? LoadDefaultGlbSample() : null;
         lazSample = loadDefaultSamples ? LoadDefaultLazSample() : null;
-        ConfigureC3DHeightDeviationRule();
+        if (c3dSample is not null)
+        {
+            HeightDeviationRuleCoordinator.ApplyToViewModel(
+                viewModel,
+                c3dSample,
+                viewModel.RecipeSourceName,
+                viewModel.RecipePeakTolerance,
+                viewModel.RecipeSourceUnit);
+        }
         viewModel.PointCloudPointCount = generatedPointCloud.Length.ToString("N0", CultureInfo.InvariantCulture);
         SetC3DSampleStatus();
         SetGlbSampleStatus();

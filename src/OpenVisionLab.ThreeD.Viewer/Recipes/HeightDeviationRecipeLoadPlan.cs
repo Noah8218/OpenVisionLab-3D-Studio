@@ -21,15 +21,11 @@ internal sealed record HeightDeviationRecipeLoadPlan(
 
         var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
         var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints);
-        var previewResult = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
-            recipe.Source.EntityId,
+        var previewResult = HeightDeviationRuleCoordinator.CreatePreviewResult(
+            grid,
             recipe.Source.Name,
-            grid.Min,
-            grid.Max,
-            grid.Mean,
-            grid.ValidSampleCount,
             recipe.Rule.PeakTolerance,
-            recipe.Source.Unit));
+            recipe.Source.Unit);
 
         return new(
             recipeFile.Path,

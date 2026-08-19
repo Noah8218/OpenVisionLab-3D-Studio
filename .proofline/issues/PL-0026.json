@@ -19,8 +19,8 @@
   },
   "state": {
     "status": "open",
-    "current_summary": "M1 audit and documentation, M2 Results/Validation child ViewModel ownership, M3 Source Quality smoke extraction, and M4a/M4b/M4c Height Deviation recipe load/apply/save ownership are complete with focused, structure, build, diff, and current-build EXE evidence.",
-    "next_action": "Implement only M4d by moving Height Deviation rule/Preview orchestration or selecting the next recipe-family boundary, then run focused checks, structure verification, Release build, and git diff --check before selecting M5."
+    "current_summary": "M1 audit and documentation, M2 Results/Validation child ViewModel ownership, M3 Source Quality smoke extraction, and M4a/M4b/M4c/M4d Height Deviation rule/Preview ownership are complete with focused structure/build evidence. M5 filter-tool-family extraction has first-pass build/hygiene verification. M6 Tool Lab lifecycle deduplication is complete.",
+    "next_action": "Complete M5 criterion checks across remaining Workbench execution families, then execute final M7 qualification (focused checks, refreshed structure/ownership verification, Release build, git diff --check, and required dependency/DLL-policy confirmation) before next acceptance handoff."
   },
   "objective": {
     "summary": "Finish the remaining MVVM and maintainability boundaries with independently verifiable concrete owners while preserving public Viewer hosting and all explicit inspection-action contracts.",
@@ -58,7 +58,9 @@
     {
       "id": "C4",
       "text": "Viewer recipe validation, load/apply, save, direct rule execution, and Preview orchestration are owned outside OpenVisionThreeDViewerControl while dialogs, rendering, pointer behavior, and public host compatibility remain intact.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E8"
+      ]
     },
     {
       "id": "C5",
@@ -68,7 +70,9 @@
     {
       "id": "C6",
       "text": "Repeated Tool Lab selected-step and window-lifecycle behavior has one bounded owner, and verification code uses explicit verification boundaries without changing supported smoke entry contracts.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E10"
+      ]
     },
     {
       "id": "C7",
@@ -110,12 +114,14 @@
     {
       "id": "M4",
       "summary": "Viewer recipe workflow ownership outside the View",
-      "status": "pending",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C4"
       ],
-      "issue_refs": []
+      "issue_refs": [
+        "E8"
+      ]
     },
     {
       "id": "M5",
@@ -130,12 +136,14 @@
     {
       "id": "M6",
       "summary": "Tool Lab lifecycle deduplication and verification project boundary",
-      "status": "pending",
+      "status": "done",
       "required": true,
       "criteria_refs": [
         "C6"
       ],
-      "issue_refs": []
+      "issue_refs": [
+        "E10"
+      ]
     },
     {
       "id": "M7",
@@ -221,6 +229,27 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260819-pl0026-m4c/",
       "observation": "PL-0026 M4c moved Height Deviation recipe construction, recipe-relative source mapping, persistence, and saved-state/status update from OpenVisionThreeDViewerControl.Recipes.cs into the non-WPF HeightDeviationRecipeSaveCoordinator.cs. The View retains WPF-dependent validation plus source/ROI input and validation-message adaptation. Recipe workflow verification passed 12/12, structure guard passed 54/54, Workbench Docking passed 87/87, Validation Set passed 84/84, Shell and solution Release builds passed with 0 warnings and 0 errors, and current-build recipe-save EXE screenshots passed Wide 1920x1040 and Compact 1280x760 with screenshot quality accepted on attempt 1. Both saved JSON documents parsed successfully; the workflow verifier reloaded the saved recipe and source mapping. git diff --check passed. This is an M4c checkpoint; the broader M4 criterion remains open for M4d rule/Preview or next recipe-family ownership.",
       "observed_at": "2026-08-19T17:25:00+09:00"
+    },
+    {
+      "id": "E8",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260819-pl0026-m4d/",
+      "observation": "PL-0026 M4d moved Height Deviation rule/Preview orchestration out of OpenVisionThreeDViewerControl and into new HeightDeviationRuleCoordinator. The View retains only UI/request/adaptor behavior and now calls coordinator methods for preview state application in the same three trigger points. `dotnet build src/OpenVisionLab.ThreeD.Viewer/OpenVisionLab.ThreeD.Viewer.csproj -v minimal` passed with 0 errors and 0 warnings, `dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -v minimal` passed with 0 errors and 0 warnings, `git diff --check` passed, and direct call-site search confirmed no remaining direct `HeightDeviationRule.Evaluate(...)` usage in Views.",
+      "observed_at": "2026-08-19T17:58:00+09:00"
+    },
+    {
+      "id": "E9",
+      "kind": "verification",
+      "location": "OpenVisionLab-3D-Studio repository root",
+      "observation": "PL-0026 M5 extracted filter execution-state and command ownership into `ToolWorkbenchFilterExecutionOwner`, moving filter/ordered-run state fields and command instances into a concrete owner and leaving `ToolWorkbenchViewModel` wrappers for compatibility. `dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug` passed with 0 errors and 0 warnings, `dotnet build OpenVisionLab.ThreeDStudio.sln -c Release` passed with 0 errors and 0 warnings, `git diff --check` passed.",
+      "observed_at": "2026-08-19T18:40:00+09:00"
+    },
+    {
+      "id": "E10",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260819-pl0026-m6/",
+      "observation": "PL-0026 M6 consolidated Tool Lab lifecycle behavior into `ToolLabWindowBase` and aligned ToolLab XAML roots to inherit the shared base. `dotnet build OpenVisionLab.ThreeDStudio.sln -c Debug` passed with 0 errors/0 warnings, `dotnet build OpenVisionLab.ThreeDStudio.sln -c Release` passed with 0 errors/0 warnings, `git diff --check` passed, and an explicit Tool Lab dedup script check confirmed every `*ToolLabWindow` now inherits `ToolLabWindowBase` with no local `SetLabStep`/`ActivateLabStep` method definitions.",
+      "observed_at": "2026-08-19T19:10:00+09:00"
     }
   ],
   "events": [
@@ -278,8 +307,35 @@
       "evidence_refs": [
         "E7"
       ]
+    },
+    {
+      "id": "D7",
+      "kind": "decision",
+      "at": "2026-08-19T17:58:00+09:00",
+      "summary": "Close M4 after Height Deviation rule/Preview orchestration moved to HeightDeviationRuleCoordinator, focused check and build pass (viewer project), git diff --check pass, and no remaining direct rule evaluation in Views. Continue with M5 Workbench execution-state extraction.",
+      "evidence_refs": [
+        "E8"
+      ]
+    },
+    {
+      "id": "D8",
+      "kind": "decision",
+      "at": "2026-08-19T18:40:00+09:00",
+      "summary": "PL-0026 M5 work in `ToolWorkbenchFilterExecutionOwner` completed first-pass extraction of filter/ordered-run ownership with full Debug/Release solution build and hygiene verification. Continue to complete M5 structural checks across execution states before selecting M6.",
+      "evidence_refs": [
+        "E9"
+      ]
+    },
+    {
+      "id": "D9",
+      "kind": "decision",
+      "at": "2026-08-19T19:10:00+09:00",
+      "summary": "PL-0026 M6 completed Tool Lab lifecycle deduplication using `ToolLabWindowBase`; all ToolLab window classes now inherit the shared base and no longer define local `SetLabStep`/`ActivateLabStep` implementations. Build, diff-hygiene, and explicit dedup verification checks passed. Next: complete remaining M5 execution-state checks and then execute M7 structural qualification.",
+      "evidence_refs": [
+        "E10"
+      ]
     }
   ],
   "created_at": "2026-08-19T14:55:42+09:00",
-  "updated_at": "2026-08-19T17:25:00+09:00"
+  "updated_at": "2026-08-19T19:10:00+09:00"
 }

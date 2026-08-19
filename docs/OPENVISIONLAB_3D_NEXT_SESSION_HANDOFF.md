@@ -251,7 +251,7 @@ Workbench root remains a 33-file partial type; MainWindow retains extensive
 smoke orchestration; Results/Validation Views own navigation state; and Tool
 Lab windows repeat lifecycle code.
 
-M2 and M3 are complete, and M4a/M4b/M4c are complete for the first Viewer
+M2 and M3 are complete, and M4a/M4b/M4c/M4d are complete for the first Viewer
 recipe boundary. `ResultsWorkspaceView.ActiveSection` and
 `RecipePipelineReviewView.ValidationSection` now belong to child ViewModels
 with commands, and the Source Quality workspace smoke is owned by
@@ -266,11 +266,14 @@ validation and rendering callbacks. Current Wide/Compact exact-source Source
 Quality and recipe-load/apply/save screenshots and focused checks are recorded
 in the M3/M4 evidence folders.
 
-The next implementation slice is only M4d: move Height Deviation rule/Preview
-orchestration, or select the next recipe-family boundary, in a small
-independently verifiable boundary, preserving file-dialog/rendering adapters
-and public host compatibility. Preserve presentation-only behavior and do not
-execute or mutate recipe/source/ROI/result state.
+M5 filter-family extraction is first-pass complete with build/hygiene verification:
+`ToolWorkbenchFilterExecutionOwner` now owns filter execution state and command
+ownership, while file-dialog/rendering adapters and public host compatibility are
+preserved.
+
+M6 is complete: Tool Lab window lifecycle and selected-step behavior are now
+centralized in `ToolLabWindowBase`; all ToolLab windows inherit it and local
+`SetLabStep`/`ActivateLabStep` implementations were removed.
 
 - Contract and low-cost-model slices:
   `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`, section 12.
@@ -278,7 +281,10 @@ execute or mutate recipe/source/ROI/result state.
 - Current durable issue: `../.proofline/issues/PL-0026.json`.
 - Recommended model: `gpt-5.6-terra`.
 - Reasoning effort: `medium`.
-- Stop after M4d verification and update the issue before selecting M5.
+- Complete M5 remaining criterion checks (remaining Workbench execution families and
+  structural verification), then move to M7 qualification (`focused checks`,
+  refreshed structure verification, Release build, and `git diff --check`) before
+  selecting the next slice.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

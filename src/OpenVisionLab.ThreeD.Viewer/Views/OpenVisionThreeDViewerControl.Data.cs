@@ -17,6 +17,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
 using OpenVisionLab.ThreeD.Viewer.Models;
+using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using OpenVisionLab.ThreeD.Tools;
@@ -979,30 +980,15 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             PreviewC3DPlaneFlatness();
         }
-        else
+        else if (c3dSample is not null)
         {
-            ConfigureC3DHeightDeviationRule();
+            HeightDeviationRuleCoordinator.ApplyToViewModel(
+                viewModel,
+                c3dSample,
+                viewModel.RecipeSourceName,
+                viewModel.RecipePeakTolerance,
+                viewModel.RecipeSourceUnit);
         }
-    }
-
-    private void ConfigureC3DHeightDeviationRule()
-    {
-        if (c3dSample is null)
-        {
-            return;
-        }
-
-        var result = HeightDeviationRule.Evaluate(new HeightDeviationRuleInput(
-            MainWindowViewModel.C3DEntityId,
-            viewModel.RecipeSourceName,
-            c3dSample.Min,
-            c3dSample.Max,
-            c3dSample.Mean,
-            c3dSample.ValidSampleCount,
-            viewModel.RecipePeakTolerance,
-            viewModel.RecipeSourceUnit));
-
-        viewModel.SetC3DHeightDeviationPreview(result);
     }
 
     private void DecreaseC3DHeightColorMaximum_Click(object sender, RoutedEventArgs e) =>

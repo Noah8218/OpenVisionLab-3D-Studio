@@ -9,25 +9,69 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 public sealed partial class ToolWorkbenchViewModel
 {
-    private RelayCommand previewSelectedStepCommand = null!;
-    private RelayCommand runTeachingRecipeCommand = null!;
-    private RelayCommand publishSelectedStepCommand = null!;
-    private RelayCommand cancelFilterPreviewCommand = null!;
-    private RelayCommand showFilterSourceCommand = null!;
-    private RelayCommand setFilterKernel3Command = null!;
-    private RelayCommand setFilterKernel5Command = null!;
-    private RelayCommand setFilterKernel7Command = null!;
-    private CancellationTokenSource? filterPreviewCancellation;
-    private C3DHeightFieldSnapshot? filterPreviewOutput;
-    private string? filterPreviewPath;
-    private bool isFilterPreviewRunning;
-    private bool isFilterPreviewStale;
-    private bool isFilterPreviewPublished;
-    private string filterExecutionSummary = "Select a Filter step, then Preview explicitly.";
-    private bool isOrderedRunRunning;
-    private ToolRecipeOrderedGraphExecutionResult? orderedRunResult;
-    private string? orderedRunRecordPath;
-    private string orderedRunSummary = "Run the saved current recipe explicitly to create a Run Record.";
+    private RelayCommand previewSelectedStepCommand => filterExecutionOwner.PreviewSelectedStepCommand;
+    private RelayCommand runTeachingRecipeCommand => filterExecutionOwner.RunTeachingRecipeCommand;
+    private RelayCommand publishSelectedStepCommand => filterExecutionOwner.PublishSelectedStepCommand;
+    private RelayCommand cancelFilterPreviewCommand => filterExecutionOwner.CancelFilterPreviewCommand;
+    private RelayCommand showFilterSourceCommand => filterExecutionOwner.ShowFilterSourceCommand;
+    private RelayCommand setFilterKernel3Command => filterExecutionOwner.SetFilterKernel3Command;
+    private RelayCommand setFilterKernel5Command => filterExecutionOwner.SetFilterKernel5Command;
+    private RelayCommand setFilterKernel7Command => filterExecutionOwner.SetFilterKernel7Command;
+    private CancellationTokenSource? filterPreviewCancellation
+    {
+        get => filterExecutionOwner.FilterPreviewCancellation;
+        set => filterExecutionOwner.FilterPreviewCancellation = value;
+    }
+    private C3DHeightFieldSnapshot? filterPreviewOutput
+    {
+        get => filterExecutionOwner.FilterPreviewOutput;
+        set => filterExecutionOwner.FilterPreviewOutput = value;
+    }
+    private string? filterPreviewPath
+    {
+        get => filterExecutionOwner.FilterPreviewPath;
+        set => filterExecutionOwner.FilterPreviewPath = value;
+    }
+    private bool isFilterPreviewRunning
+    {
+        get => filterExecutionOwner.IsFilterPreviewRunning;
+        set => filterExecutionOwner.IsFilterPreviewRunning = value;
+    }
+    private bool isFilterPreviewStale
+    {
+        get => filterExecutionOwner.IsFilterPreviewStale;
+        set => filterExecutionOwner.IsFilterPreviewStale = value;
+    }
+    private bool isFilterPreviewPublished
+    {
+        get => filterExecutionOwner.IsFilterPreviewPublished;
+        set => filterExecutionOwner.IsFilterPreviewPublished = value;
+    }
+    private string filterExecutionSummary
+    {
+        get => filterExecutionOwner.FilterExecutionSummary;
+        set => filterExecutionOwner.FilterExecutionSummary = value;
+    }
+    private bool isOrderedRunRunning
+    {
+        get => filterExecutionOwner.IsOrderedRunRunning;
+        set => filterExecutionOwner.IsOrderedRunRunning = value;
+    }
+    private ToolRecipeOrderedGraphExecutionResult? orderedRunResult
+    {
+        get => filterExecutionOwner.OrderedRunResult;
+        set => filterExecutionOwner.OrderedRunResult = value;
+    }
+    private string? orderedRunRecordPath
+    {
+        get => filterExecutionOwner.OrderedRunRecordPath;
+        set => filterExecutionOwner.OrderedRunRecordPath = value;
+    }
+    private string orderedRunSummary
+    {
+        get => filterExecutionOwner.OrderedRunSummary;
+        set => filterExecutionOwner.OrderedRunSummary = value;
+    }
 
     public event EventHandler<ToolWorkbenchFilterDisplayRequestEventArgs>? FilterDisplayRequested;
     public event EventHandler<ToolWorkbenchOrderedRunCompletedEventArgs>? OrderedRunCompleted;
@@ -117,14 +161,6 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void InitializeFilterExecution()
     {
-        previewSelectedStepCommand = new RelayCommand(_ => _ = PreviewSelectedStepAsync(), _ => CanPreviewSelectedStep());
-        runTeachingRecipeCommand = new RelayCommand(_ => _ = RunTeachingRecipeAsync(), _ => CanRunTeachingRecipe());
-        publishSelectedStepCommand = new RelayCommand(_ => PublishSelectedStep(), _ => CanPublishSelectedStep());
-        cancelFilterPreviewCommand = new RelayCommand(_ => CancelSelectedPreview(), _ => IsSelectedStepPreviewRunning);
-        showFilterSourceCommand = new RelayCommand(_ => ShowFilterSource(), _ => filterPreviewOutput is not null && File.Exists(Source.Path));
-        setFilterKernel3Command = new RelayCommand(_ => SetFilterKernel(3), _ => IsSelectedStepFilter && !isFilterPreviewRunning);
-        setFilterKernel5Command = new RelayCommand(_ => SetFilterKernel(5), _ => IsSelectedStepFilter && !isFilterPreviewRunning);
-        setFilterKernel7Command = new RelayCommand(_ => SetFilterKernel(7), _ => IsSelectedStepFilter && !isFilterPreviewRunning);
         PreviewSelectedStepCommand = previewSelectedStepCommand;
         RunTeachingRecipeCommand = runTeachingRecipeCommand;
         PublishSelectedStepCommand = publishSelectedStepCommand;
@@ -135,6 +171,9 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterKernel5Command = setFilterKernel5Command;
         SetFilterKernel7Command = setFilterKernel7Command;
     }
+
+    private bool CanShowFilterSource() =>
+        filterExecutionOwner.FilterPreviewOutput is not null && File.Exists(Source.Path);
 
     private Task<bool> PreviewSelectedStepAsync() => IsSelectedStepSurfaceMatch
         ? PreviewSelectedSurfaceMatchExperimentAsync()
@@ -637,6 +676,8 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
         runTeachingRecipeCommand?.RaiseCanExecuteChanged();
     }
+
+    private bool CanSetFilterKernel(int kernelSize) => IsSelectedStepFilter && !IsFilterPreviewRunning && kernelSize > 0;
 
     private void SetFilterKernel(int kernelSize)
     {

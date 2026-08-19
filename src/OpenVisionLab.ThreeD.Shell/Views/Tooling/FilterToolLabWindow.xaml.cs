@@ -5,59 +5,35 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class FilterToolLabWindow : Window
+public partial class FilterToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
 
     public FilterToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "filter", "Filter Tool Lab requires a Filter step.")
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
-        SetLabStep(step);
+        ArgumentNullException.ThrowIfNull(workbench);
         InitializeComponent();
-        DataContext = workbench;
+        DataContext = Workbench;
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
-        Loaded += (_, _) => RefreshViews();
-        Activated += (_, _) => ActivateLabStep();
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
-    {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "filter", StringComparison.Ordinal))
-        {
-            throw new ArgumentException("Filter Tool Lab requires a Filter step.", nameof(step));
-        }
-
-        labStepId = step.Id;
-        ActivateLabStep();
-    }
-
-    public void ActivateLabStep()
-    {
-        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
-        {
-            workbench.SelectPipelineStepCommand.Execute(labStepId);
-        }
-    }
-
-    public void RefreshViews()
+    public override void RefreshViews()
     {
         ActivateLabStep();
-        if (File.Exists(workbench.Source.Path))
+        if (HasSourcePath(Workbench.Source.Path))
         {
-            inputViewer.LoadC3DSource(workbench.Source.Path);
+            inputViewer.LoadC3DSource(Workbench.Source.Path);
         }
 
-        if (!string.IsNullOrWhiteSpace(workbench.CurrentFilterPreviewPath)
-            && File.Exists(workbench.CurrentFilterPreviewPath))
+        if (!string.IsNullOrWhiteSpace(Workbench.CurrentFilterPreviewPath)
+            && File.Exists(Workbench.CurrentFilterPreviewPath))
         {
             outputViewer.ShowC3DWorkbenchResult(
-                workbench.CurrentFilterPreviewPath,
-                workbench.CurrentFilterPreviewOutputSummary);
+                Workbench.CurrentFilterPreviewPath,
+                Workbench.CurrentFilterPreviewOutputSummary);
         }
     }
 

@@ -5,53 +5,28 @@ using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class RegridHeightMapToolLabWindow : Window
+public partial class RegridHeightMapToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
 
     public RegridHeightMapToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "re-grid-height-map", "Re-grid Height Map Tool Lab requires a Re-grid Height Map step.")
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
-        SetLabStep(step);
         InitializeComponent();
-        DataContext = workbench;
+        DataContext = Workbench;
         SourceViewerHost.Content = sourceViewer;
         OutputViewerHost.Content = outputViewer;
-        Loaded += (_, _) => RefreshViews();
-        Activated += (_, _) => ActivateLabStep();
         Closed += OnClosed;
-        workbench.PropertyChanged += OnWorkbenchPropertyChanged;
+        Workbench.PropertyChanged += OnWorkbenchPropertyChanged;
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    public override void RefreshViews()
     {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "re-grid-height-map", StringComparison.Ordinal))
+        if (Workbench.IsAffineApplyPreviewPublished
+            && Workbench.CurrentAffineApplyOutput is { } source)
         {
-            throw new ArgumentException("Re-grid Height Map Tool Lab requires a Re-grid Height Map step.", nameof(step));
-        }
-        labStepId = step.Id;
-        ActivateLabStep();
-    }
-
-    public void ActivateLabStep()
-    {
-        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
-        {
-            workbench.SelectPipelineStepCommand.Execute(labStepId);
-        }
-    }
-
-    public void RefreshViews()
-    {
-        ActivateLabStep();
-        if (workbench.IsAffineApplyPreviewPublished
-            && workbench.CurrentAffineApplyOutput is { } source)
-        {
-            sourceViewer.ShowWorkbenchAffineApply(source, workbench.IsAffineApplyPreviewPublished, standaloneReferenceDisplay: true);
+            sourceViewer.ShowWorkbenchAffineApply(source, Workbench.IsAffineApplyPreviewPublished, standaloneReferenceDisplay: true);
         }
         else
         {
@@ -63,9 +38,9 @@ public partial class RegridHeightMapToolLabWindow : Window
 
     private void UpdateOutputViewer()
     {
-        if (workbench.CurrentRegridHeightFieldOutput is { } output)
+        if (Workbench.CurrentRegridHeightFieldOutput is { } output)
         {
-            outputViewer.ShowWorkbenchRegridHeightField(output, workbench.IsRegridHeightFieldPreviewPublished, standaloneReferenceDisplay: true);
+            outputViewer.ShowWorkbenchRegridHeightField(output, Workbench.IsRegridHeightFieldPreviewPublished, standaloneReferenceDisplay: true);
             return;
         }
         outputViewer.ClearWorkbenchRegridHeightField();
@@ -85,5 +60,5 @@ public partial class RegridHeightMapToolLabWindow : Window
     }
 
     private void RefreshViewsButton_Click(object sender, RoutedEventArgs args) => RefreshViews();
-    private void OnClosed(object? sender, EventArgs args) => workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
+    private void OnClosed(object? sender, EventArgs args) => Workbench.PropertyChanged -= OnWorkbenchPropertyChanged;
 }

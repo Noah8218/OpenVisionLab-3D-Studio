@@ -1,56 +1,29 @@
-using System.IO;
 using System.Windows;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class LandmarkCorrespondenceToolLabWindow : Window
+public partial class LandmarkCorrespondenceToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl sourceViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
 
     public LandmarkCorrespondenceToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "landmark-correspondence", "Landmark Correspondence Tool Lab requires a Landmark Correspondence step.")
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
-        SetLabStep(step);
         InitializeComponent();
-        DataContext = workbench;
+        DataContext = Workbench;
         SourceViewerHost.Content = sourceViewer;
-        Loaded += (_, _) => RefreshViews();
-        Activated += (_, _) => ActivateLabStep();
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    public override void RefreshViews()
     {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "landmark-correspondence", StringComparison.Ordinal))
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        sourceViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | current published CornerAnchor evidence");
+        if (Workbench.TryGetCurrentLandmarkCorrespondenceInputs(out var anchors)
+            && Workbench.CurrentLandmarkCorrespondenceOutput is { } output)
         {
-            throw new ArgumentException("Landmark Correspondence Tool Lab requires a Landmark Correspondence step.", nameof(step));
-        }
-
-        labStepId = step.Id;
-        ActivateLabStep();
-    }
-
-    public void ActivateLabStep()
-    {
-        if (!string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.Ordinal))
-        {
-            workbench.SelectPipelineStepCommand.Execute(labStepId);
-        }
-    }
-
-    public void RefreshViews()
-    {
-        ActivateLabStep();
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        sourceViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | current published CornerAnchor evidence");
-        if (workbench.TryGetCurrentLandmarkCorrespondenceInputs(out var anchors)
-            && workbench.CurrentLandmarkCorrespondenceOutput is { } output)
-        {
-            sourceViewer.ShowWorkbenchLandmarkCorrespondence(anchors, output, workbench.IsLandmarkCorrespondencePreviewPublished);
+            sourceViewer.ShowWorkbenchLandmarkCorrespondence(anchors, output, Workbench.IsLandmarkCorrespondencePreviewPublished);
         }
         else
         {
@@ -61,8 +34,8 @@ public partial class LandmarkCorrespondenceToolLabWindow : Window
     public void ShowLandmarkCorrespondenceResult(ToolWorkbenchLandmarkCorrespondenceDisplayRequestEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        sourceViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | current published CornerAnchor evidence");
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        sourceViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | current published CornerAnchor evidence");
         sourceViewer.ShowWorkbenchLandmarkCorrespondence(args.Anchors, args.Output, args.IsPublished);
     }
 

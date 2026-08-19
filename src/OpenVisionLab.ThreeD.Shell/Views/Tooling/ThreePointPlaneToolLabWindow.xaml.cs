@@ -1,53 +1,41 @@
-using System.IO;
 using System.Windows;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.Views.Tooling;
 
-public partial class ThreePointPlaneToolLabWindow : Window
+public partial class ThreePointPlaneToolLabWindow : ToolLabWindowBase
 {
-    private readonly ToolWorkbenchViewModel workbench;
     private readonly OpenVisionThreeDViewerControl inputViewer = new() { SidePanelsVisible = false };
     private readonly OpenVisionThreeDViewerControl outputViewer = new() { SidePanelsVisible = false };
-    private string labStepId = string.Empty;
 
     public ThreePointPlaneToolLabWindow(ToolWorkbenchViewModel workbench, ToolWorkbenchPipelineStepItem step)
+        : base(workbench, step, "three-point-plane", "Expected a 3-Point Plane step.", activateOnActivated: false)
     {
-        this.workbench = workbench ?? throw new ArgumentNullException(nameof(workbench));
         InitializeComponent();
         InputViewerHost.Content = inputViewer;
         OutputViewerHost.Content = outputViewer;
-        DataContext = workbench;
-        SetLabStep(step);
+        DataContext = Workbench;
     }
 
-    public void SetLabStep(ToolWorkbenchPipelineStepItem step)
+    public override void RefreshViews()
     {
-        ArgumentNullException.ThrowIfNull(step);
-        if (!string.Equals(step.ToolId, "three-point-plane", StringComparison.Ordinal)) throw new ArgumentException("Expected a 3-Point Plane step.", nameof(step));
-        labStepId = step.Id;
-        RefreshViews();
-    }
-
-    public void RefreshViews()
-    {
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
-        outputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | 3-Point Plane is datum evidence, not a transformed surface");
-        if (workbench.CurrentThreePointPlaneOutput is { } output && string.Equals(workbench.SelectedPipelineStep?.Id, labStepId, StringComparison.OrdinalIgnoreCase))
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
+        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | 3-Point Plane is datum evidence, not a transformed surface");
+        if (Workbench.CurrentThreePointPlaneOutput is { } output && IsActiveStep)
         {
-            inputViewer.ShowWorkbenchThreePointPlane(output, workbench.IsThreePointPlanePreviewPublished);
-            outputViewer.ShowWorkbenchThreePointPlane(output, workbench.IsThreePointPlanePreviewPublished);
+            inputViewer.ShowWorkbenchThreePointPlane(output, Workbench.IsThreePointPlanePreviewPublished);
+            outputViewer.ShowWorkbenchThreePointPlane(output, Workbench.IsThreePointPlanePreviewPublished);
         }
     }
 
     public void ShowThreePointPlaneResult(ToolWorkbenchThreePointPlaneDisplayRequestEventArgs args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        if (string.IsNullOrWhiteSpace(workbench.Source.Path) || !File.Exists(workbench.Source.Path)) return;
-        inputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
-        outputViewer.ShowC3DWorkbenchResult(workbench.Source.Path, "Source C3D | 3-Point Plane support triangle and normal evidence");
+        if (!HasSourcePath(Workbench.Source.Path)) return;
+        inputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | recipe-owned ordered grid-cell picks");
+        outputViewer.ShowC3DWorkbenchResult(Workbench.Source.Path, "Source C3D | 3-Point Plane support triangle and normal evidence");
         inputViewer.ShowWorkbenchThreePointPlane(args.Output, args.IsPublished);
         outputViewer.ShowWorkbenchThreePointPlane(args.Output, args.IsPublished);
     }
