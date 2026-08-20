@@ -139,18 +139,34 @@ internal static class ToolRecipeTeachingVerification
             repairWorkbench.SelectedPipelineStep = legacyProblem?.Step;
             var directRepairProblem = repairWorkbench.SelectedStepFlowProblem;
             repairWorkbench.FocusFlowProblemStepCommand.Execute(directRepairProblem);
+            var sameRepairProblemIdentity = directRepairProblem is not null
+                && legacyProblem is not null
+                && string.Equals(directRepairProblem.Step.Id, legacyProblem.Step.Id, StringComparison.Ordinal)
+                && string.Equals(directRepairProblem.Port, legacyProblem.Port, StringComparison.Ordinal)
+                && string.Equals(directRepairProblem.Kind, legacyProblem.Kind, StringComparison.Ordinal)
+                && string.Equals(directRepairProblem.Status, legacyProblem.Status, StringComparison.Ordinal)
+                && string.Equals(directRepairProblem.EntityId, legacyProblem.EntityId, StringComparison.Ordinal);
+            var repairHasNoExecution = repairWorkbench.RunLog.All(item =>
+                item.Category is not ("Preview" or "Publish" or "Run"));
             Check(
                 "selected legacy step exposes Repair route and opens input editing without execution",
                 legacyOpened
                 && legacyProblem is not null
                 && repairWorkbench.HasSelectedStepFlowProblem
                 && directRepairProblem is not null
-                && ReferenceEquals(directRepairProblem, legacyProblem)
+                && sameRepairProblemIdentity
                 && ReferenceEquals(repairWorkbench.SelectedPipelineStep, directRepairProblem.Step)
                 && repairWorkbench.IsSelectedToolInputSectionExpanded
                 && repairWorkbench.IsAdvancedInputRouteEditingExpanded
-                && repairWorkbench.RunLog.All(item => item.Category is not ("Preview" or "Publish" or "Run")),
-                legacyOpenMessage);
+                && repairHasNoExecution,
+                $"opened={legacyOpened}; legacyProblem={legacyProblem is not null}; "
+                + $"selectedProblem={repairWorkbench.HasSelectedStepFlowProblem}; "
+                + $"directProblem={directRepairProblem is not null}; "
+                + $"sameProblemIdentity={sameRepairProblemIdentity}; "
+                + $"sameStep={ReferenceEquals(repairWorkbench.SelectedPipelineStep, directRepairProblem?.Step)}; "
+                + $"inputExpanded={repairWorkbench.IsSelectedToolInputSectionExpanded}; "
+                + $"advancedExpanded={repairWorkbench.IsAdvancedInputRouteEditingExpanded}; "
+                + $"noExecution={repairHasNoExecution}; message={legacyOpenMessage}");
             Check(
                 "successful recipe open clears the Tool Library search without execution",
                 string.IsNullOrEmpty(repairWorkbench.ToolSearchText)

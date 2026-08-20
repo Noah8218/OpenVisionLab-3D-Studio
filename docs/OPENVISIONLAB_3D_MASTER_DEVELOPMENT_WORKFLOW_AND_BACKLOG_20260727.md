@@ -195,6 +195,24 @@ automated validation does not replace it. The large-C3D candidate remains
 blocked until a representative maximum input and accepted memory/load-time
 limits are supplied.
 
+#### PL-0027 CI verifier stabilization - 2026-08-21
+
+GitHub Actions run `32423466453` failed in the typed C3D Median Filter adapter
+gate because the Tool Recipe teaching verifier compared two refreshed
+diagnostic projection objects by reference. The Repair route itself selected
+the same stable step/port/kind/status/entity identity, expanded the input and
+advanced-routing editors, and caused no Preview, Publish, or Run execution.
+The verifier now checks that stable identity while retaining the selected-step
+ownership assertion and detailed failure diagnostics.
+
+The formerly failing local gate passes Median Filter golden `13/13`, exact
+Runner output SHA-256, Tool Recipe teaching `51/51`, Workbench Publish smoke,
+accepted screenshot quality, and leftmost-monitor intersection. Affected
+Workbench Docking `87/87`, Recipe Manager/PropertyGrid `52/52`, structure
+`67/67`, and the Release solution build also pass. This is a verifier-only
+maintenance correction: product behavior, UI, capability counts, and the
+current owner-R0 priority are unchanged. `PL-0027` owns the durable evidence.
+
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 
 `PL-0018` is Complete for the current tracked tree. Private market research,

@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0027",
+    "aliases": [],
+    "type": "maintenance",
+    "mode": "simple",
+    "title": "Stabilize legacy Repair route CI verification",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "user-reported hosted CI failure",
+    "summary": "GitHub Actions run 32423466453 failed in the typed C3D Median Filter adapter gate after the PL-0026 refactor push.",
+    "refs": [
+      "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32423466453"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "GitHub Actions run 32423466453 exposed a verifier-only reference-identity error across refreshed flow diagnostics. The verifier now compares stable problem identity; the formerly failing gate, affected regressions, Release build, structure guard, diff hygiene, and refreshed R0 package validation all pass locally without changing product behavior."
+  },
+  "objective": {
+    "summary": "Remove the CI false negative while preserving the Repair route, selected-step ownership, explicit execution contracts, and hosted workflow coverage.",
+    "constraints": [
+      "Do not change product or UI behavior for a verifier-only identity error.",
+      "Compare the stable diagnostic contract rather than projection-object reference identity.",
+      "Preserve the assertion that Repair opens input editing without Preview, Publish, or Run execution."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Tool Recipe teaching verification passes 51/51 and proves the legacy Repair route selects the same stable problem identity, expands input editing, and causes no execution.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The complete formerly failing C3D Median Filter CI gate passes locally, including golden cases, exact Runner output hash, Workbench Preview/Publish smoke, screenshot quality, and required monitor placement evidence.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Affected Workbench checks, structure verification, Release solution build, diff hygiene, and refreshed Wide/Compact fixed-package validation pass.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0026"
+    }
+  ],
+  "context": [
+    {
+      "kind": "verification owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Verification/Workbench/ToolRecipeTeachingVerification.cs",
+      "summary": "Owns the Tool Recipe teaching contract that produced the CI false negative."
+    },
+    {
+      "kind": "hosted workflow gate",
+      "location": ".github/workflows/ci.yml",
+      "summary": "Defines the typed C3D Median Filter adapter step that failed in run 32423466453."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "local CI reproduction and qualification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32423466453/",
+      "summary": "Original reproduction, fixed verifier report, exact gate outputs, monitor evidence, and affected regression reports."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "focused verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32423466453/repair-fixed.txt",
+      "observation": "Tool Recipe teaching verification passed 51/51. The legacy Repair assertion reported opened=True, stable problem identity=True, selected-step identity=True, input and advanced editing expanded=True, and noExecution=True.",
+      "observed_at": "2026-08-21T08:31:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "local CI gate reproduction",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32423466453/c3d-filter-adapter-fixed/ and c3d-filter-adapter-fixed-left-monitor/",
+      "observation": "The complete formerly failing Median Filter gate passed golden 13/13, exact Runner SHA-256 6B929F0FF6874BA7C992453B500DF07B3BAF427817BB5FA1C26F994977FB356D, teaching 51/51, Publish smoke, accepted screenshot quality, and a 1280x760 window intersecting the dynamically selected leftmost monitor.",
+      "observed_at": "2026-08-21T08:36:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "qualification verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32423466453/affected/, r0-wide-validate.txt, and r0-compact-validate.txt",
+      "observation": "Workbench Docking passed 87/87, Recipe Manager/PropertyGrid passed 52/52, structure passed 67/67, the Release solution built with zero warnings and errors, git diff --check passed, and refreshed Wide/Compact fixed-package validation passed on DISPLAY2 without launching the application.",
+      "observed_at": "2026-08-21T08:45:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-21T08:45:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after stable-identity verification and full local qualification passed; hosted CI remains a post-push publication state rather than a local completion criterion."
+    }
+  ],
+  "created_at": "2026-08-21T08:41:21.3438202+09:00",
+  "updated_at": "2026-08-21T08:45:00+09:00"
+}

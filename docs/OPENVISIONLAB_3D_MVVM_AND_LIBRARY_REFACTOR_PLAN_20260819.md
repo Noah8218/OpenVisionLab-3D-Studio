@@ -904,6 +904,24 @@ qualification completed. No dependency-ready software slice is selected after
 this closure. Product-owner unaided Wide/Compact R0 is the next acceptance
 priority and requires owner operation, not model execution.
 
+### 12.1 Hosted CI follow-up - PL-0027
+
+The first hosted run after PL-0026 exposed a verifier defect, not an MVVM or
+Repair-route regression. `FlowPortDiagnostics.ReplaceAll(...)` refreshes
+diagnostic projection instances, so reference equality is not a durable
+contract. The Tool Recipe teaching verifier now compares the stable
+step/port/kind/status/entity identity and separately verifies that the selected
+ViewModel step is the diagnostic step, input routing editors open, and no
+Preview, Publish, or Run occurs.
+
+This correction intentionally changes no production View, ViewModel, Model,
+Command, Converter, Behavior, service, or library boundary. The focused
+teaching verifier passes `51/51`, and the complete formerly failing Median
+Filter gate passes its golden, exact-hash, Publish smoke, screenshot-quality,
+and monitor-placement checks. Evidence is recorded by `PL-0027` under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+ci-failure-32423466453/`.
+
 ### Per-milestone completion rule
 
 A milestone is complete only when the former owner no longer contains the moved
