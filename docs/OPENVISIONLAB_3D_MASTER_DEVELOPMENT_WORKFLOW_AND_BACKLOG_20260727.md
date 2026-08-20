@@ -213,6 +213,20 @@ Workbench Docking `87/87`, Recipe Manager/PropertyGrid `52/52`, structure
 maintenance correction: product behavior, UI, capability counts, and the
 current owner-R0 priority are unchanged. `PL-0027` owns the durable evidence.
 
+#### PL-0028 color-map CI expectation alignment - 2026-08-21
+
+After the repaired Median Filter gate passed on GitHub Actions run
+`32429997681`, the next previously hidden failure was a stale workflow-only
+assertion: the current Display-settings ViewModel verifier passes `111/111`,
+while the grayscale/thermal color-map gate still required its older `103`
+summary. The workflow now retains the exact-count regression guard at `111`;
+it does not weaken the check or change Viewer, ViewModel, rendering, or UI
+behavior. The full local color-map gate passes with both accepted screenshots,
+required contracts, distinct image hashes, Display-settings `111/111`,
+height-distribution `26/26`, and both windows intersecting `\\.\DISPLAY2`.
+`PL-0028` owns this independent maintenance record; capability counts and
+project priorities remain unchanged.
+
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 
 `PL-0018` is Complete for the current tracked tree. Private market research,

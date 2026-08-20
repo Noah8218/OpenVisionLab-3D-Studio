@@ -1,0 +1,113 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0028",
+    "aliases": [],
+    "type": "maintenance",
+    "mode": "simple",
+    "title": "Align color-map CI gate with current display verification count",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "hosted CI follow-up",
+    "summary": "After PL-0027 passed its former failure point, GitHub Actions run 32429997681 exposed a stale exact-count assertion in the C3D grayscale and thermal color-map gate.",
+    "refs": [
+      "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32429997681"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "The color-map gate failed only because its workflow expected the superseded 103-check summary. The exact assertion now requires the current passing 111-check result; the complete local gate and repository hygiene pass without production changes."
+  },
+  "objective": {
+    "summary": "Restore the C3D grayscale and thermal color-map hosted gate by aligning its exact-count assertion with the current passing display-settings verification contract.",
+    "constraints": [
+      "Do not weaken or remove the exact-count regression assertion.",
+      "Do not change product, ViewModel, renderer, or UI behavior for a stale workflow value.",
+      "Retain both color-map contract checks, distinct screenshot hashes, height-distribution verification, and screenshot-quality checks."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The workflow requires the current Display-settings ViewModel verification result of 111 checks without weakening the exact-count assertion.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The complete grayscale and thermal color-map gate passes locally with accepted screenshots, required contracts, distinct hashes, Display-settings 111/111, Height Distribution 26/26, and monitor placement evidence.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Workflow/document diff hygiene and durable issue validation pass before the maintenance commit.",
+      "evidence_refs": [
+        "E3"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0027"
+    }
+  ],
+  "context": [
+    {
+      "kind": "hosted workflow gate",
+      "location": ".github/workflows/ci.yml",
+      "summary": "Contains the stale exact display-settings check-count assertion."
+    },
+    {
+      "kind": "verification owner",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/ViewModels/ViewerDisplaySettingsViewModelVerification.cs",
+      "summary": "Produces the current passing summary from the actual check collection."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "local CI reproduction and qualification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32429997681/c3d-color-maps/",
+      "summary": "Color-map screenshots, contracts, quality reports, display verification, height-distribution report, summary, and monitor evidence."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "workflow contract inspection",
+      "location": ".github/workflows/ci.yml and D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32429997681/c3d-color-maps/display-viewmodel-verification.txt",
+      "observation": "The verifier reports Pass (111 checks). The workflow exact-count assertion and summary now require 111 instead of the stale 103, without removing the regression guard.",
+      "observed_at": "2026-08-21T08:56:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "local CI gate qualification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/ci-failure-32429997681/c3d-color-maps-fixed/",
+      "observation": "The full grayscale/thermal gate passed accepted screenshot quality and required contracts for both maps, distinct image hashes, Display-settings 111/111, Height Distribution 26/26, and both 1280x760 windows intersecting DISPLAY2.",
+      "observed_at": "2026-08-21T08:57:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "repository hygiene",
+      "location": "git diff --check and proofline issue-ledger validation",
+      "observation": "The workflow and documentation diff passed git diff --check, and PL-0028 validated as Proofline v2 before commit.",
+      "observed_at": "2026-08-21T08:58:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-21T08:58:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after the exact workflow expectation was aligned to 111 and the complete local color-map gate passed."
+    }
+  ],
+  "created_at": "2026-08-21T08:55:00+09:00",
+  "updated_at": "2026-08-21T08:58:00+09:00"
+}

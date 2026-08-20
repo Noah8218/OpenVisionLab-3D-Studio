@@ -302,8 +302,8 @@ jobs:
           }
 
           $verification = Get-Content (Join-Path $artifactDir 'display-viewmodel-verification.txt') -Raw
-          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (103 checks)')) {
-            throw 'Display-settings ViewModel verification did not pass 103 checks.'
+          if (-not $verification.Contains('Display-settings ViewModel verification: Pass (111 checks)')) {
+            throw 'Display-settings ViewModel verification did not pass 111 checks.'
           }
 
           $distributionReport = Join-Path $artifactDir 'height-distribution-verification.txt'
@@ -317,7 +317,7 @@ jobs:
             throw 'C3D height-distribution verification did not pass 26 checks.'
           }
 
-          $summary.Add('DisplayViewModel|pass=True|checks=103')
+          $summary.Add('DisplayViewModel|pass=True|checks=111')
           $summary.Add('HeightDistribution|pass=True|checks=26|bins=32|scope=full-source')
           $summary.Add('Gate|mandatory=True|scope=C3D Grayscale and Thermal display-only color maps')
           $summary | Set-Content (Join-Path $artifactDir 'summary.txt') -Encoding utf8

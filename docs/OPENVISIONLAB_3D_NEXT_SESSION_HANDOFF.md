@@ -243,6 +243,14 @@ software slice.
 The original `PL-0025` evidence remains valid only for its named owners; the
 2026-08-19 audit and `PL-0026` supersede its repository-wide completion claim.
 
+The 2026-08-21 CI follow-up is verifier/workflow maintenance only. `PL-0027`
+replaced an invalid Repair diagnostic projection reference comparison with
+stable step/port/kind/status/entity identity while retaining selected-step and
+no-execution assertions. `PL-0028` aligns the grayscale/thermal color-map
+workflow's exact Display-settings expectation with the current passing
+`111/111` verifier. Neither item changes production behavior, MVVM ownership,
+capability counts, or the queue below.
+
 The final M5 owner is `ToolWorkbenchValidationSetExecutionOwner`, which owns
 Validation Set cancellation, running state, and direct normal/development/
 Held-out execution. `ToolWorkbenchViewModel.ValidationSet.cs` retains sample
