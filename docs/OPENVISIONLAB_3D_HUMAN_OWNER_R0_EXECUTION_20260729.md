@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Studio Human-owner R0 Execution
 
-Date: 2026-08-18
+Date: 2026-08-21
 Status: Blocked - the current fixed-input package and launcher are ready, but
 the product owner's unaided Wide and Compact runs are still required.
 
@@ -38,13 +38,13 @@ Prepared-input SHA-256:
 
 | Input | SHA-256 |
 |---|---|
-| Release EXE | `51589C44E833179D8D181AB5BB10FE4567661C20ACCFB31321AD2907856BC696` |
-| Shell assembly | `703F7148696980BE34871DC4D9668453B0094D561451D039A7CFF457C0C07833` |
-| Core assembly | `F5CE88B9B2E43052D0660214A5EC9D16D608364CC26D4833218B9EAD0FC7D327` |
-| Data assembly | `86A990D1D45D7E4E415235A6BA5ABC7D1E89C30173E3EE62F70679A5B3216BC5` |
-| Tools assembly | `AB3E8286D5B52DEA0506F77C24E6FCA514656DA503AC268632A35560968F66D6` |
-| Viewer assembly | `685CAC6A5FBFFAF39D377F38EB9B14952D17A31FFCA4AC82A0A9D0813A690A3B` |
-| Docking assembly | `874EBD8C17FF81CB37BA3EC63DD2E6264FBC5ECB739261A5B50D8E2E4A8AB37D` |
+| Release EXE | `85C23F9603318FDDD25A5B59F3E486430DF2A050FA83B6522CFE3FDA020B3D65` |
+| Shell assembly | `23AF54574960A0C650D589B4D0B3A0F7BE1AC08D2BE84680E7E83A1C6081D46B` |
+| Core assembly | `7C906143CAD1CBF15846D7F541E74A61F6C63812A1EB27D96EAF93BD5830FCE5` |
+| Data assembly | `835746BA6D1AA338B6EDB0FC506BC3DCC7A2CFE2397332793168E573A1E1BC3F` |
+| Tools assembly | `D470A66C7D2FE712F6E6C310B369630EBA5421CB7D29A3D4A1187D63D169D46F` |
+| Viewer assembly | `24BF9B9FADE1084A84D9F9BCA535B14116677882534EE316C98446F6C7472310` |
+| Docking assembly | `22E1F697F7E62B8BC8BC0A3A3D37E95306E3D7758F8EAD39E8BDCBE9C3F0F8D1` |
 | Completeness recipe | `0DABE2D9A0B1931FD4E5F3E064C8157C02EC6DF60807C84B530128099B3CC461` |
 | Fail Run Record | `BAB565978CF786D5C8795D0F8F6898F29D1085820CF032EECC9F315B1544340A` |
 
@@ -52,7 +52,7 @@ The launcher fails closed if an input is missing, any SHA-256 differs from
 the fixed table above, or the Release EXE is older than current `.cs`,
 `.xaml`, or `.csproj` source.
 
-The 2026-08-18 current-source Release rebuild supersedes every previous fixed
+The 2026-08-21 current-source Release rebuild supersedes every previous fixed
 binary set. In addition to the prior authoring, integrity, SDK-migration, and
 evidence corrections, it includes PL-0015 same-grid Thickness variants,
 PL-0016 ordered Shell Run with Results evidence, and PL-0017
@@ -60,7 +60,12 @@ coordinate-confident Top-view grid ROI teaching, PL-0019 standard per-step
 timing evidence, and PL-0020 Source Quality Run Record evidence with Compact
 Results density, PL-0021 persistent Viewer selected-coordinate status, and
 PL-0022 exact Completeness per-cell Run Record export, and PL-0024/L-14
-privacy-safe support bundle export.
+privacy-safe support bundle export, plus the PL-0026 M5 Datum Plane Deviation
+and Re-grid Height Field, 3-Point Plane, Two-Point Line, Line Intersection,
+Line Fit, Height Difference Edge, Height Measurement, and XYZ Affine
+Solve/Apply, Landmark Correspondence, Filter, Surface Match Experiment, and
+Validation Set execution-owner checkpoints,
+and corrected preparation-owner selection wiring.
 R0 must use the hashes above and restart from Wide; no result
 from an earlier binary set can close this gate.
 
@@ -191,15 +196,15 @@ Pass; current-package actual launch placement -> Pending until owner launch; Wid
 owner run -> Pending; Compact owner run -> Pending.
 Verification: the PL-0014-, PL-0012-, PL-0013-, run-log-retention-, recipe-step-removal-,
 C3D-snapshot-, alignment-status-, PL-0015-, PL-0016-, PL-0017-, PL-0019-,
-PL-0020-, PL-0021-, and PL-0022-corrected
+PL-0020-, PL-0021-, PL-0022-, PL-0024-, and PL-0026-M5/M7-corrected
 current source was rebuilt in Release with `0` warnings and `0` errors on
-2026-08-18. Both process-local `-ValidateOnly` commands passed,
+2026-08-21. Both process-local `-ValidateOnly` commands passed,
 enforced the refreshed nine-input fixed hashes above, confirmed the Release
 was newer than current source, selected `\\.\DISPLAY2` as the leftmost
 monitor, and launched no application. Actual placement will be checked by the
 launcher when the owner begins each current-package run.
 Evidence: this document, `scripts/start-human-owner-r0.ps1`, and
-`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260818-pl0022-completeness-cell-export\verification\human-owner-r0-wide-validate.txt`
+`D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\pl-0026-validation-set-execution-owner\human-owner-r0-wide-validate.txt`
 plus `human-owner-r0-compact-validate.txt` in the same directory. Earlier
 launch evidence belongs to a superseded package and does not close the current
 owner run.

@@ -233,14 +233,14 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         if (string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal)
-            && edgePreviewOutput is not null
+            && CurrentHeightDifferenceEdgeOutput is { } edgePreviewOutput
             && string.Equals(edgePreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
                 edgePreviewOutput.OutputEntityId,
                 step.ToolName,
                 "EdgePointSet",
-                isEdgePreviewStale ? "Stale" : isEdgePreviewPublished ? "Published" : "Preview",
+                IsEdgePreviewStale ? "Stale" : IsEdgePreviewPublished ? "Published" : "Preview",
                 edgePreviewOutput.RootSourceEntityId,
                 edgePreviewOutput.InputEntityId,
                 edgePreviewOutput.Unit,
@@ -346,6 +346,32 @@ public sealed partial class ToolWorkbenchViewModel
                 "CornerAnchor");
         }
 
+        if (string.Equals(step.ToolId, "landmark-correspondence", StringComparison.Ordinal)
+            && CurrentLandmarkCorrespondenceOutput is { } correspondenceOutput
+            && string.Equals(
+                correspondenceOutput.OutputEntityId,
+                step.OutputEntityId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                correspondenceOutput.OutputEntityId,
+                step.ToolName,
+                "CorrespondenceSet",
+                IsLandmarkCorrespondencePreviewStale
+                    ? "Stale"
+                    : IsLandmarkCorrespondencePreviewPublished
+                        ? "Published"
+                        : "Preview",
+                correspondenceOutput.RootSourceEntityId,
+                string.Join("; ", correspondenceOutput.Pairs.Select(pair => pair.SourceEntityId)),
+                correspondenceOutput.SourceUnit,
+                correspondenceOutput.SourceFrameId,
+                correspondenceOutput.ContentSha256,
+                $"{correspondenceOutput.Pairs.Count}/4 pairs | source rank {correspondenceOutput.SourceRank}/4 | reference rank {correspondenceOutput.ReferenceRank}/4 | correspondence evidence only",
+                step,
+                "CorrespondenceSet");
+        }
+
         if (string.Equals(step.ToolId, "xyz-affine-solve", StringComparison.Ordinal)
             && TryGetPublishedAffineSolveOutput(step.OutputEntityId, out var publishedAffine)
             && publishedAffine is not null)
@@ -366,62 +392,62 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         if (string.Equals(step.ToolId, "xyz-affine-apply", StringComparison.Ordinal)
-            && affineApplyPreviewOutput is not null
-            && string.Equals(affineApplyPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            && CurrentAffineApplyOutput is { } affineApplyOutput
+            && string.Equals(affineApplyOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
-                affineApplyPreviewOutput.OutputEntityId,
+                affineApplyOutput.OutputEntityId,
                 step.ToolName,
                 "TransformedPointCloud",
-                isAffineApplyPreviewStale ? "Stale" : isAffineApplyPreviewPublished ? "Published" : "Preview",
-                affineApplyPreviewOutput.RootSourceEntityId,
-                affineApplyPreviewOutput.AffineTransformEntityId,
-                affineApplyPreviewOutput.ReferenceUnit,
-                affineApplyPreviewOutput.ReferenceFrameId,
-                affineApplyPreviewOutput.ContentSha256,
-                $"{affineApplyPreviewOutput.FinitePointCount:N0} finite transformed points | {affineApplyPreviewOutput.MissingPointCount:N0} missing source cells | A3 re-grid excluded",
+                IsAffineApplyPreviewStale ? "Stale" : IsAffineApplyPreviewPublished ? "Published" : "Preview",
+                affineApplyOutput.RootSourceEntityId,
+                affineApplyOutput.AffineTransformEntityId,
+                affineApplyOutput.ReferenceUnit,
+                affineApplyOutput.ReferenceFrameId,
+                affineApplyOutput.ContentSha256,
+                $"{affineApplyOutput.FinitePointCount:N0} finite transformed points | {affineApplyOutput.MissingPointCount:N0} missing source cells | A3 re-grid excluded",
                 step,
                 "TransformedPointCloud");
         }
 
         if (string.Equals(step.ToolId, "re-grid-height-map", StringComparison.Ordinal)
-            && regridHeightFieldPreviewOutput is not null
-            && string.Equals(regridHeightFieldPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            && CurrentRegridHeightFieldOutput is { } regridHeightFieldOutput
+            && string.Equals(regridHeightFieldOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
-                regridHeightFieldPreviewOutput.OutputEntityId,
+                regridHeightFieldOutput.OutputEntityId,
                 step.ToolName,
                 "TransformedHeightField",
-                isRegridHeightFieldPreviewStale ? "Stale" : isRegridHeightFieldPreviewPublished ? "Published" : "Preview",
-                regridHeightFieldPreviewOutput.RootSourceEntityId,
-                regridHeightFieldPreviewOutput.AffineTransformEntityId,
-                regridHeightFieldPreviewOutput.ReferenceUnit,
-                regridHeightFieldPreviewOutput.ReferenceFrameId,
-                regridHeightFieldPreviewOutput.ContentSha256,
-                $"{regridHeightFieldPreviewOutput.PopulatedCellCount:N0}/{regridHeightFieldPreviewOutput.Cells.Count:N0} populated | coverage {regridHeightFieldPreviewOutput.CoverageRatio:P2} | missing {regridHeightFieldPreviewOutput.MissingCellCount:N0} | collisions {regridHeightFieldPreviewOutput.CollisionCount:N0}",
+                IsRegridHeightFieldPreviewStale ? "Stale" : IsRegridHeightFieldPreviewPublished ? "Published" : "Preview",
+                regridHeightFieldOutput.RootSourceEntityId,
+                regridHeightFieldOutput.AffineTransformEntityId,
+                regridHeightFieldOutput.ReferenceUnit,
+                regridHeightFieldOutput.ReferenceFrameId,
+                regridHeightFieldOutput.ContentSha256,
+                $"{regridHeightFieldOutput.PopulatedCellCount:N0}/{regridHeightFieldOutput.Cells.Count:N0} populated | coverage {regridHeightFieldOutput.CoverageRatio:P2} | missing {regridHeightFieldOutput.MissingCellCount:N0} | collisions {regridHeightFieldOutput.CollisionCount:N0}",
                 step,
                 "TransformedHeightField");
         }
 
         if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"
-            && measurementPreviewOutput is not null
-            && string.Equals(measurementPreviewOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
+            && CurrentMeasurementOutput is { } measurementOutput
+            && string.Equals(measurementOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
-                measurementPreviewOutput.OutputEntityId,
+                measurementOutput.OutputEntityId,
                 step.ToolName,
-                measurementPreviewOutput.CompletenessGrid is null
+                measurementOutput.CompletenessGrid is null
                     ? "MeasurementResult"
                     : "CompletenessGridMetrics",
-                isMeasurementPreviewStale ? "Stale" : isMeasurementPreviewPublished ? "Published" : "Preview",
-                measurementPreviewOutput.RootSourceEntityId,
-                $"{measurementPreviewOutput.InputEntityId}; {measurementPreviewOutput.SelectionId}",
-                measurementPreviewOutput.Unit,
-                measurementPreviewOutput.FrameId,
-                measurementPreviewOutput.ContentSha256,
-                $"{measurementPreviewOutput.Result.Status} | {measurementPreviewOutput.EvidenceSummary}",
+                IsMeasurementPreviewStale ? "Stale" : IsMeasurementPreviewPublished ? "Published" : "Preview",
+                measurementOutput.RootSourceEntityId,
+                $"{measurementOutput.InputEntityId}; {measurementOutput.SelectionId}",
+                measurementOutput.Unit,
+                measurementOutput.FrameId,
+                measurementOutput.ContentSha256,
+                $"{measurementOutput.Result.Status} | {measurementOutput.EvidenceSummary}",
                 step,
-                measurementPreviewOutput.CompletenessGrid is null
+                measurementOutput.CompletenessGrid is null
                     ? "MeasurementResult"
                     : "CompletenessGridMetrics");
         }

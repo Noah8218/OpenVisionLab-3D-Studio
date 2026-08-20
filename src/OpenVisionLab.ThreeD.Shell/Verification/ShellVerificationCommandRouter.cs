@@ -310,6 +310,35 @@ internal static class ShellVerificationCommandRouter
             return;
         }
 
+        const string regridHeightFieldWorkbenchVerificationOption =
+            "--verify-regrid-height-field-workbench";
+        var regridHeightFieldWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                regridHeightFieldWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (regridHeightFieldWorkbenchVerificationIndex >= 0)
+        {
+            if (regridHeightFieldWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{regridHeightFieldWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = RegridHeightFieldWorkbenchVerification.Verify(
+                    args[regridHeightFieldWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
         if (ShellSmokeCommandLineOptionsVerification.TryRun(args, out var smokeOptionsPassed, out var smokeOptionsSummary))
         {
             Console.WriteLine(smokeOptionsSummary);
@@ -333,6 +362,9 @@ internal static class ShellVerificationCommandRouter
         const string datumPlaneDeviationWorkbenchVerificationOption = "--verify-tool-datum-plane-deviation-workbench";
         const string lineFitWorkbenchVerificationOption = "--verify-tool-line-fit-workbench";
         const string lineIntersectionWorkbenchVerificationOption = "--verify-tool-line-intersection-workbench";
+        const string landmarkCorrespondenceWorkbenchVerificationOption =
+            "--verify-tool-landmark-correspondence-workbench";
+        const string xyzAffineWorkbenchVerificationOption = "--verify-tool-xyz-affine-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
@@ -538,6 +570,54 @@ internal static class ShellVerificationCommandRouter
         var lineIntersectionWorkbenchVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(lineIntersectionWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        var landmarkCorrespondenceWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                landmarkCorrespondenceWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        var xyzAffineWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(xyzAffineWorkbenchVerificationOption, StringComparison.OrdinalIgnoreCase));
+        if (xyzAffineWorkbenchVerificationIndex >= 0)
+        {
+            if (xyzAffineWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine($"{xyzAffineWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolXyzAffineWorkbenchVerification.Verify(
+                    args[xyzAffineWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Summary: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Summary);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+        if (landmarkCorrespondenceWorkbenchVerificationIndex >= 0)
+        {
+            if (landmarkCorrespondenceWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine($"{landmarkCorrespondenceWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ToolLandmarkCorrespondenceWorkbenchVerification.Verify(
+                    args[landmarkCorrespondenceWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Summary: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Summary);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         if (twoPointLineWorkbenchVerificationIndex >= 0)
         {
             if (twoPointLineWorkbenchVerificationIndex + 1 >= args.Length)

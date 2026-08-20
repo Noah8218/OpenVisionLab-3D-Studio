@@ -89,7 +89,7 @@ public sealed partial class ToolWorkbenchViewModel
     private void RefreshCompletenessCellReview()
     {
         var output = IsSelectedStepCompletenessGrid && HasCurrentMeasurementPreview
-            ? measurementPreviewOutput?.CompletenessGrid
+            ? CurrentMeasurementOutput?.CompletenessGrid
             : null;
         if (output is null)
         {

@@ -9,6 +9,7 @@ using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell;
+using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -16,7 +17,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// <summary>
 /// Workbench facade for recipe authoring and explicit Preview/Publish orchestration.
 /// Deterministic algorithms remain owned by the Tools execution adapters; this
-/// ViewModel owns their teach-time UI state, cancellation, and evidence routing.
+/// ViewModel composes teach-time state, execution owners, and evidence routing.
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 {
@@ -25,6 +26,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
     private readonly ToolWorkbenchRemoveOutlierExecutionOwner removeOutlierExecutionOwner;
     private readonly ToolWorkbenchLevelSurfaceExecutionOwner levelSurfaceExecutionOwner;
+    private readonly ToolWorkbenchTwoPointLineExecutionOwner twoPointLineExecutionOwner;
+    private readonly ToolWorkbenchHeightDifferenceEdgeExecutionOwner heightDifferenceEdgeExecutionOwner;
+    private readonly ToolWorkbenchLineFitExecutionOwner lineFitExecutionOwner;
+    private readonly ToolWorkbenchLineIntersectionExecutionOwner lineIntersectionExecutionOwner;
+    private readonly ToolWorkbenchLandmarkCorrespondenceExecutionOwner landmarkCorrespondenceExecutionOwner;
+    private readonly ToolWorkbenchThreePointPlaneExecutionOwner threePointPlaneExecutionOwner;
+    private readonly ToolWorkbenchDatumPlaneDeviationExecutionOwner datumPlaneDeviationExecutionOwner;
+    private readonly ToolWorkbenchXyzAffineExecutionOwner xyzAffineExecutionOwner;
+    private readonly ToolWorkbenchRegridHeightFieldExecutionOwner regridHeightFieldExecutionOwner;
+    private readonly ToolWorkbenchHeightMeasurementExecutionOwner heightMeasurementExecutionOwner;
+    private readonly ToolWorkbenchValidationSetExecutionOwner validationSetExecutionOwner;
     private readonly RelayCommand addSelectedToolCommand;
     private readonly RelayCommand removeSelectedStepCommand;
     private readonly RelayCommand moveSelectedStepUpCommand;
@@ -76,6 +88,19 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public ToolWorkbenchViewModel(string? recentRecipesPath = null)
     {
+        validationSetExecutionOwner = new ToolWorkbenchValidationSetExecutionOwner(
+            RefreshValidationSetExecutionState);
+        surfaceMatchExperiment = new SurfaceMatchExperimentSession(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "surface-match",
+                StringComparison.Ordinal),
+            () => HasPendingStepParameterChanges,
+            () => SelectedPipelineStep,
+            ApplyPublishedSurfaceMatchEvidence,
+            RaiseSurfaceMatchExperimentDisplay,
+            (category, message) => AppendLog(category, message),
+            RefreshSurfaceMatchExperimentState);
         WorkspaceSelection = new InspectionWorkspaceSelectionSession();
         ViewerWorkspace = new ViewerWorkspaceSession();
         SharedHeightCursor = new SharedHeightCursorSession();
@@ -120,9 +145,28 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             () => SetFilterKernel(5),
             () => CanSetFilterKernel(5),
             () => SetFilterKernel(7),
-            () => CanSetFilterKernel(7));
+            () => CanSetFilterKernel(7),
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "filter",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => IsEdgePreviewRunning,
+            CreateDocument,
+            () => RecipePath,
+            sender => ReferenceEquals(sender, Source),
+            (category, message) => AppendLog(category, message),
+            args => FilterDisplayRequested?.Invoke(this, args),
+            summary => MarkHeightDifferenceEdgePreviewStale(summary),
+            summary => ClearHeightDifferenceEdgePreview(summary),
+            RefreshFilterStateFromOwner);
         removeOutlierExecutionOwner = new ToolWorkbenchRemoveOutlierExecutionOwner(
-            () => IsSelectedStepRemoveOutlierPixels,
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "remove-outlier-pixels",
+                StringComparison.Ordinal),
             () => SelectedPipelineStep,
             () => IsSourceReadyForRecipe,
             () => HasPendingStepParameterChanges,
@@ -133,7 +177,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             args => FilterDisplayRequested?.Invoke(this, args),
             RefreshRemoveOutlierStateFromOwner);
         levelSurfaceExecutionOwner = new ToolWorkbenchLevelSurfaceExecutionOwner(
-            () => IsSelectedStepLevelSurface,
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "level-surface",
+                StringComparison.Ordinal),
             () => SelectedPipelineStep,
             () => IsSourceReadyForRecipe,
             () => HasPendingStepParameterChanges,
@@ -143,6 +190,247 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             (category, message) => AppendLog(category, message),
             args => FilterDisplayRequested?.Invoke(this, args),
             RefreshLevelSurfaceStateFromOwner);
+        twoPointLineExecutionOwner = new ToolWorkbenchTwoPointLineExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "two-point-line",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => SelectedStepTeachingSelection,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            () => RecipePath,
+            (category, message) => AppendLog(category, message),
+            args => TwoPointLineDisplayRequested?.Invoke(this, args),
+            () => TwoPointLineDisplayCleared?.Invoke(this, EventArgs.Empty),
+            RefreshLineIntersectionExecutionState,
+            () => MarkLineIntersectionPreviewStaleIfNeeded(),
+            () => ClearLineIntersectionPreview(
+                "Upstream LineFeature was cleared. Line Intersection Preview was cleared without execution."),
+            RefreshTwoPointLineStateFromOwner);
+        heightDifferenceEdgeExecutionOwner = new ToolWorkbenchHeightDifferenceEdgeExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "height-difference-edge",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => isFilterPreviewRunning,
+            () => filterPreviewOutput,
+            () => filterPreviewPath,
+            () => isFilterPreviewStale,
+            () => isFilterPreviewPublished,
+            () => SelectedStepTeachingSelection,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            args => HeightDifferenceEdgeDisplayRequested?.Invoke(this, args),
+            RefreshLineFitExecutionState,
+            () => MarkLineFitPreviewStaleIfNeeded(),
+            () => ClearLineFitPreview(
+                "Upstream EdgePointSet was cleared. Line Fit Preview was cleared without execution."),
+            RefreshHeightDifferenceEdgeStateFromOwner);
+        lineFitExecutionOwner = new ToolWorkbenchLineFitExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "three-d-line-fit",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => IsEdgePreviewRunning,
+            outputEntityId => TryGetPublishedHeightDifferenceEdgeOutput(
+                outputEntityId,
+                out var edge)
+                ? edge
+                : null,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            args => LineFitDisplayRequested?.Invoke(this, args),
+            () => LineFitDisplayCleared?.Invoke(this, EventArgs.Empty),
+            RefreshLineIntersectionExecutionState,
+            () => MarkLineIntersectionPreviewStaleIfNeeded(),
+            () => ClearLineIntersectionPreview(
+                "Upstream LineFeature was cleared. Line Intersection Preview was cleared without execution."),
+            RefreshLineFitStateFromOwner,
+            RefreshLineFitDiagnosticStateFromOwner);
+        lineIntersectionExecutionOwner = new ToolWorkbenchLineIntersectionExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "line-intersection",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            outputEntityId => TryGetPublishedLineGeometry(outputEntityId, out var line)
+                ? line
+                : null,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            args => LineIntersectionDisplayRequested?.Invoke(this, args),
+            () => LineIntersectionDisplayCleared?.Invoke(this, EventArgs.Empty),
+            RefreshLandmarkCorrespondenceExecutionState,
+            RefreshLineIntersectionStateFromOwner);
+        landmarkCorrespondenceExecutionOwner = new ToolWorkbenchLandmarkCorrespondenceExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "landmark-correspondence",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => Source.Id,
+            () => Source.Unit,
+            () => Source.FrameId,
+            () => SourceSession.SourceBinding,
+            selectionId => Selections.FirstOrDefault(item => string.Equals(
+                item.Id,
+                selectionId,
+                StringComparison.OrdinalIgnoreCase)),
+            outputEntityId => TryGetPublishedLineIntersectionOutput(
+                outputEntityId,
+                out var anchor)
+                ? anchor
+                : null,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            args => LandmarkCorrespondenceDisplayRequested?.Invoke(this, args),
+            () => LandmarkCorrespondenceDisplayCleared?.Invoke(this, EventArgs.Empty),
+            () => MarkAffineSolvePreviewStaleIfNeeded(),
+            ClearXYZAffineSolvePreview,
+            RefreshXyzAffineStateFromOwner,
+            RefreshLandmarkCorrespondenceStateFromOwner);
+        threePointPlaneExecutionOwner = new ToolWorkbenchThreePointPlaneExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "three-point-plane",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => SelectedStepTeachingSelection,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            () => RecipePath,
+            (category, message) => AppendLog(category, message),
+            args => ThreePointPlaneDisplayRequested?.Invoke(this, args),
+            () => ThreePointPlaneDisplayCleared?.Invoke(this, EventArgs.Empty),
+            outputEntityId => MarkDatumPlaneDeviationPreviewStaleIfNeeded(
+                upstreamPlaneOutputId: outputEntityId),
+            () => ClearDatumPlaneDeviationPreview(
+                "Published 3-Point Plane source cleared. Datum-plane residual preview is unavailable until a new plane is Published."),
+            RefreshThreePointPlaneStateFromOwner);
+        datumPlaneDeviationExecutionOwner = new ToolWorkbenchDatumPlaneDeviationExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "datum-plane-raw-height-deviation",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            outputEntityId => TryGetPublishedThreePointPlaneOutput(outputEntityId, out var plane)
+                ? plane
+                : null,
+            selectionId => Selections.FirstOrDefault(item => string.Equals(
+                item.Id,
+                selectionId,
+                StringComparison.OrdinalIgnoreCase)),
+            IsSelectionCurrent,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            () => RecipePath,
+            (category, message) => AppendLog(category, message),
+            args => DatumPlaneDeviationDisplayRequested?.Invoke(this, args),
+            () => DatumPlaneDeviationDisplayCleared?.Invoke(this, EventArgs.Empty),
+            RefreshDatumPlaneDeviationStateFromOwner);
+        xyzAffineExecutionOwner = new ToolWorkbenchXyzAffineExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "xyz-affine-solve",
+                StringComparison.Ordinal),
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "xyz-affine-apply",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            () => Source.Id,
+            () => SourceSession.SourceBinding,
+            outputEntityId => TryGetPublishedLandmarkCorrespondenceOutput(
+                outputEntityId,
+                out var correspondence)
+                ? correspondence
+                : null,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            ClearRegridHeightFieldPreview,
+            RefreshRegridHeightFieldExecutionState,
+            RefreshXyzAffineStateFromOwner);
+        regridHeightFieldExecutionOwner = new ToolWorkbenchRegridHeightFieldExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "re-grid-height-map",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => HasPendingStepParameterChanges,
+            outputEntityId => TryGetPublishedAffineApplyOutput(outputEntityId, out var cloud)
+                ? cloud
+                : null,
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            () => AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty),
+            RefreshRegridHeightFieldStateFromOwner);
+        heightMeasurementExecutionOwner = new ToolWorkbenchHeightMeasurementExecutionOwner(
+            () => IsSelectedStepMeasurement,
+            () => SelectedPipelineStep,
+            () => HasPendingStepParameterChanges,
+            () => RecipePath,
+            () => Source.Id,
+            outputEntityId => TryGetPublishedRegridHeightFieldOutput(
+                outputEntityId,
+                out var output)
+                ? output
+                : null,
+            outputEntityId => PipelineSteps.FirstOrDefault(item => string.Equals(
+                item.OutputEntityId,
+                outputEntityId,
+                StringComparison.OrdinalIgnoreCase)),
+            CreateDocument,
+            (category, message) => AppendLog(category, message),
+            UpdateMeasurementCompletenessPresentation,
+            RefreshHeightMeasurementStateFromOwner);
         InitializeSourceQualityWorkspace();
         OrientedBoxEditor = new OrientedBox3DEditorViewModel();
         InitializeOrientedBox3DEditing();
@@ -240,7 +528,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializeFilterExecution();
         InitializeOutputCompareSession();
         InitializeViewerWorkspace();
-        InitializeSurfaceMatchExperiment();
         InitializeSurfaceMatchCollectionNavigation();
         InitializeDisplayedOutputs();
         Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
@@ -251,8 +538,6 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         Localization.PropertyChanged += OnTeachingLocalizationChanged;
         InitializeValidationSet();
         ValidationWorkspace = new RecipePipelineReviewValidationViewModel(this);
-        InitializeLineFitDiagnostics();
-
         AppendLog("System", "Tool recipe teaching is ready. Source, routing, parameters, and save/reopen are explicit.");
         SelectedTool = Tools[0];
         RefreshRecipeState();
@@ -1374,6 +1659,26 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
+    private void RefreshFilterStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepFilter));
+        OnPropertyChanged(nameof(FilterKernelSummary));
+        OnPropertyChanged(nameof(IsFilterPreviewRunning));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsRecipeMutationBlocked));
+        OnPropertyChanged(nameof(CurrentFilterPreviewPath));
+        OnPropertyChanged(nameof(CurrentFilterPreviewOutputSummary));
+        OnPropertyChanged(nameof(FilterExecutionSummary));
+        OnPropertyChanged(nameof(FilterOutputHashSummary));
+        OnPropertyChanged(nameof(HasCurrentFilterPreview));
+        OnPropertyChanged(nameof(IsFilterPreviewStale));
+        OnPropertyChanged(nameof(IsFilterPreviewPublished));
+        RefreshFilterCommands();
+        RefreshHeightDifferenceEdgeExecutionState();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
     private void RefreshRemoveOutlierStateFromOwner()
     {
         RebuildEntities();
@@ -1414,6 +1719,221 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsLevelSurfacePreviewStale));
         OnPropertyChanged(nameof(IsLevelSurfacePreviewPublished));
         RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshDatumPlaneDeviationStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepDatumPlaneDeviation));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsDatumPlaneDeviationPreviewRunning));
+        OnPropertyChanged(nameof(DatumPlaneDeviationExecutionSummary));
+        OnPropertyChanged(nameof(DatumPlaneDeviationOutputHashSummary));
+        OnPropertyChanged(nameof(DatumPlaneDeviationUpstreamSummary));
+        OnPropertyChanged(nameof(DatumPlaneDeviationEvidenceSummary));
+        OnPropertyChanged(nameof(HasCurrentDatumPlaneDeviationPreview));
+        OnPropertyChanged(nameof(IsDatumPlaneDeviationPreviewStale));
+        OnPropertyChanged(nameof(IsDatumPlaneDeviationPreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshThreePointPlaneStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepThreePointPlane));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsThreePointPlanePreviewRunning));
+        OnPropertyChanged(nameof(ThreePointPlaneExecutionSummary));
+        OnPropertyChanged(nameof(ThreePointPlaneOutputHashSummary));
+        OnPropertyChanged(nameof(ThreePointPlaneSelectionSummary));
+        OnPropertyChanged(nameof(CurrentThreePointPlaneOutput));
+        OnPropertyChanged(nameof(HasCurrentThreePointPlanePreview));
+        OnPropertyChanged(nameof(IsThreePointPlanePreviewStale));
+        OnPropertyChanged(nameof(IsThreePointPlanePreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshTwoPointLineStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepTwoPointLine));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsTwoPointLinePreviewRunning));
+        OnPropertyChanged(nameof(TwoPointLineExecutionSummary));
+        OnPropertyChanged(nameof(TwoPointLineOutputHashSummary));
+        OnPropertyChanged(nameof(TwoPointLineSelectionSummary));
+        OnPropertyChanged(nameof(CurrentTwoPointLineOutput));
+        OnPropertyChanged(nameof(HasCurrentTwoPointLinePreview));
+        OnPropertyChanged(nameof(IsTwoPointLinePreviewStale));
+        OnPropertyChanged(nameof(IsTwoPointLinePreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshHeightDifferenceEdgeStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepHeightDifferenceEdge));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsEdgePreviewRunning));
+        OnPropertyChanged(nameof(SelectedHeightDifferenceEdgeComparisonAxis));
+        OnPropertyChanged(nameof(SelectedHeightDifferenceEdgePolarity));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeMinimumDelta));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeExpectedOrientation));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeUpstreamSummary));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeBandSummary));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeExecutionSummary));
+        OnPropertyChanged(nameof(HeightDifferenceEdgeOutputHashSummary));
+        OnPropertyChanged(nameof(CurrentHeightDifferenceEdgeOutput));
+        OnPropertyChanged(nameof(HasCurrentEdgePreview));
+        OnPropertyChanged(nameof(IsEdgePreviewStale));
+        OnPropertyChanged(nameof(IsEdgePreviewPublished));
+        RefreshFilterCommands();
+        RefreshHeightDifferenceEdgeCommands();
+        RefreshLineFitCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshLineIntersectionStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepLineIntersection));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsLineIntersectionPreviewRunning));
+        OnPropertyChanged(nameof(LineIntersectionExecutionSummary));
+        OnPropertyChanged(nameof(LineIntersectionOutputHashSummary));
+        OnPropertyChanged(nameof(LineIntersectionUpstreamSummary));
+        OnPropertyChanged(nameof(LineIntersectionEvidenceSummary));
+        OnPropertyChanged(nameof(CurrentLineIntersectionOutput));
+        OnPropertyChanged(nameof(HasCurrentLineIntersectionPreview));
+        OnPropertyChanged(nameof(IsLineIntersectionPreviewStale));
+        OnPropertyChanged(nameof(IsLineIntersectionPreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshLandmarkCorrespondenceStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepLandmarkCorrespondence));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsLandmarkCorrespondencePreviewRunning));
+        OnPropertyChanged(nameof(LandmarkCorrespondenceExecutionSummary));
+        OnPropertyChanged(nameof(LandmarkCorrespondenceOutputHashSummary));
+        OnPropertyChanged(nameof(LandmarkCorrespondenceUpstreamSummary));
+        OnPropertyChanged(nameof(LandmarkCorrespondenceEvidenceSummary));
+        OnPropertyChanged(nameof(CurrentLandmarkCorrespondenceOutput));
+        OnPropertyChanged(nameof(HasCurrentLandmarkCorrespondencePreview));
+        OnPropertyChanged(nameof(IsLandmarkCorrespondencePreviewStale));
+        OnPropertyChanged(nameof(IsLandmarkCorrespondencePreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshLineFitStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepLineFit));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsLineFitPreviewRunning));
+        OnPropertyChanged(nameof(LineFitExecutionSummary));
+        OnPropertyChanged(nameof(LineFitOutputHashSummary));
+        OnPropertyChanged(nameof(LineFitUpstreamSummary));
+        OnPropertyChanged(nameof(LineFitSelectedDiagnosticSummary));
+        OnPropertyChanged(nameof(LineFitPointDiagnostics));
+        OnPropertyChanged(nameof(LineFitResidualPlotPoints));
+        OnPropertyChanged(nameof(SelectedLineFitDiagnostic));
+        OnPropertyChanged(nameof(CurrentLineFitOutput));
+        OnPropertyChanged(nameof(HasCurrentLineFitPreview));
+        OnPropertyChanged(nameof(IsLineFitPreviewStale));
+        OnPropertyChanged(nameof(IsLineFitPreviewPublished));
+        RefreshLineFitCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshLineFitDiagnosticStateFromOwner()
+    {
+        OnPropertyChanged(nameof(SelectedLineFitDiagnostic));
+        OnPropertyChanged(nameof(LineFitSelectedDiagnosticSummary));
+    }
+
+    private void RefreshRegridHeightFieldStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepRegridHeightField));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsRegridHeightFieldPreviewRunning));
+        OnPropertyChanged(nameof(RegridHeightFieldExecutionSummary));
+        OnPropertyChanged(nameof(RegridHeightFieldOutputHashSummary));
+        OnPropertyChanged(nameof(RegridHeightFieldUpstreamSummary));
+        OnPropertyChanged(nameof(RegridHeightFieldEvidenceSummary));
+        OnPropertyChanged(nameof(CurrentRegridHeightFieldOutput));
+        OnPropertyChanged(nameof(HasCurrentRegridHeightFieldPreview));
+        OnPropertyChanged(nameof(IsRegridHeightFieldPreviewStale));
+        OnPropertyChanged(nameof(IsRegridHeightFieldPreviewPublished));
+        OnPropertyChanged(nameof(AlignmentStatusSummary));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshXyzAffineStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepXYZAffineSolve));
+        OnPropertyChanged(nameof(IsAffineSolvePreviewRunning));
+        OnPropertyChanged(nameof(HasCurrentAffineSolvePreview));
+        OnPropertyChanged(nameof(IsAffineSolvePreviewStale));
+        OnPropertyChanged(nameof(IsAffineSolvePreviewPublished));
+        OnPropertyChanged(nameof(CurrentAffineSolveOutput));
+        OnPropertyChanged(nameof(AffineSolveExecutionSummary));
+        OnPropertyChanged(nameof(AffineSolveOutputHashSummary));
+        OnPropertyChanged(nameof(AffineSolveUpstreamSummary));
+        OnPropertyChanged(nameof(AffineSolveEvidenceSummary));
+        OnPropertyChanged(nameof(AffineSolveMatrixSummary));
+        OnPropertyChanged(nameof(IsSelectedStepXYZAffineApply));
+        OnPropertyChanged(nameof(IsAffineApplyPreviewRunning));
+        OnPropertyChanged(nameof(HasCurrentAffineApplyPreview));
+        OnPropertyChanged(nameof(IsAffineApplyPreviewStale));
+        OnPropertyChanged(nameof(IsAffineApplyPreviewPublished));
+        OnPropertyChanged(nameof(CurrentAffineApplyOutput));
+        OnPropertyChanged(nameof(AffineApplyExecutionSummary));
+        OnPropertyChanged(nameof(AffineApplyOutputHashSummary));
+        OnPropertyChanged(nameof(AffineApplyUpstreamSummary));
+        OnPropertyChanged(nameof(AffineApplyEvidenceSummary));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(AlignmentStatusSummary));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void UpdateMeasurementCompletenessPresentation(
+        ToolRecipeHeightMeasurementOutput? output)
+    {
+        HeightImageViewer.SetCompletenessCellOverlays(
+            output?.CompletenessGrid?.CellOverlays ?? []);
+        if (output is not null)
+        {
+            SetSelectedCompletenessCellId(null);
+        }
+
+        RefreshCompletenessCellReview();
+    }
+
+    private void RefreshHeightMeasurementStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsMeasurementPreviewRunning));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(MeasurementExecutionSummary));
+        OnPropertyChanged(nameof(MeasurementEvidenceSummary));
+        OnPropertyChanged(nameof(CurrentMeasurementOutput));
+        OnPropertyChanged(nameof(HasCurrentMeasurementPreview));
+        OnPropertyChanged(nameof(IsMeasurementPreviewPublished));
+        RefreshCompletenessCellReview();
+        RefreshMeasurementCommands();
         RefreshSelectedToolWorkspaceProjection();
     }
 
@@ -1949,6 +2469,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             PromoteRecipeSchemaForSelection();
         });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
+        if (string.Equals(
+            selection.Kind,
+            ToolRecipeSelectionKinds.LandmarkCorrespondenceSet,
+            StringComparison.Ordinal))
+        {
+            MarkLandmarkCorrespondencePreviewStaleIfNeeded();
+        }
         RefreshTeachingSelectionContext();
     }
 

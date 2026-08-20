@@ -214,12 +214,12 @@ internal static class ToolArtifactNavigatorVerification
                 && filterArtifact.HasContentHash,
                 $"state={filterArtifact.State};hash={filterArtifact.ContentSha256};input={filterArtifact.InputEntityIds}");
             Check(
-                "Flow Map clears the downstream waiting problem after explicit current Preview",
-                !workbench.FlowPortDiagnostics.Any(item =>
+                "Flow Map keeps downstream waiting until explicit Filter Publish",
+                workbench.FlowPortDiagnostics.Any(item =>
                     item.Step.ToolId == "height-difference-edge"
                     && item.Port == "Input"
                     && item.Kind == "WaitingForUpstream")
-                && !workbench.PipelineSteps.Single(step => step.ToolId == "height-difference-edge").InputPortHasIssue,
+                && workbench.PipelineSteps.Single(step => step.ToolId == "height-difference-edge").InputPortHasIssue,
                 $"problems={workbench.FlowPortDiagnostics.Count};inputState={workbench.PipelineSteps.Single(step => step.ToolId == "height-difference-edge").InputPortState}");
 
             var selectedFilterOutput = workbench.SelectedToolWorkspace.Outputs.Single();
@@ -304,6 +304,14 @@ internal static class ToolArtifactNavigatorVerification
             workbench.PublishSelectedStepCommand.Execute(null);
             filterArtifact = workbench.ArtifactRegistry.Single(item => item.Id == "derived.filtered.01");
             Check("Filter Publish updates only artifact state", filterArtifact.State == "Published" && filterArtifact.HasContentHash, filterArtifact.Detail);
+            Check(
+                "Flow Map clears downstream waiting after explicit Filter Publish",
+                !workbench.FlowPortDiagnostics.Any(item =>
+                    item.Step.ToolId == "height-difference-edge"
+                    && item.Port == "Input"
+                    && item.Kind == "WaitingForUpstream")
+                && !workbench.PipelineSteps.Single(step => step.ToolId == "height-difference-edge").InputPortHasIssue,
+                $"problems={workbench.FlowPortDiagnostics.Count};inputState={workbench.PipelineSteps.Single(step => step.ToolId == "height-difference-edge").InputPortState}");
             var edgeSuggestion = workbench.CompatibleToolSuggestions.SingleOrDefault(item => item.Tool.Id == "height-difference-edge");
             Check(
                 "compatible catalog exposes a published Filter plus current grid selection for Edge",

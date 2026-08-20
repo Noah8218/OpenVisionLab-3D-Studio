@@ -1381,6 +1381,42 @@ internal static class ToolRecipeValidationSetVerification
                     canceled ? "OperationCanceledException" : "execution was not canceled");
             }
 
+            var ownerStateChanges = 0;
+            var executionOwner = new ToolWorkbenchValidationSetExecutionOwner(
+                () => ownerStateChanges++);
+            var ownerExecution = executionOwner.ExecuteAsync(
+                graphDocument,
+                [
+                    new ToolRecipeValidationSampleInput(
+                        graphPassPath,
+                        ToolRecipeValidationSampleRole.Good),
+                    new ToolRecipeValidationSampleInput(
+                        graphFailPath,
+                        ToolRecipeValidationSampleRole.Bad),
+                    new ToolRecipeValidationSampleInput(
+                        graphErrorPath,
+                        ToolRecipeValidationSampleRole.HeldOut)
+                ],
+                new Progress<ToolRecipeValidationProgress>());
+            var ownerWasRunning = executionOwner.IsRunning;
+            executionOwner.Cancel();
+            var ownerCanceled = false;
+            try
+            {
+                ownerExecution.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                ownerCanceled = true;
+            }
+            Check(
+                "execution owner cancels the active replay and restores idle state",
+                ownerWasRunning
+                && ownerCanceled
+                && !executionOwner.IsRunning
+                && ownerStateChanges == 2,
+                $"running={ownerWasRunning};canceled={ownerCanceled};idle={!executionOwner.IsRunning};stateChanges={ownerStateChanges}");
+
             var workbench = new ToolWorkbenchViewModel(Path.Combine(artifactRoot, "recent-validation-set.json"));
             Check(
                 "workbench reopens the full graph recipe",
@@ -1418,7 +1454,16 @@ internal static class ToolRecipeValidationSetVerification
                 && !workbench.HasValidationEvidence
                 && !workbench.HasValidationThresholdCandidates,
                 $"recipeDirty={workbench.IsDirty};manifestDirty={workbench.IsValidationSetDefinitionDirty};unsaved={workbench.HasUncommittedRecipeChanges};expanded={workbench.IsValidationEvidenceExpanded};pending={workbench.ValidationSetSamples.Count(sample => sample.Status == "Pending")};issues={workbench.HasValidationSetIssues};heldOutSelected={workbench.IsSelectedValidationRoleHeldOut};evidence={workbench.HasValidationEvidence};candidates={workbench.HasValidationThresholdCandidates}");
-            workbench.RunValidationSetAsync().GetAwaiter().GetResult();
+            var workbenchRun = workbench.RunValidationSetAsync();
+            var ownerRunningStateObserved = workbench.IsValidationSetRunning
+                && workbench.CancelValidationSetCommand.CanExecute(null);
+            workbenchRun.GetAwaiter().GetResult();
+            Check(
+                "workbench projects the execution owner's running and cancel state",
+                ownerRunningStateObserved
+                && !workbench.IsValidationSetRunning
+                && !workbench.CancelValidationSetCommand.CanExecute(null),
+                $"runningObserved={ownerRunningStateObserved};runningAfter={workbench.IsValidationSetRunning};cancelAfter={workbench.CancelValidationSetCommand.CanExecute(null)}");
             Check(
                 "workbench exposes Pass Fail Error counts and selects the first issue",
                 workbench.ValidationSetAllCount == 3
@@ -1589,7 +1634,7 @@ internal static class ToolRecipeValidationSetVerification
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
         File.WriteAllLines(reportPath, lines);
         summary = $"Validation Set verification: {passed}/{total} passed | {Path.GetFullPath(reportPath)}";
-        return passed == total && total == 84;
+        return passed == total && total == 86;
     }
 
     private static ToolRecipeThresholdCandidate CreateMappingCandidate(

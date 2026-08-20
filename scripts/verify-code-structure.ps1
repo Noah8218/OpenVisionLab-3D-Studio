@@ -320,6 +320,33 @@ $workbenchViewModelDirectory = Split-Path -Parent $workbenchViewModelPath
 $viewerWorkspaceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ViewerWorkspaceSession.cs"
 $workbenchRecipeSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchRecipeSession.cs"
 $workbenchSourceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchSourceSession.cs"
+$workbenchSurfaceMatchExperimentSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/SurfaceMatchExperimentSession.cs"
+$workbenchSurfaceMatchExperimentWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.SurfaceMatchExperiment.cs"
+$workbenchValidationSetExecutionOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchValidationSetExecutionOwner.cs"
+$workbenchValidationSetWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.ValidationSet.cs"
+$workbenchFilterExecutionOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchFilterExecutionOwner.cs"
+$workbenchFilterExecutionWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.FilterExecution.cs"
+$workbenchDatumPlaneDeviationOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchDatumPlaneDeviationExecutionOwner.cs"
+$workbenchDatumPlaneDeviationWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.DatumPlaneDeviationExecution.cs"
+$workbenchRegridHeightFieldOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchRegridHeightFieldExecutionOwner.cs"
+$workbenchRegridHeightFieldWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.RegridHeightFieldExecution.cs"
+$workbenchThreePointPlaneOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchThreePointPlaneExecutionOwner.cs"
+$workbenchThreePointPlaneWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.ThreePointPlaneExecution.cs"
+$workbenchTwoPointLineOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchTwoPointLineExecutionOwner.cs"
+$workbenchTwoPointLineWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.TwoPointLineExecution.cs"
+$workbenchHeightDifferenceEdgeOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchHeightDifferenceEdgeExecutionOwner.cs"
+$workbenchHeightDifferenceEdgeWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.HeightDifferenceEdgeExecution.cs"
+$workbenchHeightMeasurementOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchHeightMeasurementExecutionOwner.cs"
+$workbenchHeightMeasurementWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.MeasurementExecution.cs"
+$workbenchXyzAffineOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchXyzAffineExecutionOwner.cs"
+$workbenchXyzAffineSolveWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.XYZAffineSolveExecution.cs"
+$workbenchXyzAffineApplyWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.XYZAffineApplyExecution.cs"
+$workbenchLineIntersectionOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchLineIntersectionExecutionOwner.cs"
+$workbenchLineIntersectionWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.LineIntersectionExecution.cs"
+$workbenchLandmarkCorrespondenceOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchLandmarkCorrespondenceExecutionOwner.cs"
+$workbenchLandmarkCorrespondenceWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.LandmarkCorrespondenceExecution.cs"
+$workbenchLineFitOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchLineFitExecutionOwner.cs"
+$workbenchLineFitWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.LineFitExecution.cs"
 $workbenchViewPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ToolRecipeWorkbenchView.xaml"
 $viewerWorkspaceViewPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ViewerWorkspaceView.xaml"
 $thicknessRepeatServicePath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Authoring/ThicknessRepeatGridAuthoringService.cs"
@@ -389,9 +416,37 @@ $viewerSceneViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot
 $workbenchTeachingCaptureSessionSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchTeachingCaptureSession.cs"))
 $workbenchRecipeSessionSource = [System.IO.File]::ReadAllText($workbenchRecipeSessionPath)
 $workbenchSourceSessionSource = [System.IO.File]::ReadAllText($workbenchSourceSessionPath)
+$workbenchSurfaceMatchExperimentSessionSource = [System.IO.File]::ReadAllText($workbenchSurfaceMatchExperimentSessionPath)
+$workbenchSurfaceMatchExperimentWrapperSource = [System.IO.File]::ReadAllText($workbenchSurfaceMatchExperimentWrapperPath)
+$workbenchValidationSetExecutionOwnerSource = [System.IO.File]::ReadAllText($workbenchValidationSetExecutionOwnerPath)
+$workbenchValidationSetWrapperSource = [System.IO.File]::ReadAllText($workbenchValidationSetWrapperPath)
+$workbenchFilterExecutionOwnerSource = [System.IO.File]::ReadAllText($workbenchFilterExecutionOwnerPath)
+$workbenchFilterExecutionWrapperSource = [System.IO.File]::ReadAllText($workbenchFilterExecutionWrapperPath)
+$workbenchDatumPlaneDeviationOwnerSource = [System.IO.File]::ReadAllText($workbenchDatumPlaneDeviationOwnerPath)
+$workbenchDatumPlaneDeviationWrapperSource = [System.IO.File]::ReadAllText($workbenchDatumPlaneDeviationWrapperPath)
+$workbenchRegridHeightFieldOwnerSource = [System.IO.File]::ReadAllText($workbenchRegridHeightFieldOwnerPath)
+$workbenchRegridHeightFieldWrapperSource = [System.IO.File]::ReadAllText($workbenchRegridHeightFieldWrapperPath)
+$workbenchThreePointPlaneOwnerSource = [System.IO.File]::ReadAllText($workbenchThreePointPlaneOwnerPath)
+$workbenchThreePointPlaneWrapperSource = [System.IO.File]::ReadAllText($workbenchThreePointPlaneWrapperPath)
+$workbenchTwoPointLineOwnerSource = [System.IO.File]::ReadAllText($workbenchTwoPointLineOwnerPath)
+$workbenchTwoPointLineWrapperSource = [System.IO.File]::ReadAllText($workbenchTwoPointLineWrapperPath)
+$workbenchHeightDifferenceEdgeOwnerSource = [System.IO.File]::ReadAllText($workbenchHeightDifferenceEdgeOwnerPath)
+$workbenchHeightDifferenceEdgeWrapperSource = [System.IO.File]::ReadAllText($workbenchHeightDifferenceEdgeWrapperPath)
+$workbenchHeightMeasurementOwnerSource = [System.IO.File]::ReadAllText($workbenchHeightMeasurementOwnerPath)
+$workbenchHeightMeasurementWrapperSource = [System.IO.File]::ReadAllText($workbenchHeightMeasurementWrapperPath)
+$workbenchXyzAffineOwnerSource = [System.IO.File]::ReadAllText($workbenchXyzAffineOwnerPath)
+$workbenchXyzAffineSolveWrapperSource = [System.IO.File]::ReadAllText($workbenchXyzAffineSolveWrapperPath)
+$workbenchXyzAffineApplyWrapperSource = [System.IO.File]::ReadAllText($workbenchXyzAffineApplyWrapperPath)
+$workbenchLineIntersectionOwnerSource = [System.IO.File]::ReadAllText($workbenchLineIntersectionOwnerPath)
+$workbenchLineIntersectionWrapperSource = [System.IO.File]::ReadAllText($workbenchLineIntersectionWrapperPath)
+$workbenchLandmarkCorrespondenceOwnerSource = [System.IO.File]::ReadAllText($workbenchLandmarkCorrespondenceOwnerPath)
+$workbenchLandmarkCorrespondenceWrapperSource = [System.IO.File]::ReadAllText($workbenchLandmarkCorrespondenceWrapperPath)
+$workbenchLineFitOwnerSource = [System.IO.File]::ReadAllText($workbenchLineFitOwnerPath)
+$workbenchLineFitWrapperSource = [System.IO.File]::ReadAllText($workbenchLineFitWrapperPath)
 $workbenchRootViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs"))
 $viewerRecipeViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/ViewModels/MainWindowViewModel.Recipes.cs"))
 $viewerRecipeRecipesSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs"))
+$viewerRecipeRuleCoordinatorSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRuleCoordinator.cs"))
 $viewerRecipeApplyCoordinatorSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs"))
 $viewerRecipeSaveCoordinatorSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs"))
 $viewerRecipeViewSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Recipes.cs"))
@@ -525,6 +580,190 @@ Add-Check "WorkbenchSourceStateOwner" (
     $workbenchRootViewModelSource -notmatch "private IReadOnlyList<string> sourceIdentityErrors" -and
     $workbenchRootViewModelSource -notmatch "private ToolRecipeSelectionSourceBinding\\?\\s*SourceSession\\.SourceBinding"
 ) "ToolWorkbenchSourceSession owns loaded source identity, provenance, opened-source snapshot, and source-identity errors while ToolWorkbenchViewModel retains runtime policy"
+Add-Check "WorkbenchSurfaceMatchExperimentSession" (
+    $workbenchSurfaceMatchExperimentSessionSource -match "internal sealed class SurfaceMatchExperimentSession" -and
+    $workbenchSurfaceMatchExperimentSessionSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchSurfaceMatchExperimentSessionSource -match "SurfaceMatchEvaluationExecutor\.Execute" -and
+    $workbenchSurfaceMatchExperimentSessionSource -match "public async Task<bool> PreviewAsync\(\)" -and
+    $workbenchSurfaceMatchExperimentSessionSource -match "public void Publish\(\)" -and
+    $workbenchRootViewModelSource -match "new SurfaceMatchExperimentSession\(" -and
+    $workbenchSurfaceMatchExperimentWrapperSource -match "surfaceMatchExperiment\.PreviewAsync\(\)" -and
+    $workbenchSurfaceMatchExperimentWrapperSource -match "surfaceMatchExperiment\.Publish\(\)" -and
+    $workbenchSurfaceMatchExperimentWrapperSource -notmatch "CancellationTokenSource\? surfaceMatchExperimentCancellation" -and
+    $workbenchSurfaceMatchExperimentWrapperSource -notmatch "SurfaceMatchEvaluationExecutor\.Execute"
+) "Surface Match Experiment session owns candidate cancellation, Preview/Publish, display selection, status, stale/discard/load/clear lifecycle, and direct shared execution; ToolWorkbenchViewModel retains bindings and Shell evidence/display composition"
+Add-Check "WorkbenchValidationSetExecutionOwner" (
+    $workbenchValidationSetExecutionOwnerSource -match "internal sealed class ToolWorkbenchValidationSetExecutionOwner" -and
+    $workbenchValidationSetExecutionOwnerSource -match "private CancellationTokenSource\? cancellation" -and
+    $workbenchValidationSetExecutionOwnerSource -match "public bool IsRunning \{ get; private set; \}" -and
+    $workbenchValidationSetExecutionOwnerSource -match "ToolRecipeValidationSetExecution\.Execute" -and
+    $workbenchValidationSetExecutionOwnerSource -match "public async Task<ToolRecipeValidationSetResult> ExecuteAsync" -and
+    $workbenchValidationSetExecutionOwnerSource -match "public void Cancel\(\)" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchValidationSetExecutionOwner\(" -and
+    $workbenchValidationSetWrapperSource -match "validationSetExecutionOwner\.ExecuteAsync\(" -and
+    $workbenchValidationSetWrapperSource -match "validationSetExecutionOwner\.Cancel\(\)" -and
+    $workbenchValidationSetWrapperSource -notmatch "CancellationTokenSource\? validationSetCancellation" -and
+    $workbenchValidationSetWrapperSource -notmatch "private bool isValidationSetRunning" -and
+    $workbenchValidationSetWrapperSource -notmatch "ToolRecipeValidationSetExecution\.Execute"
+) "Validation Set cancellation, running state, and direct Run/development/Held-out execution belong to one concrete owner; ToolWorkbenchViewModel retains sample, threshold-review, evidence, persistence, and presentation policy"
+Add-Check "WorkbenchFilterExecutionOwner" (
+    $workbenchFilterExecutionOwnerSource -match "internal sealed class ToolWorkbenchFilterExecutionOwner" -and
+    $workbenchFilterExecutionOwnerSource -match "private CancellationTokenSource\? filterPreviewCancellation" -and
+    $workbenchFilterExecutionOwnerSource -match "private C3DHeightFieldSnapshot\? filterPreviewOutput" -and
+    $workbenchFilterExecutionOwnerSource -match "ToolRecipeFilterExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchFilterExecutionOwner\(" -and
+    $workbenchFilterExecutionWrapperSource -match "filterExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchFilterExecutionWrapperSource -match "filterExecutionOwner\.Publish\(\)" -and
+    $workbenchFilterExecutionWrapperSource -notmatch "CancellationTokenSource\? filterPreviewCancellation" -and
+    $workbenchFilterExecutionWrapperSource -notmatch "ToolRecipeFilterExecution\.Execute"
+) "Filter cancellation, Preview output/path, running/stale/published state, downstream Edge invalidation, and direct execution belong to the existing owner; ToolWorkbenchViewModel retains selected-step routing, Ordered Run, kernel authoring, and compatibility bindings"
+Add-Check "WorkbenchDatumPlaneDeviationExecutionOwner" (
+    $workbenchDatumPlaneDeviationOwnerSource -match "internal sealed class ToolWorkbenchDatumPlaneDeviationExecutionOwner" -and
+    $workbenchDatumPlaneDeviationOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchDatumPlaneDeviationOwnerSource -match "private C3DDatumPlaneDeviationFeature\? previewOutput" -and
+    $workbenchDatumPlaneDeviationOwnerSource -match "ToolRecipeDatumPlaneDeviationExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchDatumPlaneDeviationExecutionOwner datumPlaneDeviationExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchDatumPlaneDeviationExecutionOwner\(" -and
+    $workbenchRootViewModelSource -notmatch "\(\) => IsSelectedStepRemoveOutlierPixels" -and
+    $workbenchRootViewModelSource -notmatch "\(\) => IsSelectedStepLevelSurface" -and
+    $workbenchDatumPlaneDeviationWrapperSource -match "datumPlaneDeviationExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchDatumPlaneDeviationWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchDatumPlaneDeviationWrapperSource -notmatch "Dictionary<" -and
+    $workbenchDatumPlaneDeviationWrapperSource -notmatch "ToolRecipeDatumPlaneDeviationExecution\.(Execute|TryPrepare)"
+) "Datum Plane Deviation cancellation, Preview output, published registry, stale/running state, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and composition callbacks"
+Add-Check "WorkbenchRegridHeightFieldExecutionOwner" (
+    $workbenchRegridHeightFieldOwnerSource -match "internal sealed class ToolWorkbenchRegridHeightFieldExecutionOwner" -and
+    $workbenchRegridHeightFieldOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchRegridHeightFieldOwnerSource -match "private C3DTransformedHeightField\? previewOutput" -and
+    $workbenchRegridHeightFieldOwnerSource -match "private readonly Dictionary<string, C3DTransformedHeightField> publishedOutputs" -and
+    $workbenchRegridHeightFieldOwnerSource -match "ToolRecipeRegridHeightFieldExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchRegridHeightFieldExecutionOwner regridHeightFieldExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchRegridHeightFieldExecutionOwner\(" -and
+    $workbenchRegridHeightFieldWrapperSource -match "regridHeightFieldExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchRegridHeightFieldWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchRegridHeightFieldWrapperSource -notmatch "Dictionary<" -and
+    $workbenchRegridHeightFieldWrapperSource -notmatch "ToolRecipeRegridHeightFieldExecution\.(Execute|TryValidateRoute)"
+) "Re-grid Height Field cancellation, Preview output, published registry, stale/running state, coverage-gated Publish policy, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and composition callbacks"
+Add-Check "WorkbenchThreePointPlaneExecutionOwner" (
+    $workbenchThreePointPlaneOwnerSource -match "internal sealed class ToolWorkbenchThreePointPlaneExecutionOwner" -and
+    $workbenchThreePointPlaneOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchThreePointPlaneOwnerSource -match "private C3DThreePointPlaneFeature\? previewOutput" -and
+    $workbenchThreePointPlaneOwnerSource -match "private readonly Dictionary<string, C3DThreePointPlaneFeature> publishedOutputs" -and
+    $workbenchThreePointPlaneOwnerSource -match "private readonly HashSet<string> staleOutputIds" -and
+    $workbenchThreePointPlaneOwnerSource -match "ToolRecipeThreePointPlaneExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchThreePointPlaneExecutionOwner threePointPlaneExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchThreePointPlaneExecutionOwner\(" -and
+    $workbenchThreePointPlaneWrapperSource -match "threePointPlaneExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchThreePointPlaneWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchThreePointPlaneWrapperSource -notmatch "Dictionary<" -and
+    $workbenchThreePointPlaneWrapperSource -notmatch "HashSet<" -and
+    $workbenchThreePointPlaneWrapperSource -notmatch "ToolRecipeThreePointPlaneExecution\.(Execute|TryPrepare)"
+) "3-Point Plane cancellation, Preview output, published and stale registries, running/stale/published state, downstream Datum invalidation, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and composition callbacks"
+Add-Check "WorkbenchTwoPointLineExecutionOwner" (
+    $workbenchTwoPointLineOwnerSource -match "internal sealed class ToolWorkbenchTwoPointLineExecutionOwner" -and
+    $workbenchTwoPointLineOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchTwoPointLineOwnerSource -match "private C3DTwoPointLineFeature\? previewOutput" -and
+    $workbenchTwoPointLineOwnerSource -match "private readonly Dictionary<string, C3DTwoPointLineFeature> publishedOutputs" -and
+    $workbenchTwoPointLineOwnerSource -match "private readonly HashSet<string> staleOutputIds" -and
+    $workbenchTwoPointLineOwnerSource -match "ToolRecipeTwoPointLineExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchTwoPointLineExecutionOwner twoPointLineExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchTwoPointLineExecutionOwner\(" -and
+    $workbenchTwoPointLineWrapperSource -match "twoPointLineExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchTwoPointLineWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchTwoPointLineWrapperSource -notmatch "Dictionary<" -and
+    $workbenchTwoPointLineWrapperSource -notmatch "HashSet<" -and
+    $workbenchTwoPointLineWrapperSource -notmatch "ToolRecipeTwoPointLineExecution\.(Execute|TryPrepare)"
+) "2-Point Line cancellation, Preview output, published and stale registries, running/stale/published state, downstream Line Intersection invalidation, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and line-output composition"
+Add-Check "WorkbenchHeightDifferenceEdgeExecutionOwner" (
+    $workbenchHeightDifferenceEdgeOwnerSource -match "internal sealed class ToolWorkbenchHeightDifferenceEdgeExecutionOwner" -and
+    $workbenchHeightDifferenceEdgeOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchHeightDifferenceEdgeOwnerSource -match "private C3DHeightDifferenceEdgePointSet\? previewOutput" -and
+    $workbenchHeightDifferenceEdgeOwnerSource -match "private readonly Dictionary<string, C3DHeightDifferenceEdgePointSet> publishedOutputs" -and
+    $workbenchHeightDifferenceEdgeOwnerSource -match "ToolRecipeHeightDifferenceEdgeExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchHeightDifferenceEdgeExecutionOwner heightDifferenceEdgeExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchHeightDifferenceEdgeExecutionOwner\(" -and
+    $workbenchHeightDifferenceEdgeWrapperSource -match "heightDifferenceEdgeExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchHeightDifferenceEdgeWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchHeightDifferenceEdgeWrapperSource -notmatch "private C3DHeightDifferenceEdgePointSet\? edgePreviewOutput" -and
+    $workbenchHeightDifferenceEdgeWrapperSource -notmatch "Dictionary<string, C3DHeightDifferenceEdgePointSet> publishedEdgeOutputs" -and
+    $workbenchHeightDifferenceEdgeWrapperSource -notmatch "ToolRecipeHeightDifferenceEdgeExecution\.(Execute|TryPrepare)"
+) "Height Difference Edge cancellation, Preview output, published registry, Filter readiness, running/stale/published state, downstream Line Fit invalidation, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains smoke configuration and compatibility bindings"
+Add-Check "WorkbenchHeightMeasurementExecutionOwner" (
+    $workbenchHeightMeasurementOwnerSource -match "internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner" -and
+    $workbenchHeightMeasurementOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchHeightMeasurementOwnerSource -match "private ToolRecipeHeightMeasurementOutput\? previewOutput" -and
+    $workbenchHeightMeasurementOwnerSource -match "ToolRecipeHeightMeasurementExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchHeightMeasurementExecutionOwner heightMeasurementExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchHeightMeasurementExecutionOwner\(" -and
+    $workbenchHeightMeasurementWrapperSource -match "heightMeasurementExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchHeightMeasurementWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchHeightMeasurementWrapperSource -notmatch "private ToolRecipeHeightMeasurementOutput\? measurementPreviewOutput" -and
+    $workbenchHeightMeasurementWrapperSource -notmatch "TryGetCurrentMeasurementHeightField" -and
+    $workbenchHeightMeasurementWrapperSource -notmatch "ToolRecipeHeightMeasurementExecution\.(Execute|TryPrepare)"
+) "Height Measurement cancellation, Preview output, input resolution, completeness presentation routing, running/stale/published state, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains dual-ROI teaching and compatibility bindings"
+Add-Check "WorkbenchXyzAffineExecutionOwner" (
+    $workbenchXyzAffineOwnerSource -match "internal sealed class ToolWorkbenchXyzAffineExecutionOwner" -and
+    $workbenchXyzAffineOwnerSource -match "private CancellationTokenSource\? solveCancellation" -and
+    $workbenchXyzAffineOwnerSource -match "private C3DAffineTransform3D\? solveOutput" -and
+    $workbenchXyzAffineOwnerSource -match "private readonly Dictionary<string, C3DAffineTransform3D> publishedSolveOutputs" -and
+    $workbenchXyzAffineOwnerSource -match "private CancellationTokenSource\? applyCancellation" -and
+    $workbenchXyzAffineOwnerSource -match "private C3DTransformedPointCloud\? applyOutput" -and
+    $workbenchXyzAffineOwnerSource -match "private readonly Dictionary<string, C3DTransformedPointCloud> publishedApplyOutputs" -and
+    $workbenchXyzAffineOwnerSource -match "ToolRecipeXYZAffineSolveExecution\.Execute" -and
+    $workbenchXyzAffineOwnerSource -match "ToolRecipeXYZAffineApplyExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchXyzAffineExecutionOwner xyzAffineExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchXyzAffineExecutionOwner\(" -and
+    $workbenchXyzAffineSolveWrapperSource -match "xyzAffineExecutionOwner\.PreviewSolveAsync\(\)" -and
+    $workbenchXyzAffineApplyWrapperSource -match "xyzAffineExecutionOwner\.PreviewApplyAsync\(\)" -and
+    $workbenchXyzAffineSolveWrapperSource -notmatch "CancellationTokenSource|Dictionary<|TryGetCurrentAffineSolveInput" -and
+    $workbenchXyzAffineApplyWrapperSource -notmatch "CancellationTokenSource|Dictionary<|TryGetCurrentAffineApplyInput" -and
+    $workbenchXyzAffineSolveWrapperSource -notmatch "ToolRecipeXYZAffineSolveExecution\.(Execute|TryPrepare)" -and
+    $workbenchXyzAffineApplyWrapperSource -notmatch "ToolRecipeXYZAffineApplyExecution\.(Execute|TryPrepare|TryValidateRoute)"
+) "XYZ Affine A1 Solve and A2 Apply cancellation, Preview outputs, published registries, routed inputs, cross-stage invalidation, and direct execution belong to one cohesive owner; the partials retain compatibility projection only"
+Add-Check "WorkbenchLineIntersectionExecutionOwner" (
+    $workbenchLineIntersectionOwnerSource -match "internal sealed class ToolWorkbenchLineIntersectionExecutionOwner" -and
+    $workbenchLineIntersectionOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchLineIntersectionOwnerSource -match "private C3DLineIntersectionFeature\? previewOutput" -and
+    $workbenchLineIntersectionOwnerSource -match "private readonly Dictionary<string, C3DLineIntersectionFeature> publishedOutputs" -and
+    $workbenchLineIntersectionOwnerSource -match "ToolRecipeLineIntersectionExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchLineIntersectionExecutionOwner lineIntersectionExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchLineIntersectionExecutionOwner\(" -and
+    $workbenchLineIntersectionWrapperSource -match "lineIntersectionExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchLineIntersectionWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchLineIntersectionWrapperSource -notmatch "Dictionary<" -and
+    $workbenchLineIntersectionWrapperSource -notmatch "ToolRecipeLineIntersectionExecution\.(Execute|TryPrepare)"
+) "Line Intersection cancellation, Preview output, published registry, input readiness, running/stale/published state, downstream Landmark refresh, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and published-line composition"
+Add-Check "WorkbenchLandmarkCorrespondenceExecutionOwner" (
+    $workbenchLandmarkCorrespondenceOwnerSource -match "internal sealed class ToolWorkbenchLandmarkCorrespondenceExecutionOwner" -and
+    $workbenchLandmarkCorrespondenceOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchLandmarkCorrespondenceOwnerSource -match "private C3DLandmarkCorrespondenceSet\? previewOutput" -and
+    $workbenchLandmarkCorrespondenceOwnerSource -match "private readonly Dictionary<string, C3DLandmarkCorrespondenceSet> publishedOutputs" -and
+    $workbenchLandmarkCorrespondenceOwnerSource -match "ToolRecipeLandmarkCorrespondenceExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchLandmarkCorrespondenceExecutionOwner landmarkCorrespondenceExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchLandmarkCorrespondenceExecutionOwner\(" -and
+    $workbenchLandmarkCorrespondenceWrapperSource -match "landmarkCorrespondenceExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchLandmarkCorrespondenceWrapperSource -notmatch "CancellationTokenSource|Dictionary<" -and
+    $workbenchLandmarkCorrespondenceWrapperSource -notmatch "ToolRecipeLandmarkCorrespondenceExecution\.(Execute|TryPrepare)"
+) "Landmark Correspondence cancellation, Preview output, published registry, CornerAnchor readiness, running/stale/published state, downstream XYZ invalidation, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains compatibility bindings and display composition"
+Add-Check "WorkbenchLineFitExecutionOwner" (
+    $workbenchLineFitOwnerSource -match "internal sealed class ToolWorkbenchLineFitExecutionOwner" -and
+    $workbenchLineFitOwnerSource -match "private CancellationTokenSource\? previewCancellation" -and
+    $workbenchLineFitOwnerSource -match "private C3DLineFeature\? previewOutput" -and
+    $workbenchLineFitOwnerSource -match "private readonly Dictionary<string, C3DLineFeature> publishedOutputs" -and
+    $workbenchLineFitOwnerSource -match "ObservableCollection<LineFitResidualPlotPoint> ResidualPlotPoints" -and
+    $workbenchLineFitOwnerSource -match "RelayCommand SelectDiagnosticCommand" -and
+    $workbenchLineFitOwnerSource -match "ToolRecipeLineFitExecution\.Execute" -and
+    $workbenchRootViewModelSource -match "private readonly ToolWorkbenchLineFitExecutionOwner lineFitExecutionOwner" -and
+    $workbenchRootViewModelSource -match "new ToolWorkbenchLineFitExecutionOwner\(" -and
+    $workbenchLineFitWrapperSource -match "lineFitExecutionOwner\.PreviewAsync\(\)" -and
+    $workbenchLineFitWrapperSource -notmatch "CancellationTokenSource" -and
+    $workbenchLineFitWrapperSource -notmatch "private C3DLineFeature\? lineFitPreviewOutput" -and
+    $workbenchLineFitWrapperSource -notmatch "Dictionary<string, C3DLineFeature> publishedLineFitOutputs" -and
+    $workbenchLineFitWrapperSource -notmatch "private C3DLineFeaturePointDiagnostic\? selectedLineFitDiagnostic" -and
+    $workbenchLineFitWrapperSource -notmatch "RebuildLineFitResidualPlot" -and
+    $workbenchLineFitWrapperSource -notmatch "ToolRecipeLineFitExecution\.(Execute|TryPrepare)"
+) "Line Fit cancellation, Preview output, published registry, diagnostics selection, residual-plot presentation, running/stale/published state, downstream Line Intersection invalidation, and direct execution belong to the independent owner; ToolWorkbenchViewModel retains smoke configuration and compatibility bindings"
 Add-Check "ScrollIntoViewBehaviorBoundary" (
     (Test-Path -LiteralPath $scrollIntoViewBehaviorPath) -and
     ([System.IO.File]::ReadAllText($scrollIntoViewBehaviorPath) -match "DependencyProperty.RegisterAttached") -and
@@ -562,7 +801,8 @@ Add-Check "ViewerHeightDeviationRecipeLoadBoundary" (
     $viewerRecipeRecipesSource -match "internal sealed record HeightDeviationRecipeLoadPlan" -and
     $viewerRecipeRecipesSource -match "static HeightDeviationRecipeLoadPlan Create" -and
     $viewerRecipeRecipesSource -match "C3DHeightGrid\.Load\(" -and
-    $viewerRecipeRecipesSource -match "HeightDeviationRule\.Evaluate\(" -and
+    $viewerRecipeRecipesSource -match "HeightDeviationRuleCoordinator\.CreatePreviewResult\(" -and
+    $viewerRecipeRuleCoordinatorSource -match "HeightDeviationRule\.Evaluate\(" -and
     $viewerHeightDeviationApplySource -match "HeightDeviationRecipeLoadPlan\.Create\(" -and
     $viewerHeightDeviationApplySource -notmatch "C3DHeightGrid\.Load\(sourcePath, viewModel\.C3DMaxRenderedPoints\)" -and
     $viewerHeightDeviationApplySource -notmatch "HeightDeviationRule\.Evaluate\(new HeightDeviationRuleInput"

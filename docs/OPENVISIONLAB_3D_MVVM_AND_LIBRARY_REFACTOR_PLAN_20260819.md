@@ -411,9 +411,9 @@ Viewer or Workbench in one turn.
    current-build Wide/Compact exact-source Source Quality screenshots pass.
 4. M4 move Viewer recipe workflow in small slices: validation, load/apply,
    save, then rule/Preview orchestration. M4a (Height Deviation source loading
-   and rule preparation), M4b (Height Deviation apply/state orchestration), and
-   M4c (Height Deviation recipe save ownership) are complete. M4d is the next
-   rule/Preview or next recipe-family boundary.
+   and rule preparation), M4b (Height Deviation apply/state orchestration),
+   M4c (Height Deviation recipe save ownership), and M4d (rule/Preview
+   orchestration) are complete.
    Preserve file-dialog and rendering adapters plus public host compatibility |
    Recommended model: `gpt-5.6-terra` | Reasoning effort: `medium` per slice.
 5. M5 extract Workbench execution owners one tool family at a time. Each owner
@@ -539,6 +539,370 @@ Both screenshot quality reports were accepted on attempt 1; both saved JSON
 documents parsed successfully and were reloaded by the workflow verifier.
 `git diff --check` passed. This is an M4c checkpoint; the broader M4 workflow
 remains open for M4d rule/Preview or next recipe-family ownership.
+
+### PL-0026 M5 Datum Plane Deviation checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.DatumPlaneDeviationExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output dictionary,
+running/stale/published state, input resolution, direct Tool execution, and
+Preview/Publish lifecycle. The new owner is
+`ToolWorkbenchDatumPlaneDeviationExecutionOwner`. The root ViewModel now
+retains public compatibility bindings plus explicit log, display, and property
+notification callbacks. The former partial contains no cancellation state,
+published dictionary, or direct `ToolRecipeDatumPlaneDeviationExecution` call.
+
+Focused verification passed Datum Plane Deviation `12/12`, Remove Outlier
+Pixels `14/14`, and Level Surface `17/17`. The focused run found that the two
+earlier preparation owners' selected-tool delegates recursively called their
+own compatibility properties; their composition wiring now compares the
+selected Tool ID directly. The expanded structure guard passes `55/55`, and
+the Release solution builds with zero warnings and errors. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+20260820-pl0026-m5-datum-owner/`. The refreshed fixed R0 hashes and both
+Wide/Compact `-ValidateOnly` checks pass on `\\.\DISPLAY2`; the unaided owner
+runs remain external. M5 remains open for the other direct execution families;
+Re-grid Height Field is the next smallest bounded owner candidate. Recommended
+model: `gpt-5.6-terra`; reasoning effort: `medium`.
+
+### PL-0026 M5 Re-grid Height Field checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.RegridHeightFieldExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output dictionary,
+running/stale/published state, A2 input resolution, coverage-gated Publish
+policy, and direct `ToolRecipeRegridHeightFieldExecution` calls. The new owner
+is `ToolWorkbenchRegridHeightFieldExecutionOwner`. The root ViewModel now
+retains dependency composition, public compatibility bindings, publication
+notification, property notifications, command refresh, and artifact
+projection. The former partial contains no cancellation state, published
+dictionary, or direct Re-grid execution/route-validation call.
+
+Focused Workbench verification passes `13/13`, including no implicit A2
+execution, explicit Preview, Tools-output identity, exact Preview Publish,
+artifact state, draft-versus-Apply behavior, stale evidence, and published
+registry invalidation. The expanded structure guard passes `56/56`; the
+Release solution builds with zero warnings and errors; and `git diff --check`
+passes. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-regrid-owner/`. The refreshed fixed R0 package passes both Wide and
+Compact `-ValidateOnly` on `\\.\DISPLAY2`; the unaided owner runs remain
+external. This is an M5 checkpoint, not M5 completion. Three-Point Plane is
+the next smallest direct-execution owner with an existing focused Workbench
+verification seam. Recommended model: `gpt-5.6-terra`; reasoning effort:
+`medium`.
+
+### PL-0026 M5 3-Point Plane checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.ThreePointPlaneExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output and stale-output
+registries, running/stale/published state, ordered-pick presentation,
+recipe-relative input preparation, downstream Datum invalidation, display
+requests, and direct `ToolRecipeThreePointPlaneExecution` calls. The new owner
+is `ToolWorkbenchThreePointPlaneExecutionOwner`. The root ViewModel now owns
+only dependency composition and property/command projection, while the former
+partial retains its public events, event-argument contract, and compatibility
+delegates.
+
+Focused 3-Point Plane Workbench verification passes `11/11`; the downstream
+Datum Plane Deviation regression passes `12/12`; and the expanded structure
+guard passes `57/57`. The Release solution builds with zero warnings and
+errors, `git diff --check` passes, and refreshed Wide/Compact fixed-package
+`-ValidateOnly` checks pass on `\\.\DISPLAY2` without launching the
+application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-three-point-plane-owner/`. This is an M5 checkpoint, not M5
+completion. Two-Point Line is the next smallest remaining owner with an
+existing focused Workbench verification seam. Recommended model:
+`gpt-5.6-terra`; reasoning effort: `medium`.
+
+### PL-0026 M5 Two-Point Line checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.TwoPointLineExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output and stale-output
+registries, running/stale/published state, selection presentation,
+recipe-relative input preparation, downstream Line Intersection invalidation,
+display requests, and direct `ToolRecipeTwoPointLineExecution` calls. The new
+owner is `ToolWorkbenchTwoPointLineExecutionOwner`. The root ViewModel now
+owns dependency composition, line-output composition across the Two-Point and
+Line Fit producers, and property/command projection, while the former partial
+retains its public events, event-argument contract, and compatibility
+delegates.
+
+Focused Two-Point Line Workbench verification passes `16/16`; the downstream
+Line Intersection regression passes `23/23`; and the expanded structure guard
+passes `58/58`. The Release solution builds with zero warnings and errors,
+`git diff --check` passes, and refreshed Wide/Compact fixed-package
+`-ValidateOnly` checks pass on `\\.\DISPLAY2` without launching the
+application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-two-point-line-owner/`. This is an M5 checkpoint, not M5 completion.
+Line Intersection is the next smallest remaining direct-execution owner with
+an existing focused Workbench verification seam. Recommended model:
+`gpt-5.6-terra`; reasoning effort: `medium`.
+
+### PL-0026 M5 Line Intersection checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.LineIntersectionExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output registry,
+running/stale/published state, published-line input readiness and summaries,
+downstream Landmark readiness refresh, display requests, and direct
+`ToolRecipeLineIntersectionExecution` calls. The new owner is
+`ToolWorkbenchLineIntersectionExecutionOwner`. The root ViewModel now owns
+dependency composition, public event compatibility, published-line
+composition across Two-Point Line and Line Fit, and property/command
+projection. The former partial retains only compatibility delegates and its
+public event-argument contract.
+
+Focused Line Intersection Workbench verification passes `23/23`; the upstream
+Two-Point Line regression, including downstream corner stale invalidation,
+passes `16/16`; and the expanded structure guard passes `59/59`. The Release
+solution builds with zero warnings and errors, `git diff --check` passes, and
+refreshed Wide/Compact fixed-package `-ValidateOnly` checks pass on
+`\\.\DISPLAY2` without launching the application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-line-intersection-owner/`. This is an M5 checkpoint, not M5
+completion. Line Fit is the next bounded owner because the smaller remaining
+XYZ Affine and Landmark direct-execution families do not have focused
+Workbench verifiers while Line Fit does. Recommended model:
+`gpt-5.6-terra`; reasoning effort: `medium`.
+
+### PL-0026 M5 Line Fit checkpoint evidence - 2026-08-20
+
+The former owner was `ToolWorkbenchViewModel.LineFitExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output registry,
+running/stale/published state, upstream EdgePointSet readiness, diagnostic
+selection command and state, residual-plot transformation, downstream Line
+Intersection invalidation, display requests, and direct
+`ToolRecipeLineFitExecution` calls. The new owner is
+`ToolWorkbenchLineFitExecutionOwner`. The root ViewModel now owns dependency
+composition, smoke-only parameter configuration, public event compatibility,
+and property/command projection. The former partial retains only those smoke
+and compatibility surfaces.
+
+Focused Line Fit Workbench verification passes `14/14`, including exact
+Preview/Publish identity, presentation-only diagnostic selection, residual
+plot population, stale clearing without rerun, and upstream Edge preservation.
+The downstream Line Intersection regression passes `23/23`; the expanded
+structure guard passes `60/60`; and the Release solution builds with zero
+warnings and errors. `git diff --check` and refreshed Wide/Compact
+fixed-package `-ValidateOnly` checks pass on `\\.\DISPLAY2` without launching
+the application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-line-fit-owner/`. This is an M5 checkpoint, not M5 completion. Height
+Difference Edge is the next bounded owner because the smaller remaining XYZ
+Affine and Landmark families do not have focused Workbench verifiers while
+Height Difference Edge does. Recommended model: `gpt-5.6-terra`; reasoning
+effort: `medium`.
+
+### PL-0026 M5 Height Difference Edge checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.HeightDifferenceEdgeExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output registry,
+running/stale/published state, Filter readiness and display-path resolution,
+parameter presentation, downstream Line Fit invalidation, display requests,
+and direct `ToolRecipeHeightDifferenceEdgeExecution` calls. The new owner is
+`ToolWorkbenchHeightDifferenceEdgeExecutionOwner`. The root ViewModel now owns
+dependency composition, smoke-only selection setup, public event
+compatibility, and property/command projection. The former partial retains
+only those smoke and compatibility surfaces.
+
+Focused Height Difference Edge Workbench verification passes `11/11`,
+including explicit upstream Filter Preview/Publish gating, exact
+Preview/Publish identity, exact display input path, headless output-hash
+parity, stale-without-rerun behavior, and ordered Run blocking. The downstream
+Line Fit regression passes `14/14`; the expanded structure guard passes
+`61/61`; and the Debug and Release solutions build with zero warnings and
+errors. The refreshed Wide/Compact fixed-package `-ValidateOnly` checks pass
+without launching the application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-height-difference-edge-owner/`. This is an M5 checkpoint, not M5
+completion. Height Measurement is next because it has an existing focused
+Workbench verifier; the smaller remaining XYZ Affine and Landmark families
+require a focused seam first. Recommended model: `gpt-5.6-terra`; reasoning
+effort: `medium`.
+
+### PL-0026 M5 Height Measurement checkpoint evidence - 2026-08-20
+
+The former owner was `ToolWorkbenchViewModel.MeasurementExecution.cs`: it
+held cancellation, Preview output, running/stale/published state, raw or
+Published Re-grid input resolution, completeness presentation updates, and
+direct `ToolRecipeHeightMeasurementExecution` calls. The new owner is
+`ToolWorkbenchHeightMeasurementExecutionOwner`. The root ViewModel now owns
+dependency composition and explicit presentation/property refresh callbacks;
+the former partial retains the ordered dual-ROI teaching workflow and public
+compatibility projection.
+
+Final-source Debug and Release Height Measurement Workbench verification pass
+`56/56`. Artifact Navigator passes `32/32` after its stale expectation was
+corrected to preserve the product contract that downstream readiness changes
+only after explicit upstream Publish, not Preview. The expanded structure
+guard passes `62/62`, and Debug and Release solution builds complete with zero
+warnings and errors. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-height-measurement-owner/`. This is an M5 checkpoint, not M5
+completion. The next bounded slice is a focused verification seam for the XYZ
+Affine Solve/Apply pipeline followed by its execution-owner extraction;
+Landmark Correspondence follows before M7. Recommended model:
+`gpt-5.6-terra`; reasoning effort: `medium`.
+
+### PL-0026 M5 XYZ Affine Solve/Apply checkpoint evidence - 2026-08-20
+
+The former owners were
+`ToolWorkbenchViewModel.XYZAffineSolveExecution.cs` and
+`ToolWorkbenchViewModel.XYZAffineApplyExecution.cs`: together they held two
+cancellation tokens, Preview outputs, published registries,
+running/stale/published state, routed input resolution, A1-to-A2 invalidation,
+downstream Re-grid clearing, and direct `ToolRecipeXYZAffine*Execution` calls.
+The new `ToolWorkbenchXyzAffineExecutionOwner` owns the cohesive A1 Solve ->
+A2 Apply lifecycle. The root ViewModel supplies explicit Landmark, source,
+notification, and Re-grid callbacks; the former partials contain compatibility
+projection only.
+
+Final-source Debug and Release XYZ Affine Workbench verification pass `15/15`,
+including no implicit upstream execution, explicit Solve and Apply
+Preview/Publish, Workbench/Tools hash parity, draft-only no-execution, and
+explicit parameter-Apply invalidation of A1/A2 without rerun. Re-grid passes
+`13/13`, Artifact Navigator passes `32/32`, the structure guard passes
+`63/63`, and Debug and Release solution builds complete with zero warnings and
+errors. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-xyz-affine-owner/`. This is an M5 checkpoint, not M5 completion.
+Landmark Correspondence was selected next. A current direct-call search after
+that checkpoint found one older M5 boundary still incomplete: the existing
+Filter owner owns state and commands, but the root Filter partial still owns
+the explicit Preview body and direct Tools call. M7 therefore remains after
+that corrected Filter boundary. Recommended model: `gpt-5.6-terra`; reasoning
+effort: `medium`.
+
+### PL-0026 M5 Landmark Correspondence checkpoint evidence - 2026-08-20
+
+The former owner was
+`ToolWorkbenchViewModel.LandmarkCorrespondenceExecution.cs`: it held the
+CancellationTokenSource, Preview output, published-output registry,
+running/stale/published state, published-CornerAnchor input readiness,
+downstream XYZ invalidation, display requests, and direct
+`ToolRecipeLandmarkCorrespondenceExecution` calls. The new owner is
+`ToolWorkbenchLandmarkCorrespondenceExecutionOwner`. The root ViewModel now
+supplies source, recipe, selection, upstream publication, notification, and
+downstream callbacks; the former partial retains compatibility projection and
+the public display event contract only.
+
+Final-source Debug and Release Landmark Correspondence Workbench verification
+pass `13/13`, including four-Published-CornerAnchor gating, explicit Preview,
+Workbench/Tools hash parity, exact Preview Publish, typed artifact state,
+draft-only no-execution, and explicit row-update stale invalidation. Debug and
+Release Line Intersection pass `23/23`, XYZ Affine pass `15/15`, Artifact
+Navigator passes `32/32`, the structure guard passes `64/64`, and the Debug
+and Release solution builds complete with zero warnings and errors. Refreshed
+Wide/Compact fixed-package `-ValidateOnly` checks pass without launching the
+application. Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-landmark-correspondence-owner/`.
+
+This is a complete Landmark checkpoint, not M5 completion. The corrected
+Filter boundary below supersedes its former Filter next-action sentence.
+
+### PL-0026 M5 Filter execution checkpoint evidence - 2026-08-20
+
+The former owner was `ToolWorkbenchViewModel.FilterExecution.cs`: although an
+existing owner stored Filter state and global command objects, the partial
+still mutated that state through setters and held the cancellation token,
+explicit Preview body, direct `ToolRecipeFilterExecution.Execute` call,
+Publish, and stale/clear downstream lifecycle. The existing
+`ToolWorkbenchFilterExecutionOwner` now owns those responsibilities. The root
+ViewModel supplies recipe/source readiness, logging/display, and downstream
+Edge callbacks; its partial retains selected-step routing, Ordered Run, kernel
+authoring, source-display composition, and read-only compatibility projection.
+
+Final-source Debug and Release Height Difference Edge Workbench verification
+pass `12/12`, including the new Filter-parameter change assertion that marks
+both Filter and downstream Edge stale without execution. Artifact Navigator
+passes `32/32`, Line Fit `14/14`, Line Intersection `23/23`, and the expanded
+structure guard passes `65/65`. Debug and Release solution builds complete with
+zero warnings and errors. The refreshed nine-input R0 hashes pass Wide and
+Compact `-ValidateOnly` on `\\.\DISPLAY2` without launching the application.
+Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-filter-execution-owner/`. No UI, visible text, layout, or theme changed,
+so no before/after screenshot was required. No tracked or loose DLL was found,
+so `lib/` remains intentionally absent.
+
+This is a complete Filter checkpoint, not M5 completion. The M7 former-owner
+search found the remaining Surface Match Experiment cancellation and candidate
+Preview/Publish lifecycle in
+`ToolWorkbenchViewModel.SurfaceMatchExperiment.cs`, plus Validation Set
+cancellation and direct execution in `ToolWorkbenchViewModel.ValidationSet.cs`.
+Extract Surface Match Experiment next using its existing parity verifier, then
+Validation Set, before M7. Recommended model: `gpt-5.6-sol`; reasoning effort:
+`medium`.
+
+### PL-0026 M5 Surface Match Experiment checkpoint evidence - 2026-08-20
+
+The former owner was `ToolWorkbenchViewModel.SurfaceMatchExperiment.cs`: it
+held candidate cancellation, direct shared-executor Preview, exact no-rerun
+Publish, Published/Candidate display selection, commands, status, and
+stale/discard/load/clear lifecycle even though the existing
+`SurfaceMatchExperimentSession` already owned Published/Candidate/Stale data.
+That existing session now owns the complete candidate execution and state
+lifecycle. The root supplies selected-step and pending-draft inputs, published
+evidence application, display/log callbacks, binding projection, localization,
+and the public display event; it no longer owns the moved token, mutable state,
+or direct executor call.
+
+Final-source Debug and Release Surface Match parity verification pass `23/23`.
+The checks cover temporary candidate Preview, published and recipe
+preservation, presentation-only display switching, exact Publish without a
+rerun, stale restoration after parameter changes, discard behavior, and
+save/reopen non-persistence without automatic execution. The expanded
+structure guard passes `66/66`, and Debug and Release solution builds complete
+with zero warnings and errors. Refreshed Wide and Compact fixed-package
+`-ValidateOnly` checks pass on `\\.\DISPLAY2` without launching the
+application. No visible UI, text, layout, or theme changed, so no screenshot
+was required. Tracked and loose DLL counts are zero, so `lib/` remains absent.
+Evidence is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-surface-match-experiment-owner/`.
+
+This is a complete Surface Match Experiment checkpoint, not M5 completion.
+The remaining Workbench-root execution family is Validation Set cancellation
+and direct execution in `ToolWorkbenchViewModel.ValidationSet.cs`. Extract it
+before M7. Recommended model: `gpt-5.6-sol`; reasoning effort: `medium`.
+
+### PL-0026 M5 Validation Set and M7 closure evidence - 2026-08-21
+
+`ToolWorkbenchValidationSetExecutionOwner` is the final M5 concrete owner. It
+owns the cancellation source, running lifetime, and direct normal,
+development-only, and Held-out `ToolRecipeValidationSetExecution` calls. The
+root ViewModel retains sample roles, threshold Review/Apply policy, evidence,
+persistence, localization, and command/property projection. Former-owner
+searches confirm that `ToolWorkbenchViewModel.ValidationSet.cs` no longer owns
+the moved cancellation field, mutable running field, or direct execution call.
+The retained root Ordered Run call is the deliberate full-recipe composition
+boundary, not a tool-family ownership leak.
+
+Final-source Debug and Release Validation Set verification passes `86/86`,
+including owner cancellation and idle-state restoration. Workbench Docking
+passes `87/87`, Inspection Workspace `64/64`, Recipe Manager/PropertyGrid
+`52/52`, Run Log Retention `6/6`, and Shell command-line routing `41/41`.
+Debug and Release solution builds complete with zero warnings and errors; the
+expanded structure guard passes `67/67`; tracked and loose DLL counts are both
+zero; and Wide/Compact refreshed fixed-package `-ValidateOnly` passes on
+`\\.\DISPLAY2` without launching the application. No UI, text, layout, or
+theme changed in this final slice, so no screenshot was required.
+
+M1-M7 are complete and `PL-0026` is closed for its bounded contract. Evidence
+is under
+`D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/
+pl-0026-validation-set-execution-owner/`. This does not claim that every large
+partial type should be deleted, that owner R0 passed, or that hosted CI/release
+qualification completed. No dependency-ready software slice is selected after
+this closure. Product-owner unaided Wide/Compact R0 is the next acceptance
+priority and requires owner operation, not model execution.
 
 ### Per-milestone completion rule
 

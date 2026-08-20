@@ -226,29 +226,29 @@ public sealed partial class ToolWorkbenchViewModel
         }
 
         if (SelectedPipelineStep is not { } step
-            || measurementPreviewOutput is null
+            || CurrentMeasurementOutput is not { } measurementOutput
             || !string.Equals(
-                measurementPreviewOutput.OutputEntityId,
+                measurementOutput.OutputEntityId,
                 step.OutputEntityId,
                 StringComparison.OrdinalIgnoreCase))
         {
             return SelectedToolOutputEvidence.Empty;
         }
 
-        var primaryMetric = measurementPreviewOutput.Result.Metrics.FirstOrDefault(metric =>
+        var primaryMetric = measurementOutput.Result.Metrics.FirstOrDefault(metric =>
             double.IsFinite(metric.Value)
             && !string.Equals(metric.Unit, "count", StringComparison.OrdinalIgnoreCase));
         return primaryMetric is null
             ? new SelectedToolOutputEvidence(
                 "Value",
                 "\u2014",
-                measurementPreviewOutput.Unit,
-                measurementPreviewOutput.Result.Status.ToString())
+                measurementOutput.Unit,
+                measurementOutput.Result.Status.ToString())
             : new SelectedToolOutputEvidence(
                 primaryMetric.Name,
                 primaryMetric.Value.ToString("G6", CultureInfo.InvariantCulture),
                 primaryMetric.Unit,
-                measurementPreviewOutput.Result.Status.ToString());
+                measurementOutput.Result.Status.ToString());
     }
 
     private ToolWorkbenchDisplayedOutputItem? ResolveDisplayedOutput(SelectedToolOutputItem? output) =>

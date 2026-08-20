@@ -543,19 +543,25 @@ internal static class RecipeManagerWpgVerification
                 && actionWorkbench.IsDirty == removalDirtyBefore
                 && actionWorkbench.RunLog.Count == removalLogCountBefore,
                 $"request={removalRequest?.StepId}; selections={removalRequest?.OrphanedSelectionNames.Count}; steps={actionWorkbench.PipelineSteps.Count}; dirty={removalDirtyBefore}->{actionWorkbench.IsDirty}; logs={removalLogCountBefore}->{actionWorkbench.RunLog.Count}");
-            var validationRunningField = typeof(ToolWorkbenchViewModel).GetField(
-                "isValidationSetRunning",
+            var validationExecutionOwnerField = typeof(ToolWorkbenchViewModel).GetField(
+                "validationSetExecutionOwner",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            validationRunningField!.SetValue(actionWorkbench, true);
+            var validationExecutionOwner = validationExecutionOwnerField?.GetValue(actionWorkbench)
+                as ToolWorkbenchValidationSetExecutionOwner;
+            var validationRunningProperty = typeof(ToolWorkbenchValidationSetExecutionOwner).GetProperty(
+                nameof(ToolWorkbenchValidationSetExecutionOwner.IsRunning));
+            validationRunningProperty?.SetValue(validationExecutionOwner, true);
             var removalBlocked = !actionWorkbench.RemoveSelectedStepCommand.CanExecute(null)
                 && !actionWorkbench.ConfirmSelectedStepRemoval(actionEdge.Id)
                 && actionWorkbench.PipelineSteps.Count == 2
                 && actionWorkbench.Selections.Contains(actionSelection);
-            validationRunningField.SetValue(actionWorkbench, false);
+            validationRunningProperty?.SetValue(validationExecutionOwner, false);
             Check(
                 "selected-step removal is unavailable and fails closed during validation",
-                removalBlocked,
-                $"blocked={removalBlocked}; steps={actionWorkbench.PipelineSteps.Count}; selections={actionWorkbench.Selections.Count}");
+                validationExecutionOwner is not null
+                && validationRunningProperty is not null
+                && removalBlocked,
+                $"owner={validationExecutionOwner is not null};runningProperty={validationRunningProperty is not null};blocked={removalBlocked}; steps={actionWorkbench.PipelineSteps.Count}; selections={actionWorkbench.Selections.Count}");
             var removalConfirmed = actionWorkbench.ConfirmSelectedStepRemoval(actionEdge.Id);
             Check(
                 "confirmed selected-step removal deletes only the step and its orphaned selection",

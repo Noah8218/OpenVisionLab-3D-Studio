@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Tools;
@@ -7,16 +6,10 @@ using OpenVisionLab.ThreeD.Viewer;
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 /// <summary>
-/// Shared Preview/Publish lifecycle for composable measurement tools.
+/// Measurement-tool bindings and dual-ROI teaching workflow.
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
 {
-    private CancellationTokenSource? measurementPreviewCancellation;
-    private ToolRecipeHeightMeasurementOutput? measurementPreviewOutput;
-    private bool isMeasurementPreviewRunning;
-    private bool isMeasurementPreviewStale;
-    private bool isMeasurementPreviewPublished;
-    private string measurementExecutionSummary = "Route a verified HeightField and recipe-owned GridRectangle, then Preview explicitly.";
     private RelayCommand capturePlaneFlatnessReferenceRoiCommand = null!;
     private RelayCommand capturePlaneFlatnessMeasurementRoiCommand = null!;
     private RelayCommand reusePlaneFlatnessReferenceRoiCommand = null!;
@@ -36,12 +29,14 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepCompletenessGrid => string.Equals(SelectedPipelineStep?.ToolId, "completeness-grid", StringComparison.Ordinal);
     public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume || IsSelectedStepCompletenessGrid;
     public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
-    public bool IsMeasurementPreviewRunning => isMeasurementPreviewRunning;
-    public bool HasCurrentMeasurementPreview => measurementPreviewOutput is not null && !isMeasurementPreviewStale;
-    public bool IsMeasurementPreviewPublished => isMeasurementPreviewPublished;
-    public string MeasurementExecutionSummary => measurementExecutionSummary;
-    public string MeasurementEvidenceSummary => measurementPreviewOutput?.EvidenceSummary ?? "No measurement evidence until Preview completes.";
-    internal ToolRecipeHeightMeasurementOutput? CurrentMeasurementOutput => measurementPreviewOutput;
+    public bool IsMeasurementPreviewRunning => heightMeasurementExecutionOwner.IsPreviewRunning;
+    public bool HasCurrentMeasurementPreview => heightMeasurementExecutionOwner.HasCurrentPreview;
+    public bool IsMeasurementPreviewPublished => heightMeasurementExecutionOwner.IsPreviewPublished;
+    internal bool IsMeasurementPreviewStale => heightMeasurementExecutionOwner.IsPreviewStale;
+    public string MeasurementExecutionSummary => heightMeasurementExecutionOwner.ExecutionSummary;
+    public string MeasurementEvidenceSummary => heightMeasurementExecutionOwner.EvidenceSummary;
+    internal ToolRecipeHeightMeasurementOutput? CurrentMeasurementOutput =>
+        heightMeasurementExecutionOwner.CurrentOutput;
     public ICommand CapturePlaneFlatnessReferenceRoiCommand => capturePlaneFlatnessReferenceRoiCommand;
     public ICommand CapturePlaneFlatnessMeasurementRoiCommand => capturePlaneFlatnessMeasurementRoiCommand;
     public ICommand ReusePlaneFlatnessReferenceRoiCommand => reusePlaneFlatnessReferenceRoiCommand;
@@ -289,119 +284,19 @@ public sealed partial class ToolWorkbenchViewModel
         removePlaneFlatnessMeasurementRoiCommand?.RaiseCanExecuteChanged();
     }
 
-    public async Task<bool> PreviewSelectedMeasurementAsync()
-    {
-        if (!CanPreviewSelectedMeasurement() || SelectedPipelineStep is not { } step)
-        {
-            if (SelectedPipelineStep is { } waiting) waiting.State = "Taught incomplete";
-            SetMeasurementSummary("A current raw or Published transformed HeightField and its owned GridRectangle are required.");
-            return false;
-        }
+    public Task<bool> PreviewSelectedMeasurementAsync() =>
+        heightMeasurementExecutionOwner.PreviewAsync();
 
-        measurementPreviewCancellation?.Dispose();
-        measurementPreviewCancellation = new CancellationTokenSource();
-        isMeasurementPreviewRunning = true;
-        isMeasurementPreviewStale = false;
-        isMeasurementPreviewPublished = false;
-        step.State = "Preview running";
-        SetMeasurementSummary($"{step.ToolName} Preview is evaluating only the selected tool step.");
-        AppendLog("Preview", $"{step.ToolName} Preview started: {step.Id}.");
-        RefreshMeasurementCommands();
-        try
-        {
-            var recipeDirectory = RecipePath is null ? Environment.CurrentDirectory : Path.GetDirectoryName(Path.GetFullPath(RecipePath));
-            TryGetCurrentMeasurementHeightField(out var transformedHeightField);
-            var evaluation = await Task.Run(
-                () => ToolRecipeHeightMeasurementExecution.Execute(
-                    CreateDocument(), step.Id, transformedHeightField, recipeDirectory, measurementPreviewCancellation.Token),
-                measurementPreviewCancellation.Token);
-            if (evaluation.Output is null || evaluation.Result.Status == ResultStatus.Error)
-            {
-                measurementPreviewOutput = null;
-                HeightImageViewer.SetCompletenessCellOverlays([]);
-                RefreshCompletenessCellReview();
-                step.State = "Error";
-                SetMeasurementSummary(evaluation.Result.Message);
-                AppendLog("Error", $"{step.ToolName} Preview failed: {evaluation.Result.Message}");
-                return false;
-            }
-
-            measurementPreviewOutput = evaluation.Output;
-            HeightImageViewer.SetCompletenessCellOverlays(
-                evaluation.Output.CompletenessGrid?.CellOverlays ?? []);
-            SetSelectedCompletenessCellId(null);
-            RefreshCompletenessCellReview();
-            step.State = "Preview ready";
-            SetMeasurementSummary($"Preview ready | {evaluation.Output.EvidenceSummary} | {evaluation.Result.Status} | declared source units only.");
-            AppendLog("Preview", $"{step.ToolName} Preview ready: {evaluation.Output.ContentSha256}.");
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            step.State = "Ready";
-            SetMeasurementSummary("Preview canceled. The source, ROI, and authored recipe were not changed.");
-            return false;
-        }
-        finally
-        {
-            isMeasurementPreviewRunning = false;
-            OnPropertyChanged(nameof(IsMeasurementPreviewRunning));
-            OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
-            RefreshMeasurementCommands();
-        }
-    }
-
-    private bool CanPreviewSelectedMeasurement()
-    {
-        if (!IsSelectedStepMeasurement || HasPendingStepParameterChanges || isMeasurementPreviewRunning
-            || SelectedPipelineStep is not { } step) return false;
-        var recipeDirectory = RecipePath is null ? Environment.CurrentDirectory : Path.GetDirectoryName(Path.GetFullPath(RecipePath));
-        TryGetCurrentMeasurementHeightField(out var transformedHeightField);
-        return ToolRecipeHeightMeasurementExecution.TryPrepare(
-            CreateDocument(), step.Id, transformedHeightField, recipeDirectory, out _, out _);
-    }
-
-    private void PublishSelectedMeasurement()
-    {
-        if (SelectedPipelineStep is not { } step || !HasCurrentMeasurementPreview) return;
-        isMeasurementPreviewPublished = true;
-        step.State = "Published";
-        SetMeasurementSummary($"Published exact Preview as {step.OutputEntityId} | SHA-256 {measurementPreviewOutput!.ContentSha256} | no recalculation.");
-        AppendLog("Publish", $"{step.ToolName} output published without re-running: {step.OutputEntityId}.");
-    }
-
-    private void CancelMeasurementPreview() => measurementPreviewCancellation?.Cancel();
-
-    private void ClearMeasurementPreview(string summary)
-    {
-        measurementPreviewCancellation?.Cancel();
-        measurementPreviewOutput = null;
-        HeightImageViewer.SetCompletenessCellOverlays([]);
-        RefreshCompletenessCellReview();
-        isMeasurementPreviewStale = false;
-        isMeasurementPreviewPublished = false;
-        SetMeasurementSummary(summary);
-    }
-
-    private void MarkMeasurementPreviewStaleIfNeeded(object? sender = null)
-    {
-        if (measurementPreviewOutput is null || isMeasurementPreviewRunning) return;
-        var step = PipelineSteps.FirstOrDefault(candidate =>
-            string.Equals(candidate.OutputEntityId, measurementPreviewOutput.OutputEntityId, StringComparison.OrdinalIgnoreCase));
-        if (step is null) return;
-        if (sender is not null
-            && !ReferenceEquals(sender, step)
-            && (sender is not ToolWorkbenchParameterItem parameter || !step.Parameters.Contains(parameter)))
-        {
-            return;
-        }
-        isMeasurementPreviewStale = true;
-        isMeasurementPreviewPublished = false;
-        HeightImageViewer.SetCompletenessCellOverlays([]);
-        RefreshCompletenessCellReview();
-        step.State = "Preview stale";
-        SetMeasurementSummary("Source, route, ROI, output, or parameter changed. Preview again before Publish.");
-    }
+    private bool CanPreviewSelectedMeasurement() =>
+        heightMeasurementExecutionOwner.CanPreview();
+    private void PublishSelectedMeasurement() =>
+        heightMeasurementExecutionOwner.Publish();
+    private void CancelMeasurementPreview() =>
+        heightMeasurementExecutionOwner.Cancel();
+    private void ClearMeasurementPreview(string summary) =>
+        heightMeasurementExecutionOwner.Clear(summary);
+    private void MarkMeasurementPreviewStaleIfNeeded(object? sender = null) =>
+        heightMeasurementExecutionOwner.MarkStaleIfNeeded(sender);
 
     private void RefreshMeasurementExecutionState()
     {
@@ -416,42 +311,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();
-        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
-        if (SelectedPipelineStep is { } step && IsSelectedStepMeasurement
-            && (measurementPreviewOutput is null || isMeasurementPreviewStale)
-            && !isMeasurementPreviewRunning)
-        {
-            var recipeDirectory = RecipePath is null ? Environment.CurrentDirectory : Path.GetDirectoryName(Path.GetFullPath(RecipePath));
-            TryGetCurrentMeasurementHeightField(out var transformedHeightField);
-            if (ToolRecipeHeightMeasurementExecution.TryPrepare(
-                CreateDocument(), step.Id, transformedHeightField, recipeDirectory, out _, out var message))
-            {
-                step.State = "Ready";
-                measurementExecutionSummary = $"{step.ToolName} is ready for explicit Preview. It remains one composable recipe step.";
-            }
-            else
-            {
-                step.State = "Taught incomplete";
-                measurementExecutionSummary = message;
-            }
-        }
-        OnPropertyChanged(nameof(MeasurementExecutionSummary));
-        OnPropertyChanged(nameof(MeasurementEvidenceSummary));
-        OnPropertyChanged(nameof(HasCurrentMeasurementPreview));
-        OnPropertyChanged(nameof(IsMeasurementPreviewPublished));
-        RefreshCompletenessCellReview();
-        RefreshMeasurementCommands();
-    }
-
-    private void SetMeasurementSummary(string value)
-    {
-        measurementExecutionSummary = value;
-        RebuildEntities();
-        OnPropertyChanged(nameof(MeasurementExecutionSummary));
-        OnPropertyChanged(nameof(MeasurementEvidenceSummary));
-        OnPropertyChanged(nameof(HasCurrentMeasurementPreview));
-        OnPropertyChanged(nameof(IsMeasurementPreviewPublished));
-        RefreshMeasurementCommands();
+        heightMeasurementExecutionOwner.RefreshState();
     }
 
     private void RefreshMeasurementCommands()
@@ -461,12 +321,4 @@ public sealed partial class ToolWorkbenchViewModel
         cancelFilterPreviewCommand?.RaiseCanExecuteChanged();
     }
 
-    private bool TryGetCurrentMeasurementHeightField(out C3DTransformedHeightField? output)
-    {
-        output = null;
-        return SelectedPipelineStep is { InputEntityIds.Count: > 0 } step
-            && !string.Equals(step.InputEntityIds[0], Source.Id, StringComparison.OrdinalIgnoreCase)
-            && TryGetPublishedRegridHeightFieldOutput(step.InputEntityIds[0], out output)
-            && output is not null;
-    }
 }

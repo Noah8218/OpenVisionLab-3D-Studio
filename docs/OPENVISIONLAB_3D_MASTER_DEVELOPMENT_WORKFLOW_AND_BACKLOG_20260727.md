@@ -158,35 +158,42 @@ Current inventory count:
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
 
-### Current architecture checkpoint - MVVM continuation - 2026-08-19
+### Current architecture checkpoint - PL-0026 MVVM qualification - 2026-08-21
 
-`PL-0026` is the selected dependency-ready software maintenance item. The
-original `PL-0025` checkpoint introduced valid shared Presentation and
-Reporting owners plus several concrete Shell, Workbench, and Viewer sessions,
-but a whole-repository audit superseded its broad completion claim. The current
-`49/49` structure guard and Release build pass do not prove that every View is
-thin or that the large partial root types are composition facades.
+`PL-0026` is complete for its bounded MVVM/library-refactor contract. The
+original `PL-0025` evidence remains valid only for its named owners; the
+whole-repository audit correction and milestones M1-M7 are owned by
+`OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md` and
+`.proofline/issues/PL-0026.json`.
 
-The remaining work is ordered in
-`OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md` section 12. M2
-and M3 are complete, and M4a/M4b/M4c are complete for the Height Deviation
-load/apply/save path: Results/Validation navigation state is owned by child
-ViewModels and commands, and the Source Quality workspace smoke is owned by
-`Verification/Smoke/ShellSourceQualitySmoke.cs`; `MainWindow` retains only
-invocation and failure callback wiring for that group. Height Deviation source
-loading, apply/state orchestration, and recipe saving now belong to
-`Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs`,
-`Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs`, and
-`Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs`; the View retains
-validation and rendering adapters. M4d is the next bounded slice: move
-Height Deviation rule/Preview orchestration or select the next recipe-family
-boundary while preserving file-dialog/rendering adapters and public host
-compatibility. Recommended model: `gpt-5.6-terra`; reasoning effort: `medium`.
-Complete and verify one milestone before selecting the next, and do not attempt
-the full Viewer or Workbench refactor in one lower-cost model turn. This
-maintenance checkpoint changes no capability inventory count.
-Product-owner unaided Wide/Compact R0 remains the separate acceptance gate and
-must use a refreshed fixed package if refactoring changes its binary.
+Results/Validation navigation, Shell smoke policy, the Viewer Height Deviation
+recipe workflow, Tool Lab lifecycle, and the audited Workbench execution
+families now have concrete responsibility owners. The final M5 boundary moves
+Validation Set cancellation, running state, and direct normal/development/
+Held-out execution into `ToolWorkbenchValidationSetExecutionOwner`; the root
+ViewModel retains sample roles, threshold Review/Apply, evidence, persistence,
+localization, and command/property projection. The former partial no longer
+owns its cancellation source, mutable running field, or direct Validation Set
+execution call. Ordered Run remains deliberately with the root composition
+path because it coordinates the full recipe rather than one tool family.
+
+Final-source Debug and Release solution builds pass with zero warnings and
+errors. Validation Set passes `86/86`; affected Workbench Docking `87/87`,
+Inspection Workspace `64/64`, Recipe Manager/PropertyGrid `52/52`, Run Log
+Retention `6/6`, and Shell command-line routing `41/41` pass. The structure
+guard passes `67/67`, former-owner searches find no moved Validation Set state
+or direct call, and tracked/loose DLL counts are both zero, so `lib/` remains
+absent. The refreshed nine-input package passes Wide and Compact
+`-ValidateOnly` on `\\.\DISPLAY2` without launching the application. No UI,
+visible text, layout, or theme changed in the final slice, so screenshot
+evidence was not required. This maintenance closure changes no capability
+inventory count.
+
+No dependency-ready software slice is selected after this closure.
+Product-owner unaided Wide/Compact R0 remains the next acceptance priority;
+automated validation does not replace it. The large-C3D candidate remains
+blocked until a representative maximum input and accepted memory/load-time
+limits are supplied.
 
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 

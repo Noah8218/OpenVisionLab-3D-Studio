@@ -17,41 +17,12 @@ public sealed partial class ToolWorkbenchViewModel
     private RelayCommand setFilterKernel3Command => filterExecutionOwner.SetFilterKernel3Command;
     private RelayCommand setFilterKernel5Command => filterExecutionOwner.SetFilterKernel5Command;
     private RelayCommand setFilterKernel7Command => filterExecutionOwner.SetFilterKernel7Command;
-    private CancellationTokenSource? filterPreviewCancellation
-    {
-        get => filterExecutionOwner.FilterPreviewCancellation;
-        set => filterExecutionOwner.FilterPreviewCancellation = value;
-    }
-    private C3DHeightFieldSnapshot? filterPreviewOutput
-    {
-        get => filterExecutionOwner.FilterPreviewOutput;
-        set => filterExecutionOwner.FilterPreviewOutput = value;
-    }
-    private string? filterPreviewPath
-    {
-        get => filterExecutionOwner.FilterPreviewPath;
-        set => filterExecutionOwner.FilterPreviewPath = value;
-    }
-    private bool isFilterPreviewRunning
-    {
-        get => filterExecutionOwner.IsFilterPreviewRunning;
-        set => filterExecutionOwner.IsFilterPreviewRunning = value;
-    }
-    private bool isFilterPreviewStale
-    {
-        get => filterExecutionOwner.IsFilterPreviewStale;
-        set => filterExecutionOwner.IsFilterPreviewStale = value;
-    }
-    private bool isFilterPreviewPublished
-    {
-        get => filterExecutionOwner.IsFilterPreviewPublished;
-        set => filterExecutionOwner.IsFilterPreviewPublished = value;
-    }
-    private string filterExecutionSummary
-    {
-        get => filterExecutionOwner.FilterExecutionSummary;
-        set => filterExecutionOwner.FilterExecutionSummary = value;
-    }
+    private C3DHeightFieldSnapshot? filterPreviewOutput => filterExecutionOwner.FilterPreviewOutput;
+    private string? filterPreviewPath => filterExecutionOwner.FilterPreviewPath;
+    private bool isFilterPreviewRunning => filterExecutionOwner.IsFilterPreviewRunning;
+    private bool isFilterPreviewStale => filterExecutionOwner.IsFilterPreviewStale;
+    private bool isFilterPreviewPublished => filterExecutionOwner.IsFilterPreviewPublished;
+    private string filterExecutionSummary => filterExecutionOwner.FilterExecutionSummary;
     private bool isOrderedRunRunning
     {
         get => filterExecutionOwner.IsOrderedRunRunning;
@@ -295,7 +266,7 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepLevelSurface
         ? HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished
         : IsSelectedStepRegridHeightField
-        ? HasCurrentRegridHeightFieldPreview && !IsRegridHeightFieldPreviewPublished && regridHeightFieldPreviewOutput!.MeetsMinimumCoverage
+        ? CanPublishRegridHeightFieldPreview
         : IsSelectedStepXYZAffineApply
         ? HasCurrentAffineApplyPreview && !IsAffineApplyPreviewPublished
         : IsSelectedStepXYZAffineSolve
@@ -374,73 +345,12 @@ public sealed partial class ToolWorkbenchViewModel
         }
         else
         {
-            filterPreviewCancellation?.Cancel();
+            filterExecutionOwner.CancelPreview();
         }
     }
 
-    public async Task<bool> PreviewSelectedFilterAsync()
-    {
-        if (!CanPreviewSelectedFilter() || SelectedPipelineStep is not { } step)
-        {
-            return false;
-        }
-
-        filterPreviewCancellation?.Dispose();
-        filterPreviewCancellation = new CancellationTokenSource();
-        SetFilterRunning(true);
-        isFilterPreviewStale = false;
-        isFilterPreviewPublished = false;
-        step.State = "Preview running";
-        SetFilterSummary("Median Preview is running from the verified C3D source bytes.");
-        AppendLog("Preview", $"Filter Preview started: {step.Id}.");
-
-        try
-        {
-            var document = CreateDocument();
-            var recipeDirectory = RecipePath is null
-                ? Environment.CurrentDirectory
-                : Path.GetDirectoryName(Path.GetFullPath(RecipePath));
-            var evaluation = await Task.Run(
-                () => ToolRecipeFilterExecution.Execute(document, step.Id, recipeDirectory, filterPreviewCancellation.Token),
-                filterPreviewCancellation.Token);
-            if (evaluation.Result.Status != ResultStatus.Pass || evaluation.Output is null)
-            {
-                filterPreviewOutput = null;
-                filterPreviewPath = null;
-                step.State = "Error";
-                SetFilterSummary(evaluation.Result.Message);
-                AppendLog("Error", $"Filter Preview failed: {evaluation.Result.Message}");
-                return false;
-            }
-
-            filterPreviewOutput = evaluation.Output;
-            filterPreviewPath = CreateFilterPreviewPath(evaluation.Output.ContentSha256);
-            evaluation.Output.SaveC3D(filterPreviewPath);
-            OnPropertyChanged(nameof(CurrentFilterPreviewPath));
-            OnPropertyChanged(nameof(CurrentFilterPreviewOutputSummary));
-            step.State = "Preview ready";
-            SetFilterSummary($"Preview ready | valid {evaluation.Output.ValidCount:N0} | missing {evaluation.Output.MissingCount:N0} | preprocessing only, no OK/NG");
-            AppendLog("Preview", $"Filter Preview ready: {evaluation.Output.ContentSha256}.");
-            FilterDisplayRequested?.Invoke(
-                this,
-                new ToolWorkbenchFilterDisplayRequestEventArgs(
-                    filterPreviewPath,
-                    evaluation.Output.ContentSha256,
-                    false));
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            step.State = "Ready";
-            SetFilterSummary("Preview canceled. Source and authored recipe were not changed.");
-            AppendLog("Preview", "Filter Preview canceled.");
-            return false;
-        }
-        finally
-        {
-            SetFilterRunning(false);
-        }
-    }
+    public Task<bool> PreviewSelectedFilterAsync() =>
+        filterExecutionOwner.PreviewAsync();
 
     public async Task<bool> RunTeachingRecipeAsync()
     {
@@ -510,22 +420,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private void PublishSelectedFilter()
-    {
-        if (SelectedPipelineStep is not { } step || !HasCurrentFilterPreview)
-        {
-            return;
-        }
-
-        isFilterPreviewPublished = true;
-        step.State = "Published";
-        OnPropertyChanged(nameof(CurrentFilterPreviewOutputSummary));
-        SetFilterSummary($"Published output {step.OutputEntityId} | SHA-256 {filterPreviewOutput!.ContentSha256} | preprocessing only, no OK/NG");
-        AppendLog("Publish", $"Filter output published without re-running: {step.OutputEntityId}.");
-        OnPropertyChanged(nameof(IsFilterPreviewPublished));
-        RefreshHeightDifferenceEdgeExecutionState();
-        RefreshFilterCommands();
-    }
+    private void PublishSelectedFilter() => filterExecutionOwner.Publish();
 
     private void ShowFilterSource()
     {
@@ -543,13 +438,7 @@ public sealed partial class ToolWorkbenchViewModel
         SetFilterSummary("Showing the original taught C3D source. Preview output remains available.");
     }
 
-    private bool CanPreviewSelectedFilter() =>
-        IsSelectedStepFilter
-        && IsSourceReadyForRecipe
-        && !HasPendingStepParameterChanges
-        && !isFilterPreviewRunning
-        && !IsEdgePreviewRunning
-        && ToolRecipeValidator.Validate(CreateDocument()).IsValid;
+    private bool CanPreviewSelectedFilter() => filterExecutionOwner.CanPreview();
 
     private bool CanRunTeachingRecipe() =>
         TryGetOrderedRunCapability(out _);
@@ -694,64 +583,14 @@ public sealed partial class ToolWorkbenchViewModel
             ? SelectedPipelineStep!.Parameters.SingleOrDefault(parameter => parameter.Name == name)?.Value
             : null;
 
-    private void MarkFilterPreviewStaleIfNeeded(object? sender)
-    {
-        if (filterPreviewOutput is null || isFilterPreviewRunning)
-        {
-            return;
-        }
+    private void MarkFilterPreviewStaleIfNeeded(object? sender) =>
+        filterExecutionOwner.MarkPreviewStaleIfNeeded(sender);
 
-        var selected = SelectedPipelineStep;
-        var selectedIsFilter = string.Equals(selected?.ToolId, "filter", StringComparison.Ordinal);
-        var isSelectedFilterParameter = selectedIsFilter
-            && sender is ToolWorkbenchParameterItem parameter
-            && (selected?.Parameters.Contains(parameter) ?? false);
-        if (ReferenceEquals(sender, Source)
-            || selectedIsFilter && ReferenceEquals(sender, selected)
-            || isSelectedFilterParameter)
-        {
-            isFilterPreviewStale = true;
-            isFilterPreviewPublished = false;
-            MarkHeightDifferenceEdgePreviewStale("Published Filter input changed. Preview Edge again after Filter is republished.");
-            if (selected is not null)
-            {
-                selected.State = "Preview stale";
-            }
-            SetFilterSummary("Source, routing, output, or Kernel changed. Preview again before Publish.");
-        }
-    }
+    private void ClearFilterPreview(string summary) =>
+        filterExecutionOwner.ClearPreview(summary);
 
-    private void ClearFilterPreview(string summary)
-    {
-        filterPreviewCancellation?.Cancel();
-        filterPreviewOutput = null;
-        filterPreviewPath = null;
-        OnPropertyChanged(nameof(CurrentFilterPreviewPath));
-        OnPropertyChanged(nameof(CurrentFilterPreviewOutputSummary));
-        isFilterPreviewStale = false;
-        isFilterPreviewPublished = false;
-        ClearHeightDifferenceEdgePreview("Published Filter output is unavailable; Edge Preview is required after Filter is republished.");
-        SetFilterSummary(summary);
-    }
-
-    private void RefreshFilterExecutionState()
-    {
-        OnPropertyChanged(nameof(IsSelectedStepFilter));
-        OnPropertyChanged(nameof(FilterKernelSummary));
-        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
-        if (SelectedPipelineStep is { } step
-            && string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
-            && filterPreviewOutput is null
-            && !isFilterPreviewRunning
-            && step.State == "Taught / pending")
-        {
-            step.State = ToolRecipeValidator.Validate(CreateDocument()).IsValid
-                ? "Ready"
-                : "Taught / needs correction";
-        }
-        RefreshFilterCommands();
-        RefreshHeightDifferenceEdgeCommands();
-    }
+    private void RefreshFilterExecutionState() =>
+        filterExecutionOwner.RefreshExecutionState();
 
     private void RefreshFilterCommands()
     {
@@ -769,37 +608,8 @@ public sealed partial class ToolWorkbenchViewModel
         setFilterKernel7Command.RaiseCanExecuteChanged();
     }
 
-    private void SetFilterRunning(bool value)
-    {
-        isFilterPreviewRunning = value;
-        OnPropertyChanged(nameof(IsFilterPreviewRunning));
-        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
-        RefreshFilterCommands();
-        RefreshHeightDifferenceEdgeCommands();
-    }
-
-    private void SetFilterSummary(string value)
-    {
-        filterExecutionSummary = value;
-        RebuildEntities();
-        OnPropertyChanged(nameof(FilterExecutionSummary));
-        OnPropertyChanged(nameof(FilterOutputHashSummary));
-        OnPropertyChanged(nameof(HasCurrentFilterPreview));
-        OnPropertyChanged(nameof(IsFilterPreviewStale));
-        OnPropertyChanged(nameof(IsFilterPreviewPublished));
-        RefreshFilterCommands();
-        RefreshHeightDifferenceEdgeExecutionState();
-    }
-
-    private static string CreateFilterPreviewPath(string hash)
-    {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenVisionLab",
-            "3DStudio",
-            "Preview");
-        return Path.Combine(directory, $"filter-{hash}.c3d");
-    }
+    private void SetFilterSummary(string value) =>
+        filterExecutionOwner.UpdateSummary(value);
 }
 
 public sealed class ToolWorkbenchFilterDisplayRequestEventArgs : EventArgs

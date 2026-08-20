@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-19
+Date: 2026-08-21
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -226,8 +226,9 @@ acceptance.
 - Procedure: `OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md`.
 - Launcher: `../scripts/start-human-owner-r0.ps1`.
 - Automated `-ValidateOnly` does not close the owner gate.
-- The 2026-08-18 PL-0024 current-source Release rebuild and refreshed nine-input
-  fixed-hash package pass both `-ValidateOnly` modes on `\\.\DISPLAY2`.
+- The 2026-08-21 PL-0026 M5/M7 current-source Release rebuild and refreshed
+  nine-input fixed-hash package pass both `-ValidateOnly` modes on
+  `\\.\DISPLAY2`.
 - An earlier observed Wide run used a superseded binary and does not count.
   Both current-package layouts must restart from Wide and pass unaided.
 - Recommended model: none.
@@ -238,55 +239,26 @@ software slice.
 
 ## Current Software Queue
 
-`PL-0015` through `PL-0024` remain complete. The original `PL-0025` evidence
-remains valid for its named Presentation, Reporting, layout, request,
-recipe/source session, Viewer display/camera/selection, and Behavior
-extractions, but its repository-wide completion claim is superseded by the
-2026-08-19 audit.
+`PL-0026` is complete for its bounded M1-M7 MVVM/library-refactor contract.
+The original `PL-0025` evidence remains valid only for its named owners; the
+2026-08-19 audit and `PL-0026` supersede its repository-wide completion claim.
 
-`PL-0026` is the current software queue item. The audit confirmed that the
-`49/49` structure guard and Release build pass while broader MVVM work remains:
-Viewer code-behind still owns recipe workflow and direct rule execution; the
-Workbench root remains a 33-file partial type; MainWindow retains extensive
-smoke orchestration; Results/Validation Views own navigation state; and Tool
-Lab windows repeat lifecycle code.
+The final M5 owner is `ToolWorkbenchValidationSetExecutionOwner`, which owns
+Validation Set cancellation, running state, and direct normal/development/
+Held-out execution. `ToolWorkbenchViewModel.ValidationSet.cs` retains sample
+roles, threshold Review/Apply, evidence, persistence, localization, and
+compatibility projection. Final-source Debug/Release builds pass `0/0`;
+Validation Set `86/86`, affected regressions, structure `67/67`, former-owner
+searches, DLL inventory, diff hygiene, and refreshed Wide/Compact fixed-package
+`-ValidateOnly` pass. No UI or layout changed in the final slice.
 
-M2 and M3 are complete, and M4a/M4b/M4c/M4d are complete for the first Viewer
-recipe boundary. `ResultsWorkspaceView.ActiveSection` and
-`RecipePipelineReviewView.ValidationSection` now belong to child ViewModels
-with commands, and the Source Quality workspace smoke is owned by
-`Verification/Smoke/ShellSourceQualitySmoke.cs`. The Views retain presentation
-layout and thin request adapters; `MainWindow` retains only the smoke
-invocation and failure callback wiring. Height Deviation source loading and
-rule preparation and apply/state orchestration now belong to
-`Viewer/Recipes/HeightDeviationRecipeLoadPlan.cs`,
-`Viewer/Recipes/HeightDeviationRecipeApplyCoordinator.cs`, and
-`Viewer/Recipes/HeightDeviationRecipeSaveCoordinator.cs`; the View retains
-validation and rendering callbacks. Current Wide/Compact exact-source Source
-Quality and recipe-load/apply/save screenshots and focused checks are recorded
-in the M3/M4 evidence folders.
-
-M5 filter-tool-family extraction is first-pass complete with build/hygiene
-verification for Filter, Remove Outlier Pixels, and Level Surface:
-`ToolWorkbenchFilterExecutionOwner`, `ToolWorkbenchRemoveOutlierExecutionOwner`, and
-`ToolWorkbenchLevelSurfaceExecutionOwner` now own step execution state and
-command-related state for their steps, while file-dialog/rendering adapters and
-public host compatibility are preserved.
-
-M6 is complete: Tool Lab window lifecycle and selected-step behavior are now
-centralized in `ToolLabWindowBase`; all ToolLab windows inherit it and local
-`SetLabStep`/`ActivateLabStep` implementations were removed.
-
-- Contract and low-cost-model slices:
-  `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`, section 12.
-- Historical checkpoint: `../.proofline/issues/PL-0025.json`.
-- Current durable issue: `../.proofline/issues/PL-0026.json`.
-- Recommended model: `gpt-5.6-terra`.
-- Reasoning effort: `medium`.
-- Complete M5 remaining criterion checks (remaining Workbench execution families and
-  structural verification), then move to M7 qualification (`focused checks`,
-  refreshed structure verification, Release build, and `git diff --check`) before
-  selecting the next slice.
+- Contract and completion evidence:
+  `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`, section 12,
+  and `../.proofline/issues/PL-0026.json`.
+- No dependency-ready software slice is selected after this closure.
+- Product-owner unaided Wide/Compact R0 remains the acceptance priority.
+- Recommended model for documentation/status checks: `gpt-5.6-terra`.
+- Reasoning effort: `low`.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

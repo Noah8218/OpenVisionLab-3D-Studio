@@ -51,7 +51,7 @@ Dated documents preserve their recorded scope and do not override it.
 - [Human-owner R0 procedure](OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md) — current external
   Wide/Compact owner acceptance procedure.
 - [MVVM and library refactor plan](OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md) —
-  current `PL-0025` ownership map, checkpoints, proof conditions, and DLL/package policy.
+  completed `PL-0026` ownership qualification, proof conditions, and DLL/package policy.
 
 ## Current External Blockers
 

@@ -103,6 +103,17 @@ internal static class ToolHeightDifferenceEdgeWorkbenchVerification
             workbench.PublishSelectedStepCommand.Execute(null);
             Check("Publish reuses exact Preview", workbench.IsEdgePreviewPublished && ReferenceEquals(previewOutput, publishedOutput), $"preview={previewOutput?.ContentSha256};published={publishedOutput?.ContentSha256}");
             var oldHash = previewOutput?.ContentSha256;
+            workbench.SelectPipelineStep("step.filter.01");
+            workbench.SetFilterKernel5Command.Execute(null);
+            Check(
+                "Filter parameter edit invalidates Filter and downstream Edge",
+                workbench.IsFilterPreviewStale
+                && !workbench.IsFilterPreviewPublished
+                && workbench.IsEdgePreviewStale
+                && !workbench.IsEdgePreviewPublished
+                && !workbench.PublishSelectedStepCommand.CanExecute(null),
+                $"filter={workbench.IsFilterPreviewStale};edge={workbench.IsEdgePreviewStale};state={workbench.SelectedPipelineStep?.State}");
+            workbench.SelectPipelineStep("step.edge.01");
             workbench.HeightDifferenceEdgeMinimumDelta = "20";
             Check("parameter edit only marks stale", workbench.IsEdgePreviewStale && !workbench.IsEdgePreviewPublished && !workbench.PublishSelectedStepCommand.CanExecute(null), $"hash={oldHash};state={workbench.SelectedPipelineStep?.State}");
             Check("whole recipe Run stays blocked", !workbench.RunTeachingRecipeCommand.CanExecute(null), "No partial Filter + Edge recipe success is reported.");

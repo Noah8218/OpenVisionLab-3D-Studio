@@ -48,8 +48,6 @@ public sealed partial class ToolWorkbenchViewModel
     private string validationSetCapability = string.Empty;
     private string validationSetProgressText = string.Empty;
     private double validationSetProgress;
-    private bool isValidationSetRunning;
-    private CancellationTokenSource? validationSetCancellation;
     private ToolRecipeLabeledEvidenceReport? validationEvidenceReport;
     private ToolRecipeThresholdCandidateReport? validationThresholdReport;
     private ValidationThresholdCandidateRow? selectedValidationThresholdCandidate;
@@ -461,26 +459,7 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    public bool IsValidationSetRunning
-    {
-        get => isValidationSetRunning;
-        private set
-        {
-            if (isValidationSetRunning == value) return;
-            isValidationSetRunning = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(IsValidationSetIdle));
-            addCurrentSourceToValidationSetCommand.RaiseCanExecuteChanged();
-            runValidationSetCommand.RaiseCanExecuteChanged();
-            clearValidationSetCommand.RaiseCanExecuteChanged();
-            selectValidationSetSourcesCommand.RaiseCanExecuteChanged();
-            cancelValidationSetCommand.RaiseCanExecuteChanged();
-            previousValidationSetIssueCommand.RaiseCanExecuteChanged();
-            nextValidationSetIssueCommand.RaiseCanExecuteChanged();
-            openValidationSetComparisonCommand.RaiseCanExecuteChanged();
-            setValidationSampleRoleCommand.RaiseCanExecuteChanged();
-        }
-    }
+    public bool IsValidationSetRunning => validationSetExecutionOwner.IsRunning;
 
     public bool IsValidationSetIdle => !IsValidationSetRunning;
 
@@ -526,7 +505,7 @@ public sealed partial class ToolWorkbenchViewModel
             _ => ClearValidationSet(),
             _ => !IsValidationSetRunning && validationSetSamples.Count > 0);
         cancelValidationSetCommand = new RelayCommand(
-            _ => validationSetCancellation?.Cancel(),
+            _ => validationSetExecutionOwner.Cancel(),
             _ => IsValidationSetRunning);
         setValidationSetFilterCommand = new RelayCommand(
             parameter => SetValidationSetFilter(parameter?.ToString()));
@@ -658,10 +637,7 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        validationSetCancellation?.Dispose();
-        validationSetCancellation = new CancellationTokenSource();
         validationThresholdBeforeDevelopmentResult = null;
-        IsValidationSetRunning = true;
         ValidationSetProgress = 0;
         ValidationSetProgressText = Localize("반복 검증 준비 중", "Preparing repeat validation");
         ValidationSetSummary = Localize(
@@ -675,11 +651,10 @@ public sealed partial class ToolWorkbenchViewModel
                     row.SourcePath,
                     row.Role)).ToArray();
             var progress = new Progress<ToolRecipeValidationProgress>(ReportValidationSetProgress);
-            var result = await Task.Run(() => ToolRecipeValidationSetExecution.Execute(
+            var result = await validationSetExecutionOwner.ExecuteAsync(
                 document,
                 samples,
-                validationSetCancellation.Token,
-                progress));
+                progress);
             validationSetSamples.Clear();
             foreach (var sample in result.Samples)
             {
@@ -759,9 +734,6 @@ public sealed partial class ToolWorkbenchViewModel
         }
         finally
         {
-            IsValidationSetRunning = false;
-            validationSetCancellation?.Dispose();
-            validationSetCancellation = null;
             OnPropertyChanged(nameof(HasValidationSetSamples));
         }
     }
@@ -1172,9 +1144,6 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        validationSetCancellation?.Dispose();
-        validationSetCancellation = new CancellationTokenSource();
-        IsValidationSetRunning = true;
         ValidationSetProgress = 0;
         ValidationSetProgressText = "Preparing corrected development replay";
         try
@@ -1186,12 +1155,10 @@ public sealed partial class ToolWorkbenchViewModel
                     CreateDocument(),
                     proposal)
                 : CreateDocument();
-            var result = await Task.Run(() =>
-                ToolRecipeValidationSetExecution.Execute(
-                    replayDocument,
-                    development,
-                    validationSetCancellation.Token,
-                    progress));
+            var result = await validationSetExecutionOwner.ExecuteAsync(
+                replayDocument,
+                development,
+                progress);
             validationThresholdAfterDevelopmentResult = result;
             var afterMismatchCount = result.Samples.Count(sample =>
                 !ToolRecipeThresholdCorrectionEvidenceBuilder.IsExpectedMatch(
@@ -1239,9 +1206,6 @@ public sealed partial class ToolWorkbenchViewModel
         }
         finally
         {
-            IsValidationSetRunning = false;
-            validationSetCancellation?.Dispose();
-            validationSetCancellation = null;
             RefreshValidationThresholdCorrectionCommands();
         }
     }
@@ -1273,9 +1237,6 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
-        validationSetCancellation?.Dispose();
-        validationSetCancellation = new CancellationTokenSource();
-        IsValidationSetRunning = true;
         ValidationSetProgress = 0;
         ValidationSetProgressText =
             Localize("Held-out 재실행 준비 중", "Preparing Held-out replay");
@@ -1289,12 +1250,10 @@ public sealed partial class ToolWorkbenchViewModel
                         proposal);
             var progress = new Progress<ToolRecipeValidationProgress>(
                 ReportValidationSetProgress);
-            var result = await Task.Run(() =>
-                ToolRecipeValidationSetExecution.Execute(
-                    projectedDocument,
-                    heldOut,
-                    validationSetCancellation.Token,
-                    progress));
+            var result = await validationSetExecutionOwner.ExecuteAsync(
+                projectedDocument,
+                heldOut,
+                progress);
             var evidence =
                 IsValidationThresholdManualCorrectionCommitted
                     ? ToolRecipeThresholdCorrectionEvidenceBuilder
@@ -1350,10 +1309,22 @@ public sealed partial class ToolWorkbenchViewModel
         }
         finally
         {
-            IsValidationSetRunning = false;
-            validationSetCancellation?.Dispose();
-            validationSetCancellation = null;
         }
+    }
+
+    private void RefreshValidationSetExecutionState()
+    {
+        OnPropertyChanged(nameof(IsValidationSetRunning));
+        OnPropertyChanged(nameof(IsValidationSetIdle));
+        addCurrentSourceToValidationSetCommand.RaiseCanExecuteChanged();
+        runValidationSetCommand.RaiseCanExecuteChanged();
+        clearValidationSetCommand.RaiseCanExecuteChanged();
+        selectValidationSetSourcesCommand.RaiseCanExecuteChanged();
+        cancelValidationSetCommand.RaiseCanExecuteChanged();
+        previousValidationSetIssueCommand.RaiseCanExecuteChanged();
+        nextValidationSetIssueCommand.RaiseCanExecuteChanged();
+        openValidationSetComparisonCommand.RaiseCanExecuteChanged();
+        setValidationSampleRoleCommand.RaiseCanExecuteChanged();
     }
 
     private void SetValidationThresholdCorrectionEvidence(

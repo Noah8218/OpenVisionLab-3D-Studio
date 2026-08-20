@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-18
+Updated: 2026-08-21
 Status: Current continuation entry point
 
 Use the following request to start the next development chat:
@@ -69,10 +69,16 @@ and actual one-drag reference/measurement target evidence preserves explicit
   complete: current Run Record schema 1.9 retains the exact typed Completeness
   grid output and exposes matching JSON, readable HTML, and structured CSV
   child rows without rerunning inspection; missing or malformed current
-  evidence fails closed and schema 1.8 remains readable. The next
-  dependency-ready software priority is L-14 privacy-safe support/diagnostic
-  bundle; use gpt-5.6-sol with medium reasoning effort and omit sensitive
-  source bytes by default. The product owner's
+  evidence fails closed and schema 1.8 remains readable. PL-0024/L-14 is also
+  complete for the privacy-safe support bundle. PL-0026 is complete for its
+  bounded M1-M7 MVVM/library-refactor contract. Validation Set cancellation,
+  running state, and direct normal/development/Held-out execution now belong
+  to `ToolWorkbenchValidationSetExecutionOwner`; final Validation Set passes
+  86/86, structure passes 67/67, Debug/Release build 0/0, former-owner and DLL
+  searches pass, and refreshed Wide/Compact fixed-package `-ValidateOnly`
+  passes. No dependency-ready software slice is selected after this closure.
+  Use gpt-5.6-terra with low reasoning effort for documentation/status checks.
+  The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
 operation, not model execution. A large-C3D memory/performance target still
 needs a representative maximum input and accepted process-memory/load-time
