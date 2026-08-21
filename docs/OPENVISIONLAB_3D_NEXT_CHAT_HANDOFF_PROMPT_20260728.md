@@ -82,13 +82,13 @@ and actual one-drag reference/measurement target evidence preserves explicit
   approved limited 0.1.1-rc.1, and Phase 3 is public 0.1.1 after RC exit and
   public readback. The repository artifacts junction still targets E:, while
   `publish-windows-app.ps1 -OutputRoot` now writes new package/build evidence
-  directly to D without moving or deleting existing data. The dirty-tree
-  package preflight passed required files 11/11 and manifest verification
-  506/506; commit the approved changes and generate a clean frozen package
-  next. Use gpt-5.6-sol with medium reasoning effort for Phase 1 release
-  qualification. The product owner's
+  directly to D without moving or deleting existing data. Frozen commit
+  c1b49ec has a clean D-backed package, exact manifest verification 506/506,
+  a hashed ZIP, local automated gates, and hosted CI #94 success (55/55).
+  The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
-operation, not model execution. A large-C3D memory/performance target still
+operation, not model execution; use no model tokens until that result exists.
+A large-C3D memory/performance target still
 needs a representative maximum input and accepted process-memory/load-time
 limits; do not spend model tokens on it until those prerequisites exist.
 PL-0006 release-policy reconciliation is complete: the current

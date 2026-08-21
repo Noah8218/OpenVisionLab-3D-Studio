@@ -34,16 +34,17 @@ must not be advertised as calibrated physical measurement.
 
 ## 3. Current Self-Evaluation
 
-Evidence baseline: `main` commit `60f86973a117674017f79317e9219b13433a5491`
-and GitHub Actions CI run `32434992738` (`#93`, success).
+Evidence baseline: frozen Phase 1 commit
+`c1b49eca7726f9a07d537403b07fbd0a4ab9da64` and GitHub Actions CI run
+`32450458521` (`#94`, success).
 
 | Area | Assessment | Current evidence | Release consequence |
 | --- | --- | --- | --- |
 | Supported operator workflow | Candidate-ready | README, tutorial, explicit Preview/Publish/Run, save/reopen, Results and support-bundle contracts | Freeze the documented workflow; do not add unrelated features during qualification |
 | MVVM and code ownership | Ready for qualification | `PL-0026` M1-M7 complete; structure `67/67`; concrete ViewModel, execution-owner, session, service, command, converter, and behavior boundaries | No broad refactor is required before Phase 1 |
 | Numerical ownership | Ready for current software claims | Studio numerical migration debt is zero; committed and vendored `OpenVisionLab.Vision3D 3.0.0` owns reusable algorithms | Preserve package identity and do not copy algorithm arithmetic back into Studio |
-| Automated verification | Ready baseline | Current hosted Windows CI `#93` passed | Re-run the full release gate on the exact frozen candidate |
-| Windows package path | Partial | `-OutputRoot` produced a D-backed self-contained preflight package with 506 verified manifest entries; its manifest truthfully records a dirty tree | Commit the approved Phase 1 changes, then generate and qualify the clean frozen package |
+| Automated verification | Candidate gate passed | Hosted Windows CI `#94` passed all 55 recorded steps on the exact frozen commit | Preserve this commit/package identity for owner R0 |
+| Windows package path | Candidate gate passed | The clean D-backed package has 506/506 verified payload entries, exact manifest identity, and a hashed ZIP | Do not rebuild or modify the candidate before owner R0 without invalidating this gate |
 | Human usability acceptance | Blocked | Current fixed inputs pass Wide/Compact `-ValidateOnly`, but unaided owner R0 has not passed | Blocks Phase 2 and all release-acceptance claims |
 | Publication | Not started | Product version is `0.1.1-dev`; current GitHub release count and tag count are both zero | No public link or released-version claim is allowed yet |
 | Physical/production credibility | Outside current claim | Current evidence is software and raw-height/synthetic evidence | Do not claim calibrated metrology, Gauge R&R, or production approval |
@@ -113,8 +114,8 @@ GitHub Release, public version claim, or external distribution in Phase 1.
 ### Execution status
 
 `Doing`. The current repository/CI/version assessment, three-phase contract,
-D-backed output route, and preflight package are complete. A clean frozen
-package, full release gate, and owner R0 remain.
+D-backed output route, clean frozen package, archive, local gates, and hosted
+CI are complete. Product-owner unaided Wide and Compact R0 remains.
 
 Phase 1 preflight on 2026-08-21 passed the full-verification environment check
 (`5/5` required tools), `PL-0029` schema validation, changed-document local
@@ -134,6 +135,25 @@ dirty working tree, so this proves the output route and package composition but
 is not the frozen Phase 1 candidate. A direct `dotnet Shell.dll --help` probe
 was stopped after it entered the interactive WPF path; packaged EXE/R0 evidence
 remains unverified.
+
+Frozen candidate commit `c1b49eca7726f9a07d537403b07fbd0a4ab9da64`
+then produced the clean D-backed qualification package under
+`20260821-pl0029-phase1-c1b49ec`. Release build passed with zero warnings and
+zero errors; all `506` manifest entries matched actual size and SHA-256; the
+package contains `507` files and `242,409,310` bytes. Manifest SHA-256 is
+`456F680B343A4DF27149D0C7408408021F29AD3786C2604EFAE2B6F7D43AEF94` and
+records version `0.1.1-dev`, the exact commit, and `clean`. The immutable ZIP
+is `108,090,330` bytes with SHA-256
+`EBEF0E6A6EC76A87820021A616B8CE13606BD11BB587EB1787AC4FE59C5475C8`.
+
+Local nonvisual gates passed Release build `0/0`, structure `67/67`, Vision
+SDK package, WPG package, NuGet health (`14` projects, `0` vulnerable, `0`
+deprecated), the selected Runner/golden contracts, and current Shell
+workspace/recipe/Run Record contracts. Hosted Windows CI `#94` then passed
+all `55/55` recorded steps, including BinaryHost, Viewer/Shell screenshot
+quality, pointer input, data loading, golden, map-fidelity, compatibility, and
+artifact upload. No local interactive packaged-EXE acceptance or owner R0 was
+performed.
 
 Recommended model: `gpt-5.6-sol`
 Reasoning effort: `medium`
@@ -242,9 +262,9 @@ The following actions always require explicit owner approval:
 
 ```text
 Status: Incomplete
-Scope: Three-phase first-release contract, current readiness assessment, D-backed output route, and dirty-tree package preflight
-Acceptance criteria: current state grounded -> pass; phase gates and approval boundaries documented -> pass; D-backed package composition preflight -> pass; clean frozen package and full release gate -> fail; owner Wide/Compact R0 -> fail; RC/stable publication -> not started
-Verification: main 60f8697; hosted CI #93 success; product 0.1.1-dev; GitHub releases 0; tags 0; tracked DLL 0; loose DLL 0; full-verification environment 5/5; output boundary checks pass; Release publish exit 0; application files 11/11; manifest entries 506/506; local links missing 0; git diff --check pass
-Evidence: this document; PL-0029; release/version policy; current handoff; CI run 32434992738; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-preflight/; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-package-preflight/
-Boundary / next dependency: commit the approved Phase 1 source and documentation, generate a clean frozen package, run the full release gate, and complete owner R0; no tag or release is authorized
+Scope: Three-phase first-release contract, frozen c1b49ec source/package identity, automated Phase 1 qualification, and D-backed archive
+Acceptance criteria: current state grounded -> pass; phase gates and approval boundaries documented -> pass; clean package/manifest/archive identity -> pass; local automated gates -> pass; hosted CI -> pass; owner Wide/Compact R0 -> fail; RC/stable publication -> not started
+Verification: c1b49ec clean; product 0.1.1-dev; Release 0/0; application files 11/11; manifest 506/506; package 507 files / 242409310 bytes; archive 108090330 bytes; structure 67/67; NuGet 14 projects / vulnerable 0 / deprecated 0; selected Runner and Shell contracts pass; hosted CI #94 55/55 success
+Evidence: this document; PL-0029; release/version policy; current handoff; CI run 32450458521; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-c1b49ec/
+Boundary / next dependency: the product owner must complete unaided Wide and Compact R0 on the frozen c1b49ec package; no version change, tag, release, or external distribution is authorized
 ```

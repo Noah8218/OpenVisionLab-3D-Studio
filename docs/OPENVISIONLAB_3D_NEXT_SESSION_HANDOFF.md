@@ -276,14 +276,17 @@ searches, DLL inventory, diff hygiene, and refreshed Wide/Compact fixed-package
 - Phase 1 preflight passes required environment `5/5`, PL-0029 schema, changed
   local links, and diff hygiene. Evidence is under
   `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260821-pl0029-phase1-preflight`.
-- The D-backed dirty-tree package preflight exits `0`, contains required
-  application files `11/11`, and passes exact manifest length/SHA verification
-  `506/506`. Its `507` files total `242,409,450` bytes; manifest SHA-256 is
-  `AAD83CBEEC0F1D63C617F808EA081A3E18AD79E31A7BE5C722BFDE13B6B58320`.
-  This is path/composition evidence, not a clean frozen candidate. Evidence is
-  under `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260821-pl0029-phase1-package-preflight`.
-- Recommended model for Phase 1 release qualification: `gpt-5.6-sol`.
-- Reasoning effort: `medium`.
+- Frozen Phase 1 commit `c1b49ec` has a clean D-backed package. Required files
+  pass `11/11`; exact manifest verification passes `506/506`; its `507` files
+  total `242,409,310` bytes. Manifest SHA-256 is
+  `456F680B343A4DF27149D0C7408408021F29AD3786C2604EFAE2B6F7D43AEF94`.
+  The `108,090,330`-byte ZIP SHA-256 is
+  `EBEF0E6A6EC76A87820021A616B8CE13606BD11BB587EB1787AC4FE59C5475C8`.
+  Release build, local nonvisual gates, and hosted CI `#94` (`55/55`) pass.
+  Evidence is under `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260821-pl0029-phase1-c1b49ec`.
+- Product-owner unaided Wide/Compact R0 on that exact package is now the only
+  remaining Phase 1 gate. It requires owner operation; use no model execution
+  until the result is available.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

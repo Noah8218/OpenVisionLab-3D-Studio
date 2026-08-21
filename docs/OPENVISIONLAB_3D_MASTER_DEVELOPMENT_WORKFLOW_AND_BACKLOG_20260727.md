@@ -233,17 +233,17 @@ The current self-evaluation finds the supported workflow, MVVM ownership,
 Vision SDK algorithm boundary, documentation, and hosted Windows CI ready to
 start release qualification, but not ready for immediate stable publication.
 Product version remains `0.1.1-dev`; current GitHub release and tag counts are
-zero; no current default self-contained package exists; and owner Wide/Compact
-R0 remains incomplete.
+zero; the clean D-backed Phase 1 package is frozen at `c1b49ec`; and owner
+Wide/Compact R0 remains incomplete.
 
 Proceed in three ordered phases: internal `0.1.1-dev` freeze/package/full gate
 and owner R0; explicitly approved limited `0.1.1-rc.1`; then public `0.1.1`
 only after RC exit and exact public readback. The repository `artifacts`
 junction still targets `E:`, but `publish-windows-app.ps1 -OutputRoot` now
 writes the fixed package child and build outputs directly to an explicit
-D-backed root. The dirty-tree preflight package passed Release publish,
-required files `11/11`, and manifest length/SHA verification `506/506`; it is
-not the clean frozen candidate. Preserve
+D-backed root. Frozen commit `c1b49ec` has a clean `506/506` verified package,
+hashed ZIP, local Release/nonvisual gates, and hosted Windows CI `#94` success.
+Owner unaided Wide/Compact R0 is the remaining Phase 1 gate. Preserve
 `OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md` and
 `.proofline/issues/PL-0029.json`.
 
@@ -3247,10 +3247,10 @@ The owner explicitly left the layout-only stream and completed item 11 on
     Wide/Compact R0 before an approved limited `0.1.1-rc.1`; Phase 3 promotes
     only a qualified RC to public `0.1.1`. The current assessment and gates are
     in `OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md`.
-    The D-backed output route and dirty-tree package preflight pass; commit the
-    approved changes, generate the clean frozen package, run the full release
-    gate, and complete owner R0 next. Recommended model: `gpt-5.6-sol`;
-    reasoning effort: `medium`.
+    Frozen commit `c1b49ec`, its D-backed package/archive, local automated
+    gates, and hosted CI `#94` pass. Product-owner unaided Wide and Compact R0
+    on that exact package is the remaining Phase 1 prerequisite; use no model
+    execution until the owner result is available.
 41. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
