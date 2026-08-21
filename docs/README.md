@@ -12,6 +12,7 @@ contracts, and completion evidence.
 | Current handoff and external prerequisites | [Current session handoff](OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md) |
 | Next-chat entry prompt | [Next-chat entry prompt](OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md) |
 | Release/version policy | [Release/version policy](OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md) |
+| First-release phases and gates | [First-release three-phase specification](OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md) |
 | Forward user-visible change log | [Changelog](../CHANGELOG.md) |
 | Vision SDK algorithm boundary | [Vision SDK Tool contract](OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md) |
 | Current MVVM/library refactor | [MVVM and library refactor plan](OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md) |
@@ -50,6 +51,8 @@ Dated documents preserve their recorded scope and do not override it.
   package provenance and consumer boundary.
 - [Human-owner R0 procedure](OPENVISIONLAB_3D_HUMAN_OWNER_R0_EXECUTION_20260729.md) — current external
   Wide/Compact owner acceptance procedure.
+- [First-release three-phase specification](OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md) —
+  current internal-freeze, limited-RC, stable-publication gates and approval boundaries.
 - [MVVM and library refactor plan](OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md) —
   completed `PL-0026` ownership qualification, proof conditions, and DLL/package policy.
 

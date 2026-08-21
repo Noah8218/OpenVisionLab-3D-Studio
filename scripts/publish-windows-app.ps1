@@ -5,6 +5,7 @@ param(
     [ValidateSet('win-x64')]
     [string]$RuntimeIdentifier = 'win-x64',
     [string]$OutputDirectory = 'artifacts\release\openvisionlab-3d-studio-win-x64',
+    [string]$OutputRoot,
     [string]$BuildArtifactsPath,
     [switch]$NoRestore
 )
@@ -12,14 +13,37 @@ param(
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $artifactRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'artifacts'))
-$outputPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
-$artifactPrefix = $artifactRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$packageDirectoryName = 'openvisionlab-3d-studio-win-x64'
 
-if (-not $outputPath.StartsWith($artifactPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Release output must stay under $artifactRoot"
+if ($PSBoundParameters.ContainsKey('OutputRoot')) {
+    if ($PSBoundParameters.ContainsKey('OutputDirectory')) {
+        throw 'Specify either OutputRoot or OutputDirectory, not both.'
+    }
+    if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+        throw 'OutputRoot cannot be empty.'
+    }
+
+    $allowedOutputRoot = if ([System.IO.Path]::IsPathRooted($OutputRoot)) {
+        [System.IO.Path]::GetFullPath($OutputRoot)
+    }
+    else {
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
+    }
+    $outputPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $allowedOutputRoot $packageDirectoryName))
 }
-if ($outputPath -eq $artifactRoot) {
-    throw 'Release output cannot be the artifact root itself.'
+else {
+    $allowedOutputRoot = $artifactRoot
+    $outputPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
+}
+
+$outputPrefix = $allowedOutputRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+if (-not $outputPath.StartsWith($outputPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Release output must stay under $allowedOutputRoot"
+}
+if ($outputPath -eq $allowedOutputRoot) {
+    throw 'Release output cannot be the output root itself.'
 }
 if (Test-Path -LiteralPath $outputPath) {
     Remove-Item -LiteralPath $outputPath -Recurse -Force

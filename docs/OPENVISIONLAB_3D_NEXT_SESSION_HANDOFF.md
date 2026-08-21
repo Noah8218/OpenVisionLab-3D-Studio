@@ -263,10 +263,27 @@ searches, DLL inventory, diff hygiene, and refreshed Wide/Compact fixed-package
 - Contract and completion evidence:
   `OPENVISIONLAB_3D_MVVM_AND_LIBRARY_REFACTOR_PLAN_20260819.md`, section 12,
   and `../.proofline/issues/PL-0026.json`.
-- No dependency-ready software slice is selected after this closure.
-- Product-owner unaided Wide/Compact R0 remains the acceptance priority.
-- Recommended model for documentation/status checks: `gpt-5.6-terra`.
-- Reasoning effort: `low`.
+- `PL-0029` is the current coordinated work item. Its three-phase first-release
+  specification starts with an internal `0.1.1-dev` freeze and package gate,
+  then an explicitly approved limited `0.1.1-rc.1`, then public `0.1.1` only
+  after RC exit and public readback. Read
+  `OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md`.
+- Product-owner unaided Wide/Compact R0 remains the Phase 1 acceptance gate.
+- The repository `artifacts` junction still targets `E:`. Existing data was
+  not moved or deleted. `publish-windows-app.ps1 -OutputRoot` now safely writes
+  only its fixed package child to an explicit D-backed root and rejects mixed
+  output options or repository-output escape.
+- Phase 1 preflight passes required environment `5/5`, PL-0029 schema, changed
+  local links, and diff hygiene. Evidence is under
+  `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260821-pl0029-phase1-preflight`.
+- The D-backed dirty-tree package preflight exits `0`, contains required
+  application files `11/11`, and passes exact manifest length/SHA verification
+  `506/506`. Its `507` files total `242,409,450` bytes; manifest SHA-256 is
+  `AAD83CBEEC0F1D63C617F808EA081A3E18AD79E31A7BE5C722BFDE13B6B58320`.
+  This is path/composition evidence, not a clean frozen candidate. Evidence is
+  under `D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\20260821-pl0029-phase1-package-preflight`.
+- Recommended model for Phase 1 release qualification: `gpt-5.6-sol`.
+- Reasoning effort: `medium`.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

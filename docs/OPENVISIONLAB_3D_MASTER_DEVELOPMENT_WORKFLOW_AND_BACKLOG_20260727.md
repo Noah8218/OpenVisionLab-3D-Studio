@@ -189,11 +189,11 @@ visible text, layout, or theme changed in the final slice, so screenshot
 evidence was not required. This maintenance closure changes no capability
 inventory count.
 
-No dependency-ready software slice is selected after this closure.
-Product-owner unaided Wide/Compact R0 remains the next acceptance priority;
-automated validation does not replace it. The large-C3D candidate remains
-blocked until a representative maximum input and accepted memory/load-time
-limits are supplied.
+`PL-0029` now owns the approved first-release qualification sequence. Phase 1
+freezes and qualifies an internal `0.1.1-dev` package and retains product-owner
+unaided Wide/Compact R0 as its acceptance gate; automated validation does not
+replace it. The large-C3D candidate remains blocked until a representative
+maximum input and accepted memory/load-time limits are supplied.
 
 #### PL-0027 CI verifier stabilization - 2026-08-21
 
@@ -226,6 +226,26 @@ required contracts, distinct image hashes, Display-settings `111/111`,
 height-distribution `26/26`, and both windows intersecting `\\.\DISPLAY2`.
 `PL-0028` owns this independent maintenance record; capability counts and
 project priorities remain unchanged.
+
+### Current release checkpoint - PL-0029 three-phase first release - 2026-08-21
+
+The current self-evaluation finds the supported workflow, MVVM ownership,
+Vision SDK algorithm boundary, documentation, and hosted Windows CI ready to
+start release qualification, but not ready for immediate stable publication.
+Product version remains `0.1.1-dev`; current GitHub release and tag counts are
+zero; no current default self-contained package exists; and owner Wide/Compact
+R0 remains incomplete.
+
+Proceed in three ordered phases: internal `0.1.1-dev` freeze/package/full gate
+and owner R0; explicitly approved limited `0.1.1-rc.1`; then public `0.1.1`
+only after RC exit and exact public readback. The repository `artifacts`
+junction still targets `E:`, but `publish-windows-app.ps1 -OutputRoot` now
+writes the fixed package child and build outputs directly to an explicit
+D-backed root. The dirty-tree preflight package passed Release publish,
+required files `11/11`, and manifest length/SHA verification `506/506`; it is
+not the clean frozen candidate. Preserve
+`OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md` and
+`.proofline/issues/PL-0029.json`.
 
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 
@@ -3221,9 +3241,17 @@ The owner explicitly left the layout-only stream and completed item 11 on
 39. `PL-0024 / L-14 privacy-safe support/diagnostic bundle` - Complete; one
     explicit action creates a six-entry, manifest-hashed ZIP with sanitized and
     bounded current evidence while omitting raw source bytes, absolute paths,
-    full logs, and workstation/user identity by default. No dependency-ready
-    software slice is currently selected.
-40. `Large-C3D memory/performance target` - Blocked; prerequisite:
+    full logs, and workstation/user identity by default.
+40. `PL-0029 first-release three-phase qualification` - Incomplete; Phase 1
+    owns internal `0.1.1-dev` freeze, current package qualification, and owner
+    Wide/Compact R0 before an approved limited `0.1.1-rc.1`; Phase 3 promotes
+    only a qualified RC to public `0.1.1`. The current assessment and gates are
+    in `OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md`.
+    The D-backed output route and dirty-tree package preflight pass; commit the
+    approved changes, generate the clean frozen package, run the full release
+    gate, and complete owner R0 next. Recommended model: `gpt-5.6-sol`;
+    reasoning effort: `medium`.
+41. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.

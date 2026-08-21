@@ -1,0 +1,202 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0029",
+    "aliases": [],
+    "type": "task",
+    "mode": "composite",
+    "title": "Qualify and publish the first release through three ordered phases",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "2026-08-21 owner-requested self-evaluation and first-release planning",
+    "summary": "The owner requested a current-state self-evaluation, a three-phase development and distribution specification, and immediate progress on the first phase.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md",
+      "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "The three-phase contract, Phase 1 environment preflight, D-backed OutputRoot implementation, and dirty-tree package composition preflight pass. Phase 1 remains active because the approved changes are uncommitted, the clean frozen package/full gate are not complete, and owner Wide/Compact R0 is outstanding.",
+    "next_action": "Commit the approved PL-0029 Phase 1 changes, rebuild a clean D-backed package from that exact commit, run the complete release gate and hosted CI, then complete product-owner Wide and Compact R0."
+  },
+  "objective": {
+    "summary": "Qualify and publish the first stable OpenVisionLab 3D Studio release through internal freeze, limited RC, and stable-publication gates with exact package identity and truthful capability boundaries.",
+    "constraints": [
+      "Preserve explicit Preview, Publish, Run, Validation, source/result separation, stable evidence identities, and save/reopen behavior.",
+      "Do not add camera, PLC, robot, cloud, production-line, calibrated metrology, installer, or unrelated feature scope during release qualification.",
+      "Do not change the product version, create or push a tag, create a GitHub Release, or distribute externally without the explicit approval required by the owning phase.",
+      "Require product-owner unaided Wide and Compact R0 on the exact frozen candidate before Phase 2.",
+      "Store new local test and package evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio; do not move or delete existing E-backed artifacts without explicit approval and verified migration.",
+      "Do not claim calibrated measurement, Gauge R&R, production approval, or resolution of PL-0003 without current evidence."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The current maturity, blockers, included and excluded release scope, three ordered phases, approval boundaries, and defect policy are documented from current evidence.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Phase 1 freezes one exact clean 0.1.1-dev commit and D-backed self-contained package whose manifest, payload, licenses, samples, documentation, sizes, SHA-256 values, full release gate, and hosted CI pass.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "The product owner completes unaided Wide and Compact R0 on the exact Phase 1 candidate with no unresolved critical or high release defect.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "After explicit approval, Phase 2 publishes and reads back a limited 0.1.1-rc.1 and passes the packaged operator workflow in a clean Windows environment outside the development checkout.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "After explicit approval, Phase 3 publishes v0.1.1 and proves exact tag, commit, manifest, downloaded size and SHA-256, tutorial workflow, release notes, licenses, and known-limitations parity.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C6",
+      "text": "The stable release makes no calibrated-metrology or excluded-platform claim and records the PL-0003 and signing decisions before publication.",
+      "evidence_refs": []
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "summary": "Internal 0.1.1-dev freeze, full package qualification, and owner Wide/Compact R0",
+      "status": "doing",
+      "required": true,
+      "criteria_refs": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "summary": "Owner-approved limited 0.1.1-rc.1 publication and clean-environment evaluation",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "summary": "Owner-approved public v0.1.1 publication and exact public readback",
+      "status": "pending",
+      "required": true,
+      "criteria_refs": [
+        "C5",
+        "C6"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0026"
+    }
+  ],
+  "context": [
+    {
+      "kind": "release policy",
+      "location": "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md",
+      "summary": "The policy separates development, CI, frozen candidate, publication, and public-readback states and requires owner R0 before tagging."
+    },
+    {
+      "kind": "artifact storage",
+      "location": "artifacts",
+      "summary": "The repository junction currently targets E:\\OpenVisionLab-3D-Studio\\artifacts although new workstation evidence must be physically D-backed."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "specification",
+      "location": "docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md",
+      "summary": "Canonical current first-release phase, gate, approval, and defect policy."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "repository audit",
+      "location": "C:/Git/OpenVisionLab-3D-Studio",
+      "observation": "At main 60f86973a117674017f79317e9219b13433a5491, product version is 0.1.1-dev, the solution lists 14 projects, tracked and loose DLL counts are zero, PL-0026 records MVVM M1-M7 complete with structure 67/67, and hosted Windows CI run 32434992738 completed successfully.",
+      "observed_at": "2026-08-21T12:25:45.3229312+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "release preflight",
+      "location": "docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md",
+      "observation": "Current GitHub API and remote-tag checks return zero releases and zero tags; the default package manifest is absent; the repository artifacts junction resolves to E:\\OpenVisionLab-3D-Studio\\artifacts while the required D-backed test root exists.",
+      "observed_at": "2026-08-21T12:25:45.3229312+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "documentation",
+      "location": "docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md",
+      "observation": "The current specification records the evidence-based readiness matrix, internal freeze, limited RC, stable release phases, entry and exit gates, severity policy, exact approval boundaries, and current storage/R0/publication blockers.",
+      "observed_at": "2026-08-21T12:25:45.3229312+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "preflight",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-preflight/",
+      "observation": "FullVerification environment check passed all 5 required tools; PL-0029 validates as v2; changed-document local links report zero missing; git diff --check passes. The environment script also emitted its fixed repository-local report through the existing E-backed artifacts junction, reproducing the storage-path constraint without moving or deleting existing data.",
+      "observed_at": "2026-08-21T12:28:01.6688705+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "package preflight",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-package-preflight/",
+      "observation": "The new OutputRoot boundary parses, rejects mixed OutputRoot/OutputDirectory and repository-output escape, and publishes Release output directly to D with exit 0. Required application files pass 11/11; all 506 manifest entries match actual lengths and SHA-256 values; the 507-file package totals 242,409,450 bytes; manifest SHA-256 is AAD83CBEEC0F1D63C617F808EA081A3E18AD79E31A7BE5C722BFDE13B6B58320. The manifest truthfully records 0.1.1-dev, commit 60f8697, and dirty tree, so this is not a frozen candidate. A direct dotnet Shell.dll help probe entered the interactive path and was stopped; actual packaged EXE and owner R0 remain unverified.",
+      "observed_at": "2026-08-21T13:19:01.0845985+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-21T12:25:45.3229312+09:00",
+      "summary": "Use three ordered gates: internal 0.1.1-dev qualification and owner R0, explicitly approved limited 0.1.1-rc.1, then public v0.1.1 only after RC exit and exact public readback.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "D2",
+      "kind": "decision",
+      "at": "2026-08-21T12:28:01.6688705+09:00",
+      "summary": "Keep Phase 1 doing after non-destructive preflight passes; do not generate the candidate package through the current E-backed artifacts junction until a safe D-backed output route is approved.",
+      "evidence_refs": [
+        "E4"
+      ]
+    },
+    {
+      "id": "D3",
+      "kind": "decision",
+      "at": "2026-08-21T13:19:01.0845985+09:00",
+      "summary": "Accept the explicit OutputRoot route and dirty-tree D-backed package as Phase 1 path/composition preflight only; require a committed clean rebuild, full release gate, and owner R0 before freezing the candidate.",
+      "evidence_refs": [
+        "E5"
+      ]
+    }
+  ],
+  "created_at": "2026-08-21T12:25:45.3229312+09:00",
+  "updated_at": "2026-08-21T13:19:01.0845985+09:00"
+}

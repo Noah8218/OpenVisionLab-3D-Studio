@@ -15,7 +15,9 @@ Use one owner for each kind of information:
    handoff and external prerequisites.
 4. `docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md` owns only the
    next-chat entry prompt.
-5. Dated OpenVisionLab closure, design, audit, and experiment documents are evidence for
+5. `docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md` owns the
+   active first-release phases, gates, and approval boundaries.
+6. Dated OpenVisionLab closure, design, audit, and experiment documents are evidence for
    their recorded scope. They do not override the master backlog.
 
 Do not copy mutable Git status, unpushed-commit claims, or current priority
@@ -86,9 +88,9 @@ As of the 2026-08-18 PL-0024 privacy-safe support-bundle closure:
   schema `1.9` JSON, HTML, and CSV without rerunning inspection. `PL-0024` /
   `L-14` creates one explicit privacy-safe support ZIP from current evidence,
   with an auditable manifest and no raw source bytes, absolute paths, full
-  logs, or workstation/user identity by default. No dependency-ready software
-  slice is selected after that closure; read the master backlog for current
-  order rather than copying it here. The separate
+  logs, or workstation/user identity by default. `PL-0029` now owns the
+  approved three-phase first-release qualification plan; read the master
+  backlog and release specification for current execution state. The separate
   large-C3D candidate remains blocked by a representative maximum input and
   accepted memory/load-time limits. Missing R0 does not globally prohibit a
   newly approved deterministic software slice.

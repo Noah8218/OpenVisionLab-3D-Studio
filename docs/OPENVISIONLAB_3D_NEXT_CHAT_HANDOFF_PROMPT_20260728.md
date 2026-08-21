@@ -76,9 +76,17 @@ and actual one-drag reference/measurement target evidence preserves explicit
   to `ToolWorkbenchValidationSetExecutionOwner`; final Validation Set passes
   86/86, structure passes 67/67, Debug/Release build 0/0, former-owner and DLL
   searches pass, and refreshed Wide/Compact fixed-package `-ValidateOnly`
-  passes. No dependency-ready software slice is selected after this closure.
-  Use gpt-5.6-terra with low reasoning effort for documentation/status checks.
-  The product owner's
+  passes. PL-0029 is now the current coordinated work item; read
+  docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md. Phase 1 is
+  the internal 0.1.1-dev freeze/package/R0 gate, Phase 2 is an explicitly
+  approved limited 0.1.1-rc.1, and Phase 3 is public 0.1.1 after RC exit and
+  public readback. The repository artifacts junction still targets E:, while
+  `publish-windows-app.ps1 -OutputRoot` now writes new package/build evidence
+  directly to D without moving or deleting existing data. The dirty-tree
+  package preflight passed required files 11/11 and manifest verification
+  506/506; commit the approved changes and generate a clean frozen package
+  next. Use gpt-5.6-sol with medium reasoning effort for Phase 1 release
+  qualification. The product owner's
 unaided Wide/Compact R0 is the next acceptance priority and requires owner
 operation, not model execution. A large-C3D memory/performance target still
 needs a representative maximum input and accepted process-memory/load-time

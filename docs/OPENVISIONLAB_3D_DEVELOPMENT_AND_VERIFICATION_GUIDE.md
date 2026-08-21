@@ -200,6 +200,22 @@ Build the operator package:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.ps1
 ```
 
+On the project workstation, keep generated package and build output physically
+under the D-backed test root without changing the repository `artifacts`
+junction:
+
+```powershell
+$releaseRoot = 'D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\artifacts\current\<release-evidence-id>'
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\publish-windows-app.ps1 `
+  -OutputRoot $releaseRoot `
+  -BuildArtifactsPath (Join-Path $releaseRoot 'dotnet-build')
+```
+
+`-OutputRoot` always creates or replaces only its fixed
+`openvisionlab-3d-studio-win-x64` child. Do not combine it with
+`-OutputDirectory`. Existing callers that omit `-OutputRoot` retain the
+repository-local default below.
+
 The default package path is:
 
 ```text
