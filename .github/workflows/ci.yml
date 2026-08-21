@@ -634,3 +634,4 @@ jobs:
           name: openvisionlab-3d-ci-artifacts
           path: artifacts/ci/**
           if-no-files-found: ignore
+          retention-days: 7
