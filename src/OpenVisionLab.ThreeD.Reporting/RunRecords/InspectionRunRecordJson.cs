@@ -25,4 +25,19 @@ public static class InspectionRunRecordJson
             JsonSerializer.Serialize(record, Options),
             new UTF8Encoding(false));
     }
+
+    public static InspectionRunRecord Read(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = Path.GetFullPath(path);
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("Run Record was not found.", fullPath);
+        }
+
+        return JsonSerializer.Deserialize<InspectionRunRecord>(
+                   File.ReadAllText(fullPath, Encoding.UTF8),
+                   Options)
+               ?? throw new InvalidDataException("Run Record JSON contains null.");
+    }
 }

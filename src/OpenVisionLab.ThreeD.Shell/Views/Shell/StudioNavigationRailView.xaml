@@ -205,6 +205,22 @@
                                    Text="{views:ThreeDText Key=ThreeD.Navigation.Advanced, Korean='고급', English='Advanced'}" />
                     </StackPanel>
                 </RadioButton>
+
+                <RadioButton x:Name="ExchangeModeButton"
+                             GroupName="WorkspaceMode"
+                             IsChecked="{Binding IsIntegrationExchangeSelected, Mode=OneWay}"
+                             Command="{Binding SelectWorkspaceCommand}"
+                             CommandParameter="{x:Static app:ShellWorkspaceMode.Exchange}"
+                             Style="{StaticResource RailRadioButtonStyle}"
+                             ToolTip="{views:ThreeDText Key=ThreeD.Navigation.ExchangeTip, Korean='Machine Studio Handoff를 검토하고 기존 Run Record 결과를 게시합니다.', English='Review Machine Studio handoffs and publish existing Run Record results.'}"
+                             AutomationProperties.AutomationId="ExchangeModeButton"
+                             AutomationProperties.Name="Machine Studio exchange workspace">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Width="19" Height="19" Symbol="ArrowSwap24" />
+                        <TextBlock Style="{StaticResource RailLabelStyle}"
+                                   Text="{views:ThreeDText Key=ThreeD.Navigation.Exchange, Korean='연동', English='Exchange'}" />
+                    </StackPanel>
+                </RadioButton>
             </StackPanel>
 
             <StackPanel Grid.Row="1" Margin="0,0,0,7">

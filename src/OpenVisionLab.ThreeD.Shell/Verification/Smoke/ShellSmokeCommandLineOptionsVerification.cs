@@ -44,6 +44,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ThicknessRepeatGridLoadedHandler", VerifyThicknessRepeatGridLoadedHandler()),
             ("NewRecipeLifecycleSource", VerifyNewRecipeLifecycleSource()),
             ("ViewerLayout", VerifyViewerLayout()),
+            ("IntegrationExchangeState", VerifyIntegrationExchangeState()),
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
             ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
             ("LevelSurfacePreviewLoadedHandler", VerifyLevelSurfacePreviewLoadedHandler()),
@@ -532,5 +533,13 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.SupportBundlePressedSmoke
             && options.ShouldAttachLoadedHandler(
                 hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyIntegrationExchangeState()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-integration-exchange-state", "validation-error"]);
+        return options.IntegrationExchangeSmokeState == "validation-error"
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 }

@@ -1,5 +1,6 @@
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.Verification.Smoke;
+using OpenVisionLab.ThreeD.Shell.Verification.Integration;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 
@@ -13,6 +14,25 @@ internal static class ShellVerificationCommandRouter
     public static void Run(string[] args)
     {
         var e = new VerificationArguments(args);
+        const string integrationViewModelOption = "--verify-integration-view-model";
+        var integrationViewModelIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(integrationViewModelOption, StringComparison.OrdinalIgnoreCase));
+        if (integrationViewModelIndex >= 0)
+        {
+            if (integrationViewModelIndex + 1 >= args.Length)
+            {
+                Console.WriteLine($"{integrationViewModelOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+            var passed = ThreeDIntegrationViewModelVerification.Verify(
+                args[integrationViewModelIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
         const string multipleSurfaceMatchWorkbenchOption =
             "--verify-multiple-surface-match-workbench";
         var multipleSurfaceMatchWorkbenchIndex = Array.FindIndex(

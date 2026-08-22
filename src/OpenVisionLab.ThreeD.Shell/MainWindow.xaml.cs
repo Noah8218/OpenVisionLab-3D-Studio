@@ -372,6 +372,7 @@ public partial class MainWindow : Window
         var shellScreenshotPath = smoke.ShellScreenshotPath;
         var screenshotQualityReportPath = smoke.ScreenshotQualityReportPath;
         var viewerLayoutSmoke = smoke.ViewerLayoutSmoke;
+        var integrationExchangeSmokeState = smoke.IntegrationExchangeSmokeState;
         var thicknessRepeatGridSmoke = smoke.ThicknessRepeatGridSmoke;
         var viewerPopoutScreenshotPath = smoke.ViewerPopoutScreenshotPath;
         var viewerPopoutScreenshotQualityReportPath = smoke.ViewerPopoutScreenshotQualityReportPath;
@@ -1472,6 +1473,143 @@ public partial class MainWindow : Window
                         ToolWorkbench.GetSelectedToolVisibleTextLayout());
                     File.WriteAllLines(fullReportPath, reportLines);
                 }
+
+                if (!string.IsNullOrWhiteSpace(integrationExchangeSmokeState))
+                {
+                    if (!_viewModel.IsIntegrationExchangeSelected)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Integration exchange visual state requires --shell-workspace Exchange.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    const string representativeExchangeRoot =
+                        @"D:\OpenVisionLab-Exchange\Projects\Automated-Optical-Inspection-Line-With-A-Deliberately-Long-Commissioning-Name\Shared-Exchange";
+                    _viewModel.IntegrationExchange.ExchangeRoot = representativeExchangeRoot;
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                    UpdateLayout();
+                    if (integrationExchangeSmokeState.Equals("input-focus", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var input = FindVisualDescendants<System.Windows.Controls.TextBox>(this)
+                            .FirstOrDefault(textBox => textBox.Name == "ExchangeRootTextBox");
+                        if (input is null)
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Integration exchange folder input was not available.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                        input.Text = representativeExchangeRoot;
+                        input.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+                        _viewModel.IntegrationExchange.ExchangeRoot = representativeExchangeRoot + @"\Restored-From-ViewModel";
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                        if (!input.Focus()
+                            || !input.IsKeyboardFocusWithin
+                            || input.Text != representativeExchangeRoot + @"\Restored-From-ViewModel")
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Integration exchange folder did not complete its two-way binding and focus round trip.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                    }
+                    else if (integrationExchangeSmokeState.Equals("interaction-matrix", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var workspace = FindVisualDescendants<System.Windows.Controls.UserControl>(this)
+                            .FirstOrDefault(control =>
+                                System.Windows.Automation.AutomationProperties.GetAutomationId(control)
+                                == "MachineExchangeWorkspace");
+                        var buttons = workspace is null
+                            ? []
+                            : FindVisualDescendants<System.Windows.Controls.Button>(workspace)
+                                .Where(button => button.IsVisible)
+                                .ToArray();
+                        if (workspace is null || buttons.Length < 7 || !buttons.Any(button => !button.IsEnabled))
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Integration exchange interaction matrix did not expose its expected enabled and disabled controls.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                        foreach (var button in buttons.Where(button => button.IsEnabled))
+                        {
+                            button.BringIntoView();
+                            if (!button.Focus()
+                                || !button.IsKeyboardFocusWithin
+                                || button.Command is not null
+                                    && button.IsEnabled != button.Command.CanExecute(button.CommandParameter))
+                            {
+                                _viewModel.SetViewerSmokeFailed(
+                                    "Integration exchange button focus or CanExecute state was inconsistent.");
+                                Application.Current.Shutdown(1);
+                                return;
+                            }
+                            var center = button.PointToScreen(
+                                new Point(button.ActualWidth / 2, button.ActualHeight / 2));
+                            if (!SetCursorPos((int)Math.Round(center.X), (int)Math.Round(center.Y)))
+                            {
+                                _viewModel.SetViewerSmokeFailed(
+                                    "Integration exchange pointer could not enter the button hit region.");
+                                Application.Current.Shutdown(1);
+                                return;
+                            }
+                            await Task.Delay(75);
+                            if (!button.IsMouseOver)
+                            {
+                                _viewModel.SetViewerSmokeFailed(
+                                    "Integration exchange button did not enter hover state.");
+                                Application.Current.Shutdown(1);
+                                return;
+                            }
+                            var away = PointToScreen(new Point(8, 8));
+                            SetCursorPos((int)Math.Round(away.X), (int)Math.Round(away.Y));
+                            await Task.Delay(75);
+                            if (button.IsMouseOver)
+                            {
+                                _viewModel.SetViewerSmokeFailed(
+                                    "Integration exchange button did not recover after mouse leave.");
+                                Application.Current.Shutdown(1);
+                                return;
+                            }
+                        }
+                        var input = FindVisualDescendants<System.Windows.Controls.TextBox>(workspace)
+                            .First(textBox => textBox.Name == "ExchangeRootTextBox");
+                        input.Focus();
+                        if (!input.MoveFocus(new System.Windows.Input.TraversalRequest(
+                                System.Windows.Input.FocusNavigationDirection.Next))
+                            || System.Windows.Input.Keyboard.FocusedElement
+                                is not System.Windows.Controls.Button)
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Integration exchange Tab traversal did not reach the next action.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                    }
+                    else if (integrationExchangeSmokeState.Equals("validation-error", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _viewModel.IntegrationExchange.RefreshHandoffsCommand.Execute(null);
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                        if (string.IsNullOrWhiteSpace(_viewModel.IntegrationExchange.StatusText))
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "Integration exchange validation error did not render a status message.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                    }
+                    else if (!integrationExchangeSmokeState.Equals(
+                                 "refresh-pressed",
+                                 StringComparison.OrdinalIgnoreCase))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            $"Unsupported integration exchange visual state '{integrationExchangeSmokeState}'.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                }
+
                 await Task.Delay(100);
                 if (shellScreenshotPath is not null
                     && !(recipeHealthNavigationPressedSmoke
@@ -1493,6 +1631,15 @@ public partial class MainWindow : Window
                             shellScreenshotPath,
                             screenshotQualityReportPath,
                             "CurrentRecipeRunPressed")
+                        : integrationExchangeSmokeState?.Equals(
+                            "refresh-pressed",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "RefreshIntegrationHandoffs",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "IntegrationExchangeRefreshPressed")
                         : await CaptureWindowWithRetryAsync(
                             this,
                             shellScreenshotPath,
@@ -1508,6 +1655,33 @@ public partial class MainWindow : Window
                     AppendWindowMonitorEvidence(
                         this,
                         screenshotQualityReportPath);
+                    if (integrationExchangeSmokeState?.Equals(
+                            "input-focus",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                    {
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                            ["IntegrationExchangeInput|focus=true|longValue=true|textToViewModel=true|viewModelToText=true"]);
+                    }
+                    if (integrationExchangeSmokeState?.Equals(
+                            "interaction-matrix",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                    {
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                            ["IntegrationExchangeInteraction|focus=true|hover=true|mouseLeave=true|disabled=true|canExecute=true|tabTraversal=true"]);
+                    }
+                    if (integrationExchangeSmokeState?.Equals(
+                            "validation-error",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                    {
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                            ["IntegrationExchangeValidation|statusRendered=true|processStable=true|actionExecuted=false"]);
+                    }
                 }
                 if (currentRecipeRunPressedSmoke)
                 {
@@ -3357,10 +3531,12 @@ public partial class MainWindow : Window
             && windowRect.Right > monitorInfo.MonitorArea.Left
             && windowRect.Top < monitorInfo.MonitorArea.Bottom
             && windowRect.Bottom > monitorInfo.MonitorArea.Top;
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(window);
         File.AppendAllLines(
             Path.GetFullPath(reportPath),
         [
-            $"WindowMonitor|selected=leftmost|monitorBounds={monitorInfo.MonitorArea.Left},{monitorInfo.MonitorArea.Top},{monitorInfo.MonitorArea.Right},{monitorInfo.MonitorArea.Bottom}|workingArea={monitorInfo.WorkArea.Left},{monitorInfo.WorkArea.Top},{monitorInfo.WorkArea.Right},{monitorInfo.WorkArea.Bottom}|windowRect={windowRect.Left},{windowRect.Top},{windowRect.Right},{windowRect.Bottom}|intersects={intersects}"
+            $"WindowMonitor|selected=leftmost|monitorBounds={monitorInfo.MonitorArea.Left},{monitorInfo.MonitorArea.Top},{monitorInfo.MonitorArea.Right},{monitorInfo.MonitorArea.Bottom}|workingArea={monitorInfo.WorkArea.Left},{monitorInfo.WorkArea.Top},{monitorInfo.WorkArea.Right},{monitorInfo.WorkArea.Bottom}|windowRect={windowRect.Left},{windowRect.Top},{windowRect.Right},{windowRect.Bottom}|intersects={intersects}",
+            $"WindowDpi|scaleX={dpi.DpiScaleX:F2}|scaleY={dpi.DpiScaleY:F2}|pixelsPerInchX={dpi.PixelsPerInchX:F0}|pixelsPerInchY={dpi.PixelsPerInchY:F0}"
         ]);
     }
 

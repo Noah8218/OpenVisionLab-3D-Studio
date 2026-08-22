@@ -10,6 +10,40 @@
     <AssemblyName>OpenVisionLab.ThreeD.Shell</AssemblyName>
   </PropertyGroup>
 
+  <Target Name="GenerateOpenVisionIntegrationBuildIdentity" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_OpenVisionRepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..'))</_OpenVisionRepositoryRoot>
+      <_OpenVisionBuildIdentityFile>$(IntermediateOutputPath)OpenVisionIntegrationBuildIdentity.g.cs</_OpenVisionBuildIdentityFile>
+    </PropertyGroup>
+    <Exec Command="git -C &quot;$(_OpenVisionRepositoryRoot)&quot; rev-parse HEAD" ConsoleToMSBuild="true" StandardOutputImportance="Low" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_OpenVisionCommitOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="_OpenVisionCommitExitCode" />
+    </Exec>
+    <Exec Command="git -C &quot;$(_OpenVisionRepositoryRoot)&quot; status --porcelain=v1 --untracked-files=normal -- . &quot;:(exclude)src/OpenVisionLab.ThreeD.Shell/*_wpftmp.csproj&quot;" ConsoleToMSBuild="true" StandardOutputImportance="Low" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_OpenVisionStatusOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="_OpenVisionStatusExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <_OpenVisionSourceCommit Condition="'$(_OpenVisionCommitExitCode)' == '0'">@(_OpenVisionCommitOutput)</_OpenVisionSourceCommit>
+      <_OpenVisionSourceCommit Condition="'$(_OpenVisionSourceCommit)' == ''">unknown</_OpenVisionSourceCommit>
+      <_OpenVisionSourceState Condition="'$(_OpenVisionCommitExitCode)' != '0' or '$(_OpenVisionStatusExitCode)' != '0'">unknown</_OpenVisionSourceState>
+      <_OpenVisionSourceState Condition="'$(_OpenVisionSourceState)' == '' and '@(_OpenVisionStatusOutput)' == ''">clean</_OpenVisionSourceState>
+      <_OpenVisionSourceState Condition="'$(_OpenVisionSourceState)' == ''">dirty</_OpenVisionSourceState>
+    </PropertyGroup>
+    <ItemGroup>
+      <_OpenVisionBuildIdentityAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>OpenVisionSourceCommit</_Parameter1>
+        <_Parameter2>$(_OpenVisionSourceCommit)</_Parameter2>
+      </_OpenVisionBuildIdentityAttribute>
+      <_OpenVisionBuildIdentityAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>OpenVisionSourceState</_Parameter1>
+        <_Parameter2>$(_OpenVisionSourceState)</_Parameter2>
+      </_OpenVisionBuildIdentityAttribute>
+      <Compile Include="$(_OpenVisionBuildIdentityFile)" />
+    </ItemGroup>
+    <WriteCodeFragment Language="C#" OutputFile="$(_OpenVisionBuildIdentityFile)" AssemblyAttributes="@(_OpenVisionBuildIdentityAttribute)" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
     <PackageReference Include="OpenVisionLab.WpfPropertyGrid.ThreeD" Version="[1.0.0-ovl3d.1]" />

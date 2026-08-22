@@ -18,6 +18,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? ScreenshotQualityReportPath => GetValue("--shell-screenshot-quality-report");
     public string? ViewerLayoutSmoke => GetValue("--smoke-viewer-layout");
     public string? ThicknessRepeatGridSmoke => GetValue("--smoke-thickness-repeat-grid");
+    public string? IntegrationExchangeSmokeState =>
+        GetValue("--smoke-integration-exchange-state");
     public string? ViewerPopoutScreenshotPath => GetValue("--viewer-popout-screenshot");
     public string? ViewerPopoutScreenshotQualityReportPath => GetValue("--viewer-popout-screenshot-quality-report");
     public string? RecipeManagerScreenshotPath => GetValue("--recipe-manager-screenshot");
@@ -208,6 +210,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || LevelSurfacePreviewSmoke
         || MeasurementPreviewSmoke
         || ViewerLayoutSmoke is not null
+        || IntegrationExchangeSmokeState is not null
         || ThicknessRepeatGridSmoke is not null
         || ViewerPopoutScreenshotPath is not null
         || NewRecipeLifecycleSmokePath is not null
