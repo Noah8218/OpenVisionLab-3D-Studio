@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenVisionLab.Integration.Contracts" Version="[0.1.0]" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Tools\OpenVisionLab.ThreeD.Tools.csproj" />
