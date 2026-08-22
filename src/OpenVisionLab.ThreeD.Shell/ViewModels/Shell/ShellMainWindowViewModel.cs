@@ -9,6 +9,7 @@ using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
+using OpenVisionLab.ThreeD.Shell.ViewModels.Integration;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell;
@@ -20,7 +21,8 @@ public enum ShellWorkspaceMode
     Inspect,
     Review,
     Calibrate,
-    Expert
+    Expert,
+    Exchange
 }
 
 public enum ShellInspectionTask
@@ -125,6 +127,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ?? languageOptions[0];
         ResultsWorkspace = new ResultsWorkspaceViewModel();
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
+        IntegrationExchange = new ThreeDIntegrationViewModel(() => currentRunRecordPath);
         InspectionSteps.CollectionChanged += (_, _) =>
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         Calibration = new CalibrationCenterViewModel();
@@ -204,6 +207,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public ToolWorkbenchViewModel Workbench { get; }
     public ResultsWorkspaceViewModel ResultsWorkspace { get; }
     public CalibrationCenterViewModel Calibration { get; }
+    public ThreeDIntegrationViewModel IntegrationExchange { get; }
     public ThreeDLocalization Localization => ThreeDLocalization.Shared;
     public IReadOnlyList<OpenVisionLanguageOption> LanguageOptions => languageOptions;
 
@@ -264,6 +268,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             RaisePropertyChanged(nameof(IsCalibrationWorkspaceSelected));
             RaisePropertyChanged(nameof(IsWorkbenchWorkspaceSelected));
             RaisePropertyChanged(nameof(IsExpertWorkspaceSelected));
+            RaisePropertyChanged(nameof(IsIntegrationExchangeSelected));
             RaisePropertyChanged(nameof(IsTaskWorkspaceSelected));
             RaisePropertyChanged(nameof(WorkspaceSummary));
             RaisePropertyChanged(nameof(InspectionStageNavigationStatus));
@@ -379,6 +384,18 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsIntegrationExchangeSelected
+    {
+        get => SelectedWorkspaceMode == ShellWorkspaceMode.Exchange;
+        set
+        {
+            if (value)
+            {
+                TrySelectWorkspace(ShellWorkspaceMode.Exchange);
+            }
+        }
+    }
+
     // The former Thickness/Warpage task page is retained only as a source-level
     // compatibility view. Product navigation always uses the generic tool recipe workbench.
     public bool IsTaskWorkspaceSelected => false;
@@ -437,6 +454,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         ShellWorkspaceMode.Review => L("결과 | 실행 기록과 출력 증거를 검토합니다", "Results | Review run records and output evidence"),
         ShellWorkspaceMode.Calibrate => L("교정 작업공간 | 오프라인 데이터셋", "Calibration workspace | Offline datasets"),
         ShellWorkspaceMode.Expert => L("고급 작업공간 | 전체 검사 레이아웃", "Expert workspace | Full inspection layout"),
+        ShellWorkspaceMode.Exchange => L("Machine Studio 연동 | 명시적 Handoff 검토와 결과 게시", "Machine Studio exchange | Explicit handoff review and result publishing"),
         _ => L("검사 작업공간", "Inspection workspace")
     };
 
@@ -607,6 +625,10 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         }
 
         SelectedWorkspaceMode = mode;
+        if (mode == ShellWorkspaceMode.Exchange)
+        {
+            IntegrationExchange.SyncRunRecord();
+        }
     }
 
     private bool CanOpenSelectedValidationIssueInTeach() =>

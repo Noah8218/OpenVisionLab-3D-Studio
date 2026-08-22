@@ -5,12 +5,53 @@ using OpenVisionLab.ThreeD.Reporting.RunRecords;
 
 namespace OpenVisionLab.ThreeD.Reporting.Integration;
 
+public sealed record ThreeDIntegrationTransactionSummary(
+    IntegrationHandoff Handoff,
+    bool HasAcknowledgement,
+    bool HasResult);
+
 /// <summary>
 /// Owns explicit 3D-side file exchange. Reading never changes the workspace or
 /// invokes Preview, Publish, or Run.
 /// </summary>
 public static class ThreeDIntegrationExchange
 {
+    public static IReadOnlyList<ThreeDIntegrationTransactionSummary> DiscoverHandoffs(
+        string exchangeRoot)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(exchangeRoot);
+        var transactionsRoot = Path.Combine(
+            Path.GetFullPath(exchangeRoot),
+            IntegrationTransactionLayout.TransactionsDirectoryName);
+        if (!Directory.Exists(transactionsRoot))
+        {
+            return [];
+        }
+
+        var transactions = new List<ThreeDIntegrationTransactionSummary>();
+        foreach (var directory in Directory.EnumerateDirectories(transactionsRoot))
+        {
+            if (!Guid.TryParse(Path.GetFileName(directory), out var transactionId))
+            {
+                continue;
+            }
+            var handoffPath = Path.Combine(directory, IntegrationTransactionLayout.HandoffFileName);
+            if (!File.Exists(handoffPath))
+            {
+                continue;
+            }
+            var handoff = ReadHandoffEnvelope(exchangeRoot, transactionId);
+            transactions.Add(new(
+                handoff,
+                File.Exists(Path.Combine(directory, IntegrationTransactionLayout.AcknowledgementFileName)),
+                File.Exists(Path.Combine(directory, IntegrationTransactionLayout.ResultFileName))));
+        }
+
+        return transactions
+            .OrderByDescending(transaction => transaction.Handoff.CreatedAtUtc)
+            .ToArray();
+    }
+
     public static IntegrationHandoff ReadHandoff(
         string exchangeRoot,
         Guid transactionId)

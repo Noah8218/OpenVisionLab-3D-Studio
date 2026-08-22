@@ -1,0 +1,201 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Integration.ThreeDIntegrationExchangeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:views="clr-namespace:OpenVisionLab.ThreeD.Shell"
+             AutomationProperties.AutomationId="MachineExchangeWorkspace">
+    <Grid Background="{DynamicResource ThreeD.PanelBrush}"
+          TextElement.Foreground="{DynamicResource ThreeD.TextBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Border Padding="16,10"
+                Background="{DynamicResource ThreeD.CommandBarBrush}"
+                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <StackPanel>
+                <TextBlock FontSize="15"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Title, Korean='Machine Studio 연동', English='Machine Studio exchange'}" />
+                <TextBlock Margin="0,2,0,0"
+                           FontSize="10.5"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='Handoff를 명시적으로 새로고침하고 검토한 뒤 기존 Run Record 결과를 게시합니다.', English='Explicitly refresh and review handoffs, then publish an existing Run Record result.'}" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" MinWidth="420" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="2*" MinWidth="360" />
+            </Grid.ColumnDefinitions>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border Padding="14"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Setup, Korean='한 번만 설정', English='One-time setup'}" />
+                        <TextBlock Margin="0,4,0,10"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.SetupHint, Korean='Machine Studio와 같은 공유 폴더를 저장합니다. 복원만으로는 폴더를 스캔하거나 작업을 실행하지 않습니다.', English='Save the same shared folder used by Machine Studio. Restoration alone never scans the folder or runs an action.'}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ExchangeRootTextBox"
+                                     MinWidth="320"
+                                     Height="32"
+                                     Padding="8,4"
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding IntegrationExchange.ExchangeRoot, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="Machine Studio exchange folder" />
+                            <ui:Button Grid.Column="1"
+                                       Margin="8,0,0,0"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon FolderOpen24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Browse, Korean='찾아보기', English='Browse'}"
+                                       Command="{Binding IntegrationExchange.BrowseExchangeRootCommand}" />
+                        </Grid>
+                        <WrapPanel Margin="0,10,0,0">
+                            <ui:Button Margin="0,0,8,0"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon Save24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.SaveSetup, Korean='설정 저장', English='Save setup'}"
+                                       Command="{Binding IntegrationExchange.SaveSetupCommand}" />
+                            <ui:Button Margin="0,0,8,0"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon ArrowReset24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Reset, Korean='초기화', English='Reset'}"
+                                       Command="{Binding IntegrationExchange.ResetSetupCommand}" />
+                            <ui:Button x:Name="RefreshHandoffsButton"
+                                       Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon ArrowSync24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Refresh, Korean='Handoff 새로고침', English='Refresh handoffs'}"
+                                       Command="{Binding IntegrationExchange.RefreshHandoffsCommand}"
+                                       AutomationProperties.AutomationId="RefreshIntegrationHandoffs" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Margin="0,12,0,0"
+                        Padding="12"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock FontSize="13" FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Handoffs, Korean='Machine Studio Handoff 목록', English='Machine Studio handoffs'}" />
+                        <ListBox Grid.Row="1"
+                                 Margin="0,8,0,0"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ItemsSource="{Binding IntegrationExchange.Transactions}"
+                                 SelectedItem="{Binding IntegrationExchange.SelectedTransaction, Mode=TwoWay}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6" Padding="10,8"
+                                            Background="{DynamicResource ThreeD.PanelBrush}"
+                                            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.TextBrush}" Text="{Binding Title}" />
+                                            <TextBlock Margin="0,3,0,0" FontSize="10" Foreground="{DynamicResource ThreeD.SecondaryTextBrush}" Text="{Binding Detail}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border Grid.Column="2"
+                    Padding="14"
+                    Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Review, Korean='검토 및 결과', English='Review and result'}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding IntegrationExchange.SelectedSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Acknowledge, Korean='1. Handoff 검토', English='1. Review handoff'}" />
+                        <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.AcknowledgeHint, Korean='승인은 계약과 아티팩트를 검증하지만 레시피를 불러오거나 검사를 실행하지 않습니다.', English='Accept validates the contract and artifacts but does not load a recipe or run an inspection.'}" />
+                        <TextBox Margin="0,9,0,0"
+                                 MinHeight="54"
+                                 Padding="8,6"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Text="{Binding IntegrationExchange.RejectionReason, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Handoff rejection reason" />
+                        <WrapPanel Margin="0,9,0,0">
+                            <ui:Button Margin="0,0,8,0"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon Checkmark24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Accept, Korean='승인', English='Accept'}"
+                                       Command="{Binding IntegrationExchange.AcceptCommand}" />
+                            <ui:Button Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon Dismiss24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Reject, Korean='거절', English='Reject'}"
+                                       Command="{Binding IntegrationExchange.RejectCommand}" />
+                        </WrapPanel>
+
+                        <Separator Margin="0,16" />
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Publish, Korean='2. 기존 Run Record 결과 게시', English='2. Publish an existing Run Record result'}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding IntegrationExchange.CurrentRunRecordSummary}"
+                                   TextWrapping="Wrap" />
+                        <ui:Button Margin="0,10,0,0"
+                                   HorizontalAlignment="Left"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon Send24}"
+                                   Content="{views:ThreeDText Key=ThreeD.Exchange.PublishResult, Korean='Machine Studio에 결과 게시', English='Publish result to Machine Studio'}"
+                                   Command="{Binding IntegrationExchange.PublishResultCommand}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Margin="14,0,14,12"
+                Padding="11,8"
+                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                BorderThickness="1"
+                CornerRadius="4">
+            <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
+                       Text="{Binding IntegrationExchange.StatusText}"
+                       TextWrapping="Wrap" />
+        </Border>
+    </Grid>
+</UserControl>

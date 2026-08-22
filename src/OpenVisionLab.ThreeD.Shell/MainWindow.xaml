@@ -10,6 +10,7 @@
         xmlns:shellViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Shell"
         xmlns:workbench="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
         xmlns:workspace="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workspace"
+        xmlns:integration="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Integration"
         Title="OpenVisionLab 3D Studio"
         Width="1600"
         Height="900"
@@ -1289,6 +1290,8 @@
         </dock:OpenVisionDockWorkspaceView>
         <views:CalibrationCenterView DataContext="{Binding Calibration}"
                                      Visibility="{Binding DataContext.IsCalibrationWorkspaceSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <integration:ThreeDIntegrationExchangeView
+            Visibility="{Binding DataContext.IsIntegrationExchangeSelected, ElementName=ShellWindow, Converter={StaticResource BoolToVisibilityConverter}}" />
             </Grid>
         </Grid>
     </Grid>
