@@ -588,23 +588,14 @@ the selected left monitor at current 125% scaling. Preserve
 Commit `a8db67b9078533ed24f1a07441ae54455577c20d` is pushed to `origin/main`.
 No new package, tag, RC, or release occurred.
 
-Hosted CI run
-[`32688885946`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32688885946)
-failed after Build and the first eight verification groups passed. The first
-failure is `Verify typed C3D preparation adapters`: targeted Filter execution
-loads the intentionally repairable affine scaffold, then full-recipe E-13
-validation rejects its four missing `search-region` routes and one missing
-`correspondences` route before the selected Filter step can run. The same
-Release command reproduces locally with exit code `5`; evidence is under the
-D-backed `20260824-hosted-ci-regression` root. This is a current qualification
-regression, not evidence that E-14 GridCircle behavior failed.
-
-`PL-0049` now contains the local repair. Core owns one
+`PL-0049` is resolved. Core owns one
 `ValidateForStepExecution` boundary: global identity, graph, incompatible-route,
 and selected-step role validation remain active, while missing roles on
 unrelated draft steps no longer block a targeted adapter. All targeted typed
 execution owners use that boundary; whole-recipe Run and one-step
-`CanRunWholeRecipe` paths retain strict `Validate`.
+`CanRunWholeRecipe` paths retain strict `Validate`. Filter, Remove Outliers,
+Level Surface, and ROI Crop Workbench Preview readiness and state refresh use
+the same selected-step boundary rather than blocking before Tools execution.
 
 Current local evidence under the D-backed
 `20260824-pl0049-targeted-validation` root passes the formerly failing Filter
@@ -613,28 +604,25 @@ preparation Filter `13/13`, Remove Outliers `9/9`, Level Surface `9/9`, ROI Crop
 `6/6`, Edge `13/13` and Workbench `12/12`, Line Fit `9/9` and Workbench `14/14`,
 Line Intersection `10/10` and Workbench `23/23`, integration ViewModel `16/16`,
 standard tests `2/2`, structure `68/68`, Release `0/0`, and diff hygiene.
+Actual Filter Preview/Publish EXE evidence under the D-backed
+`20260824-pl0049-shell-smoke` root passed screenshot quality at 125% DPI, with
+the window rectangle intersecting the recorded monitor. Remove Outliers
+Workbench `14/14`, Level Surface `17/17`, and ROI Crop `19/19` also pass.
+Commit `00752b4cedc0a33645a16b0437845650fb6eeddc` is pushed to `origin/main`;
+hosted CI run
+[`32692639982`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32692639982)
+passed the complete workflow in 6m14s.
 
 ```text
 Status: Complete
-Scope: PL-0049 local source repair for targeted typed-adapter validation scope
-Acceptance criteria: unrelated missing-role drafts no longer block a valid selected step -> pass; selected-step missing roles and whole-recipe Run remain fail-closed -> pass; all targeted execution owners use the shared boundary while whole-recipe paths retain strict validation -> pass
-Verification: formerly failing Filter command and unchanged SHA-256 pass; selection 51/51; teaching 55/55; preparation, Edge, Line Fit, Line Intersection, integration, standard tests, structure, Release build, and git diff hygiene pass
-Evidence: .proofline/issues/PL-0049.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation/
-Boundary / next dependency: this completes the local verified-development slice only; hosted CI success at the exact pushed commit remains a separate qualification state
+Scope: PL-0049 targeted typed-adapter and Workbench Preview validation scope
+Acceptance criteria: unrelated missing-role drafts no longer block a valid selected step -> pass; selected-step missing roles and whole-recipe Run remain fail-closed -> pass; targeted Tools and Workbench boundaries are aligned -> pass; hosted CI at the exact repair commit -> pass
+Verification: formerly failing Filter command and unchanged SHA-256 pass; selection 51/51; teaching 55/55; affected Tools and Workbench checks pass; actual EXE Filter Preview/Publish screenshot quality passes; Release build and git diff hygiene pass; hosted CI 32692639982 succeeds
+Evidence: .proofline/issues/PL-0049.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation/; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-shell-smoke/; GitHub Actions run 32692639982
+Boundary / next dependency: no release, package, tag, or deployment was created; E-15 is the next dependency-ready inventory item
 ```
 
-Immediate authorization gate before new inventory work:
-
-1. Commit `a075faa85ed81888a7e5525916a9bc7334e67d81` is pushed to `origin/main`.
-   Hosted CI run
-   [`32691809439`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32691809439)
-   executed the new selection checks successfully as `51/51`, but the workflow
-   still expected the former `49/49` total and stopped before the repaired
-   preparation gate. Update that exact-count assertion to `51/51`, push the
-   correction, and require a complete hosted CI success before resolving
-   PL-0049 | Recommended model: `gpt-5.6-luna` | Reasoning effort: `low`
-
-Remaining dependency-ready project priority after that gate:
+Next dependency-ready project priority:
 
 1. `E-15 GridPolygon selection for irregular masks` | Recommended model:
    `gpt-5.6-luna` | Reasoning effort: `high`

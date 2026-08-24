@@ -18,9 +18,8 @@
     ]
   },
   "state": {
-    "status": "doing",
-    "current_summary": "Targeted Tools execution and the Workbench preprocessing Preview boundary now use selected-step validation; local headless and actual EXE checks pass, and hosted CI success at the next exact commit remains required.",
-    "next_action": "Commit and push the Workbench validation-boundary correction, then require complete hosted CI success before resolving PL-0049."
+    "status": "resolved",
+    "current_summary": "Whole-recipe strict validation remains fail-closed while valid selected typed-adapter steps and their Workbench Preview paths ignore only unrelated draft-step missing roles; local regression and actual EXE checks passed, and hosted CI completed successfully at repair commit 00752b4."
   },
   "problem": {
     "claims": [
@@ -61,7 +60,9 @@
     {
       "id": "C4",
       "text": "A separately authorized push completes with hosted CI success at the exact repair commit.",
-      "evidence_refs": []
+      "evidence_refs": [
+        "E7"
+      ]
     }
   ],
   "relations": [
@@ -141,6 +142,13 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-shell-smoke",
       "observation": "Release built with zero warnings/errors; Filter actual EXE Preview/Publish completed with an accepted screenshot at 125% DPI and an intersecting window rectangle; Remove Outliers 14/14, Level Surface 17/17, ROI Crop 19/19, selection 51/51, teaching 55/55, and git diff check passed.",
       "observed_at": "2026-08-24T14:10:48.6748792+09:00"
+    },
+    {
+      "id": "E7",
+      "kind": "hosted-ci",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32692639982",
+      "observation": "GitHub Actions completed the full CI workflow successfully in 6m14s at exact repair commit 00752b4cedc0a33645a16b0437845650fb6eeddc, including selection 51/51, typed preparation, Edge, Line Fit, Line Intersection, actual Shell screenshots, WPF pointer input, numerical goldens, Runner smokes, and artifact upload.",
+      "observed_at": "2026-08-24T14:18:10.3528083+09:00"
     }
   ],
   "events": [
@@ -161,8 +169,16 @@
       "evidence_refs": [
         "E5"
       ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-24T14:18:10.3528083+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "All PL-0049 criteria passed locally and in hosted CI at the exact repair commit."
     }
   ],
   "created_at": "2026-08-24T13:30:48+09:00",
-  "updated_at": "2026-08-24T14:10:48.6748792+09:00"
+  "updated_at": "2026-08-24T14:18:10.3528083+09:00"
 }

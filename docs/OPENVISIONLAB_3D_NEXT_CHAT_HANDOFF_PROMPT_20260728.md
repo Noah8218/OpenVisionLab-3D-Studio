@@ -30,49 +30,26 @@ Before changing files, state the immediate gate, the remaining project
 priority, product identity, evidence-based maturity source, retained operator
 workflow, and excluded platform scope.
 
-Current baseline and immediate gate
+Current baseline
 
-- Commit a8db67b9078533ed24f1a07441ae54455577c20d is on origin/main.
+- Commit 00752b4cedc0a33645a16b0437845650fb6eeddc is on origin/main.
 - Product version remains 0.1.1-dev and Generic Tool Recipe schema remains 1.6.
-- Hosted CI run 32688885946 failed at "Verify typed C3D preparation adapters".
-  Build and the preceding verification groups passed.
-- The local Release reproduction exits 5 because targeted Filter execution of
-  recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json performs strict
-  full-recipe validation. The deliberately repairable scaffold has four
-  missing search-region roles and one missing correspondences role.
-- Evidence is under
-  D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260824-hosted-ci-regression.
-- The current working tree already contains the PL-0049 root-cause repair and
-  focused regression coverage. Do not reimplement it without failed evidence.
+- PL-0049 is resolved. Targeted Tools execution and the preprocessing Workbench
+  Preview boundary use selected-step validation; selected-step errors and
+  whole-recipe Run remain strict and fail-closed.
 - Local evidence under
   D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260824-pl0049-targeted-validation
   passes the formerly failing command with unchanged SHA-256, selection 51/51,
   teaching 55/55, affected typed adapters, integration 16/16, standard tests
   2/2, structure 68/68, Release 0/0, and git diff --check.
-- The repair is pushed as a075faa85ed81888a7e5525916a9bc7334e67d81. Hosted
-  CI run 32691809439 confirmed the new selection verifier passes 51/51, then
-  failed because .github/workflows/ci.yml still expected the former 49/49
-  total. The working tree contains the one-line 51/51 workflow correction.
+- Actual Filter Preview/Publish EXE evidence and the three sibling preprocessing
+  Workbench checks are under
+  D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260824-pl0049-shell-smoke.
+- Hosted CI run 32692639982 passed the complete workflow at the exact repair
+  commit in 6m14s. Do not reopen PL-0049 without changed requirements, source,
+  environment, or failed current evidence.
 
-First review the existing bounded repair and confirm that it preserves all of
-these contracts:
-
-- E-13 remains fail-closed for the selected step and for whole-recipe Run.
-- Incompatible routed selections remain rejected, while incomplete drafts
-  remain saveable and explicitly repairable.
-- A targeted typed-adapter Preview/execution is not blocked only by unrelated
-  incomplete future steps in the same draft.
-- Do not make the intentionally incomplete affine scaffold appear globally
-  executable merely to satisfy CI.
-- Focused regression coverage proves both the allowed targeted path and the
-  rejected missing-role selected-step/whole-recipe paths.
-
-PL-0049 criteria C1-C3 pass locally. The user authorized commit and push. Commit
-and push the prepared exact-count correction, then keep C4 open until the
-complete hosted CI succeeds at the resulting exact commit. Do not resolve
-PL-0049 or claim hosted recovery from the partial run.
-
-Remaining project priority after the gate
+Immediate project priority
 
 E-15 GridPolygon selection for irregular masks. Recommended model:
 gpt-5.6-luna. Reasoning effort: high.
