@@ -1,120 +1,126 @@
 # OpenVisionLab 3D Next-Chat Entry Prompt
 
-Updated: 2026-08-21
-Status: Current continuation entry point
+Updated: 2026-08-24
+Status: Current Luna continuation entry point
 
-Use the following request to start the next development chat:
+Use `gpt-5.6-luna` with `high` reasoning effort and paste the following request
+into the next task:
 
 ```text
 Continue OpenVisionLab 3D Studio work in
-C:\Git\OpenVisionLab-3D-Studio.
+C:\Git\OpenVisionLab-3D-Studio using gpt-5.6-luna with high reasoning effort.
 
-First run git status --short and git log --oneline -5. Read AGENTS.md,
-docs/README.md, docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md, and
-docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md.
-Read the specific active contract for the requested scope before changing
-files.
+Orientation and mandatory modes
 
-The master backlog owns the current inventory table; do not copy its counts
-into this prompt. Inspection Workspace v3 is 7/8 and A-01 remains Partial.
-The current acceptance priority is the product owner's unaided Wide/Compact
-R0; automated validation does not replace it. PL-0004 immutable C3D loaded
-snapshot, PL-0005 truthful alignment status, PL-0007 impact-aware guarded
-recipe-step removal, and PL-0008 bounded Workbench run-log retention are
-complete. The current Release EXE recipe-authoring study saved and reopened
-ten current-format Thickness Coupon variants; only the eight-step Thickness
-baseline is ready, while the other chains are preserved as pending or
-incompatible UX evidence. Read
-docs/OPENVISIONLAB_3D_EXE_RECIPE_AUTHORING_UX_STUDY_20260815.md. PL-0009
-compatible Add/input-route correctness is complete: proposed types are
-visible, unavailable transformed-only tools cannot be inserted, generic
-HeightField consumers avoid MeasurementResult routing, and legacy mismatches
-have a direct non-executing repair action. PL-0010 contextual
-add/configure/teach/repair is also complete: Add opens Selected Tool and a
-dual-ROI setup card keeps input, missing setup, readiness, one next action,
-and Tools return together. PL-0011 recipe health navigation is complete with
-exact six-state counts and non-wrapping, non-mutating navigation to each
-owning step and requirement. PL-0013 is now complete: Recipe Center collects recipe
-identity, folder, C3D source, and optional compatible starter before explicit
-Create, and confirmed setup restores visibly without execution. PL-0012 is
-now complete: successful recipe open, new-recipe creation, and compatible Add
-clear Tool Library search while failed operations retain the visible query
-without execution. PL-0014 is now complete: the language selector retains the
-shared graphite ComboBox popup, Wide and Compact labels remain visible, and
-language persistence does not execute or mutate inspection state. PL-0015 is
-complete with ten varied synthetic Thickness recipes, safe same-grid variants,
-measured fixture-class targets, and controlled Error records. PL-0016 is
-complete with explicit saved-recipe ordered Run, Results evidence, Runner
-parity, and the no-auto-run contract. PL-0017 is complete: GridRectangle
-teaching enters Top orthographic, shows exact live row/column starts and counts,
-and actual one-drag reference/measurement target evidence preserves explicit
-  Apply/Cancel and no-execution behavior. Read the dated 2026-08-17 closure
-  documents and the 2026-08-18 PL-0019 timing closure with their Proofline
-  issues when that evidence is relevant.
-  PL-0018 keeps private market research, vendor comparisons, supplied-media
-  reviews, and former chronological records outside tracked public
-  documentation while retaining required license and attribution records.
-  The local private archive is owner-only and Git history was not rewritten.
-  PL-0019 / L-09 is complete: Run Record schema 1.7 exposes existing ordered
-  and persisted Surface Match stage timing consistently in JSON, HTML, CSV,
-  Runner, and Results without rerunning algorithms. Compact Results keeps the
-  timing and evidence columns visible together. PL-0020 / L-10 is complete:
-  its schema 1.8 contract preserves the exact identified Source Quality report across
-  ordered Shell/Runner execution, JSON, HTML, CSV, text, and Results without
-  a second source load or analysis; mismatch fails before inspection and
-  legacy/non-raw routes are explicit Unavailable. PL-0021 is complete: the
-  Viewer bottom status persistently shows the existing selected X/Y/Z and C3D
-  raw height beside camera/unit context, including a localized empty state,
-  without adding hover scanning or inspection execution. PL-0022 / L-12 is
-  complete: current Run Record schema 1.9 retains the exact typed Completeness
-  grid output and exposes matching JSON, readable HTML, and structured CSV
-  child rows without rerunning inspection; missing or malformed current
-  evidence fails closed and schema 1.8 remains readable. PL-0024/L-14 is also
-  complete for the privacy-safe support bundle. PL-0026 is complete for its
-  bounded M1-M7 MVVM/library-refactor contract. Validation Set cancellation,
-  running state, and direct normal/development/Held-out execution now belong
-  to `ToolWorkbenchValidationSetExecutionOwner`; final Validation Set passes
-  86/86, structure passes 67/67, Debug/Release build 0/0, former-owner and DLL
-  searches pass, and refreshed Wide/Compact fixed-package `-ValidateOnly`
-  passes. PL-0029 is now the current coordinated work item; read
-  docs/OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md. Phase 1 is
-  the internal 0.1.1-dev freeze/package/R0 gate, Phase 2 is an explicitly
-  approved limited 0.1.1-rc.1, and Phase 3 is public 0.1.1 after RC exit and
-  public readback. The repository artifacts junction still targets E:, while
-  `publish-windows-app.ps1 -OutputRoot` now writes new package/build evidence
-  directly to D without moving or deleting existing data. Frozen commit
-  c1b49ec has a clean D-backed package, exact manifest verification 506/506,
-  a hashed ZIP, local automated gates, and hosted CI #94 success (55/55).
-  The product owner's
-unaided Wide/Compact R0 is the next acceptance priority and requires owner
-operation, not model execution; use no model tokens until that result exists.
-A large-C3D memory/performance target still
-needs a representative maximum input and accepted process-memory/load-time
-limits; do not spend model tokens on it until those prerequisites exist.
-PL-0006 release-policy reconciliation is complete: the current
-repository has no release or tag, and historical v0.1.0-rc.1 candidate
-evidence is not a current distribution claim. Creating or republishing a
-release still requires explicit owner direction and the complete release gate.
-Use the current master checkpoint and shared-chat analysis closure as the
-scope source.
+1. Run git status --short and git log --oneline -5.
+2. Read AGENTS.md completely and load the mandatory Ponytail, Proofline
+   baseline-quality, and applicable Proofline skills named there.
+3. Read docs/README.md,
+   docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md, and
+   docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md.
+4. Read C:\Users\USER\.codex\docs\WPF_UI_UX_RULES.md completely before any
+   E-15 UI work.
+5. Read the E-13 and E-14 closure documents and their Proofline issues:
+   docs/OPENVISIONLAB_3D_SELECTION_KIND_ROLE_MATRIX_CLOSURE_20260824.md,
+   docs/OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md,
+   .proofline/issues/PL-0047.json, and .proofline/issues/PL-0048.json.
+6. Read .proofline/issues/PL-0049.json before changing its repair.
 
-OpenVisionLab 3D Studio remains a local, file-first deterministic rule-based
-3D inspection workbench. Preserve explicit Preview/Publish/Run, source/result
-separation, Viewer and docking behavior, semantic-theme gates, and
-OpenVisionLab Vision SDK ownership for numerical work. Do not expand into camera, PLC,
-robot, cloud, or production-line platform scope.
+Before changing files, state the immediate gate, the remaining project
+priority, product identity, evidence-based maturity source, retained operator
+workflow, and excluded platform scope.
 
-PL-0003 is a separate external maintenance blocker for re-auditing historical
-GitHub objects and Actions artifacts from the retired non-public sample. Do
-not call it resolved without authorized current evidence.
+Current baseline and immediate gate
 
-Preserve ignored user-owned 3D/TLB, 3D/SSD-Black, 3D/fccsp, and 3D/새 폴더.
-Do not modify OpenVisionLab_Dev, commit, push, merge, or release without the
-user's explicit authorization.
+- Commit a8db67b9078533ed24f1a07441ae54455577c20d is on origin/main.
+- Product version remains 0.1.1-dev and Generic Tool Recipe schema remains 1.6.
+- Hosted CI run 32688885946 failed at "Verify typed C3D preparation adapters".
+  Build and the preceding verification groups passed.
+- The local Release reproduction exits 5 because targeted Filter execution of
+  recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json performs strict
+  full-recipe validation. The deliberately repairable scaffold has four
+  missing search-region roles and one missing correspondences role.
+- Evidence is under
+  D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260824-hosted-ci-regression.
+- The current working tree already contains the PL-0049 root-cause repair and
+  focused regression coverage. Do not reimplement it without failed evidence.
+- Local evidence under
+  D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\20260824-pl0049-targeted-validation
+  passes the formerly failing command with unchanged SHA-256, selection 51/51,
+  teaching 55/55, affected typed adapters, integration 16/16, standard tests
+  2/2, structure 68/68, Release 0/0, and git diff --check.
 
-Before acting, state the immediate priority, remaining project priority,
-product identity, maturity source, retained workflow principle, and excluded
-platform scope.
+First review the existing bounded repair and confirm that it preserves all of
+these contracts:
+
+- E-13 remains fail-closed for the selected step and for whole-recipe Run.
+- Incompatible routed selections remain rejected, while incomplete drafts
+  remain saveable and explicitly repairable.
+- A targeted typed-adapter Preview/execution is not blocked only by unrelated
+  incomplete future steps in the same draft.
+- Do not make the intentionally incomplete affine scaffold appear globally
+  executable merely to satisfy CI.
+- Focused regression coverage proves both the allowed targeted path and the
+  rejected missing-role selected-step/whole-recipe paths.
+
+PL-0049 criteria C1-C3 pass locally. C4 remains open: a hosted CI rerun requires
+a separately authorized commit and push. Do not commit or push until the user
+explicitly authorizes both actions, and do not resolve PL-0049 or claim hosted
+recovery until CI succeeds at the exact repair commit.
+
+Remaining project priority after the gate
+
+E-15 GridPolygon selection for irregular masks. Recommended model:
+gpt-5.6-luna. Reasoning effort: high.
+
+Before E-15 implementation, create/update its durable Proofline issue and
+define concrete acceptance criteria from current source and the master backlog.
+Do not assume that any current inspection tool consumes GridPolygon. Inspect
+the vendored OpenVisionLab.Vision3D API and the SDK ownership contract before
+adding polygon-to-mask geometry; new numerical or geometric algorithms belong
+in OpenVisionLab-Vision-SDK when the required public API is absent.
+
+E-15 must, at minimum, prove:
+
+1. A typed, versioned GridPolygon contract with stable identity, source/frame
+   binding, finite in-grid vertices, deterministic validity rules, strict
+   fail-closed malformed/incompatible handling, and exact save/reopen/Runner
+   round-trip.
+2. Explicit vertex authoring and editing in Viewer/Workbench with visible
+   coordinates and vertex order, Apply/Cancel, keyboard recovery, and no
+   automatic Preview, Publish, Run, source replacement, or selection change.
+3. Deterministic mask-output semantics and evidence only after ownership is
+   established. Do not infer calibrated area, physical metrology, or an
+   inspection consumer that the matrix does not declare.
+4. E-13 remains the single supported kind/role declaration and fails closed;
+   any authoring-only pseudo-step must be explicit.
+5. Current-build Wide 1920x1040 and Compact 1280x760 runtime evidence on the
+   dynamically selected test monitor, both supported themes/layouts, relevant
+   normal/hover/pressed/focused/selected/disabled/error states, popup and
+   keyboard paths, longest plausible values, save/reopen, Runner parity,
+   focused smoke, proportional Release build, and git diff --check. Record
+   unrun DPI scales as unverified.
+
+Preserve the product identity: a local, file-first, deterministic rule-based
+3D inspection workbench. Preserve load -> source quality -> teach -> explicit
+Preview -> explicit Publish -> explicit Run -> evidence -> save/reopen,
+source/result separation, Viewer and docking behavior, semantic themes, and
+MVVM ownership. Camera, lighting, PLC, industrial I/O, robot, cloud, account,
+deployment, production-line control, calibrated metrology, package, tag, RC,
+and release work remain out of scope. Human Wide/Compact R0 is owner-deferred
+and is not replaced by automation.
+
+Store test-only outputs physically under
+D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio and follow the dynamic
+monitor rule for every actual EXE launch. Preserve ignored user-owned folders
+3D/TLB, 3D/SSD-Black, 3D/fccsp, and 3D/새 폴더. Do not modify
+C:\Git\OpenVisionLab_Dev. Do not commit, push, merge, change product version,
+package, tag, publish, release, or deploy without separate explicit user
+authorization.
+
+Finish with exactly one closure state: Complete, Blocked, or Incomplete. Name
+commands actually run, evidence paths, boundaries, and the next priority with
+Recommended model and Reasoning effort.
 ```
 
 Private research and former chronological records are not part of the tracked

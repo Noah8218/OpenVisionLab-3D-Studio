@@ -77,7 +77,7 @@ public static class ToolRecipeXYZAffineApplyExecution
             ArgumentNullException.ThrowIfNull(document);
             ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
             ArgumentNullException.ThrowIfNull(publishedAffineTransform);
-            var validation = ToolRecipeValidator.Validate(document);
+            var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
             if (!validation.IsValid) throw new InvalidDataException(string.Join(" ", validation.Errors));
             step = document.Steps.SingleOrDefault(candidate => string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Teaching recipe must contain exactly one step with ID '{stepId}'.");

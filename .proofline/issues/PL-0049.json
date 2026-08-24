@@ -1,0 +1,127 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0049",
+    "aliases": [
+      "E-13 targeted-execution regression"
+    ],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Restore targeted typed-adapter validation scope",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "test",
+    "summary": "Hosted CI run 32688885946 exposed an E-13 regression after a8db67b was pushed.",
+    "refs": [
+      "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32688885946"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "The shared selected-step validation boundary is implemented and all local C1-C3 gates pass; hosted CI success at the exact repair commit remains pending separate commit and push authorization.",
+    "next_action": "After explicit commit and push authorization, commit the repair and documentation, push the exact commit, and require hosted CI success before resolving PL-0049."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "Strict full-recipe E-13 role validation prevents targeted typed-adapter execution when only unrelated steps are incomplete.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Hosted CI stops at the preparation-adapter gate and skips all later qualification steps."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "A valid selected typed-adapter step can execute when only unrelated draft steps have missing selection roles.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A selected step with a missing or incompatible required selection and a whole-recipe Run still fail closed.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The formerly failing command, focused selection and typed-adapter regressions, proportional Release build, and git diff check pass.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "A separately authorized push completes with hosted CI success at the exact repair commit.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0047"
+    }
+  ],
+  "context": [
+    {
+      "kind": "validation owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeValidator.cs",
+      "summary": "Core owns full, storage, and selected-step recipe validation boundaries."
+    },
+    {
+      "kind": "typed execution callers",
+      "location": "src/OpenVisionLab.ThreeD.Tools",
+      "summary": "Targeted typed-adapter execution currently calls full-recipe validation."
+    },
+    {
+      "kind": "repairable draft fixture",
+      "location": "recipes/c3d-xyz-affine-teaching-template.ov3d-teach.json",
+      "summary": "The affine scaffold intentionally retains unrelated incomplete teaching steps."
+    },
+    {
+      "kind": "qualification caller",
+      "location": ".github/workflows/ci.yml",
+      "summary": "Hosted CI executes selected preparation and feature adapters from the repairable draft."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "test-output",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-hosted-ci-regression",
+      "summary": "Local Release reproduction root"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "GitHub Actions run 32688885946 and D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-hosted-ci-regression",
+      "observation": "Hosted CI failed at Verify typed C3D preparation adapters and the equivalent local Release command exited 5 with four missing search-region roles and one missing correspondences role.",
+      "observed_at": "2026-08-24T13:30:48+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation/selections-final.txt",
+      "observation": "Selection contract verification passed 51/51, including targeted execution with unrelated missing roles, selected-step missing-role rejection, and whole-recipe strict rejection.",
+      "observed_at": "2026-08-24T13:40:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation",
+      "observation": "The formerly failing Filter command returned 0 with the unchanged output SHA-256; Release built with zero warnings/errors; preparation, Edge, Line Fit, Line Intersection, Teaching 55/55, integration 16/16, standard tests 2/2, and structure 68/68 passed.",
+      "observed_at": "2026-08-24T13:40:00+09:00"
+    }
+  ],
+  "events": [],
+  "created_at": "2026-08-24T13:30:48+09:00",
+  "updated_at": "2026-08-24T13:40:00+09:00"
+}

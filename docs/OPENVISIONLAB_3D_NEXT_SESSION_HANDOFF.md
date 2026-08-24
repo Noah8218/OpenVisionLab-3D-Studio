@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Current Session Handoff
 
-Date: 2026-08-23
+Date: 2026-08-24
 Status: Current
 
 This file is a short continuation snapshot. The canonical inventory and
@@ -584,11 +584,55 @@ ordered Run `16/16`, docking/theme `98/98`, standard tests `2/2`, and structure
 the selected left monitor at current 125% scaling. Preserve
 `OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md`,
 `../.proofline/issues/PL-0048.json`, and the D-backed
-`20260824-e14-grid-circle` evidence root. Product version remains `0.1.1-dev`;
-the PL-0030-through-PL-0048 qualification baseline is the current local HEAD
-and remains unpushed. No new package, tag, RC, or release occurred.
+`20260824-e14-grid-circle` evidence root. Product version remains `0.1.1-dev`.
+Commit `a8db67b9078533ed24f1a07441ae54455577c20d` is pushed to `origin/main`.
+No new package, tag, RC, or release occurred.
 
-1. `E-15 GridPolygon selection for irregular masks` | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+Hosted CI run
+[`32688885946`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32688885946)
+failed after Build and the first eight verification groups passed. The first
+failure is `Verify typed C3D preparation adapters`: targeted Filter execution
+loads the intentionally repairable affine scaffold, then full-recipe E-13
+validation rejects its four missing `search-region` routes and one missing
+`correspondences` route before the selected Filter step can run. The same
+Release command reproduces locally with exit code `5`; evidence is under the
+D-backed `20260824-hosted-ci-regression` root. This is a current qualification
+regression, not evidence that E-14 GridCircle behavior failed.
+
+`PL-0049` now contains the local repair. Core owns one
+`ValidateForStepExecution` boundary: global identity, graph, incompatible-route,
+and selected-step role validation remain active, while missing roles on
+unrelated draft steps no longer block a targeted adapter. All targeted typed
+execution owners use that boundary; whole-recipe Run and one-step
+`CanRunWholeRecipe` paths retain strict `Validate`.
+
+Current local evidence under the D-backed
+`20260824-pl0049-targeted-validation` root passes the formerly failing Filter
+command with unchanged output SHA-256, selection `51/51`, teaching `55/55`,
+preparation Filter `13/13`, Remove Outliers `9/9`, Level Surface `9/9`, ROI Crop
+`6/6`, Edge `13/13` and Workbench `12/12`, Line Fit `9/9` and Workbench `14/14`,
+Line Intersection `10/10` and Workbench `23/23`, integration ViewModel `16/16`,
+standard tests `2/2`, structure `68/68`, Release `0/0`, and diff hygiene.
+
+```text
+Status: Complete
+Scope: PL-0049 local source repair for targeted typed-adapter validation scope
+Acceptance criteria: unrelated missing-role drafts no longer block a valid selected step -> pass; selected-step missing roles and whole-recipe Run remain fail-closed -> pass; all targeted execution owners use the shared boundary while whole-recipe paths retain strict validation -> pass
+Verification: formerly failing Filter command and unchanged SHA-256 pass; selection 51/51; teaching 55/55; preparation, Edge, Line Fit, Line Intersection, integration, standard tests, structure, Release build, and git diff hygiene pass
+Evidence: .proofline/issues/PL-0049.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation/
+Boundary / next dependency: this completes the local verified-development slice only; hosted CI success at the exact pushed commit remains a separate qualification state
+```
+
+Immediate authorization gate before new inventory work:
+
+1. Review and explicitly authorize committing and pushing the PL-0049 repair;
+   then require hosted CI success at that exact commit before resolving the
+   issue | Recommended model: `gpt-5.6-luna` | Reasoning effort: `low`
+
+Remaining dependency-ready project priority after that gate:
+
+1. `E-15 GridPolygon selection for irregular masks` | Recommended model:
+   `gpt-5.6-luna` | Reasoning effort: `high`
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

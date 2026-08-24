@@ -37,7 +37,7 @@ public static class ToolRecipeLineIntersectionExecution
             ArgumentNullException.ThrowIfNull(firstPublishedLine);
             ArgumentNullException.ThrowIfNull(secondPublishedLine);
             ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
-            var validation = ToolRecipeValidator.Validate(document);
+            var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
             if (!validation.IsValid) throw new InvalidDataException(string.Join(" ", validation.Errors));
             var step = document.Steps.SingleOrDefault(candidate => string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Teaching recipe must contain exactly one step with ID '{stepId}'.");

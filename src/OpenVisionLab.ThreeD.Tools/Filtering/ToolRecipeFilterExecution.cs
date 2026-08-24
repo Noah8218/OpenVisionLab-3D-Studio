@@ -17,7 +17,7 @@ public static class ToolRecipeFilterExecution
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
 
-        var validation = ToolRecipeValidator.Validate(document);
+        var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
         if (!validation.IsValid)
         {
             return Error(string.Join(" ", validation.Errors));

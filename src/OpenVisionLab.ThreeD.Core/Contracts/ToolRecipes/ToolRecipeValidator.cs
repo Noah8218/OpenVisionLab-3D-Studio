@@ -5,16 +5,30 @@ public static class ToolRecipeValidator
     private const string GridCellLocatorKind = "grid-cell";
 
     public static ToolRecipeValidationResult Validate(ToolRecipeDocument? document) =>
-        ValidateCore(document, requireSourcePath: true, requireInspectionStep: true, allowIncompleteSteps: false);
+        ValidateCore(document, requireSourcePath: true, requireInspectionStep: true, allowIncompleteSteps: false, requiredStepId: null);
 
     public static ToolRecipeValidationResult ValidateForStorage(ToolRecipeDocument? document) =>
-        ValidateCore(document, requireSourcePath: false, requireInspectionStep: false, allowIncompleteSteps: true);
+        ValidateCore(document, requireSourcePath: false, requireInspectionStep: false, allowIncompleteSteps: true, requiredStepId: null);
+
+    public static ToolRecipeValidationResult ValidateForStepExecution(
+        ToolRecipeDocument? document,
+        string stepId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
+        return ValidateCore(
+            document,
+            requireSourcePath: true,
+            requireInspectionStep: true,
+            allowIncompleteSteps: true,
+            requiredStepId: stepId.Trim());
+    }
 
     private static ToolRecipeValidationResult ValidateCore(
         ToolRecipeDocument? document,
         bool requireSourcePath,
         bool requireInspectionStep,
-        bool allowIncompleteSteps)
+        bool allowIncompleteSteps,
+        string? requiredStepId)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -171,6 +185,11 @@ public static class ToolRecipeValidator
         {
             errors.Add("At least one taught tool step is required.");
         }
+        if (requiredStepId is not null
+            && steps.Count(step => string.Equals(step?.Id, requiredStepId, StringComparison.OrdinalIgnoreCase)) != 1)
+        {
+            errors.Add($"Teaching recipe must contain exactly one step with ID '{requiredStepId}'.");
+        }
 
         var outputStepIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var outputContracts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -203,8 +222,10 @@ public static class ToolRecipeValidator
                 .ToList() ?? [];
             var minimumInputCount = Math.Max(1, step.MinimumInputCount);
             var hasMinimumInputs = inputs.Count >= minimumInputCount;
+            var requiresCompleteStep = !allowIncompleteSteps
+                || string.Equals(step.Id, requiredStepId, StringComparison.OrdinalIgnoreCase);
             var validateStepContract = !allowIncompleteSteps || hasMinimumInputs;
-            if (!hasMinimumInputs && !allowIncompleteSteps)
+            if (!hasMinimumInputs && requiresCompleteStep)
             {
                 errors.Add($"{label} '{Clean(step.ToolName)}' requires {minimumInputCount} input entity ID(s).");
             }
@@ -250,7 +271,7 @@ public static class ToolRecipeValidator
                 foreach (var selectionError in ToolRecipeSelectionContract.Validate(
                              step,
                              selections,
-                             requireAllRoles: !allowIncompleteSteps))
+                             requireAllRoles: requiresCompleteStep))
                 {
                     errors.Add($"{label} {selectionError}");
                 }

@@ -380,6 +380,53 @@ public static class ToolRecipeSelectionContractVerification
                 && !ToolRecipeValidator.Validate(incompleteDualRoiDocument).IsValid,
                 string.Join(" | ", ToolRecipeValidator.ValidateForStorage(incompleteDualRoiDocument).Errors));
 
+            var validFilter = current.Steps.Single() with
+            {
+                Id = "step.filter.targeted",
+                ToolId = "filter",
+                ToolName = "Filter",
+                MinimumInputCount = 1,
+                InputEntityIds = [current.Source.Id],
+                OutputEntityId = "derived.filter.targeted",
+                Parameters =
+                [
+                    new ToolRecipeParameter("Method", "Median"),
+                    new ToolRecipeParameter("KernelSize", "3"),
+                    new ToolRecipeParameter("MissingValuePolicy", "PreserveMask"),
+                    new ToolRecipeParameter("BoundaryPolicy", "AvailableNeighbors")
+                ],
+                DualRoiRouting = null
+            };
+            var targetedDraft = incompleteDualRoiDocument with
+            {
+                Steps = [validFilter, incompleteDualRoiDocument.Steps.Single()]
+            };
+            var targetedFilterValidation = ToolRecipeValidator.ValidateForStepExecution(
+                targetedDraft,
+                validFilter.Id);
+            var missingSearchRegionStep = validFilter with
+            {
+                Id = "step.edge.targeted-missing-role",
+                ToolId = "height-difference-edge",
+                ToolName = "Height Difference Edge",
+                OutputEntityId = "derived.edge.targeted-missing-role",
+                Parameters = []
+            };
+            var targetedIncompleteValidation = ToolRecipeValidator.ValidateForStepExecution(
+                targetedDraft with { Steps = [validFilter, missingSearchRegionStep] },
+                missingSearchRegionStep.Id);
+            Check(
+                "targeted execution ignores missing roles on unrelated draft steps",
+                targetedFilterValidation.IsValid
+                && !ToolRecipeValidator.Validate(targetedDraft).IsValid,
+                string.Join(" | ", targetedFilterValidation.Errors));
+            Check(
+                "targeted execution keeps the selected step fail-closed",
+                !targetedIncompleteValidation.IsValid
+                && targetedIncompleteValidation.Errors.Any(error =>
+                    error.Contains("search-region", StringComparison.Ordinal)),
+                string.Join(" | ", targetedIncompleteValidation.Errors));
+
             var incompleteDualRoiPath = Path.Combine(fixtureRoot, "dual-roi-incomplete.ov3d-teach.json");
             ToolRecipeDocumentStore.Save(incompleteDualRoiPath, incompleteDualRoiDocument);
             var reopenedIncompleteDualRoi = ToolRecipeDocumentStore.Load(incompleteDualRoiPath);

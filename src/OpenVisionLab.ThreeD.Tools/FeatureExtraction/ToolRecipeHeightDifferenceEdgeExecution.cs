@@ -45,7 +45,7 @@ public static class ToolRecipeHeightDifferenceEdgeExecution
             ArgumentNullException.ThrowIfNull(publishedInput);
             ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
 
-            var validation = ToolRecipeValidator.Validate(document);
+            var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
             if (!validation.IsValid)
             {
                 throw new InvalidDataException(string.Join(" ", validation.Errors));

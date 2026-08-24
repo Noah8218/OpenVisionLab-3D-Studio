@@ -396,7 +396,7 @@ public static class ToolRecipeHeightMeasurementExecution
         {
             ArgumentNullException.ThrowIfNull(document);
             ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
-            var validation = ToolRecipeValidator.Validate(document);
+            var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
             if (!validation.IsValid) throw new InvalidDataException(string.Join(" ", validation.Errors));
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))

@@ -50,7 +50,7 @@ public static class ToolRecipeLineFitExecution
             ArgumentNullException.ThrowIfNull(document);
             ArgumentNullException.ThrowIfNull(publishedInput);
             ArgumentException.ThrowIfNullOrWhiteSpace(stepId);
-            var validation = ToolRecipeValidator.Validate(document);
+            var validation = ToolRecipeValidator.ValidateForStepExecution(document, stepId);
             if (!validation.IsValid) throw new InvalidDataException(string.Join(" ", validation.Errors));
             var matches = document.Steps.Where(step => string.Equals(step.Id, stepId, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (matches.Length != 1) throw new InvalidDataException($"Teaching recipe must contain exactly one step with ID '{stepId}'.");
