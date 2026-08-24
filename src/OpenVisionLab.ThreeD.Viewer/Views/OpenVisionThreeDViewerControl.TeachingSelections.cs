@@ -95,6 +95,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         HideTeachingCaptureDragOverlay();
         IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints = null;
         ToolRecipeGridCircle? initialGridCircle = null;
+        ToolRecipeGridPolygon? initialGridPolygon = null;
         if (!isTransformedHeightField
             && initialSelection?.GridRectangle is { } initialRectangle)
         {
@@ -112,7 +113,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
             initialGridCircle = circle;
         }
-        if (!viewModel.BeginTeachingCapture(request, initialPoints, initialGridCircle, out message))
+        else if (!isTransformedHeightField
+                 && initialSelection?.GridPolygon is { } polygon)
+        {
+            if (!TryCreateC3DTeachingGridPolygonPoints(polygon, out initialPoints, out message))
+            {
+                return false;
+            }
+            initialGridPolygon = polygon;
+        }
+        if (!viewModel.BeginTeachingCapture(request, initialPoints, initialGridCircle, initialGridPolygon, out message))
         {
             return false;
         }
@@ -330,6 +340,22 @@ public sealed partial class OpenVisionThreeDViewerControl
         return true;
     }
 
+    public bool TrySetC3DTeachingGridPolygonCandidate(
+        ToolRecipeGridPolygon polygon,
+        out string message)
+    {
+        if (!TryCreateC3DTeachingGridPolygonPoints(polygon, out var points, out message)
+            || points is null
+            || !viewModel.TrySetTeachingGridPolygonCandidate(polygon, points, out message))
+        {
+            return false;
+        }
+
+        RaiseTeachingCaptureStateChanged();
+        RenderNow();
+        return true;
+    }
+
     private bool TryHandleC3DTeachingCapturePick(Point screenPoint)
     {
         if (!viewModel.IsTeachingCaptureActive)
@@ -380,7 +406,9 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.TryAddTeachingCapturePoint(footprintSelectionPoint, out var footprintCaptureMessage);
             viewModel.SelectedEntity = IsTeachingGridCircleCapture
                 ? "Circular Surface ROI Candidate"
-                : "Surface ROI Candidate";
+                : IsTeachingGridPolygonCapture
+                    ? "Polygon Surface ROI Candidate"
+                    : "Surface ROI Candidate";
             viewModel.PickCoordinate = $"X/column {column}, Z/row {row}";
             viewModel.ViewerStatus = footprintCaptureMessage;
             RaiseTeachingCaptureStateChanged();
@@ -451,8 +479,15 @@ public sealed partial class OpenVisionThreeDViewerControl
             Kind: ToolRecipeSelectionKinds.GridCircle
         };
 
+    private bool IsTeachingGridPolygonCapture =>
+        viewModel.TeachingCaptureSnapshot is
+        {
+            IsActive: true,
+            Kind: ToolRecipeSelectionKinds.GridPolygon
+        };
+
     private bool IsTeachingGridFootprintCapture =>
-        IsTeachingGridRectangleCapture || IsTeachingGridCircleCapture;
+        IsTeachingGridRectangleCapture || IsTeachingGridCircleCapture || IsTeachingGridPolygonCapture;
 
     private bool IsTeachingGridRectangleCandidateReview =>
         viewModel.TeachingCaptureSnapshot is
@@ -517,6 +552,31 @@ public sealed partial class OpenVisionThreeDViewerControl
             CreateC3DTeachingSelectionPoint(circle.CenterRow, circle.CenterColumn),
             CreateC3DTeachingSelectionPoint(circle.CenterRow, boundaryColumn)
         ];
+        message = string.Empty;
+        return true;
+    }
+
+    private bool TryCreateC3DTeachingGridPolygonPoints(
+        ToolRecipeGridPolygon polygon,
+        out IReadOnlyList<ToolRecipeSelectionPoint>? points,
+        out string message)
+    {
+        points = null;
+        if (c3dSample is null
+            || ToolRecipeGridPolygonGeometry.Validate(
+                   polygon,
+                   c3dSample.Width,
+                   c3dSample.Height).Count > 0)
+        {
+            message = "The polygon ROI must stay finite, ordered, non-degenerate, and inside the loaded C3D source grid.";
+            return false;
+        }
+
+        points = polygon.Vertices
+            .Select(vertex => CreateC3DTeachingSelectionPoint(
+                Math.Clamp((int)Math.Round(vertex.Row, MidpointRounding.AwayFromZero), 0, c3dSample.Height - 1),
+                Math.Clamp((int)Math.Round(vertex.Column, MidpointRounding.AwayFromZero), 0, c3dSample.Width - 1)))
+            .ToArray();
         message = string.Empty;
         return true;
     }
@@ -1704,6 +1764,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             DrawTeachingGridCircle(gl, circle, red, green, blue, showHandles);
         }
+
+        if (selection.GridPolygon is { } polygon)
+        {
+            DrawTeachingGridPolygon(gl, polygon, red, green, blue, showHandles);
+        }
     }
 
     private void DrawTeachingCaptureCandidate(
@@ -1737,7 +1802,12 @@ public sealed partial class OpenVisionThreeDViewerControl
             DrawTeachingGridCircle(gl, circle, red, green, blue, showHandles: true);
         }
 
-        if (capture.Kind is not (ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle)
+        if (capture is { Kind: ToolRecipeSelectionKinds.GridPolygon, GridPolygon: { } polygon })
+        {
+            DrawTeachingGridPolygon(gl, polygon, red, green, blue, showHandles: true);
+        }
+
+        if (capture.Kind is not (ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle or ToolRecipeSelectionKinds.GridPolygon)
             && capture.Points.Count > 0)
         {
             DrawTeachingPointSet(gl, capture.Points, red, green, blue);
@@ -1781,6 +1851,45 @@ public sealed partial class OpenVisionThreeDViewerControl
             gl.PointSize(10.0f);
             gl.Begin(OpenGL.GL_POINTS);
             gl.Vertex(center.X, center.Y, center.Z);
+            gl.End();
+        }
+        gl.Enable(OpenGL.GL_DEPTH_TEST);
+    }
+
+    private void DrawTeachingGridPolygon(
+        OpenGL gl,
+        ToolRecipeGridPolygon polygon,
+        double red,
+        double green,
+        double blue,
+        bool showHandles)
+    {
+        if (c3dSample is null
+            || polygon.Vertices is not { Count: >= ToolRecipeGridPolygonGeometry.MinimumVertexCount })
+        {
+            return;
+        }
+
+        gl.Disable(OpenGL.GL_DEPTH_TEST);
+        gl.LineWidth(showHandles ? 5.0f : 3.0f);
+        gl.Color(red, green, blue, showHandles ? 1.0 : 0.82);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        foreach (var vertex in polygon.Vertices)
+        {
+            var point = CreateC3DGridDisplayPosition(vertex.Row, vertex.Column, c3dSample.Mean);
+            gl.Vertex(point.X, point.Y, point.Z);
+        }
+        gl.End();
+
+        if (showHandles)
+        {
+            gl.PointSize(10.0f);
+            gl.Begin(OpenGL.GL_POINTS);
+            foreach (var vertex in polygon.Vertices)
+            {
+                var point = CreateC3DGridDisplayPosition(vertex.Row, vertex.Column, c3dSample.Mean);
+                gl.Vertex(point.X, point.Y, point.Z);
+            }
             gl.End();
         }
         gl.Enable(OpenGL.GL_DEPTH_TEST);

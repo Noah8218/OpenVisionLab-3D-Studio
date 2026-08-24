@@ -50,6 +50,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly RelayCommand undoTeachingSelectionCaptureCommand;
     private readonly RelayCommand cancelTeachingSelectionCaptureCommand;
     private readonly RelayCommand applyTeachingSelectionCaptureCommand;
+    private readonly RelayCommand addTeachingGridPolygonVertexCommand;
+    private readonly RelayCommand removeTeachingGridPolygonVertexCommand;
+    private readonly RelayCommand moveTeachingGridPolygonVertexUpCommand;
+    private readonly RelayCommand moveTeachingGridPolygonVertexDownCommand;
     private readonly RelayCommand removeSelectedTeachingSelectionCommand;
     private readonly RelayCommand useExistingTeachingSelectionCommand;
     private readonly RelayCommand addOrUpdateCorrespondenceRowCommand;
@@ -76,6 +80,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private string newReferenceKind = "Landmark set";
     private bool suppressTeachingGridRectangleDraftChanged;
     private bool suppressTeachingGridCircleDraftChanged;
+    private bool suppressTeachingGridPolygonDraftChanged;
     private string correspondenceSourceEntityId = string.Empty;
     private string correspondenceReferenceLandmarkId = "fixture.landmark.01";
     private double correspondenceReferenceX;
@@ -499,7 +504,24 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                       || IsTeachingGridRectangleDraftValid)
                   && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridCircle
                       || IsTeachingGridCircleDraftValid)
+                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridPolygon
+                      || IsTeachingGridPolygonDraftValid)
                 : OrientedBoxEditor.ApplyCommand.CanExecute(null));
+        addTeachingGridPolygonVertexCommand = new RelayCommand(
+            _ => AddTeachingGridPolygonVertex(),
+            _ => IsTeachingGridPolygonEditorEnabled
+                && TeachingGridPolygonVertices.Count < ToolRecipeGridPolygonGeometry.MaximumVertexCount);
+        removeTeachingGridPolygonVertexCommand = new RelayCommand(
+            parameter => RemoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem),
+            parameter => IsTeachingGridPolygonEditorEnabled
+                && parameter is ToolWorkbenchGridPolygonVertexItem item
+                && TeachingGridPolygonVertices.Contains(item));
+        moveTeachingGridPolygonVertexUpCommand = new RelayCommand(
+            parameter => MoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, -1),
+            parameter => CanMoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, -1));
+        moveTeachingGridPolygonVertexDownCommand = new RelayCommand(
+            parameter => MoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, 1),
+            parameter => CanMoveTeachingGridPolygonVertex(parameter as ToolWorkbenchGridPolygonVertexItem, 1));
         removeSelectedTeachingSelectionCommand = new RelayCommand(
             _ => RemoveSelectedTeachingSelection(),
             _ => SelectedStepTeachingSelection is not null);
@@ -530,6 +552,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         UndoTeachingSelectionCaptureCommand = undoTeachingSelectionCaptureCommand;
         CancelTeachingSelectionCaptureCommand = cancelTeachingSelectionCaptureCommand;
         ApplyTeachingSelectionCaptureCommand = applyTeachingSelectionCaptureCommand;
+        AddTeachingGridPolygonVertexCommand = addTeachingGridPolygonVertexCommand;
+        RemoveTeachingGridPolygonVertexCommand = removeTeachingGridPolygonVertexCommand;
+        MoveTeachingGridPolygonVertexUpCommand = moveTeachingGridPolygonVertexUpCommand;
+        MoveTeachingGridPolygonVertexDownCommand = moveTeachingGridPolygonVertexDownCommand;
         RemoveSelectedTeachingSelectionCommand = removeSelectedTeachingSelectionCommand;
         UseExistingTeachingSelectionCommand = useExistingTeachingSelectionCommand;
         AddOrUpdateCorrespondenceRowCommand = addOrUpdateCorrespondenceRowCommand;
@@ -587,6 +613,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? AppliedTeachingSelectionsChanged;
     public event EventHandler<ToolWorkbenchGridRectangleDraftChangedEventArgs>? TeachingGridRectangleDraftChanged;
     public event EventHandler<ToolWorkbenchGridCircleDraftChangedEventArgs>? TeachingGridCircleDraftChanged;
+    public event EventHandler<ToolWorkbenchGridPolygonDraftChangedEventArgs>? TeachingGridPolygonDraftChanged;
     public event EventHandler<ToolWorkbenchToolLabRequestEventArgs>? ToolLabRequested;
     public event EventHandler<ToolWorkbenchStepRemovalRequestEventArgs>? RemoveSelectedStepRequested;
 
@@ -637,6 +664,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
 
     public ObservableCollection<ToolRecipeLandmarkCorrespondence> SelectedCorrespondenceRows { get; } = [];
 
+    public ObservableCollection<ToolWorkbenchGridPolygonVertexItem> TeachingGridPolygonVertices { get; } = [];
+
     public ObservableCollection<string> AvailableCorrespondenceSourceEntityIds { get; } = [];
 
     public ObservableCollection<ToolWorkbenchValidationItem> ValidationMessages { get; } = [];
@@ -656,6 +685,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public ICommand UndoTeachingSelectionCaptureCommand { get; }
     public ICommand CancelTeachingSelectionCaptureCommand { get; }
     public ICommand ApplyTeachingSelectionCaptureCommand { get; }
+    public ICommand AddTeachingGridPolygonVertexCommand { get; }
+    public ICommand RemoveTeachingGridPolygonVertexCommand { get; }
+    public ICommand MoveTeachingGridPolygonVertexUpCommand { get; }
+    public ICommand MoveTeachingGridPolygonVertexDownCommand { get; }
     public ICommand RemoveSelectedTeachingSelectionCommand { get; }
     public ICommand UseExistingTeachingSelectionCommand { get; }
     public ICommand AddOrUpdateCorrespondenceRowCommand { get; }
@@ -1113,6 +1146,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         null => "No Viewer selection required",
         _ when IsSelectedStepThickness => $"{(IsPlaneFlatnessMeasurementRoleActive ? Localization.MeasurementRoi : Localization.ReferenceRoi)} \u00B7 {Localization.TwoGridCorners}",
+        { Kind: ToolRecipeSelectionKinds.GridPolygon, UsesViewerCapture: true } requirement =>
+            $"{requirement.Name} - {requirement.RequiredPointCount}+ ordered grid vertex(es)",
         { UsesViewerCapture: true } requirement => $"{requirement.Name} - {requirement.RequiredPointCount} C3D grid pick(s)",
         { Kind: ToolRecipeSelectionKinds.LandmarkCorrespondenceSet } => "Landmark correspondence rows",
         var requirement => requirement.Name
@@ -1181,6 +1216,32 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         IsTeachingSelectionCaptureActive
         && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridCircle
         && TeachingSelectionCapturedPointCount == 2;
+
+    public bool IsTeachingGridPolygonEditorVisible =>
+        SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
+        && (IsTeachingSelectionCaptureActive
+            || SelectedStepTeachingSelection?.GridPolygon is not null);
+
+    public bool IsTeachingGridPolygonEditorEnabled =>
+        IsTeachingSelectionCaptureActive
+        && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon;
+
+    public bool IsTeachingGridPolygonDraftValid =>
+        TryValidateTeachingGridPolygonDraft(out _);
+
+    public string TeachingGridPolygonValidationSummary
+    {
+        get
+        {
+            TryValidateTeachingGridPolygonDraft(out var message);
+            return message;
+        }
+    }
+
+    public string TeachingGridPolygonSourceFrameSummary =>
+        IsTeachingGridPolygonDraftValid
+            ? $"{TeachingGridPolygonVertices.Count} ordered vertex(es) | X=column, Z=row | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
+            : "Polygon vertices must be finite, unique, ordered, non-degenerate, and inside the source grid.";
 
     public int TeachingGridCircleCenterRow
     {
@@ -1279,12 +1340,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ? Localization.SelectionCapture
         : SelectedStepSelectionRequirement.Kind == ToolRecipeSelectionKinds.GridRectangle
             ? $"{SelectedStepSelectionRequirement.Name} \u00B7 {(CanApplyTeachingSelectionCapture ? Localization.RoiReview : Localization.RoiDrawing)}"
+            : SelectedStepSelectionRequirement.Kind == ToolRecipeSelectionKinds.GridPolygon
+                ? $"{Localization.SelectionCapture}: {SelectedStepSelectionRequirement.Name} · ordered vertices"
             : $"{Localization.SelectionCapture}: {SelectedStepSelectionRequirement.Name}";
 
     public string TeachingSelectionCaptureProgress => IsTeachingSelectionCaptureActive
         ? CanApplyTeachingSelectionCapture
             && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
                 ? Localization.RoiCaptureReadyProgress
+            : CanApplyTeachingSelectionCapture
+                && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
+                    ? $"{TeachingSelectionCapturedPointCount} ordered polygon vertices ready · Enter applies · Esc cancels"
                 : string.Format(
                     Localization.SelectionCaptureProgressFormat,
                     TeachingSelectionCapturedPointCount,
@@ -1304,6 +1370,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                     : TeachingSelectionCapturedPointCount == 0
                         ? Localization.RoiCaptureStartInstruction
                         : Localization.RoiCaptureSecondInstruction
+                : SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridPolygon
+                    ? "Pick or edit three or more ordered vertices. Apply/Enter commits the outline; Cancel/Escape discards it."
                 : TeachingSelectionCaptureProgress;
 
     private void OnTeachingLocalizationChanged(object? sender, PropertyChangedEventArgs args)
@@ -2181,6 +2249,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             : SelectedStepTeachingSelection;
         TeachingCaptureSession.SetOwningStep(step.Id);
         UpdateTeachingGridRectangleDraft(existing?.GridRectangle);
+        UpdateTeachingGridPolygonDraft(existing?.GridPolygon);
         SetTeachingSelectionCaptureState(
             active: true,
             capturedPointCount: 0,
@@ -2291,6 +2360,35 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         }
     }
 
+    public void UpdateTeachingGridPolygonDraft(ToolRecipeGridPolygon? polygon)
+    {
+        suppressTeachingGridPolygonDraftChanged = true;
+        try
+        {
+            TeachingCaptureSession.SetGridPolygonDraft(polygon);
+            foreach (var vertex in TeachingGridPolygonVertices)
+            {
+                vertex.Changed = null;
+            }
+
+            TeachingGridPolygonVertices.Clear();
+            foreach (var (vertex, index) in (polygon?.Vertices ?? []).Select((vertex, index) => (vertex, index)))
+            {
+                var item = new ToolWorkbenchGridPolygonVertexItem(
+                    index + 1,
+                    vertex.Row,
+                    vertex.Column,
+                    OnTeachingGridPolygonVertexChanged);
+                TeachingGridPolygonVertices.Add(item);
+            }
+            RefreshTeachingGridPolygonDraftState();
+        }
+        finally
+        {
+            suppressTeachingGridPolygonDraftChanged = false;
+        }
+    }
+
     public void RejectTeachingSelectionCapture(string message)
     {
         ClearTeachingSelectionCaptureState(message);
@@ -2339,7 +2437,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         message = $"Selection applied: {selection.Name}";
         AppendLog(
             "Teach",
-            $"{message} | step={step.Id} | role={GetAppliedTeachingRoleName(step, selection.Id)} | selection={selection.Id} | rectangle={FormatGridRectangleForLog(selection.GridRectangle)} | route={string.Join(';', step.InputEntityIds)} | inspectionRun=false.");
+            $"{message} | step={step.Id} | role={GetAppliedTeachingRoleName(step, selection.Id)} | geometry={FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step.InputEntityIds)} | inspectionRun=false.");
         return true;
     }
 
@@ -2434,7 +2532,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         AppliedTeachingSelectionsChanged?.Invoke(this, EventArgs.Empty);
         AppendLog(
             "Teach",
-            $"Selection deleted | step={step?.Id ?? "(none)"} | role={(removedMeasurementRole ? "measurement" : wasDualRoi ? "reference" : "selection")} | selection={selection.Id} | rectangle={FormatGridRectangleForLog(selection.GridRectangle)} | route={string.Join(';', step?.InputEntityIds ?? [])}.");
+            $"Selection deleted | step={step?.Id ?? "(none)"} | role={(removedMeasurementRole ? "measurement" : wasDualRoi ? "reference" : "selection")} | selection={selection.Id} | geometry={FormatSelectionGeometryForLog(selection)} | route={string.Join(';', step?.InputEntityIds ?? [])}.");
     }
 
     private void UseExistingTeachingSelection()
@@ -2983,6 +3081,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
             UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
+            UpdateTeachingGridPolygonDraft(SelectedStepTeachingSelection?.GridPolygon);
         }
 
         if (string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
@@ -3003,6 +3102,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorEnabled));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorVisible));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorEnabled));
+        OnPropertyChanged(nameof(IsTeachingGridPolygonEditorVisible));
+        OnPropertyChanged(nameof(IsTeachingGridPolygonEditorEnabled));
         OnPropertyChanged(nameof(HeightDifferenceEdgeBandSummary));
         OnPropertyChanged(nameof(SelectionCaptureActionText));
         OnPropertyChanged(nameof(ThicknessRoiTeachingDetail));
@@ -3170,6 +3271,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorEnabled));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorVisible));
         OnPropertyChanged(nameof(IsTeachingGridCircleEditorEnabled));
+        OnPropertyChanged(nameof(IsTeachingGridPolygonEditorVisible));
+        OnPropertyChanged(nameof(IsTeachingGridPolygonEditorEnabled));
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
@@ -3184,6 +3287,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         NotifyTeachingSelectionCaptureStateChanged();
         UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
         UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
+        UpdateTeachingGridPolygonDraft(SelectedStepTeachingSelection?.GridPolygon);
     }
 
     private void SetTeachingGridRectangleDraftValue(
@@ -3248,6 +3352,152 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingGridCircleValidationSummary));
         OnPropertyChanged(nameof(TeachingGridCircleSourceFrameSummary));
         RefreshTeachingSelectionCaptureCommands();
+    }
+
+    private void OnTeachingGridPolygonVertexChanged(ToolWorkbenchGridPolygonVertexItem item)
+    {
+        if (suppressTeachingGridPolygonDraftChanged)
+        {
+            return;
+        }
+
+        UpdateTeachingGridPolygonDraftFromItems();
+    }
+
+    private void AddTeachingGridPolygonVertex()
+    {
+        if (!IsTeachingGridPolygonEditorEnabled
+            || TeachingGridPolygonVertices.Count >= ToolRecipeGridPolygonGeometry.MaximumVertexCount)
+        {
+            return;
+        }
+
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
+        var last = TeachingGridPolygonVertices.LastOrDefault();
+        var row = last?.Row ?? (binding is null ? 0 : Math.Max(0, (binding.GridHeight - 1) / 2.0));
+        var column = last?.Column ?? (binding is null ? 0 : Math.Max(0, (binding.GridWidth - 1) / 2.0));
+        if (last is not null)
+        {
+            var maxRow = binding is null ? row + 1 : Math.Max(0, binding.GridHeight - 1);
+            var maxColumn = binding is null ? column + 1 : Math.Max(0, binding.GridWidth - 1);
+            row = Math.Min(maxRow, row + 1);
+            column = Math.Min(maxColumn, column + 1);
+        }
+
+        var item = new ToolWorkbenchGridPolygonVertexItem(
+            TeachingGridPolygonVertices.Count + 1,
+            row,
+            column,
+            OnTeachingGridPolygonVertexChanged);
+        TeachingGridPolygonVertices.Add(item);
+        UpdateTeachingGridPolygonDraftFromItems();
+    }
+
+    private void RemoveTeachingGridPolygonVertex(ToolWorkbenchGridPolygonVertexItem? item)
+    {
+        if (!IsTeachingGridPolygonEditorEnabled
+            || item is null
+            || !TeachingGridPolygonVertices.Remove(item))
+        {
+            return;
+        }
+
+        ReindexTeachingGridPolygonVertices();
+        UpdateTeachingGridPolygonDraftFromItems();
+    }
+
+    private bool CanMoveTeachingGridPolygonVertex(
+        ToolWorkbenchGridPolygonVertexItem? item,
+        int offset)
+    {
+        if (!IsTeachingGridPolygonEditorEnabled || item is null)
+        {
+            return false;
+        }
+
+        var index = TeachingGridPolygonVertices.IndexOf(item);
+        var target = index + offset;
+        return index >= 0 && target >= 0 && target < TeachingGridPolygonVertices.Count;
+    }
+
+    private void MoveTeachingGridPolygonVertex(
+        ToolWorkbenchGridPolygonVertexItem? item,
+        int offset)
+    {
+        if (!CanMoveTeachingGridPolygonVertex(item, offset) || item is null)
+        {
+            return;
+        }
+
+        TeachingGridPolygonVertices.Move(
+            TeachingGridPolygonVertices.IndexOf(item),
+            TeachingGridPolygonVertices.IndexOf(item) + offset);
+        ReindexTeachingGridPolygonVertices();
+        UpdateTeachingGridPolygonDraftFromItems();
+    }
+
+    private void ReindexTeachingGridPolygonVertices()
+    {
+        for (var index = 0; index < TeachingGridPolygonVertices.Count; index++)
+        {
+            TeachingGridPolygonVertices[index].SetOrder(index + 1);
+        }
+    }
+
+    private void UpdateTeachingGridPolygonDraftFromItems()
+    {
+        TeachingCaptureSession.SetGridPolygonDraft(CreateGridPolygonDraftFromItems());
+        RefreshTeachingGridPolygonDraftState();
+        if (!IsTeachingGridPolygonEditorEnabled
+            || !TryValidateTeachingGridPolygonDraft(out _))
+        {
+            return;
+        }
+
+        TeachingGridPolygonDraftChanged?.Invoke(
+            this,
+            new ToolWorkbenchGridPolygonDraftChangedEventArgs(
+                TeachingCaptureSession.GridPolygonDraft));
+    }
+
+    private ToolRecipeGridPolygon CreateGridPolygonDraftFromItems() =>
+        new(TeachingGridPolygonVertices
+            .Select(vertex => new ToolRecipeGridPolygonVertex(vertex.Row, vertex.Column))
+            .ToArray());
+
+    private void RefreshTeachingGridPolygonDraftState()
+    {
+        OnPropertyChanged(nameof(IsTeachingGridPolygonDraftValid));
+        OnPropertyChanged(nameof(TeachingGridPolygonValidationSummary));
+        OnPropertyChanged(nameof(TeachingGridPolygonSourceFrameSummary));
+        RefreshTeachingSelectionCaptureCommands();
+        addTeachingGridPolygonVertexCommand.RaiseCanExecuteChanged();
+        removeTeachingGridPolygonVertexCommand.RaiseCanExecuteChanged();
+        moveTeachingGridPolygonVertexUpCommand.RaiseCanExecuteChanged();
+        moveTeachingGridPolygonVertexDownCommand.RaiseCanExecuteChanged();
+    }
+
+    private bool TryValidateTeachingGridPolygonDraft(out string message)
+    {
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
+        if (binding is null)
+        {
+            message = "The selected polygon has no current source-grid identity.";
+            return false;
+        }
+
+        var errors = ToolRecipeGridPolygonGeometry.Validate(
+            TeachingCaptureSession.GridPolygonDraft,
+            binding.GridWidth,
+            binding.GridHeight);
+        if (errors.Count > 0)
+        {
+            message = string.Join(" ", errors.Select(error => $"{error}."));
+            return false;
+        }
+
+        message = "Valid ordered source-grid polygon. Apply remains explicit and does not run inspection.";
+        return true;
     }
 
     private bool TryValidateTeachingGridCircleDraft(out string message)
@@ -3385,6 +3635,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             "three-point-plane" => new("Plane points", string.Empty, 0, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
             "datum-plane-raw-height-deviation" => new("Datum measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
             "grid-circle-authoring" => new("Circular surface ROI", string.Empty, 0, true, "Pick the center cell, then one boundary cell. Radius is measured between grid-cell centers."),
+            "grid-polygon-authoring" => new("Irregular surface region", string.Empty, 3, true, "Pick three or more ordered grid vertices. This slice stores the outline only; no mask or inspection is generated."),
             "landmark-correspondence" => new("Landmark correspondences", string.Empty, 0, false, "Enter explicit source entities and fixture coordinates."),
             _ => null
         };
@@ -3406,9 +3657,10 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ? presentation with
             {
                 Kind = requirement.Kind,
-                RequiredPointCount = requirement.RequiredPointCount > 0
+                    RequiredPointCount = requirement.RequiredPointCount > 0
                     ? requirement.RequiredPointCount
-                    : requirement.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle ? 2 : 0
+                    : requirement.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle ? 2
+                        : requirement.Kind == ToolRecipeSelectionKinds.GridPolygon ? 3 : 0
             }
             : null;
     }
@@ -3427,6 +3679,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             ToolRecipeSelectionKinds.GridRectangle => selection.GridRectangle is not null,
             ToolRecipeSelectionKinds.GridCircle => selection.GridCircle is not null,
+            ToolRecipeSelectionKinds.GridPolygon => selection.GridPolygon is not null,
             ToolRecipeSelectionKinds.PointSet => selection.Points?.Count == requirement.RequiredPointCount,
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => selection.Rows is not null,
             _ => false
@@ -3446,6 +3699,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             : requirement.Kind switch
         {
             ToolRecipeSelectionKinds.GridRectangle => "roi",
+            ToolRecipeSelectionKinds.GridPolygon => "polygon",
             ToolRecipeSelectionKinds.PointSet => "points",
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "correspondences",
             _ => "selection"
@@ -3478,6 +3732,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ? $"row {rectangle.Row}..{rectangle.Row + rectangle.RowCount - 1}, column {rectangle.Column}..{rectangle.Column + rectangle.ColumnCount - 1}"
             : selection.GridCircle is { } circle
                 ? $"center row {circle.CenterRow}, column {circle.CenterColumn}, radius {circle.Radius:G6} cells"
+            : selection.GridPolygon is { Vertices: { } vertices }
+                ? $"{vertices.Count} ordered vertices ({FormatGridPolygonVertex(vertices.FirstOrDefault())} → {FormatGridPolygonVertex(vertices.LastOrDefault())})"
             : selection.Points is { } points
                 ? $"{points.Count} grid point(s)"
                 : selection.Rows is { } rows
@@ -3488,6 +3744,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             : selection.SourceBinding.ContentSha256;
         return $"{selection.Name} | {geometry} | {selection.FrameId} | sha256 {hash}";
     }
+
+    private static string FormatGridPolygonVertex(ToolRecipeGridPolygonVertex? vertex) =>
+        vertex is null ? "(none)" : $"X {vertex.Column:G6}, Z {vertex.Row:G6}";
 
     private void ResetCorrespondenceEditor()
     {
@@ -3706,6 +3965,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             ? "(none)"
             : $"row={rectangle.Row},column={rectangle.Column},rowCount={rectangle.RowCount},columnCount={rectangle.ColumnCount}";
 
+    private static string FormatSelectionGeometryForLog(ToolRecipeSelection selection) =>
+        selection.GridPolygon is { Vertices: { } vertices }
+            ? $"polygonVertices={vertices.Count};first={FormatGridPolygonVertex(vertices.FirstOrDefault())};last={FormatGridPolygonVertex(vertices.LastOrDefault())}"
+            : selection.GridCircle is { } circle
+                ? $"circleCenter=({circle.CenterRow},{circle.CenterColumn});radius={circle.Radius:G6}"
+                : $"rectangle={FormatGridRectangleForLog(selection.GridRectangle)}";
+
     private static string GetAppliedTeachingRoleName(ToolWorkbenchPipelineStepItem step, string selectionId)
     {
         if (step.DualRoiRouting is { } routing)
@@ -3830,6 +4096,79 @@ public sealed class ToolWorkbenchGridCircleDraftChangedEventArgs(
     ToolRecipeGridCircle circle) : EventArgs
 {
     public ToolRecipeGridCircle Circle { get; } = circle;
+}
+
+public sealed class ToolWorkbenchGridPolygonDraftChangedEventArgs(
+    ToolRecipeGridPolygon polygon) : EventArgs
+{
+    public ToolRecipeGridPolygon Polygon { get; } = polygon;
+}
+
+public sealed class ToolWorkbenchGridPolygonVertexItem : INotifyPropertyChanged
+{
+    private double row;
+    private double column;
+
+    public ToolWorkbenchGridPolygonVertexItem(
+        int order,
+        double row,
+        double column,
+        Action<ToolWorkbenchGridPolygonVertexItem> changed)
+    {
+        Order = order;
+        this.row = row;
+        this.column = column;
+        Changed = changed;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    internal Action<ToolWorkbenchGridPolygonVertexItem>? Changed { get; set; }
+
+    public int Order { get; private set; }
+
+    public double Row
+    {
+        get => row;
+        set
+        {
+            if (row.Equals(value))
+            {
+                return;
+            }
+
+            row = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Row)));
+            Changed?.Invoke(this);
+        }
+    }
+
+    public double Column
+    {
+        get => column;
+        set
+        {
+            if (column.Equals(value))
+            {
+                return;
+            }
+
+            column = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Column)));
+            Changed?.Invoke(this);
+        }
+    }
+
+    internal void SetOrder(int order)
+    {
+        if (Order == order)
+        {
+            return;
+        }
+
+        Order = order;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Order)));
+    }
 }
 
 public sealed class ToolWorkbenchSourceItem : INotifyPropertyChanged

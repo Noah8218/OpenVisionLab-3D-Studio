@@ -30,6 +30,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.AppliedTeachingSelectionsChanged += OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged += OnGridRectangleDraftChanged;
         workbench.TeachingGridCircleDraftChanged += OnGridCircleDraftChanged;
+        workbench.TeachingGridPolygonDraftChanged += OnGridPolygonDraftChanged;
         workbench.OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged += OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested += OnFitWorkspaceRegionRequested;
@@ -63,6 +64,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.AppliedTeachingSelectionsChanged -= OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged -= OnGridRectangleDraftChanged;
         workbench.TeachingGridCircleDraftChanged -= OnGridCircleDraftChanged;
+        workbench.TeachingGridPolygonDraftChanged -= OnGridPolygonDraftChanged;
         workbench.OrientedBoxEditor.DraftChanged -= OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged -= OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested -= OnFitWorkspaceRegionRequested;
@@ -133,7 +135,9 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             return;
         }
 
-        if (args.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle)
+        if (args.Kind is ToolRecipeSelectionKinds.GridRectangle
+            or ToolRecipeSelectionKinds.GridCircle
+            or ToolRecipeSelectionKinds.GridPolygon)
         {
             viewer.UseTopView();
         }
@@ -204,6 +208,12 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         {
             workbench.UpdateTeachingGridCircleDraft(circle);
         }
+        else if (state.IsActive
+                 && string.Equals(state.Kind, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal)
+                 && state.GridPolygon is { } polygon)
+        {
+            workbench.UpdateTeachingGridPolygonDraft(polygon);
+        }
     }
 
     private void UpdateWorkbenchCaptureState(TeachingCaptureState state, string message) =>
@@ -272,6 +282,18 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         ToolWorkbenchGridCircleDraftChangedEventArgs args)
     {
         if (viewer.TrySetC3DTeachingGridCircleCandidate(args.Circle, out var message))
+        {
+            return;
+        }
+
+        UpdateWorkbenchCaptureState(viewer.TeachingCaptureSnapshot, message);
+    }
+
+    private void OnGridPolygonDraftChanged(
+        object? sender,
+        ToolWorkbenchGridPolygonDraftChangedEventArgs args)
+    {
+        if (viewer.TrySetC3DTeachingGridPolygonCandidate(args.Polygon, out var message))
         {
             return;
         }

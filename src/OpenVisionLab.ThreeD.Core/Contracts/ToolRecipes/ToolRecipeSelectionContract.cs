@@ -42,6 +42,7 @@ public static class ToolRecipeSelectionContract
     [
         Many("level-surface", ToolRecipeSelectionRoles.ReferenceRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
         One("grid-circle-authoring", ToolRecipeSelectionRoles.Region, ToolRecipeSelectionKinds.GridCircle, 1),
+        One("grid-polygon-authoring", ToolRecipeSelectionRoles.Region, ToolRecipeSelectionKinds.GridPolygon, 1),
         One("roi-crop", ToolRecipeSelectionRoles.Region, ToolRecipeSelectionKinds.GridRectangle, 1),
         One("height-difference-edge", ToolRecipeSelectionRoles.SearchRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
         One("two-point-line", ToolRecipeSelectionRoles.LinePoints, ToolRecipeSelectionKinds.PointSet, 1, 2),

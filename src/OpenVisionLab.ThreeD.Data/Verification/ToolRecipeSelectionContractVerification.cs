@@ -37,6 +37,22 @@ public static class ToolRecipeSelectionContractVerification
         "undeclared GridCircle consumer fails closed"
     ];
 
+    private static readonly string[] GridPolygonContractCaseNames =
+    [
+        "current schema accepts an in-bounds GridPolygon",
+        "GridPolygon vertex order survives save and reopen",
+        "schema 1.6 rejects the new GridPolygon kind",
+        "GridPolygon requires its geometry payload",
+        "GridPolygon requires at least three vertices",
+        "GridPolygon rejects non-finite vertices",
+        "GridPolygon rejects an out-of-grid vertex",
+        "GridPolygon rejects duplicate vertices",
+        "GridPolygon rejects a zero-area outline",
+        "GridPolygon rejects self-intersecting edges",
+        "GridPolygon rejects mixed rectangle payloads",
+        "undeclared GridPolygon consumer fails closed"
+    ];
+
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -49,6 +65,7 @@ public static class ToolRecipeSelectionContractVerification
         var total = 0;
         var orientedBoxSubsetComplete = false;
         var gridCircleSubsetComplete = false;
+        var gridPolygonSubsetComplete = false;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),
             "OpenVisionLab.ThreeD",
@@ -164,6 +181,7 @@ public static class ToolRecipeSelectionContractVerification
                 "datum-plane-raw-height-deviation",
                 "gap-flush",
                 "grid-circle-authoring",
+                "grid-polygon-authoring",
                 "height-difference-edge",
                 "landmark-correspondence",
                 "level-surface",
@@ -178,7 +196,7 @@ public static class ToolRecipeSelectionContractVerification
             };
             Check(
                 "selection-consuming tool inventory has one explicit compatibility matrix",
-                ToolRecipeSelectionContract.Declarations.Count == 21
+                ToolRecipeSelectionContract.Declarations.Count == 22
                 && declaredTools.SequenceEqual(expectedDeclaredTools, StringComparer.Ordinal)
                 && ToolRecipeSelectionContract.Declarations
                     .GroupBy(requirement => (requirement.ToolId, requirement.Role))
@@ -749,6 +767,244 @@ public static class ToolRecipeSelectionContractVerification
             lines.Add(
                 $"GridCircleContractVerification|{(gridCircleSubsetComplete ? "PASS" : "FAIL")}|cases={gridCircleTotal}|passed={gridCirclePassed}|failed={gridCircleTotal - gridCirclePassed}");
 
+            var gridPolygonPassedBefore = passed;
+            var gridPolygonTotalBefore = total;
+            var gridPolygon = CreateGridPolygonSelection(binding);
+            var gridPolygonDocument = CreateDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                sourcePath,
+                [gridPolygon],
+                gridPolygon.Id);
+            var gridPolygonValidation = ToolRecipeValidator.Validate(gridPolygonDocument);
+            Check(
+                "current schema accepts an in-bounds GridPolygon",
+                gridPolygonValidation.IsValid,
+                string.Join(" | ", gridPolygonValidation.Errors));
+
+            var gridPolygonPath = Path.Combine(fixtureRoot, "grid-polygon.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(gridPolygonPath, gridPolygonDocument);
+            var reopenedGridPolygon = ToolRecipeDocumentStore.Load(gridPolygonPath);
+            Check(
+                "GridPolygon vertex order survives save and reopen",
+                reopenedGridPolygon.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+                && reopenedGridPolygon.Selections is [var reopenedPolygon]
+                && reopenedPolygon.Kind == ToolRecipeSelectionKinds.GridPolygon
+                && reopenedPolygon.GridPolygon is { Vertices: { } reopenedVertices }
+                && gridPolygon.GridPolygon is { Vertices: { } expectedVertices }
+                && reopenedVertices.SequenceEqual(expectedVertices)
+                && reopenedPolygon.SourceBinding == binding,
+                $"schema={reopenedGridPolygon.SchemaVersion};vertices={reopenedGridPolygon.Selections?[0].GridPolygon?.Vertices.Count ?? 0}");
+
+            var oldSchemaGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with { SchemaVersion = ToolRecipeDocument.GridCircleSchemaVersion });
+            Check(
+                "schema 1.6 rejects the new GridPolygon kind",
+                !oldSchemaGridPolygonValidation.IsValid
+                && oldSchemaGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("schema 1.7", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", oldSchemaGridPolygonValidation.Errors));
+
+            var missingGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with { Selections = [gridPolygon with { GridPolygon = null }] });
+            Check(
+                "GridPolygon requires its geometry payload",
+                !missingGridPolygonValidation.IsValid
+                && missingGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("payload is required", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", missingGridPolygonValidation.Errors));
+
+            var tooFewGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = new ToolRecipeGridPolygon(
+                            [
+                                new ToolRecipeGridPolygonVertex(1, 1),
+                                new ToolRecipeGridPolygonVertex(1, 2)
+                            ])
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon requires at least three vertices",
+                !tooFewGridPolygonValidation.IsValid
+                && tooFewGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("at least 3", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", tooFewGridPolygonValidation.Errors));
+
+            var nonFiniteGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = gridPolygon.GridPolygon! with
+                            {
+                                Vertices =
+                                [
+                                    new ToolRecipeGridPolygonVertex(double.NaN, 1),
+                                    gridPolygon.GridPolygon.Vertices[1],
+                                    gridPolygon.GridPolygon.Vertices[2],
+                                    gridPolygon.GridPolygon.Vertices[3]
+                                ]
+                            }
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon rejects non-finite vertices",
+                !nonFiniteGridPolygonValidation.IsValid
+                && nonFiniteGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("finite", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", nonFiniteGridPolygonValidation.Errors));
+
+            var outsideGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = gridPolygon.GridPolygon! with
+                            {
+                                Vertices =
+                                [
+                                    new ToolRecipeGridPolygonVertex(4, 1),
+                                    gridPolygon.GridPolygon.Vertices[1],
+                                    gridPolygon.GridPolygon.Vertices[2],
+                                    gridPolygon.GridPolygon.Vertices[3]
+                                ]
+                            }
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon rejects an out-of-grid vertex",
+                !outsideGridPolygonValidation.IsValid
+                && outsideGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("inside", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", outsideGridPolygonValidation.Errors));
+
+            var duplicateGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = gridPolygon.GridPolygon! with
+                            {
+                                Vertices =
+                                [
+                                    gridPolygon.GridPolygon.Vertices[0],
+                                    gridPolygon.GridPolygon.Vertices[0],
+                                    gridPolygon.GridPolygon.Vertices[2],
+                                    gridPolygon.GridPolygon.Vertices[3]
+                                ]
+                            }
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon rejects duplicate vertices",
+                !duplicateGridPolygonValidation.IsValid
+                && duplicateGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("repeats vertex", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", duplicateGridPolygonValidation.Errors));
+
+            var zeroAreaGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = new ToolRecipeGridPolygon(
+                            [
+                                new ToolRecipeGridPolygonVertex(1, 1),
+                                new ToolRecipeGridPolygonVertex(1, 2),
+                                new ToolRecipeGridPolygonVertex(1, 3)
+                            ])
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon rejects a zero-area outline",
+                !zeroAreaGridPolygonValidation.IsValid
+                && zeroAreaGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("non-zero area", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", zeroAreaGridPolygonValidation.Errors));
+
+            var selfIntersectingGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [
+                        gridPolygon with
+                        {
+                            GridPolygon = new ToolRecipeGridPolygon(
+                            [
+                                new ToolRecipeGridPolygonVertex(0, 0),
+                                new ToolRecipeGridPolygonVertex(3, 3),
+                                new ToolRecipeGridPolygonVertex(0, 3),
+                                new ToolRecipeGridPolygonVertex(3, 0)
+                            ])
+                        }
+                    ]
+                });
+            Check(
+                "GridPolygon rejects self-intersecting edges",
+                !selfIntersectingGridPolygonValidation.IsValid
+                && selfIntersectingGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("self-intersect", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", selfIntersectingGridPolygonValidation.Errors));
+
+            var mixedGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Selections =
+                    [gridPolygon with { GridRectangle = new ToolRecipeGridRectangle(0, 0, 1, 1) }]
+                });
+            Check(
+                "GridPolygon rejects mixed rectangle payloads",
+                !mixedGridPolygonValidation.IsValid
+                && mixedGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("cannot contain", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", mixedGridPolygonValidation.Errors));
+
+            var undeclaredGridPolygonValidation = ToolRecipeValidator.Validate(
+                gridPolygonDocument with
+                {
+                    Steps =
+                    [
+                        gridPolygonDocument.Steps[0] with
+                        {
+                            ToolId = "roi-crop",
+                            ToolName = "ROI / Crop"
+                        }
+                    ]
+                });
+            Check(
+                "undeclared GridPolygon consumer fails closed",
+                !undeclaredGridPolygonValidation.IsValid
+                && undeclaredGridPolygonValidation.Errors.Any(error =>
+                    error.Contains("requires grid-rectangle", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", undeclaredGridPolygonValidation.Errors));
+
+            var gridPolygonPassed = passed - gridPolygonPassedBefore;
+            var gridPolygonTotal = total - gridPolygonTotalBefore;
+            gridPolygonSubsetComplete =
+                gridPolygonTotal == GridPolygonContractCaseNames.Length
+                && gridPolygonPassed == gridPolygonTotal
+                && GridPolygonContractCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"GridPolygonContractVerification|{(gridPolygonSubsetComplete ? "PASS" : "FAIL")}|cases={gridPolygonTotal}|passed={gridPolygonPassed}|failed={gridPolygonTotal - gridPolygonPassed}");
+
             var outOfBounds = rectangle with
             {
                 GridRectangle = new ToolRecipeGridRectangle(3, 3, 2, 2)
@@ -950,6 +1206,7 @@ public static class ToolRecipeSelectionContractVerification
             && total > 0
             && orientedBoxSubsetComplete
             && gridCircleSubsetComplete
+            && gridPolygonSubsetComplete
             && !lines.Any(line => line.StartsWith("FAIL |", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(reportPath, lines);
@@ -973,6 +1230,7 @@ public static class ToolRecipeSelectionContractVerification
             ToolRecipeSelectionKinds.PointSet => "three-point-plane",
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "landmark-correspondence",
             ToolRecipeSelectionKinds.GridCircle => "grid-circle-authoring",
+            ToolRecipeSelectionKinds.GridPolygon => "grid-polygon-authoring",
             _ => "selection-fixture"
         };
         var stepInputs = toolId switch
@@ -1085,6 +1343,26 @@ public static class ToolRecipeSelectionContractVerification
             null,
             null,
             GridCircle: new ToolRecipeGridCircle(1, 1, 1));
+
+    private static ToolRecipeSelection CreateGridPolygonSelection(
+        ToolRecipeSelectionSourceBinding binding) =>
+        new(
+            "selection.polygon.01",
+            "Irregular inspection region",
+            ToolRecipeSelectionKinds.GridPolygon,
+            "source.c3d.height-map",
+            "frame.c3d-grid-index",
+            binding,
+            null,
+            null,
+            null,
+            GridPolygon: new ToolRecipeGridPolygon(
+            [
+                new ToolRecipeGridPolygonVertex(1, 1),
+                new ToolRecipeGridPolygonVertex(1, 2.5),
+                new ToolRecipeGridPolygonVertex(2, 2),
+                new ToolRecipeGridPolygonVertex(2, 1)
+            ]));
 
     private static void WriteC3D(string path, int width, int height, float offset)
     {

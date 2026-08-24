@@ -68,6 +68,11 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Targeted typed-adapter validation scope](../.proofline/issues/PL-0049.json) -
+  `PL-0049` selected-step validation for targeted Tools execution and the four
+  preprocessing Workbench Preview boundaries, retained strict selected-step/
+  incompatible-route/whole-recipe rejection, local actual-EXE evidence, and
+  complete hosted CI at repair commit `00752b4`.
 - [Deterministic malformed-source diagnostics](OPENVISIONLAB_3D_DETERMINISTIC_MALFORMED_SOURCE_DIAGNOSTICS_CLOSURE_20260823.md) -
   `PL-0046/B-10` schema-`1.1` four-check grid integrity, fail-closed payload
   and malformed C3D reasons, SDK-owned calculation, visible Source Quality/
@@ -84,6 +89,10 @@ External prerequisites do not become complete because a document is old.
 - [GridCircle selection closure](OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md) -
   `PL-0048/E-14` schema `1.6` circular grid-region authoring, numeric editing,
   explicit Apply/Cancel, save/reopen, Runner parity, and Wide/Compact evidence.
+- [GridPolygon selection authoring closure](OPENVISIONLAB_3D_GRID_POLYGON_SELECTION_CLOSURE_20260824.md) -
+  `PL-0050/E-15` schema `1.7` ordered source-grid vertices, fail-closed
+  geometry validation, explicit Viewer/Workbench authoring, exact persistence,
+  Runner parity, and Wide/Compact evidence without a mask consumer.
 - [Preparation source-immutability qualification](OPENVISIONLAB_3D_PREPARATION_SOURCE_IMMUTABILITY_CLOSURE_20260823.md) -
   `PL-0044/M-13` exactly four current Prepare tools, exact source path/length/
   SHA and retained values unchanged, separate deterministic derived outputs

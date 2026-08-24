@@ -20,6 +20,8 @@ internal sealed class ToolWorkbenchTeachingCaptureSession
 
     public ToolRecipeGridCircle GridCircleDraft { get; private set; } = new(0, 0, 0);
 
+    public ToolRecipeGridPolygon GridPolygonDraft { get; private set; } = new([]);
+
     public void SetOwningStep(string stepId)
     {
         OwningStepId = stepId;
@@ -50,6 +52,11 @@ internal sealed class ToolWorkbenchTeachingCaptureSession
     public void SetGridCircleDraft(ToolRecipeGridCircle? circle)
     {
         GridCircleDraft = circle ?? new ToolRecipeGridCircle(0, 0, 0);
+    }
+
+    public void SetGridPolygonDraft(ToolRecipeGridPolygon? polygon)
+    {
+        GridPolygonDraft = polygon ?? new ToolRecipeGridPolygon([]);
     }
 
     public void Clear()

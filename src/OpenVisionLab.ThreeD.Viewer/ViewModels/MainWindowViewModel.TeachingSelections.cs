@@ -8,6 +8,7 @@ public sealed partial class MainWindowViewModel
     private TeachingCaptureRequest? teachingCaptureRequest;
     private IReadOnlyList<ToolRecipeSelectionPoint> teachingCapturePoints = [];
     private ToolRecipeGridCircle? teachingCaptureGridCircle;
+    private ToolRecipeGridPolygon? teachingCaptureGridPolygon;
     private IReadOnlyList<ToolRecipeSelection> appliedTeachingSelections = [];
     private IReadOnlyList<ToolRecipeSelection> repeatPreviewTeachingSelections = [];
     private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
@@ -116,23 +117,32 @@ public sealed partial class MainWindowViewModel
                     IsTeachingCaptureCandidateValid(request, teachingCapturePoints),
                     teachingCaptureMessage,
                     appliedTeachingSelections.Count,
-                    teachingCaptureGridCircle);
+                    teachingCaptureGridCircle,
+                    teachingCaptureGridPolygon);
         }
     }
 
     internal bool BeginTeachingCapture(TeachingCaptureRequest request, out string message)
-        => BeginTeachingCapture(request, initialPoints: null, initialGridCircle: null, out message);
+        => BeginTeachingCapture(request, initialPoints: null, initialGridCircle: null, initialGridPolygon: null, out message);
 
     internal bool BeginTeachingCapture(
         TeachingCaptureRequest request,
         IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints,
         out string message) =>
-        BeginTeachingCapture(request, initialPoints, initialGridCircle: null, out message);
+        BeginTeachingCapture(request, initialPoints, initialGridCircle: null, initialGridPolygon: null, out message);
 
     internal bool BeginTeachingCapture(
         TeachingCaptureRequest request,
         IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints,
         ToolRecipeGridCircle? initialGridCircle,
+        out string message)
+        => BeginTeachingCapture(request, initialPoints, initialGridCircle, initialGridPolygon: null, out message);
+
+    internal bool BeginTeachingCapture(
+        TeachingCaptureRequest request,
+        IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints,
+        ToolRecipeGridCircle? initialGridCircle,
+        ToolRecipeGridPolygon? initialGridPolygon,
         out string message)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -144,6 +154,7 @@ public sealed partial class MainWindowViewModel
         teachingCaptureRequest = request;
         teachingCapturePoints = initialPoints?.ToArray() ?? [];
         teachingCaptureGridCircle = initialGridCircle;
+        teachingCaptureGridPolygon = initialGridPolygon;
         teachingCaptureMessage = IsTeachingCaptureCandidateValid(request, teachingCapturePoints)
             ? $"Edit started: {request.SelectionName}. Move, resize, or enter values, then Apply."
             : $"Capture started: {request.SelectionName}.";
@@ -162,7 +173,8 @@ public sealed partial class MainWindowViewModel
             return false;
         }
 
-        if (teachingCapturePoints.Count >= request.RequiredPointCount)
+        if (request.Kind != ToolRecipeSelectionKinds.GridPolygon
+            && teachingCapturePoints.Count >= request.RequiredPointCount)
         {
             teachingCaptureMessage = "The capture candidate is complete. Apply, undo, or cancel it.";
             RefreshTeachingCaptureState();
@@ -191,11 +203,22 @@ public sealed partial class MainWindowViewModel
                 center.Locator.Column,
                 Math.Sqrt((double)deltaRow * deltaRow + (double)deltaColumn * deltaColumn));
         }
+        else if (request.Kind == ToolRecipeSelectionKinds.GridPolygon)
+        {
+            teachingCaptureGridPolygon = new ToolRecipeGridPolygon(
+                teachingCapturePoints
+                    .Select(captured => new ToolRecipeGridPolygonVertex(
+                        captured.Locator.Row,
+                        captured.Locator.Column))
+                    .ToArray());
+        }
         var ready = IsTeachingCaptureCandidateValid(request, teachingCapturePoints);
         teachingCaptureMessage = ready
             ? $"Captured {teachingCapturePoints.Count}/{request.RequiredPointCount}; candidate ready to apply."
             : teachingCapturePoints.Count >= request.RequiredPointCount
-                ? $"Captured {teachingCapturePoints.Count}/{request.RequiredPointCount}; points must be non-collinear. Undo the last point or cancel."
+                ? request.Kind == ToolRecipeSelectionKinds.GridPolygon
+                    ? $"Captured {teachingCapturePoints.Count} polygon vertices; the outline is invalid. Edit, undo, or cancel."
+                    : $"Captured {teachingCapturePoints.Count}/{request.RequiredPointCount}; points must be non-collinear. Undo the last point or cancel."
             : $"Captured {teachingCapturePoints.Count}/{request.RequiredPointCount}.";
         RefreshTeachingCaptureState();
         message = teachingCaptureMessage;
@@ -211,9 +234,18 @@ public sealed partial class MainWindowViewModel
 
         teachingCapturePoints = teachingCapturePoints.Take(teachingCapturePoints.Count - 1).ToArray();
         teachingCaptureGridCircle = null;
+        if (teachingCaptureRequest?.Kind == ToolRecipeSelectionKinds.GridPolygon)
+        {
+            teachingCaptureGridPolygon = new ToolRecipeGridPolygon(
+                teachingCapturePoints
+                    .Select(captured => new ToolRecipeGridPolygonVertex(
+                        captured.Locator.Row,
+                        captured.Locator.Column))
+                    .ToArray());
+        }
         teachingCaptureMessage = teachingCapturePoints.Count == 0
             ? "Last point removed; capture the first point."
-            : $"Last point removed; {teachingCapturePoints.Count}/{teachingCaptureRequest.RequiredPointCount} remain.";
+            : $"Last point removed; {teachingCapturePoints.Count}/{teachingCaptureRequest!.RequiredPointCount} remain.";
         RefreshTeachingCaptureState();
         return true;
     }
@@ -228,6 +260,7 @@ public sealed partial class MainWindowViewModel
         teachingCaptureRequest = null;
         teachingCapturePoints = [];
         teachingCaptureGridCircle = null;
+        teachingCaptureGridPolygon = null;
         teachingCaptureMessage = message;
         RefreshTeachingCaptureState();
         return true;
@@ -257,6 +290,7 @@ public sealed partial class MainWindowViewModel
 
         ToolRecipeGridRectangle? rectangle = null;
         ToolRecipeGridCircle? gridCircle = null;
+        ToolRecipeGridPolygon? gridPolygon = null;
         IReadOnlyList<ToolRecipeSelectionPoint>? points = null;
         if (request.Kind == ToolRecipeSelectionKinds.GridRectangle)
         {
@@ -274,6 +308,10 @@ public sealed partial class MainWindowViewModel
         {
             gridCircle = teachingCaptureGridCircle;
         }
+        else if (request.Kind == ToolRecipeSelectionKinds.GridPolygon)
+        {
+            gridPolygon = teachingCaptureGridPolygon;
+        }
         else
         {
             points = teachingCapturePoints.ToArray();
@@ -289,7 +327,8 @@ public sealed partial class MainWindowViewModel
             rectangle,
             points,
             null,
-            GridCircle: gridCircle);
+            GridCircle: gridCircle,
+            GridPolygon: gridPolygon);
         message = $"Teaching selection candidate ready: {request.SelectionName}.";
         return true;
     }
@@ -351,6 +390,42 @@ public sealed partial class MainWindowViewModel
         return true;
     }
 
+    internal bool TrySetTeachingGridPolygonCandidate(
+        ToolRecipeGridPolygon polygon,
+        IReadOnlyList<ToolRecipeSelectionPoint> points,
+        out string message)
+    {
+        var request = teachingCaptureRequest;
+        if (request is not
+            {
+                Kind: ToolRecipeSelectionKinds.GridPolygon,
+                RequiredPointCount: 3
+            })
+        {
+            message = "No active GridPolygon edit candidate.";
+            return false;
+        }
+
+        if (polygon.Vertices is null
+            || polygon.Vertices.Count != points.Count
+            || polygon.Vertices.Count > ToolRecipeGridPolygonGeometry.MaximumVertexCount
+            || ToolRecipeGridPolygonGeometry.Validate(
+                   polygon,
+                   request.SourceBinding.GridWidth,
+                   request.SourceBinding.GridHeight).Count > 0)
+        {
+            message = "GridPolygon vertices must stay finite, ordered, unique, non-degenerate, and inside the bound source grid.";
+            return false;
+        }
+
+        teachingCapturePoints = points.ToArray();
+        teachingCaptureGridPolygon = polygon;
+        teachingCaptureMessage = "Polygon edit candidate ready. Apply is still required; inspection has not run.";
+        RefreshTeachingCaptureState();
+        message = teachingCaptureMessage;
+        return true;
+    }
+
     internal void ConfirmTeachingCaptureApplied()
     {
         if (teachingCaptureRequest is null)
@@ -361,6 +436,7 @@ public sealed partial class MainWindowViewModel
         teachingCaptureRequest = null;
         teachingCapturePoints = [];
         teachingCaptureGridCircle = null;
+        teachingCaptureGridPolygon = null;
         teachingCaptureMessage = "Teaching selection applied to the recipe.";
         RefreshTeachingCaptureState();
     }
@@ -461,12 +537,13 @@ public sealed partial class MainWindowViewModel
         {
             ToolRecipeSelectionKinds.GridRectangle => request.RequiredPointCount == 2,
             ToolRecipeSelectionKinds.GridCircle => request.RequiredPointCount == 2,
+            ToolRecipeSelectionKinds.GridPolygon => request.RequiredPointCount == 3,
             ToolRecipeSelectionKinds.PointSet => request.RequiredPointCount is 2 or 3,
             _ => false
         };
         if (!validKindAndCount)
         {
-            message = "Viewer capture supports a two-corner rectangle, center-and-boundary circle, or a two/three-point set.";
+            message = "Viewer capture supports a two-corner rectangle, center-and-boundary circle, ordered polygon, or a two/three-point set.";
             return false;
         }
 
@@ -478,6 +555,15 @@ public sealed partial class MainWindowViewModel
         TeachingCaptureRequest request,
         IReadOnlyList<ToolRecipeSelectionPoint> points)
     {
+        if (request.Kind == ToolRecipeSelectionKinds.GridPolygon)
+        {
+            return points.Count >= request.RequiredPointCount
+                && ToolRecipeGridPolygonGeometry.Validate(
+                    teachingCaptureGridPolygon,
+                    request.SourceBinding.GridWidth,
+                    request.SourceBinding.GridHeight).Count == 0;
+        }
+
         if (points.Count != request.RequiredPointCount)
         {
             return false;

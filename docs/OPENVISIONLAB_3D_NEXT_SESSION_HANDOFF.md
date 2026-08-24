@@ -612,6 +612,11 @@ Commit `00752b4cedc0a33645a16b0437845650fb6eeddc` is pushed to `origin/main`;
 hosted CI run
 [`32692639982`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32692639982)
 passed the complete workflow in 6m14s.
+The current pushed documentation/closure head is
+`eb4ddb7d8d0aad8269cb43693ce50e0a9a02c1f4`; hosted CI run
+[`32693132414`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32693132414)
+also passed the complete workflow in 6m47s. Re-run Git commands for live state
+instead of treating either recorded commit as permanently current.
 
 ```text
 Status: Complete
@@ -619,13 +624,52 @@ Scope: PL-0049 targeted typed-adapter and Workbench Preview validation scope
 Acceptance criteria: unrelated missing-role drafts no longer block a valid selected step -> pass; selected-step missing roles and whole-recipe Run remain fail-closed -> pass; targeted Tools and Workbench boundaries are aligned -> pass; hosted CI at the exact repair commit -> pass
 Verification: formerly failing Filter command and unchanged SHA-256 pass; selection 51/51; teaching 55/55; affected Tools and Workbench checks pass; actual EXE Filter Preview/Publish screenshot quality passes; Release build and git diff hygiene pass; hosted CI 32692639982 succeeds
 Evidence: .proofline/issues/PL-0049.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation/; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-shell-smoke/; GitHub Actions run 32692639982
-Boundary / next dependency: no release, package, tag, or deployment was created; E-15 is the next dependency-ready inventory item
+Boundary / next dependency: no release, package, tag, or deployment was created; E-15 was the next dependency-ready inventory item
 ```
 
-Next dependency-ready project priority:
+`PL-0050` is resolved for `E-15`. Schema `1.7` now stores an ordered,
+source-bound `GridPolygon` vertex list with fail-closed finite, in-grid,
+duplicate, zero-area, and self-intersection validation. The explicit
+`grid-polygon-authoring` E-13 route is the only declaration; the inspected
+fixed SDK has no polygon or mask API, so no mask output or inspection consumer
+was added. Viewer outline/handle drawing, Workbench numeric order/edit/add/
+remove/reorder, explicit Apply/Cancel, shared Enter/Escape bindings, JSON
+save/reopen, and Runner document loading are covered.
 
-1. `E-15 GridPolygon selection for irregular masks` | Recommended model:
-   `gpt-5.6-luna` | Reasoning effort: `high`
+The current D-backed evidence root
+`20260824-e15` passes selection `63/63` with GridPolygon `12/12`, Viewer
+teaching `34/34`, Workbench teaching `59/59`, Release `0/0`, the recipe
+storage/execution inspection, and actual Wide/Compact EXE teaching/lifecycle/
+256-vertex-transient/screenshot-quality/monitor-intersection checks. Two monitors were reported;
+the smaller left monitor `\\.\DISPLAY2` was selected. Runtime DPI was 125%;
+100%, 150%, 175%, and 200% remain unverified. No commit, push, package, tag,
+RC, release, or deployment occurred.
+
+```text
+Status: Complete
+Scope: PL-0050 / E-15 GridPolygon schema, validation, explicit authoring, persistence, Runner parity, and current Wide/Compact runtime evidence
+Acceptance criteria: typed source-bound ordered vertices -> pass; transient Viewer/Workbench edit with explicit Apply/Cancel and shared Enter/Escape -> pass; one authoring-only E-13 declaration with no mask consumer -> pass; exact JSON/Workbench/Runner round-trip -> pass; focused verification, Release build, runtime evidence, and diff hygiene -> pass
+Verification: Release 0/0; selection 63/63 with GridPolygon 12/12; Viewer 34/34; Workbench 59/59; D-backed recipe inspection; Wide/Compact actual EXE evidence; git diff --check
+Evidence: docs/OPENVISIONLAB_3D_GRID_POLYGON_SELECTION_CLOSURE_20260824.md; .proofline/issues/PL-0050.json; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/
+Boundary / next dependency: no polygon-to-mask algorithm, region artifact, or inspection consumer; owner R0, maximum-C3D qualification, PL-0003 external cleanup, release gates, and unrun DPI scales remain separate
+```
+
+Next dependency-ready project priorities:
+
+1. Human-owner unaided Wide/Compact R0 | blocked until owner input and replay |
+   Recommended model: none until owner input exists | Reasoning effort: none
+2. Representative maximum-C3D memory/load-time qualification | blocked until
+   the representative input and accepted limits exist | Recommended model: none
+   until supplied | Reasoning effort: none
+3. `PL-0003` remote-retention closure | blocked on GitHub Support processing and
+   fresh authenticated reachability verification | Recommended model: none until
+   external state changes | Reasoning effort: none
+4. First-release Phase 1 freeze/package/R0 and later release phases | conditional
+   on explicit owner approval and the release specification | Recommended model:
+   none until approved | Reasoning effort: none
+
+No additional software implementation item is preselected after E-15. Re-read
+the master backlog and current handoff when an external prerequisite changes.
 
 The large-C3D memory/performance candidate remains blocked until a
 representative maximum C3D input and accepted process-memory/load-time limits

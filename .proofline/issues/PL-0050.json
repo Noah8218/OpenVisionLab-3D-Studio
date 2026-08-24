@@ -1,0 +1,190 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0050",
+    "aliases": [
+      "E-15"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Add GridPolygon selection authoring",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "next-chat continuation prompt",
+    "summary": "The current dependency-ready queue item is E-15 GridPolygon selection for irregular masks after the resolved E-13 selection contract and E-14 GridCircle authoring slice.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md",
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md",
+      "docs/OPENVISIONLAB_3D_SELECTION_KIND_ROLE_MATRIX_CLOSURE_20260824.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "E-15 is complete: schema 1.7 GridPolygon geometry, fail-closed validation, explicit Viewer/Workbench authoring, shared keyboard Apply/Cancel contract, exact persistence, Runner parity, and current Wide/Compact runtime evidence pass without a mask consumer."
+  },
+  "objective": {
+    "summary": "Add a versioned, source-bound GridPolygon selection contract with explicit ordered-vertex authoring and exact save/reopen/Runner parity for irregular-region teaching.",
+    "constraints": [
+      "Use the existing Core/Data/Shell/Viewer MVVM ownership and explicit Apply/Cancel workflow.",
+      "Keep E-13 as the single supported selection kind/role declaration; use only one explicit grid-polygon-authoring pseudo-step for authoring.",
+      "Do not add polygon-to-mask arithmetic, a region artifact, or a downstream inspection consumer without a separate SDK-owned contract and approved package boundary.",
+      "Do not execute Preview, Publish, Run, replace the source, or change an unrelated selection while drafting or restoring polygon setup.",
+      "Preserve existing user changes, ignored data, issue drafts, and the Dev/original repository boundary.",
+      "Do not change product version, package, checksum, tag, release, publication, deployment, commit, or push state."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "A versioned GridPolygon selection contract stores a stable identity, exact root source/frame binding, and an ordered finite in-grid vertex list with deterministic fail-closed validation for missing, malformed, duplicate, degenerate, self-intersecting, out-of-grid, mixed-payload, stale, incompatible, and undeclared routes.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The Viewer and Workbench provide explicit GridPolygon vertex authoring/editing with visible row/column coordinates and order, add/remove/edit/reorder affordances, Apply/Cancel, Enter/Escape recovery, and transient draft behavior that does not execute inspection or mutate unrelated recipe/source/selection state.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E5"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "E-13 contains one explicit grid-polygon-authoring declaration and no inspection tool or adapter is presented as a GridPolygon or mask consumer.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "GridPolygon geometry and route survive exact JSON save/reopen, Workbench restore, and the existing Runner document-loading/parity path without source replacement or implicit execution.",
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused Core/Data/Shell/Viewer verification, the proportional Release build, and git diff --check pass; current-build Wide 1920x1040 and Compact 1280x760 runtime evidence covers relevant normal, selected, editing, invalid, long-list/count, Apply/Cancel, keyboard, popup/layout, save/reopen, and no-execution states on the dynamically selected monitor, with unrun DPI scales named explicitly.",
+      "evidence_refs": [
+        "E5",
+        "E6"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0047"
+    },
+    {
+      "type": "follow_up_to",
+      "target": "PL-0048"
+    }
+  ],
+  "context": [
+    {
+      "kind": "selection contract owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeDocument.cs",
+      "summary": "The generic recipe schema and selection payload own durable geometry identity."
+    },
+    {
+      "kind": "validation owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeValidator.cs",
+      "summary": "Schema gates, payload exclusivity, source binding, and route compatibility are enforced here."
+    },
+    {
+      "kind": "persistence owner",
+      "location": "src/OpenVisionLab.ThreeD.Data/Recipes/ToolRecipeDocumentStore.cs",
+      "summary": "The existing JSON store preserves typed selections and exact source identity checks."
+    },
+    {
+      "kind": "contract verification",
+      "location": "src/OpenVisionLab.ThreeD.Data/Verification/ToolRecipeSelectionContractVerification.cs",
+      "summary": "The focused Runner-exposed verifier owns selection schema and malformed-route checks."
+    },
+    {
+      "kind": "Workbench authoring owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs",
+      "summary": "Workbench owns selection requirements, transient drafts, explicit Apply/Cancel, and recipe routing."
+    },
+    {
+      "kind": "Viewer authoring owner",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.TeachingSelections.cs",
+      "summary": "Viewer owns grid picking, overlay rendering, and pointer/keyboard teaching interaction."
+    },
+    {
+      "kind": "fixed SDK boundary",
+      "location": "third_party/OpenVisionLabVisionSdk/OpenVisionLab.Vision3D.3.0.1-dev.20260823.grid-diagnostics.1.nupkg",
+      "summary": "The inspected fixed package has no GridPolygon or mask API; no Studio mask consumer is dependency-ready."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/selection-contract-final.txt",
+      "observation": "The Runner-exposed selection contract passes 63/63 checks, including the exact 12-case GridPolygon subset: schema 1.7 acceptance, save/reopen vertex order, old-schema rejection, missing/too-few/non-finite/out-of-grid/duplicate/zero-area/self-intersection/mixed-payload rejection, and undeclared-consumer rejection.",
+      "observed_at": "2026-08-24T16:04:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/viewer-capture-final.txt",
+      "observation": "Viewer teaching verification passes 34/34, including GridPolygon capture start, more-than-minimum ordered vertices, transient numeric candidate, cancel without changing applied state, and no inspection execution.",
+      "observed_at": "2026-08-24T16:04:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/workbench-teaching-final.txt",
+      "observation": "Workbench teaching verification passes 59/59, including the ordered numeric GridPolygon editor, transient numeric/reorder changes, explicit Apply without Preview/Publish/Run, and exact save/reopen route and vertex order.",
+      "observed_at": "2026-08-24T16:04:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/recipe-load-inspection/recipe-load-inspection-output-final.txt",
+      "observation": "The D-backed recipe inspection reports schema 1.7 storage with one step and one selection, executionValid=True with no errors or warnings, and rejects the intentionally reordered outline as self-intersecting or overlapping.",
+      "observed_at": "2026-08-24T16:04:00+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "runtime-ui",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e15/",
+      "observation": "Final current-build Wide and Compact EXE smokes pass. Both reports exercise numeric edit, a fail-closed invalid reorder, reorder restore, add/remove, Cancel, restart, explicit Apply, the 256-vertex transient editor round trip, and no Preview/Run execution. Wide 1920x1040 and Compact 1280x760 screenshots pass quality; external evidence records the window intersecting the dynamically selected smaller left monitor \\.\\DISPLAY2. The shared ToolRecipeWorkbenchView Enter/Escape binding contract is present for Apply/Cancel recovery.",
+      "observed_at": "2026-08-24T16:06:00+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "verification",
+      "location": "docs/OPENVISIONLAB_3D_GRID_POLYGON_SELECTION_CLOSURE_20260824.md",
+      "observation": "The closure record documents the final Release solution build at zero warnings/errors, focused command paths, D-backed evidence, dynamic monitor rule, current 125% DPI, unrun 100/150/175/200% DPI scales, no package/release mutation, and git diff --check pass.",
+      "observed_at": "2026-08-24T16:07:41+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-24T14:58:09.2367512+09:00",
+      "summary": "Scope E-15 to an explicit authoring-only GridPolygon selection and its persistence/Runner parity. The inspected fixed SDK package has no polygon or mask API, so mask output is not part of this slice.",
+      "evidence_refs": []
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-24T16:07:41.2509441+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "GridPolygon schema, validation, Viewer/Workbench authoring, persistence, Runner parity, focused checks, and current Wide/Compact runtime evidence passed; E-15 is closed without mask arithmetic or an implicit inspection consumer."
+    }
+  ],
+  "created_at": "2026-08-24T14:58:09.2367512+09:00",
+  "updated_at": "2026-08-24T16:07:41.2509441+09:00"
+}

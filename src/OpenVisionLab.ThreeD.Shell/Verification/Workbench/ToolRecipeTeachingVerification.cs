@@ -224,6 +224,111 @@ internal static class ToolRecipeTeachingVerification
                     ["source.circle", circleSelection.Id]),
                 circleSaveMessage);
 
+            var polygonSelection = new ToolRecipeSelection(
+                "selection.grid-polygon.01",
+                "Irregular region",
+                ToolRecipeSelectionKinds.GridPolygon,
+                "source.circle",
+                "frame.c3d-grid-index",
+                circleBinding,
+                null,
+                null,
+                null,
+                GridPolygon: new ToolRecipeGridPolygon(
+                [
+                    new ToolRecipeGridPolygonVertex(1, 1),
+                    new ToolRecipeGridPolygonVertex(1, 2.5),
+                    new ToolRecipeGridPolygonVertex(2, 2),
+                    new ToolRecipeGridPolygonVertex(2, 1)
+                ]));
+            var polygonDocument = circleDocument with
+            {
+                Name = "GridPolygon teaching fixture",
+                Steps =
+                [
+                    new ToolRecipeStep(
+                        "step.grid-polygon-authoring.01",
+                        "grid-polygon-authoring",
+                        "Irregular Region Authoring",
+                        2,
+                        ["source.circle", polygonSelection.Id],
+                        "derived.grid-polygon-authoring.01",
+                        [])
+                ],
+                Selections = [polygonSelection]
+            };
+            var polygonRecipePath = Path.Combine(fixtureRoot, "grid-polygon.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(polygonRecipePath, polygonDocument);
+            var polygonWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-polygon.json"));
+            var polygonOpened = polygonWorkbench.TryOpenTeachingRecipe(polygonRecipePath, out var polygonOpenMessage);
+            Check(
+                "GridPolygon recipe opens with ordered numeric editor context",
+                polygonOpened
+                && polygonWorkbench.SelectPipelineStep("step.grid-polygon-authoring.01")
+                && polygonWorkbench.SelectedStepTeachingSelection?.GridPolygon?.Vertices.SequenceEqual(
+                    polygonSelection.GridPolygon!.Vertices) == true
+                && polygonWorkbench.IsTeachingGridPolygonEditorVisible
+                && polygonWorkbench.TeachingGridPolygonVertices.Select(vertex => vertex.Order).SequenceEqual([1, 2, 3, 4]),
+                polygonOpenMessage);
+
+            ToolWorkbenchTeachingCaptureRequestEventArgs? polygonRequest = null;
+            polygonWorkbench.BeginTeachingSelectionCaptureRequested += (_, args) => polygonRequest = args;
+            var polygonActionLogsBefore = polygonWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            polygonWorkbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            polygonWorkbench.UpdateTeachingSelectionCaptureState(true, 4, 3, true, "Polygon ready");
+            polygonWorkbench.UpdateTeachingGridPolygonDraft(polygonSelection.GridPolygon);
+            ToolRecipeGridPolygon? numericPolygonDraft = null;
+            polygonWorkbench.TeachingGridPolygonDraftChanged += (_, args) => numericPolygonDraft = args.Polygon;
+            polygonWorkbench.TeachingGridPolygonVertices[1].Column = 2.75;
+            var firstPolygonVertex = polygonWorkbench.TeachingGridPolygonVertices[0];
+            polygonWorkbench.MoveTeachingGridPolygonVertexDownCommand.Execute(firstPolygonVertex);
+            polygonWorkbench.MoveTeachingGridPolygonVertexUpCommand.Execute(firstPolygonVertex);
+            Check(
+                "GridPolygon order and numeric draft stay transient until Apply",
+                polygonRequest is
+                {
+                    Kind: ToolRecipeSelectionKinds.GridPolygon,
+                    RequiredPointCount: 3,
+                    ExistingSelection.GridPolygon: not null
+                }
+                && numericPolygonDraft?.Vertices.SequenceEqual(
+                    [
+                        new ToolRecipeGridPolygonVertex(1, 1),
+                        new ToolRecipeGridPolygonVertex(1, 2.75),
+                        new ToolRecipeGridPolygonVertex(2, 2),
+                        new ToolRecipeGridPolygonVertex(2, 1)
+                    ]) == true
+                && polygonWorkbench.SelectedStepTeachingSelection?.GridPolygon?.Vertices.SequenceEqual(
+                    polygonSelection.GridPolygon!.Vertices) == true
+                && polygonWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == polygonActionLogsBefore,
+                $"draft={numericPolygonDraft};applied={polygonWorkbench.SelectedStepTeachingSelection?.GridPolygon}");
+
+            var appliedPolygon = polygonSelection with { GridPolygon = numericPolygonDraft };
+            var polygonApplied = polygonWorkbench.TryApplyCapturedTeachingSelection(appliedPolygon, out var polygonApplyMessage);
+            Check(
+                "explicit Apply replaces the same GridPolygon without inspection execution",
+                polygonApplied
+                && polygonWorkbench.SelectedStepTeachingSelection?.GridPolygon?.Vertices.SequenceEqual(
+                    appliedPolygon.GridPolygon!.Vertices) == true
+                && polygonWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == polygonActionLogsBefore,
+                polygonApplyMessage);
+
+            var polygonSavedPath = Path.Combine(fixtureRoot, "grid-polygon-saved.ov3d-recipe.json");
+            var polygonSaved = polygonWorkbench.TrySaveTeachingRecipe(polygonSavedPath, out var polygonSaveMessage);
+            var polygonReopened = polygonSaved ? ToolRecipeDocumentStore.Load(polygonSavedPath) : null;
+            Check(
+                "Workbench GridPolygon save and reopen preserve exact vertex order and route",
+                polygonSaved
+                && polygonReopened?.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+                && polygonReopened.Selections is [var savedPolygon]
+                && savedPolygon.GridPolygon?.Vertices.SequenceEqual(appliedPolygon.GridPolygon!.Vertices) == true
+                && polygonReopened.Steps.Single().InputEntityIds.SequenceEqual(
+                    ["source.circle", polygonSelection.Id]),
+                polygonSaveMessage);
+
             routeWarpage.InputEntityIdsText = routeThickness.OutputEntityId;
             var legacyRecipePath = Path.Combine(fixtureRoot, "legacy-incompatible-route.ov3d-recipe.json");
             Check(

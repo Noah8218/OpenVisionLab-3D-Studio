@@ -1639,6 +1639,102 @@
                                 BorderBrush="{DynamicResource ThreeD.AccentBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3"
+                                Visibility="{Binding IsTeachingGridPolygonEditorVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                AutomationProperties.AutomationId="GridPolygonNumericEditor">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.NumericPolygon, Korean='다각형 ROI 숫자 편집 · X=열, Z=행', English='Numeric polygon ROI · X=column, Z=row'}" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="8.5"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{Binding TeachingGridPolygonSourceFrameSummary}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1"
+                                               Margin="6,0,0,0"
+                                               Padding="7,3"
+                                               Content="{views:ThreeDText Key=ThreeD.Workspace.AddPolygonVertex, Korean='정점 추가', English='Add vertex'}"
+                                               Command="{Binding AddTeachingGridPolygonVertexCommand}"
+                                               AutomationProperties.Name="Add polygon vertex" />
+                                </Grid>
+
+                                <ScrollViewer Margin="0,6,0,0"
+                                              MaxHeight="220"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding TeachingGridPolygonVertices}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Width="34"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                               Text="{Binding Order, StringFormat=V {0}}" />
+                                                    <TextBox Grid.Column="1"
+                                                             Margin="0,0,3,0"
+                                                             Text="{Binding Column, Mode=TwoWay, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, NotifyOnValidationError=True}"
+                                                             ToolTip="X / column"
+                                                             AutomationProperties.Name="Polygon vertex X column" />
+                                                    <TextBox Grid.Column="2"
+                                                             Margin="3,0"
+                                                             Text="{Binding Row, Mode=TwoWay, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True, NotifyOnValidationError=True}"
+                                                             ToolTip="Z / row"
+                                                             AutomationProperties.Name="Polygon vertex Z row" />
+                                                    <ui:Button Grid.Column="3"
+                                                               Margin="3,0,0,0"
+                                                               Padding="4,1"
+                                                               Content="↑"
+                                                               Command="{Binding DataContext.MoveTeachingGridPolygonVertexUpCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                               CommandParameter="{Binding}"
+                                                               AutomationProperties.Name="Move polygon vertex up" />
+                                                    <ui:Button Grid.Column="4"
+                                                               Margin="2,0,0,0"
+                                                               Padding="4,1"
+                                                               Content="↓"
+                                                               Command="{Binding DataContext.MoveTeachingGridPolygonVertexDownCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                               CommandParameter="{Binding}"
+                                                               AutomationProperties.Name="Move polygon vertex down" />
+                                                    <ui:Button Grid.Column="5"
+                                                               Margin="2,0,0,0"
+                                                               Padding="4,1"
+                                                               Content="×"
+                                                               Command="{Binding DataContext.RemoveTeachingGridPolygonVertexCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                               CommandParameter="{Binding}"
+                                                               AutomationProperties.Name="Remove polygon vertex" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding TeachingGridPolygonValidationSummary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,1,0,6"
+                                Padding="8"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
                                 Visibility="{Binding IsTeachingGridCircleEditorVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                 AutomationProperties.AutomationId="GridCircleNumericEditor">
                             <StackPanel>

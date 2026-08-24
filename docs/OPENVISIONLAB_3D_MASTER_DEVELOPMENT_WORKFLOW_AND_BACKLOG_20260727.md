@@ -186,6 +186,36 @@ both screenshots pass quality and monitor-intersection checks. Preserve
 `0.1.1-dev`; no commit, push, package, tag, RC, or release occurred. Current
 inventory is `153 C / 16 P / 41 N / 9 E / 16 O`.
 
+### Current software checkpoint - PL-0050 GridPolygon selection authoring - 2026-08-24
+
+`PL-0050` completes `E-15` with schema `1.7` `GridPolygon` geometry: an
+ordered finite row/column vertex list bound to the exact source grid. Core
+validation fails closed for missing, malformed, duplicate, zero-area,
+self-intersecting or overlapping, out-of-grid, mixed, stale, incompatible,
+and undeclared payloads. Viewer outline/handle drawing and Workbench ordered
+numeric editing reuse the existing teaching path; edits remain transient until
+explicit Apply and Esc cancels the draft. The existing Workbench Enter/Escape
+bindings provide keyboard Apply/Cancel recovery.
+
+The E-13 matrix now declares `22` exact role rows for `17` tools, including
+only the explicit `grid-polygon-authoring` pseudo-step. The fixed vendored SDK
+has no polygon or mask API, so no mask output, region artifact, or inspection
+consumer is implied. Exact JSON save/reopen, Workbench restore, and Runner
+document loading preserve the geometry and route.
+
+Current focused evidence passes the Release build at `0/0`, selection `63/63`
+with GridPolygon `12/12`, Viewer teaching `34/34`, Workbench teaching `59/59`,
+the D-backed schema/execution inspection, and actual Wide/Compact Release EXE
+teaching/lifecycle/256-vertex-transient/screenshot-quality/monitor-intersection
+checks. Enter and Escape use the shared Workbench binding contract. Current
+runtime DPI is 125%;
+100%, 150%, 175%, and 200% remain unverified. Preserve
+`OPENVISIONLAB_3D_GRID_POLYGON_SELECTION_CLOSURE_20260824.md`,
+`.proofline/issues/PL-0050.json`, and the D-backed
+`20260824-e15` evidence root. Product version remains `0.1.1-dev`; no commit,
+push, package, tag, RC, or release occurred. Current inventory is
+`154 C / 16 P / 40 N / 9 E / 16 O`.
+
 ### Previous software checkpoint - PL-0047 selection kind/role compatibility matrix - 2026-08-24
 
 `PL-0047` completes `E-13` with one Core-owned compatibility matrix containing
@@ -3164,7 +3194,7 @@ Reasoning effort: high
 | E-12 | N | Region-source relationship and transform propagation | E-11, F-05 | Same physical region after typed alignment |
 | E-13 | C | Per-tool declaration of supported selection kinds and roles | E-07 | `PL-0047`; Core-owned 15-tool/20-role matrix; strict fail-closed and repairable-draft validation; Shell/Runner `40/40` |
 | E-14 | C | GridCircle selection for circular 2D height-field regions | C-06, E-13 | `PL-0048`; schema `1.6`; center/boundary draw, numeric edit, explicit Apply/Cancel, exact save/reopen, Runner `49/49` with circle `9/9`, Wide/Compact evidence |
-| E-15 | N | GridPolygon selection for irregular masks | C-06, E-13 | Vertex edit/save/mask output evidence |
+| E-15 | C | GridPolygon selection for irregular masks | C-06, E-13 | `PL-0050`; schema `1.7` ordered source-grid vertices, fail-closed geometry validation, explicit Viewer/Workbench authoring, exact save/reopen and Runner parity, Wide/Compact evidence; no mask output or inspection consumer |
 | E-16 | N | Convert selected connected region into editable region artifact | G-11, E-11 | Detection output -> editable derived region without source mutation |
 
 ### F. Feature, datum, alignment, and coordinate frames
@@ -3841,9 +3871,30 @@ The owner explicitly left the layout-only stream and completed item 11 on
     until Apply, save/reopen and Runner preserve identity, and no inspection
     consumer or mask output is implied.
 
+61. `PL-0050 / E-15 GridPolygon selection authoring` - Complete; schema `1.7`
+    owns an ordered source-grid outline with fail-closed geometry validation,
+    explicit Viewer/Workbench editing, exact save/reopen and Runner parity,
+    and current Wide/Compact evidence. No mask output or inspection consumer
+    is implied.
+
 Next dependency-ready order:
 
-1. `E-15 GridPolygon selection for irregular masks` | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+1. Human-owner unaided Wide/Compact R0 | blocked until the owner explicitly
+   approves the exact frozen candidate and performs the replay | Recommended
+   model: none until owner input exists | Reasoning effort: none
+2. Representative maximum-C3D memory/load-time qualification | blocked until
+   the owner supplies a representative maximum input and accepted limits |
+   Recommended model: none until supplied | Reasoning effort: none
+3. `PL-0003` public-sample remote-retention closure | blocked on GitHub Support
+   processing and a fresh authenticated retired-object reachability check |
+   Recommended model: none until external state changes | Reasoning effort: none
+4. First-release Phase 1 freeze/package/R0 and later release phases | conditional
+   on explicit owner approval and the release specification | Recommended model:
+   none until approved | Reasoning effort: none
+
+No additional software implementation item is preselected after E-15. Re-read
+the master backlog and current handoff after the next external prerequisite
+changes.
 
 The owner-deferred human R0 and the representative maximum-C3D qualification
 remain separate external prerequisites.

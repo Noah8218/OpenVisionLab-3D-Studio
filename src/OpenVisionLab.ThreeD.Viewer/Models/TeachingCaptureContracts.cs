@@ -22,7 +22,8 @@ public sealed record TeachingCaptureState(
     bool CanApply,
     string Message,
     int AppliedSelectionCount,
-    ToolRecipeGridCircle? GridCircle = null)
+    ToolRecipeGridCircle? GridCircle = null,
+    ToolRecipeGridPolygon? GridPolygon = null)
 {
     public int CapturedPointCount => Points.Count;
 

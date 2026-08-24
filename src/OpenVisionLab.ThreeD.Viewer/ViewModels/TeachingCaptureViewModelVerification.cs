@@ -142,6 +142,63 @@ public static class TeachingCaptureViewModelVerification
                 && viewModel.AppliedTeachingSelections.Single().GridCircle is null,
                 viewModel.TeachingCaptureSnapshot.Message);
 
+            var polygonRequest = Request(
+                "selection.polygon.01",
+                "Irregular ROI",
+                ToolRecipeSelectionKinds.GridPolygon,
+                3,
+                binding);
+            Check(
+                "GridPolygon capture begins",
+                viewModel.BeginTeachingCapture(polygonRequest, out _),
+                viewModel.TeachingCaptureSnapshot.ProgressText);
+            viewModel.TryAddTeachingCapturePoint(Point(10, 10, 0, 0, 0, 10), out _);
+            viewModel.TryAddTeachingCapturePoint(Point(10, 20, 1, 0, 0, 10), out _);
+            viewModel.TryAddTeachingCapturePoint(Point(20, 20, 1, 0, 1, 10), out _);
+            ToolRecipeSelection? polygonCandidate = null;
+            Check(
+                "GridPolygon accepts more than its minimum three ordered vertices",
+                viewModel.TryAddTeachingCapturePoint(Point(20, 10, 0, 0, 1, 10), out _)
+                && viewModel.TryGetTeachingCaptureCandidate(out polygonCandidate, out _)
+                && polygonCandidate?.GridPolygon?.Vertices.SequenceEqual(
+                    [
+                        new ToolRecipeGridPolygonVertex(10, 10),
+                        new ToolRecipeGridPolygonVertex(10, 20),
+                        new ToolRecipeGridPolygonVertex(20, 20),
+                        new ToolRecipeGridPolygonVertex(20, 10)
+                    ]) == true
+                && polygonCandidate.Points is null,
+                polygonCandidate?.GridPolygon?.Vertices.Count.ToString() ?? "none");
+            var editedPolygon = new ToolRecipeGridPolygon(
+            [
+                new ToolRecipeGridPolygonVertex(11, 12),
+                new ToolRecipeGridPolygonVertex(11, 25.5),
+                new ToolRecipeGridPolygonVertex(27, 24),
+                new ToolRecipeGridPolygonVertex(27, 12)
+            ]);
+            Check(
+                "GridPolygon numeric candidate changes no applied geometry",
+                viewModel.TrySetTeachingGridPolygonCandidate(
+                    editedPolygon,
+                    [
+                        Point(11, 12, 0, 0, 0, 10),
+                        Point(11, 26, 1, 0, 0, 10),
+                        Point(27, 24, 1, 0, 1, 10),
+                        Point(27, 12, 0, 0, 1, 10)
+                    ],
+                    out _)
+                && viewModel.TryGetTeachingCaptureCandidate(out var editedPolygonCandidate, out _)
+                && editedPolygonCandidate?.GridPolygon?.Vertices.SequenceEqual(editedPolygon.Vertices) == true
+                && viewModel.AppliedTeachingSelections.Single().GridRectangle
+                    == new ToolRecipeGridRectangle(2, 3, 7, 10),
+                viewModel.TeachingCaptureSnapshot.ProgressText);
+            viewModel.CancelTeachingCapture();
+            Check(
+                "GridPolygon cancel leaves the authored recipe projection unchanged",
+                !viewModel.IsTeachingCaptureActive
+                && viewModel.AppliedTeachingSelections.Single().GridPolygon is null,
+                viewModel.TeachingCaptureSnapshot.Message);
+
             var artifactBinding = new ToolRecipeSelectionSourceBinding(
                 "TransformedHeightField", new string('B', 64), 20, 10,
                 "derived.height-field", new string('C', 64), "fixture-unit", "frame.fixture");

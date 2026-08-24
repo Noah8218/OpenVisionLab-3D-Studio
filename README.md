@@ -86,7 +86,7 @@ works after cloning or moving the whole package folder.
 | Preparation | Median filtering, outlier removal, surface leveling, and explicit ROI/Crop into a separate immutable HeightField; compatible later tools can teach against the Published crop |
 | Height inspection | Thickness, Warpage, Plane Flatness, Height Deviation, Gap/Flush, Volume, and grid/region statistics |
 | Geometry inspection | Point-pair and cross-section measurements, lines, planes, edges, landmarks, nominal/actual mesh comparison, and deterministic surface matching |
-| Teaching | Linked 3D and full-resolution Height Image ROI editing with explicit Review, Apply, Cancel, and Delete actions |
+| Teaching | Linked 3D and full-resolution Height Image editing for GridRectangle, GridCircle, and ordered GridPolygon selections with explicit Review, Apply, Cancel, and Delete actions; GridPolygon stores an authoring outline only and does not create a mask, region artifact, or downstream inspection input |
 | Validation | Good, Bad, and Held-out sample roles; run results; failure analysis; threshold review; and held-out replay |
 | Evidence | Viewer overlays, metrics, reports, output comparison, retained match review, headless Runner records, and a privacy-safe support ZIP |
 | Recipe lifecycle | Save and restore ordered steps, inputs, parameters, ROI roles, outputs, and validation setup |

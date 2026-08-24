@@ -62,6 +62,10 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.DualRoiRoutingSchemaVersion,
             StringComparison.Ordinal);
+        var isGridCircleSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.GridCircleSchemaVersion,
+            StringComparison.Ordinal);
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
@@ -72,6 +76,7 @@ public static class ToolRecipeValidator
             && !isArtifactOwnedSelectionSchema
             && !isOrientedBox3DSchema
             && !isDualRoiRoutingSchema
+            && !isGridCircleSchema
             && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
@@ -168,6 +173,7 @@ public static class ToolRecipeValidator
                 ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion),
                 ToolRecipeDocument.SupportsOrientedBox3D(document.SchemaVersion),
                 ToolRecipeDocument.SupportsGridCircle(document.SchemaVersion),
+                ToolRecipeDocument.SupportsGridPolygon(document.SchemaVersion),
                 errors,
                 warnings,
                 correspondenceRows);
@@ -1124,6 +1130,7 @@ public static class ToolRecipeValidator
         bool supportsArtifactOwnedSelections,
         bool supportsOrientedBox3D,
         bool supportsGridCircle,
+        bool supportsGridPolygon,
         List<string> errors,
         List<string> warnings,
         List<(string SelectionId, string SelectionLabel, ToolRecipeLandmarkCorrespondence Row)> correspondenceRows)
@@ -1182,9 +1189,10 @@ public static class ToolRecipeValidator
                     ToolRecipeSelectionKinds.GridRectangle
                     or ToolRecipeSelectionKinds.PointSet
                     or ToolRecipeSelectionKinds.OrientedBox3D
-                    or ToolRecipeSelectionKinds.GridCircle))
+                    or ToolRecipeSelectionKinds.GridCircle
+                    or ToolRecipeSelectionKinds.GridPolygon))
             {
-                errors.Add($"{label} artifact HeightField binding supports GridRectangle, GridCircle, PointSet, or OrientedBox3D geometry only.");
+                errors.Add($"{label} artifact HeightField binding supports GridRectangle, GridCircle, GridPolygon, PointSet, or OrientedBox3D geometry only.");
             }
             if (string.IsNullOrWhiteSpace(binding.OwnerEntityId)) errors.Add($"{label} artifact owner entity ID is required.");
             if (!IsSha256(binding.RootSourceContentSha256)) errors.Add($"{label} artifact root-source SHA-256 is required.");
@@ -1240,6 +1248,12 @@ public static class ToolRecipeValidator
             return;
         }
 
+        if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridPolygon, StringComparison.Ordinal))
+        {
+            ValidateGridPolygon(selection, binding, label, supportsGridPolygon, errors);
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(selection.Kind))
         {
             errors.Add($"{label} kind '{selection.Kind.Trim()}' is not supported.");
@@ -1255,9 +1269,10 @@ public static class ToolRecipeValidator
         if (HasItems(selection.Points)
             || HasItems(selection.Rows)
             || selection.OrientedBox3D is not null
-            || selection.GridCircle is not null)
+            || selection.GridCircle is not null
+            || selection.GridPolygon is not null)
         {
-            errors.Add($"{label} grid rectangle cannot contain circle, point-set, correspondence, or oriented-box payloads.");
+            errors.Add($"{label} grid rectangle cannot contain circle, polygon, point-set, correspondence, or oriented-box payloads.");
         }
 
         var rectangle = selection.GridRectangle;
@@ -1293,9 +1308,10 @@ public static class ToolRecipeValidator
         if (selection.GridRectangle is not null
             || HasItems(selection.Rows)
             || selection.OrientedBox3D is not null
-            || selection.GridCircle is not null)
+            || selection.GridCircle is not null
+            || selection.GridPolygon is not null)
         {
-            errors.Add($"{label} point set cannot contain rectangle, circle, correspondence, or oriented-box payloads.");
+            errors.Add($"{label} point set cannot contain rectangle, circle, polygon, correspondence, or oriented-box payloads.");
         }
 
         var points = selection.Points ?? [];
@@ -1377,10 +1393,11 @@ public static class ToolRecipeValidator
             || HasItems(selection.Points)
             || HasItems(selection.Rows)
             || selection.CorrespondenceDescriptor is not null
-            || selection.GridCircle is not null)
+            || selection.GridCircle is not null
+            || selection.GridPolygon is not null)
         {
             errors.Add(
-                $"{label} oriented box cannot contain rectangle, circle, point-set, or correspondence payloads.");
+                $"{label} oriented box cannot contain rectangle, circle, polygon, point-set, or correspondence payloads.");
         }
 
         foreach (var geometryError in ToolRecipeOrientedBox3DGeometry.Validate(selection.OrientedBox3D))
@@ -1406,14 +1423,48 @@ public static class ToolRecipeValidator
             || HasItems(selection.Points)
             || HasItems(selection.Rows)
             || selection.CorrespondenceDescriptor is not null
-            || selection.OrientedBox3D is not null)
+            || selection.OrientedBox3D is not null
+            || selection.GridPolygon is not null)
         {
             errors.Add(
-                $"{label} grid circle cannot contain rectangle, point-set, correspondence, or oriented-box payloads.");
+                $"{label} grid circle cannot contain rectangle, polygon, point-set, correspondence, or oriented-box payloads.");
         }
 
         foreach (var geometryError in ToolRecipeGridCircleGeometry.Validate(
                      selection.GridCircle,
+                     binding.GridWidth,
+                     binding.GridHeight))
+        {
+            errors.Add($"{label} {geometryError}.");
+        }
+    }
+
+    private static void ValidateGridPolygon(
+        ToolRecipeSelection selection,
+        ToolRecipeSelectionSourceBinding binding,
+        string label,
+        bool supportsGridPolygon,
+        List<string> errors)
+    {
+        if (!supportsGridPolygon)
+        {
+            errors.Add(
+                $"{label} GridPolygon requires teaching recipe schema {ToolRecipeDocument.GridPolygonSchemaVersion} or newer.");
+        }
+
+        if (selection.GridRectangle is not null
+            || HasItems(selection.Points)
+            || HasItems(selection.Rows)
+            || selection.CorrespondenceDescriptor is not null
+            || selection.OrientedBox3D is not null
+            || selection.GridCircle is not null)
+        {
+            errors.Add(
+                $"{label} grid polygon cannot contain rectangle, circle, point-set, correspondence, or oriented-box payloads.");
+        }
+
+        foreach (var geometryError in ToolRecipeGridPolygonGeometry.Validate(
+                     selection.GridPolygon,
                      binding.GridWidth,
                      binding.GridHeight))
         {
@@ -1432,9 +1483,10 @@ public static class ToolRecipeValidator
         if (selection.GridRectangle is not null
             || HasItems(selection.Points)
             || selection.OrientedBox3D is not null
-            || selection.GridCircle is not null)
+            || selection.GridCircle is not null
+            || selection.GridPolygon is not null)
         {
-            errors.Add($"{label} correspondence set cannot contain rectangle, circle, point-set, or oriented-box payloads.");
+            errors.Add($"{label} correspondence set cannot contain rectangle, circle, polygon, point-set, or oriented-box payloads.");
         }
 
         var descriptor = selection.CorrespondenceDescriptor;

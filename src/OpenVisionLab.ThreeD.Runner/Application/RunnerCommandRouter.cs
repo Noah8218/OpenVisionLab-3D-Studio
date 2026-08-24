@@ -99,6 +99,7 @@ internal static class RunnerCommandRouter
         var verifyC3DRegridHeightField = args.Contains("--verify-c3d-regrid-height-field", StringComparer.OrdinalIgnoreCase);
         var verifyOrientedBox3D = args.Contains("--verify-oriented-box-3d", StringComparer.OrdinalIgnoreCase);
         var verifyGridCircle = args.Contains("--verify-grid-circle", StringComparer.OrdinalIgnoreCase);
+        var verifyGridPolygon = args.Contains("--verify-grid-polygon", StringComparer.OrdinalIgnoreCase);
         var verifyArtifactOwnedRoiRunner = args.Contains("--verify-artifact-owned-roi-runner", StringComparer.OrdinalIgnoreCase);
         var verifySyntheticAffineInspectionPlate = args.Contains("--verify-synthetic-affine-inspection-plate", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
@@ -449,12 +450,12 @@ internal static class RunnerCommandRouter
             return C3DRoiCropGoldenVerification.Run(reportPath);
         }
 
-        if (verifyOrientedBox3D || verifyGridCircle)
+        if (verifyOrientedBox3D || verifyGridCircle || verifyGridPolygon)
         {
             if (reportPath is null)
             {
                 Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-grid-polygon --report <path>");
                 return 2;
             }
 
@@ -1098,6 +1099,7 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-oriented-box-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-polygon --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
