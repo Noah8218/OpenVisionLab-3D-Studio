@@ -169,7 +169,8 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isLevelSurfacePreviewRunning
-        && ToolRecipeValidator.Validate(createDocument()).IsValid;
+        && getSelectedPipelineStep() is { } step
+        && ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid;
 
     public void PublishSelectedLevelSurface()
     {
@@ -239,7 +240,7 @@ internal sealed class ToolWorkbenchLevelSurfaceExecutionOwner
             && !isLevelSurfacePreviewRunning
             && step.State is "Taught / pending" or "Taught / needs correction")
         {
-            step.State = ToolRecipeValidator.Validate(createDocument()).IsValid
+            step.State = ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid
                 ? "Ready"
                 : "Taught / needs correction";
         }

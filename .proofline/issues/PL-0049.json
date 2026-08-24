@@ -19,8 +19,8 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "The repair commit a075faa is pushed; hosted CI confirmed selection verification 51/51 but stopped on the workflow's stale 49/49 exact-count assertion before reaching the repaired preparation gate.",
-    "next_action": "Commit and push the one-line 51/51 workflow correction, then require complete hosted CI success before resolving PL-0049."
+    "current_summary": "Targeted Tools execution and the Workbench preprocessing Preview boundary now use selected-step validation; local headless and actual EXE checks pass, and hosted CI success at the next exact commit remains required.",
+    "next_action": "Commit and push the Workbench validation-boundary correction, then require complete hosted CI success before resolving PL-0049."
   },
   "problem": {
     "claims": [
@@ -54,7 +54,8 @@
       "id": "C3",
       "text": "The formerly failing command, focused selection and typed-adapter regressions, proportional Release build, and git diff check pass.",
       "evidence_refs": [
-        "E3"
+        "E3",
+        "E6"
       ]
     },
     {
@@ -126,6 +127,20 @@
       "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32691809439",
       "observation": "The pushed repair built and selection verification passed 51/51; the job then failed only because the workflow asserted the previous literal Result: Pass (49/49 checks).",
       "observed_at": "2026-08-24T14:02:00+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "hosted-ci",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32691999539",
+      "observation": "The 51/51 workflow correction passed its selection gate, then the actual Shell Filter Preview/Publish smoke exited 1 because Workbench still blocked Preview with whole-recipe validation before calling the repaired Tools adapter.",
+      "observed_at": "2026-08-24T14:10:48.6748792+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-shell-smoke",
+      "observation": "Release built with zero warnings/errors; Filter actual EXE Preview/Publish completed with an accepted screenshot at 125% DPI and an intersecting window rectangle; Remove Outliers 14/14, Level Surface 17/17, ROI Crop 19/19, selection 51/51, teaching 55/55, and git diff check passed.",
+      "observed_at": "2026-08-24T14:10:48.6748792+09:00"
     }
   ],
   "events": [
@@ -137,8 +152,17 @@
       "evidence_refs": [
         "E4"
       ]
+    },
+    {
+      "id": "D2",
+      "kind": "decision",
+      "at": "2026-08-24T14:10:48.6748792+09:00",
+      "summary": "Align the four preprocessing Workbench Preview readiness and state-refresh boundaries with selected-step validation while retaining strict whole-recipe Run validation.",
+      "evidence_refs": [
+        "E5"
+      ]
     }
   ],
   "created_at": "2026-08-24T13:30:48+09:00",
-  "updated_at": "2026-08-24T14:02:00+09:00"
+  "updated_at": "2026-08-24T14:10:48.6748792+09:00"
 }

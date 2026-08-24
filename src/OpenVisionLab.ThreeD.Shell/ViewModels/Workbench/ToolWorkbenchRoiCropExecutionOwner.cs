@@ -141,7 +141,8 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
         && isSourceReady()
         && !hasPendingParameters()
         && !isRunning
-        && ToolRecipeValidator.Validate(createDocument()).IsValid;
+        && getSelectedStep() is { } step
+        && ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid;
 
     public void Publish()
     {
@@ -199,7 +200,7 @@ internal sealed class ToolWorkbenchRoiCropExecutionOwner
             && !isRunning
             && step.State is "Taught / pending" or "Taught / needs correction")
         {
-            step.State = ToolRecipeValidator.Validate(createDocument()).IsValid
+            step.State = ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid
                 ? "Ready"
                 : "Taught / needs correction";
         }

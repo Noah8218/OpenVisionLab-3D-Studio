@@ -188,7 +188,8 @@ internal sealed class ToolWorkbenchFilterExecutionOwner
         && !hasPendingStepParameterChanges()
         && !isFilterPreviewRunning
         && !isEdgePreviewRunning()
-        && ToolRecipeValidator.Validate(createDocument()).IsValid;
+        && getSelectedPipelineStep() is { } step
+        && ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid;
 
     public void Publish()
     {
@@ -253,7 +254,7 @@ internal sealed class ToolWorkbenchFilterExecutionOwner
             && !isFilterPreviewRunning
             && step.State == "Taught / pending")
         {
-            step.State = ToolRecipeValidator.Validate(createDocument()).IsValid
+            step.State = ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid
                 ? "Ready"
                 : "Taught / needs correction";
         }

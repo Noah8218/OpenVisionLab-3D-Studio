@@ -173,7 +173,8 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
         && isSourceReadyForRecipe()
         && !hasPendingStepParameterChanges()
         && !isRemoveOutlierPreviewRunning
-        && ToolRecipeValidator.Validate(createDocument()).IsValid;
+        && getSelectedPipelineStep() is { } step
+        && ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid;
 
     public void PublishSelectedRemoveOutlierPixels()
     {
@@ -239,7 +240,7 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
             && !isRemoveOutlierPreviewRunning
             && step.State is "Taught / pending" or "Taught / needs correction")
         {
-            step.State = ToolRecipeValidator.Validate(createDocument()).IsValid
+            step.State = ToolRecipeValidator.ValidateForStepExecution(createDocument(), step.Id).IsValid
                 ? "Ready"
                 : "Taught / needs correction";
         }
