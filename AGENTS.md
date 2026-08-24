@@ -103,10 +103,10 @@ As of the 2026-08-18 PL-0024 privacy-safe support-bundle closure:
 - PL-0008 bounds the newest-first Workbench session projection at 3,000
   entries after durable `OVLog` routing. The existing 50 MB by 20-backup
   rolling-file policy remains unchanged.
-- Vendored `OpenVisionLab.Vision3D 3.0.0` is built from committed
-  `OpenVisionLab-Vision-SDK` source
-  `f34fdf912ff38fe20f36dbb063837e14b4f922b3`; package SHA-256 is
-  `F7324DC43ABF8E130D6F88C034287C192CFEA89E16A8A906A60F52DE341045B4`.
+- Vendored `OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1` is built from
+  committed `OpenVisionLab-Vision-SDK` source
+  `8be38403d0d00698431d7ffa4de60a63289672c6`; package SHA-256 is
+  `964A543C007687ED93F2AFEC682245A76C61DA2AE42EC9B786FB8CC27BED976C`.
 - Public-sample remote-retention cleanup remains a separate external
   maintenance blocker tracked by `PL-0003`; do not infer its current GitHub
   state without an authenticated re-audit.

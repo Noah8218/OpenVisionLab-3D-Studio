@@ -36,6 +36,7 @@ public static class ToolRecipeOrderedGraphExecution
     private static readonly HashSet<string> SupportedToolIds = new(StringComparer.Ordinal)
     {
         "filter",
+        "roi-crop",
         "height-difference-edge",
         "two-point-line",
         "three-point-plane",
@@ -182,6 +183,11 @@ public static class ToolRecipeOrderedGraphExecution
                     {
                         rebound = RebindTransformedSelections(rebound, field);
                     }
+                    else if (execution.Output is C3DHeightFieldSnapshot heightField
+                        && !string.Equals(step.OutputEntityId, rebound.Source.Id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        rebound = RebindHeightFieldSelections(rebound, heightField);
+                    }
                 }
 
                 if (execution.Result.Status is ResultStatus.Error or ResultStatus.NotRun
@@ -248,7 +254,7 @@ public static class ToolRecipeOrderedGraphExecution
         SourceQualityReport report,
         C3DHeightFieldSnapshot snapshot)
     {
-        if (report.SchemaVersion != SourceQualityReport.CurrentSchemaVersion
+        if (!report.TryValidateGridDiagnostics(out _)
             || !string.Equals(
                 report.Source.EntityId,
                 snapshot.EntityId,
@@ -292,6 +298,14 @@ public static class ToolRecipeOrderedGraphExecution
             case "filter":
             {
                 var evaluation = ToolRecipeFilterExecution.Execute(document, step.Id, cancellationToken: cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
+            case "roi-crop":
+            {
+                var evaluation = ToolRecipeRoiCropExecution.Execute(
+                    document,
+                    step.Id,
+                    cancellationToken: cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
             case "height-difference-edge":
@@ -355,14 +369,16 @@ public static class ToolRecipeOrderedGraphExecution
             }
             case var measurementToolId when MeasurementToolIds.Contains(measurementToolId):
             {
+                C3DHeightFieldSnapshot? heightField = null;
                 C3DTransformedHeightField? field = null;
                 if (step.InputEntityIds.Count > 0
                     && artifacts.TryGetValue(step.InputEntityIds[0], out var inputArtifact))
                 {
+                    heightField = inputArtifact as C3DHeightFieldSnapshot;
                     field = inputArtifact as C3DTransformedHeightField;
                 }
                 var evaluation = ToolRecipeHeightMeasurementExecution.Execute(
-                    document, step.Id, field, recipeDirectory: null, cancellationToken);
+                    document, step.Id, heightField, field, recipeDirectory: null, cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
             default:
@@ -492,6 +508,29 @@ public static class ToolRecipeOrderedGraphExecution
                 return selection with
                 {
                     FrameId = field.ReferenceFrameId,
+                    SourceBinding = binding
+                };
+            })
+            .ToArray();
+        return document with { Selections = selections };
+    }
+
+    private static ToolRecipeDocument RebindHeightFieldSelections(
+        ToolRecipeDocument document,
+        C3DHeightFieldSnapshot field)
+    {
+        var binding = ToolRecipeSelectionSourceBindingVerifier.FromHeightField(field);
+        var selections = (document.Selections ?? [])
+            .Select(selection =>
+            {
+                if (!string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.Ordinal)
+                    || !string.Equals(selection.SourceBinding.OwnerEntityId, field.EntityId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return selection;
+                }
+                return selection with
+                {
+                    FrameId = field.FrameId,
                     SourceBinding = binding
                 };
             })

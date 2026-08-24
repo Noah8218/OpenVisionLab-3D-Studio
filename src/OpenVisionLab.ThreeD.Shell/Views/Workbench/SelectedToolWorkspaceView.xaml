@@ -61,10 +61,30 @@
                                                         Property="Background"
                                                         Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
                                             </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="Background"
+                                                        Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="BorderBrush"
+                                                        Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                                            </Trigger>
                                             <Trigger Property="IsKeyboardFocused" Value="True">
                                                 <Setter TargetName="HeaderSurface"
                                                         Property="BorderBrush"
                                                         Value="{DynamicResource ThreeD.FocusBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Chevron"
+                                                        Property="Foreground"
+                                                        Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="Background"
+                                                        Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                                                <Setter TargetName="HeaderSurface"
+                                                        Property="BorderBrush"
+                                                        Value="{DynamicResource ThreeD.DividerBrush}" />
+                                                <Setter Property="Cursor" Value="Arrow" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -716,7 +736,7 @@
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Workspace.RetainedMatch, Korean='보존 매치', English='Retained match'}" />
                             <ComboBox Grid.Column="1"
-                                      MinHeight="27"
+                                      MinHeight="30"
                                       ItemsSource="{Binding SurfaceMatchCollectionItems}"
                                       SelectedItem="{Binding SelectedSurfaceMatchCollectionItem, Mode=TwoWay}"
                                       DisplayMemberPath="DisplayName"
@@ -1609,6 +1629,54 @@
                                            FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding TeachingGridRectangleValidationSummary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,1,0,6"
+                                Padding="8"
+                                Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                BorderBrush="{DynamicResource ThreeD.AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3"
+                                Visibility="{Binding IsTeachingGridCircleEditorVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                AutomationProperties.AutomationId="GridCircleNumericEditor">
+                            <StackPanel>
+                                <TextBlock FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.NumericCircle, Korean='원형 ROI 숫자 편집 · X=열, Z=행', English='Numeric Circular ROI · X=column, Z=row'}" />
+                                <Grid Margin="0,6,0,0" IsEnabled="{Binding IsTeachingGridCircleEditorEnabled}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,3,0">
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.CircleCenterColumn, Korean='중심 X (열)', English='Center X (column)'}" />
+                                        <TextBox Text="{Binding TeachingGridCircleCenterColumn, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                 AutomationProperties.Name="Circular ROI center X column" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="3,0">
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.CircleCenterRow, Korean='중심 Z (행)', English='Center Z (row)'}" />
+                                        <TextBox Text="{Binding TeachingGridCircleCenterRow, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                 AutomationProperties.Name="Circular ROI center Z row" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="3,0,0,0">
+                                        <TextBlock FontSize="9"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.CircleRadius, Korean='반지름 (셀)', English='Radius (cells)'}" />
+                                        <TextBox Text="{Binding TeachingGridCircleRadius, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                 AutomationProperties.Name="Circular ROI radius in cells" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Margin="0,4,0,0"
+                                           FontSize="9"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{Binding TeachingGridCircleValidationSummary}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>

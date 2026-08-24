@@ -1,0 +1,135 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0048",
+    "aliases": [
+      "E-14"
+    ],
+    "type": "feature",
+    "mode": "simple",
+    "title": "Add GridCircle height-field selection authoring",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved E-14 after E-13 established the fail-closed selection kind and role matrix.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "E-14 is complete: schema 1.6 GridCircle geometry, fail-closed routing, explicit Viewer/Workbench authoring, exact persistence, Runner parity, and Wide/Compact runtime evidence all pass without adding an implicit inspection consumer."
+  },
+  "objective": {
+    "summary": "Close E-14 with one bounded circular height-field selection that supports Viewer drawing, synchronized numeric editing, explicit Apply, save/reopen, and Runner-verifiable evidence.",
+    "constraints": [
+      "Represent the center and radius in the declared height-field grid frame and keep the geometry inside its exact bound grid.",
+      "Preserve explicit Preview, Publish, Run, and recipe mutation boundaries; drawing and numeric edits remain transient until Apply.",
+      "Extend the E-13 route matrix explicitly; no current inspection tool gains GridCircle support implicitly.",
+      "Reuse the existing WPF theme, MVVM teaching coordinator, Viewer capture path, source binding, and JSON store without adding a dependency or UI framework.",
+      "Do not implement GridPolygon, region artifacts, mask-producing algorithms, hardware integration, calibration, or physical metrology."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Recipe schema and Core validation round-trip a finite in-bounds GridCircle and fail closed for old schema, missing or mixed payload, non-positive radius, out-of-grid geometry, stale binding, and undeclared consumers.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Workbench and Viewer create or replace one GridCircle from center and boundary picks, synchronize center-row, center-column, and radius numeric edits, and mutate no recipe or execution state before explicit Apply.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Save/reopen and Runner qualification preserve exact selection ID, kind, source identity, frame, center, radius, and authoring route without executing inspection.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Focused checks, proportional Release build, affected regressions, current Wide and Compact runtime UI states, documentation, issue validation, JSON links, and diff hygiene pass with reusable D-backed evidence.",
+      "evidence_refs": [
+        "E4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0047"
+    }
+  ],
+  "context": [
+    {
+      "kind": "selection contract owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeDocument.cs",
+      "summary": "The generic recipe schema and selection payload own durable geometry identity."
+    },
+    {
+      "kind": "authoring flow",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/WorkbenchViewerTeachingCoordinator.cs",
+      "summary": "The current two-pick teaching path already coordinates GridRectangle drawing, numeric edits, and explicit Apply."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e14-grid-circle/grid-circle-runner.txt",
+      "observation": "Shell and Runner selection verification passed 49/49, including the exact nine-case GridCircle schema, geometry, old-schema, mixed-payload, and undeclared-consumer subset.",
+      "observed_at": "2026-08-24T12:14:31+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "runtime-ui",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e14-grid-circle/",
+      "observation": "Actual Release EXE Wide and Compact review showed the applied circle, Top-view Replace flow, synchronized numeric draft, candidate/applied distinction, Tab commit, Esc restoration, disabled state, and reachable unclipped Compact controls; both saved screenshots passed quality and left-monitor intersection checks.",
+      "observed_at": "2026-08-24T12:14:31+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-e14-grid-circle/tool-recipe-teaching-final.txt",
+      "observation": "Workbench teaching passed 55/55 and Viewer teaching passed 30/30, including exact GridCircle numeric Apply, same-ID replacement, save/reopen, cancel, and no-execution behavior.",
+      "observed_at": "2026-08-24T12:14:31+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "verification",
+      "location": "docs/OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md",
+      "observation": "The exact current tree passed the 15-project Release build with zero warnings/errors, docking 98/98, Workspace 67/67, ordered Run 16/16, standard tests 2/2, structure 68/68, documentation updates, and git diff hygiene.",
+      "observed_at": "2026-08-24T12:14:31+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-24T12:00:00+09:00",
+      "summary": "GridCircle uses a grid-cell center and positive radius in cell-center units; a cell belongs to the geometric region when its center is within the radius. E-14 authors geometry only and grants no implicit inspection consumer.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-24T12:14:31+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "GridCircle schema, authoring, persistence, Runner, runtime UI, and regression gates passed; E-14 is closed without an implicit consumer or release mutation."
+    }
+  ],
+  "created_at": "2026-08-24T12:00:00+09:00",
+  "updated_at": "2026-08-24T12:14:31+09:00"
+}

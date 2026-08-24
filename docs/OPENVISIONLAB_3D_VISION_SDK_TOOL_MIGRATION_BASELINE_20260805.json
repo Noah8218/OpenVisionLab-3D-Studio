@@ -65,6 +65,11 @@
       "responsibility": "Strict HeightDistributionStatisticsTool adapter plus source identity, invalid-mask linkage, and Source Quality report composition."
     },
     {
+      "path": "src/OpenVisionLab.ThreeD.Data/HeightMaps/SourceQualityGridDiagnosticsAnalyzer.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict GridDiagnosticsTool adapter plus C3D implicit-grid format policy, typed result mapping, and Source Quality report contract validation."
+    },
+    {
       "path": "src/OpenVisionLab.ThreeD.Tools/Measurement/C3DCompletenessGridRule.cs",
       "maximumSignalCount": 0,
       "responsibility": "Strict CompletenessGridInspectionTool adapter plus recipe identity, canonical output hashing, metrics, and overlay composition."
@@ -118,6 +123,11 @@
       "path": "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DLevelSurfaceRule.cs",
       "maximumSignalCount": 0,
       "responsibility": "Strict LevelSurfaceTool adapter plus source and reference identity validation, authored RMS acceptance, transform/artifact, metric, and overlay composition."
+    },
+    {
+      "path": "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DRoiCropRule.cs",
+      "maximumSignalCount": 0,
+      "responsibility": "Strict HeightMapCropTool adapter plus exact source/selection identity validation, derived HeightField identity, source-grid origin, metric, and overlay composition."
     },
     {
       "path": "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceModelPreparation.cs",

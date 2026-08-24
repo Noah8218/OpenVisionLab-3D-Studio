@@ -1,0 +1,151 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0038",
+    "aliases": [],
+    "type": "feature",
+    "mode": "simple",
+    "title": "Expose one coherent proven-decoder Import surface",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "owner continuation request and current master backlog",
+    "summary": "The owner authorized the next dependency-ready software slice after PL-0037: expose verified 3D decoders through one truthful operator Import workflow.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "One always-reachable localized Import action now routes C3D through the existing recipe-source path and GLB/STL/LAS/LAZ through a truthful Viewer-only path; all five actual decoder paths, state retention, localized runtime UI, Release build, structure, package, and diff gates pass."
+  },
+  "objective": {
+    "summary": "Provide one operator-facing Import action for the verified C3D, GLB, STL, LAS, and LAZ decoders while preserving the distinct C3D recipe-input and Viewer-only mesh/point-cloud contracts.",
+    "constraints": [
+      "Expose only C3D, GLB, STL, LAS, and LAZ; do not advertise general glTF, OBJ, PCD, XYZ, TIFF, RAW, or PLY import.",
+      "C3D may update the current recipe source through the existing binding path; GLB, STL, LAS, and LAZ are Viewer-only and must not mutate recipe, source binding, result, Preview, Publish, or Run state.",
+      "Loading, cancellation, failure, and replacement must keep the last successfully displayed source until a new decode succeeds.",
+      "Reuse the existing decoders, semantic theme, MVVM command routing, and progress surface; add no UI framework or speculative import architecture.",
+      "Do not expand this slice into drag-and-drop, decoder additions, physical calibration, maximum-input qualification, or human-owner R0."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "One always-reachable localized Shell Import action and file dialog expose exactly C3D, GLB, STL, LAS, and LAZ with truthful format and routing text.",
+      "evidence_refs": [
+        "E1",
+        "E4"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "C3D Import retains the existing cancellable progress path and exact current-recipe source binding without invoking Preview, Publish, or Run.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "GLB, STL, LAS, and LAZ decode away from the UI thread, expose progress and cancellation, apply only the latest successful request, and retain the prior Viewer source on failure or cancellation.",
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Viewer-only imports visibly identify the loaded format/file and state that the recipe source is unchanged; recipe, source binding, Preview, Publish, Run, and result state remain unchanged.",
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused import routing, decoder compatibility, cancellation/state-preservation, and no-execution checks pass for all five exposed formats.",
+      "evidence_refs": [
+        "E2",
+        "E3",
+        "E4"
+      ]
+    },
+    {
+      "id": "C6",
+      "text": "Current Release build, structure and diff-hygiene gates plus localized Wide and Compact runtime UI checks pass for normal, hover, pressed, focused, disabled, progress, cancel, long-name, and popup states at available DPI scales.",
+      "evidence_refs": [
+        "E1",
+        "E5"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0037"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current primary route",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Coordination/ShellWorkbenchLifecycleController.cs",
+      "summary": "The normal operator dialog accepts only C3D and binds it to the Viewer and current recipe."
+    },
+    {
+      "kind": "proven decoder boundary",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Data.cs",
+      "summary": "C3D and LAS/LAZ already have asynchronous progress/cancellation paths; GLB and STL are verified bounded synchronous decoders currently reached through distributed Viewer paths."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "runtime-ui",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0038-import-surface/ui/",
+      "observation": "Actual Release EXE Wide/Compact Korean/English captures show the always-reachable import button, held pointer-down/focus path, disabled import plus visible cancel at 47% progress, complete Viewer-only status text, and the native dialog/open popup with exactly C3D, GLB, STL, LAS, and LAZ entries on the selected left monitor at available 125% DPI.",
+      "observed_at": "2026-08-23T10:17:57+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "runtime-test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0038-import-surface/runtime/c3d-medium-report.txt",
+      "observation": "The actual Release EXE loaded a D-backed synthetic 4096 x 4096 C3D through the existing asynchronous recipe-source route: pass, 85 dispatcher ticks during load, final progress 100%, load state cleared, and exact target path bound as current source without automatic inspection execution.",
+      "observed_at": "2026-08-23T10:17:57+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "runtime-test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0038-import-surface/runtime/",
+      "observation": "Actual Release EXE GLB, STL, LAS, and LAZ reports each pass successful Viewer-only load, preserve recipe source/step count/dirty state, record no Preview/Publish/Run, and retain the last successful Viewer source after both a corrupt same-extension load and cancellation.",
+      "observed_at": "2026-08-23T10:17:57+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0038-import-surface/focused/",
+      "observation": "Current focused verification passes source-channel/decoder cancellation 39/39, Import-surface ViewModel routing/state 8/8, and Shell smoke command-line routing 46/46.",
+      "observed_at": "2026-08-23T10:17:57+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0038-import-surface/final/",
+      "observation": "The full Release solution builds with 0 warnings and 0 errors; code-structure verification passes 68/68; the vendored Vision SDK package identity/hash/source-commit check passes; git diff --check reports no whitespace errors.",
+      "observed_at": "2026-08-23T10:17:57+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-23T10:17:57+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after all six criteria received current focused, actual EXE, UI, and repository-gate evidence."
+    }
+  ],
+  "created_at": "2026-08-23T10:00:00+09:00",
+  "updated_at": "2026-08-23T10:17:57+09:00"
+}

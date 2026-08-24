@@ -23,6 +23,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     private ToolRecipeSelection? teachingOrientedBoxDragStart;
     private TeachingOrientedBox3DEditMode teachingOrientedBoxEditMode;
     private TeachingOrientedBox3DEditMode teachingOrientedBoxHoverMode;
+    private string? teachingOrientedBoxStatusBeforeHover;
     private Vector3 teachingOrientedBoxMovePlanePoint;
     private Vector3 teachingOrientedBoxMovePlaneNormal;
     private Vector3 teachingOrientedBoxMoveWorldStart;
@@ -231,6 +232,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         teachingOrientedBoxEditMode = TeachingOrientedBox3DEditMode.None;
         teachingOrientedBoxHoverMode = TeachingOrientedBox3DEditMode.None;
+        teachingOrientedBoxStatusBeforeHover = null;
         teachingOrientedBoxDragStart = null;
         teachingOrientedBoxMovePlanePoint = default;
         teachingOrientedBoxMovePlaneNormal = default;
@@ -248,27 +250,47 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (!TryGetTeachingOrientedBoxDraft(out var selection)
             || selection.OrientedBox3D is not { } box)
         {
-            if (teachingOrientedBoxHoverMode != TeachingOrientedBox3DEditMode.None)
-            {
-                teachingOrientedBoxHoverMode = TeachingOrientedBox3DEditMode.None;
-                Viewport.Cursor = Cursors.Arrow;
-            }
+            ClearTeachingOrientedBoxHover(restoreStatus: true);
             return;
         }
 
         var mode = GetTeachingOrientedBoxEditMode(screenPoint, box);
+        if (mode == TeachingOrientedBox3DEditMode.None)
+        {
+            ClearTeachingOrientedBoxHover(restoreStatus: true);
+            return;
+        }
+
         var cursor = GetTeachingOrientedBoxCursor(mode);
         if (mode == teachingOrientedBoxHoverMode && Viewport.Cursor == cursor)
         {
             return;
         }
 
+        if (teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.None)
+        {
+            teachingOrientedBoxStatusBeforeHover = viewModel.ViewerStatus;
+        }
+
         teachingOrientedBoxHoverMode = mode;
         Viewport.Cursor = cursor;
-        if (mode != TeachingOrientedBox3DEditMode.None)
+        viewModel.ViewerStatus = GetTeachingOrientedBoxStatus(mode, completed: false);
+    }
+
+    private void ClearTeachingOrientedBoxHover(bool restoreStatus)
+    {
+        if (teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.None)
         {
-            viewModel.ViewerStatus = GetTeachingOrientedBoxStatus(mode, completed: false);
+            return;
         }
+
+        teachingOrientedBoxHoverMode = TeachingOrientedBox3DEditMode.None;
+        Viewport.Cursor = Cursors.Arrow;
+        if (restoreStatus && teachingOrientedBoxStatusBeforeHover is { } status)
+        {
+            viewModel.ViewerStatus = status;
+        }
+        teachingOrientedBoxStatusBeforeHover = null;
     }
 
     private TeachingOrientedBox3DEditMode GetTeachingOrientedBoxEditMode(

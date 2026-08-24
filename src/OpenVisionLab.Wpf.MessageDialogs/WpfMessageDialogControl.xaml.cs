@@ -55,6 +55,9 @@ namespace OpenVisionLab.Wpf.MessageDialogs
                     IsDefault = spec.Result == defaultResult
                 };
                 AutomationProperties.SetName(button, spec.Text);
+                AutomationProperties.SetAutomationId(
+                    button,
+                    spec.IsPrimary ? "MessageDialogPrimaryButton" : $"MessageDialog{spec.Result}Button");
 
                 WpfMessageDialogResult result = spec.Result;
                 button.Click += (_, _) => DialogResultRequested?.Invoke(result);

@@ -204,6 +204,88 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
         await LoadWorkbenchC3DSourceAsync(dialog.FileName);
     }
 
+    public async void Import3DDataRequested(object? sender, EventArgs args)
+    {
+        OVLog.Write(LogCategory.UI, LogLevel.Info, "Workbench[Import] Opening verified 3D data dialog.");
+        var dialog = new OpenFileDialog
+        {
+            Title = _callbacks.DialogText("ThreeD.FileDialog.Import3D.Title", "3D 데이터 가져오기", "Import 3D Data"),
+            Filter = _callbacks.DialogText(
+                "ThreeD.FileDialog.Import3D.Filter",
+                "3D: C3D/GLB/STL/LAS/LAZ|*.C3D;*.GLB;*.STL;*.LAS;*.LAZ|C3D 높이 맵|*.C3D|GLB 메시|*.GLB|STL 메시|*.STL|LAS/LAZ 포인트 클라우드|*.LAS;*.LAZ",
+                "3D: C3D/GLB/STL/LAS/LAZ|*.C3D;*.GLB;*.STL;*.LAS;*.LAZ|C3D height map|*.C3D|GLB mesh|*.GLB|STL mesh|*.STL|LAS/LAZ point cloud|*.LAS;*.LAZ"),
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(_owner) != true)
+        {
+            OVLog.Write(LogCategory.UI, LogLevel.Info, "Workbench[Import] Dialog closed without a file selection.");
+            return;
+        }
+
+        var extension = Path.GetExtension(dialog.FileName);
+        if (string.Equals(extension, ".c3d", StringComparison.OrdinalIgnoreCase))
+        {
+            if (IsViewerSourceAlreadyLoaded(dialog.FileName))
+            {
+                SetWorkbenchC3DSourceFromViewer(Path.GetFullPath(dialog.FileName));
+                _viewer.ViewModel.HudDetailsVisible = false;
+                return;
+            }
+
+            await LoadWorkbenchC3DSourceAsync(dialog.FileName);
+            return;
+        }
+
+        await LoadViewerOnlySourceAsync(dialog.FileName);
+    }
+
+    public async Task<bool> LoadViewerOnlySourceAsync(string path, bool showFailureDialog = true)
+    {
+        var extension = Path.GetExtension(path);
+        var format = extension.TrimStart('.').ToUpperInvariant();
+        if (format is not ("GLB" or "STL" or "LAS" or "LAZ"))
+        {
+            throw new NotSupportedException($"Viewer-only import does not support '{extension}'.");
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _c3dSourceLoadCancellation = cancellation;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        _viewModel.Workbench.Begin3DDataImport(path, format);
+        var progress = new Progress<double>(_viewModel.Workbench.ReportC3DSourceLoadProgress);
+
+        try
+        {
+            if (await _viewer.LoadViewerOnlySourceAsync(path, cancellation.Token, progress))
+            {
+                _viewer.ViewModel.HudDetailsVisible = false;
+                _viewModel.Workbench.CompleteViewerOnlyImport(path, format, stopwatch.ElapsedMilliseconds);
+                return true;
+            }
+
+            _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
+            if (showFailureDialog)
+            {
+                _callbacks.ShowLoadSourceFailure(_viewer.HostState.ViewerStatus);
+            }
+            return false;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
+            return false;
+        }
+        finally
+        {
+            if (ReferenceEquals(_c3dSourceLoadCancellation, cancellation))
+            {
+                _c3dSourceLoadCancellation = null;
+            }
+            cancellation.Dispose();
+        }
+    }
+
     public async Task<bool> ClickUnsavedRecipeDoNotSaveForSmokeAsync()
     {
         var buttonText = _callbacks.DialogText(

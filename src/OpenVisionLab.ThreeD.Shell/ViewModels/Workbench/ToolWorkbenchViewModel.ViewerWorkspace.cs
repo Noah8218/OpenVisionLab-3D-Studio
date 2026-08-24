@@ -137,6 +137,14 @@ public sealed partial class ToolWorkbenchViewModel
         ViewerWorkspaceCandidates.FirstOrDefault(candidate =>
             string.Equals(candidate.Id, contentId, StringComparison.OrdinalIgnoreCase));
 
+    public Task EnsureHeightImageSourceAsync() =>
+        HeightImageViewer.EnsureSourceAsync(
+            Source.Path,
+            Source.Id,
+            Source.Unit,
+            Source.FrameId,
+            GetOrLoadDecodedC3DSourceAsync);
+
     /// <summary>
     /// Routes already-executed surface-match evidence to the Viewer. This is
     /// presentation-only and does not execute Preview, Publish, Run, or
@@ -457,7 +465,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void OnViewerWorkspaceLocalizationChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(ThreeDLocalization.ViewerSingle)
+        if (string.IsNullOrEmpty(args.PropertyName)
+            || args.PropertyName is nameof(ThreeDLocalization.ViewerSingle)
             or nameof(ThreeDLocalization.ViewerSplitVertical)
             or nameof(ThreeDLocalization.ViewerSplitHorizontal)
             or nameof(ThreeDLocalization.ViewerPopOut)

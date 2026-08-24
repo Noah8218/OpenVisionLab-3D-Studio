@@ -82,15 +82,26 @@ public sealed class LazPointCloud
 
     public double AverageBlue { get; }
 
-    public static LazPointCloud Load(string path, int maxSampledPoints = 50000)
+    public static LazPointCloud Load(string path, int maxSampledPoints = 50000) =>
+        Load(path, maxSampledPoints, CancellationToken.None);
+
+    public static LazPointCloud Load(
+        string path,
+        int maxSampledPoints,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress = null)
     {
         if (maxSampledPoints < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(maxSampledPoints), "Sample point limit must be positive.");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(0.0);
         var fullPath = Path.GetFullPath(path);
         var metadata = LazPointCloudMetadata.Load(fullPath);
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(1.0);
         var reader = new laszip();
         if (reader.open_reader(fullPath, out var isCompressed) != 0)
         {
@@ -106,6 +117,7 @@ public sealed class LazPointCloud
                 : metadata.PointCount;
             var point = reader.get_point_pointer();
             var sampleStride = checked((int)Math.Max(1, decodedPointCount / (ulong)maxSampledPoints));
+            var lastReportedProgress = 1;
             var sampledPoints = new List<LazPointCloudPoint>(Math.Min(maxSampledPoints, checked((int)Math.Min(decodedPointCount, int.MaxValue))));
             var minX = double.PositiveInfinity;
             var minY = double.PositiveInfinity;
@@ -121,6 +133,20 @@ public sealed class LazPointCloud
 
             for (ulong index = 0; index < decodedPointCount; index++)
             {
+                if ((index & 4095UL) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var currentProgress = Math.Clamp(
+                        (int)Math.Floor(1.0 + (98.0 * index / Math.Max(1.0, decodedPointCount))),
+                        1,
+                        99);
+                    if (currentProgress > lastReportedProgress)
+                    {
+                        lastReportedProgress = currentProgress;
+                        progress?.Report(currentProgress);
+                    }
+                }
+
                 if (reader.read_point() != 0)
                 {
                     throw new InvalidDataException($"Unable to read LAZ/LAS point {index}: {reader.get_error()}");
@@ -168,7 +194,8 @@ public sealed class LazPointCloud
                 && NearlyEqual(minZ, metadata.MinZ)
                 && NearlyEqual(maxZ, metadata.MaxZ);
             var pointCount = decodedPointCount == 0 ? 1.0 : decodedPointCount;
-            return new LazPointCloud(
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = new LazPointCloud(
                 fullPath,
                 metadata,
                 isCompressed,
@@ -187,6 +214,8 @@ public sealed class LazPointCloud
                 redSum / pointCount,
                 greenSum / pointCount,
                 blueSum / pointCount);
+            progress?.Report(100.0);
+            return result;
         }
         finally
         {

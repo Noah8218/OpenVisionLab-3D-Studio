@@ -165,6 +165,28 @@ public sealed partial class ToolWorkbenchViewModel
 
     private ToolWorkbenchArtifactItem CreateStepArtifact(ToolWorkbenchPipelineStepItem step)
     {
+        if (string.Equals(step.ToolId, "roi-crop", StringComparison.Ordinal)
+            && CurrentRoiCropPreviewOutput is { } cropOutput)
+        {
+            return new ToolWorkbenchArtifactItem(
+                cropOutput.EntityId,
+                step.ToolName,
+                "HeightField",
+                IsRoiCropPreviewStale
+                    ? "Stale"
+                    : IsRoiCropPreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                string.Join("; ", step.InputEntityIds),
+                cropOutput.Unit,
+                cropOutput.FrameId,
+                cropOutput.ContentSha256,
+                $"{cropOutput.Width} x {cropOutput.Height} | source origin ({cropOutput.GridOriginColumn}, {cropOutput.GridOriginRow}) | valid {cropOutput.ValidCount:N0} | missing {cropOutput.MissingCount:N0} | source unchanged",
+                step,
+                "HeightField");
+        }
+
         if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
             && CurrentLevelSurfacePreviewOutput is { } leveledOutput
             && CurrentLevelSurfaceTransform is { } levelingTransform)

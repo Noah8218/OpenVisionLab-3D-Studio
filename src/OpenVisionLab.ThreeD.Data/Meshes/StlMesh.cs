@@ -10,28 +10,46 @@ public static class StlMesh
     private const int BinaryHeaderBytes = 80;
     private const int BinaryTriangleBytes = 50;
     private const int MaxTriangleCount = 1_000_000;
+    private const long MaximumFileBytes = 512L * 1024 * 1024;
 
-    public static ImportedMesh Load(string path)
+    public static ImportedMesh Load(string path) => Load(path, CancellationToken.None);
+
+    public static ImportedMesh Load(
+        string path,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         PreflightBinaryTriangleCount(path);
+        progress?.Report(8.0);
 
-        var bytes = File.ReadAllBytes(path);
+        var bytes = ReadAllBytes(path, cancellationToken);
+        progress?.Report(28.0);
         if (bytes.Length < 15)
         {
             throw new InvalidDataException($"STL file is too small: {path}");
         }
 
-        if (TryLoadBinary(path, bytes, out var binaryMesh))
+        if (TryLoadBinary(path, bytes, cancellationToken, progress, out var binaryMesh))
         {
+            progress?.Report(100.0);
             return binaryMesh;
         }
 
-        return LoadAscii(path, bytes);
+        var asciiMesh = LoadAscii(path, bytes, cancellationToken, progress);
+        progress?.Report(100.0);
+        return asciiMesh;
     }
 
     private static void PreflightBinaryTriangleCount(string path)
     {
         using var stream = File.OpenRead(path);
+        if (stream.Length > MaximumFileBytes)
+        {
+            throw new InvalidDataException(
+                $"STL file size {stream.Length:N0} bytes exceeds the supported limit {MaximumFileBytes:N0} bytes: {path}");
+        }
+
         if (stream.Length < BinaryHeaderBytes + 4)
         {
             return;
@@ -47,7 +65,12 @@ public static class StlMesh
         }
     }
 
-    private static bool TryLoadBinary(string path, byte[] bytes, out ImportedMesh mesh)
+    private static bool TryLoadBinary(
+        string path,
+        byte[] bytes,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress,
+        out ImportedMesh mesh)
     {
         mesh = null!;
         if (bytes.Length < BinaryHeaderBytes + 4)
@@ -70,6 +93,12 @@ public static class StlMesh
         var offset = BinaryHeaderBytes + 4;
         for (var triangle = 0; triangle < triangleCount; triangle++)
         {
+            if ((triangle & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(28.0 + 62.0 * triangle / triangleCount);
+            }
+
             var storedNormal = new Vector3(
                 BitConverter.ToSingle(bytes, offset),
                 BitConverter.ToSingle(bytes, offset + 4),
@@ -100,7 +129,11 @@ public static class StlMesh
         return true;
     }
 
-    private static ImportedMesh LoadAscii(string path, byte[] bytes)
+    private static ImportedMesh LoadAscii(
+        string path,
+        byte[] bytes,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress)
     {
         var vertices = new List<Vector3>();
         var normals = new List<Vector3>();
@@ -108,8 +141,17 @@ public static class StlMesh
         Vector3? currentFacetNormal = null;
         using var reader = new StringReader(Encoding.UTF8.GetString(bytes));
         string? line;
+        var lineCount = 0;
+        var processedCharacters = 0;
         while ((line = reader.ReadLine()) is not null)
         {
+            processedCharacters += line.Length + 1;
+            if ((lineCount++ & 2047) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(Math.Min(88.0, 28.0 + 60.0 * processedCharacters / Math.Max(1, bytes.Length)));
+            }
+
             var trimmed = line.Trim();
             if (trimmed.StartsWith("facet normal ", StringComparison.OrdinalIgnoreCase))
             {
@@ -144,6 +186,11 @@ public static class StlMesh
             if (parts.Length != 4)
             {
                 throw new InvalidDataException($"STL vertex line must have exactly 3 coordinates: {path}");
+            }
+
+            if (vertices.Count >= MaxTriangleCount * 3)
+            {
+                ValidateTriangleCount(path, vertices.Count / 3L + 1);
             }
 
             vertices.Add(new Vector3(
@@ -187,6 +234,24 @@ public static class StlMesh
             indices,
             declaredNormals,
             declaredNormalPresence);
+    }
+
+    private static byte[] ReadAllBytes(string path, CancellationToken cancellationToken)
+    {
+        using var stream = File.OpenRead(path);
+        var bytes = new byte[checked((int)stream.Length)];
+        var offset = 0;
+        while (offset < bytes.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var count = stream.Read(bytes, offset, Math.Min(1024 * 1024, bytes.Length - offset));
+            if (count == 0)
+            {
+                throw new EndOfStreamException($"Unexpected end of STL file: {path}");
+            }
+            offset += count;
+        }
+        return bytes;
     }
 
     private static void ValidateTriangleCount(string path, long triangleCount)

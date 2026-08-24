@@ -32,12 +32,17 @@
                                 <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
                                 <Setter Property="Opacity" Value="0.64" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -74,12 +79,17 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
                                 <Setter Property="Opacity" Value="0.64" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -104,6 +114,16 @@
                 AutomationProperties.Name="{Binding Localization.ViewerLayout}"
                 AutomationProperties.HelpText="{Binding ViewerWorkspaceLayoutSummary}">
             <WrapPanel VerticalAlignment="Center">
+                <Button Style="{StaticResource ViewerLayoutIconButtonStyle}"
+                        Command="{Binding Import3DDataCommand}"
+                        ToolTip="{Binding Localization.Import3DDataToolTip}"
+                        AutomationProperties.Name="{Binding Localization.Import3DData}"
+                        AutomationProperties.AutomationId="Import3DData">
+                    <ui:SymbolIcon Width="17"
+                                   Height="17"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                   Symbol="ArrowImport24" />
+                </Button>
                 <Button Style="{StaticResource ViewerLayoutIconButtonStyle}"
                         Command="{Binding OpenHeightImageCommand}"
                         ToolTip="{Binding Localization.HeightImageViewOnly}"
@@ -179,14 +199,8 @@
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Visibility="{Binding ViewerWorkspace.HasAuxiliarySlot, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ui:SymbolIcon Width="16"
-                                   Height="16"
-                                   Margin="4,0,5,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                                   Symbol="Document24" />
                     <ComboBox Width="190"
-                              MinHeight="25"
+                              MinHeight="30"
                               ItemsSource="{Binding ViewerWorkspaceCandidates}"
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Id"
@@ -194,6 +208,24 @@
                               AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}" />
                 </StackPanel>
             </WrapPanel>
+        </Border>
+
+        <Border Margin="12,44,12,0"
+                Padding="9,5"
+                MaxWidth="520"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Panel.ZIndex="9"
+                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                BorderThickness="1"
+                CornerRadius="3"
+                Visibility="{Binding HasViewerOnlyImport, Converter={StaticResource BoolToVisibilityConverter}}"
+                AutomationProperties.AutomationId="ViewerOnlyImportSummary">
+            <TextBlock Foreground="{DynamicResource ThreeD.TextBrush}"
+                       Text="{Binding ViewerOnlyImportSummary}"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding ViewerOnlyImportSummary}" />
         </Border>
 
         <Grid x:Name="ViewerGrid"
@@ -310,6 +342,9 @@
                                         <DataTrigger Binding="{Binding HasSurfaceMatchEvidence}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasViewerOnlyImport}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
@@ -336,11 +371,11 @@
                                            TextWrapping="Wrap" />
                                 <ui:Button Margin="0,14,0,0"
                                            HorizontalAlignment="Center"
-                                           Content="{Binding Localization.Open3DMap}"
+                                           Content="{Binding Localization.Import3DData}"
                                            Icon="{ui:SymbolIcon FolderOpen24}"
-                                           Command="{Binding LoadC3DSourceCommand}"
-                                           ToolTip="{Binding Localization.Open3DMapToolTip}"
-                                           AutomationProperties.Name="{Binding Localization.Open3DMap}" />
+                                           Command="{Binding Import3DDataCommand}"
+                                           ToolTip="{Binding Localization.Import3DDataToolTip}"
+                                           AutomationProperties.Name="{Binding Localization.Import3DData}" />
                             </StackPanel>
                         </Border>
                     </Grid>

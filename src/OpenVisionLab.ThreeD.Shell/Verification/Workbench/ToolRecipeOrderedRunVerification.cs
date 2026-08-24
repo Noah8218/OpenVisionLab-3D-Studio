@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -124,6 +125,13 @@ internal static class ToolRecipeOrderedRunVerification
                 .GetAwaiter().GetResult();
             var recordPath = reopenedShell.Workbench.CurrentOrderedRunRecordPath;
             var record = ReadRecord(recordPath);
+            var gridDiagnosticsJson = JsonSerializer.Serialize(
+                uiSourceQuality?.GridDiagnostics,
+                JsonOptions);
+            var orderedReport = record?.Artifacts.RunnerTextReport is { } orderedReportPath
+                && File.Exists(orderedReportPath)
+                    ? File.ReadAllText(orderedReportPath)
+                    : string.Empty;
             Check(
                 "explicit Run executes once and persists a Results-ready Run Record",
                 runCompleted
@@ -152,6 +160,11 @@ internal static class ToolRecipeOrderedRunVerification
                 && record?.SourceQualityEvidence?.SourceQualitySha256
                     == SourceQualityReportContentIdentity.CalculateSha256(
                         uiSourceQuality)
+                && uiSourceQuality.GridDiagnostics is { } gridDiagnostics
+                && JsonSerializer.Serialize(
+                        record?.SourceQualityEvidence?.Report?.GridDiagnostics,
+                        JsonOptions)
+                    == gridDiagnosticsJson
                 && reopenedShell.SourceQualityState == "Pass"
                 && reopenedShell.SourceQualitySummary.Contains(
                     "4 × 4",
@@ -161,8 +174,90 @@ internal static class ToolRecipeOrderedRunVerification
                     StringComparison.Ordinal)
                 && reopenedShell.SourceQualityDetail.Contains(
                     "Height=Available",
+                    StringComparison.Ordinal)
+                && gridDiagnostics.Checks.All(check =>
+                    reopenedShell.SourceQualityDetail.Contains(
+                        check.Code.ToString(),
+                        StringComparison.Ordinal)
+                    && reopenedShell.SourceQualityDetail.Contains(
+                        check.Message,
+                        StringComparison.Ordinal))
+                && orderedReport.Contains(
+                    $"gridDiagnostics={gridDiagnosticsJson}",
                     StringComparison.Ordinal),
                 $"sameInstance={ReferenceEquals(uiSourceQuality, reopenedExecution?.SourceQuality)};state={reopenedShell.SourceQualityState};summary={reopenedShell.SourceQualitySummary};sha={record?.SourceQualityEvidence?.SourceQualitySha256}");
+
+            var diagnosticsErrorProjected = false;
+            var diagnosticsErrorEvidence = "current Source Quality report unavailable";
+            if (record is not null
+                && uiSourceQuality?.GridDiagnostics is { } passDiagnostics)
+            {
+                const string errorMessage =
+                    "Coordinate component Z is non-finite at the first affected sample.";
+                var errorDiagnostics = passDiagnostics with
+                {
+                    State = SourceQualityGridDiagnosticState.Error,
+                    Checks = passDiagnostics.Checks.Select(check =>
+                        check.Code == SourceQualityGridDiagnosticCode.CoordinateFiniteness
+                            ? check with
+                            {
+                                State = SourceQualityGridDiagnosticState.Error,
+                                AffectedCount = 1,
+                                FirstSampleOrdinal = 2,
+                                FirstRow = 0,
+                                FirstColumn = 2,
+                                FirstComponent = "Z",
+                                Message = errorMessage
+                            }
+                            : check).ToArray()
+                };
+                var diagnosticErrorReport = uiSourceQuality with
+                {
+                    GridDiagnostics = errorDiagnostics
+                };
+                var diagnosticErrorRecord = record with
+                {
+                    SourceQualityEvidence =
+                        InspectionRunSourceQualityEvidence.Available(
+                            record.Source,
+                            diagnosticErrorReport)
+                };
+                var diagnosticErrorPath = Path.Combine(
+                    root,
+                    "diagnostic-error-run-record.json");
+                InspectionRunRecordJson.Write(
+                    diagnosticErrorPath,
+                    diagnosticErrorRecord);
+                var diagnosticShell = CreateShell(
+                    root,
+                    "diagnostic-error",
+                    runRoot);
+                var diagnosticLoaded = diagnosticShell.LoadRunRecord(
+                    diagnosticErrorPath,
+                    out var diagnosticLoadMessage);
+                diagnosticsErrorProjected = diagnosticLoaded
+                    && diagnosticShell.SourceQualityState == "Error"
+                    && diagnosticShell.SourceQualitySummary.Contains(
+                        "Error",
+                        StringComparison.Ordinal)
+                    && diagnosticShell.SourceQualityDetail.Contains(
+                        SourceQualityGridDiagnosticCode.CoordinateFiniteness.ToString(),
+                        StringComparison.Ordinal)
+                    && diagnosticShell.SourceQualityDetail.Contains(
+                        "ordinal=2, row=0, column=2, component=Z",
+                        StringComparison.Ordinal)
+                    && diagnosticShell.SourceQualityDetail.Contains(
+                        errorMessage,
+                        StringComparison.Ordinal);
+                diagnosticsErrorEvidence = diagnosticLoaded
+                    ? $"state={diagnosticShell.SourceQualityState};summary={diagnosticShell.SourceQualitySummary}"
+                    : diagnosticLoadMessage;
+            }
+
+            Check(
+                "Results prioritizes persisted grid-diagnostic Error and exact evidence",
+                diagnosticsErrorProjected,
+                diagnosticsErrorEvidence);
 
             var directExecution = ToolRecipeOrderedGraphExecution.Execute(
                 passDocument,

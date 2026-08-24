@@ -26,6 +26,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private readonly ToolWorkbenchFilterExecutionOwner filterExecutionOwner;
     private readonly ToolWorkbenchRemoveOutlierExecutionOwner removeOutlierExecutionOwner;
     private readonly ToolWorkbenchLevelSurfaceExecutionOwner levelSurfaceExecutionOwner;
+    private readonly ToolWorkbenchRoiCropExecutionOwner roiCropExecutionOwner;
     private readonly ToolWorkbenchTwoPointLineExecutionOwner twoPointLineExecutionOwner;
     private readonly ToolWorkbenchHeightDifferenceEdgeExecutionOwner heightDifferenceEdgeExecutionOwner;
     private readonly ToolWorkbenchLineFitExecutionOwner lineFitExecutionOwner;
@@ -74,6 +75,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     private string newReferenceName = "Fixture landmarks";
     private string newReferenceKind = "Landmark set";
     private bool suppressTeachingGridRectangleDraftChanged;
+    private bool suppressTeachingGridCircleDraftChanged;
     private string correspondenceSourceEntityId = string.Empty;
     private string correspondenceReferenceLandmarkId = "fixture.landmark.01";
     private double correspondenceReferenceX;
@@ -190,6 +192,20 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             (category, message) => AppendLog(category, message),
             args => FilterDisplayRequested?.Invoke(this, args),
             RefreshLevelSurfaceStateFromOwner);
+        roiCropExecutionOwner = new ToolWorkbenchRoiCropExecutionOwner(
+            () => string.Equals(
+                SelectedPipelineStep?.ToolId,
+                "roi-crop",
+                StringComparison.Ordinal),
+            () => SelectedPipelineStep,
+            () => IsSourceReadyForRecipe,
+            () => HasPendingStepParameterChanges,
+            CreateDocument,
+            () => RecipePath,
+            sender => ReferenceEquals(sender, Source),
+            (category, message) => AppendLog(category, message),
+            args => FilterDisplayRequested?.Invoke(this, args),
+            RefreshRoiCropStateFromOwner);
         twoPointLineExecutionOwner = new ToolWorkbenchTwoPointLineExecutionOwner(
             () => string.Equals(
                 SelectedPipelineStep?.ToolId,
@@ -418,6 +434,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             () => HasPendingStepParameterChanges,
             () => RecipePath,
             () => Source.Id,
+            outputEntityId => TryGetPublishedRoiCropOutput(
+                outputEntityId,
+                out var croppedOutput)
+                ? croppedOutput
+                : null,
             outputEntityId => TryGetPublishedRegridHeightFieldOutput(
                 outputEntityId,
                 out var output)
@@ -476,6 +497,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 ? CanApplyTeachingSelectionCapture
                   && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridRectangle
                       || IsTeachingGridRectangleDraftValid)
+                  && (SelectedStepSelectionRequirement?.Kind != ToolRecipeSelectionKinds.GridCircle
+                      || IsTeachingGridCircleDraftValid)
                 : OrientedBoxEditor.ApplyCommand.CanExecute(null));
         removeSelectedTeachingSelectionCommand = new RelayCommand(
             _ => RemoveSelectedTeachingSelection(),
@@ -554,6 +577,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? SaveTeachingRecipeAsRequested;
     public event EventHandler? OpenToolLibraryRequested;
     public event EventHandler? SelectedStepSetupRequested;
+    public event EventHandler? SourceQualityWorkspaceRequested;
     public event EventHandler? OpenTeachingRecipeRequested;
     public event EventHandler? LoadC3DSourceRequested;
     public event EventHandler<ToolWorkbenchTeachingCaptureRequestEventArgs>? BeginTeachingSelectionCaptureRequested;
@@ -562,6 +586,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     public event EventHandler? ApplyTeachingSelectionCaptureRequested;
     public event EventHandler? AppliedTeachingSelectionsChanged;
     public event EventHandler<ToolWorkbenchGridRectangleDraftChangedEventArgs>? TeachingGridRectangleDraftChanged;
+    public event EventHandler<ToolWorkbenchGridCircleDraftChangedEventArgs>? TeachingGridCircleDraftChanged;
     public event EventHandler<ToolWorkbenchToolLabRequestEventArgs>? ToolLabRequested;
     public event EventHandler<ToolWorkbenchStepRemovalRequestEventArgs>? RemoveSelectedStepRequested;
 
@@ -1148,6 +1173,56 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridRectangle
         && TeachingSelectionCapturedPointCount == 2;
 
+    public bool IsTeachingGridCircleEditorVisible =>
+        SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridCircle
+        && SelectedStepTeachingSelection?.GridCircle is not null;
+
+    public bool IsTeachingGridCircleEditorEnabled =>
+        IsTeachingSelectionCaptureActive
+        && SelectedStepSelectionRequirement?.Kind == ToolRecipeSelectionKinds.GridCircle
+        && TeachingSelectionCapturedPointCount == 2;
+
+    public int TeachingGridCircleCenterRow
+    {
+        get => TeachingCaptureSession.GridCircleDraft.CenterRow;
+        set => SetTeachingGridCircleDraftValue(
+            TeachingCaptureSession.GridCircleDraft with { CenterRow = value },
+            nameof(TeachingGridCircleCenterRow));
+    }
+
+    public int TeachingGridCircleCenterColumn
+    {
+        get => TeachingCaptureSession.GridCircleDraft.CenterColumn;
+        set => SetTeachingGridCircleDraftValue(
+            TeachingCaptureSession.GridCircleDraft with { CenterColumn = value },
+            nameof(TeachingGridCircleCenterColumn));
+    }
+
+    public double TeachingGridCircleRadius
+    {
+        get => TeachingCaptureSession.GridCircleDraft.Radius;
+        set => SetTeachingGridCircleDraftValue(
+            TeachingCaptureSession.GridCircleDraft with { Radius = value },
+            nameof(TeachingGridCircleRadius));
+    }
+
+    public bool IsTeachingGridCircleDraftValid =>
+        TryValidateTeachingGridCircleDraft(out _);
+
+    public string TeachingGridCircleValidationSummary
+    {
+        get
+        {
+            TryValidateTeachingGridCircleDraft(out var message);
+            return message;
+        }
+    }
+
+    public string TeachingGridCircleSourceFrameSummary =>
+        IsTeachingGridCircleDraftValid
+            ? $"Center X/column {TeachingGridCircleCenterColumn}, Z/row {TeachingGridCircleCenterRow} | radius {TeachingGridCircleRadius:G6} cells | {SelectedStepTeachingSelection?.FrameId ?? Source.FrameId}"
+            : "Circular source-grid footprint unavailable until the center and radius are valid.";
+
     public int TeachingGridRectangleRow
     {
         get => TeachingCaptureSession.GridRectangleDraft.Row;
@@ -1378,6 +1453,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 "Source changed; Remove Outlier Pixels Preview is required.");
             ClearLevelSurfacePreview(
                 "Source changed; Level Surface Preview is required.");
+            ClearRoiCropPreview(
+                "Source changed; ROI / Crop Preview is required.");
             ClearTwoPointLinePreview("Source changed; 2-Point Line Preview is required.");
             ClearThreePointPlanePreview("Source changed; 3-Point Plane Preview is required.");
             ClearMeasurementPreview("Source changed; measurement Preview is required.");
@@ -1385,7 +1462,11 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         clearPreviewMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
 
         stageStart = Stopwatch.GetTimestamp();
-        SourceSession.SetSourceBinding(sourceBinding);
+        var sourceBindingChanged = SourceSession.SetSourceBinding(sourceBinding);
+        if (sourcePathChanged || sourceBindingChanged)
+        {
+            HeightImageViewer.ClearSource();
+        }
         AcceptCurrentSourceIdentity();
         identityMilliseconds = Stopwatch.GetElapsedTime(stageStart).TotalMilliseconds;
         if (!sourcePathChanged)
@@ -1513,6 +1594,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MutateRecipe(() =>
         {
             SourceSession.SetSourceBinding(null);
+            SourceSession.ClearDecodedSource();
+            HeightImageViewer.ClearSource();
             AcceptCurrentSourceIdentity();
             SourceQuality.Clear();
             SourceSession.SetSourceAcquisitionProvenance(CreateUnavailableSourceAcquisitionProvenance());
@@ -1612,6 +1695,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 break;
             case "level-surface":
                 RefreshLevelSurfaceExecutionState();
+                break;
+            case "roi-crop":
+                RefreshRoiCropExecutionState();
                 break;
             case "height-difference-edge":
                 RefreshHeightDifferenceEdgeExecutionState();
@@ -1718,6 +1804,25 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasCurrentLevelSurfacePreview));
         OnPropertyChanged(nameof(IsLevelSurfacePreviewStale));
         OnPropertyChanged(nameof(IsLevelSurfacePreviewPublished));
+        RefreshFilterCommands();
+        RefreshSelectedToolWorkspaceProjection();
+    }
+
+    private void RefreshRoiCropStateFromOwner()
+    {
+        RebuildEntities();
+        OnPropertyChanged(nameof(IsSelectedStepRoiCrop));
+        OnPropertyChanged(nameof(IsSelectedStepPreviewRunning));
+        OnPropertyChanged(nameof(IsRoiCropPreviewRunning));
+        OnPropertyChanged(nameof(RoiCropExecutionSummary));
+        OnPropertyChanged(nameof(RoiCropRegionSummary));
+        OnPropertyChanged(nameof(RoiCropOutputSummary));
+        OnPropertyChanged(nameof(CurrentRoiCropPreviewOutput));
+        OnPropertyChanged(nameof(CurrentRoiCropRegion));
+        OnPropertyChanged(nameof(CurrentRoiCropPreviewPath));
+        OnPropertyChanged(nameof(HasCurrentRoiCropPreview));
+        OnPropertyChanged(nameof(IsRoiCropPreviewStale));
+        OnPropertyChanged(nameof(IsRoiCropPreviewPublished));
         RefreshFilterCommands();
         RefreshSelectedToolWorkspaceProjection();
     }
@@ -2169,6 +2274,23 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshHeightImageRoiProjection();
     }
 
+    public void UpdateTeachingGridCircleDraft(ToolRecipeGridCircle? circle)
+    {
+        suppressTeachingGridCircleDraftChanged = true;
+        try
+        {
+            TeachingCaptureSession.SetGridCircleDraft(circle);
+            OnPropertyChanged(nameof(TeachingGridCircleCenterRow));
+            OnPropertyChanged(nameof(TeachingGridCircleCenterColumn));
+            OnPropertyChanged(nameof(TeachingGridCircleRadius));
+            RefreshTeachingGridCircleDraftState();
+        }
+        finally
+        {
+            suppressTeachingGridCircleDraftChanged = false;
+        }
+    }
+
     public void RejectTeachingSelectionCapture(string message)
     {
         ClearTeachingSelectionCaptureState(message);
@@ -2469,6 +2591,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             PromoteRecipeSchemaForSelection();
         });
         MarkHeightDifferenceEdgePreviewStaleIfNeeded();
+        MarkRoiCropPreviewStaleIfNeeded(selection);
         if (string.Equals(
             selection.Kind,
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet,
@@ -2518,6 +2641,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         ClearFilterPreview(previewStatus);
         ClearRemoveOutlierPreview(previewStatus);
         ClearLevelSurfacePreview(previewStatus);
+        ClearRoiCropPreview(previewStatus);
         if (markDirty)
         {
             ClearMeasurementPreview(previewStatus);
@@ -2701,6 +2825,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         RefreshFilterExecutionState();
         RefreshRemoveOutlierExecutionState();
         RefreshLevelSurfaceExecutionState();
+        RefreshRoiCropExecutionState();
         RefreshHeightDifferenceEdgeExecutionState();
         RefreshTwoPointLineExecutionState();
         RefreshThreePointPlaneExecutionState();
@@ -2857,6 +2982,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (!IsTeachingSelectionCaptureActive)
         {
             UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
+            UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
         }
 
         if (string.IsNullOrWhiteSpace(CorrespondenceSourceEntityId)
@@ -2875,6 +3001,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedStepTeachingSelectionSummary));
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorVisible));
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorEnabled));
+        OnPropertyChanged(nameof(IsTeachingGridCircleEditorVisible));
+        OnPropertyChanged(nameof(IsTeachingGridCircleEditorEnabled));
         OnPropertyChanged(nameof(HeightDifferenceEdgeBandSummary));
         OnPropertyChanged(nameof(SelectionCaptureActionText));
         OnPropertyChanged(nameof(ThicknessRoiTeachingDetail));
@@ -2916,6 +3044,17 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 continue;
             }
 
+            if (string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
+            {
+                if (!TryGetPublishedRoiCropOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
+                    || output is null
+                    || !ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent)
+                {
+                    errors.Add($"Selection '{selection.Id}' is stale because its Published HeightField identity is unavailable or changed.");
+                }
+                continue;
+            }
+
             if (SourceSession.SourceBinding is null)
             {
                 errors.Add($"Selection '{selection.Id}' cannot be verified because the C3D source identity is unavailable.");
@@ -2938,6 +3077,12 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (string.Equals(selection.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
         {
             return TryGetPublishedRegridHeightFieldOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
+                && output is not null
+                && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
+        }
+        if (string.Equals(selection.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
+        {
+            return TryGetPublishedRoiCropOutput(selection.SourceBinding.OwnerEntityId ?? string.Empty, out var output)
                 && output is not null
                 && ToolRecipeSelectionSourceBindingVerifier.Verify(output, selection.SourceBinding).IsCurrent;
         }
@@ -2966,6 +3111,13 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                 {
                     binding = ToolRecipeSelectionSourceBindingVerifier.FromTransformedHeightField(transformed);
                     frameId = transformed.ReferenceFrameId;
+                    return true;
+                }
+                if (TryGetPublishedRoiCropOutput(step.InputEntityIds[0], out var cropped)
+                    && cropped is not null)
+                {
+                    binding = ToolRecipeSelectionSourceBindingVerifier.FromHeightField(cropped);
+                    frameId = cropped.FrameId;
                     return true;
                 }
                 binding = null!;
@@ -3016,6 +3168,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingSelectionRequiredPointCount));
         OnPropertyChanged(nameof(CanApplyTeachingSelectionCapture));
         OnPropertyChanged(nameof(IsTeachingGridRectangleEditorEnabled));
+        OnPropertyChanged(nameof(IsTeachingGridCircleEditorVisible));
+        OnPropertyChanged(nameof(IsTeachingGridCircleEditorEnabled));
         OnPropertyChanged(nameof(TeachingSelectionCaptureTitle));
         OnPropertyChanged(nameof(TeachingSelectionCaptureProgress));
         OnPropertyChanged(nameof(TeachingSelectionCaptureInstruction));
@@ -3029,6 +3183,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         TeachingCaptureSession.Clear();
         NotifyTeachingSelectionCaptureStateChanged();
         UpdateTeachingGridRectangleDraft(SelectedStepTeachingSelection?.GridRectangle);
+        UpdateTeachingGridCircleDraft(SelectedStepTeachingSelection?.GridCircle);
     }
 
     private void SetTeachingGridRectangleDraftValue(
@@ -3061,6 +3216,61 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(TeachingGridRectangleValidationSummary));
         OnPropertyChanged(nameof(TeachingGridRectangleSourceFrameSummary));
         RefreshTeachingSelectionCaptureCommands();
+    }
+
+    private void SetTeachingGridCircleDraftValue(
+        ToolRecipeGridCircle circle,
+        string propertyName)
+    {
+        if (TeachingCaptureSession.GridCircleDraft == circle)
+        {
+            return;
+        }
+
+        TeachingCaptureSession.SetGridCircleDraft(circle);
+        OnPropertyChanged(propertyName);
+        RefreshTeachingGridCircleDraftState();
+        if (suppressTeachingGridCircleDraftChanged
+            || !IsTeachingGridCircleEditorEnabled
+            || !TryValidateTeachingGridCircleDraft(out _))
+        {
+            return;
+        }
+
+        TeachingGridCircleDraftChanged?.Invoke(
+            this,
+            new ToolWorkbenchGridCircleDraftChangedEventArgs(circle));
+    }
+
+    private void RefreshTeachingGridCircleDraftState()
+    {
+        OnPropertyChanged(nameof(IsTeachingGridCircleDraftValid));
+        OnPropertyChanged(nameof(TeachingGridCircleValidationSummary));
+        OnPropertyChanged(nameof(TeachingGridCircleSourceFrameSummary));
+        RefreshTeachingSelectionCaptureCommands();
+    }
+
+    private bool TryValidateTeachingGridCircleDraft(out string message)
+    {
+        var binding = SelectedStepTeachingSelection?.SourceBinding ?? SourceSession.SourceBinding;
+        if (binding is null)
+        {
+            message = "The selected circle has no current source-grid identity.";
+            return false;
+        }
+
+        var errors = ToolRecipeGridCircleGeometry.Validate(
+            TeachingCaptureSession.GridCircleDraft,
+            binding.GridWidth,
+            binding.GridHeight);
+        if (errors.Count > 0)
+        {
+            message = string.Join(" ", errors.Select(error => $"{error}."));
+            return false;
+        }
+
+        message = "Valid circular source-grid footprint. Apply remains explicit and does not run inspection.";
+        return true;
     }
 
     private bool TryValidateTeachingGridRectangleDraft(out string message)
@@ -3151,25 +3361,57 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     }
 
     private ToolWorkbenchTeachingSelectionRequirement? CreateSelectionRequirement(
-        ToolWorkbenchPipelineStepItem? step) => step?.ToolId switch
+        ToolWorkbenchPipelineStepItem? step)
     {
-        "roi-crop" => new("Grid rectangle", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the crop ROI."),
-        "height-difference-edge" => new("Edge search band", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the explicit edge search band."),
-        "level-surface" => new("Level reference ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners on a stable reference surface. Additional reference ROIs may be routed to the same step."),
-        "thickness" => CreatePlaneFlatnessSelectionRequirement(),
-        "warpage" => new("Warpage measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for the measurement ROI."),
-        "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
-        "point-pair-dimensions" => new("Point pair", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct cells in the Published TransformedHeightField."),
-        "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
-        "volume" => CreatePlaneFlatnessSelectionRequirement(),
-        "cross-section-dimensions" => new(Localization.CrossSectionSelection, ToolRecipeSelectionKinds.GridRectangle, 2, true, Localization.CrossSectionSelectionDetail),
-        "completeness-grid" => CreatePlaneFlatnessSelectionRequirement(),
-        "two-point-line" => new("Line points", ToolRecipeSelectionKinds.PointSet, 2, true, "Pick exactly two distinct C3D grid cells."),
-        "three-point-plane" => new("Plane points", ToolRecipeSelectionKinds.PointSet, 3, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
-        "datum-plane-raw-height-deviation" => new("Datum measurement ROI", ToolRecipeSelectionKinds.GridRectangle, 2, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
-        "landmark-correspondence" => new("Landmark correspondences", ToolRecipeSelectionKinds.LandmarkCorrespondenceSet, 0, false, "Enter explicit source entities and fixture coordinates."),
-        _ => null
-    };
+        if (step is null)
+        {
+            return null;
+        }
+
+        var presentation = step.ToolId switch
+        {
+            "roi-crop" => new ToolWorkbenchTeachingSelectionRequirement("Grid rectangle", string.Empty, 0, true, "Pick two opposite grid-cell corners for the crop ROI."),
+            "height-difference-edge" => new("Edge search band", string.Empty, 0, true, "Pick two opposite grid-cell corners for the explicit edge search band."),
+            "level-surface" => new("Level reference ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners on a stable reference surface. Additional reference ROIs may be routed to the same step."),
+            "thickness" => CreatePlaneFlatnessSelectionRequirement(),
+            "warpage" => new("Warpage measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for the measurement ROI."),
+            "plane-flatness" => CreatePlaneFlatnessSelectionRequirement(),
+            "point-pair-dimensions" => new("Point pair", string.Empty, 0, true, "Pick exactly two distinct cells in the Published TransformedHeightField."),
+            "gap-flush" => CreatePlaneFlatnessSelectionRequirement(),
+            "volume" => CreatePlaneFlatnessSelectionRequirement(),
+            "cross-section-dimensions" => new(Localization.CrossSectionSelection, string.Empty, 0, true, Localization.CrossSectionSelectionDetail),
+            "completeness-grid" => CreatePlaneFlatnessSelectionRequirement(),
+            "two-point-line" => new("Line points", string.Empty, 0, true, "Pick exactly two distinct C3D grid cells."),
+            "three-point-plane" => new("Plane points", string.Empty, 0, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
+            "datum-plane-raw-height-deviation" => new("Datum measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
+            "grid-circle-authoring" => new("Circular surface ROI", string.Empty, 0, true, "Pick the center cell, then one boundary cell. Radius is measured between grid-cell centers."),
+            "landmark-correspondence" => new("Landmark correspondences", string.Empty, 0, false, "Enter explicit source entities and fixture coordinates."),
+            _ => null
+        };
+        if (presentation is null)
+        {
+            return null;
+        }
+
+        var inputIndex = step.ToolId switch
+        {
+            "landmark-correspondence" => 0,
+            "datum-plane-raw-height-deviation" => 2,
+            "level-surface" => Math.Max(1, step.InputEntityIds.Count),
+            "thickness" or "plane-flatness" or "gap-flush" or "volume" or "completeness-grid"
+                => isPlaneFlatnessMeasurementRole ? 2 : 1,
+            _ => 1
+        };
+        return ToolRecipeSelectionContract.TryGetRequirement(step.ToolId, inputIndex, out var requirement)
+            ? presentation with
+            {
+                Kind = requirement.Kind,
+                RequiredPointCount = requirement.RequiredPointCount > 0
+                    ? requirement.RequiredPointCount
+                    : requirement.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle ? 2 : 0
+            }
+            : null;
+    }
 
     private static bool SelectionMatchesRequirement(
         ToolRecipeSelection selection,
@@ -3184,6 +3426,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         return requirement.Kind switch
         {
             ToolRecipeSelectionKinds.GridRectangle => selection.GridRectangle is not null,
+            ToolRecipeSelectionKinds.GridCircle => selection.GridCircle is not null,
             ToolRecipeSelectionKinds.PointSet => selection.Points?.Count == requirement.RequiredPointCount,
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => selection.Rows is not null,
             _ => false
@@ -3233,6 +3476,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
     {
         var geometry = selection.GridRectangle is { } rectangle
             ? $"row {rectangle.Row}..{rectangle.Row + rectangle.RowCount - 1}, column {rectangle.Column}..{rectangle.Column + rectangle.ColumnCount - 1}"
+            : selection.GridCircle is { } circle
+                ? $"center row {circle.CenterRow}, column {circle.CenterColumn}, radius {circle.Radius:G6} cells"
             : selection.Points is { } points
                 ? $"{points.Count} grid point(s)"
                 : selection.Rows is { } rows
@@ -3305,6 +3550,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         MarkFilterPreviewStaleIfNeeded(sender);
         MarkRemoveOutlierPreviewStaleIfNeeded(sender);
         MarkLevelSurfacePreviewStaleIfNeeded(sender);
+        MarkRoiCropPreviewStaleIfNeeded(sender);
         MarkHeightDifferenceEdgePreviewStaleIfNeeded(sender);
         MarkTwoPointLinePreviewStaleIfNeeded(sender);
         MarkThreePointPlanePreviewStaleIfNeeded(sender);
@@ -3578,6 +3824,12 @@ public sealed class ToolWorkbenchGridRectangleDraftChangedEventArgs(
     ToolRecipeGridRectangle rectangle) : EventArgs
 {
     public ToolRecipeGridRectangle Rectangle { get; } = rectangle;
+}
+
+public sealed class ToolWorkbenchGridCircleDraftChangedEventArgs(
+    ToolRecipeGridCircle circle) : EventArgs
+{
+    public ToolRecipeGridCircle Circle { get; } = circle;
 }
 
 public sealed class ToolWorkbenchSourceItem : INotifyPropertyChanged

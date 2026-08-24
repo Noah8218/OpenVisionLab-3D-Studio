@@ -2,6 +2,11 @@
 
 Date: 2026-07-23
 
+Status: Historical evidence. Its statement that ROI/Crop is catalog-only was
+superseded by `PL-0037` on 2026-08-23; current execution support is recorded in
+`OPENVISIONLAB_3D_ROI_CROP_TYPED_PREPARATION_CLOSURE_20260823.md` and the
+master backlog.
+
 ## Outcome
 
 The dockable bilingual `Validation Set` now replays the complete currently

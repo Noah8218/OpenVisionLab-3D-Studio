@@ -111,7 +111,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         return smokeExitCode == 0;
     }
 
-    public bool ApplyConfiguredSmokeNextDensity()
+    public async Task<bool> ApplyConfiguredSmokeNextDensityAsync()
     {
         if (smokeNextRenderDensity is null)
         {
@@ -124,6 +124,31 @@ public sealed partial class OpenVisionThreeDViewerControl
             return false;
         }
 
+        if (lazPointCloud is not null)
+        {
+            if (viewModel.SelectedRenderDensity == smokeNextRenderDensity)
+            {
+                await lazPointCloudReloadTask;
+                return smokeExitCode == 0;
+            }
+
+            suppressLazPointCloudDensityReload = true;
+            try
+            {
+                viewModel.SelectedRenderDensity = smokeNextRenderDensity;
+            }
+            finally
+            {
+                suppressLazPointCloudDensityReload = false;
+            }
+
+            lazPointCloudSmokeReloadCount++;
+            var reload = ReloadCurrentLazPointCloudAsync();
+            lazPointCloudReloadTask = reload;
+            await reload;
+            return smokeExitCode == 0;
+        }
+
         if (viewModel.NominalActual.PreviewResult is null)
         {
             SetSmokeFailure("Next Preview density smoke requires a completed nominal/actual result");
@@ -132,6 +157,38 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         viewModel.SelectedRenderDensity = smokeNextRenderDensity;
         RenderNow();
+        return smokeExitCode == 0;
+    }
+
+    private async Task<bool> ApplyConfiguredSmokeLazDensityRaceAsync()
+    {
+        if (!smokeRaceLazPointCloudDensityLoads)
+        {
+            return true;
+        }
+
+        if (lazPointCloud is null)
+        {
+            SetSmokeFailure("LAZ/LAS density race requires a loaded point cloud.");
+            return false;
+        }
+
+        const string cancelledDensity = "Detailed";
+        const string finalDensity = "Balanced";
+        viewModel.SelectedRenderDensity = cancelledDensity;
+        var cancelledLoad = lazPointCloudReloadTask;
+        viewModel.SelectedRenderDensity = finalDensity;
+        var finalLoad = lazPointCloudReloadTask;
+        await Task.WhenAll(cancelledLoad, finalLoad);
+
+        if (lazPointCloudCancellationCount < 1
+            || viewModel.SelectedRenderDensity != finalDensity
+            || lazPointCloud.SampledPoints.Length > viewModel.LazMaxSampledPoints)
+        {
+            SetSmokeFailure("LAZ/LAS density race did not cancel the superseded load or retain the latest budget.");
+            return false;
+        }
+
         return smokeExitCode == 0;
     }
 
@@ -751,6 +808,21 @@ public sealed partial class OpenVisionThreeDViewerControl
         smokeInteractionLodRequested = args.Contains(
             "--smoke-interaction-lod",
             StringComparer.OrdinalIgnoreCase);
+        smokeReloadImportedMeshTexture = args.Contains(
+            "--smoke-reload-imported-mesh-texture",
+            StringComparer.OrdinalIgnoreCase);
+        smokeReloadLazPointCloudCache = args.Contains(
+            "--smoke-reload-laz-cache",
+            StringComparer.OrdinalIgnoreCase);
+        smokeRaceLazPointCloudDensityLoads = args.Contains(
+            "--smoke-race-laz-density-loads",
+            StringComparer.OrdinalIgnoreCase);
+
+        var lazProgressScreenshotIndex = Array.IndexOf(args, "--smoke-laz-progress-screenshot");
+        if (lazProgressScreenshotIndex >= 0 && lazProgressScreenshotIndex + 1 < args.Length)
+        {
+            smokeLazProgressScreenshotPath = args[lazProgressScreenshotIndex + 1];
+        }
 
         var densityIndex = Array.IndexOf(args, "--smoke-density");
         if (densityIndex >= 0 && densityIndex + 1 < args.Length)

@@ -1,0 +1,112 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0030",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Release imported mesh OpenGL textures across replacements",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "2026-08-22 owner-requested repository audit follow-up",
+    "summary": "The owner asked to record the completed audit and begin development on confirmed deficiencies. The audit found that imported mesh texture reset discarded the generated OpenGL texture ID without deleting it.",
+    "refs": [
+      "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Data.cs",
+      "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Viewport.cs"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "Imported GLB/STL replacement now retains the prior texture ID until an active OpenGL draw deletes it, failed uploads delete generated IDs, and context initialization clears invalid prior-context state. The actual textured-GLB reload, proportional builds, structure guard, documentation, and diff hygiene pass."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "ResetImportedMeshTextureUpload clears a nonzero importedMeshTextureId without an OpenGL DeleteTextures call, so repeated imported-mesh replacement can leak texture resources for the lifetime of the context.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "Long-running Viewer sessions that replace textured GLB meshes can accumulate VRAM and eventually degrade rendering stability."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Replacing an imported mesh preserves the previous nonzero texture ID until it is deleted from an active OpenGL draw before a replacement texture can upload.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A failed imported texture upload deletes any generated texture ID, while OpenGL context initialization discards IDs from the previous context without attempting to delete them in the new context.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The focused Viewer rendering path, Release solution build, structure guard, and diff hygiene pass on the changed source.",
+      "evidence_refs": [
+        "E3",
+        "E4"
+      ]
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "product boundary",
+      "location": "AGENTS.md",
+      "summary": "This fix changes only the WPF/OpenGL resource bridge and does not alter recipes, inspection data, explicit execution, UI layout, or the frozen c1b49ec package."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "source inspection",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Data.cs",
+      "observation": "LoadGlbSample and LoadStlSample both call ResetImportedMeshTextureUpload. That reset assigned importedMeshTextureId = 0, while EnsureImportedMeshTextureUploaded generated texture IDs with gl.GenTextures and no gl.DeleteTextures call existed under the Viewer source tree.",
+      "observed_at": "2026-08-22T19:10:49.9149960+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "implementation inspection",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.Data.cs",
+      "observation": "ResetImportedMeshTextureUpload preserves a nonzero texture ID through importedMeshTextureReleasePending; Viewport_OpenGLDraw calls ReleaseImportedMeshTexture before drawing or replacement upload; that owner calls gl.DeleteTextures and clears the retained state. The upload failure handler calls the same release owner, and OpenGL initialization clears prior-context texture state without issuing deletion in the new context.",
+      "observed_at": "2026-08-22T19:24:15.6607853+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "actual EXE regression",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0030-imported-mesh-texture-lifetime/",
+      "observation": "The Release OpenVisionLab.ThreeDStudio EXE loaded and rendered BoxTextured.glb, reloaded it in the same OpenGL context, exited 0, and wrote an imported-mesh contract with textureUploads=2 and textureReleases=1. Windows reported two monitors; the EXE rectangle [-1920,365,1280,760] intersected selected leftmost DISPLAY2 bounds [-1920,365,1920,1080]. The rendered screenshot shows the textured mesh and nonblank Viewer chrome.",
+      "observed_at": "2026-08-22T19:24:15.6607853+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "proportional verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0030-imported-mesh-texture-lifetime/code-structure-report.txt",
+      "observation": "The focused Viewer Release build, standalone Viewer host Release build, and full Release solution build each completed with zero warnings and zero errors. The code structure guard passed 67/67, changed Markdown links reported zero missing, PL-0030 validated as v2, and git diff --check passed.",
+      "observed_at": "2026-08-22T19:24:15.6607853+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-22T19:24:15.6607853+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved the imported-mesh OpenGL texture lifetime defect with active-context deletion and actual textured-GLB reload evidence."
+    }
+  ],
+  "created_at": "2026-08-22T19:10:49.9149960+09:00",
+  "updated_at": "2026-08-22T19:24:15.6607853+09:00"
+}

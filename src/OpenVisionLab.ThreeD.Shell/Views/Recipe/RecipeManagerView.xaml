@@ -446,8 +446,7 @@
                                 <ColumnDefinition Width="220" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <ComboBox Height="30"
-                                      VerticalContentAlignment="Center"
+                            <ComboBox VerticalContentAlignment="Center"
                                       IsEnabled="{Binding IsFirstRecipeStarterEditable}"
                                       ItemsSource="{Binding FirstRecipeStarterOptions}"
                                       DisplayMemberPath="Name"
@@ -475,7 +474,8 @@
                                       AutomationProperties.AutomationId="RememberFirstRecipeSetup"
                                       AutomationProperties.Name="{Binding Localization.FirstRecipeRememberSetup}">
                                 <CheckBox.Style>
-                                    <Style TargetType="CheckBox">
+                                    <Style TargetType="CheckBox"
+                                           BasedOn="{StaticResource {x:Type CheckBox}}">
                                         <Setter Property="Visibility" Value="Visible" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsFirstRecipeSetupMemoryAvailable}" Value="False">
@@ -531,7 +531,8 @@
                                    AutomationProperties.AutomationId="ResetFirstRecipeSetup"
                                    AutomationProperties.Name="{Binding Localization.FirstRecipeReset}">
                             <ui:Button.Style>
-                                <Style TargetType="ui:Button">
+                                <Style TargetType="ui:Button"
+                                       BasedOn="{StaticResource {x:Type ui:Button}}">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsFirstRecipeSetupMemoryAvailable}" Value="False">

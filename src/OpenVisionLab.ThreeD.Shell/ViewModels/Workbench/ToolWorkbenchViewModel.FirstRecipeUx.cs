@@ -611,7 +611,8 @@ public sealed partial class ToolWorkbenchViewModel
         && string.IsNullOrWhiteSpace(selection.SourceBinding.OwnerEntityId)
         && selection.Points is null
         && selection.Rows is null
-        && selection.OrientedBox3D is null);
+        && selection.OrientedBox3D is null
+        && selection.GridCircle is null);
 
     private void NotifyFirstRecipeUx()
     {

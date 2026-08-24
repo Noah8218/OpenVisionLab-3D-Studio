@@ -357,8 +357,28 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
     public string SourceSha256 => Report?.Source.ContentSha256 ?? "\u2014";
     public string Provenance => Report?.Provenance ?? "\u2014";
 
+    public bool HasGridDiagnostics => GridDiagnostics.Count > 0;
+    public bool HasGridDiagnosticError =>
+        Report?.GridDiagnostics?.State == SourceQualityGridDiagnosticState.Error;
+    public string GridDiagnosticsStatus => Report?.GridDiagnostics is { } diagnostics
+        ? LocalizedDiagnosticState(diagnostics.State)
+        : localization.SourceQualityUnavailable;
+    public string GridDiagnosticsState => Report?.GridDiagnostics is { } diagnostics
+        ? $"{LocalizedDiagnosticState(diagnostics.State)} · {localization.SourceQualityGridDiagnostics}"
+        : localization.SourceQualityUnavailable;
+    public string GridDiagnosticsSummary => Report?.GridDiagnostics is { } diagnostics
+        ? string.Format(
+            CultureInfo.InvariantCulture,
+            localization.SourceQualityGridDiagnosticsSummaryFormat,
+            LocalizedDiagnosticState(diagnostics.State),
+            diagnostics.DeclaredCellCount,
+            diagnostics.ObservedSampleCount,
+            diagnostics.UniqueLocatorCount)
+        : localization.SourceQualityUnavailable;
+
     public ResettableObservableCollection<SourceQualityChannelItem> Channels { get; } = [];
     public ResettableObservableCollection<SourceQualityDistributionBinItem> DistributionBins { get; } = [];
+    public ResettableObservableCollection<SourceQualityGridDiagnosticItem> GridDiagnostics { get; } = [];
 
     public void LoadAcquisitionProvenance(
         ToolRecipeAcquisitionProvenance? acquisitionProvenance,
@@ -391,12 +411,32 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
         NotifyAcquisitionDraftProperties();
     }
 
-    public async Task EnsureSourceAsync(
+    public Task EnsureSourceAsync(
         string path,
         string entityId,
         string unit,
         string frameId)
+        => EnsureSourceAsync(
+            path,
+            entityId,
+            unit,
+            frameId,
+            cancellationToken => Task.Run(
+                () => C3DHeightFieldSnapshot.LoadIdentified(
+                    Path.GetFullPath(path),
+                    entityId,
+                    unit,
+                    frameId),
+                cancellationToken));
+
+    internal async Task EnsureSourceAsync(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
     {
+        ArgumentNullException.ThrowIfNull(loadSourceAsync);
         if (string.IsNullOrWhiteSpace(path))
         {
             Clear();
@@ -435,18 +475,9 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
 
         try
         {
+            var snapshot = await loadSourceAsync(cancellationToken);
             var nextReport = await Task.Run(
-                () =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var snapshot = C3DHeightFieldSnapshot.LoadIdentified(
-                        fullPath,
-                        entityId,
-                        unit,
-                        frameId);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return C3DSourceQualityAnalyzer.Create(snapshot);
-                },
+                () => C3DSourceQualityAnalyzer.Create(snapshot),
                 cancellationToken);
 
             if (generation != loadGeneration || cancellationToken.IsCancellationRequested)
@@ -514,7 +545,19 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
         report = value;
         Channels.ReplaceAll(CreateChannelItems(value));
         DistributionBins.ReplaceAll(CreateDistributionBins(value));
+        GridDiagnostics.ReplaceAll(CreateGridDiagnosticItems(value));
         NotifyReportProperties();
+    }
+
+    internal void SetReportForVerification(SourceQualityReport value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (!value.TryValidateGridDiagnostics(out var validationMessage))
+        {
+            throw new InvalidDataException(validationMessage);
+        }
+
+        SetReport(value);
     }
 
     private IEnumerable<SourceQualityChannelItem> CreateChannelItems(
@@ -548,6 +591,106 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
                 index == distribution.PeakBinIndex));
     }
 
+    private IEnumerable<SourceQualityGridDiagnosticItem> CreateGridDiagnosticItems(
+        SourceQualityReport? value) =>
+        value?.GridDiagnostics?.Checks.Select(check =>
+            new SourceQualityGridDiagnosticItem(
+                check.Code.ToString(),
+                LocalizedDiagnosticTitle(check.Code),
+                LocalizedDiagnosticState(check.State),
+                LocalizedDiagnosticDetail(check),
+                check.State == SourceQualityGridDiagnosticState.Error
+                    ? string.Format(
+                        CultureInfo.InvariantCulture,
+                        localization.Resolve(
+                            "ThreeD.SourceQuality.GridDiagnostics.EvidenceFormat",
+                            "진단 근거: {0}",
+                            "Diagnostic evidence: {0}"),
+                        check.Message)
+                    : string.Empty,
+                check.State == SourceQualityGridDiagnosticState.Pass,
+                check.State == SourceQualityGridDiagnosticState.Error))
+        ?? [];
+
+    private string LocalizedDiagnosticTitle(SourceQualityGridDiagnosticCode code) =>
+        code switch
+        {
+            SourceQualityGridDiagnosticCode.Topology => localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.Topology",
+                "예상 격자 구조",
+                "Expected grid topology"),
+            SourceQualityGridDiagnosticCode.LocatorMonotonicity => localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.LocatorMonotonicity",
+                "단조 위치 순서",
+                "Monotonic locator order"),
+            SourceQualityGridDiagnosticCode.DuplicateLocator => localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.DuplicateLocator",
+                "고유 위치 식별자",
+                "Unique locators"),
+            SourceQualityGridDiagnosticCode.CoordinateFiniteness => localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.CoordinateFiniteness",
+                "유한 유효 셀 좌표",
+                "Finite valid-cell coordinates"),
+            _ => code.ToString()
+        };
+
+    private string LocalizedDiagnosticState(SourceQualityGridDiagnosticState state) =>
+        state == SourceQualityGridDiagnosticState.Pass
+            ? localization.ValidationSetFilterPass
+            : localization.ValidationSetFilterError;
+
+    private string LocalizedDiagnosticDetail(SourceQualityGridDiagnosticCheck check)
+    {
+        if (check.State == SourceQualityGridDiagnosticState.Pass)
+        {
+            return check.Code switch
+            {
+                SourceQualityGridDiagnosticCode.Topology => localization.Resolve(
+                    "ThreeD.SourceQuality.GridDiagnostics.Topology.Pass",
+                    "선언 크기와 관측 위치 구조가 일치합니다.",
+                    "Declared dimensions and observed locator coverage match."),
+                SourceQualityGridDiagnosticCode.LocatorMonotonicity => localization.Resolve(
+                    "ThreeD.SourceQuality.GridDiagnostics.LocatorMonotonicity.Pass",
+                    "위치 식별자가 행 우선 순서로 단조 증가합니다.",
+                    "Locators are monotonic in row-major order."),
+                SourceQualityGridDiagnosticCode.DuplicateLocator => localization.Resolve(
+                    "ThreeD.SourceQuality.GridDiagnostics.DuplicateLocator.Pass",
+                    "중복된 위치 식별자가 없습니다.",
+                    "No duplicate locators were found."),
+                SourceQualityGridDiagnosticCode.CoordinateFiniteness => localization.Resolve(
+                    "ThreeD.SourceQuality.GridDiagnostics.CoordinateFiniteness.Pass",
+                    "모든 유효 셀 좌표가 유한합니다.",
+                    "All valid-cell coordinates are finite."),
+                _ => check.Message
+            };
+        }
+
+        var location = string.Format(
+            CultureInfo.InvariantCulture,
+            localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.FirstLocationFormat",
+                "샘플 {0} · 행 {1} · 열 {2} · 성분 {3}",
+                "sample {0} · row {1} · column {2} · component {3}"),
+            FormatDiagnosticIndex(check.FirstSampleOrdinal),
+            FormatDiagnosticIndex(check.FirstRow),
+            FormatDiagnosticIndex(check.FirstColumn),
+            string.IsNullOrWhiteSpace(check.FirstComponent) ? "\u2014" : check.FirstComponent);
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            localization.Resolve(
+                "ThreeD.SourceQuality.GridDiagnostics.ErrorDetailFormat",
+                "영향 {0:N0} · 첫 위치: {1}",
+                "{0:N0} affected · first location: {1}"),
+            check.AffectedCount,
+            location);
+    }
+
+    private static string FormatDiagnosticIndex(long? value) =>
+        value?.ToString("N0", CultureInfo.InvariantCulture) ?? "\u2014";
+
+    private static string FormatDiagnosticIndex(int? value) =>
+        value?.ToString("N0", CultureInfo.InvariantCulture) ?? "\u2014";
+
     private void NotifyReportProperties()
     {
         OnPropertyChanged(nameof(Report));
@@ -570,6 +713,11 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SourceIdentitySummary));
         OnPropertyChanged(nameof(SourceSha256));
         OnPropertyChanged(nameof(Provenance));
+        OnPropertyChanged(nameof(HasGridDiagnostics));
+        OnPropertyChanged(nameof(HasGridDiagnosticError));
+        OnPropertyChanged(nameof(GridDiagnosticsStatus));
+        OnPropertyChanged(nameof(GridDiagnosticsState));
+        OnPropertyChanged(nameof(GridDiagnosticsSummary));
     }
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs args)
@@ -584,6 +732,10 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             SelectedAcquisitionDirectionStateOption?.State ?? appliedAcquisitionDirection.State);
         NotifyAcquisitionDraftProperties();
         Channels.ReplaceAll(CreateChannelItems(Report));
+        GridDiagnostics.ReplaceAll(CreateGridDiagnosticItems(Report));
+        OnPropertyChanged(nameof(GridDiagnosticsStatus));
+        OnPropertyChanged(nameof(GridDiagnosticsState));
+        OnPropertyChanged(nameof(GridDiagnosticsSummary));
     }
 
     private void ApplyAcquisitionProvenance()
@@ -744,6 +896,19 @@ public sealed record SourceQualityDistributionBinItem(
     long Count,
     double DisplayHeight,
     bool IsPeak);
+
+public sealed record SourceQualityGridDiagnosticItem(
+    string Code,
+    string Title,
+    string State,
+    string Detail,
+    string Evidence,
+    bool IsPass,
+    bool IsError)
+{
+    public bool HasEvidence => !string.IsNullOrWhiteSpace(Evidence);
+    public string AutomationId => $"SourceQualityGridDiagnostic.{Code}";
+}
 
 public sealed record SourceAcquisitionProvenanceStateOption(
     ToolRecipeAcquisitionProvenanceState State,

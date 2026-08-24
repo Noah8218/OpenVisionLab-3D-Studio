@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -25,7 +26,7 @@ internal static class C3DMedianFilterGoldenVerification
                 Check("deterministic-output-hash", VerifyDeterminism),
                 Check("unknown-parameter-preserved", () => VerifyStrictParameters(tempDirectory)),
                 Check("same-byte-source-identity", () => VerifySourceIdentity(tempDirectory)),
-                Check("recipe-adapter-output-roundtrip", () => VerifyRecipeAdapter(tempDirectory))
+                Check("recipe-adapter-output-roundtrip-and-source-immutability", () => VerifyRecipeAdapter(tempDirectory))
             };
 
             var passed = cases.Count(item => item.Passed);
@@ -157,6 +158,9 @@ internal static class C3DMedianFilterGoldenVerification
     private static (bool Passed, string Evidence) VerifyRecipeAdapter(string tempDirectory)
     {
         var document = CreateRecipe(tempDirectory);
+        var sourcePath = Path.Combine(tempDirectory, document.Source.Path);
+        var sourceBytesBefore = File.ReadAllBytes(sourcePath);
+        var sourceSha256Before = Convert.ToHexString(SHA256.HashData(sourceBytesBefore));
         var evaluation = ToolRecipeFilterExecution.Execute(document, document.Steps[0].Id, tempDirectory);
         if (evaluation.Output is null)
         {
@@ -174,9 +178,25 @@ internal static class C3DMedianFilterGoldenVerification
             evaluation.Output.ContentSha256,
             evaluation.Output.Width,
             evaluation.Output.Height);
-        return (reloaded.ContentSha256 == evaluation.Output.ContentSha256
-            && reloaded.Values.Span.SequenceEqual(evaluation.Output.Values.Span),
-            Evidence(evaluation));
+        var sourceBytesAfter = File.ReadAllBytes(sourcePath);
+        var sourceSha256After = Convert.ToHexString(SHA256.HashData(sourceBytesAfter));
+        var outputPathSeparate = !string.Equals(
+            Path.GetFullPath(outputPath),
+            Path.GetFullPath(sourcePath),
+            StringComparison.OrdinalIgnoreCase);
+        var passed = sourceBytesBefore.LongLength == sourceBytesAfter.LongLength
+            && string.Equals(sourceSha256Before, sourceSha256After, StringComparison.Ordinal)
+            && sourceBytesBefore.SequenceEqual(sourceBytesAfter)
+            && evaluation.Output.RootSourceSha256 == sourceSha256Before
+            && evaluation.Output.ContentSha256.Length == 64
+            && evaluation.Output.IsDerived
+            && !string.Equals(evaluation.Output.EntityId, document.Source.Id, StringComparison.OrdinalIgnoreCase)
+            && outputPathSeparate
+            && reloaded.ContentSha256 == evaluation.Output.ContentSha256
+            && reloaded.Values.Span.SequenceEqual(evaluation.Output.Values.Span);
+        return (
+            passed,
+            $"sourcePath={sourcePath};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={evaluation.Output.ContentSha256};outputEntity={evaluation.Output.EntityId};outputPath={outputPath};isDerived={evaluation.Output.IsDerived};root={evaluation.Output.RootSourceSha256};outputPathSeparate={outputPathSeparate}");
     }
 
     private static ToolRecipeDocument CreateRecipe(string tempDirectory)

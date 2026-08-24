@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
@@ -115,6 +116,12 @@ internal static class ShellOrderedRunRecordWriter
             ? $"state={evidence?.State.ToString() ?? "Unavailable"}|message={evidence?.Message ?? "Legacy Run Record"}"
             : string.Create(
                 CultureInfo.InvariantCulture,
-                $"state={evidence.State}|sha256={evidence.SourceQualitySha256}|grid={report.Grid.Width}x{report.Grid.Height}|valid={report.Coverage.ValidSampleCount}|missing={report.Coverage.MissingSampleCount}|validRatio={report.Coverage.ValidRatio:R}|missingRatio={report.Coverage.MissingRatio:R}|maskSha256={report.Coverage.InvalidCellMask.Sha256}|frame={report.Coordinates.FrameId}|unit={report.Coordinates.Unit}|provenance={report.Provenance}|channels={string.Join(";", report.Channels.Select(channel => $"{channel.Channel}:{channel.State}:{channel.Evidence}"))}");
+                $"state={evidence.State}|sha256={evidence.SourceQualitySha256}|grid={report.Grid.Width}x{report.Grid.Height}|valid={report.Coverage.ValidSampleCount}|missing={report.Coverage.MissingSampleCount}|validRatio={report.Coverage.ValidRatio:R}|missingRatio={report.Coverage.MissingRatio:R}|maskSha256={report.Coverage.InvalidCellMask.Sha256}|frame={report.Coordinates.FrameId}|unit={report.Coordinates.Unit}|provenance={report.Provenance}|channels={string.Join(";", report.Channels.Select(channel => $"{channel.Channel}:{channel.State}:{channel.Evidence}"))}|gridDiagnostics={FormatSourceQualityGridDiagnostics(report)}");
+
+    private static string FormatSourceQualityGridDiagnostics(
+        SourceQualityReport report) =>
+        report.GridDiagnostics is { } diagnostics
+            ? JsonSerializer.Serialize(diagnostics)
+            : string.Empty;
 
 }

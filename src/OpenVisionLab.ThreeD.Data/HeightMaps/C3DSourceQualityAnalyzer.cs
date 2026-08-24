@@ -76,7 +76,11 @@ public static class C3DSourceQualityAnalyzer
                 CoordinateConvention),
             snapshot.Provenance,
             snapshot.IsDerived,
-            SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid());
+            SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid())
+        {
+            GridDiagnostics = SourceQualityGridDiagnosticsAnalyzer
+                .AnalyzeImplicitC3D(snapshot.Width, snapshot.Height)
+        };
     }
 
     private static SourceQualityDistribution CreateDistribution(

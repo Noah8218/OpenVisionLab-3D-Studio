@@ -326,12 +326,32 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     public ICommand AutoRangeCommand => autoRangeCommand;
     public ICommand ApplyManualRangeCommand => applyManualRangeCommand;
 
-    public async Task EnsureSourceAsync(
+    public Task EnsureSourceAsync(
         string path,
         string entityId,
         string unit,
         string frameId)
+        => EnsureSourceAsync(
+            path,
+            entityId,
+            unit,
+            frameId,
+            cancellationToken => Task.Run(
+                () => C3DHeightFieldSnapshot.LoadIdentified(
+                    Path.GetFullPath(path),
+                    entityId,
+                    unit,
+                    frameId),
+                cancellationToken));
+
+    internal async Task EnsureSourceAsync(
+        string path,
+        string entityId,
+        string unit,
+        string frameId,
+        Func<CancellationToken, Task<C3DHeightFieldSnapshot>> loadSourceAsync)
     {
+        ArgumentNullException.ThrowIfNull(loadSourceAsync);
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             Clear(localization.HeightImageUnavailable);
@@ -364,17 +384,9 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
 
         try
         {
+            var source = await loadSourceAsync(cancellationToken);
             var nextFrame = await Task.Run(
-                () =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var source = C3DHeightFieldSnapshot.LoadIdentified(
-                        fullPath,
-                        entityId,
-                        unit,
-                        frameId);
-                    return C3DHeightImageFrame.Create(source, cancellationToken);
-                },
+                () => C3DHeightImageFrame.Create(source, cancellationToken),
                 cancellationToken);
 
             if (generation != loadGeneration || cancellationToken.IsCancellationRequested)
@@ -431,6 +443,8 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
 
     public void ClearHover() =>
         sharedCursor.Clear(SharedHeightCursorOrigin.HeightImage);
+
+    internal void ClearSource() => Clear(localization.HeightImageUnavailable);
 
     public void SetZoom(double percent)
     {

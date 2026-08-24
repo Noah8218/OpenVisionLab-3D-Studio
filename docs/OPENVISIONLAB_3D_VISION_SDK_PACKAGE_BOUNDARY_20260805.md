@@ -2,6 +2,8 @@
 
 Date: 2026-08-05
 
+Updated: 2026-08-23 for the deterministic grid-diagnostics SDK addition
+
 Status: Active package boundary
 
 ## Purpose
@@ -15,12 +17,12 @@ not require an adjacent `OpenVisionLab-Vision-SDK` checkout.
 | Item | Value |
 | --- | --- |
 | Package ID | `OpenVisionLab.Vision3D` |
-| Version | `3.0.0` |
+| Version | `3.0.1-dev.20260823.grid-diagnostics.1` |
 | Source repository | `C:\Git\OpenVisionLab-Vision-SDK` |
-| Source commit | `f34fdf912ff38fe20f36dbb063837e14b4f922b3` |
+| Source commit | `8be38403d0d00698431d7ffa4de60a63289672c6` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/OpenVisionLabVisionSdk/OpenVisionLab.Vision3D.3.0.0.nupkg` |
-| SHA-256 | `F7324DC43ABF8E130D6F88C034287C192CFEA89E16A8A906A60F52DE341045B4` |
+| Vendored path | `third_party/OpenVisionLabVisionSdk/OpenVisionLab.Vision3D.3.0.1-dev.20260823.grid-diagnostics.1.nupkg` |
+| SHA-256 | `964A543C007687ED93F2AFEC682245A76C61DA2AE42EC9B786FB8CC27BED976C` |
 
 `NuGet.Config` uses only the repository-relative vendored feed, the existing
 WPF PropertyGrid feed, and NuGet.org. No Studio project may point at a local SDK
@@ -36,6 +38,10 @@ checkout.
 
 This is a package and namespace identity migration. The SDK's published
 migration guide states that formulas and behavioral contracts are unchanged.
+The current development package additionally owns exact height-map ROI copying
+and source-grid output-origin arithmetic through `HeightMapCropTool`, plus
+source-neutral grid topology, locator-order, duplicate-locator, and coordinate-
+finiteness diagnostics through `GridDiagnosticsTool`.
 
 ## Responsibility split
 
@@ -60,7 +66,7 @@ and XML documentation.
 1. Commit and verify SDK source.
 2. Pack the exact clean commit.
 3. Copy the package and checksum into `third_party/OpenVisionLabVisionSdk`.
-4. Update package references and `VisionSdkHeightMapInspection` provenance.
+4. Update package references and all Studio SDK provenance constants.
 5. Run package, restore, build, Runner, Workbench, and structure verification.
 6. Record the exact source commit, package hash, commands, and regression result.
 

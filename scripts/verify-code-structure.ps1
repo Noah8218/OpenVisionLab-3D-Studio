@@ -61,10 +61,11 @@ function Compare-ProjectSet(
 }
 
 $allProjects = @(
-    Get-ChildItem -LiteralPath (Join-Path $repoRoot "src") -Filter "*.csproj" -File -Recurse |
-        ForEach-Object { Convert-ToRepoPath $_.FullName } |
-        Sort-Object -Unique
-)
+    foreach ($projectRoot in @("src", "tests")) {
+        Get-ChildItem -LiteralPath (Join-Path $repoRoot $projectRoot) -Filter "*.csproj" -File -Recurse |
+            ForEach-Object { Convert-ToRepoPath $_.FullName }
+    }
+) | Sort-Object -Unique
 
 $classicProjects = @(
     [regex]::Matches(
@@ -320,6 +321,8 @@ $workbenchViewModelDirectory = Split-Path -Parent $workbenchViewModelPath
 $viewerWorkspaceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ViewerWorkspaceSession.cs"
 $workbenchRecipeSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchRecipeSession.cs"
 $workbenchSourceSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchSourceSession.cs"
+$c3dHeightFieldSnapshotPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs"
+$c3dHeightImageFramePath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightImageFrame.cs"
 $workbenchSurfaceMatchExperimentSessionPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/SurfaceMatchExperimentSession.cs"
 $workbenchSurfaceMatchExperimentWrapperPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.SurfaceMatchExperiment.cs"
 $workbenchValidationSetExecutionOwnerPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchValidationSetExecutionOwner.cs"
@@ -368,6 +371,7 @@ $sceneSurfaceEdgeAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Too
 $surfaceEdgeCoverageAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Matching/SurfaceAndEdgeMatchScorer.cs"
 $removeOutlierAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Filtering/C3DRemoveOutlierPixelsRule.cs"
 $levelSurfaceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DLevelSurfaceRule.cs"
+$roiCropAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Preparation/C3DRoiCropRule.cs"
 $nominalActualAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Comparison/NominalActualComparisonExecutor.cs"
 $meshDistanceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Comparison/TriangleMeshDistanceIndex.cs"
 $registrationAcceptanceAdapterPath = Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Tools/Comparison/RegistrationAcceptanceRule.cs"
@@ -416,6 +420,8 @@ $viewerSceneViewModelSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot
 $workbenchTeachingCaptureSessionSource = [System.IO.File]::ReadAllText((Join-Path $repoRoot "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchTeachingCaptureSession.cs"))
 $workbenchRecipeSessionSource = [System.IO.File]::ReadAllText($workbenchRecipeSessionPath)
 $workbenchSourceSessionSource = [System.IO.File]::ReadAllText($workbenchSourceSessionPath)
+$c3dHeightFieldSnapshotSource = [System.IO.File]::ReadAllText($c3dHeightFieldSnapshotPath)
+$c3dHeightImageFrameSource = [System.IO.File]::ReadAllText($c3dHeightImageFramePath)
 $workbenchSurfaceMatchExperimentSessionSource = [System.IO.File]::ReadAllText($workbenchSurfaceMatchExperimentSessionPath)
 $workbenchSurfaceMatchExperimentWrapperSource = [System.IO.File]::ReadAllText($workbenchSurfaceMatchExperimentWrapperPath)
 $workbenchValidationSetExecutionOwnerSource = [System.IO.File]::ReadAllText($workbenchValidationSetExecutionOwnerPath)
@@ -570,6 +576,13 @@ Add-Check "WorkbenchSourceStateOwner" (
     $workbenchSourceSessionSource -match "public bool SetSourceAcquisitionProvenance" -and
     $workbenchSourceSessionSource -match "public void CaptureOpenedSourceIdentity" -and
     $workbenchSourceSessionSource -match "public bool SetSourceIdentityErrors" -and
+    $workbenchSourceSessionSource -match "GetOrLoadDecodedSourceAsync" -and
+    $workbenchViewModelFamilySource -match "GetOrLoadDecodedC3DSourceAsync" -and
+    $workbenchViewModelFamilySource -match "EnsureHeightImageSourceAsync" -and
+    $c3dHeightFieldSnapshotSource -match "IncrementalHash\.CreateHash" -and
+    $c3dHeightFieldSnapshotSource -notmatch "File\.ReadAllBytes\(fullPath\)" -and
+    $c3dHeightImageFrameSource -match "private readonly ReadOnlyMemory<double> values" -and
+    $c3dHeightImageFrameSource -notmatch "source\.Values\.ToArray\(\)" -and
     $workbenchRootViewModelSource -match "internal ToolWorkbenchSourceSession SourceSession \{ get; \} = new\(\);" -and
     $workbenchViewModelFamilySource -match "SourceSession\.SetSourceBinding\(" -and
     $workbenchViewModelFamilySource -match "SourceSession\.SetSourceAcquisitionProvenance\(" -and
@@ -579,7 +592,7 @@ Add-Check "WorkbenchSourceStateOwner" (
     $workbenchRootViewModelSource -notmatch "private ToolRecipeSource\? openedSourceIdentity" -and
     $workbenchRootViewModelSource -notmatch "private IReadOnlyList<string> sourceIdentityErrors" -and
     $workbenchRootViewModelSource -notmatch "private ToolRecipeSelectionSourceBinding\\?\\s*SourceSession\\.SourceBinding"
-) "ToolWorkbenchSourceSession owns loaded source identity, provenance, opened-source snapshot, and source-identity errors while ToolWorkbenchViewModel retains runtime policy"
+) "ToolWorkbenchSourceSession owns loaded source identity, one decoded-source task, provenance, opened-source snapshot, and source-identity errors; C3D decoding and Height Image retain no avoidable whole-source byte/value copy"
 Add-Check "WorkbenchSurfaceMatchExperimentSession" (
     $workbenchSurfaceMatchExperimentSessionSource -match "internal sealed class SurfaceMatchExperimentSession" -and
     $workbenchSurfaceMatchExperimentSessionSource -match "private CancellationTokenSource\? previewCancellation" -and
@@ -885,6 +898,11 @@ Add-Check "VisionSdkOutlierFilteringAndLevelingOwnership" (
     -not ([System.IO.File]::ReadAllText($removeOutlierAdapterPath) -match "Math\.|\.Sort\s*\(|Median\s*\(") -and
     -not ([System.IO.File]::ReadAllText($levelSurfaceAdapterPath) -match "Math\.|\.Average\s*\(|\.Sum\s*\(|HeightFieldPlaneFit\.Fit|TransformHeight\s*\(")
 ) "Studio validates identities and composes evidence; vendored OpenVisionLab Vision SDK owns local-median filtering and leveling arithmetic"
+Add-Check "VisionSdkRoiCropOwnership" (
+    (Test-Path -LiteralPath $roiCropAdapterPath) -and
+    ([System.IO.File]::ReadAllText($roiCropAdapterPath) -match "HeightMapCropTool") -and
+    -not ([System.IO.File]::ReadAllText($roiCropAdapterPath) -match "for\s*\(|while\s*\(|Array\.Copy|Buffer\.BlockCopy")
+) "Studio validates exact source/ROI identity and composes evidence; vendored OpenVisionLab Vision SDK owns ROI cell copying and output-origin arithmetic"
 Add-Check "VisionSdkNominalComparisonAndTransformDiagnosticsOwnership" (
     (Test-Path -LiteralPath $nominalActualAdapterPath) -and
     (Test-Path -LiteralPath $meshDistanceAdapterPath) -and

@@ -1,0 +1,177 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0033",
+    "aliases": [],
+    "type": "bug",
+    "mode": "simple",
+    "title": "Prevent the auxiliary Viewer selector from clipping at the split boundary",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "product-owner screenshot and current Release reproduction",
+    "summary": "The product owner marked a half-visible icon beside the Height Image selector after PL-0031 and PL-0032 were reported complete.",
+    "refs": [
+      "PL-0031",
+      "PL-0032"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0033 is resolved after the product owner invalidated the first visual follow-up: the redundant split-boundary glyph remains removed, all five fixed-height ComboBox constraints are removed, and current Korean/English Wide/Compact plus palette-state evidence renders the Height selection and popup glyphs legibly at the available 125% monitor scale without recipe or inspection execution."
+  },
+  "problem": {
+    "claims": [
+      {
+        "id": "P1",
+        "state": "confirmed",
+        "text": "The auxiliary Viewer selector's leading Document24 glyph is clipped by the vertical split-slot boundary in the current Release UI.",
+        "evidence_refs": [
+          "E1"
+        ]
+      }
+    ],
+    "impact": "The half-visible glyph looks like a broken or missing control and makes the Height Image selector appear unfinished."
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "Current Release Wide and Compact vertical-split screenshots show no clipped glyph or platform-default leak beside the auxiliary Viewer selector.",
+      "evidence_refs": [
+        "E2",
+        "E5"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The Height Image palette selector renders the non-empty Korean value 높이 completely in the same Wide and Compact evidence.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E5"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The proportional Release build, focused Viewer/ComboBox verification, view-only smoke boundary, and diff hygiene pass.",
+      "evidence_refs": [
+        "E3",
+        "E6",
+        "E7"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0031"
+    }
+  ],
+  "context": [
+    {
+      "kind": "split Viewer toolbar owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/ViewerWorkspaceView.xaml",
+      "summary": "Owns the auxiliary-content selector and the redundant Document24 glyph."
+    },
+    {
+      "kind": "Height Image palette owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/HeightImageViewerView.xaml",
+      "summary": "Owns the palette ComboBox whose Korean selection must remain fully visible."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "local current-Release UI evidence root",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-owner-marked-reverification/",
+      "summary": "Contains the owner-marked baseline, current Release reproductions, build output, and after captures."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "current Release actual-EXE screenshot",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-owner-marked-reverification/baseline/wide-vertical-current.png",
+      "observation": "The Wide 1920 x 1040 vertical split shows only the right half of Document24 on the auxiliary slot's cyan left boundary; the adjacent Height palette value 높이 remains completely visible.",
+      "observed_at": "2026-08-22T21:55:59.6133021+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "current Release Wide and Compact actual-EXE screenshots",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-owner-marked-reverification/after/",
+      "observation": "Wide 1920 x 1040 and Compact 1280 x 760 vertical-split captures both exit 0, are accepted on attempt 1, intersect the dynamically selected leftmost monitor, show no clipped glyph beside the auxiliary selector, and render the non-empty Korean Height palette value 높이 completely. Compact wraps 범위 적용 to the next line without clipping.",
+      "observed_at": "2026-08-22T21:59:46.6716340+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "current source and focused verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-owner-marked-reverification/after/",
+      "observation": "Release build passes with zero warnings and zero errors; Workbench docking and ComboBox/theme verification passes 98/98; inspection workspace selection and Viewer split contracts pass 64/64; both Height Image smokes report viewOnly=true, recipeChanged=false, inspectionRun=false; git diff --check passes and no Shell process remains.",
+      "observed_at": "2026-08-22T21:59:46.6716340+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "product-owner current UI crop",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0033-height-combobox-reopen/before/owner-height-selection-clipped.png",
+      "observation": "The selected Height palette text cannot be identified as 높이 from the rendered glyphs alone: the lower strokes are clipped or obscured. The previous reading used known binding and localization context rather than legible pixels.",
+      "observed_at": "2026-08-22T22:07:37.8446819+09:00",
+      "invalidates": [
+        "E2"
+      ]
+    },
+    {
+      "id": "E5",
+      "kind": "current Release actual-EXE Wide, Compact, and popup screenshots",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0033-height-combobox-reopen/after/",
+      "observation": "Current Release Korean and English Wide 1920 x 1040 and Compact 1280 x 760 captures exit 0 on the dynamically selected leftmost 125% monitor. The selected Korean value 높이 has complete lower strokes, the Height popup renders 높이/회색조/열화상, Wide English renders English, Compact intentionally renders En, and the first-recipe and Source Quality selected values/popup text are legible without overlap or clipping.",
+      "observed_at": "2026-08-22T22:35:31.4781942+09:00",
+      "supersedes": [
+        "E4"
+      ]
+    },
+    {
+      "id": "E6",
+      "kind": "current source build and focused runtime verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0033-height-combobox-reopen/after/",
+      "observation": "Final Release Shell build passes with 0 warnings and 0 errors; smoke options pass 42/42, Workbench docking/theme/ComboBox checks pass 98/98, and workspace selection passes 64/64. Compact actual-input palette states pass normal, hover, held pointer-down, focus, open popup, keyboard UI-to-ViewModel selection, and mouse-leave recovery; the current Wide equivalent passed before verification-report-only changes. Both layouts retain viewOnly=true, recipeChanged=false, inspectionRun=false, git diff --check exits 0, and no Shell process remains.",
+      "observed_at": "2026-08-22T22:35:31.4781942+09:00",
+      "supersedes": [
+        "E3"
+      ]
+    },
+    {
+      "id": "E7",
+      "kind": "complete XAML ComboBox source inventory",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0033-height-combobox-reopen/source/combobox-audit-final.txt",
+      "observation": "The corrected inventory excludes property elements and covers all 27 ComboBox control declarations under src. It reports zero fixed Height attributes, while the shared ComboBox and ComboBoxItem owners retain MinHeight 30 and centered content.",
+      "observed_at": "2026-08-22T22:35:31.4781942+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-22T21:59:46.6716340+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Removed the redundant clipped auxiliary-selector glyph and passed current Release Wide/Compact and focused regression gates."
+    },
+    {
+      "id": "T2",
+      "kind": "transition",
+      "at": "2026-08-22T22:07:37.8446819+09:00",
+      "from": "resolved",
+      "to": "doing",
+      "summary": "Product-owner pixel evidence invalidated the prior C2 visual-legibility judgment."
+    },
+    {
+      "id": "T3",
+      "kind": "transition",
+      "at": "2026-08-22T22:35:31.4781942+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "The owner-invalidated Height palette rendering defect is corrected and requalified on every available monitor scale; 100%, 150%, 175%, and 200% actual monitor scales remain an explicit evidence boundary because only 125% monitors were available."
+    }
+  ],
+  "created_at": "2026-08-22T21:55:59.6133021+09:00",
+  "updated_at": "2026-08-22T22:35:31.4781942+09:00"
+}

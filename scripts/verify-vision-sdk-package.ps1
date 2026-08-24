@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.0.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260823.grid-diagnostics.1.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.0.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260823.grid-diagnostics.1.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -84,7 +84,7 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.0.0" -or $sourceCommit -ne "f34fdf912ff38fe20f36dbb063837e14b4f922b3") {
+    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.0.1-dev.20260823.grid-diagnostics.1" -or $sourceCommit -ne "8be38403d0d00698431d7ffa4de60a63289672c6") {
         throw "OpenVisionLab Vision SDK package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 

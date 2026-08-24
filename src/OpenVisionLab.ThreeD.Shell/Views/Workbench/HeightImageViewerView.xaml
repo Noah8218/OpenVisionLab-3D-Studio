@@ -89,16 +89,17 @@
                                FontSize="9"
                                Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                Text="{Binding Localization.HeightImagePalette}" />
-                    <ComboBox Width="94"
-                              Height="24"
+                    <ComboBox x:Name="PaletteSelector"
+                              Width="108"
                               Margin="0,0,8,0"
                               ItemsSource="{Binding PaletteChoices}"
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedPalette, Mode=TwoWay}"
                               ToolTip="{Binding Localization.HeightImagePalette}"
+                              AutomationProperties.AutomationId="HeightImagePaletteSelector"
                               AutomationProperties.Name="{Binding Localization.HeightImagePalette}" />
-                    <Button Height="24"
+                    <Button Height="30"
                             Margin="0,0,8,0"
                             Padding="7,2"
                             Command="{Binding AutoRangeCommand}"
@@ -113,7 +114,7 @@
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.HeightImageRangeMinimum}" />
                         <TextBox Width="67"
-                                 Height="24"
+                                 Height="30"
                                  Padding="4,2"
                                  Text="{Binding RangeMinimumText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{Binding Localization.HeightImageRangeMinimum}"
@@ -127,13 +128,13 @@
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.HeightImageRangeMaximum}" />
                         <TextBox Width="67"
-                                 Height="24"
+                                 Height="30"
                                  Padding="4,2"
                                  Text="{Binding RangeMaximumText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{Binding Localization.HeightImageRangeMaximum}"
                                  AutomationProperties.Name="{Binding Localization.HeightImageRangeMaximum}" />
                     </StackPanel>
-                    <Button Height="24"
+                    <Button Height="30"
                             Padding="8,2"
                             Command="{Binding ApplyManualRangeCommand}"
                             Content="{Binding Localization.HeightImageApplyRange}"
@@ -240,7 +241,8 @@
                                     ToolTip="Delete"
                                     AutomationProperties.AutomationId="HeightImageRoiDelete">
                                 <Button.Style>
-                                    <Style TargetType="Button">
+                                    <Style TargetType="Button"
+                                           BasedOn="{StaticResource {x:Type Button}}">
                                         <Setter Property="Visibility" Value="Visible" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding RoiWorkspace.IsCaptureActive}" Value="True">

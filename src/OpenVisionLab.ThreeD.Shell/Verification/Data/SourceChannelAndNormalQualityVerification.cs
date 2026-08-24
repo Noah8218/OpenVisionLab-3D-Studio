@@ -70,6 +70,36 @@ internal static class SourceChannelAndNormalQualityVerification
 
             var box = ImportedMesh.Load(
                 Path.Combine(repositoryRoot, BoxRelativePath));
+            var glbProgressValues = new List<double>();
+            var cancellableBox = GlbMesh.Load(
+                Path.Combine(repositoryRoot, BoxRelativePath),
+                CancellationToken.None,
+                new InlineProgress(glbProgressValues.Add));
+            Check(
+                "glb-cancellable-overload-preserves-import",
+                cancellableBox.TriangleCount == box.TriangleCount
+                && cancellableBox.Positions.SequenceEqual(box.Positions)
+                && glbProgressValues.Count >= 2
+                && glbProgressValues[0] is >= 0.0 and <= 100.0
+                && glbProgressValues[^1] == 100.0
+                && glbProgressValues.Zip(glbProgressValues.Skip(1), (left, right) => right >= left).All(value => value),
+                $"triangles={cancellableBox.TriangleCount};progress={string.Join(',', glbProgressValues.Select(value => value.ToString("F0")))}");
+            using (var cancelledGlb = new CancellationTokenSource())
+            {
+                Check(
+                    "glb-import-observes-cancellation",
+                    CaptureCancellation(() => GlbMesh.Load(
+                        Path.Combine(repositoryRoot, BoxRelativePath),
+                        cancelledGlb.Token,
+                        new InlineProgress(value =>
+                        {
+                            if (value >= 20.0)
+                            {
+                                cancelledGlb.Cancel();
+                            }
+                        }))),
+                    $"cancelled={cancelledGlb.IsCancellationRequested}");
+            }
             var boxChannels =
                 SourceChannelCatalogAnalyzer.CreateForImportedMesh(box);
             var boxNormals = ImportedMeshNormalQualityAnalyzer.Create(box);
@@ -93,6 +123,62 @@ internal static class SourceChannelAndNormalQualityVerification
                 Find(boxChannels, SourceQualityChannel.Color).State
                     == SourceQualityChannelState.Unavailable,
                 Find(boxChannels, SourceQualityChannel.Color).Evidence);
+
+            var triangleBinary = CreateSingleTriangleGlbBinary();
+            var excessiveAccessorPath = Path.Combine(
+                temporaryRoot,
+                "excessive-accessor-count.glb");
+            WriteGlb(
+                excessiveAccessorPath,
+                CreateSingleTriangleGlbJson(positionCount: 3_000_001),
+                triangleBinary);
+            var excessiveAccessorMessage = CaptureInvalidDataMessage(
+                () => ImportedMesh.Load(excessiveAccessorPath));
+            Check(
+                "glb-accessor-count-is-rejected-before-allocation",
+                excessiveAccessorMessage.Contains("accessor 0 count", StringComparison.Ordinal)
+                && excessiveAccessorMessage.Contains("3,000,000", StringComparison.Ordinal),
+                excessiveAccessorMessage);
+
+            var invalidAccessorRangePath = Path.Combine(
+                temporaryRoot,
+                "invalid-accessor-range.glb");
+            WriteGlb(
+                invalidAccessorRangePath,
+                CreateSingleTriangleGlbJson(positionBufferOffset: 32),
+                triangleBinary);
+            var invalidAccessorRangeMessage = CaptureInvalidDataMessage(
+                () => ImportedMesh.Load(invalidAccessorRangePath));
+            Check(
+                "glb-accessor-range-is-rejected-before-decode",
+                invalidAccessorRangeMessage.Contains("accessor 0 bufferView", StringComparison.Ordinal)
+                && invalidAccessorRangeMessage.Contains("BIN chunk", StringComparison.Ordinal),
+                invalidAccessorRangeMessage);
+
+            var excessiveTexturePath = Path.Combine(
+                temporaryRoot,
+                "excessive-texture-length.glb");
+            WriteGlb(
+                excessiveTexturePath,
+                CreateSingleTriangleGlbJson(textureByteLength: 256 * 1024 * 1024 + 1),
+                triangleBinary);
+            var excessiveTextureMessage = CaptureInvalidDataMessage(
+                () => ImportedMesh.Load(excessiveTexturePath));
+            Check(
+                "glb-texture-length-is-rejected-before-copy",
+                excessiveTextureMessage.Contains("embedded texture length", StringComparison.Ordinal)
+                && excessiveTextureMessage.Contains("supported limit", StringComparison.Ordinal),
+                excessiveTextureMessage);
+
+            var excessiveGlbPath = Path.Combine(temporaryRoot, "excessive-file-size.glb");
+            WriteSparseFile(excessiveGlbPath, 512L * 1024 * 1024 + 1);
+            var excessiveGlbMessage = CaptureInvalidDataMessage(
+                () => ImportedMesh.Load(excessiveGlbPath));
+            Check(
+                "glb-file-size-is-rejected-before-whole-file-allocation",
+                excessiveGlbMessage.Contains("GLB file size", StringComparison.Ordinal)
+                && excessiveGlbMessage.Contains("supported limit", StringComparison.Ordinal),
+                excessiveGlbMessage);
 
             var vertexColorBox = ImportedMesh.Load(
                 Path.Combine(repositoryRoot, VertexColorBoxRelativePath));
@@ -132,6 +218,35 @@ internal static class SourceChannelAndNormalQualityVerification
                 "known-normal-binary.stl");
             WriteSingleTriangleBinaryStl(binaryStlPath);
             var binaryStl = StlMesh.Load(binaryStlPath);
+            var stlProgressValues = new List<double>();
+            var cancellableBinaryStl = StlMesh.Load(
+                binaryStlPath,
+                CancellationToken.None,
+                new InlineProgress(stlProgressValues.Add));
+            Check(
+                "stl-cancellable-overload-preserves-import",
+                cancellableBinaryStl.TriangleCount == binaryStl.TriangleCount
+                && cancellableBinaryStl.Positions.SequenceEqual(binaryStl.Positions)
+                && stlProgressValues.Count >= 2
+                && stlProgressValues[^1] == 100.0
+                && stlProgressValues.Zip(stlProgressValues.Skip(1), (left, right) => right >= left).All(value => value),
+                $"triangles={cancellableBinaryStl.TriangleCount};progress={string.Join(',', stlProgressValues.Select(value => value.ToString("F0")))}");
+            using (var cancelledStl = new CancellationTokenSource())
+            {
+                Check(
+                    "stl-import-observes-cancellation",
+                    CaptureCancellation(() => StlMesh.Load(
+                        binaryStlPath,
+                        cancelledStl.Token,
+                        new InlineProgress(value =>
+                        {
+                            if (value >= 28.0)
+                            {
+                                cancelledStl.Cancel();
+                            }
+                        }))),
+                    $"cancelled={cancelledStl.IsCancellationRequested}");
+            }
             var binaryStlNormals =
                 ImportedMeshNormalQualityAnalyzer.Create(binaryStl);
             Check(
@@ -140,6 +255,28 @@ internal static class SourceChannelAndNormalQualityVerification
                 && binaryStlNormals.NormalCount == 3
                 && binaryStlNormals.ConsistentCornerCount == 3,
                 DescribeNormalReport(binaryStlNormals));
+
+            var excessiveBinaryStlPath = Path.Combine(
+                temporaryRoot,
+                "excessive-triangle-count.stl");
+            WriteDeclaredBinaryStl(excessiveBinaryStlPath, 1_000_001);
+            var excessiveBinaryStlMessage = CaptureInvalidDataMessage(
+                () => StlMesh.Load(excessiveBinaryStlPath));
+            Check(
+                "binary-stl-triangle-count-is-rejected-before-whole-file-allocation",
+                excessiveBinaryStlMessage.Contains("1,000,001", StringComparison.Ordinal)
+                && excessiveBinaryStlMessage.Contains("1,000,000", StringComparison.Ordinal),
+                excessiveBinaryStlMessage);
+
+            var excessiveStlPath = Path.Combine(temporaryRoot, "excessive-file-size.stl");
+            WriteSparseFile(excessiveStlPath, 512L * 1024 * 1024 + 1);
+            var excessiveStlMessage = CaptureInvalidDataMessage(
+                () => StlMesh.Load(excessiveStlPath));
+            Check(
+                "stl-file-size-is-rejected-before-whole-file-allocation",
+                excessiveStlMessage.Contains("STL file size", StringComparison.Ordinal)
+                && excessiveStlMessage.Contains("supported limit", StringComparison.Ordinal),
+                excessiveStlMessage);
 
             var partialAsciiStlPath = Path.Combine(
                 temporaryRoot,
@@ -307,6 +444,25 @@ internal static class SourceChannelAndNormalQualityVerification
             var las = LazPointCloud.Load(
                 Path.Combine(repositoryRoot, LasRelativePath),
                 maxSampledPoints: 64);
+            var lasProgressValues = new List<double>();
+            var lasWithProgress = LazPointCloud.Load(
+                Path.Combine(repositoryRoot, LasRelativePath),
+                maxSampledPoints: 64,
+                CancellationToken.None,
+                new InlineProgress(lasProgressValues.Add));
+            Check(
+                "las-cancellable-overload-preserves-sync-result",
+                lasWithProgress.FormatContractLine() == las.FormatContractLine()
+                && lasWithProgress.SampledPoints.SequenceEqual(las.SampledPoints),
+                $"sync={las.SampledPoints.Length};cancellable={lasWithProgress.SampledPoints.Length}");
+            Check(
+                "las-load-progress-is-monotonic-and-bounded",
+                lasProgressValues.Count >= 2
+                && lasProgressValues[0] == 0.0
+                && lasProgressValues[^1] == 100.0
+                && lasProgressValues.All(value => value is >= 0.0 and <= 100.0)
+                && lasProgressValues.Zip(lasProgressValues.Skip(1), (left, right) => right >= left).All(value => value),
+                string.Join(',', lasProgressValues.Select(value => value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))));
             var lasChannels =
                 SourceChannelCatalogAnalyzer.CreateForLazPointCloud(las);
             CheckCatalogShape("las-catalog-has-seven-unique-channels", lasChannels);
@@ -342,6 +498,32 @@ internal static class SourceChannelAndNormalQualityVerification
                         SourceQualityChannel.Color
                     ]),
                 $"format={lazRgb.Metadata.PointDataFormat};{DescribeChannels(lazRgbChannels)}");
+
+            using var cancelledLoad = new CancellationTokenSource();
+            var cancellationObserved = false;
+            try
+            {
+                LazPointCloud.Load(
+                    Path.Combine(repositoryRoot, LazRgbRelativePath),
+                    maxSampledPoints: 64,
+                    cancelledLoad.Token,
+                    new InlineProgress(value =>
+                    {
+                        if (value >= 1.0)
+                        {
+                            cancelledLoad.Cancel();
+                        }
+                    }));
+            }
+            catch (OperationCanceledException)
+            {
+                cancellationObserved = true;
+            }
+
+            Check(
+                "laz-load-cancellation-stops-decode",
+                cancellationObserved,
+                $"cancelled={cancelledLoad.IsCancellationRequested};observed={cancellationObserved}");
 
             Check(
                 "every-unavailable-channel-has-evidence",
@@ -474,6 +656,117 @@ internal static class SourceChannelAndNormalQualityVerification
         writer.Write(value.X);
         writer.Write(value.Y);
         writer.Write(value.Z);
+    }
+
+    private static byte[] CreateSingleTriangleGlbBinary()
+    {
+        var bytes = new byte[44];
+        var positions = new[]
+        {
+            new Vector3(0, 0, 0),
+            new Vector3(1, 0, 0),
+            new Vector3(0, 1, 0)
+        };
+        var offset = 0;
+        foreach (var position in positions)
+        {
+            BitConverter.TryWriteBytes(bytes.AsSpan(offset, 4), position.X);
+            BitConverter.TryWriteBytes(bytes.AsSpan(offset + 4, 4), position.Y);
+            BitConverter.TryWriteBytes(bytes.AsSpan(offset + 8, 4), position.Z);
+            offset += 12;
+        }
+
+        BitConverter.TryWriteBytes(bytes.AsSpan(36, 2), (ushort)0);
+        BitConverter.TryWriteBytes(bytes.AsSpan(38, 2), (ushort)1);
+        BitConverter.TryWriteBytes(bytes.AsSpan(40, 2), (ushort)2);
+        return bytes;
+    }
+
+    private static string CreateSingleTriangleGlbJson(
+        int positionCount = 3,
+        int positionBufferOffset = 0,
+        int? textureByteLength = null)
+    {
+        var textureJson = textureByteLength is null
+            ? string.Empty
+            : """
+              ,"materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}]
+              ,"textures":[{"source":0}]
+              ,"images":[{"bufferView":2,"mimeType":"image/png"}]
+              """;
+        var materialJson = textureByteLength is null ? string.Empty : ",\"material\":0";
+        var textureBufferView = textureByteLength is null
+            ? string.Empty
+            : $",{{\"buffer\":0,\"byteOffset\":44,\"byteLength\":{textureByteLength.Value}}}";
+        return $$"""
+            {"asset":{"version":"2.0"},"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1{{materialJson}}}]}],"accessors":[{"bufferView":0,"componentType":5126,"count":{{positionCount}},"type":"VEC3"},{"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}],"bufferViews":[{"buffer":0,"byteOffset":{{positionBufferOffset}},"byteLength":36},{"buffer":0,"byteOffset":36,"byteLength":6}{{textureBufferView}}],"buffers":[{"byteLength":44}]{{textureJson}}}
+            """;
+    }
+
+    private static void WriteGlb(string path, string json, byte[] binary)
+    {
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+        var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
+        var paddedBinaryLength = (binary.Length + 3) & ~3;
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream, Encoding.UTF8);
+        writer.Write(0x46546C67u);
+        writer.Write(2u);
+        writer.Write(checked((uint)(12 + 8 + paddedJsonLength + 8 + paddedBinaryLength)));
+        writer.Write(checked((uint)paddedJsonLength));
+        writer.Write(0x4E4F534Au);
+        writer.Write(jsonBytes);
+        writer.Write(Enumerable.Repeat((byte)' ', paddedJsonLength - jsonBytes.Length).ToArray());
+        writer.Write(checked((uint)paddedBinaryLength));
+        writer.Write(0x004E4942u);
+        writer.Write(binary);
+        writer.Write(new byte[paddedBinaryLength - binary.Length]);
+    }
+
+    private static void WriteDeclaredBinaryStl(string path, uint triangleCount)
+    {
+        using var stream = File.Create(path);
+        stream.SetLength(84L + triangleCount * 50L);
+        stream.Position = 80;
+        using var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true);
+        writer.Write(triangleCount);
+    }
+
+    private static void WriteSparseFile(string path, long length)
+    {
+        using var stream = File.Create(path);
+        stream.SetLength(length);
+    }
+
+    private static string CaptureInvalidDataMessage(Func<ImportedMesh> load)
+    {
+        try
+        {
+            _ = load();
+            return "Expected InvalidDataException, but the import succeeded.";
+        }
+        catch (InvalidDataException exception)
+        {
+            return exception.Message;
+        }
+    }
+
+    private static bool CaptureCancellation(Func<ImportedMesh> load)
+    {
+        try
+        {
+            _ = load();
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            return true;
+        }
+    }
+
+    private sealed class InlineProgress(Action<double> report) : IProgress<double>
+    {
+        public void Report(double value) => report(value);
     }
 
     private static string FindRepositoryRoot()

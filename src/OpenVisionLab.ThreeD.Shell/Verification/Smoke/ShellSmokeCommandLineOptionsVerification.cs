@@ -38,6 +38,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("WindowSize", VerifyWindowSize()),
             ("CompactWorkbench", VerifyCompactWorkbench()),
             ("LoadedHandler", VerifyLoadedHandler()),
+            ("AsyncC3DLoadFailure", VerifyAsyncC3DLoadFailure()),
             ("FilterPreviewLoadedHandler", VerifyFilterPreviewLoadedHandler()),
             ("MeasurementPreviewLoadedHandler", VerifyMeasurementPreviewLoadedHandler()),
             ("ThicknessRepeatGrid", VerifyThicknessRepeatGrid()),
@@ -48,6 +49,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ViewerPopoutCaptureLoadedHandler", VerifyViewerPopoutCaptureLoadedHandler()),
             ("RemoveOutlierPreviewLoadedHandler", VerifyRemoveOutlierPreviewLoadedHandler()),
             ("LevelSurfacePreviewLoadedHandler", VerifyLevelSurfacePreviewLoadedHandler()),
+            ("RoiCropPreviewLoadedHandler", VerifyRoiCropPreviewLoadedHandler()),
             ("SourceQuality", VerifySourceQuality()),
             ("SourceQualityLoadedHandler", VerifySourceQualityLoadedHandler()),
             ("SourceAcquisitionProvenanceState", VerifySourceAcquisitionProvenanceState()),
@@ -65,11 +67,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("SurfaceMatchCollectionDisabled", VerifySurfaceMatchCollectionDisabled()),
             ("SurfaceMatchCollectionNavigationFocusHover", VerifySurfaceMatchCollectionNavigationFocusHover()),
             ("RecipeHealthNavigationPressed", VerifyRecipeHealthNavigationPressed()),
+            ("ViewerToolbarPressed", VerifyViewerToolbarPressed()),
             ("CurrentRecipeRunStates", VerifyCurrentRecipeRunStates()),
             ("SupportBundlePressed", VerifySupportBundlePressed()),
             ("FirstRecipeSetupCapture", VerifyFirstRecipeSetupCapture()),
             ("StepRemovalDialog", VerifyStepRemovalDialog()),
-            ("WorkbenchRunLog", VerifyWorkbenchRunLog())
+            ("WorkbenchRunLog", VerifyWorkbenchRunLog()),
+            ("ViewerOnlyImport", VerifyViewerOnlyImport()),
+            ("Import3DDataPressed", VerifyImport3DDataPressed()),
+            ("OpenImport3DDataDialog", VerifyOpenImport3DDataDialog())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -283,6 +289,23 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
+    private static bool VerifyAsyncC3DLoadFailure()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-async-c3d-load",
+            "malformed.c3d",
+            "--smoke-async-c3d-load-expect-failure",
+            "--smoke-async-c3d-load-expected-status",
+            "[CellCountOverflow]"
+        ]);
+        return options.AsyncC3DLoadSmokePath == "malformed.c3d"
+            && options.AsyncC3DLoadExpectFailure
+            && options.AsyncC3DLoadExpectedStatusFragment
+                == "[CellCountOverflow]";
+    }
+
     private static bool VerifyFilterPreviewLoadedHandler()
     {
         var options = ShellSmokeCommandLineOptions.Parse(
@@ -322,6 +345,45 @@ internal static class ShellSmokeCommandLineOptionsVerification
             && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
+    private static bool VerifyViewerOnlyImport()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-viewer-only-import",
+            "sample.glb",
+            "--smoke-viewer-only-import-report",
+            "import.txt"
+        ]);
+        return options.ViewerOnlyImportSmokePath == "sample.glb"
+            && options.ViewerOnlyImportSmokeReportPath == "import.txt"
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyViewerToolbarPressed()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-viewer-toolbar-pressed"]);
+        return options.ViewerToolbarPressedSmoke
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyImport3DDataPressed()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-import-3d-data-pressed"]);
+        return options.Import3DDataPressedSmoke
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyOpenImport3DDataDialog()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-open-import-3d-data-dialog"]);
+        return options.OpenImport3DDataDialogSmoke
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
     private static bool VerifyViewerPopoutCaptureLoadedHandler()
     {
         var options = ShellSmokeCommandLineOptions.Parse(
@@ -351,6 +413,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-tool-level-surface-preview"]);
         return options.LevelSurfacePreviewSmoke
+               && options.NeedsCompactWorkbench
+               && options.ShouldAttachLoadedHandler(false);
+    }
+
+    private static bool VerifyRoiCropPreviewLoadedHandler()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-tool-roi-crop-preview"]);
+        return options.RoiCropPreviewSmoke
                && options.NeedsCompactWorkbench
                && options.ShouldAttachLoadedHandler(false);
     }
@@ -467,13 +538,16 @@ internal static class ShellSmokeCommandLineOptionsVerification
             "--smoke-height-image-range-max",
             "1200.25",
             "--smoke-height-image-display-range-report",
-            "range.txt"
+            "range.txt",
+            "--smoke-height-image-palette-state-evidence",
+            "palette-states"
         ]);
         return options.HeightImageDisplayRangeSmoke
                && options.HeightImagePaletteSmoke == "Thermal"
                && options.HeightImageRangeMinimumSmoke == -200.5
                && options.HeightImageRangeMaximumSmoke == 1200.25
-               && options.HeightImageDisplayRangeSmokeReportPath == "range.txt";
+               && options.HeightImageDisplayRangeSmokeReportPath == "range.txt"
+               && options.HeightImagePaletteStateEvidenceDirectory == "palette-states";
     }
 
     private static bool VerifyHeightImageDisplayRangeLoadedHandler()

@@ -100,6 +100,48 @@ public static class TeachingCaptureViewModelVerification
                 viewModel.SelectedTeachingRoiDisplayHeightSummary);
             viewModel.CancelTeachingCapture();
 
+            var circleRequest = Request(
+                "selection.circle.01",
+                "Circular ROI",
+                ToolRecipeSelectionKinds.GridCircle,
+                2,
+                binding);
+            Check(
+                "GridCircle capture begins",
+                viewModel.BeginTeachingCapture(circleRequest, out _),
+                viewModel.TeachingCaptureSnapshot.ProgressText);
+            Check(
+                "GridCircle center remains incomplete",
+                viewModel.TryAddTeachingCapturePoint(Point(20, 20, 0, 0, 0, 10), out _)
+                && !viewModel.TeachingCaptureSnapshot.CanApply,
+                viewModel.TeachingCaptureSnapshot.ProgressText);
+            ToolRecipeSelection? circleCandidate = null;
+            Check(
+                "GridCircle boundary produces an exact cell-center radius",
+                viewModel.TryAddTeachingCapturePoint(Point(23, 24, 0, 0, 0, 10), out _)
+                && viewModel.TryGetTeachingCaptureCandidate(out circleCandidate, out _)
+                && circleCandidate?.GridCircle == new ToolRecipeGridCircle(20, 20, 5)
+                && circleCandidate.Points is null,
+                circleCandidate?.GridCircle?.ToString() ?? "none");
+            Check(
+                "GridCircle numeric candidate changes no applied geometry",
+                viewModel.TrySetTeachingGridCircleCandidate(
+                    new ToolRecipeGridCircle(21, 22, 4.5),
+                    Point(21, 22, 0, 0, 0, 10),
+                    Point(21, 26, 0, 0, 0, 10),
+                    out _)
+                && viewModel.TryGetTeachingCaptureCandidate(out var editedCircle, out _)
+                && editedCircle?.GridCircle == new ToolRecipeGridCircle(21, 22, 4.5)
+                && viewModel.AppliedTeachingSelections.Single().GridRectangle
+                    == new ToolRecipeGridRectangle(2, 3, 7, 10),
+                viewModel.TeachingCaptureSnapshot.ProgressText);
+            viewModel.CancelTeachingCapture();
+            Check(
+                "GridCircle cancel leaves the authored recipe projection unchanged",
+                !viewModel.IsTeachingCaptureActive
+                && viewModel.AppliedTeachingSelections.Single().GridCircle is null,
+                viewModel.TeachingCaptureSnapshot.Message);
+
             var artifactBinding = new ToolRecipeSelectionSourceBinding(
                 "TransformedHeightField", new string('B', 64), 20, 10,
                 "derived.height-field", new string('C', 64), "fixture-unit", "frame.fixture");

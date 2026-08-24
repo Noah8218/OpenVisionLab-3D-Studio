@@ -1,0 +1,153 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0036",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "Share the active decoded C3D source snapshot",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "owner continuation request and 2026-08-22 project analysis",
+    "summary": "The owner deferred R0 and authorized the next analyzed development item: remove audited avoidable full-size C3D copies without changing inspection behavior.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0036 is resolved: the active source session shares one binding-verified decoded snapshot, C3D decode is streaming, Height Image retains read-only source values, and all current gates pass."
+  },
+  "objective": {
+    "summary": "Let active Workbench source consumers share one immutable decoded C3D snapshot and remove avoidable full-source byte/value copies.",
+    "constraints": [
+      "Keep the existing ToolWorkbenchSourceSession as the owner; add no general cache or out-of-core storage abstraction.",
+      "Preserve exact C3D byte identity, raw-height values, missing-cell semantics, source-quality results, and Height Image pixels/cell reads.",
+      "Source replacement and cancellation must prevent stale results from becoming visible.",
+      "Loading and presentation must not invoke Preview, Publish, Run, Validation, or recipe mutation.",
+      "Keep standalone Source Quality and Height Image load entry points compatible.",
+      "Do not claim representative maximum-C3D memory or load-time qualification without the missing source and accepted budgets."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The active ToolWorkbenchSourceSession owns one asynchronous decoded C3D snapshot per exact path/entity/unit/frame source key and replaces or clears it when the source changes.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Workbench Source Quality and Height Image routes consume the same session snapshot while standalone consumers retain their existing path-based fallback.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "C3DHeightImageFrame retains the snapshot value memory instead of copying all values, with identical cell and rendered-pixel behavior.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "C3DHeightFieldSnapshot hashes and parses a source in one streaming pass without retaining a whole-file byte array, preserving exact identity and validation failures.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused snapshot-sharing/value-identity verification, proportional Release builds, the structure guard, and diff hygiene pass with D-backed evidence.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0035"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchSourceSession.cs",
+      "summary": "Current source identity, binding, and acquisition provenance already belong to this session."
+    },
+    {
+      "kind": "current duplicated data flow",
+      "location": "SourceQualityWorkspaceViewModel.EnsureSourceAsync; HeightImageViewerViewModel.EnsureSourceAsync; C3DHeightImageFrame.Create",
+      "summary": "Both consumers decode the same path independently, and Height Image copies the complete decoded value array again."
+    },
+    {
+      "kind": "external prerequisite",
+      "location": "docs/OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md",
+      "summary": "Representative maximum-C3D qualification remains blocked on a representative input and accepted memory/load-time limits."
+    },
+    {
+      "kind": "owner priority decision",
+      "location": "current task",
+      "summary": "Product-owner Wide/Compact R0 remains explicitly deferred."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "closure",
+      "location": "docs/OPENVISIONLAB_3D_SHARED_C3D_SOURCE_SNAPSHOT_CLOSURE_20260823.md",
+      "summary": "Durable PL-0036 scope, ownership transition, acceptance results, verification, and boundaries."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0036-shared-c3d-snapshot/verification/",
+      "observation": "Shared snapshot and Source Quality passed 24/24, Inspection Workspace and Height Image passed 64/64, C3D profile passed 14/14, and distribution passed 26/26 against the final Release build.",
+      "observed_at": "2026-08-23T00:08:59.4293077+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260823-pl0036-shared-c3d-snapshot/verification/solution-release-build.txt",
+      "observation": "The full Release solution built with zero warnings and zero errors; the code-structure guard passed 67/67.",
+      "observed_at": "2026-08-23T00:08:59.4293077+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "source",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchSourceSession.cs; src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs; src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightImageFrame.cs",
+      "observation": "Source inspection confirms one source-session task, binding-verified sharing, incremental fixed-buffer hash/decode, no source ReadAllBytes, and no Height Image source.Values.ToArray copy.",
+      "observed_at": "2026-08-23T00:08:59.4293077+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "documentation",
+      "location": "docs/OPENVISIONLAB_3D_SHARED_C3D_SOURCE_SNAPSHOT_CLOSURE_20260823.md; .proofline/issues/PL-0036.json",
+      "observation": "The closure, master backlog, current handoff, project analysis, documentation index, and v2 issue record describe the same completed scope and maximum-input/R0 boundaries.",
+      "observed_at": "2026-08-23T00:08:59.4293077+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-23T00:08:59.4293077+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after exact shared-reference and identity checks, Height Image/C3D regressions, full Release build, structure proof, and durable documentation passed."
+    }
+  ],
+  "created_at": "2026-08-22T23:55:27.9978947+09:00",
+  "updated_at": "2026-08-22T15:08:59.429Z"
+}

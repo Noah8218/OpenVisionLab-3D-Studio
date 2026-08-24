@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.6",
+  "name": "Thickness Coupon v1 GridCircle Demo",
+  "source": {
+    "id": "source.thickness-coupon-v1",
+    "name": "Thickness Coupon v1",
+    "format": "C3D",
+    "unit": "raw-height",
+    "frameId": "frame.c3d-grid-index",
+    "path": "thickness-coupon-v1.C3D",
+    "byteLength": 4300808,
+    "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
+    "gridWidth": 1280,
+    "gridHeight": 840
+  },
+  "references": [],
+  "steps": [
+    {
+      "id": "step.grid-circle-authoring.01",
+      "toolId": "grid-circle-authoring",
+      "toolName": "Circular Region Authoring",
+      "minimumInputCount": 2,
+      "inputEntityIds": [
+        "source.thickness-coupon-v1",
+        "selection.grid-circle.01"
+      ],
+      "outputEntityId": "derived.grid-circle-authoring.01",
+      "parameters": []
+    }
+  ],
+  "selections": [
+    {
+      "id": "selection.grid-circle.01",
+      "name": "Coupon circular review region",
+      "kind": "grid-circle",
+      "rootSourceId": "source.thickness-coupon-v1",
+      "frameId": "frame.c3d-grid-index",
+      "sourceBinding": {
+        "format": "C3D",
+        "contentSha256": "D879FC9E40678762214E8C3FBEA01F5C9A309701DAAEAD448067E563C5B502F8",
+        "gridWidth": 1280,
+        "gridHeight": 840
+      },
+      "gridCircle": {
+        "centerRow": 420,
+        "centerColumn": 640,
+        "radius": 180
+      }
+    }
+  ]
+}

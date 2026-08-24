@@ -7,6 +7,11 @@ namespace OpenVisionLab.ThreeD.Data;
 
 public sealed class ImportedMesh
 {
+    private const long MaximumFileBytes = 512L * 1024 * 1024;
+    private const int MaximumAccessorElementCount = 3_000_000;
+    private const int MaximumIndexCount = 3_000_000;
+    private const int MaximumEmbeddedTextureBytes = 256 * 1024 * 1024;
+
     private ImportedMesh(
         string sourcePath,
         string name,
@@ -83,31 +88,57 @@ public sealed class ImportedMesh
 
     public Vector3 Max { get; }
 
-    public static ImportedMesh Load(string path)
+    public static ImportedMesh Load(string path) => Load(path, CancellationToken.None);
+
+    public static ImportedMesh Load(
+        string path,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress = null)
     {
-        var bytes = File.ReadAllBytes(path);
-        if (bytes.Length < 20 || Encoding.ASCII.GetString(bytes, 0, 4) != "glTF")
+        try
         {
-            throw new InvalidDataException($"Unsupported GLB header: {path}");
+            var mesh = LoadCore(path, cancellationToken, progress);
+            progress?.Report(100.0);
+            return mesh;
         }
-
-        var version = ReadUInt32(bytes, 4);
-        var declaredLength = ReadUInt32(bytes, 8);
-        if (version != 2 || declaredLength != bytes.Length)
+        catch (InvalidDataException)
         {
-            throw new InvalidDataException($"Unsupported GLB 2.0 length/version: {path}");
+            throw;
         }
+        catch (Exception exception) when (exception is
+            JsonException or
+            KeyNotFoundException or
+            IndexOutOfRangeException or
+            ArgumentOutOfRangeException or
+            OverflowException or
+            FormatException or
+            InvalidOperationException)
+        {
+            throw new InvalidDataException(
+                $"Invalid GLB structure in {path}: {exception.Message}",
+                exception);
+        }
+    }
 
+    private static ImportedMesh LoadCore(
+        string path,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var bytes = ReadBoundedFile(path, cancellationToken);
+        progress?.Report(20.0);
         var offset = 12;
         JsonDocument? document = null;
         ReadOnlyMemory<byte> binaryChunk = ReadOnlyMemory<byte>.Empty;
 
         while (offset + 8 <= bytes.Length)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var chunkLength = checked((int)ReadUInt32(bytes, offset));
             var chunkType = ReadUInt32(bytes, offset + 4);
             offset += 8;
-            if (offset + chunkLength > bytes.Length)
+            if ((long)offset + chunkLength > bytes.Length)
             {
                 throw new InvalidDataException($"GLB chunk exceeds file length: {path}");
             }
@@ -122,8 +153,9 @@ public sealed class ImportedMesh
                 binaryChunk = new ReadOnlyMemory<byte>(bytes, offset, chunkLength);
             }
 
-            offset += Pad4(chunkLength);
+            offset = checked(offset + Pad4(chunkLength));
         }
+        progress?.Report(32.0);
 
         using (document)
         {
@@ -169,7 +201,8 @@ public sealed class ImportedMesh
                             ref keepVertexColors,
                             textureCoordinates,
                             ref keepTextureCoordinates,
-                            ref texture);
+                            ref texture,
+                            cancellationToken);
                     }
                 }
             }
@@ -190,8 +223,11 @@ public sealed class ImportedMesh
                     ref keepVertexColors,
                     textureCoordinates,
                     ref keepTextureCoordinates,
-                    ref texture);
+                    ref texture,
+                    cancellationToken);
             }
+
+            progress?.Report(82.0);
 
             var meshPositions = positions.ToArray();
             var meshIndices = indices.ToArray();
@@ -217,6 +253,7 @@ public sealed class ImportedMesh
 
             foreach (var index in meshIndices)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (index < 0 || index >= meshPositions.Length)
                 {
                     throw new InvalidDataException($"GLB mesh index is outside the vertex range: {path}");
@@ -312,14 +349,17 @@ public sealed class ImportedMesh
         ref bool keepVertexColors,
         List<Vector2> textureCoordinates,
         ref bool keepTextureCoordinates,
-        ref GlbTextureImage? texture)
+        ref GlbTextureImage? texture,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var node = root.GetProperty("nodes")[nodeIndex];
         var nodeTransform = ReadNodeTransform(node) * parentTransform;
         if (node.TryGetProperty("mesh", out var meshElement))
         {
-            foreach (var instanceTransform in ReadInstanceTransforms(root, binary.Span, node, nodeTransform))
+            foreach (var instanceTransform in ReadInstanceTransforms(root, binary.Span, node, nodeTransform, cancellationToken))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 AppendMeshPrimitives(
                     root,
                     binary,
@@ -334,7 +374,8 @@ public sealed class ImportedMesh
                     ref keepVertexColors,
                     textureCoordinates,
                     ref keepTextureCoordinates,
-                    ref texture);
+                    ref texture,
+                    cancellationToken);
             }
         }
 
@@ -345,6 +386,7 @@ public sealed class ImportedMesh
 
         foreach (var childElement in children.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             AppendNodeMeshes(
                 root,
                 binary,
@@ -359,7 +401,8 @@ public sealed class ImportedMesh
                 ref keepVertexColors,
                 textureCoordinates,
                 ref keepTextureCoordinates,
-                ref texture);
+                ref texture,
+                cancellationToken);
         }
     }
 
@@ -377,11 +420,13 @@ public sealed class ImportedMesh
         ref bool keepVertexColors,
         List<Vector2> textureCoordinates,
         ref bool keepTextureCoordinates,
-        ref GlbTextureImage? texture)
+        ref GlbTextureImage? texture,
+        CancellationToken cancellationToken)
     {
         var mesh = root.GetProperty("meshes")[meshIndex];
         foreach (var primitive in mesh.GetProperty("primitives").EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var mode = primitive.TryGetProperty("mode", out var modeElement) ? modeElement.GetInt32() : 4;
             if (mode != 4)
             {
@@ -389,18 +434,18 @@ public sealed class ImportedMesh
             }
 
             var attributes = primitive.GetProperty("attributes");
-            var primitivePositions = ReadVec3Accessor(root, binary.Span, attributes.GetProperty("POSITION").GetInt32());
+            var primitivePositions = ReadVec3Accessor(root, binary.Span, attributes.GetProperty("POSITION").GetInt32(), cancellationToken);
             var primitiveIndices = primitive.TryGetProperty("indices", out var indexElement)
-                ? ReadIndexAccessor(root, binary.Span, indexElement.GetInt32())
+                ? ReadIndexAccessor(root, binary.Span, indexElement.GetInt32(), cancellationToken)
                 : Enumerable.Range(0, primitivePositions.Length).ToArray();
             var primitiveNormals = attributes.TryGetProperty("NORMAL", out var normalElement)
-                ? ReadVec3Accessor(root, binary.Span, normalElement.GetInt32())
+                ? ReadVec3Accessor(root, binary.Span, normalElement.GetInt32(), cancellationToken)
                 : Array.Empty<Vector3>();
             var primitiveVertexColors = attributes.TryGetProperty("COLOR_0", out var colorElement)
-                ? ReadColorAccessor(root, binary.Span, colorElement.GetInt32())
+                ? ReadColorAccessor(root, binary.Span, colorElement.GetInt32(), cancellationToken)
                 : Array.Empty<Vector4>();
             var primitiveTextureCoordinates = attributes.TryGetProperty("TEXCOORD_0", out var texCoordElement)
-                ? ReadVec2Accessor(root, binary.Span, texCoordElement.GetInt32())
+                ? ReadVec2Accessor(root, binary.Span, texCoordElement.GetInt32(), cancellationToken)
                 : Array.Empty<Vector2>();
 
             if (primitivePositions.Length == 0 || primitiveIndices.Length == 0 || primitiveIndices.Length % 3 != 0)
@@ -426,13 +471,21 @@ public sealed class ImportedMesh
             }
 
             var vertexOffset = positions.Count;
+            ValidateExpandedMeshCapacity(
+                path,
+                positions.Count,
+                indices.Count,
+                primitivePositions.Length,
+                primitiveIndices.Length);
             foreach (var position in primitivePositions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 positions.Add(Vector3.Transform(position, transform));
             }
 
             foreach (var index in primitiveIndices)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 indices.Add(vertexOffset + index);
             }
 
@@ -441,7 +494,8 @@ public sealed class ImportedMesh
                 primitivePositions.Length,
                 transform,
                 normals,
-                normalPresence);
+                normalPresence,
+                cancellationToken);
             AppendOptionalVertexData(primitiveVertexColors, primitivePositions.Length, vertexColors, ref keepVertexColors);
             AppendOptionalVertexData(primitiveTextureCoordinates, primitivePositions.Length, textureCoordinates, ref keepTextureCoordinates);
             texture ??= ReadBaseColorTexture(root, binary, primitive);
@@ -453,12 +507,17 @@ public sealed class ImportedMesh
         int positionCount,
         Matrix4x4 transform,
         List<Vector3> target,
-        List<bool> presence)
+        List<bool> presence,
+        CancellationToken cancellationToken)
     {
         if (source.Length == 0)
         {
             for (var index = 0; index < positionCount; index++)
             {
+                if ((index & 4095) == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
                 target.Add(default);
                 presence.Add(false);
             }
@@ -476,6 +535,7 @@ public sealed class ImportedMesh
         var windingSign = transform.GetDeterminant() < 0.0f ? -1.0f : 1.0f;
         foreach (var normal in source)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var transformed =
                 Vector3.TransformNormal(normal, normalTransform) * windingSign;
             var sourceLength = normal.Length();
@@ -533,7 +593,12 @@ public sealed class ImportedMesh
         return Matrix4x4.CreateScale(scale) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(translation);
     }
 
-    private static Matrix4x4[] ReadInstanceTransforms(JsonElement root, ReadOnlySpan<byte> binary, JsonElement node, Matrix4x4 nodeTransform)
+    private static Matrix4x4[] ReadInstanceTransforms(
+        JsonElement root,
+        ReadOnlySpan<byte> binary,
+        JsonElement node,
+        Matrix4x4 nodeTransform,
+        CancellationToken cancellationToken)
     {
         if (!node.TryGetProperty("extensions", out var extensions)
             || !extensions.TryGetProperty("EXT_mesh_gpu_instancing", out var instancing)
@@ -543,13 +608,13 @@ public sealed class ImportedMesh
         }
 
         var translations = attributes.TryGetProperty("TRANSLATION", out var translationElement)
-            ? ReadVec3Accessor(root, binary, translationElement.GetInt32())
+            ? ReadVec3Accessor(root, binary, translationElement.GetInt32(), cancellationToken)
             : Array.Empty<Vector3>();
         var rotations = attributes.TryGetProperty("ROTATION", out var rotationElement)
-            ? ReadVec4Accessor(root, binary, rotationElement.GetInt32())
+            ? ReadVec4Accessor(root, binary, rotationElement.GetInt32(), cancellationToken)
             : Array.Empty<Vector4>();
         var scales = attributes.TryGetProperty("SCALE", out var scaleElement)
-            ? ReadVec3Accessor(root, binary, scaleElement.GetInt32())
+            ? ReadVec3Accessor(root, binary, scaleElement.GetInt32(), cancellationToken)
             : Array.Empty<Vector3>();
 
         var instanceCount = new[] { translations.Length, rotations.Length, scales.Length }.Max();
@@ -565,6 +630,10 @@ public sealed class ImportedMesh
         var transforms = new Matrix4x4[instanceCount];
         for (var i = 0; i < transforms.Length; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var translation = translations.Length == 0 ? Vector3.Zero : translations[i];
             var rotation = rotations.Length == 0
                 ? Quaternion.Identity
@@ -619,7 +688,7 @@ public sealed class ImportedMesh
         return Quaternion.Normalize(new Quaternion(values[0], values[1], values[2], values[3]));
     }
 
-    private static Vector3[] ReadVec3Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex)
+    private static Vector3[] ReadVec3Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex, CancellationToken cancellationToken)
     {
         var accessor = root.GetProperty("accessors")[accessorIndex];
         if (accessor.GetProperty("componentType").GetInt32() != 5126
@@ -628,11 +697,21 @@ public sealed class ImportedMesh
             throw new InvalidDataException("Only float VEC3 accessors are supported for GLB vector attributes.");
         }
 
-        var count = accessor.GetProperty("count").GetInt32();
-        var (start, stride) = GetAccessorLayout(root, accessor);
+        var count = ReadAccessorCount(accessor, accessorIndex);
+        var (start, stride) = GetAccessorLayout(
+            root,
+            accessor,
+            accessorIndex,
+            count,
+            elementBytes: 12,
+            binary.Length);
         var positions = new Vector3[count];
         for (var i = 0; i < count; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var itemOffset = start + i * stride;
             positions[i] = new Vector3(
                 ReadSingle(binary, itemOffset),
@@ -643,7 +722,7 @@ public sealed class ImportedMesh
         return positions;
     }
 
-    private static Vector4[] ReadVec4Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex)
+    private static Vector4[] ReadVec4Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex, CancellationToken cancellationToken)
     {
         var accessor = root.GetProperty("accessors")[accessorIndex];
         if (accessor.GetProperty("componentType").GetInt32() != 5126
@@ -652,11 +731,21 @@ public sealed class ImportedMesh
             throw new InvalidDataException("Only float VEC4 accessors are supported for GLB instance rotations.");
         }
 
-        var count = accessor.GetProperty("count").GetInt32();
-        var (start, stride) = GetAccessorLayout(root, accessor);
+        var count = ReadAccessorCount(accessor, accessorIndex);
+        var (start, stride) = GetAccessorLayout(
+            root,
+            accessor,
+            accessorIndex,
+            count,
+            elementBytes: 16,
+            binary.Length);
         var values = new Vector4[count];
         for (var i = 0; i < count; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var itemOffset = start + i * stride;
             values[i] = new Vector4(
                 ReadSingle(binary, itemOffset),
@@ -668,7 +757,7 @@ public sealed class ImportedMesh
         return values;
     }
 
-    private static int[] ReadIndexAccessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex)
+    private static int[] ReadIndexAccessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex, CancellationToken cancellationToken)
     {
         var accessor = root.GetProperty("accessors")[accessorIndex];
         if (accessor.GetProperty("type").GetString() != "SCALAR")
@@ -677,11 +766,28 @@ public sealed class ImportedMesh
         }
 
         var componentType = accessor.GetProperty("componentType").GetInt32();
-        var count = accessor.GetProperty("count").GetInt32();
-        var (start, stride) = GetAccessorLayout(root, accessor);
+        var elementBytes = componentType switch
+        {
+            5121 => 1,
+            5123 => 2,
+            5125 => 4,
+            _ => throw new InvalidDataException($"Unsupported GLB index component type: {componentType}")
+        };
+        var count = ReadAccessorCount(accessor, accessorIndex, MaximumIndexCount);
+        var (start, stride) = GetAccessorLayout(
+            root,
+            accessor,
+            accessorIndex,
+            count,
+            elementBytes,
+            binary.Length);
         var indices = new int[count];
         for (var i = 0; i < count; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var itemOffset = start + i * stride;
             indices[i] = componentType switch
             {
@@ -695,7 +801,7 @@ public sealed class ImportedMesh
         return indices;
     }
 
-    private static Vector2[] ReadVec2Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex)
+    private static Vector2[] ReadVec2Accessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex, CancellationToken cancellationToken)
     {
         var accessor = root.GetProperty("accessors")[accessorIndex];
         if (accessor.GetProperty("componentType").GetInt32() != 5126
@@ -704,11 +810,21 @@ public sealed class ImportedMesh
             throw new InvalidDataException("Only float VEC2 accessors are supported for GLB texture coordinates.");
         }
 
-        var count = accessor.GetProperty("count").GetInt32();
-        var (start, stride) = GetAccessorLayout(root, accessor);
+        var count = ReadAccessorCount(accessor, accessorIndex);
+        var (start, stride) = GetAccessorLayout(
+            root,
+            accessor,
+            accessorIndex,
+            count,
+            elementBytes: 8,
+            binary.Length);
         var textureCoordinates = new Vector2[count];
         for (var i = 0; i < count; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var itemOffset = start + i * stride;
             textureCoordinates[i] = new Vector2(
                 ReadSingle(binary, itemOffset),
@@ -718,7 +834,7 @@ public sealed class ImportedMesh
         return textureCoordinates;
     }
 
-    private static Vector4[] ReadColorAccessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex)
+    private static Vector4[] ReadColorAccessor(JsonElement root, ReadOnlySpan<byte> binary, int accessorIndex, CancellationToken cancellationToken)
     {
         var accessor = root.GetProperty("accessors")[accessorIndex];
         if (accessor.GetProperty("componentType").GetInt32() != 5126)
@@ -732,11 +848,21 @@ public sealed class ImportedMesh
             throw new InvalidDataException("Only VEC3 or VEC4 GLB COLOR_0 accessors are supported.");
         }
 
-        var count = accessor.GetProperty("count").GetInt32();
-        var (start, stride) = GetAccessorLayout(root, accessor);
+        var count = ReadAccessorCount(accessor, accessorIndex);
+        var (start, stride) = GetAccessorLayout(
+            root,
+            accessor,
+            accessorIndex,
+            count,
+            elementBytes: type == "VEC4" ? 16 : 12,
+            binary.Length);
         var colors = new Vector4[count];
         for (var i = 0; i < count; i++)
         {
+            if ((i & 4095) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             var itemOffset = start + i * stride;
             colors[i] = new Vector4(
                 ReadSingle(binary, itemOffset),
@@ -779,8 +905,20 @@ public sealed class ImportedMesh
         }
 
         var bufferView = root.GetProperty("bufferViews")[bufferViewElement.GetInt32()];
+        ValidateBufferViewBuffer(bufferView);
         var bufferViewOffset = bufferView.TryGetProperty("byteOffset", out var viewOffsetElement) ? viewOffsetElement.GetInt32() : 0;
         var byteLength = bufferView.GetProperty("byteLength").GetInt32();
+        if (byteLength > MaximumEmbeddedTextureBytes)
+        {
+            throw new InvalidDataException(
+                $"GLB embedded texture length {byteLength:N0} bytes exceeds the supported limit {MaximumEmbeddedTextureBytes:N0} bytes.");
+        }
+
+        ValidateByteRange(
+            "embedded texture bufferView",
+            bufferViewOffset,
+            byteLength,
+            ReadDeclaredBufferLength(root, binary.Length));
         var mimeType = image.TryGetProperty("mimeType", out var mimeElement)
             ? mimeElement.GetString() ?? "application/octet-stream"
             : "application/octet-stream";
@@ -790,34 +928,150 @@ public sealed class ImportedMesh
         return new GlbTextureImage(name, mimeType, binary.Slice(bufferViewOffset, byteLength).ToArray());
     }
 
-    private static (int Start, int Stride) GetAccessorLayout(JsonElement root, JsonElement accessor)
+    private static int ReadAccessorCount(
+        JsonElement accessor,
+        int accessorIndex,
+        int maximumCount = MaximumAccessorElementCount)
+    {
+        var count = accessor.GetProperty("count").GetInt32();
+        if (count < 0 || count > maximumCount)
+        {
+            throw new InvalidDataException(
+                $"GLB accessor {accessorIndex} count {count:N0} is outside the supported range 0..{maximumCount:N0}.");
+        }
+
+        return count;
+    }
+
+    private static (int Start, int Stride) GetAccessorLayout(
+        JsonElement root,
+        JsonElement accessor,
+        int accessorIndex,
+        int count,
+        int elementBytes,
+        int binaryLength)
     {
         var accessorOffset = accessor.TryGetProperty("byteOffset", out var accessorOffsetElement) ? accessorOffsetElement.GetInt32() : 0;
         var bufferView = root.GetProperty("bufferViews")[accessor.GetProperty("bufferView").GetInt32()];
+        ValidateBufferViewBuffer(bufferView);
         var bufferViewOffset = bufferView.TryGetProperty("byteOffset", out var viewOffsetElement) ? viewOffsetElement.GetInt32() : 0;
-        var componentType = accessor.GetProperty("componentType").GetInt32();
-        var type = accessor.GetProperty("type").GetString();
-        var defaultStride = ComponentSize(componentType) * ComponentCount(type);
-        var stride = bufferView.TryGetProperty("byteStride", out var strideElement) ? strideElement.GetInt32() : defaultStride;
-        return (bufferViewOffset + accessorOffset, stride);
+        var bufferViewLength = bufferView.GetProperty("byteLength").GetInt32();
+        var stride = bufferView.TryGetProperty("byteStride", out var strideElement) ? strideElement.GetInt32() : elementBytes;
+        if (accessorOffset < 0 || stride < elementBytes)
+        {
+            throw new InvalidDataException(
+                $"GLB accessor {accessorIndex} has an invalid byteOffset or byteStride.");
+        }
+
+        ValidateByteRange(
+            $"accessor {accessorIndex} bufferView",
+            bufferViewOffset,
+            bufferViewLength,
+            ReadDeclaredBufferLength(root, binaryLength));
+        var requiredBytes = count == 0
+            ? 0L
+            : checked((long)(count - 1) * stride + elementBytes);
+        if ((long)accessorOffset + requiredBytes > bufferViewLength)
+        {
+            throw new InvalidDataException(
+                $"GLB accessor {accessorIndex} requires {requiredBytes:N0} bytes at offset {accessorOffset:N0}, exceeding its {bufferViewLength:N0}-byte bufferView.");
+        }
+
+        return (checked(bufferViewOffset + accessorOffset), stride);
     }
 
-    private static int ComponentSize(int componentType) => componentType switch
+    private static void ValidateByteRange(
+        string name,
+        int offset,
+        int length,
+        int availableLength)
     {
-        5120 or 5121 => 1,
-        5122 or 5123 => 2,
-        5125 or 5126 => 4,
-        _ => throw new InvalidDataException($"Unsupported GLB component type: {componentType}")
-    };
+        if (offset < 0 || length < 0 || (long)offset + length > availableLength)
+        {
+            throw new InvalidDataException(
+                $"GLB {name} range offset={offset:N0}, length={length:N0} exceeds the {availableLength:N0}-byte BIN chunk.");
+        }
+    }
 
-    private static int ComponentCount(string? type) => type switch
+    private static void ValidateBufferViewBuffer(JsonElement bufferView)
     {
-        "SCALAR" => 1,
-        "VEC2" => 2,
-        "VEC3" => 3,
-        "VEC4" => 4,
-        _ => throw new InvalidDataException($"Unsupported GLB accessor type: {type}")
-    };
+        if (bufferView.GetProperty("buffer").GetInt32() != 0)
+        {
+            throw new InvalidDataException(
+                "Only GLB bufferViews that reference the embedded BIN buffer 0 are supported.");
+        }
+    }
+
+    private static int ReadDeclaredBufferLength(JsonElement root, int binaryLength)
+    {
+        var declaredLength = root.GetProperty("buffers")[0].GetProperty("byteLength").GetInt32();
+        if (declaredLength < 0 || declaredLength > binaryLength)
+        {
+            throw new InvalidDataException(
+                $"GLB buffer 0 declares {declaredLength:N0} bytes, exceeding the {binaryLength:N0}-byte BIN chunk.");
+        }
+
+        return declaredLength;
+    }
+
+    private static void ValidateExpandedMeshCapacity(
+        string path,
+        int currentVertexCount,
+        int currentIndexCount,
+        int addedVertexCount,
+        int addedIndexCount)
+    {
+        if ((long)currentVertexCount + addedVertexCount > MaximumAccessorElementCount
+            || (long)currentIndexCount + addedIndexCount > MaximumIndexCount)
+        {
+            throw new InvalidDataException(
+                $"GLB expanded mesh exceeds the supported limits of {MaximumAccessorElementCount:N0} vertices and {MaximumIndexCount / 3:N0} triangles: {path}");
+        }
+    }
+
+    private static byte[] ReadBoundedFile(string path, CancellationToken cancellationToken)
+    {
+        using var stream = File.OpenRead(path);
+        if (stream.Length > MaximumFileBytes)
+        {
+            throw new InvalidDataException(
+                $"GLB file size {stream.Length:N0} bytes exceeds the supported limit {MaximumFileBytes:N0} bytes: {path}");
+        }
+
+        if (stream.Length < 20)
+        {
+            throw new InvalidDataException($"Unsupported GLB header: {path}");
+        }
+
+        Span<byte> header = stackalloc byte[12];
+        stream.ReadExactly(header);
+        if (!header[..4].SequenceEqual("glTF"u8))
+        {
+            throw new InvalidDataException($"Unsupported GLB header: {path}");
+        }
+
+        var version = BitConverter.ToUInt32(header[4..8]);
+        var declaredLength = BitConverter.ToUInt32(header[8..12]);
+        if (version != 2 || declaredLength != stream.Length)
+        {
+            throw new InvalidDataException($"Unsupported GLB 2.0 length/version: {path}");
+        }
+
+        var bytes = new byte[checked((int)stream.Length)];
+        stream.Position = 0;
+        var offset = 0;
+        while (offset < bytes.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var count = stream.Read(bytes, offset, Math.Min(1024 * 1024, bytes.Length - offset));
+            if (count == 0)
+            {
+                throw new EndOfStreamException($"Unexpected end of GLB file: {path}");
+            }
+            offset += count;
+        }
+        return bytes;
+    }
 
     private static uint ReadUInt32(byte[] bytes, int offset) => BitConverter.ToUInt32(bytes, offset);
 
@@ -834,6 +1088,12 @@ public sealed class ImportedMesh
 public static class GlbMesh
 {
     public static ImportedMesh Load(string path) => ImportedMesh.Load(path);
+
+    public static ImportedMesh Load(
+        string path,
+        CancellationToken cancellationToken,
+        IProgress<double>? progress = null) =>
+        ImportedMesh.Load(path, cancellationToken, progress);
 
     public static ImportedMesh CreateTriangleMesh(
         string path,

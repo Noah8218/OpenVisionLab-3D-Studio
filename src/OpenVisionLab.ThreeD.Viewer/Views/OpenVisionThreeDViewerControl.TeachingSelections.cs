@@ -94,6 +94,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         ClearTeachingGridRectangleEdit();
         HideTeachingCaptureDragOverlay();
         IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints = null;
+        ToolRecipeGridCircle? initialGridCircle = null;
         if (!isTransformedHeightField
             && initialSelection?.GridRectangle is { } initialRectangle)
         {
@@ -102,7 +103,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return false;
             }
         }
-        if (!viewModel.BeginTeachingCapture(request, initialPoints, out message))
+        else if (!isTransformedHeightField
+                 && initialSelection?.GridCircle is { } circle)
+        {
+            if (!TryCreateC3DTeachingGridCirclePoints(circle, out initialPoints, out message))
+            {
+                return false;
+            }
+            initialGridCircle = circle;
+        }
+        if (!viewModel.BeginTeachingCapture(request, initialPoints, initialGridCircle, out message))
         {
             return false;
         }
@@ -304,6 +314,22 @@ public sealed partial class OpenVisionThreeDViewerControl
         return true;
     }
 
+    public bool TrySetC3DTeachingGridCircleCandidate(
+        ToolRecipeGridCircle circle,
+        out string message)
+    {
+        if (!TryCreateC3DTeachingGridCirclePoints(circle, out var points, out message)
+            || points is not [var center, var boundary]
+            || !viewModel.TrySetTeachingGridCircleCandidate(circle, center, boundary, out message))
+        {
+            return false;
+        }
+
+        RaiseTeachingCaptureStateChanged();
+        RenderNow();
+        return true;
+    }
+
     private bool TryHandleC3DTeachingCapturePick(Point screenPoint)
     {
         if (!viewModel.IsTeachingCaptureActive)
@@ -338,7 +364,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             return true;
         }
 
-        if (IsTeachingGridRectangleCapture)
+        if (IsTeachingGridFootprintCapture)
         {
             if (!TryMapScreenToC3DGridFootprint(screenPoint, out var row, out var column))
             {
@@ -350,13 +376,15 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return true;
             }
 
-            var rectangleSelectionPoint = CreateC3DTeachingSelectionPoint(row, column);
-            viewModel.TryAddTeachingCapturePoint(rectangleSelectionPoint, out var rectangleCaptureMessage);
-            viewModel.SelectedEntity = "Surface ROI Candidate";
+            var footprintSelectionPoint = CreateC3DTeachingSelectionPoint(row, column);
+            viewModel.TryAddTeachingCapturePoint(footprintSelectionPoint, out var footprintCaptureMessage);
+            viewModel.SelectedEntity = IsTeachingGridCircleCapture
+                ? "Circular Surface ROI Candidate"
+                : "Surface ROI Candidate";
             viewModel.PickCoordinate = $"X/column {column}, Z/row {row}";
-            viewModel.ViewerStatus = rectangleCaptureMessage;
+            viewModel.ViewerStatus = footprintCaptureMessage;
             RaiseTeachingCaptureStateChanged();
-            Viewport.Cursor = IsTeachingGridRectangleCandidateReview ? Cursors.Arrow : Cursors.Cross;
+            Viewport.Cursor = viewModel.TeachingCaptureSnapshot.CanApply ? Cursors.Arrow : Cursors.Cross;
             return true;
         }
 
@@ -416,6 +444,16 @@ public sealed partial class OpenVisionThreeDViewerControl
             Kind: ToolRecipeSelectionKinds.GridRectangle
         };
 
+    private bool IsTeachingGridCircleCapture =>
+        viewModel.TeachingCaptureSnapshot is
+        {
+            IsActive: true,
+            Kind: ToolRecipeSelectionKinds.GridCircle
+        };
+
+    private bool IsTeachingGridFootprintCapture =>
+        IsTeachingGridRectangleCapture || IsTeachingGridCircleCapture;
+
     private bool IsTeachingGridRectangleCandidateReview =>
         viewModel.TeachingCaptureSnapshot is
         {
@@ -449,6 +487,35 @@ public sealed partial class OpenVisionThreeDViewerControl
             CreateC3DTeachingSelectionPoint(
                 rectangle.Row + rectangle.RowCount - 1,
                 rectangle.Column + rectangle.ColumnCount - 1)
+        ];
+        message = string.Empty;
+        return true;
+    }
+
+    private bool TryCreateC3DTeachingGridCirclePoints(
+        ToolRecipeGridCircle circle,
+        out IReadOnlyList<ToolRecipeSelectionPoint>? points,
+        out string message)
+    {
+        points = null;
+        if (c3dSample is null
+            || ToolRecipeGridCircleGeometry.Validate(
+                circle,
+                c3dSample.Width,
+                c3dSample.Height).Count > 0)
+        {
+            message = "The Circular ROI must stay inside the loaded C3D source grid.";
+            return false;
+        }
+
+        var boundaryColumn = Math.Clamp(
+            circle.CenterColumn + Math.Max(1, (int)Math.Floor(circle.Radius)),
+            0,
+            c3dSample.Width - 1);
+        points =
+        [
+            CreateC3DTeachingSelectionPoint(circle.CenterRow, circle.CenterColumn),
+            CreateC3DTeachingSelectionPoint(circle.CenterRow, boundaryColumn)
         ];
         message = string.Empty;
         return true;
@@ -1632,6 +1699,11 @@ public sealed partial class OpenVisionThreeDViewerControl
                 blue,
                 showHandles);
         }
+
+        if (selection.GridCircle is { } circle)
+        {
+            DrawTeachingGridCircle(gl, circle, red, green, blue, showHandles);
+        }
     }
 
     private void DrawTeachingCaptureCandidate(
@@ -1659,11 +1731,59 @@ public sealed partial class OpenVisionThreeDViewerControl
                 capture.SelectionId);
         }
 
-        if (capture.Kind != ToolRecipeSelectionKinds.GridRectangle
+
+        if (capture is { Kind: ToolRecipeSelectionKinds.GridCircle, GridCircle: { } circle })
+        {
+            DrawTeachingGridCircle(gl, circle, red, green, blue, showHandles: true);
+        }
+
+        if (capture.Kind is not (ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle)
             && capture.Points.Count > 0)
         {
             DrawTeachingPointSet(gl, capture.Points, red, green, blue);
         }
+    }
+
+    private void DrawTeachingGridCircle(
+        OpenGL gl,
+        ToolRecipeGridCircle circle,
+        double red,
+        double green,
+        double blue,
+        bool showHandles)
+    {
+        if (c3dSample is null)
+        {
+            return;
+        }
+
+        gl.Disable(OpenGL.GL_DEPTH_TEST);
+        gl.LineWidth(showHandles ? 5.0f : 3.0f);
+        gl.Color(red, green, blue, showHandles ? 1.0 : 0.82);
+        gl.Begin(OpenGL.GL_LINE_LOOP);
+        const int segmentCount = 72;
+        for (var index = 0; index < segmentCount; index++)
+        {
+            var angle = index * Math.PI * 2.0 / segmentCount;
+            var row = circle.CenterRow + Math.Sin(angle) * circle.Radius;
+            var column = circle.CenterColumn + Math.Cos(angle) * circle.Radius;
+            var point = CreateC3DGridDisplayPosition(row, column, c3dSample.Mean);
+            gl.Vertex(point.X, point.Y, point.Z);
+        }
+        gl.End();
+
+        if (showHandles)
+        {
+            var center = CreateC3DGridDisplayPosition(
+                circle.CenterRow,
+                circle.CenterColumn,
+                c3dSample.Mean);
+            gl.PointSize(10.0f);
+            gl.Begin(OpenGL.GL_POINTS);
+            gl.Vertex(center.X, center.Y, center.Z);
+            gl.End();
+        }
+        gl.Enable(OpenGL.GL_DEPTH_TEST);
     }
 
     private void DrawTeachingGridRectangle(

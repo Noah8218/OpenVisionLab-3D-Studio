@@ -96,6 +96,11 @@ internal static class C3DCompletenessGridGoldenVerification
         var exportedCompleteness = exportedRecord?.Steps?[0].CompletenessGrid;
         var runRecordHtml = File.ReadAllText(runRecordHtmlPath);
         var runRecordCsvLines = File.ReadAllLines(runRecordCsvPath);
+        var persistedDiagnosticsJson = JsonSerializer.Serialize(
+            policyGraph.SourceQuality?.GridDiagnostics,
+            jsonOptions);
+        var persistedDiagnosticsCsvField =
+            $"\"{persistedDiagnosticsJson.Replace("\"", "\"\"")}\"";
         var completenessCsvRows = runRecordCsvLines
             .Where(line => line.Contains(
                 "\"completenessCell\"",
@@ -414,6 +419,16 @@ internal static class C3DCompletenessGridGoldenVerification
                         "finite mean missing",
                         StringComparison.Ordinal)),
                 $"rows={completenessCsvRows.Length};lines={runRecordCsvLines.Length}"),
+            Check(
+                "csv-reuses-exact-persisted-grid-diagnostics-json",
+                policyGraph.SourceQuality?.GridDiagnostics is not null
+                && runRecordCsvLines[0].Contains(
+                    "sourceQualityGridDiagnostics",
+                    StringComparison.Ordinal)
+                && runRecordCsvLines.Skip(1).All(line => line.Contains(
+                    persistedDiagnosticsCsvField,
+                    StringComparison.Ordinal)),
+                $"diagnosticsLength={persistedDiagnosticsJson.Length};rows={runRecordCsvLines.Length - 1}"),
             Check(
                 "legacy-record-without-cell-evidence-remains-readable",
                 legacyRecord is { SchemaVersion: "1.8", Steps.Count: 1 }

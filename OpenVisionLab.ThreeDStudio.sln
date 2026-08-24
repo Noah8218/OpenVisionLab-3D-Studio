@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Core",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Data", "src\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj", "{65D23BDE-C47F-4324-83FD-F80341FB1E95}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Data.Tests", "tests\OpenVisionLab.ThreeD.Data.Tests\OpenVisionLab.ThreeD.Data.Tests.csproj", "{EBB61516-7F7F-42E9-932C-62986841C4B9}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Docking.Controls", "src\OpenVisionLab.ThreeD.Docking.Controls\OpenVisionLab.ThreeD.Docking.Controls.csproj", "{81D2882A-9AF0-4CA2-8991-91A215760D8D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVisionLab.ThreeD.Presentation", "src\OpenVisionLab.ThreeD.Presentation\OpenVisionLab.ThreeD.Presentation.csproj", "{C7A17F57-8D99-4FE1-8B91-F2E62C43A711}"
@@ -67,6 +69,18 @@ Global
 		{65D23BDE-C47F-4324-83FD-F80341FB1E95}.Release|x64.Build.0 = Release|Any CPU
 		{65D23BDE-C47F-4324-83FD-F80341FB1E95}.Release|x86.ActiveCfg = Release|Any CPU
 		{65D23BDE-C47F-4324-83FD-F80341FB1E95}.Release|x86.Build.0 = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|x64.Build.0 = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Debug|x86.Build.0 = Debug|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|x64.ActiveCfg = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|x64.Build.0 = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|x86.ActiveCfg = Release|Any CPU
+		{EBB61516-7F7F-42E9-932C-62986841C4B9}.Release|x86.Build.0 = Release|Any CPU
 		{81D2882A-9AF0-4CA2-8991-91A215760D8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{81D2882A-9AF0-4CA2-8991-91A215760D8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{81D2882A-9AF0-4CA2-8991-91A215760D8D}.Debug|x64.ActiveCfg = Debug|Any CPU

@@ -41,10 +41,12 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.SaveTeachingRecipeAsRequested += callbacks.SaveTeachingRecipeAs;
         viewModel.Workbench.OpenToolLibraryRequested += callbacks.OpenToolLibrary;
         viewModel.Workbench.SelectedStepSetupRequested += callbacks.SelectedStepSetup;
+        viewModel.Workbench.SourceQualityWorkspaceRequested += callbacks.SourceQualityWorkspace;
         viewModel.Workbench.OpenTeachingRecipeRequested += callbacks.OpenTeachingRecipe;
         viewModel.Workbench.RemoveSelectedStepRequested += callbacks.RemoveSelectedStep;
         viewModel.Workbench.OpenRecentTeachingRecipeRequested += callbacks.OpenRecentTeachingRecipe;
         viewModel.Workbench.LoadC3DSourceRequested += callbacks.LoadC3DSource;
+        viewModel.Workbench.Import3DDataRequested += callbacks.Import3DData;
         viewModel.Workbench.CancelC3DSourceLoadRequested += callbacks.CancelC3DSourceLoad;
         viewModel.Workbench.ToolLabRequested += callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested += callbacks.SelectValidationSetSources;
@@ -77,10 +79,12 @@ internal sealed class ShellRequestCoordinator : IDisposable
         viewModel.Workbench.SaveTeachingRecipeAsRequested -= callbacks.SaveTeachingRecipeAs;
         viewModel.Workbench.OpenToolLibraryRequested -= callbacks.OpenToolLibrary;
         viewModel.Workbench.SelectedStepSetupRequested -= callbacks.SelectedStepSetup;
+        viewModel.Workbench.SourceQualityWorkspaceRequested -= callbacks.SourceQualityWorkspace;
         viewModel.Workbench.OpenTeachingRecipeRequested -= callbacks.OpenTeachingRecipe;
         viewModel.Workbench.RemoveSelectedStepRequested -= callbacks.RemoveSelectedStep;
         viewModel.Workbench.OpenRecentTeachingRecipeRequested -= callbacks.OpenRecentTeachingRecipe;
         viewModel.Workbench.LoadC3DSourceRequested -= callbacks.LoadC3DSource;
+        viewModel.Workbench.Import3DDataRequested -= callbacks.Import3DData;
         viewModel.Workbench.CancelC3DSourceLoadRequested -= callbacks.CancelC3DSourceLoad;
         viewModel.Workbench.ToolLabRequested -= callbacks.ToolLab;
         viewModel.Workbench.SelectValidationSetSourcesRequested -= callbacks.SelectValidationSetSources;
@@ -108,10 +112,12 @@ internal sealed record ShellRequestCallbacks
     public required EventHandler SaveTeachingRecipeAs { get; init; }
     public required EventHandler OpenToolLibrary { get; init; }
     public required EventHandler SelectedStepSetup { get; init; }
+    public required EventHandler SourceQualityWorkspace { get; init; }
     public required EventHandler OpenTeachingRecipe { get; init; }
     public required EventHandler<ToolWorkbenchStepRemovalRequestEventArgs> RemoveSelectedStep { get; init; }
     public required EventHandler<ToolWorkbenchRecipePathRequestEventArgs> OpenRecentTeachingRecipe { get; init; }
     public required EventHandler LoadC3DSource { get; init; }
+    public required EventHandler Import3DData { get; init; }
     public required EventHandler CancelC3DSourceLoad { get; init; }
     public required EventHandler<ToolWorkbenchToolLabRequestEventArgs> ToolLab { get; init; }
     public required EventHandler SelectValidationSetSources { get; init; }

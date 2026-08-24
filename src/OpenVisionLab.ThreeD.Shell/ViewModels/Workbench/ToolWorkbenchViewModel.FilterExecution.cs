@@ -67,6 +67,7 @@ public sealed partial class ToolWorkbenchViewModel
             : IsSelectedStepFilter ? isFilterPreviewRunning
             : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
             : IsSelectedStepLevelSurface ? IsLevelSurfacePreviewRunning
+            : IsSelectedStepRoiCrop ? IsRoiCropPreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
             : IsSelectedStepTwoPointLine ? IsTwoPointLinePreviewRunning
             : IsSelectedStepThreePointPlane ? IsThreePointPlanePreviewRunning
@@ -153,6 +154,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? PreviewSelectedRemoveOutlierPixelsAsync()
         : IsSelectedStepLevelSurface
         ? PreviewSelectedLevelSurfaceAsync()
+        : IsSelectedStepRoiCrop
+        ? PreviewSelectedRoiCropAsync()
         : IsSelectedStepRegridHeightField
         ? PreviewSelectedRegridHeightFieldAsync()
         : IsSelectedStepXYZAffineApply
@@ -177,6 +180,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? CanPreviewSelectedRemoveOutlierPixels()
         : IsSelectedStepLevelSurface
         ? CanPreviewSelectedLevelSurface()
+        : IsSelectedStepRoiCrop
+        ? CanPreviewSelectedRoiCrop()
         : IsSelectedStepRegridHeightField
         ? CanPreviewSelectedRegridHeightField()
         : IsSelectedStepXYZAffineApply
@@ -211,6 +216,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepLevelSurface)
         {
             PublishSelectedLevelSurface();
+        }
+        else if (IsSelectedStepRoiCrop)
+        {
+            PublishSelectedRoiCrop();
         }
         else if (IsSelectedStepRegridHeightField)
         {
@@ -265,6 +274,8 @@ public sealed partial class ToolWorkbenchViewModel
         ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
         : IsSelectedStepLevelSurface
         ? HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished
+        : IsSelectedStepRoiCrop
+        ? HasCurrentRoiCropPreview && !IsRoiCropPreviewPublished
         : IsSelectedStepRegridHeightField
         ? CanPublishRegridHeightFieldPreview
         : IsSelectedStepXYZAffineApply
@@ -302,6 +313,10 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepLevelSurface)
         {
             CancelLevelSurfacePreview();
+        }
+        else if (IsSelectedStepRoiCrop)
+        {
+            CancelRoiCropPreview();
         }
         else if (IsSelectedStepRegridHeightField)
         {

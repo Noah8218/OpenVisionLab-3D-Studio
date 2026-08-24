@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -17,6 +18,9 @@ internal static class C3DLevelSurfaceGoldenVerification
             "source.tilted-level-surface",
             "raw-height",
             "frame.c3d-grid-index");
+        var sourceValuesBefore = fixture.Values.ToArray();
+        var sourceBytesBefore = File.ReadAllBytes(fixturePath);
+        var sourceSha256Before = Convert.ToHexString(SHA256.HashData(sourceBytesBefore));
         var selections = CreateSelections(fixture);
         var direct = Evaluate(fixture, selections, 0.1);
         var repeated = Evaluate(fixture, selections, 0.1);
@@ -51,10 +55,12 @@ internal static class C3DLevelSurfaceGoldenVerification
                 && direct.Output?.MissingCount == fixture.MissingCount,
                 $"grid={direct.Output?.Width}x{direct.Output?.Height};valid={direct.Output?.ValidCount};missing={direct.Output?.MissingCount}"),
             Check("source-immutable",
-                direct.Output?.RootSourceSha256 == fixture.ContentSha256
+                fixture.ContentSha256 == sourceSha256Before
+                && direct.Output?.RootSourceSha256 == fixture.ContentSha256
                 && fixture.ValidCount == 191
-                && fixture.MissingCount == 1,
-                $"source={fixture.ContentSha256};root={direct.Output?.RootSourceSha256}"),
+                && fixture.MissingCount == 1
+                && fixture.Values.Span.SequenceEqual(sourceValuesBefore),
+                $"source={fixture.ContentSha256};root={direct.Output?.RootSourceSha256};valuesUnchanged={fixture.Values.Span.SequenceEqual(sourceValuesBefore)}"),
             Check("deterministic-output-and-transform",
                 direct.Output?.ContentSha256 == repeated.Output?.ContentSha256
                 && direct.Transform?.ContentSha256 == repeated.Transform?.ContentSha256,
@@ -68,11 +74,33 @@ internal static class C3DLevelSurfaceGoldenVerification
             ToolRecipeDocumentStore.Load(recipePath),
             "step.level-surface.01",
             directory);
-        cases.Add(Check("recipe-adapter-parity",
+        var outputPath = Path.Combine(directory, "level-surface-output.c3d");
+        adapter.Output?.SaveC3D(outputPath);
+        var saved = File.Exists(outputPath)
+            ? C3DHeightFieldSnapshot.LoadIdentified(
+                outputPath,
+                "saved.level-surface",
+                fixture.Unit,
+                fixture.FrameId)
+            : null;
+        var sourceBytesAfter = File.ReadAllBytes(fixturePath);
+        var sourceSha256After = Convert.ToHexString(SHA256.HashData(sourceBytesAfter));
+        var sourceFileUnchanged = sourceBytesBefore.LongLength == sourceBytesAfter.LongLength
+            && string.Equals(sourceSha256Before, sourceSha256After, StringComparison.Ordinal)
+            && sourceBytesBefore.SequenceEqual(sourceBytesAfter);
+        cases.Add(Check("recipe-adapter-parity-and-source-file-immutability",
             adapter.Result.Status == ResultStatus.Pass
-            && adapter.Output?.ContentSha256 == direct.Output?.ContentSha256
-            && adapter.Transform?.ContentSha256 == direct.Transform?.ContentSha256,
-            $"status={adapter.Result.Status};output={adapter.Output?.ContentSha256};transform={adapter.Transform?.ContentSha256}"));
+            && adapter.Output is { } adapterOutput
+            && adapterOutput.ContentSha256 == direct.Output?.ContentSha256
+            && adapter.Transform?.ContentSha256 == direct.Transform?.ContentSha256
+            && adapterOutput.RootSourceSha256 == sourceSha256Before
+            && adapterOutput.ContentSha256.Length == 64
+            && adapterOutput.IsDerived
+            && !string.Equals(adapterOutput.EntityId, fixture.EntityId, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(fixturePath), StringComparison.OrdinalIgnoreCase)
+            && saved?.ContentSha256 == adapterOutput.ContentSha256
+            && sourceFileUnchanged,
+            $"status={adapter.Result.Status};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={adapter.Output?.ContentSha256};outputEntity={adapter.Output?.EntityId};outputPath={outputPath};isDerived={adapter.Output?.IsDerived};root={adapter.Output?.RootSourceSha256};transform={adapter.Transform?.ContentSha256}"));
 
         var passed = cases.Count(item => item.Passed);
         var lines = new List<string>
@@ -80,8 +108,9 @@ internal static class C3DLevelSurfaceGoldenVerification
             $"C3DLevelSurfaceGoldenVerification|{(passed == cases.Count ? "PASS" : "FAIL")}|cases={cases.Count}|passed={passed}|failed={cases.Count - passed}",
             $"Contract|fit={C3DLevelingTransform.ReferenceFitPolicy}|level={C3DLevelingTransform.LevelingPolicy}|missing={C3DLevelingTransform.MissingValuePolicy}|grid={C3DLevelingTransform.GridPolicy}|sourceMutation=false",
             $"Fixture|path={fixturePath}|recipe={recipePath}|width={fixture.Width}|height={fixture.Height}|valid={fixture.ValidCount}|missing={fixture.MissingCount}",
+            $"SourceIdentity|path={fixturePath}|beforeBytes={sourceBytesBefore.LongLength}|afterBytes={sourceBytesAfter.LongLength}|beforeSha256={sourceSha256Before}|afterSha256={sourceSha256After}|unchanged={sourceFileUnchanged}",
             $"Input|slopeX={direct.Transform?.FittedSlopeX:R}|slopeZ={direct.Transform?.FittedSlopeZ:R}|referenceRms={direct.Transform?.ReferenceResidualRms:R}",
-            $"Output|sha256={direct.Output?.ContentSha256}|slopeX={direct.OutputReferenceSlopeX:R}|slopeZ={direct.OutputReferenceSlopeZ:R}|rootSourceSha256={direct.Output?.RootSourceSha256}",
+            $"Output|path={outputPath}|entity={direct.Output?.EntityId}|isDerived={direct.Output?.IsDerived}|sha256={direct.Output?.ContentSha256}|slopeX={direct.OutputReferenceSlopeX:R}|slopeZ={direct.OutputReferenceSlopeZ:R}|rootSourceSha256={direct.Output?.RootSourceSha256}",
             $"Transform|sha256={direct.Transform?.ContentSha256}|entity={direct.Transform?.OutputEntityId}"
         };
         lines.AddRange(cases.Select(item => $"{item.Name}|{(item.Passed ? "PASS" : "FAIL")}|{item.Evidence}"));

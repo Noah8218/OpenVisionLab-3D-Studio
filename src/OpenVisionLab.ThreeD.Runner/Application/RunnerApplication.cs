@@ -463,7 +463,7 @@ internal static class RunnerApplication
                     $"Recipe|path={fullRecipePath}|schema={document.SchemaVersion}|name={CleanReportValue(document.Name)}",
                     $"Source|path={sourcePath}|sha256={execution.SourceContentSha256}|unit={document.Source.Unit}|frame={document.Source.FrameId}",
                     execution.SourceQuality is { } sourceQuality
-                        ? $"SourceQuality|sha256={SourceQualityReportContentIdentity.CalculateSha256(sourceQuality)}|grid={sourceQuality.Grid.Width}x{sourceQuality.Grid.Height}|valid={sourceQuality.Coverage.ValidSampleCount}|missing={sourceQuality.Coverage.MissingSampleCount}|validRatio={sourceQuality.Coverage.ValidRatio:R}|missingRatio={sourceQuality.Coverage.MissingRatio:R}|maskSha256={sourceQuality.Coverage.InvalidCellMask.Sha256}|frame={sourceQuality.Coordinates.FrameId}|unit={sourceQuality.Coordinates.Unit}|provenance={CleanReportValue(sourceQuality.Provenance)}|channels={string.Join(";", sourceQuality.Channels.Select(channel => $"{channel.Channel}:{channel.State}:{CleanReportValue(channel.Evidence)}"))}"
+                        ? $"SourceQuality|sha256={SourceQualityReportContentIdentity.CalculateSha256(sourceQuality)}|grid={sourceQuality.Grid.Width}x{sourceQuality.Grid.Height}|valid={sourceQuality.Coverage.ValidSampleCount}|missing={sourceQuality.Coverage.MissingSampleCount}|validRatio={sourceQuality.Coverage.ValidRatio:R}|missingRatio={sourceQuality.Coverage.MissingRatio:R}|maskSha256={sourceQuality.Coverage.InvalidCellMask.Sha256}|frame={sourceQuality.Coordinates.FrameId}|unit={sourceQuality.Coordinates.Unit}|provenance={CleanReportValue(sourceQuality.Provenance)}|channels={string.Join(";", sourceQuality.Channels.Select(channel => $"{channel.Channel}:{channel.State}:{CleanReportValue(channel.Evidence)}"))}|gridDiagnostics={FormatSourceQualityGridDiagnostics(sourceQuality)}"
                         : "SourceQuality|Unavailable|The ordered source could not be analyzed.",
                     $"Message|{CleanReportValue(execution.Message)}",
                     .. execution.Steps.Select(step =>
@@ -511,6 +511,12 @@ internal static class RunnerApplication
 
     static string CleanReportValue(string value) =>
         value.Replace('|', '/').Replace('\r', ' ').Replace('\n', ' ');
+
+    static string FormatSourceQualityGridDiagnostics(
+        SourceQualityReport report) =>
+        report.GridDiagnostics is { } diagnostics
+            ? JsonSerializer.Serialize(diagnostics)
+            : string.Empty;
 
     internal static int RunLazProbe(string lazPath, string reportPath, int maxSampledPoints)
     {

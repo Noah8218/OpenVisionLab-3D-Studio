@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
@@ -13,6 +14,11 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
         Directory.CreateDirectory(directory);
 
         var fixture = CreateFixture();
+        var sourceValuesBefore = fixture.Values.ToArray();
+        var fixturePath = Path.Combine(directory, "known-outlier-fixture.c3d");
+        fixture.SaveC3D(fixturePath);
+        var sourceBytesBefore = File.ReadAllBytes(fixturePath);
+        var sourceSha256Before = Convert.ToHexString(SHA256.HashData(sourceBytesBefore));
         var direct = Evaluate(fixture);
         var repeated = Evaluate(fixture);
         var cases = new List<(string Name, bool Passed, string Evidence)>
@@ -35,10 +41,12 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
                 $"beforeValid={fixture.ValidCount};beforeMissing={fixture.MissingCount};afterValid={direct.Output?.ValidCount};afterMissing={direct.Output?.MissingCount}"),
             Check(
                 "source-immutable",
-                fixture.ContentSha256 == direct.Output?.RootSourceSha256
+                fixture.ContentSha256 == sourceSha256Before
+                && fixture.ContentSha256 == direct.Output?.RootSourceSha256
                 && fixture.ValidCount == 119
-                && fixture.MissingCount == 1,
-                $"source={fixture.ContentSha256};root={direct.Output?.RootSourceSha256}"),
+                && fixture.MissingCount == 1
+                && fixture.Values.Span.SequenceEqual(sourceValuesBefore),
+                $"source={fixture.ContentSha256};root={direct.Output?.RootSourceSha256};valuesUnchanged={fixture.Values.Span.SequenceEqual(sourceValuesBefore)}"),
             Check(
                 "deterministic-output-and-mask",
                 direct.Output?.ContentSha256 == repeated.Output?.ContentSha256
@@ -49,8 +57,6 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
             VerifyInvalidThreshold()
         };
 
-        var fixturePath = Path.Combine(directory, "known-outlier-fixture.c3d");
-        fixture.SaveC3D(fixturePath);
         var recipe = CreateRecipe(fixture, Path.GetFileName(fixturePath));
         var recipePath = Path.Combine(
             directory,
@@ -60,13 +66,35 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
             ToolRecipeDocumentStore.Load(recipePath),
             "step.remove-outliers.01",
             directory);
+        var outputPath = Path.Combine(directory, "remove-outliers-output.c3d");
+        adapter.Output?.SaveC3D(outputPath);
+        var saved = File.Exists(outputPath)
+            ? C3DHeightFieldSnapshot.LoadIdentified(
+                outputPath,
+                "saved.remove-outliers",
+                fixture.Unit,
+                fixture.FrameId)
+            : null;
+        var sourceBytesAfter = File.ReadAllBytes(fixturePath);
+        var sourceSha256After = Convert.ToHexString(SHA256.HashData(sourceBytesAfter));
+        var sourceFileUnchanged = sourceBytesBefore.LongLength == sourceBytesAfter.LongLength
+            && string.Equals(sourceSha256Before, sourceSha256After, StringComparison.Ordinal)
+            && sourceBytesBefore.SequenceEqual(sourceBytesAfter);
         cases.Add(
             Check(
-                "recipe-adapter-parity",
+                "recipe-adapter-parity-and-source-file-immutability",
                 adapter.Result.Status == ResultStatus.Pass
-                && adapter.Output?.ContentSha256 == direct.Output?.ContentSha256
-                && adapter.OutlierMask?.Sha256 == direct.OutlierMask?.Sha256,
-                $"status={adapter.Result.Status};output={adapter.Output?.ContentSha256};mask={adapter.OutlierMask?.Sha256}"));
+                && adapter.Output is { } adapterOutput
+                && adapterOutput.ContentSha256 == direct.Output?.ContentSha256
+                && adapter.OutlierMask?.Sha256 == direct.OutlierMask?.Sha256
+                && adapterOutput.RootSourceSha256 == sourceSha256Before
+                && adapterOutput.ContentSha256.Length == 64
+                && adapterOutput.IsDerived
+                && !string.Equals(adapterOutput.EntityId, fixture.EntityId, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(fixturePath), StringComparison.OrdinalIgnoreCase)
+                && saved?.ContentSha256 == adapterOutput.ContentSha256
+                && sourceFileUnchanged,
+                $"status={adapter.Result.Status};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={adapter.Output?.ContentSha256};outputEntity={adapter.Output?.EntityId};outputPath={outputPath};isDerived={adapter.Output?.IsDerived};root={adapter.Output?.RootSourceSha256};mask={adapter.OutlierMask?.Sha256}"));
 
         var passed = cases.Count(item => item.Passed);
         var lines = new List<string>
@@ -74,8 +102,9 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
             $"C3DRemoveOutlierPixelsGoldenVerification|{(passed == cases.Count ? "PASS" : "FAIL")}|cases={cases.Count}|passed={passed}|failed={cases.Count - passed}",
             "Contract|rule=LocalMedianAbsoluteDeviation|comparison=strict-greater-than|center=excluded|missing=PreserveMask|boundary=AvailableNeighbors|outlier=SetMissing|sourceMutation=false",
             $"Fixture|path={fixturePath}|recipe={recipePath}|width={fixture.Width}|height={fixture.Height}|valid={fixture.ValidCount}|missing={fixture.MissingCount}",
+            $"SourceIdentity|path={fixturePath}|beforeBytes={sourceBytesBefore.LongLength}|afterBytes={sourceBytesAfter.LongLength}|beforeSha256={sourceSha256Before}|afterSha256={sourceSha256After}|unchanged={sourceFileUnchanged}",
             $"Expected|removed=3|outputValid={fixture.ValidCount - 3}|outputMissing={fixture.MissingCount + 3}",
-            $"Output|sha256={direct.Output?.ContentSha256}|rootSourceSha256={direct.Output?.RootSourceSha256}",
+            $"Output|path={outputPath}|entity={direct.Output?.EntityId}|isDerived={direct.Output?.IsDerived}|sha256={direct.Output?.ContentSha256}|rootSourceSha256={direct.Output?.RootSourceSha256}",
             $"Mask|sha256={direct.OutlierMask?.Sha256}|count={direct.OutlierMask?.OutlierCellCount}|encoding={C3DOutlierCellMap.Encoding}"
         };
         lines.AddRange(

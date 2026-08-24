@@ -39,7 +39,7 @@ public sealed record ToolRecipeHeightMeasurementEvaluation(
 /// <summary>
 /// Typed adapters that let scalar and plane-relative measurements participate as ordinary steps
 /// in the canonical tool recipe. The first input can be either the verified raw
-/// C3D HeightField or one exact Published TransformedHeightField. The ROI must
+/// C3D HeightField or one exact Published HeightField artifact. The ROI must
 /// be bound to that same input identity.
 /// </summary>
 public static class ToolRecipeHeightMeasurementExecution
@@ -71,9 +71,18 @@ public static class ToolRecipeHeightMeasurementExecution
         string stepId,
         C3DTransformedHeightField? publishedTransformedHeightField,
         string? recipeDirectory = null,
+        CancellationToken cancellationToken = default) =>
+        Execute(document, stepId, null, publishedTransformedHeightField, recipeDirectory, cancellationToken);
+
+    public static ToolRecipeHeightMeasurementEvaluation Execute(
+        ToolRecipeDocument document,
+        string stepId,
+        C3DHeightFieldSnapshot? publishedHeightField,
+        C3DTransformedHeightField? publishedTransformedHeightField,
+        string? recipeDirectory = null,
         CancellationToken cancellationToken = default)
     {
-        if (!TryPrepare(document, stepId, publishedTransformedHeightField, recipeDirectory, out var prepared, out var message))
+        if (!TryPrepare(document, stepId, publishedHeightField, publishedTransformedHeightField, recipeDirectory, out var prepared, out var message))
         {
             var error = new ToolResult("Height measurement", ResultStatus.Error, message, TimeSpan.Zero, [], []);
             return new ToolRecipeHeightMeasurementEvaluation(error, null);
@@ -370,6 +379,16 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DTransformedHeightField? publishedTransformedHeightField,
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
+        out string message) =>
+        TryPrepare(document, stepId, null, publishedTransformedHeightField, recipeDirectory, out prepared, out message);
+
+    public static bool TryPrepare(
+        ToolRecipeDocument document,
+        string stepId,
+        C3DHeightFieldSnapshot? publishedHeightField,
+        C3DTransformedHeightField? publishedTransformedHeightField,
+        string? recipeDirectory,
+        out PreparedHeightMeasurement? prepared,
         out string message)
     {
         prepared = null;
@@ -448,10 +467,35 @@ public static class ToolRecipeHeightMeasurementExecution
                 return true;
             }
 
+            if (publishedHeightField is not null
+                && string.Equals(step.InputEntityIds[0], publishedHeightField.EntityId, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var selection in selections)
+                {
+                    var binding = ToolRecipeSelectionSourceBindingVerifier.Verify(publishedHeightField, selection.SourceBinding);
+                    if (!binding.IsCurrent) throw new InvalidDataException(binding.Message);
+                }
+                prepared = new PreparedHeightMeasurement(
+                    step,
+                    selections,
+                    publishedHeightField.EntityId,
+                    publishedHeightField.ContentSha256,
+                    publishedHeightField.Unit,
+                    publishedHeightField.FrameId,
+                    publishedHeightField.Height,
+                    publishedHeightField.Width,
+                    publishedHeightField.Values.ToArray(),
+                    null,
+                    twoRoi ? rois[0] : null,
+                    pointPair ? null : rois[^1]);
+                message = $"{step.ToolName} v1 is ready from the exact Published HeightField and {selections.Length} artifact-owned selection input(s).";
+                return true;
+            }
+
             if (publishedTransformedHeightField is null
                 || !string.Equals(step.InputEntityIds[0], publishedTransformedHeightField.OutputEntityId, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidDataException($"{step.ToolName} v1 is waiting for its exact Published TransformedHeightField first input.");
+                throw new InvalidDataException($"{step.ToolName} v1 is waiting for its exact Published compatible HeightField first input.");
             }
             foreach (var selection in selections)
             {

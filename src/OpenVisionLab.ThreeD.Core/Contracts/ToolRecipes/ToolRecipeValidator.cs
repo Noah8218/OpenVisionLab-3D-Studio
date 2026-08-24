@@ -44,6 +44,10 @@ public static class ToolRecipeValidator
             document.SchemaVersion,
             ToolRecipeDocument.OrientedBox3DSchemaVersion,
             StringComparison.Ordinal);
+        var isDualRoiRoutingSchema = string.Equals(
+            document.SchemaVersion,
+            ToolRecipeDocument.DualRoiRoutingSchemaVersion,
+            StringComparison.Ordinal);
         var isCurrentSchema = string.Equals(
             document.SchemaVersion,
             ToolRecipeDocument.CurrentSchemaVersion,
@@ -53,6 +57,7 @@ public static class ToolRecipeValidator
             && !isGenericMeasurementSchema
             && !isArtifactOwnedSelectionSchema
             && !isOrientedBox3DSchema
+            && !isDualRoiRoutingSchema
             && !isCurrentSchema)
         {
             errors.Add($"Unsupported teaching recipe schema: {Clean(document.SchemaVersion)}.");
@@ -148,6 +153,7 @@ public static class ToolRecipeValidator
                 isGenericMeasurementSchema || ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion),
                 ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion),
                 ToolRecipeDocument.SupportsOrientedBox3D(document.SchemaVersion),
+                ToolRecipeDocument.SupportsGridCircle(document.SchemaVersion),
                 errors,
                 warnings,
                 correspondenceRows);
@@ -239,6 +245,17 @@ public static class ToolRecipeValidator
                 label,
                 errors);
 
+            if (validateStepContract)
+            {
+                foreach (var selectionError in ToolRecipeSelectionContract.Validate(
+                             step,
+                             selections,
+                             requireAllRoles: !allowIncompleteSteps))
+                {
+                    errors.Add($"{label} {selectionError}");
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(step.OutputEntityId))
             {
                 errors.Add($"{label} '{Clean(step.ToolName)}' output entity ID is required.");
@@ -295,6 +312,21 @@ public static class ToolRecipeValidator
                     label,
                     errors,
                     warnings);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "roi-crop",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateRoiCropStep(
+                    step,
+                    inputs,
+                    source,
+                    selections,
+                    label,
+                    errors);
             }
 
             if (string.Equals(step.ToolId, "xyz-affine-transform", StringComparison.OrdinalIgnoreCase))
@@ -910,6 +942,60 @@ public static class ToolRecipeValidator
         (preserveRepairableDraft ? warnings : errors).Add(message);
     }
 
+    private static void ValidateRoiCropStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyList<ToolRecipeSelection> selections,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 2
+            || !string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(
+                $"{label} ROI / Crop v1 requires the recipe C3D source followed by one GridRectangle selection.");
+        }
+        else
+        {
+            var selection = selections.SingleOrDefault(candidate =>
+                string.Equals(candidate.Id, inputs[1], StringComparison.OrdinalIgnoreCase));
+            if (selection?.GridRectangle is null
+                || !string.Equals(
+                    selection.Kind,
+                    ToolRecipeSelectionKinds.GridRectangle,
+                    StringComparison.Ordinal))
+            {
+                errors.Add(
+                    $"{label} ROI / Crop input '{inputs[1]}' must be a recipe-owned GridRectangle.");
+            }
+        }
+
+        if (!string.Equals(source.Format, "C3D", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(source.Unit, "raw-height", StringComparison.Ordinal)
+            || source.ByteLength is null
+            || source.ContentSha256 is null
+            || source.GridWidth is null
+            || source.GridHeight is null)
+        {
+            errors.Add(
+                $"{label} ROI / Crop v1 requires a fully identified C3D raw-height source.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        if (parameters.Count != 2
+            || parameters.Count(parameter => parameter is not null
+                && parameter.Name == "ROI"
+                && parameter.Value == "Select in Viewer") != 1
+            || parameters.Count(parameter => parameter is not null
+                && parameter.Name == "Output frame"
+                && parameter.Value == "Keep source frame") != 1)
+        {
+            errors.Add(
+                $"{label} ROI / Crop v1 requires its fixed ROI and source-frame policies without unknown parameters.");
+        }
+    }
+
     private static void ValidateHeightMeasurementStep(
         ToolRecipeStep step,
         IReadOnlyList<string> inputs,
@@ -964,10 +1050,13 @@ public static class ToolRecipeValidator
                     errors.Add($"{label} {Clean(step.ToolName)} raw C3D input requires a source-owned C3D selection.");
                 }
             }
-            else if (!string.Equals(selection!.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal)
+            else if (!ToolRecipePrimaryInputContract.TryGetRequiredContract(step.ToolId, out var requiredContract)
+                || (string.Equals(requiredContract, "TransformedHeightField", StringComparison.Ordinal)
+                    ? !string.Equals(selection!.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal)
+                    : selection!.SourceBinding.Format is not ("HeightField" or "TransformedHeightField"))
                 || !string.Equals(selection.SourceBinding.OwnerEntityId, inputs[0], StringComparison.OrdinalIgnoreCase))
             {
-                errors.Add($"{label} {Clean(step.ToolName)} transformed input requires selections owned by the first-input TransformedHeightField.");
+                errors.Add($"{label} {Clean(step.ToolName)} artifact input requires selections owned by its compatible first-input HeightField.");
             }
         }
         var expected = step.ToolId switch
@@ -1013,6 +1102,7 @@ public static class ToolRecipeValidator
         bool hasCorrespondenceDescriptor,
         bool supportsArtifactOwnedSelections,
         bool supportsOrientedBox3D,
+        bool supportsGridCircle,
         List<string> errors,
         List<string> warnings,
         List<(string SelectionId, string SelectionLabel, ToolRecipeLandmarkCorrespondence Row)> correspondenceRows)
@@ -1038,10 +1128,10 @@ public static class ToolRecipeValidator
         }
 
         var isRawSourceBinding = string.Equals(binding.Format, "C3D", StringComparison.OrdinalIgnoreCase);
-        var isArtifactBinding = string.Equals(binding.Format, "TransformedHeightField", StringComparison.Ordinal);
+        var isArtifactBinding = binding.Format is "HeightField" or "TransformedHeightField";
         if (!isRawSourceBinding && !isArtifactBinding)
         {
-            errors.Add($"{label} binding format must be C3D or TransformedHeightField.");
+            errors.Add($"{label} binding format must be C3D, HeightField, or TransformedHeightField.");
         }
         if (isRawSourceBinding)
         {
@@ -1070,9 +1160,10 @@ public static class ToolRecipeValidator
             if (selection.Kind is not (
                     ToolRecipeSelectionKinds.GridRectangle
                     or ToolRecipeSelectionKinds.PointSet
-                    or ToolRecipeSelectionKinds.OrientedBox3D))
+                    or ToolRecipeSelectionKinds.OrientedBox3D
+                    or ToolRecipeSelectionKinds.GridCircle))
             {
-                errors.Add($"{label} TransformedHeightField binding supports GridRectangle, PointSet, or OrientedBox3D geometry only.");
+                errors.Add($"{label} artifact HeightField binding supports GridRectangle, GridCircle, PointSet, or OrientedBox3D geometry only.");
             }
             if (string.IsNullOrWhiteSpace(binding.OwnerEntityId)) errors.Add($"{label} artifact owner entity ID is required.");
             if (!IsSha256(binding.RootSourceContentSha256)) errors.Add($"{label} artifact root-source SHA-256 is required.");
@@ -1084,7 +1175,7 @@ public static class ToolRecipeValidator
             if (string.IsNullOrWhiteSpace(binding.FrameId)) errors.Add($"{label} artifact frame ID is required.");
             if (!string.Equals(selection.FrameId, binding.FrameId, StringComparison.Ordinal))
             {
-                errors.Add($"{label} frame must match the owned TransformedHeightField frame.");
+                errors.Add($"{label} frame must match the owned artifact HeightField frame.");
             }
         }
 
@@ -1122,6 +1213,12 @@ public static class ToolRecipeValidator
             return;
         }
 
+        if (string.Equals(selection.Kind, ToolRecipeSelectionKinds.GridCircle, StringComparison.Ordinal))
+        {
+            ValidateGridCircle(selection, binding, label, supportsGridCircle, errors);
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(selection.Kind))
         {
             errors.Add($"{label} kind '{selection.Kind.Trim()}' is not supported.");
@@ -1136,9 +1233,10 @@ public static class ToolRecipeValidator
     {
         if (HasItems(selection.Points)
             || HasItems(selection.Rows)
-            || selection.OrientedBox3D is not null)
+            || selection.OrientedBox3D is not null
+            || selection.GridCircle is not null)
         {
-            errors.Add($"{label} grid rectangle cannot contain point-set, correspondence, or oriented-box payloads.");
+            errors.Add($"{label} grid rectangle cannot contain circle, point-set, correspondence, or oriented-box payloads.");
         }
 
         var rectangle = selection.GridRectangle;
@@ -1173,9 +1271,10 @@ public static class ToolRecipeValidator
     {
         if (selection.GridRectangle is not null
             || HasItems(selection.Rows)
-            || selection.OrientedBox3D is not null)
+            || selection.OrientedBox3D is not null
+            || selection.GridCircle is not null)
         {
-            errors.Add($"{label} point set cannot contain rectangle, correspondence, or oriented-box payloads.");
+            errors.Add($"{label} point set cannot contain rectangle, circle, correspondence, or oriented-box payloads.");
         }
 
         var points = selection.Points ?? [];
@@ -1256,13 +1355,46 @@ public static class ToolRecipeValidator
         if (selection.GridRectangle is not null
             || HasItems(selection.Points)
             || HasItems(selection.Rows)
-            || selection.CorrespondenceDescriptor is not null)
+            || selection.CorrespondenceDescriptor is not null
+            || selection.GridCircle is not null)
         {
             errors.Add(
-                $"{label} oriented box cannot contain rectangle, point-set, or correspondence payloads.");
+                $"{label} oriented box cannot contain rectangle, circle, point-set, or correspondence payloads.");
         }
 
         foreach (var geometryError in ToolRecipeOrientedBox3DGeometry.Validate(selection.OrientedBox3D))
+        {
+            errors.Add($"{label} {geometryError}.");
+        }
+    }
+
+    private static void ValidateGridCircle(
+        ToolRecipeSelection selection,
+        ToolRecipeSelectionSourceBinding binding,
+        string label,
+        bool supportsGridCircle,
+        List<string> errors)
+    {
+        if (!supportsGridCircle)
+        {
+            errors.Add(
+                $"{label} GridCircle requires teaching recipe schema {ToolRecipeDocument.GridCircleSchemaVersion} or newer.");
+        }
+
+        if (selection.GridRectangle is not null
+            || HasItems(selection.Points)
+            || HasItems(selection.Rows)
+            || selection.CorrespondenceDescriptor is not null
+            || selection.OrientedBox3D is not null)
+        {
+            errors.Add(
+                $"{label} grid circle cannot contain rectangle, point-set, correspondence, or oriented-box payloads.");
+        }
+
+        foreach (var geometryError in ToolRecipeGridCircleGeometry.Validate(
+                     selection.GridCircle,
+                     binding.GridWidth,
+                     binding.GridHeight))
         {
             errors.Add($"{label} {geometryError}.");
         }
@@ -1278,9 +1410,10 @@ public static class ToolRecipeValidator
     {
         if (selection.GridRectangle is not null
             || HasItems(selection.Points)
-            || selection.OrientedBox3D is not null)
+            || selection.OrientedBox3D is not null
+            || selection.GridCircle is not null)
         {
-            errors.Add($"{label} correspondence set cannot contain rectangle, point-set, or oriented-box payloads.");
+            errors.Add($"{label} correspondence set cannot contain rectangle, circle, point-set, or oriented-box payloads.");
         }
 
         var descriptor = selection.CorrespondenceDescriptor;

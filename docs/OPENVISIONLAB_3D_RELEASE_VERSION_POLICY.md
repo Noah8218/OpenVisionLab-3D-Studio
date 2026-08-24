@@ -1,6 +1,6 @@
 # OpenVisionLab 3D Release And Version Policy
 
-Updated: 2026-08-18
+Updated: 2026-08-24
 
 ## Scope
 
@@ -18,7 +18,7 @@ repository has no release or tag for that candidate.
 | Viewer Host API | `Directory.Build.props` / `OpenVisionLabViewerHostApiVersion` | `1.0` |
 | Viewer bundle manifest schema | `scripts/build-viewer-dll.ps1` | `1.0` |
 | Durable Run Record schema | `OpenVisionLab.ThreeD.Runner.RunRecordWriter` and `ShellOrderedRunRecordWriter` | `1.9` current ordered/Surface Match output; `1.8` Source Quality predecessor and older optional-field forms remain readable; `1.2` single-step output retained |
-| Recipe schema | `ToolRecipeDocument.CurrentSchemaVersion` and each recipe's `schemaVersion` | Generic `ToolRecipeDocument` currently `1.5`; earlier `1.0` through `1.4` forms remain explicitly bounded |
+| Recipe schema | `ToolRecipeDocument.CurrentSchemaVersion` and each recipe's `schemaVersion` | Generic `ToolRecipeDocument` currently `1.6` for `GridCircle`; earlier `1.0` through `1.5` forms remain explicitly bounded |
 
 Do not duplicate a product or Host API version in another source file. Generated assemblies, Viewer manifests, and Run Records consume the central MSBuild values.
 

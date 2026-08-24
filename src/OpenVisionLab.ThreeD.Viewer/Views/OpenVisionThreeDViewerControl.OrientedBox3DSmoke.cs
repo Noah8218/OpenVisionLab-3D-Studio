@@ -27,6 +27,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         var hasOriginalPointer = false;
         Window? hostWindow = null;
         var originalTopmost = false;
+        var hoverRecovery = default(OrientedBoxHoverRecoverySmokeResult);
 
         pointerInputMouseDownCount = 0;
         pointerInputMouseMoveCount = 0;
@@ -58,59 +59,75 @@ public sealed partial class OpenVisionThreeDViewerControl
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
             await Task.Delay(180);
             var perspectiveHandles = AreTeachingOrientedBoxHandlesAccessible();
-            var movePassed = await RunTeachingOrientedBoxDragAsync(
+            hoverRecovery = await RunTeachingOrientedBoxHoverRecoveryAsync(
+                hostWindow);
+            var moveResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.Move,
                 static (_, start) => start + new Vector(28, -18),
-                (before, after) => before.Center != after.Center);
-            var resizeXPassed = await RunTeachingOrientedBoxDragAsync(
+                (before, after) => before.Center != after.Center,
+                "perspective-move",
+                lines);
+            var resizeXResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeXPositive,
                 ScaleHandleOutward,
                 (before, after) =>
-                    after.HalfExtents.X > before.HalfExtents.X);
-            var heightPassed = await RunTeachingOrientedBoxDragAsync(
+                    after.HalfExtents.X > before.HalfExtents.X,
+                "perspective-resize-x",
+                lines);
+            var heightResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeYPositive,
                 ScaleHandleOutward,
                 (before, after) =>
-                    after.HalfExtents.Y > before.HalfExtents.Y);
-            var resizeZPassed = await RunTeachingOrientedBoxDragAsync(
+                    after.HalfExtents.Y > before.HalfExtents.Y,
+                "perspective-resize-y",
+                lines);
+            var resizeZResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeZPositive,
                 ScaleHandleOutward,
                 (before, after) =>
-                    after.HalfExtents.Z > before.HalfExtents.Z);
-            var rotatePassed = await RunTeachingOrientedBoxDragAsync(
+                    after.HalfExtents.Z > before.HalfExtents.Z,
+                "perspective-resize-z",
+                lines);
+            var rotateResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.RotateY,
                 RotateHandleClockwise,
                 (before, after) =>
                     before.AxisX != after.AxisX
                     && before.AxisZ != after.AxisZ
-                    && ToolRecipeOrientedBox3DGeometry.Validate(after).Count == 0);
+                    && ToolRecipeOrientedBox3DGeometry.Validate(after).Count == 0,
+                "perspective-rotate-y",
+                lines);
 
             ConfigureTeachingOrientedBoxSmokeView("Top");
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
             await Task.Delay(180);
             var topHandles = AreTeachingOrientedBoxHandlesAccessible();
-            var topHeightPassed = await RunTeachingOrientedBoxDragAsync(
+            var topHeightResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeYPositive,
                 ScaleHandleOutward,
                 (before, after) =>
-                    after.HalfExtents.Y > before.HalfExtents.Y);
+                    after.HalfExtents.Y > before.HalfExtents.Y,
+                "top-resize-y",
+                lines);
 
             ConfigureTeachingOrientedBoxSmokeView("Side");
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
             await Task.Delay(180);
             var sideHandles = AreTeachingOrientedBoxHandlesAccessible();
-            var sideCollapsedAxisResizePassed = await RunTeachingOrientedBoxDragAsync(
+            var sideCollapsedAxisResizeResult = await RunTeachingOrientedBoxDragAsync(
                 hostWindow,
                 TeachingOrientedBox3DEditMode.ResizeXPositive,
                 ScaleHandleOutward,
                 (before, after) =>
-                    after.HalfExtents.X > before.HalfExtents.X);
+                    after.HalfExtents.X > before.HalfExtents.X,
+                "side-collapsed-resize-x",
+                lines);
 
             if (!TryGetTeachingOrientedBoxDraft(out var finalSelection)
                 || finalSelection.OrientedBox3D is null)
@@ -133,13 +150,21 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && pointerInputMouseMoveCount >= 7
                 && pointerInputMouseUpCount >= 7;
             var gesturesPassed =
-                movePassed
-                && resizeXPassed
-                && heightPassed
-                && resizeZPassed
-                && rotatePassed
-                && topHeightPassed
-                && sideCollapsedAxisResizePassed;
+                moveResult.Passed
+                && resizeXResult.Passed
+                && heightResult.Passed
+                && resizeZResult.Passed
+                && rotateResult.Passed
+                && topHeightResult.Passed
+                && sideCollapsedAxisResizeResult.Passed;
+            var gestureCameraStable =
+                moveResult.CameraStable
+                && resizeXResult.CameraStable
+                && heightResult.CameraStable
+                && resizeZResult.CameraStable
+                && rotateResult.CameraStable
+                && topHeightResult.CameraStable
+                && sideCollapsedAxisResizeResult.CameraStable;
             var projectionsPassed =
                 perspectiveHandles
                 && topHandles
@@ -150,18 +175,21 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && identityPreserved
                 && authoredUnchanged
                 && executionUnchanged
-                && routedEventsPassed;
+                && routedEventsPassed
+                && hoverRecovery.Passed;
 
             lines.Add(
-                $"Gestures|move={movePassed}|resizeX={resizeXPassed}|heightY={heightPassed}|resizeZ={resizeZPassed}|rotateY={rotatePassed}");
+                $"Gestures|move={moveResult.Passed}|resizeX={resizeXResult.Passed}|heightY={heightResult.Passed}|resizeZ={resizeZResult.Passed}|rotateY={rotateResult.Passed}");
             lines.Add(
-                $"ProjectionGestures|perspectiveAll={perspectiveHandles}|topAll={topHandles}|topHeight={topHeightPassed}|sideAll={sideHandles}|sideCollapsedAxisResize={sideCollapsedAxisResizePassed}");
+                $"ProjectionGestures|perspectiveAll={perspectiveHandles}|topAll={topHandles}|topHeight={topHeightResult.Passed}|sideAll={sideHandles}|sideCollapsedAxisResize={sideCollapsedAxisResizeResult.Passed}");
             lines.Add(
                 $"Draft|identityPreserved={identityPreserved}|selection={finalSelection.Id}|center={Format(finalSelection.OrientedBox3D.Center)}|halfExtents={Format(finalSelection.OrientedBox3D.HalfExtents)}");
             lines.Add(
-                $"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}|gestureCameraStable=true");
+                $"Boundary|authoredUnchanged={authoredUnchanged}|executionUnchanged={executionUnchanged}|gestureCameraStable={gestureCameraStable}");
             lines.Add(
                 $"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}|actualWindowsPointer=true");
+            lines.Add(
+                $"InteractionStates|normal={hoverRecovery.NormalPassed}|hover={hoverRecovery.HoverPassed}|pressedReleased={routedEventsPassed}|mouseLeaveRecovery={hoverRecovery.MouseLeaveRecoveryPassed}|cursorRecovery={hoverRecovery.CursorRecoveryPassed}|statusRecovery={hoverRecovery.StatusRecoveryPassed}");
             lines.Add(
                 "Projection|worldOutline=true|screenSpaceFallback=true|topSidePerspectiveActualPointer=true|fixedHandleRadiusPixels=18");
         }
@@ -195,6 +223,8 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add($"Failure|{failure}");
         }
         lines.Add($"Result|{(passed ? "PASS" : "FAIL")}");
+        lines.Add(
+            $"OrientedBox3DPointerVerification|{(passed ? "PASS" : "FAIL")}|gestures=7|projections=3|handlesPerProjection=8|actualWindowsPointer=true|hoverLeaveRecovery={hoverRecovery.Passed}");
         var fullPath = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         File.WriteAllLines(fullPath, lines);
@@ -207,16 +237,83 @@ public sealed partial class OpenVisionThreeDViewerControl
         return passed;
     }
 
-    private async Task<bool> RunTeachingOrientedBoxDragAsync(
+    private async Task<OrientedBoxHoverRecoverySmokeResult> RunTeachingOrientedBoxHoverRecoveryAsync(
+        Window hostWindow)
+    {
+        if (!TryGetTeachingOrientedBoxDraft(out var selection)
+            || selection.OrientedBox3D is not { } box)
+        {
+            return default;
+        }
+
+        var viewportTopLeft = Viewport.PointToScreen(new Point(0, 0));
+        var outsideViewport = new Point(
+            viewportTopLeft.X - OrientedBoxHandleRadius * 2,
+            viewportTopLeft.Y - OrientedBoxHandleRadius * 2);
+        WindowsPointerInput.MoveTo(outsideViewport);
+        await Task.Delay(160);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        var statusBeforeHover = viewModel.ViewerStatus;
+        var normalPassed =
+            !Viewport.IsMouseOver
+            && teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.None
+            && Viewport.Cursor == Cursors.Arrow;
+        var moveHandle = GetTeachingOrientedBoxHandles(box).First(handle =>
+            handle.Mode == TeachingOrientedBox3DEditMode.Move);
+        if (!TryProjectTeachingOrientedBoxHandle(box, moveHandle, out var hoverPoint))
+        {
+            return default;
+        }
+
+        var hoverPassed = false;
+        for (var attempt = 0; attempt < 3 && !hoverPassed; attempt++)
+        {
+            await EnsurePointerInputTargetAsync(
+                hostWindow,
+                Viewport.PointToScreen(hoverPoint));
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+            hoverPassed =
+                teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.Move
+                && Viewport.Cursor == Cursors.SizeAll
+                && string.Equals(
+                    viewModel.ViewerStatus,
+                    GetTeachingOrientedBoxStatus(
+                        TeachingOrientedBox3DEditMode.Move,
+                        completed: false),
+                    StringComparison.Ordinal);
+        }
+        WindowsPointerInput.MoveTo(outsideViewport);
+        await Task.Delay(160);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        var mouseLeaveRecoveryPassed =
+            !Viewport.IsMouseOver
+            && teachingOrientedBoxHoverMode == TeachingOrientedBox3DEditMode.None;
+        var cursorRecoveryPassed = Viewport.Cursor == Cursors.Arrow;
+        var statusRecoveryPassed = string.Equals(
+            viewModel.ViewerStatus,
+            statusBeforeHover,
+            StringComparison.Ordinal);
+        return new OrientedBoxHoverRecoverySmokeResult(
+            normalPassed,
+            hoverPassed,
+            mouseLeaveRecoveryPassed,
+            cursorRecoveryPassed,
+            statusRecoveryPassed);
+    }
+
+    private async Task<OrientedBoxDragSmokeResult> RunTeachingOrientedBoxDragAsync(
         Window hostWindow,
         TeachingOrientedBox3DEditMode mode,
         Func<Point, Point, Point> createTarget,
-        Func<ToolRecipeOrientedBox3D, ToolRecipeOrientedBox3D, bool> changed)
+        Func<ToolRecipeOrientedBox3D, ToolRecipeOrientedBox3D, bool> changed,
+        string evidenceName,
+        ICollection<string> evidence)
     {
         if (!TryGetTeachingOrientedBoxDraft(out var beforeSelection)
             || beforeSelection.OrientedBox3D is not { } before)
         {
-            return false;
+            evidence.Add($"Gesture|name={evidenceName}|pass=False|failure=draft-unavailable");
+            return new OrientedBoxDragSmokeResult(false, true);
         }
 
         var cameraBefore = CaptureCameraSnapshot();
@@ -227,14 +324,46 @@ public sealed partial class OpenVisionThreeDViewerControl
                 out var center)
             || !TryProjectTeachingOrientedBoxHandle(before, handle, out var start))
         {
-            return false;
+            evidence.Add($"Gesture|name={evidenceName}|pass=False|failure=projection-unavailable");
+            return new OrientedBoxDragSmokeResult(false, true);
         }
 
-        await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(start));
-        await Task.Delay(100);
-        if (GetTeachingOrientedBoxEditMode(start, before) != mode)
+        var modeMatched = false;
+        var attempts = 0;
+        for (attempts = 1; attempts <= 3; attempts++)
         {
-            return false;
+            if (attempts > 1)
+            {
+                var viewportTopLeft = Viewport.PointToScreen(new Point(0, 0));
+                WindowsPointerInput.MoveTo(new Point(
+                    viewportTopLeft.X - OrientedBoxHandleRadius * 2,
+                    viewportTopLeft.Y - OrientedBoxHandleRadius * 2));
+                await Task.Delay(100);
+            }
+
+            await EnsurePointerInputTargetAsync(
+                hostWindow,
+                Viewport.PointToScreen(start));
+            await Task.Delay(100);
+            modeMatched =
+                GetTeachingOrientedBoxEditMode(start, before) == mode
+                && teachingOrientedBoxHoverMode == mode
+                && Viewport.Cursor == GetTeachingOrientedBoxCursor(mode);
+            if (modeMatched)
+            {
+                break;
+            }
+
+            await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            await Task.Delay(100);
+        }
+
+        if (!modeMatched)
+        {
+            var cameraStableWithoutInput = CaptureCameraSnapshot() == cameraBefore;
+            evidence.Add(
+                $"Gesture|name={evidenceName}|pass=False|hit=False|attempts=3|cameraStable={cameraStableWithoutInput}");
+            return new OrientedBoxDragSmokeResult(false, cameraStableWithoutInput);
         }
 
         await SendTeachingDragAsync(
@@ -242,18 +371,32 @@ public sealed partial class OpenVisionThreeDViewerControl
             start,
             createTarget(center, start),
             MouseButton.Left);
-        return TryGetTeachingOrientedBoxDraft(out var afterSelection)
-               && afterSelection.OrientedBox3D is { } after
-               && string.Equals(
-                   afterSelection.Id,
-                   beforeSelection.Id,
-                   StringComparison.OrdinalIgnoreCase)
-               && changed(before, after)
-               && CaptureCameraSnapshot() == cameraBefore;
+        var hasAfter = TryGetTeachingOrientedBoxDraft(out var afterSelection)
+            && afterSelection.OrientedBox3D is not null;
+        var identityPreserved = hasAfter
+            && string.Equals(
+                afterSelection.Id,
+                beforeSelection.Id,
+                StringComparison.OrdinalIgnoreCase);
+        var geometryChanged = hasAfter
+            && changed(before, afterSelection.OrientedBox3D!);
+        var cameraStable = CaptureCameraSnapshot() == cameraBefore;
+        var passed = hasAfter
+            && identityPreserved
+            && geometryChanged
+            && cameraStable;
+        evidence.Add(
+            $"Gesture|name={evidenceName}|pass={passed}|hit=True|attempts={attempts}|identityPreserved={identityPreserved}|geometryChanged={geometryChanged}|cameraStable={cameraStable}");
+        return new OrientedBoxDragSmokeResult(passed, cameraStable);
     }
 
     private void ConfigureTeachingOrientedBoxSmokeView(string mode)
     {
+        if (c3dSample is not null)
+        {
+            viewModel.C3DSampleVisible = true;
+        }
+
         if (string.Equals(mode, "Top", StringComparison.Ordinal))
         {
             if (!TryFitCurrentC3DOrthographic(
@@ -282,7 +425,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 $"OrientedBox3D {mode} pointer smoke"))
         {
             throw new InvalidOperationException(
-                $"{mode} perspective C3D fit was unavailable.");
+                $"{mode} perspective C3D fit was unavailable "
+                + $"(visible={viewModel.C3DSampleVisible}; source={CurrentC3DSourcePath ?? "(none)"}).");
         }
     }
 
@@ -344,4 +488,23 @@ public sealed partial class OpenVisionThreeDViewerControl
         string.Create(
             CultureInfo.InvariantCulture,
             $"{value.X:F3},{value.Y:F3},{value.Z:F3}");
+
+    private readonly record struct OrientedBoxDragSmokeResult(
+        bool Passed,
+        bool CameraStable);
+
+    private readonly record struct OrientedBoxHoverRecoverySmokeResult(
+        bool NormalPassed,
+        bool HoverPassed,
+        bool MouseLeaveRecoveryPassed,
+        bool CursorRecoveryPassed,
+        bool StatusRecoveryPassed)
+    {
+        public bool Passed =>
+            NormalPassed
+            && HoverPassed
+            && MouseLeaveRecoveryPassed
+            && CursorRecoveryPassed
+            && StatusRecoveryPassed;
+    }
 }

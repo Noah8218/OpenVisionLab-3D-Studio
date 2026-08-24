@@ -194,6 +194,10 @@
                             <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
                             <Setter Property="Foreground" Value="White" />
                         </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                            <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                        </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
                         </Trigger>
@@ -225,7 +229,9 @@
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}" />
     </Style>
 
-    <Style x:Key="ThreeD.WindowControlButtonStyle" TargetType="{x:Type Button}">
+    <Style x:Key="ThreeD.WindowControlButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Width" Value="34" />
         <Setter Property="Height" Value="28" />
         <Setter Property="Margin" Value="2,0,0,0" />
@@ -288,7 +294,9 @@
 
     <Style TargetType="{x:Type ComboBox}"
            BasedOn="{StaticResource {x:Type ComboBox}}">
-        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
         <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
@@ -307,6 +315,16 @@
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <Style TargetType="{x:Type ComboBoxItem}"
+           BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style TargetType="{x:Type ListBoxItem}">

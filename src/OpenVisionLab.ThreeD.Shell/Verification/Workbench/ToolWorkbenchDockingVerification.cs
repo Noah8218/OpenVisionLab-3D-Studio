@@ -1,10 +1,16 @@
+using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Xml.Linq;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Docking.Controls;
 using OpenVisionLab.ThreeD.Shell.Layout;
@@ -177,9 +183,10 @@ internal static class ToolWorkbenchDockingVerification
                 && workbench.HasRecipeFlowInspectorViewerOrder,
                 $"collapsed={autoHideRoundTrip.Collapsed}; restored={autoHideRoundTrip.Restored}; composition={workbench.HasRecipeFlowInspectorViewerOrder}");
 
+            var navigationViewModel = new ShellMainWindowViewModel();
             var navigationRail = new StudioNavigationRailView
             {
-                DataContext = new ShellMainWindowViewModel(),
+                DataContext = navigationViewModel,
             };
             navigationRail.ApplyResponsiveWidthForVerification(1920);
             var wideRailWidth = navigationRail.Width;
@@ -193,8 +200,10 @@ internal static class ToolWorkbenchDockingVerification
                 $"responsibilities={navigationRail.HasAccessibleResponsibilityRoutes}; utilities={navigationRail.HasAccessibleUtilityRoutes}");
             Check(
                 "Studio language selector retains the shared themed ComboBox base style",
-                navigationRail.LanguageSelector.Style.BasedOn is not null,
-                $"hasThemedBase={navigationRail.LanguageSelector.Style.BasedOn is not null}");
+                navigationRail.LanguageSelector.Style.BasedOn is not null
+                && navigationRail.LanguageSelector.MinHeight >= 30
+                && navigationRail.LanguageSelector.VerticalContentAlignment == VerticalAlignment.Center,
+                $"hasThemedBase={navigationRail.LanguageSelector.Style.BasedOn is not null}; minHeight={navigationRail.LanguageSelector.MinHeight:F0}; vertical={navigationRail.LanguageSelector.VerticalContentAlignment}");
             Check(
                 "Studio language selector stays legible within Wide and Compact rail bounds",
                 Math.Abs(wideLanguageSelectorWidth - 100) < 0.1
@@ -214,6 +223,97 @@ internal static class ToolWorkbenchDockingVerification
                     navigationRail.FindResource("ThreeD.DisabledBrush")),
                 $"background={navigationRail.LanguageSelector.Background}; foreground={navigationRail.LanguageSelector.Foreground}");
             navigationRail.LanguageSelector.IsEnabled = true;
+            var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+            var englishLanguageOption = navigationViewModel.LanguageOptions.Single(
+                option => option.Language == OpenVisionLanguage.English);
+            if (originalLanguage == OpenVisionLanguage.English)
+            {
+                navigationViewModel.SetSelectedLanguageForVerification(
+                    navigationViewModel.LanguageOptions.Single(
+                        option => option.Language == OpenVisionLanguage.Korean));
+            }
+            var originalLanguageOption = navigationViewModel.LanguageOptions.Single(
+                option => option.Language == originalLanguage);
+            var paletteBeforeLanguageChange = navigationViewModel.Workbench.HeightImageViewer.SelectedPalette;
+            var auxiliaryContentBeforeLanguageChange = navigationViewModel.Workbench.ViewerWorkspace.AuxiliaryContentId;
+            var localizationNotificationCount = 0;
+            string? localizationPropertyName = null;
+            PropertyChangedEventHandler localizationHandler = (_, args) =>
+            {
+                localizationNotificationCount++;
+                localizationPropertyName = args.PropertyName;
+            };
+            ThreeDLocalization.Shared.PropertyChanged += localizationHandler;
+            navigationViewModel.SetSelectedLanguageForVerification(englishLanguageOption);
+            ThreeDLocalization.Shared.PropertyChanged -= localizationHandler;
+            Check(
+                "Language switch emits one all-properties localization notification",
+                localizationNotificationCount == 1
+                && string.IsNullOrEmpty(localizationPropertyName),
+                $"notifications={localizationNotificationCount}; property='{localizationPropertyName}'");
+            Check(
+                "Language switch remains bounded and reports completion time",
+                navigationViewModel.LastLanguageChangeMilliseconds < 500
+                && navigationViewModel.StatusText.Contains("ms", StringComparison.Ordinal),
+                $"elapsed={navigationViewModel.LastLanguageChangeMilliseconds:F2} ms; status='{navigationViewModel.StatusText}'");
+            Check(
+                "Language switch preserves ComboBox selections and visible labels",
+                navigationViewModel.Workbench.HeightImageViewer.SelectedPalette == paletteBeforeLanguageChange
+                && navigationViewModel.Workbench.HeightImageViewer.PaletteChoices.All(
+                    choice => !string.IsNullOrWhiteSpace(choice.DisplayName))
+                && string.Equals(
+                    navigationViewModel.Workbench.ViewerWorkspace.AuxiliaryContentId,
+                    auxiliaryContentBeforeLanguageChange,
+                    StringComparison.Ordinal)
+                && navigationViewModel.Workbench.ViewerWorkspaceCandidates.All(
+                    candidate => !string.IsNullOrWhiteSpace(candidate.DisplayName)),
+                $"palette={navigationViewModel.Workbench.HeightImageViewer.SelectedPalette}; paletteLabels={navigationViewModel.Workbench.HeightImageViewer.PaletteChoices.Count}; auxiliary='{navigationViewModel.Workbench.ViewerWorkspace.AuxiliaryContentId}'; candidates={navigationViewModel.Workbench.ViewerWorkspaceCandidates.Count}");
+            navigationRail.ApplyResponsiveWidthForVerification(1920);
+            ArrangeForTextVerification(navigationRail, 140);
+            var wideLanguageText = FindVisualDescendants<TextBlock>(
+                    navigationRail.LanguageSelector)
+                .FirstOrDefault(text => ReferenceEquals(text.DataContext, englishLanguageOption));
+            var wideLanguageSnapshot = (
+                Text: wideLanguageText?.Text,
+                Clip: wideLanguageText?.Clip,
+                Width: wideLanguageText?.ActualWidth ?? 0,
+                Height: wideLanguageText?.ActualHeight ?? 0);
+            navigationRail.ApplyResponsiveWidthForVerification(1280);
+            ArrangeForTextVerification(navigationRail, 60);
+            var compactLanguageText = FindVisualDescendants<TextBlock>(
+                    navigationRail.LanguageSelector)
+                .FirstOrDefault(text => ReferenceEquals(text.DataContext, englishLanguageOption));
+            var popupLanguageText = navigationRail.LanguageSelector.ItemTemplate.LoadContent()
+                as TextBlock;
+            if (popupLanguageText is not null)
+            {
+                popupLanguageText.DataContext = englishLanguageOption;
+                popupLanguageText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                popupLanguageText.Arrange(new Rect(popupLanguageText.DesiredSize));
+                popupLanguageText.UpdateLayout();
+            }
+            Check(
+                "English ComboBox selection and popup retain complete glyph layout in Wide and Compact",
+                wideLanguageSnapshot is
+                {
+                    Text: "English",
+                    Clip: null,
+                    Height: >= 12,
+                }
+                && compactLanguageText is
+                {
+                    Text: "EN",
+                    Clip: null,
+                    ActualHeight: >= 12,
+                }
+                && popupLanguageText is
+                {
+                    Text: "English",
+                    Clip: null,
+                    ActualHeight: >= 12,
+                },
+                $"wide='{wideLanguageSnapshot.Text}' {wideLanguageSnapshot.Width:0.#}x{wideLanguageSnapshot.Height:0.#}; compact='{compactLanguageText?.Text}' {compactLanguageText?.ActualWidth:0.#}x{compactLanguageText?.ActualHeight:0.#}; popup='{popupLanguageText?.Text}' {popupLanguageText?.ActualWidth:0.#}x{popupLanguageText?.ActualHeight:0.#}");
+            navigationViewModel.SetSelectedLanguageForVerification(originalLanguageOption);
             Check(
                 "Workbench v4 rail switches from labeled Wide to icon Compact width",
                 Math.Abs(wideRailWidth - 140) < 0.1
@@ -894,6 +994,190 @@ internal static class ToolWorkbenchDockingVerification
                 $"viewer={ReferenceEquals(advanced.ViewerContent, reactivatedAdvancedViewer)}");
 
             var repositoryRoot = FindRepositoryRoot();
+            var xamlFiles = Directory.GetFiles(
+                Path.Combine(repositoryRoot, "src"),
+                "*.xaml",
+                SearchOption.AllDirectories);
+            var xamlDocuments = xamlFiles
+                .Select(path => (Path: path, Document: XDocument.Load(path)))
+                .ToArray();
+            var comboBoxTags = xamlFiles
+                .SelectMany(path => Regex.Matches(
+                    File.ReadAllText(path),
+                    "<ComboBox(?=\\s|>)[^>]*>",
+                    RegexOptions.Singleline)
+                    .Cast<Match>()
+                    .Select(match => (Path: path, Tag: match.Value)))
+                .ToArray();
+            var undersizedComboBoxes = comboBoxTags
+                .SelectMany(combo => Regex.Matches(
+                    combo.Tag,
+                    "(?:Height|MinHeight)=\"([0-9.]+)\"")
+                    .Cast<Match>()
+                    .Where(match => double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) < 30)
+                    .Select(match => $"{Path.GetRelativePath(repositoryRoot, combo.Path)}:{match.Value}"))
+                .ToArray();
+            var animatedPopups = xamlFiles
+                .Where(path => File.ReadAllText(path).Contains("PopupAnimation=", StringComparison.Ordinal))
+                .Select(path => Path.GetRelativePath(repositoryRoot, path))
+                .ToArray();
+            var comboBoxStyles = xamlDocuments
+                .SelectMany(owner => owner.Document
+                    .Descendants()
+                    .Where(element => element.Name.LocalName == "Style")
+                    .Where(element => IsStyleTarget(element, "ComboBox"))
+                    .Select(element => (owner.Path, Style: element)))
+                .ToArray();
+            var comboBoxItemStyles = xamlDocuments
+                .SelectMany(owner => owner.Document
+                    .Descendants()
+                    .Where(element => element.Name.LocalName == "Style")
+                    .Where(element => IsStyleTarget(element, "ComboBoxItem"))
+                    .Select(element => (owner.Path, Style: element)))
+                .ToArray();
+            var undersizedComboBoxStyleSetters = comboBoxStyles
+                .SelectMany(owner => owner.Style
+                    .Descendants()
+                    .Where(element => element.Name.LocalName == "Setter")
+                    .Where(element => element.Attribute("Property")?.Value is "Height" or "MinHeight")
+                    .Where(element => double.TryParse(
+                        element.Attribute("Value")?.Value,
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out var value) && value < 30)
+                    .Select(element => $"{Path.GetRelativePath(repositoryRoot, owner.Path)}:{element.Attribute("Property")?.Value}={element.Attribute("Value")?.Value}"))
+                .ToArray();
+            var unsafeComboBoxTextStyles = comboBoxStyles
+                .Where(owner =>
+                    !HasIdealTextFormatting(owner.Style)
+                    && owner.Style.Attribute("BasedOn") is null
+                    || HasPixelSnapping(owner.Style))
+                .Select(owner => Path.GetRelativePath(repositoryRoot, owner.Path))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var unsafeComboBoxItemTextStyles = comboBoxItemStyles
+                .Where(owner =>
+                    !HasIdealTextFormatting(owner.Style)
+                    || HasPixelSnapping(owner.Style))
+                .Select(owner => Path.GetRelativePath(repositoryRoot, owner.Path))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            Check(
+                "All 27 repository ComboBoxes use the shared 30-pixel minimum without undersized overrides",
+                comboBoxTags.Length == 27
+                && undersizedComboBoxes.Length == 0
+                && undersizedComboBoxStyleSetters.Length == 0,
+                $"count={comboBoxTags.Length}; tagUndersized={string.Join(',', undersizedComboBoxes)}; styleUndersized={string.Join(',', undersizedComboBoxStyleSetters)}");
+            Check(
+                "All ComboBox style owners preserve fractional-DPI glyph bounds",
+                comboBoxStyles.Length == 4
+                && comboBoxItemStyles.Length == 3
+                && unsafeComboBoxTextStyles.Length == 0
+                && unsafeComboBoxItemTextStyles.Length == 0,
+                $"comboStyles={comboBoxStyles.Length}; itemStyles={comboBoxItemStyles.Length}; unsafeCombo={string.Join(',', unsafeComboBoxTextStyles)}; unsafeItems={string.Join(',', unsafeComboBoxItemTextStyles)}");
+            Check(
+                "Repository XAML contains no explicit popup animation",
+                animatedPopups.Length == 0,
+                $"animated={string.Join(',', animatedPopups)}");
+            var buttonBaseTypeNames = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Button",
+                "ToggleButton",
+                "RadioButton",
+                "CheckBox",
+            };
+            var buttonBaseControls = xamlDocuments
+                .SelectMany(owner => owner.Document
+                    .Descendants()
+                    .Where(element => buttonBaseTypeNames.Contains(element.Name.LocalName))
+                    .Select(element => (owner.Path, Control: element)))
+                .ToArray();
+            var buttonBaseStyles = xamlDocuments
+                .SelectMany(owner => owner.Document
+                    .Descendants()
+                    .Where(element => element.Name.LocalName == "Style")
+                    .Where(element => buttonBaseTypeNames.Contains(GetTargetTypeLocalName(element)))
+                    .Select(element => (owner.Path, Style: element)))
+                .ToArray();
+            var unsafeButtonStyles = buttonBaseStyles
+                .Where(owner => owner.Style.Attribute("BasedOn") is null
+                    && !owner.Style.Descendants()
+                        .Any(element => element.Name.LocalName == "Setter"
+                            && element.Attribute("Property")?.Value == "Template"))
+                .Select(owner => $"{Path.GetRelativePath(repositoryRoot, owner.Path)}:{GetTargetTypeLocalName(owner.Style)}")
+                .ToArray();
+            var appButtonTemplates = xamlDocuments
+                .SelectMany(owner => owner.Document
+                    .Descendants()
+                    .Where(element => element.Name.LocalName == "ControlTemplate")
+                    .Where(element => buttonBaseTypeNames.Contains(GetTargetTypeLocalName(element)))
+                    .Where(element => !element.Ancestors().Any(ancestor =>
+                        (ancestor.Name.LocalName is "Style" or "ControlTemplate")
+                        && (GetTargetTypeLocalName(ancestor) is "ComboBox" or "ComboBoxItem")))
+                    .Select(element => (owner.Path, Template: element)))
+                .ToArray();
+            var incompleteButtonTemplates = appButtonTemplates
+                .Select(owner =>
+                {
+                    var states = owner.Template.Descendants()
+                        .Where(element => element.Name.LocalName is "Trigger" or "Condition")
+                        .Select(element => element.Attribute("Property")?.Value)
+                        .Where(property => property is not null)
+                        .ToHashSet(StringComparer.Ordinal);
+                    var missing = new List<string>();
+                    if (!states.Contains("IsMouseOver")) missing.Add("hover");
+                    if (!states.Contains("IsPressed")) missing.Add("pressed");
+                    if (!states.Contains("IsKeyboardFocused")
+                        && !states.Contains("IsKeyboardFocusWithin")) missing.Add("focus");
+                    if (!states.Contains("IsEnabled")) missing.Add("disabled");
+                    if ((GetTargetTypeLocalName(owner.Template) is "ToggleButton" or "RadioButton")
+                        && !states.Contains("IsChecked")) missing.Add("checked");
+                    return (owner.Path, Type: GetTargetTypeLocalName(owner.Template), Missing: missing);
+                })
+                .Where(owner => owner.Missing.Count > 0)
+                .Select(owner => $"{Path.GetRelativePath(repositoryRoot, owner.Path)}:{owner.Type}:{string.Join('+', owner.Missing)}")
+                .ToArray();
+            var hardCodedButtonGlyphs = buttonBaseControls
+                .SelectMany(owner => owner.Control
+                    .Descendants()
+                    .Where(element => element.Name.LocalName is "Path" or "Polygon")
+                    .Where(element => ReferenceEquals(
+                        element.Ancestors().FirstOrDefault(ancestor => buttonBaseTypeNames.Contains(ancestor.Name.LocalName)),
+                        owner.Control))
+                    .SelectMany(element => element.Attributes()
+                        .Where(attribute => attribute.Name.LocalName is "Stroke" or "Fill")
+                        .Where(attribute => attribute.Value.StartsWith('#')
+                            || attribute.Value is "White" or "Black")
+                        .Select(attribute => $"{Path.GetRelativePath(repositoryRoot, owner.Path)}:{owner.Control.Name.LocalName}:{element.Name.LocalName}.{attribute.Name.LocalName}={attribute.Value}")))
+                .ToArray();
+            var messageDialogSource = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.Wpf.MessageDialogs",
+                "WpfMessageDialogControl.xaml.cs"));
+            var shellSource = File.ReadAllText(Path.Combine(
+                repositoryRoot,
+                "src",
+                "OpenVisionLab.ThreeD.Shell",
+                "MainWindow.xaml.cs"));
+            Check(
+                "Button audit covers all declarations, style owners, custom templates, and dynamic dialog buttons",
+                buttonBaseControls.Length == 324
+                && buttonBaseStyles.Length == 31
+                && appButtonTemplates.Length == 9
+                && messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)
+                && messageDialogSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal),
+                $"controls={buttonBaseControls.Length}; styles={buttonBaseStyles.Length}; templates={appButtonTemplates.Length}; dynamicDialog={messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)}; primaryId={messageDialogSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal)}");
+            Check(
+                "Every explicit ButtonBase style derives from a themed base or owns its template",
+                unsafeButtonStyles.Length == 0,
+                $"unsafe={string.Join(',', unsafeButtonStyles)}");
+            Check(
+                "Every app-facing button template owns hover, pressed, focus, disabled, and checked states with semantic glyphs",
+                incompleteButtonTemplates.Length == 0
+                && hardCodedButtonGlyphs.Length == 0
+                && shellSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal),
+                $"incomplete={string.Join(',', incompleteButtonTemplates)}; glyphLeaks={string.Join(',', hardCodedButtonGlyphs)}; dialogPrimaryTarget={shellSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal)}");
             var advancedXaml = File.ReadAllText(Path.Combine(
                 repositoryRoot,
                 "src",
@@ -935,6 +1219,13 @@ internal static class ToolWorkbenchDockingVerification
                 "OpenVisionLab.ThreeD.Shell",
                 "Themes",
                 "OpenVisionThreeDTheme.xaml"));
+            Check(
+                "Shell owns a fixed themed bottom status boundary",
+                advancedXaml.Contains("x:Name=\"StudioBottomStatus\"", StringComparison.Ordinal)
+                && advancedXaml.Contains("Height=\"30\"", StringComparison.Ordinal)
+                && advancedXaml.Contains("Text=\"{Binding InspectionStageNavigationStatus}\"", StringComparison.Ordinal)
+                && advancedXaml.Contains("Text=\"{Binding StatusText}\"", StringComparison.Ordinal),
+                "StudioBottomStatus=30; stage and operation status bindings present");
             var dockXaml = File.ReadAllText(Path.Combine(
                 repositoryRoot,
                 "src",
@@ -1107,6 +1398,71 @@ internal static class ToolWorkbenchDockingVerification
         throw new DirectoryNotFoundException(
             $"Could not locate repository file {ThicknessRecipeRelativePath}.");
     }
+
+    private static void ArrangeForTextVerification(
+        FrameworkElement element,
+        double width)
+    {
+        element.Measure(new Size(width, 760));
+        element.Arrange(new Rect(0, 0, width, 760));
+        element.UpdateLayout();
+    }
+
+    private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private static bool IsStyleTarget(XElement style, string targetType) =>
+        string.Equals(GetTargetTypeLocalName(style), targetType, StringComparison.Ordinal);
+
+    private static string GetTargetTypeLocalName(XElement element)
+    {
+        var value = element.Attribute("TargetType")?.Value?.Trim();
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        const string xTypePrefix = "{x:Type ";
+        if (value.StartsWith(xTypePrefix, StringComparison.Ordinal) && value.EndsWith('}'))
+        {
+            value = value[xTypePrefix.Length..^1];
+        }
+
+        var prefixSeparator = value.LastIndexOf(':');
+        return prefixSeparator >= 0 ? value[(prefixSeparator + 1)..] : value;
+    }
+
+    private static bool HasIdealTextFormatting(XElement style) =>
+        style.Descendants()
+            .Where(element => element.Name.LocalName == "Setter")
+            .Any(element =>
+                element.Attribute("Property")?.Value == "TextOptions.TextFormattingMode"
+                && element.Attribute("Value")?.Value == "Ideal");
+
+    private static bool HasPixelSnapping(XElement style) =>
+        style.DescendantsAndSelf().Any(element =>
+            element.Attribute("SnapsToDevicePixels")?.Value == "True"
+            || element.Attribute("UseLayoutRounding")?.Value == "True")
+        || style.Descendants()
+            .Where(element => element.Name.LocalName == "Setter")
+            .Any(element =>
+                (element.Attribute("Property")?.Value is "SnapsToDevicePixels" or "UseLayoutRounding")
+                && element.Attribute("Value")?.Value == "True");
 
     private static string Describe(IEnumerable<DockingPaneContract> contracts) =>
         string.Join(

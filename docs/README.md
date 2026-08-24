@@ -68,6 +68,82 @@ External prerequisites do not become complete because a document is old.
 
 ## Completion Evidence
 
+- [Deterministic malformed-source diagnostics](OPENVISIONLAB_3D_DETERMINISTIC_MALFORMED_SOURCE_DIAGNOSTICS_CLOSURE_20260823.md) -
+  `PL-0046/B-10` schema-`1.1` four-check grid integrity, fail-closed payload
+  and malformed C3D reasons, SDK-owned calculation, visible Source Quality/
+  Results state, exact exports, previous-source-retaining EXE failure, and
+  D-backed Wide/Compact evidence.
+- [OrientedBox3D qualification](OPENVISIONLAB_3D_ORIENTED_BOX_QUALIFICATION_CLOSURE_20260823.md) -
+  `PL-0045/M-12` exact named schema/geometry subset `11/11` inside shared
+  `32/32`, Runner/CI completeness, current Wide/Compact seven-gesture and
+  three-projection pointer repeats, hover/leave recovery, and D-backed evidence.
+- [Selection kind/role compatibility matrix](OPENVISIONLAB_3D_SELECTION_KIND_ROLE_MATRIX_CLOSURE_20260824.md) -
+  `PL-0047/E-13` Core-owned 15-tool/20-role declaration, fail-closed strict
+  routing, repairable incomplete drafts, Workbench reuse, and `40/40`
+  Shell/Runner evidence.
+- [GridCircle selection closure](OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md) -
+  `PL-0048/E-14` schema `1.6` circular grid-region authoring, numeric editing,
+  explicit Apply/Cancel, save/reopen, Runner parity, and Wide/Compact evidence.
+- [Preparation source-immutability qualification](OPENVISIONLAB_3D_PREPARATION_SOURCE_IMMUTABILITY_CLOSURE_20260823.md) -
+  `PL-0044/M-13` exactly four current Prepare tools, exact source path/length/
+  SHA and retained values unchanged, separate deterministic derived outputs
+  with root provenance, `13/13 + 9/9 + 9/9 + 6/6`, D-backed evidence, and the
+  existing CI step's exact 4/4 evidence gate.
+- [Good/Bad/Held-out no-leakage qualification](OPENVISIONLAB_3D_HELD_OUT_NO_LEAKAGE_CLOSURE_20260823.md) -
+  `PL-0043/M-14` exact role split, counterfactual Held-out value/identity
+  invariance, `87/87` current Validation Set coverage, Runner JSON parity,
+  D-backed evidence, and unchanged existing CI ownership.
+- [Completeness known-cell golden qualification](OPENVISIONLAB_3D_COMPLETENESS_KNOWN_CELL_GOLDEN_CLOSURE_20260823.md) -
+  `PL-0042/M-15` existing `30/30` exact four-cell matrix, inclusive acceptance,
+  deterministic Runner and export parity, D-backed evidence, and the existing
+  CI command's complete-report gate.
+- [Cross-view selection atomicity](OPENVISIONLAB_3D_CROSS_VIEW_SELECTION_ATOMICITY_CLOSURE_20260823.md) -
+  `PL-0041` shared 3D/Height Image ROI selection identity, exact selection-
+  change counts, repeated-selection suppression, recipe/execution invariants,
+  D-backed evidence, and the existing CI command's complete-report gate.
+- [SourceQualityReport malformed and edge fixtures](OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md) -
+  `PL-0040` existing Runner verifier coverage for signed finite values,
+  missing-value semantics, malformed C3D topology, transient-fixture cleanup,
+  D-backed evidence, and one CI report-completeness gate.
+- [Standard `dotnet test` facade](OPENVISIONLAB_3D_STANDARD_TEST_FACADE_CLOSURE_20260823.md) -
+  `PL-0039` .NET 10 MTP/xUnit v3 discovery for two existing public Data
+  verifiers, preserved detailed reports, D-backed local evidence, one no-build
+  CI gate, and no duplicated verifier assertions.
+- [Coherent proven-decoder Import surface](OPENVISIONLAB_3D_COHERENT_IMPORT_SURFACE_CLOSURE_20260823.md) -
+  `PL-0038` one exact C3D/GLB/STL/LAS/LAZ operator action, asynchronous
+  progress/cancel, explicit Viewer-only limitations, recipe/execution
+  non-mutation, failure/cancellation retention, and current Wide/Compact
+  dialog, control-state, and five-format EXE evidence.
+- [Typed ROI/Crop preparation](OPENVISIONLAB_3D_ROI_CROP_TYPED_PREPARATION_CLOSURE_20260823.md) -
+  `PL-0037` SDK-owned exact crop, immutable output identity/origin/mask,
+  explicit Preview/Publish, compatible later-tool teaching, save/reopen,
+  Viewer/compare, and ordered Runner closure.
+- [Shared C3D source snapshot](OPENVISIONLAB_3D_SHARED_C3D_SOURCE_SNAPSHOT_CLOSURE_20260823.md) -
+  `PL-0036` one active Workbench decoded-source task shared by Source Quality
+  and Height Image, verified source binding, streaming hash/decode, stale-image
+  clearing, and removal of the Height Image full value-array copy.
+- [Imported-mesh allocation guardrails](OPENVISIONLAB_3D_IMPORTED_MESH_ALLOCATION_GUARDRAILS_20260822.md) -
+  `PL-0035` bounded GLB/STL file, declared geometry, buffer range, embedded
+  texture, and triangle allocations with actionable malformed-input failures
+  and retained valid public imports.
+- [LAS/LAZ responsive loading](OPENVISIONLAB_3D_LAZ_RESPONSIVE_LOAD_CLOSURE_20260822.md) -
+  `PL-0034` off-UI-thread latest-wins decode, localized progress, cancellation,
+  exact source-and-budget sample reuse, transient WPF unload correction, and
+  current Release Wide/Compact runtime evidence.
+- [Button interaction state completion](OPENVISIONLAB_3D_BUTTON_INTERACTION_STATE_COMPLETION_20260822.md) -
+  `PL-0032` whole-source 315-control/31-style audit, semantic Viewer correction,
+  complete custom-template states, and current Release Wide/Compact held
+  pointer-down evidence.
+- [UI responsiveness, ComboBox, and bottom status](OPENVISIONLAB_3D_UI_RESPONSIVENESS_COMBOBOX_STATUS_CLOSURE_20260822.md) -
+  `PL-0031` one-event language refresh, complete 27-ComboBox geometry audit,
+  explicit popup-motion removal, persistent Shell bottom status boundary, and
+  `PL-0033` auxiliary Viewer glyph correction and owner-reopened fixed-height
+  ComboBox repair with current Korean/English Wide/Compact and palette-state
+  evidence.
+- [Repository project analysis and first audit follow-up](OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md) -
+  source-grounded product, architecture, data, Viewer, algorithm, MVVM,
+  performance, stability, UX, verification, and ecosystem assessment plus the
+  `PL-0030` imported-mesh OpenGL texture-lifetime correction.
 - [Privacy-safe support bundle](OPENVISIONLAB_3D_PRIVACY_SAFE_SUPPORT_BUNDLE_20260818.md) -
   `PL-0024/L-14` six-entry ZIP contract, payload hashes, bounded and sanitized
   evidence, fail-closed identity checks, no-execution behavior, localized

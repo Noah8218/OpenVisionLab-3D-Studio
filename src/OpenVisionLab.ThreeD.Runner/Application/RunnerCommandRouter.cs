@@ -1,5 +1,6 @@
 using System.Globalization;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using static RunnerApplication;
 
 internal static class RunnerCommandRouter
@@ -83,6 +84,9 @@ internal static class RunnerCommandRouter
         var verifyC3DLevelSurface = args.Contains(
             "--verify-c3d-level-surface",
             StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRoiCrop = args.Contains(
+            "--verify-c3d-roi-crop",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DTwoPointLine = args.Contains("--verify-c3d-two-point-line", StringComparer.OrdinalIgnoreCase);
@@ -93,6 +97,8 @@ internal static class RunnerCommandRouter
         var verifyC3DAffineSolve = args.Contains("--verify-c3d-affine-solve", StringComparer.OrdinalIgnoreCase);
         var verifyC3DAffineApply = args.Contains("--verify-c3d-affine-apply", StringComparer.OrdinalIgnoreCase);
         var verifyC3DRegridHeightField = args.Contains("--verify-c3d-regrid-height-field", StringComparer.OrdinalIgnoreCase);
+        var verifyOrientedBox3D = args.Contains("--verify-oriented-box-3d", StringComparer.OrdinalIgnoreCase);
+        var verifyGridCircle = args.Contains("--verify-grid-circle", StringComparer.OrdinalIgnoreCase);
         var verifyArtifactOwnedRoiRunner = args.Contains("--verify-artifact-owned-roi-runner", StringComparer.OrdinalIgnoreCase);
         var verifySyntheticAffineInspectionPlate = args.Contains("--verify-synthetic-affine-inspection-plate", StringComparer.OrdinalIgnoreCase);
         var verifyC3DWarpage = args.Contains("--verify-c3d-warpage", StringComparer.OrdinalIgnoreCase);
@@ -429,6 +435,34 @@ internal static class RunnerCommandRouter
             }
 
             return C3DLevelSurfaceGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRoiCrop)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
+                return 2;
+            }
+
+            return C3DRoiCropGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyOrientedBox3D || verifyGridCircle)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
+                return 2;
+            }
+
+            var succeeded = ToolRecipeSelectionContractVerification.Verify(
+                reportPath,
+                out var summary);
+            Console.WriteLine(summary);
+            return succeeded ? 0 : 5;
         }
 
         if (verifyC3DCompletenessGrid)
@@ -1062,10 +1096,13 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-warpage --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-oriented-box-3d --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");

@@ -1,6 +1,6 @@
 # OpenVisionLab 3D First Release Three-Phase Development Specification
 
-Updated: 2026-08-21
+Updated: 2026-08-23
 Status: Current
 Owner issue: `PL-0029`
 
@@ -34,25 +34,31 @@ must not be advertised as calibrated physical measurement.
 
 ## 3. Current Self-Evaluation
 
-Evidence baseline: frozen Phase 1 commit
+Prior evidence baseline: frozen Phase 1 commit
 `c1b49eca7726f9a07d537403b07fbd0a4ab9da64` and GitHub Actions CI run
-`32450458521` (`#94`, success).
+`32450458521` (`#94`, success). Approved software slices from PL-0037 ROI/Crop
+through PL-0048 GridCircle selection changed Studio source and the
+vendored SDK package on 2026-08-23, so that baseline remains historical
+evidence but is no longer a current release candidate. A new exact Studio
+commit, package, hosted CI result, fixed Windows distribution, and owner R0
+are required before Phase 1 can close again.
 
 | Area | Assessment | Current evidence | Release consequence |
 | --- | --- | --- | --- |
 | Supported operator workflow | Candidate-ready | README, tutorial, explicit Preview/Publish/Run, save/reopen, Results and support-bundle contracts | Freeze the documented workflow; do not add unrelated features during qualification |
-| MVVM and code ownership | Ready for qualification | `PL-0026` M1-M7 complete; structure `67/67`; concrete ViewModel, execution-owner, session, service, command, converter, and behavior boundaries | No broad refactor is required before Phase 1 |
-| Numerical ownership | Ready for current software claims | Studio numerical migration debt is zero; committed and vendored `OpenVisionLab.Vision3D 3.0.0` owns reusable algorithms | Preserve package identity and do not copy algorithm arithmetic back into Studio |
-| Automated verification | Candidate gate passed | Hosted Windows CI `#94` passed all 55 recorded steps on the exact frozen commit | Preserve this commit/package identity for owner R0 |
-| Windows package path | Candidate gate passed | The clean D-backed package has 506/506 verified payload entries, exact manifest identity, and a hashed ZIP | Do not rebuild or modify the candidate before owner R0 without invalidating this gate |
-| Human usability acceptance | Blocked | Current fixed inputs pass Wide/Compact `-ValidateOnly`, but unaided owner R0 has not passed | Blocks Phase 2 and all release-acceptance claims |
+| MVVM and code ownership | Ready for qualification | `PL-0026` M1-M7 complete; current structure `68/68`; concrete ViewModel, execution-owner, session, service, command, converter, and behavior boundaries | No broad refactor is required before Phase 1 |
+| Numerical ownership | Ready for current software claims | Studio numerical migration debt is zero; committed and vendored `OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1` owns reusable algorithms including ROI copying and deterministic grid diagnostics | Preserve exact package provenance and do not copy algorithm arithmetic back into Studio |
+| Automated verification | Current local gates passed; candidate gate pending | PL-0048 current-tree focused, Release, structure, and UI gates pass locally, but hosted CI `#94` applies only to the prior frozen commit and no hosted CI exists for a new frozen commit | Freeze and push only after owner approval, then require new hosted CI |
+| Windows package path | Prior candidate gate invalidated | The prior 506/506 package predates PL-0037 and the new SDK identity | Build and verify a new fixed package only when a new Phase 1 candidate is approved |
+| Human usability acceptance | Blocked | The superseded `c1b49ec` package passed Wide/Compact `-ValidateOnly`; there is no current fixed package, and unaided owner R0 has not passed | Build and validate a new exact package first; then run R0 on that same package before Phase 2 |
 | Publication | Not started | Product version is `0.1.1-dev`; current GitHub release count and tag count are both zero | No public link or released-version claim is allowed yet |
 | Physical/production credibility | Outside current claim | Current evidence is software and raw-height/synthetic evidence | Do not claim calibrated metrology, Gauge R&R, or production approval |
 
 ### Current blockers and risks
 
-- Product-owner unaided Wide and Compact R0 is required before a release
-  candidate can be approved.
+- A new exact Studio commit, fixed package, hosted CI result, and both
+  `-ValidateOnly` modes are prerequisites before product-owner unaided Wide
+  and Compact R0 can qualify a release candidate.
 - The repository `artifacts` junction still targets
   `E:\OpenVisionLab-3D-Studio\artifacts`. The packaging script now accepts an
   explicit `-OutputRoot`, so new package and build evidence can be written
@@ -113,9 +119,16 @@ GitHub Release, public version claim, or external distribution in Phase 1.
 
 ### Execution status
 
-`Doing`. The current repository/CI/version assessment, three-phase contract,
-D-backed output route, clean frozen package, archive, local gates, and hosted
-CI are complete. Product-owner unaided Wide and Compact R0 remains.
+`Doing`. The three-phase contract and D-backed output route remain current.
+The earlier clean package, archive, local gates, and hosted CI are historical
+evidence for `c1b49ec`; PL-0037 through PL-0048 changed Studio source and the
+vendored SDK after that freeze, so there is no current frozen candidate.
+Phase 1 now requires owner approval to freeze the current tree, followed by a
+new exact commit, fixed package, hosted CI, both `-ValidateOnly` modes, and
+unaided Wide and Compact R0 on that same package. The superseded `c1b49ec`
+package must not be used for current R0 acceptance.
+
+#### Historical superseded candidate evidence
 
 Phase 1 preflight on 2026-08-21 passed the full-verification environment check
 (`5/5` required tools), `PL-0029` schema validation, changed-document local
@@ -148,12 +161,16 @@ is `108,090,330` bytes with SHA-256
 
 Local nonvisual gates passed Release build `0/0`, structure `67/67`, Vision
 SDK package, WPG package, NuGet health (`14` projects, `0` vulnerable, `0`
-deprecated), the selected Runner/golden contracts, and current Shell
+deprecated), the selected Runner/golden contracts, and then-current Shell
 workspace/recipe/Run Record contracts. Hosted Windows CI `#94` then passed
 all `55/55` recorded steps, including BinaryHost, Viewer/Shell screenshot
 quality, pointer input, data loading, golden, map-fidelity, compatibility, and
 artifact upload. No local interactive packaged-EXE acceptance or owner R0 was
 performed.
+
+These results remain valid only for the recorded `c1b49ec` source and package.
+They do not prove the current PL-0048 tree, a current hosted CI run, a current
+fixed package, or current owner acceptance.
 
 Recommended model: `gpt-5.6-sol`
 Reasoning effort: `medium`
@@ -262,9 +279,9 @@ The following actions always require explicit owner approval:
 
 ```text
 Status: Incomplete
-Scope: Three-phase first-release contract, frozen c1b49ec source/package identity, automated Phase 1 qualification, and D-backed archive
-Acceptance criteria: current state grounded -> pass; phase gates and approval boundaries documented -> pass; clean package/manifest/archive identity -> pass; local automated gates -> pass; hosted CI -> pass; owner Wide/Compact R0 -> fail; RC/stable publication -> not started
-Verification: c1b49ec clean; product 0.1.1-dev; Release 0/0; application files 11/11; manifest 506/506; package 507 files / 242409310 bytes; archive 108090330 bytes; structure 67/67; NuGet 14 projects / vulnerable 0 / deprecated 0; selected Runner and Shell contracts pass; hosted CI #94 55/55 success
-Evidence: this document; PL-0029; release/version policy; current handoff; CI run 32450458521; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-c1b49ec/
-Boundary / next dependency: the product owner must complete unaided Wide and Compact R0 on the frozen c1b49ec package; no version change, tag, release, or external distribution is authorized
+Scope: Three-phase first-release contract, historical c1b49ec source/package qualification evidence, its explicit invalidation by PL-0037 through PL-0048, and the current PL-0048 tree remaining unfrozen without a current package or hosted CI
+Acceptance criteria: current state grounded -> pass; phase gates and approval boundaries documented -> pass; historical c1b49ec package/manifest/archive identity -> pass for that source only; current clean candidate/package -> fail; current hosted CI -> fail; current-package ValidateOnly and owner Wide/Compact R0 -> fail; RC/stable publication -> not started
+Verification: current PL-0048 tree Release 0/0, structure 68/68, and local focused/UI gates are software evidence only; historical c1b49ec evidence remains application files 11/11, manifest 506/506, package 507 files / 242409310 bytes, archive 108090330 bytes, structure 67/67, NuGet 14 projects / vulnerable 0 / deprecated 0, and hosted CI #94 55/55 success
+Evidence: this document; PL-0029; release/version policy; current handoff; PL-0048 closure; historical CI run 32450458521; D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260821-pl0029-phase1-c1b49ec/
+Boundary / next dependency: owner approval is required before freezing and committing a new exact Studio candidate; that commit then requires a new fixed package, hosted CI, both ValidateOnly modes, and unaided Wide/Compact R0 on the same package. No version change, tag, release, or external distribution is authorized
 ```

@@ -402,7 +402,7 @@ internal static class SurfaceMatchPerformanceBudgetVerification
         var contentSha256 = HashPoints(points);
         var maskBytes = new byte[(points.Count + 7) / 8];
         return new SourceQualityReport(
-            SourceQualityReport.CurrentSchemaVersion,
+            SourceQualityReport.LegacySchemaVersion,
             new SourceQualitySourceIdentity(
                 "scene.measured.performance.256",
                 "SYNTHETIC",

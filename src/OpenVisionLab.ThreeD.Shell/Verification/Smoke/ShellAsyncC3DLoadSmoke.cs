@@ -16,6 +16,7 @@ internal static class ShellAsyncC3DLoadSmoke
         string? reportPath,
         double? cancelAtPercent,
         bool expectFailure,
+        string? expectedViewerStatusFragment,
         Func<string, Task> loadSourceAsync,
         Func<string, bool> isViewerSourceAlreadyLoaded,
         Func<double> getWorkbenchSourceBindingMilliseconds)
@@ -49,11 +50,18 @@ internal static class ShellAsyncC3DLoadSmoke
         var loadPerformance = viewer.LastC3DSourceLoadPerformance;
         var sourceStatePerformance = workbench.LastC3DSourceStatePerformance;
         var loadStateCleared = !workbench.IsC3DSourceLoading;
+        var viewerStatus = viewer.HostState.ViewerStatus ?? string.Empty;
+        var viewerStatusMatched = !expectFailure
+            || !string.IsNullOrWhiteSpace(expectedViewerStatusFragment)
+                && viewerStatus.Contains(
+                    expectedViewerStatusFragment,
+                    StringComparison.Ordinal);
         var passed = expectFailure
             ? !cancelIssued
               && previousPath is not null
               && isViewerSourceAlreadyLoaded(previousPath)
               && loadStateCleared
+              && viewerStatusMatched
             : cancelAtPercent is null
                 ? isViewerSourceAlreadyLoaded(expectedPath)
                   && loadStateCleared
@@ -74,6 +82,9 @@ internal static class ShellAsyncC3DLoadSmoke
                 $"PreviousPath: {previousPath}",
                 $"TargetPath: {expectedPath}",
                 $"CurrentPath: {viewer.CurrentC3DSourcePath}",
+                $"ViewerStatus: {viewerStatus}",
+                $"ExpectedViewerStatusFragment: {expectedViewerStatusFragment ?? "n/a"}",
+                $"ViewerStatusMatched: {viewerStatusMatched}",
                 $"ElapsedMilliseconds: {stopwatch.ElapsedMilliseconds}",
                 $"GridReadAndStatisticsMilliseconds: {loadPerformance?.Grid.ReadAndStatisticsMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",
                 $"GridDistributionMilliseconds: {loadPerformance?.Grid.DistributionMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "n/a"}",

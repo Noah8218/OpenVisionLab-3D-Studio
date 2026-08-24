@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -72,6 +73,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     private ShellInspectionTask selectedInspectionTask = ShellInspectionTask.Thickness;
     private readonly IReadOnlyList<OpenVisionLanguageOption> languageOptions;
     private OpenVisionLanguageOption? selectedLanguageOption;
+    private double lastLanguageChangeMilliseconds;
     private RunRecordRecentItem? selectedRecentRunRecord;
     private static readonly JsonSerializerOptions RunRecordJsonOptions = new()
     {
@@ -214,16 +216,32 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
     public OpenVisionLanguageOption? SelectedLanguageOption
     {
         get => selectedLanguageOption;
-        set
-        {
-            if (value is null || !SetField(ref selectedLanguageOption, value))
-            {
-                return;
-            }
+        set => SetSelectedLanguage(value, save: true);
+    }
 
-            OpenVisionLanguageService.SetLanguage(value.Language);
-            RefreshRecipeComparison();
+    public double LastLanguageChangeMilliseconds
+    {
+        get => lastLanguageChangeMilliseconds;
+        private set => SetField(ref lastLanguageChangeMilliseconds, value);
+    }
+
+    internal void SetSelectedLanguageForVerification(OpenVisionLanguageOption value) =>
+        SetSelectedLanguage(value, save: false);
+
+    private void SetSelectedLanguage(OpenVisionLanguageOption? value, bool save)
+    {
+        if (value is null || !SetField(ref selectedLanguageOption, value))
+        {
+            return;
         }
+
+        var started = Stopwatch.GetTimestamp();
+        OpenVisionLanguageService.SetLanguage(value.Language, save);
+        RefreshRecipeComparison();
+        LastLanguageChangeMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        StatusText = L(
+            $"언어 적용 완료 · {LastLanguageChangeMilliseconds:F0} ms",
+            $"Language applied · {LastLanguageChangeMilliseconds:F0} ms");
     }
 
     private void RefreshLocalizedPresentation()
@@ -1102,27 +1120,93 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        SourceQualityState = report.Coverage.MissingSampleCount > 0
+        var diagnostics = report.GridDiagnostics;
+        SourceQualityState = diagnostics?.State
+            == SourceQualityGridDiagnosticState.Error
+            ? "Error"
+            : report.Coverage.MissingSampleCount > 0
             ? "Warning"
             : "Pass";
         SourceQualitySummary = string.Format(
             CultureInfo.CurrentCulture,
             L(
-                "{0} × {1} · 유효 {2:P1} · 누락 {3:P1}",
-                "{0} × {1} · valid {2:P1} · missing {3:P1}"),
+                "{0} × {1} · 유효 {2:P1} · 누락 {3:P1}{4}",
+                "{0} × {1} · valid {2:P1} · missing {3:P1}{4}"),
             report.Grid.Width,
             report.Grid.Height,
             report.Coverage.ValidRatio,
-            report.Coverage.MissingRatio);
-        SourceQualityDetail = string.Join(
-            Environment.NewLine,
+            report.Coverage.MissingRatio,
+            diagnostics is null
+                ? string.Empty
+                : $" · {L("진단", "diagnostics")} {diagnostics.State}");
+        var detailLines = new List<string>
+        {
             $"SHA-256 {evidence.SourceQualitySha256}",
             $"{L("유효", "Valid")} {report.Coverage.ValidSampleCount:N0} · {L("누락", "Missing")} {report.Coverage.MissingSampleCount:N0}",
             $"{L("누락 셀 맵", "Invalid-cell mask")} SHA-256 {report.Coverage.InvalidCellMask.Sha256}",
             $"{L("좌표", "Coordinates")} {report.Coordinates.FrameId} · {report.Coordinates.Unit} · {report.Coordinates.CoordinateConvention}",
             $"{L("출처", "Provenance")} {report.Provenance}",
-            $"{L("채널", "Channels")} {string.Join("; ", report.Channels.Select(channel => $"{channel.Channel}={channel.State}: {channel.Evidence}"))}");
+            $"{L("채널", "Channels")} {string.Join("; ", report.Channels.Select(channel => $"{channel.Channel}={channel.State}: {channel.Evidence}"))}"
+        };
+        if (diagnostics is not null)
+        {
+            detailLines.Add(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{L("그리드 진단", "Grid diagnostics")} {diagnostics.State} · schema={diagnostics.SchemaVersion} · declared={diagnostics.DeclaredCellCount} · observed={diagnostics.ObservedSampleCount} · unique={diagnostics.UniqueLocatorCount}"));
+            detailLines.AddRange(diagnostics.Checks.Select(
+                FormatSourceQualityDiagnostic));
+        }
+
+        SourceQualityDetail = string.Join(Environment.NewLine, detailLines);
     }
+
+    private static string FormatSourceQualityDiagnostic(
+        SourceQualityGridDiagnosticCheck check)
+    {
+        var locationParts = new List<string>();
+        if (check.FirstSampleOrdinal is { } ordinal)
+        {
+            locationParts.Add($"ordinal={ordinal.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (check.FirstRow is { } row)
+        {
+            locationParts.Add($"row={row.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (check.FirstColumn is { } column)
+        {
+            locationParts.Add($"column={column.ToString(CultureInfo.InvariantCulture)}");
+        }
+
+        if (!string.IsNullOrEmpty(check.FirstComponent))
+        {
+            locationParts.Add($"component={check.FirstComponent}");
+        }
+
+        var location = locationParts.Count == 0
+            ? L("없음", "none")
+            : string.Join(", ", locationParts);
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{FormatSourceQualityDiagnosticTitle(check.Code)} ({check.Code}) · {check.State} · {L("영향", "affected")}={check.AffectedCount} · {L("최초", "first")}={location} · {check.Message}");
+    }
+
+    private static string FormatSourceQualityDiagnosticTitle(
+        SourceQualityGridDiagnosticCode code) =>
+        code switch
+        {
+            SourceQualityGridDiagnosticCode.Topology =>
+                L("그리드 토폴로지", "Grid topology"),
+            SourceQualityGridDiagnosticCode.LocatorMonotonicity =>
+                L("로케이터 순서", "Locator order"),
+            SourceQualityGridDiagnosticCode.DuplicateLocator =>
+                L("중복 로케이터", "Duplicate locators"),
+            SourceQualityGridDiagnosticCode.CoordinateFiniteness =>
+                L("좌표 유한성", "Coordinate finiteness"),
+            _ => code.ToString()
+        };
 
     private void RefreshThresholdCorrection(InspectionRunRecord? runRecord)
     {

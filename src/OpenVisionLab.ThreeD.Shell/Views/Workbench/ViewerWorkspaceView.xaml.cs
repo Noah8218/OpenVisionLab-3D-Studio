@@ -542,11 +542,7 @@ public partial class ViewerWorkspaceView : UserControl
             {
                 DataContext = currentWorkbench.HeightImageViewer
             };
-            _ = currentWorkbench.HeightImageViewer.EnsureSourceAsync(
-                candidate.SourcePath,
-                currentWorkbench.Source.Id,
-                currentWorkbench.Source.Unit,
-                currentWorkbench.Source.FrameId);
+            _ = currentWorkbench.EnsureHeightImageSourceAsync();
             PresentAuxiliaryContent(heightImageViewer, currentWorkbench);
             return;
         }

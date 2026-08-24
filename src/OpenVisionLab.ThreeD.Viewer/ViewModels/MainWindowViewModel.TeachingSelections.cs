@@ -7,6 +7,7 @@ public sealed partial class MainWindowViewModel
 {
     private TeachingCaptureRequest? teachingCaptureRequest;
     private IReadOnlyList<ToolRecipeSelectionPoint> teachingCapturePoints = [];
+    private ToolRecipeGridCircle? teachingCaptureGridCircle;
     private IReadOnlyList<ToolRecipeSelection> appliedTeachingSelections = [];
     private IReadOnlyList<ToolRecipeSelection> repeatPreviewTeachingSelections = [];
     private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
@@ -114,16 +115,24 @@ public sealed partial class MainWindowViewModel
                     teachingCapturePoints.Count > 0,
                     IsTeachingCaptureCandidateValid(request, teachingCapturePoints),
                     teachingCaptureMessage,
-                    appliedTeachingSelections.Count);
+                    appliedTeachingSelections.Count,
+                    teachingCaptureGridCircle);
         }
     }
 
     internal bool BeginTeachingCapture(TeachingCaptureRequest request, out string message)
-        => BeginTeachingCapture(request, initialPoints: null, out message);
+        => BeginTeachingCapture(request, initialPoints: null, initialGridCircle: null, out message);
 
     internal bool BeginTeachingCapture(
         TeachingCaptureRequest request,
         IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints,
+        out string message) =>
+        BeginTeachingCapture(request, initialPoints, initialGridCircle: null, out message);
+
+    internal bool BeginTeachingCapture(
+        TeachingCaptureRequest request,
+        IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints,
+        ToolRecipeGridCircle? initialGridCircle,
         out string message)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -134,6 +143,7 @@ public sealed partial class MainWindowViewModel
 
         teachingCaptureRequest = request;
         teachingCapturePoints = initialPoints?.ToArray() ?? [];
+        teachingCaptureGridCircle = initialGridCircle;
         teachingCaptureMessage = IsTeachingCaptureCandidateValid(request, teachingCapturePoints)
             ? $"Edit started: {request.SelectionName}. Move, resize, or enter values, then Apply."
             : $"Capture started: {request.SelectionName}.";
@@ -171,6 +181,16 @@ public sealed partial class MainWindowViewModel
         }
 
         teachingCapturePoints = [.. teachingCapturePoints, point];
+        if (request.Kind == ToolRecipeSelectionKinds.GridCircle
+            && teachingCapturePoints is [var center, var boundary])
+        {
+            var deltaRow = boundary.Locator.Row - center.Locator.Row;
+            var deltaColumn = boundary.Locator.Column - center.Locator.Column;
+            teachingCaptureGridCircle = new ToolRecipeGridCircle(
+                center.Locator.Row,
+                center.Locator.Column,
+                Math.Sqrt((double)deltaRow * deltaRow + (double)deltaColumn * deltaColumn));
+        }
         var ready = IsTeachingCaptureCandidateValid(request, teachingCapturePoints);
         teachingCaptureMessage = ready
             ? $"Captured {teachingCapturePoints.Count}/{request.RequiredPointCount}; candidate ready to apply."
@@ -190,6 +210,7 @@ public sealed partial class MainWindowViewModel
         }
 
         teachingCapturePoints = teachingCapturePoints.Take(teachingCapturePoints.Count - 1).ToArray();
+        teachingCaptureGridCircle = null;
         teachingCaptureMessage = teachingCapturePoints.Count == 0
             ? "Last point removed; capture the first point."
             : $"Last point removed; {teachingCapturePoints.Count}/{teachingCaptureRequest.RequiredPointCount} remain.";
@@ -206,6 +227,7 @@ public sealed partial class MainWindowViewModel
 
         teachingCaptureRequest = null;
         teachingCapturePoints = [];
+        teachingCaptureGridCircle = null;
         teachingCaptureMessage = message;
         RefreshTeachingCaptureState();
         return true;
@@ -234,6 +256,7 @@ public sealed partial class MainWindowViewModel
         }
 
         ToolRecipeGridRectangle? rectangle = null;
+        ToolRecipeGridCircle? gridCircle = null;
         IReadOnlyList<ToolRecipeSelectionPoint>? points = null;
         if (request.Kind == ToolRecipeSelectionKinds.GridRectangle)
         {
@@ -246,6 +269,10 @@ public sealed partial class MainWindowViewModel
                 column,
                 Math.Abs(second.Row - first.Row) + 1,
                 Math.Abs(second.Column - first.Column) + 1);
+        }
+        else if (request.Kind == ToolRecipeSelectionKinds.GridCircle)
+        {
+            gridCircle = teachingCaptureGridCircle;
         }
         else
         {
@@ -261,7 +288,8 @@ public sealed partial class MainWindowViewModel
             request.SourceBinding,
             rectangle,
             points,
-            null);
+            null,
+            GridCircle: gridCircle);
         message = $"Teaching selection candidate ready: {request.SelectionName}.";
         return true;
     }
@@ -289,6 +317,40 @@ public sealed partial class MainWindowViewModel
         return true;
     }
 
+    internal bool TrySetTeachingGridCircleCandidate(
+        ToolRecipeGridCircle circle,
+        ToolRecipeSelectionPoint center,
+        ToolRecipeSelectionPoint boundary,
+        out string message)
+    {
+        var request = teachingCaptureRequest;
+        if (request is not
+            {
+                Kind: ToolRecipeSelectionKinds.GridCircle,
+                RequiredPointCount: 2
+            })
+        {
+            message = "No active GridCircle edit candidate.";
+            return false;
+        }
+
+        if (ToolRecipeGridCircleGeometry.Validate(
+                circle,
+                request.SourceBinding.GridWidth,
+                request.SourceBinding.GridHeight).Count > 0)
+        {
+            message = "GridCircle center and radius must stay inside the bound source grid.";
+            return false;
+        }
+
+        teachingCapturePoints = [center, boundary];
+        teachingCaptureGridCircle = circle;
+        teachingCaptureMessage = "Circular ROI edit candidate ready. Apply is still required; inspection has not run.";
+        RefreshTeachingCaptureState();
+        message = teachingCaptureMessage;
+        return true;
+    }
+
     internal void ConfirmTeachingCaptureApplied()
     {
         if (teachingCaptureRequest is null)
@@ -298,6 +360,7 @@ public sealed partial class MainWindowViewModel
 
         teachingCaptureRequest = null;
         teachingCapturePoints = [];
+        teachingCaptureGridCircle = null;
         teachingCaptureMessage = "Teaching selection applied to the recipe.";
         RefreshTeachingCaptureState();
     }
@@ -397,12 +460,13 @@ public sealed partial class MainWindowViewModel
         var validKindAndCount = request.Kind switch
         {
             ToolRecipeSelectionKinds.GridRectangle => request.RequiredPointCount == 2,
+            ToolRecipeSelectionKinds.GridCircle => request.RequiredPointCount == 2,
             ToolRecipeSelectionKinds.PointSet => request.RequiredPointCount is 2 or 3,
             _ => false
         };
         if (!validKindAndCount)
         {
-            message = "Viewer capture supports a two-corner grid rectangle or a two/three-point set.";
+            message = "Viewer capture supports a two-corner rectangle, center-and-boundary circle, or a two/three-point set.";
             return false;
         }
 
@@ -410,13 +474,21 @@ public sealed partial class MainWindowViewModel
         return true;
     }
 
-    private static bool IsTeachingCaptureCandidateValid(
+    private bool IsTeachingCaptureCandidateValid(
         TeachingCaptureRequest request,
         IReadOnlyList<ToolRecipeSelectionPoint> points)
     {
         if (points.Count != request.RequiredPointCount)
         {
             return false;
+        }
+
+        if (request.Kind == ToolRecipeSelectionKinds.GridCircle)
+        {
+            return ToolRecipeGridCircleGeometry.Validate(
+                teachingCaptureGridCircle,
+                request.SourceBinding.GridWidth,
+                request.SourceBinding.GridHeight).Count == 0;
         }
 
         if (request.Kind != ToolRecipeSelectionKinds.PointSet || request.RequiredPointCount != 3)

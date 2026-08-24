@@ -4,6 +4,13 @@ Date: 2026-07-28
 
 Status: Complete for the documented software scope
 
+> Follow-up qualification (2026-08-23): `PL-0043/M-14` extends the current
+> existing Validation Set verifier with one counterfactual Held-out fixture.
+> With the same four development samples, changing only Held-out value and
+> identity must leave the complete candidate, limit, ranking, warning,
+> confusion, and development-decision fingerprint unchanged. The original
+> implementation record below remains historical evidence for its scope.
+
 ## Outcome
 
 Validation Set now converts explicit-run Good/Bad metric observations into a

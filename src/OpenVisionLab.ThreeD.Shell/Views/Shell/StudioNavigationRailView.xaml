@@ -59,6 +59,14 @@
                                         Value="{DynamicResource ThreeD.AccentBrush}" />
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface"
                                         Property="BorderBrush"
@@ -66,6 +74,7 @@
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -104,10 +113,28 @@
                                         Property="BorderBrush"
                                         Value="{DynamicResource ThreeD.DividerBrush}" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Surface"
                                         Property="BorderBrush"
                                         Value="{DynamicResource ThreeD.FocusBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                <Setter TargetName="Surface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                                <Setter TargetName="Surface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.DividerBrush}" />
+                                <Setter Property="Cursor" Value="Arrow" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -314,7 +341,6 @@
                 </Button>
 
                 <ComboBox x:Name="LanguageSelector"
-                          Height="32"
                           HorizontalAlignment="Left"
                           ItemsSource="{Binding LanguageOptions}"
                           SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}"
@@ -323,7 +349,8 @@
                           AutomationProperties.Name="Select Korean or English">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock>
+                            <TextBlock VerticalAlignment="Center"
+                                       TextOptions.TextFormattingMode="Ideal">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="{Binding DisplayName}" />

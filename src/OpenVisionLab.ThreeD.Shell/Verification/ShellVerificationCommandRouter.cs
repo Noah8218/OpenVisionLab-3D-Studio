@@ -199,6 +199,31 @@ internal static class ShellVerificationCommandRouter
             return;
         }
 
+        const string importSurfaceVerificationOption =
+            "--verify-import-surface";
+        var importSurfaceVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                importSurfaceVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (importSurfaceVerificationIndex >= 0)
+        {
+            if (importSurfaceVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{importSurfaceVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = ImportSurfaceViewModelVerification.Verify(
+                args[importSurfaceVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
         var sourceQualityWorkspaceVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(
@@ -322,6 +347,35 @@ internal static class ShellVerificationCommandRouter
             {
                 var passed = LevelSurfaceWorkbenchVerification.Verify(
                     args[levelSurfaceWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
+        const string roiCropWorkbenchVerificationOption =
+            "--verify-roi-crop-workbench";
+        var roiCropWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                roiCropWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (roiCropWorkbenchVerificationIndex >= 0)
+        {
+            if (roiCropWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{roiCropWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = RoiCropWorkbenchVerification.Verify(
+                    args[roiCropWorkbenchVerificationIndex + 1],
                     out var detail);
                 return (Passed: passed, Detail: detail);
             }).GetAwaiter().GetResult();

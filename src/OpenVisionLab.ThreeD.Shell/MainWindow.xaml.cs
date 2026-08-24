@@ -174,10 +174,12 @@ public partial class MainWindow : Window
                 SaveTeachingRecipeAs = _workbenchLifecycle.SaveTeachingRecipeAsRequested,
                 OpenToolLibrary = OnWorkbenchOpenToolLibraryRequested,
                 SelectedStepSetup = OnWorkbenchSelectedStepSetupRequested,
+                SourceQualityWorkspace = OnWorkbenchSourceQualityWorkspaceRequested,
                 OpenTeachingRecipe = _workbenchLifecycle.OpenTeachingRecipeRequested,
                 RemoveSelectedStep = OnWorkbenchRemoveSelectedStepRequested,
                 OpenRecentTeachingRecipe = _workbenchLifecycle.OpenRecentTeachingRecipeRequested,
                 LoadC3DSource = _workbenchLifecycle.LoadC3DSourceRequested,
+                Import3DData = _workbenchLifecycle.Import3DDataRequested,
                 CancelC3DSourceLoad = (_, _) => _workbenchLifecycle.CancelC3DSourceLoad(),
                 ToolLab = OnWorkbenchToolLabRequested,
                 SelectValidationSetSources = OnWorkbenchSelectValidationSetSourcesRequested,
@@ -291,6 +293,10 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(IntPtr windowHandle, out NativeRectangle rectangle);
 
     [DllImport("user32.dll")]
@@ -303,6 +309,13 @@ public partial class MainWindow : Window
         uint deltaX,
         uint deltaY,
         uint data,
+        UIntPtr extraInfo);
+
+    [DllImport("user32.dll", EntryPoint = "keybd_event")]
+    private static extern void SendKeyboardEvent(
+        byte virtualKey,
+        byte scanCode,
+        uint flags,
         UIntPtr extraInfo);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -381,7 +394,6 @@ public partial class MainWindow : Window
         var messageDialogScreenshotPath = smoke.MessageDialogScreenshotPath;
         var messageDialogScreenshotQualityReportPath = smoke.MessageDialogScreenshotQualityReportPath;
         WpfMessageDialogWindow? messageDialogSmokeWindow = null;
-        var messageDialogSmokePrimaryButtonText = string.Empty;
         var smokeSaveRecipePath = smoke.SmokeSaveRecipePath;
         var teachingSelectionSmokeMode = smoke.TeachingSelectionSmokeMode;
         var teachingSelectionSmokeReportPath = smoke.TeachingSelectionSmokeReportPath;
@@ -395,6 +407,10 @@ public partial class MainWindow : Window
         var asyncC3DLoadSmokeReportPath = smoke.AsyncC3DLoadSmokeReportPath;
         var asyncC3DLoadCancelAt = smoke.AsyncC3DLoadCancelAt;
         var asyncC3DLoadExpectFailure = smoke.AsyncC3DLoadExpectFailure;
+        var asyncC3DLoadExpectedStatusFragment =
+            smoke.AsyncC3DLoadExpectedStatusFragment;
+        var viewerOnlyImportSmokePath = smoke.ViewerOnlyImportSmokePath;
+        var viewerOnlyImportSmokeReportPath = smoke.ViewerOnlyImportSmokeReportPath;
         var sourceQualitySmokeReportPath = smoke.SourceQualitySmokeReportPath;
         var sourceAcquisitionProvenanceSmokeState =
             smoke.SourceAcquisitionProvenanceSmokeState;
@@ -405,6 +421,8 @@ public partial class MainWindow : Window
         var heightImageRangeMaximumSmoke = smoke.HeightImageRangeMaximumSmoke;
         var heightImageDisplayRangeSmokeReportPath =
             smoke.HeightImageDisplayRangeSmokeReportPath;
+        var heightImagePaletteStateEvidenceDirectory =
+            smoke.HeightImagePaletteStateEvidenceDirectory;
         var sharedHeightHoverRow = smoke.SharedHeightHoverRow;
         var sharedHeightHoverColumn = smoke.SharedHeightHoverColumn;
         var sharedHeightHoverSmokeReportPath =
@@ -438,6 +456,8 @@ public partial class MainWindow : Window
             smoke.SurfaceMatchCollectionNavigationFocusHoverSmoke;
         var recipeHealthNavigationPressedSmoke =
             smoke.RecipeHealthNavigationPressedSmoke;
+        var viewerToolbarPressedSmoke = smoke.ViewerToolbarPressedSmoke;
+        var import3DDataPressedSmoke = smoke.Import3DDataPressedSmoke;
         var currentRecipeRunReadySmoke = smoke.CurrentRecipeRunReadySmoke;
         var currentRecipeRunPressedSmoke = smoke.CurrentRecipeRunPressedSmoke;
         var supportBundlePressedSmoke = smoke.SupportBundlePressedSmoke;
@@ -453,6 +473,7 @@ public partial class MainWindow : Window
         var filterPreviewSmoke = smoke.FilterPreviewSmoke;
         var removeOutlierPreviewSmoke = smoke.RemoveOutlierPreviewSmoke;
         var levelSurfacePreviewSmoke = smoke.LevelSurfacePreviewSmoke;
+        var roiCropPreviewSmoke = smoke.RoiCropPreviewSmoke;
         var measurementPreviewSmoke = smoke.MeasurementPreviewSmoke;
         var edgePublishSmoke = smoke.EdgePublishSmoke;
         var lineFitPreviewSmoke = smoke.LineFitPreviewSmoke;
@@ -517,6 +538,20 @@ public partial class MainWindow : Window
             _shellSmokeLoadedHandler = async (_, _) =>
             {
                 await Dispatcher.InvokeAsync(() => { });
+                if (smoke.OpenImport3DDataDialogSmoke)
+                {
+                    var importDialogTimer = new DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(700)
+                    };
+                    importDialogTimer.Tick += (_, _) =>
+                    {
+                        importDialogTimer.Stop();
+                        _viewModel.Workbench.Import3DDataCommand.Execute(null);
+                    };
+                    importDialogTimer.Start();
+                    return;
+                }
                 ConfigureResultsSectionFromCommandLine();
                 if (!TryConfigureSurfaceMatchEvidenceFromCommandLine(
                         out var surfaceMatchFailure))
@@ -561,11 +596,26 @@ public partial class MainWindow : Window
                         asyncC3DLoadSmokeReportPath,
                         asyncC3DLoadCancelAt,
                         asyncC3DLoadExpectFailure,
+                        asyncC3DLoadExpectedStatusFragment,
                          path => _workbenchLifecycle.LoadWorkbenchC3DSourceAsync(path, showFailureDialog: false),
                          _workbenchLifecycle.IsViewerSourceAlreadyLoaded,
                          () => _workbenchLifecycle.LastWorkbenchSourceBindingMilliseconds))
                 {
-                    _viewModel.SetViewerSmokeFailed("Asynchronous C3D load smoke did not keep the Dispatcher responsive or activate the target source.");
+                    _viewModel.SetViewerSmokeFailed("Asynchronous C3D load smoke did not satisfy its source-retention, status, or responsiveness contract.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (viewerOnlyImportSmokePath is not null
+                    && !await ShellViewerOnlyImportSmoke.RunAsync(
+                        _viewer,
+                        _viewModel.Workbench,
+                        _workbenchLifecycle,
+                        viewerOnlyImportSmokePath,
+                        viewerOnlyImportSmokeReportPath))
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Viewer-only Import did not activate the decoded source or preserve recipe state.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -573,6 +623,8 @@ public partial class MainWindow : Window
                 if (smoke.SourceQualitySmoke
                     && !await ShellSourceQualitySmoke.RunAsync(
                         _viewModel.Workbench,
+                        ToolWorkbench,
+                        this,
                         Dispatcher,
                         sourceQualitySmokeReportPath))
                 {
@@ -680,7 +732,6 @@ public partial class MainWindow : Window
                         Application.Current.Shutdown(1);
                         return;
                     }
-                    messageDialogSmokePrimaryButtonText = dialogOptions.PrimaryButtonText;
                     messageDialogSmokeWindow = new WpfMessageDialogWindow(dialogOptions)
                     {
                         Owner = this
@@ -727,6 +778,16 @@ public partial class MainWindow : Window
                 {
                     _viewModel.SetViewerSmokeFailed(
                         _viewModel.Workbench.LevelSurfaceExecutionSummary);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (roiCropPreviewSmoke
+                    && !await _viewModel.Workbench
+                        .PreviewSelectedRoiCropAsync())
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        _viewModel.Workbench.RoiCropExecutionSummary);
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -806,6 +867,16 @@ public partial class MainWindow : Window
                 {
                     _viewModel.SetViewerSmokeFailed(
                         "Height Image display range did not apply as view-only state.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
+                if (heightImagePaletteStateEvidenceDirectory is not null
+                    && !await RunHeightImagePaletteStateSmokeAsync(
+                        heightImagePaletteStateEvidenceDirectory))
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Height Image palette selector runtime states were incomplete or changed recipe/execution state.");
                     Application.Current.Shutdown(1);
                     return;
                 }
@@ -1064,7 +1135,7 @@ public partial class MainWindow : Window
                         "Nominal/actual Preview did not complete before Shell screenshot capture.");
                 }
 
-                if (!_viewer.ApplyConfiguredSmokeNextDensity())
+                if (!await _viewer.ApplyConfiguredSmokeNextDensityAsync())
                 {
                     _viewModel.SetViewerSmokeFailed(_viewer.HostState.ViewerStatus);
                 }
@@ -1612,7 +1683,21 @@ public partial class MainWindow : Window
 
                 await Task.Delay(100);
                 if (shellScreenshotPath is not null
-                    && !(recipeHealthNavigationPressedSmoke
+                    && !(import3DDataPressedSmoke
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "Import3DData",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "Import3DDataPressed")
+                        : viewerToolbarPressedSmoke
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "ViewerFitAll",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "ViewerToolbarPressed")
+                        : recipeHealthNavigationPressedSmoke
                         ? await CaptureRecipeHealthNavigationPressedForSmokeAsync(
                             this,
                             shellScreenshotPath,
@@ -1780,7 +1865,6 @@ public partial class MainWindow : Window
                             messageDialogSmokeWindow,
                             messageDialogScreenshotPath,
                             messageDialogScreenshotQualityReportPath,
-                            messageDialogSmokePrimaryButtonText,
                             smoke.MessageDialogPrimaryPressedSmoke)))
                 {
                     _viewModel.SetViewerSmokeFailed("Message dialog screenshot remained blank or invalid after 3 attempts.");
@@ -2498,6 +2582,191 @@ public partial class MainWindow : Window
                 ]);
         }
 
+        return passed;
+    }
+
+    private async Task<bool> RunHeightImagePaletteStateSmokeAsync(
+        string evidenceDirectory)
+    {
+        const uint leftButtonDown = 0x0002;
+        const uint leftButtonUp = 0x0004;
+        const uint keyUp = 0x0002;
+        const byte downKey = 0x28;
+        const byte enterKey = 0x0D;
+        var directory = Path.GetFullPath(evidenceDirectory);
+        Directory.CreateDirectory(directory);
+        var workbench = _viewModel.Workbench;
+        var heightImage = workbench.HeightImageViewer;
+        var beforePalette = heightImage.SelectedPalette;
+        var beforeDirty = workbench.IsDirty;
+        var beforeStepCount = workbench.PipelineSteps.Count;
+        var beforeSelectionCount = workbench.Selections.Count;
+        var beforeLogCount = workbench.RunLog.Count;
+        var beforePreviewRunning = workbench.IsSelectedStepPreviewRunning;
+        var beforeValidationRunning = workbench.IsValidationSetRunning;
+        var lines = new List<string>
+        {
+            "Height Image palette selector runtime-state verification",
+            "Boundary|viewOnly=true|recipeChange=false|preview=false|run=false"
+        };
+
+        var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
+            .FirstOrDefault(comboBox =>
+                System.Windows.Automation.AutomationProperties.GetAutomationId(comboBox)
+                == "HeightImagePaletteSelector");
+        if (selector is not { IsVisible: true, IsEnabled: true })
+        {
+            WriteTextReport(Path.Combine(directory, "report.txt"),
+            [
+                .. lines,
+                "Result=FAIL|selector unavailable"
+            ]);
+            return false;
+        }
+
+        Activate();
+        var foregrounded = SetForegroundWindow(new WindowInteropHelper(this).Handle);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await Task.Delay(150);
+        selector.ApplyTemplate();
+        selector.UpdateLayout();
+        void Capture(string name, FrameworkElement element)
+        {
+            element.UpdateLayout();
+            var capture = WpfScreenshotCapture.Capture(element);
+            WpfScreenshotCapture.Save(
+                capture.Bitmap,
+                Path.Combine(directory, name + ".png"));
+            lines.Add(
+                $"Capture|state={name}|elementOnly=true|pixels={capture.Bitmap.PixelWidth}x{capture.Bitmap.PixelHeight}|fullWindowBlankHeuristic=not-applicable");
+        }
+
+        Capture("normal", selector);
+        var selectedValueMatches = Equals(selector.SelectedValue, beforePalette);
+        lines.Add(
+            $"Normal|size={selector.ActualWidth:0.###}x{selector.ActualHeight:0.###}|selectedIndex={selector.SelectedIndex}|selectedValue={selector.SelectedValue}|vm={beforePalette}|twoWayVmToUi={selectedValueMatches}");
+
+        var focused = selector.Focus();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var focusedWithin = selector.IsKeyboardFocusWithin;
+        Capture("focused", selector);
+        lines.Add($"Focused|focusAccepted={focused}|isKeyboardFocusWithin={focusedWithin}");
+
+        var center = selector.PointToScreen(new System.Windows.Point(
+            selector.ActualWidth / 2.0,
+            selector.ActualHeight / 2.0));
+        var cursorPositioned = SetCursorPos(
+            (int)Math.Round(center.X),
+            (int)Math.Round(center.Y));
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        for (var attempt = 0; attempt < 10 && !selector.IsMouseOver; attempt++)
+        {
+            await Task.Delay(50);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        }
+        Capture("hover", selector);
+        var hovered = selector.IsMouseOver;
+        _ = GetCursorPos(out var actualCursor);
+        _ = GetWindowRect(new WindowInteropHelper(this).Handle, out var stateWindowRect);
+        lines.Add(
+            $"Hover|foregrounded={foregrounded}|cursorPositioned={cursorPositioned}|requested={center.X:0.#},{center.Y:0.#}|actual={actualCursor.X},{actualCursor.Y}|window={stateWindowRect.Left},{stateWindowRect.Top},{stateWindowRect.Right},{stateWindowRect.Bottom}|isMouseOver={hovered}");
+
+        var pressed = false;
+        SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
+        try
+        {
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            var toggle = FindVisualDescendants<System.Windows.Controls.Primitives.ToggleButton>(selector)
+                .FirstOrDefault();
+            Capture("pressed", selector);
+            var inputPressed = System.Windows.Input.Mouse.LeftButton
+                               == System.Windows.Input.MouseButtonState.Pressed;
+            pressed = inputPressed && selector.IsMouseOver;
+            lines.Add(
+                $"Pressed|actualPointerDown=true|inputPressed={inputPressed}|isMouseOver={selector.IsMouseOver}|togglePressed={toggle?.IsPressed}");
+        }
+        finally
+        {
+            SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
+        }
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        await Task.Delay(120);
+
+        var popup = selector.Template.FindName("PART_Popup", selector)
+            as System.Windows.Controls.Primitives.Popup
+            ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
+                .FirstOrDefault();
+        var popupOpen = selector.IsDropDownOpen
+                        && popup is { IsOpen: true, Child: FrameworkElement };
+        if (popup?.Child is FrameworkElement popupChild)
+        {
+            Capture("open-popup", popupChild);
+        }
+        var visiblePopupItems = popup?.Child is DependencyObject popupRoot
+            ? FindVisualDescendants<System.Windows.Controls.ComboBoxItem>(popupRoot)
+                .Count(item => item.IsVisible && item.ActualHeight > 0.0)
+            : 0;
+        lines.Add(
+            $"OpenPopup|open={popupOpen}|items={selector.Items.Count}|visibleItems={visiblePopupItems}");
+
+        SendKeyboardEvent(downKey, 0, 0, UIntPtr.Zero);
+        SendKeyboardEvent(downKey, 0, keyUp, UIntPtr.Zero);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        SendKeyboardEvent(enterKey, 0, 0, UIntPtr.Zero);
+        SendKeyboardEvent(enterKey, 0, keyUp, UIntPtr.Zero);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        await Task.Delay(120);
+        var keyboardPalette = heightImage.SelectedPalette;
+        var uiToVmPassed = !Equals(keyboardPalette, beforePalette)
+                           && Equals(selector.SelectedValue, keyboardPalette);
+        lines.Add(
+            $"KeyboardSelection|before={beforePalette}|after={keyboardPalette}|uiToVm={uiToVmPassed}|popupClosed={!selector.IsDropDownOpen}");
+
+        heightImage.SelectedPalette = beforePalette;
+        selector.IsDropDownOpen = false;
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        var leavePoint = PointToScreen(new System.Windows.Point(20, 20));
+        var leavePositioned = SetCursorPos(
+            (int)Math.Round(leavePoint.X),
+            (int)Math.Round(leavePoint.Y));
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await Task.Delay(120);
+        Capture("mouse-leave-recovery", selector);
+        var mouseLeaveRecovered = !selector.IsMouseOver;
+        var restored = Equals(selector.SelectedValue, beforePalette)
+                       && heightImage.SelectedPalette == beforePalette;
+        lines.Add(
+            $"MouseLeaveRecovery|cursorPositioned={leavePositioned}|isMouseOver={selector.IsMouseOver}|restored={restored}");
+        lines.Add(
+            "NotApplicable|disabled/readOnly/validationError=palette selector is enabled, selectable view state and has no validation contract");
+
+        var boundaryPreserved = workbench.IsDirty == beforeDirty
+                                && workbench.PipelineSteps.Count == beforeStepCount
+                                && workbench.Selections.Count == beforeSelectionCount
+                                && workbench.RunLog.Count == beforeLogCount
+                                && workbench.IsSelectedStepPreviewRunning == beforePreviewRunning
+                                && workbench.IsValidationSetRunning == beforeValidationRunning;
+        var passed = selector.ActualHeight > 30.0
+                     && selectedValueMatches
+                     && focused
+                     && focusedWithin
+                     && cursorPositioned
+                     && hovered
+                     && pressed
+                     && popupOpen
+                     && visiblePopupItems == selector.Items.Count
+                     && uiToVmPassed
+                     && leavePositioned
+                     && mouseLeaveRecovered
+                     && restored
+                     && boundaryPreserved;
+        lines.Add(
+            $"BoundaryCheck|dirty={beforeDirty}->{workbench.IsDirty}|steps={beforeStepCount}->{workbench.PipelineSteps.Count}|selections={beforeSelectionCount}->{workbench.Selections.Count}|logs={beforeLogCount}->{workbench.RunLog.Count}|preview={beforePreviewRunning}->{workbench.IsSelectedStepPreviewRunning}|validation={beforeValidationRunning}->{workbench.IsValidationSetRunning}");
+        lines.Add($"Result={(passed ? "PASS" : "FAIL")}");
+        WriteTextReport(Path.Combine(directory, "report.txt"), lines);
         return passed;
     }
 
@@ -3312,6 +3581,16 @@ public partial class MainWindow : Window
         ToolWorkbench.ActivateSelectedToolPane();
     }
 
+    private void OnWorkbenchSourceQualityWorkspaceRequested(object? sender, EventArgs args)
+    {
+        if (!_viewModel.IsWorkbenchWorkspaceSelected)
+        {
+            _viewModel.IsWorkbenchWorkspaceSelected = true;
+        }
+
+        ToolWorkbench.ActivateSelectedToolPane();
+    }
+
     private void OpenFilterToolLabRequested(object? sender, EventArgs args)
     {
         ShowFilterToolLabWindow(showMissingFilterMessage: true);
@@ -3552,7 +3831,7 @@ public partial class MainWindow : Window
         var mouseDown = false;
         var routedPointerDown = false;
         var forcedPressedState = false;
-        System.Windows.Controls.Button? pressedButton = null;
+        System.Windows.Controls.Primitives.ButtonBase? pressedButton = null;
         try
         {
             window.Activate();
@@ -3561,7 +3840,7 @@ public partial class MainWindow : Window
                 () => { },
                 DispatcherPriority.Input);
             window.UpdateLayout();
-            var button = FindVisualDescendants<System.Windows.Controls.Button>(window)
+            var button = FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
                 .FirstOrDefault(button =>
                     System.Windows.Automation.AutomationProperties.GetAutomationId(button)
                     == automationId);
@@ -3694,89 +3973,23 @@ public partial class MainWindow : Window
         WpfMessageDialogWindow dialog,
         string screenshotPath,
         string? qualityReportPath,
-        string primaryButtonText,
         bool holdPrimaryButton)
     {
-        const uint leftButtonDown = 0x0002;
-        const uint leftButtonUp = 0x0004;
-        var mouseDown = false;
-        System.Windows.Controls.Button? pressedButton = null;
-        try
+        if (holdPrimaryButton)
         {
-            if (holdPrimaryButton)
-            {
-                dialog.UpdateLayout();
-                var primaryButton = FindVisualDescendants<System.Windows.Controls.Button>(dialog)
-                    .FirstOrDefault(button => button.IsVisible
-                        && string.Equals(
-                            button.Content?.ToString(),
-                            primaryButtonText,
-                            StringComparison.Ordinal));
-                if (primaryButton is null)
-                {
-                    return false;
-                }
-
-                dialog.Activate();
-                SetForegroundWindow(new WindowInteropHelper(dialog).Handle);
-                primaryButton.Focus();
-                var center = primaryButton.PointToScreen(
-                    new System.Windows.Point(
-                        primaryButton.ActualWidth / 2.0,
-                        primaryButton.ActualHeight / 2.0));
-                if (!SetCursorPos((int)Math.Round(center.X), (int)Math.Round(center.Y)))
-                {
-                    return false;
-                }
-                await Task.Delay(150);
-                SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
-                mouseDown = true;
-                await Task.Delay(150);
-                if (!primaryButton.IsPressed)
-                {
-                    primaryButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
-                        System.Windows.Input.Mouse.PrimaryDevice,
-                        Environment.TickCount,
-                        System.Windows.Input.MouseButton.Left)
-                    {
-                        RoutedEvent = UIElement.MouseLeftButtonDownEvent,
-                        Source = primaryButton
-                    });
-                    await dialog.Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Render);
-                }
-                if (!primaryButton.IsPressed)
-                {
-                    return false;
-                }
-                pressedButton = primaryButton;
-            }
-
-            return await CaptureWindowWithRetryAsync(
+            return await CaptureButtonPressedForSmokeAsync(
                 dialog,
+                "MessageDialogPrimaryButton",
                 screenshotPath,
                 qualityReportPath,
-                holdPrimaryButton ? "MessageDialogPrimaryPressed" : "MessageDialog");
+                "MessageDialogPrimaryPressed");
         }
-        finally
-        {
-            if (pressedButton is not null)
-            {
-                pressedButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
-                    System.Windows.Input.Mouse.PrimaryDevice,
-                    Environment.TickCount,
-                    System.Windows.Input.MouseButton.Left)
-                {
-                    RoutedEvent = UIElement.MouseLeftButtonUpEvent,
-                    Source = pressedButton
-                });
-            }
-            if (mouseDown)
-            {
-                SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
-            }
-        }
+
+        return await CaptureWindowWithRetryAsync(
+            dialog,
+            screenshotPath,
+            qualityReportPath,
+            "MessageDialog");
     }
 
     private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)

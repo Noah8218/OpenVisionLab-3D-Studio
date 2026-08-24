@@ -105,9 +105,9 @@ Current inventory count:
 
 | Classification | Count |
 | --- | ---: |
-| Complete `C` | 140 |
-| Partial `P` | 17 |
-| New `N` | 53 |
+| Complete `C` | 153 |
+| Partial `P` | 16 |
+| New `N` | 41 |
 | External prerequisite `E` | 9 |
 | Out of scope `O` | 16 |
 | Total | 235 |
@@ -157,6 +157,395 @@ Current inventory count:
   acquisition direction and display-only edge-normal orientation are complete.
 - Physical calibration, traceability, uncertainty, GR&R, and production
   tolerance are unverified.
+
+### Current software checkpoint - PL-0048 GridCircle selection - 2026-08-24
+
+`PL-0048` completes `E-14` with schema `1.6` `GridCircle` geometry: integer
+center row/column and finite radius in cell-center units, fully bounded by the
+exact source grid. Center/boundary drawing and synchronized numeric editing
+reuse the existing Viewer/Workbench teaching path. Draft changes remain
+transient until explicit Apply; Esc restores the applied selection. Save and
+reopen preserve exact identity, source/frame, center, and radius without
+Preview, Publish, or Run.
+
+The E-13 matrix now declares `21` exact roles for `16` tools, including only
+the explicit authoring pseudo-step. No current inspection tool implicitly
+consumes the circle and no mask or region artifact is produced. Schemas `1.0`
+through `1.5` retain their prior meanings and reject circle payloads.
+
+Current evidence passes the 15-project Release build at `0/0`, Shell/Runner
+selection `49/49` with exact GridCircle subset `9/9`, teaching `55/55` and
+`30/30`, Inspection Workspace `67/67`, ordered Run `16/16`, docking/theme
+`98/98`, standard tests `2/2`, and structure `68/68`. Actual Wide/Compact
+Release EXE review on the selected left monitor covers normal, edit, numeric,
+Tab, Esc, candidate/applied, disabled restoration, and Compact panel access;
+both screenshots pass quality and monitor-intersection checks. Preserve
+`OPENVISIONLAB_3D_GRID_CIRCLE_SELECTION_CLOSURE_20260824.md`,
+`.proofline/issues/PL-0048.json`, and the D-backed
+`20260824-e14-grid-circle` evidence root. Product version remains
+`0.1.1-dev`; no commit, push, package, tag, RC, or release occurred. Current
+inventory is `153 C / 16 P / 41 N / 9 E / 16 O`.
+
+### Previous software checkpoint - PL-0047 selection kind/role compatibility matrix - 2026-08-24
+
+`PL-0047` completes `E-13` with one Core-owned compatibility matrix containing
+`20` explicit role rows for all `15` current selection-consuming tools. Each
+row declares the stable Tool ID, semantic role, supported selection kind,
+input position or range, multiplicity, and exact PointSet count where needed.
+Roles remain step-to-selection routing semantics; no duplicate role field or
+recipe schema change was added.
+
+Strict recipe validation now rejects undeclared tools, selectionless tools,
+unsupported input positions and kinds, missing roles, and wrong PointSet
+counts. Storage validation still rejects incompatible routed selections but
+allows missing-role drafts to save and reopen for repair. Workbench teaching
+requirements and compatible Height Difference Edge selection discovery reuse
+the same declaration. `OrientedBox3D` remains authorable but has no implicit
+consumer; a tool must declare support before routing it.
+
+Current evidence passes the 15-project Release build at `0/0`, selection
+Shell/Runner `40/40` with the retained OrientedBox subset `11/11`, teaching
+`51/51`, Height Measurement `56/56`, Inspection Workspace `67/67`, ordered Run
+`16/16`, Validation Set `87/87`, standard tests `2/2`, and structure `68/68`.
+No visible XAML, schema, dependency, numerical algorithm, SDK package, Preview,
+Publish, Run, R0, version, release, commit, or push changed. Preserve
+`OPENVISIONLAB_3D_SELECTION_KIND_ROLE_MATRIX_CLOSURE_20260824.md`,
+`.proofline/issues/PL-0047.json`, and the D-backed
+`20260824-e13-selection-matrix` evidence root. Current inventory is
+`152 C / 16 P / 42 N / 9 E / 16 O` at that checkpoint.
+
+### Previous software checkpoint - PL-0046 deterministic malformed-source diagnostics - 2026-08-23
+
+`PL-0046` completes `B-10` and extends `M-09`/`M-15` with one typed,
+persisted grid-integrity contract. Current `SourceQualityReport` schema `1.1`
+requires ordered `Topology`, `LocatorMonotonicity`, `DuplicateLocator`, and
+`CoordinateFiniteness` checks. Core rejects contradictory states, locations,
+and declared/observed/unique counts. Legacy schema `1.0` omits diagnostics and
+retains exact JSON SHA-256
+`E2176611372E01F26A8208A9C7C09154209A8DB50BA4774A1F4DA6670B9F82A2`.
+
+C3D owns implicit row-major locators and float32 heights, not explicit XYZ.
+Zero or non-finite height remains missing coverage rather than a coordinate
+error. Malformed headers, dimensions, cell-count/byte-length overflow, and
+payload length fail before source replacement with stable
+`HeaderIncomplete`, `DimensionsNonPositive`, `CellCountOverflow`, and
+`PayloadLengthMismatch` reasons. The asynchronous EXE smoke confirms the
+previous source is retained and the exact expected error is visible.
+
+Reusable calculation moved from the initial Studio Data implementation into
+the committed public sealed SDK `GridDiagnosticsTool`. The final path is
+Source Quality -> thin Data adapter -> vendored SDK Tool -> Core validation and
+report composition. Studio consumes
+`OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1`, built from SDK
+commit `8be38403d0d00698431d7ffa4de60a63289672c6`, package SHA-256
+`964A543C007687ED93F2AFEC682245A76C61DA2AE42EC9B786FB8CC27BED976C`.
+The decreasing baseline remains at zero debt with `35` reviewed boundaries.
+
+Source Quality, the title-bar quality badge, Results, JSON, HTML, CSV,
+Shell/Runner text, and the privacy-safe support bundle expose the same four
+checks without executing or reanalyzing inspection. Current focused evidence
+passes Source Quality `22/22`, workspace `28/28`, Surface Match export
+`25/25`, Completeness `31/31`, ordered Run `16/16`, privacy `15/15`, and Shell
+options `47/47`; Release is `0/0`, standard tests are `2/2`, SDK smoke is
+`173/173`, structure is `68/68`, and NuGet health is 15 projects with zero
+vulnerable/deprecated packages. Wide Korean and Compact English pass at the
+current 125% scaling; 100/150/175/200% DPI, owner R0, hosted CI, maximum-C3D
+performance, and physical metrology remain unverified. Preserve
+`OPENVISIONLAB_3D_DETERMINISTIC_MALFORMED_SOURCE_DIAGNOSTICS_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0046.json`, and the D-backed
+`20260823-pl0046-source-topology-diagnostics` evidence root. No Studio commit,
+push, version, or release action occurred; the required local SDK source
+commit was not pushed. Current inventory is
+`151 C / 16 P / 43 N / 9 E / 16 O`.
+
+### Previous software checkpoint - PL-0045 OrientedBox3D qualification - 2026-08-23
+
+`PL-0045` completes `M-12` by reusing the existing selection-contract verifier,
+production geometry validator, numeric editor, Viewer handles, and actual
+Windows pointer smoke. The shared verifier now requires an exact named
+`11/11` OrientedBox subset inside its `32/32` selection report. It covers
+schema `1.4` and current-schema acceptance, exact rotated save/reopen,
+old-schema and mixed-payload rejection, and zero, finite non-unit, parallel,
+left-handed, non-finite, and non-positive geometry rejection.
+
+Runner now exposes `--verify-oriented-box-3d`; success requires both
+`OrientedBox3DContractVerification|PASS|cases=11|passed=11|failed=0` and
+`Result: Pass (32/32 checks)`. CI requires the command exit and both exact
+lines, plus the existing Workbench authoring/round-trip and Shell routing
+markers. A fixture-cleanup `FAIL |` line also fails the relevant verifier.
+
+The current Release Shell apphost passed two repeated Compact `1280 x 760` and
+two repeated Wide `1920 x 1040` runs. Every run used seven actual pointer
+gestures across Perspective/Top/Side, exposed eight handles per projection,
+preserved selection/authored/execution/camera state, and passed normal, hover,
+pressed/released, mouse-leave, cursor, and status recovery. Application-only
+screenshots passed quality on attempt 1 and intersected the dynamically selected
+smaller left monitor at the current 125% scaling. Preserve
+`OPENVISIONLAB_3D_ORIENTED_BOX_QUALIFICATION_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0045.json`, and the D-backed
+`20260823-pl0045-oriented-box-qualification` evidence root. This slice adds no
+schema version, SDK algorithm, downstream consumer, R0, release, or physical-
+metrology claim. Current inventory is
+`150 C / 16 P / 44 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0044 preparation source-immutability qualification - 2026-08-23
+
+`PL-0044` completes `M-13` by qualifying exactly the four current Prepare
+catalog entries: Median Filter, Remove Outlier Pixels, Level Surface, and
+ROI/Crop. Apply XYZ Affine and Re-grid Height Map remain Transform tools and are
+excluded. No duplicate verifier or product/SDK behavior was added; the four
+existing Runner suites and the existing typed-preparation CI step remain the
+owners.
+
+Each successful suite now records the exact input C3D path, byte length, and
+SHA-256 before and after execution; those identities are unchanged. Retained
+source values and valid/missing counts are also unchanged where accessible.
+Each output has a separate entity/path, is marked derived, has a 64-character
+SHA-256, preserves `RootSourceSha256`, and retains its existing deterministic
+repeat, adapter, ordered, transform/mask, or saved-output parity. The current
+suite totals are exactly `13/13`, `9/9`, `9/9`, and `6/6`.
+
+The hosted preparation step now invokes all four commands and requires their
+complete count plus source-identity/derived-output evidence markers. The local
+equivalent produces
+`PreparationSourceImmutabilityVerification|PASS|tools=4|passed=4|failed=0`.
+Focused and 15-project Release builds are `0/0`; affected Workbench regressions
+are `14/14`, `17/17`, and `19/19`; teaching is `51/51`; the standard facade is
+`2/2`; NuGet health is vulnerable `0` / deprecated `0`; structure is `68/68`;
+and the fixed Vision SDK package boundary passes. Preserve
+`OPENVISIONLAB_3D_PREPARATION_SOURCE_IMMUTABILITY_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0044.json`, and the D-backed
+`20260823-pl0044-preparation-source-immutability` evidence root. This
+verifier/CI-only slice changes no algorithm, SDK package, UI, schema, recipe,
+  version, R0, release, or physical-metrology state. At that checkpoint, inventory was
+  `149 C / 16 P / 45 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0043 Held-out no-leakage qualification - 2026-08-23
+
+`PL-0043` completes `M-14` on the existing Validation Set verifier. The prior
+`86/86` matrix already proved durable `Good` / `Bad` / `HeldOut` roles,
+`IncludedInDevelopment=false`, four development samples, one separately
+identified Held-out sample, 48 deterministic candidates, exact development
+decisions and confusion counts, and zero Held-out candidate decisions. The
+remaining black-box gap was counterfactual: it did not change only Held-out
+content and prove that suggestions stayed identical.
+
+The same verifier now passes `87/87`. One alternate Held-out fixture changes
+raw height from `3` to `1,000,000` and changes source SHA-256 while preserving
+the same two Good and two Bad samples. The complete development candidate,
+limit, order, ranking, warning, confusion, and exact decision fingerprint is
+unchanged. The current Runner report independently records samples `2/2/1`,
+development `4`, Held-out `1`, candidates `48`, decisions `192`, and Held-out
+decisions `0`. The existing hosted Workbench command remains the sole CI
+owner; its verifier return condition now requires all exactly 87 cases.
+
+Current focused and 15-project Release builds are `0/0`; the standard facade
+is `2/2`; NuGet health is vulnerable `0` / deprecated `0`; structure is
+`68/68`; and the fixed Vision SDK package boundary passes. Preserve
+`OPENVISIONLAB_3D_HELD_OUT_NO_LEAKAGE_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0043.json`, and the D-backed
+`20260823-pl0043-heldout-no-leakage` evidence root. This verifier-only slice
+changes no product analysis, UI, schema, recipe, execution, version, R0, or
+release state. Current inventory is
+`148 C / 16 P / 46 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0042 Completeness known-cell golden qualification - 2026-08-23
+
+`PL-0042` completes `M-15` by qualifying the existing Runner-owned
+`--verify-c3d-completeness-grid` suite without adding duplicate assertions or
+changing product code. Its current `30/30` report proves the exact four-cell
+IDs and geometry, coverage `1, 0.75, 0.5, 0`, missing counts `0, 1, 2, 4`,
+relative heights `2, 4, -2, missing`, inclusive decisions
+`Pass, Fail, Pass, Fail`, and aggregate `2` pass / `2` fail. It also proves
+source immutability, deterministic direct/repeat/ordered output identity,
+exact schema `1.9` JSON/HTML/CSV cell evidence, fail-closed malformed or
+missing current evidence, and legacy readability.
+
+The existing hosted Runner command remains the execution owner and now rejects
+a report without the exact `30/30` header. The current 15-project Release
+build is `0/0`; the existing golden passes `30/30`; the standard facade passes
+`2/2`; NuGet health is vulnerable `0` / deprecated `0`; structure is `68/68`;
+and the fixed Vision SDK package boundary passes. Preserve
+`OPENVISIONLAB_3D_COMPLETENESS_KNOWN_CELL_GOLDEN_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0042.json`, and the D-backed
+`20260823-pl0042-completeness-known-cell-golden` evidence root. This
+qualification changes no algorithm, UI, schema, recipe, version, R0, or
+release state. Current inventory is
+`147 C / 16 P / 47 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0041 cross-view selection atomicity - 2026-08-23
+
+`PL-0041` completes `M-11` by extending the existing headless Inspection
+Workspace verifier from `64/64` to `67/67`. A simulated 3D Viewer adapter
+selection and the actual Height Image ROI selection request both converge on
+the existing `SelectPipelineStepForSelection(...)` boundary. The report proves
+one atomic selection change per different role, zero additional changes for
+same or case-varied repeats, stable selection cardinality and geometry, and no
+change to dirty, route, step, Preview, or measurement-output state.
+
+The existing hosted Workbench command remains the execution owner; it now also
+rejects a report without the exact `67/67` marker. Current focused and
+15-project Release builds are `0/0`; the verifier passes `67/67`; the standard
+test facade passes `2/2`; NuGet health has zero vulnerable and zero deprecated
+packages; structure is `68/68`; and the fixed Vision SDK package boundary
+passes. Preserve
+`OPENVISIONLAB_3D_CROSS_VIEW_SELECTION_ATOMICITY_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0041.json`, and the D-backed
+`20260823-pl0041-cross-view-selection-atomicity` evidence root. This regression-
+only slice changes no production selection behavior, UI, schema, recipe,
+version, R0, or release state. Current inventory is
+`146 C / 16 P / 48 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0040 SourceQualityReport edge fixtures - 2026-08-23
+
+`PL-0040` completes `M-09` by extending the existing Runner-owned
+`--verify-source-quality-report` path from `13/13` to `18/18`. The suite now
+proves exact signed finite-height statistics and rejects an incomplete C3D
+header, non-positive dimensions, a declared-length mismatch, and overflowing
+grid dimensions with the expected exception types. Temporary malformed C3D
+fixtures are created only beside the D-backed report and are deleted after
+each case.
+
+The hosted workflow invokes the same existing verifier after the solution
+build and rejects either a nonzero exit or any report that does not contain
+the complete `18/18` marker. Current Release evidence passes `18/18`; the
+15-project Release solution build is `0/0`; the standard test facade is
+`2/2`; NuGet health has zero vulnerable and zero deprecated packages;
+structure is `68/68`; and the fixed Vision SDK package identity and checksum
+pass. Preserve
+`OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0040.json`, and the D-backed
+`20260823-pl0040-source-quality-edge-fixtures` evidence root. This verifier-
+only slice changes no product, schema, UI, recipe, version, R0, or release
+behavior. Current inventory is `145 C / 16 P / 49 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0039 standard test facade - 2026-08-23
+
+`PL-0039` adds one conventional .NET 10 Microsoft Testing Platform test
+project to both solution formats. Its two separately discovered xUnit v3 tests
+call the existing public `C3DHeightProfileVerification.Verify(...)` and
+`ToolRecipeSelectionContractVerification.Verify(...)` methods directly. The
+facade copies no verifier assertions and preserves both detailed reports under
+the process temporary root.
+
+The hosted workflow now runs the facade once with `--no-build`,
+`--no-restore`, and a two-test minimum after the solution build; every existing
+custom Runner, Shell, Viewer, script, and package command remains unchanged.
+Current Release MTP evidence passes `2/2`; the 15-project Release solution
+build is `0/0`; NuGet health is `15` projects with zero vulnerable and zero
+deprecated packages; structure is `68/68`; and the Vision SDK package boundary
+passes. Preserve
+`OPENVISIONLAB_3D_STANDARD_TEST_FACADE_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0039.json`, and the D-backed
+`20260823-pl0039-standard-test-facade` evidence root. This development-only
+facade changes no product behavior, EXE workflow, inventory classification,
+version, R0 state, or release state; inventory remains
+`144 C / 16 P / 50 N / 9 E / 16 O`.
+
+### Earlier software checkpoint - PL-0038 coherent proven-decoder Import surface - 2026-08-23
+
+`PL-0038` completes the operator-facing import workflow for the five existing
+verified decoders. One always-reachable Viewer command opens one localized
+dialog for exact `C3D`, `GLB`, `STL`, `LAS`, and `LAZ` files. C3D retains the
+existing cancellable recipe-source binding path; GLB/STL/LAS/LAZ load outside
+the UI thread as explicitly visible Viewer-only data and do not mutate recipe
+source, steps, dirty state, Preview, Publish, Run, or results. `.gltf` external
+resources and unimplemented formats are not advertised.
+
+Current actual EXE evidence covers all five formats, Viewer-only success plus
+failure/cancellation retention, a 4096 x 4096 synthetic C3D progress run,
+actual pressed and disabled/progress button states, and the native import
+dialog/filter popup in Korean and English at Wide and Compact on the selected
+left monitor. Focused checks pass `39/39`, `8/8`, and `46/46`. Preserve
+`OPENVISIONLAB_3D_COHERENT_IMPORT_SURFACE_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0038.json`, and the D-backed
+`20260823-pl0038-import-surface` evidence root. This closes the workflow gap
+inside already-Complete `B-02`, so the inventory classification count remains
+`144 C / 16 P / 50 N / 9 E / 16 O`. Human-owner R0 remains deferred.
+
+### Earlier software checkpoint - PL-0037 typed ROI/Crop preparation - 2026-08-23
+
+`PL-0037` completes `D-03`. One exact source-owned `GridRectangle` now produces
+a smaller immutable `HeightField` with preserved missing cells, root-source
+identity, unit/frame, and accumulated source-grid origin. Reusable cell-copy
+and origin arithmetic belongs to SDK `HeightMapCropTool`; Studio owns strict
+identity validation, Preview/Publish, typed artifact and selection ownership,
+Viewer/compare presentation, save/reopen, ordered Runner replay, metrics, and
+overlay evidence.
+
+A Published crop can own later local-grid teaching for compatible Thickness,
+Warpage, and Completeness steps. Changing its source ROI invalidates both the
+crop Preview and a dependent measurement Preview without executing either.
+SDK build/smoke passes `0/0` and `163/163`; Studio Release builds `0/0`;
+Workbench passes `19/19`; Runner ROI/Crop passes `6/6`; related
+Remove-Outlier and Level-Surface regressions pass `14/14`, `17/17`, `9/9`, and
+`9/9`; structure passes `68/68`. Preserve
+`OPENVISIONLAB_3D_ROI_CROP_TYPED_PREPARATION_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0037.json`, and the D-backed
+`20260823-pl0037-roi-crop` evidence root. Human-owner R0 remains deferred.
+Inventory at that checkpoint was `144 C / 16 P / 50 N / 9 E / 16 O`.
+
+### Previous software checkpoint - PL-0036 shared C3D source snapshot - 2026-08-23
+
+`PL-0036` is complete for the audited active-source copy boundary. The
+existing `ToolWorkbenchSourceSession` now owns one exact asynchronous decoded
+C3D snapshot task shared by Workbench Source Quality and Height Image. Current
+source binding SHA-256 and grid dimensions are verified before sharing;
+source/binding replacement clears the task and stale Height Image.
+
+`C3DHeightFieldSnapshot` hashes and decodes in one sequential pass with a fixed
+64 KiB buffer rather than retaining the entire source byte array, and
+`C3DHeightImageFrame` retains the snapshot value memory rather than copying all
+decoded doubles. Full Release builds `0/0`; shared snapshot/Source Quality is
+`24/24`; Inspection Workspace/Height Image is `64/64`; C3D profile is `14/14`;
+distribution is `26/26`; structure is `67/67`. Preserve
+`OPENVISIONLAB_3D_SHARED_C3D_SOURCE_SNAPSHOT_CLOSURE_20260823.md`,
+`.proofline/issues/PL-0036.json`, and the D-backed
+`20260823-pl0036-shared-c3d-snapshot` evidence root. This does not qualify a
+representative maximum C3D or alter the frozen R0 package.
+
+### Previous software checkpoint - PL-0035 imported-mesh allocation guardrails - 2026-08-22
+
+`PL-0035` is complete for bounded GLB/STL import allocation. Both formats now
+reject files above 512 MiB before whole-file allocation. GLB validates accessor
+counts, strides, bufferView/BIN spans, final expanded geometry, and embedded
+texture length before decoded-array or byte-copy allocation. Its supported
+limits are 3,000,000 vertices/accessor elements, 3,000,000 indices (1,000,000
+triangles), and a 256 MiB embedded texture. Malformed structure failures are
+reported as actionable `InvalidDataException` messages.
+
+STL retains its existing 1,000,000-triangle contract, now rejecting an exact
+binary declaration before whole-file loading and stopping ASCII parsing before
+the first over-limit vertex is retained. The focused valid/malformed import
+verification passes `35/35`, the full Release solution builds `0/0`, and the
+structure guard passes `67/67`. Preserve
+`OPENVISIONLAB_3D_IMPORTED_MESH_ALLOCATION_GUARDRAILS_20260822.md`,
+`.proofline/issues/PL-0035.json`, and the D-backed
+`20260822-pl0035-imported-mesh-guardrails` evidence root. This Data-only slice
+did not change visible UI and does not qualify maximum C3D performance.
+
+### Previous software checkpoint - PL-0034 LAS/LAZ responsive loading - 2026-08-22
+
+`PL-0034` is complete for interactive Viewer LAS/LAZ loading. The compatible
+Data loader now accepts cancellation and monotonic progress while retaining
+the synchronous API. Recipe and display-density loads decode outside the UI
+thread, apply only the latest successful request, retain the current point
+cloud on cancellation/failure, and reuse a completed exact source-and-budget
+sample. The existing semantic Viewer toolbar exposes localized progress and
+no inspection action is invoked.
+
+The 2,155,617-point compressed public fixture finishes at Balanced `50,000`
+points with 100 bounded UI progress updates. An actual overlapping
+Detailed-to-Balanced EXE smoke records one cancellation, no stale apply, one
+exact-budget cache hit, and exit `0`. Current Release Wide `1920 x 1040` and
+Compact `1280 x 760` captures plus the Compact in-flight state are readable,
+bounded, and on the dynamically selected leftmost monitor at the available
+125% scale. Release is `0/0`; source-channel verification is `29/29`, Viewer
+display/runtime `111/111`, Shell options `42/42`, and structure `67/67`.
+Preserve `OPENVISIONLAB_3D_LAZ_RESPONSIVE_LOAD_CLOSURE_20260822.md`,
+`.proofline/issues/PL-0034.json`, and the D-backed
+`20260822-pl0034-laz-responsive-load` evidence root. This maintenance closure
+does not change the capability inventory count.
 
 ### Current architecture checkpoint - PL-0026 MVVM qualification - 2026-08-21
 
@@ -246,6 +635,108 @@ hashed ZIP, local Release/nonvisual gates, and hosted Windows CI `#94` success.
 Owner unaided Wide/Compact R0 is the remaining Phase 1 gate. Preserve
 `OPENVISIONLAB_3D_FIRST_RELEASE_THREE_PHASE_SPEC_20260821.md` and
 `.proofline/issues/PL-0029.json`.
+
+### Current audit follow-up - PL-0030 imported-mesh texture lifetime - 2026-08-22
+
+The source-grounded whole-project analysis is recorded in
+`OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md`. It preserves the current
+product identity and inventory while distinguishing implemented, partial,
+planned, externally blocked, and excluded scope. Private vendor comparison is
+not tracked.
+
+`PL-0030` corrects one confirmed high-priority Viewer resource-lifetime defect.
+GLB/STL replacement no longer discards an allocated OpenGL texture ID. Reset
+retains the ID until the next active OpenGL draw deletes it, upload failure
+also deletes the generated ID, and context initialization does not apply an
+old-context deletion to the new context. An actual textured-GLB EXE reload
+reports `2` uploads and `1` release with exit `0`; the window intersects the
+selected leftmost `\\.\DISPLAY2`. The full Release solution build passes
+with zero warnings/errors and structure remains `67/67`.
+
+This slice changes no visible UI, recipe, inspection, algorithm, capability
+count, version, or frozen `c1b49ec` package. Product-owner Wide/Compact R0 on
+that frozen package remains the release priority. Large-C3D development remains
+blocked on a representative maximum input and accepted memory/load-time limits.
+
+### Current UI responsiveness follow-up - PL-0031 - 2026-08-22
+
+`PL-0031` is Complete for the product-owner-reported language-switch pause,
+ComboBox clipping/blank-value state, slow explicit popup motion, and unclear
+maximized lower boundary. One language switch now raises one WPF
+all-properties notification instead of 538 individual property notifications.
+The final full Shell/Workbench ViewModel switch measures `8.39 ms`, reports its
+completion time in the bottom status, and preserves selected palette and
+auxiliary-view identities.
+
+The product-owner English screenshot reopened the first completion claim: its
+tag-only audit had missed a 25 px logging style setter and did not inspect
+rendered glyph bounds. The corrected audit covers all 27 app-owned XAML
+ComboBoxes, four control-style owners, three item-style owners, and actual
+Wide/Compact/popup English text. All now retain at least 30 px control/item
+height, centered content, and fractional-DPI-safe ideal text formatting; the
+five smaller local declarations remain normalized and the Height Image palette
+width remains expanded for its English label. The two explicit Viewer/log popup animations were removed, and source
+inspection finds no remaining app-owned XAML animation request. A persistent
+30 px semantic Shell status row separates the full-screen lower edge and keeps
+the current stage and operation status visible.
+
+Release builds with zero warnings/errors; Workbench/UI contracts pass `95/95`;
+actual current Release Wide and Compact English captures plus direct language-popup
+smokes pass on the dynamically selected leftmost monitor without recipe or
+inspection execution. Preserve
+`OPENVISIONLAB_3D_UI_RESPONSIVENESS_COMBOBOX_STATUS_CLOSURE_20260822.md`,
+`.proofline/issues/PL-0031.json`, and the D-backed
+`20260822-pl0031-combobox-horizontal-reopen` correction evidence root. This slice
+changes no capability count, algorithm, version, release, or frozen `c1b49ec`
+package; product-owner unaided Wide/Compact R0 remains the acceptance priority.
+
+### Current button interaction-state follow-up - PL-0032 - 2026-08-22
+
+`PL-0032` is Complete for the product-owner-requested whole ButtonBase audit
+and correction. The inventory covers 315 XAML ButtonBase declarations, 31
+local style owners, the seven original app-facing templates, dynamic dialog
+buttons, and ComboBox-template children. Nine data/visibility-only local styles
+now derive from the existing themed base; the two unsafe Viewer styles now own
+semantic templates, producing nine post-correction app-facing templates and
+zero unbased/untemplated owners. Every custom template owns hover, pointer-
+down, keyboard-focus, disabled, and checked state where applicable. Viewer
+glyphs follow semantic foreground instead of hard-coded active strokes.
+
+Release builds with zero warnings/errors; the source-wide Workbench/theme
+guard passes `98/98`; Shell smoke options pass `42/42`. Current Release Wide
+and Compact normal, Viewer-toolbar held pointer-down, and dynamic-dialog held
+pointer-down captures pass screenshot quality and leftmost-monitor
+intersection. Preserve
+`OPENVISIONLAB_3D_BUTTON_INTERACTION_STATE_COMPLETION_20260822.md`,
+`.proofline/issues/PL-0032.json`, and the D-backed
+`20260822-button-state-audit` evidence root. This UI correction changes no
+capability count, algorithm, version, release, or frozen `c1b49ec` package;
+product-owner unaided Wide/Compact R0 remains the acceptance priority.
+
+### Current auxiliary Viewer selector clipping follow-up - PL-0033 - 2026-08-22
+
+`PL-0033` is Complete after the product owner invalidated its first visual
+follow-up. The redundant half-visible `Document24` is removed, and the second
+defect is corrected at its owner: the Height Image palette no longer fixes the
+Wpf.Ui ComboBox to 30 px, so its template grows to 36.62 px and renders `높이`
+with complete lower strokes at the available 125% monitor scale. The same
+fixed-height risk was removed from the language selector, first-recipe starter,
+and both Source Quality selectors; the complete 27-control source inventory now
+has zero ComboBox `Height` declarations and retains the shared 30 px minimum.
+
+Current Release Korean and English Wide `1920 x 1040` and Compact `1280 x 760`
+captures pass on the dynamically selected leftmost monitor. Height palette
+normal, hover, actual pointer-down, focused, open-popup, keyboard-selection,
+and mouse-leave states pass; the three popup items are legible, UI/ViewModel
+selection round-trip restores `Height`, and `recipeChanged=false` /
+`inspectionRun=false` is retained. Release is `0/0`, smoke options are `42/42`,
+Workbench theme/ComboBox verification is `98/98`, and Viewer workspace
+selection is `64/64`. Actual 100%, 150%, 175%, and 200% monitor-scale runs were
+unavailable and remain explicitly unverified. Preserve
+`.proofline/issues/PL-0033.json` and the D-backed
+`20260822-pl0033-height-combobox-reopen` evidence root. This correction changes
+no capability count, algorithm, version, release, or frozen `c1b49ec` package;
+product-owner unaided Wide/Compact R0 remains the acceptance priority.
 
 ### Current documentation checkpoint - Public documentation boundary - 2026-08-18
 
@@ -789,7 +1280,7 @@ remote ref. No release, tag, asset, commit, or push was created.
 
 The policy's current-values table now matches source-owned product
 `0.1.1-dev`, Viewer Host API `1.0`, Viewer manifest `1.0`, Run Record `1.6`,
-and generic Tool Recipe `1.5`. Future publication still requires explicit
+and generic Tool Recipe `1.6`. Future publication still requires explicit
 owner approval, the complete release gate, and the product owner's unaided
 Wide/Compact R0 for the exact release target. Preserve:
 
@@ -849,7 +1340,11 @@ new inventory item, so inventory remains `139 C / 17 P / 54 N / 9 E / 16 O`.
 Its former next correction is now complete as `PL-0005`; use the current
 checkpoint above for active priority selection.
 
-### Current execution checkpoint - OpenVisionLab Vision SDK 3 migration - 2026-08-05
+### Historical execution checkpoint - OpenVisionLab Vision SDK 3 migration - 2026-08-05
+
+This checkpoint records the original `3.0.0` migration. The current fixed SDK
+identity is owned by the package-boundary contract and the latest checkpoint
+above; do not use the package values in this historical section as current.
 
 The active numerical dependency has moved from `Lib.ThreeD 2.9.1` to the
 repository-vendored `OpenVisionLab.Vision3D 3.0.0`, built from committed SDK
@@ -2572,7 +3067,7 @@ Reasoning effort: high
 | ID | Status | Development item | Dependency | Closure evidence |
 | --- | --- | --- | --- | --- |
 | B-01 | C | C3D path, byte length, SHA-256, grid width/height identity | None | Current source binding verifier |
-| B-02 | C | Local C3D, GLB, STL, LAS, and LAZ loading | None | Existing loader/sample matrix |
+| B-02 | C | Local C3D, GLB, STL, LAS, and LAZ loading | None | `PL-0038` coherent exact-format Import surface and five-format EXE evidence; `PL-0034` cancellable/progress LAS/LAZ evidence |
 | B-03 | C | Asynchronous/cancellable C3D load with previous-source retention on failure | None | Release source-load verification |
 | B-04 | C | Valid/missing counts and height distribution | None | Height distribution verification |
 | B-05 | C | Frame and declared-unit fields in recipe/result contracts | None | Recipe round-trip and Runner evidence |
@@ -2580,7 +3075,7 @@ Reasoning effort: high
 | B-07 | C | WPF-neutral `SourceQualityReport` contract | B-01, B-04 | Release build `0/0`, headless `12/12`, exact owner-source JSON |
 | B-08 | C | Unified Source Quality workspace/panel | B-07 | Release build `0/0`, workspace `18/18`, exact-source wide/compact non-execution smoke and capture quality |
 | B-09 | C | Coordinate-true invalid-cell map and mask identity | B-07, C-06 | Release build `0/0`, map `15/15`, Source Quality `13/13`, Height Image `14/14`, exact-source pixel/cell/SHA parity |
-| B-10 | N | Grid monotonicity, duplicate locator, non-finite coordinate, and topology diagnostics | B-07 | Deterministic malformed fixtures |
+| B-10 | C | Grid monotonicity, duplicate locator, non-finite coordinate, and topology diagnostics | B-07 | `PL-0046`; schema `1.1`; SDK-owned four-check diagnostics; Source Quality `22/22`; workspace `28/28`; exact export and previous-source-retaining malformed-load evidence |
 | B-11 | C | Available-channel catalog: height, intensity, color, depth, normal, confidence/SNR | B-07 | Release build `0/0`; focused `26/26`; C3D, GLB/STL, LAS/LAZ exact seven-entry evidence |
 | B-12 | C | Acquisition/source provenance text and limitation notes | B-07 | Explicit Available/Unavailable evidence and limitations; exact save/reopen; legacy fallback; source isolation; no execution; focused `14/14` |
 | B-13 | N | Source quality gate consumed by compatible-tool suggestions | B-07 | Invalid source disables only unsupported tools with exact reason |
@@ -2630,7 +3125,7 @@ Reasoning effort: high
 | --- | --- | --- | --- | --- |
 | D-01 | C | Median Filter creates a separate `FilteredHeightField` | None | Filter adapter and Runner verification |
 | D-02 | C | Missing mask preserved and available-neighbor boundary policy | None | Filter contract verification |
-| D-03 | P | ROI/Crop is cataloged, while full preparation-output workflow is incomplete | E-01 | Typed output identity and Runner execution |
+| D-03 | C | ROI/Crop creates an immutable smaller `HeightField` usable by compatible later tools | E-01 | SDK crop tool, exact origin/mask/identity, Preview/Publish, artifact-owned later ROI, save/reopen, Viewer/Runner parity |
 | D-04 | C | Remove Outlier Pixels tool with explicit rule and mask evidence | B-09 | Known outlier fixture, before/after counts, Viewer/Runner parity |
 | D-05 | C | Level Surface from one or more explicit reference ROIs | F-01, C-06 | Tilted fixture levels with residual and fail-closed gate evidence |
 | D-06 | C | Preserve leveling transform as typed output, not hidden image mutation | D-05 | Save/reopen, Workbench/Viewer, and Runner transform parity |
@@ -2667,8 +3162,8 @@ Reasoning effort: high
 | E-10 | N | Distinguish view-only GridRectangle overlay Y from persisted volume extent | E-07 | UI wording and contract verification |
 | E-11 | N | Region artifact output that downstream tools can consume | E-07 or E-01 | Typed route and Artifact Registry evidence |
 | E-12 | N | Region-source relationship and transform propagation | E-11, F-05 | Same physical region after typed alignment |
-| E-13 | N | Per-tool declaration of supported selection kinds and roles | E-07 | Compatible-tool matrix and fail-closed validator |
-| E-14 | N | GridCircle selection for circular 2D height-field regions | C-06, E-13 | Draw/numeric/save/Runner evidence |
+| E-13 | C | Per-tool declaration of supported selection kinds and roles | E-07 | `PL-0047`; Core-owned 15-tool/20-role matrix; strict fail-closed and repairable-draft validation; Shell/Runner `40/40` |
+| E-14 | C | GridCircle selection for circular 2D height-field regions | C-06, E-13 | `PL-0048`; schema `1.6`; center/boundary draw, numeric edit, explicit Apply/Cancel, exact save/reopen, Runner `49/49` with circle `9/9`, Wide/Compact evidence |
 | E-15 | N | GridPolygon selection for irregular masks | C-06, E-13 | Vertex edit/save/mask output evidence |
 | E-16 | N | Convert selected connected region into editable region artifact | G-11, E-11 | Detection output -> editable derived region without source mutation |
 
@@ -2817,8 +3312,9 @@ Reasoning effort: high
 
 Algorithm ownership note: all reusable numerical algorithms belong in
 OpenVisionLab-Vision-SDK public sealed Tools. Active Studio adapters consume
-the exact vendored `OpenVisionLab.Vision3D 3.0.0` package. The schema-1
-decreasing migration baseline contains zero Studio debt and `33` reviewed
+the exact vendored
+`OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1` package.
+The schema-1 decreasing migration baseline contains zero Studio debt and `35` reviewed
 boundaries; do not reintroduce arithmetic or expand a boundary ceiling.
 
 ### L. Results, validation, reporting, and diagnostics
@@ -2866,13 +3362,13 @@ renderer, or cross-module state changes
 | M-06 | C | Current-source before/after screenshot discipline | None | Existing artifact checkpoints |
 | M-07 | C | Deterministic synthetic whole-chain fixture | None | Synthetic Affine Plate verification |
 | M-08 | C | Exact Thickness Coupon v1 Tab Thickness self-test | None | Generated model/Runner `8/8` |
-| M-09 | N | SourceQualityReport malformed/edge-case fixture suite | B-07 | Finite/missing/topology cases |
+| M-09 | C | SourceQualityReport malformed/edge-case fixture suite | B-07 | `PL-0040` + `PL-0046`; existing Runner verifier `22/22`; exact finite/missing/topology rejection, four typed grid diagnostics, contradictory-payload rejection, and CI completeness gate |
 | M-10 | C | Height Image coordinate and pointer verification suite | C-06 | Native-grid/hover checks, actual Windows pointer Review, 2D/3D edit parity, Apply/save/reopen, and Wide/Compact current-source evidence pass |
-| M-11 | N | Cross-view selection atomicity suite | C-09 | No duplicate selection or execution |
-| M-12 | N | `OrientedBox3D` schema/geometry/pointer/Runner suite | E-07 | Round-trip and degenerate-axis cases |
-| M-13 | N | Preparation-tool before/after hash and source-immutability suite | D-04 | One suite per typed preparation tool |
-| M-14 | N | Good/Bad/Held-out split and no-leakage suite | I-04 | Held-out excluded from suggestions |
-| M-15 | N | Completeness known-cell golden suite | H-02 | Expected per-cell result matrix |
+| M-11 | C | Cross-view selection atomicity suite | C-09 | `PL-0041`; existing Inspection Workspace verifier `67/67`; exact event counts; no duplicate selection or execution |
+| M-12 | C | `OrientedBox3D` schema/geometry/pointer/Runner suite | E-07 | `PL-0045`; shared `32/32`, exact named subset `11/11`, schema 1.4/current round-trip and fail-closed geometry, Runner/CI complete gate, and current Wide/Compact seven-gesture/three-projection pointer repeats |
+| M-13 | C | Preparation-tool before/after hash and source-immutability suite | D-04 | `PL-0044`; exactly four current Prepare suites `13/13 + 9/9 + 9/9 + 6/6`; exact source path/length/SHA and retained values unchanged; separate derived outputs/root provenance; CI 4/4 evidence gate |
+| M-14 | C | Good/Bad/Held-out split and no-leakage suite | I-04 | `PL-0043`; existing Validation Set verifier `87/87`; counterfactual Held-out value/identity invariance; Runner `2/2/1`, 48 candidates, zero Held-out decisions |
+| M-15 | C | Completeness known-cell golden suite | H-02 | `PL-0042` + `PL-0046`; existing Runner verifier `31/31`; exact four-cell metrics/decisions, deterministic identity, Run Record export, exact persisted grid-diagnostics CSV reuse, CI completeness gate |
 | M-16 | C | Surface-matching known-pose and false-positive suite | J-08 | Pose/score/rejection goldens |
 | M-17 | N | Release performance matrix for full-size Height Image and matching | C-06 or J-08 | Fixed viewport/source repeated runs |
 | M-18 | N | Accessibility names/tooltips for new icon-only or ambiguous controls | Each UI item | Automation-name verification |
@@ -3251,10 +3747,106 @@ The owner explicitly left the layout-only stream and completed item 11 on
     gates, and hosted CI `#94` pass. Product-owner unaided Wide and Compact R0
     on that exact package is the remaining Phase 1 prerequisite; use no model
     execution until the owner result is available.
-41. `Large-C3D memory/performance target` - Blocked; prerequisite:
+41. `PL-0030 imported-mesh OpenGL texture lifetime` - Complete; GLB/STL
+    replacement retains and deletes the previous texture ID in an active
+    OpenGL draw, failed uploads release generated IDs, and an actual textured
+    GLB reload proves `2` uploads and `1` release without changing UI or
+    inspection behavior.
+42. `PL-0031 UI responsiveness, ComboBox, and bottom status` - Complete; one
+    language change raises one all-properties notification and measures
+    `8.39 ms`; the corrected audit covers all 27 XAML ComboBoxes, four control
+    styles, three item styles, and rendered Wide/Compact/popup English text
+    with no undersized or unsafe owner; two explicit popup animations are removed, and the
+    Shell owns a persistent bottom status boundary verified in current Release
+    Wide/Compact evidence without executing inspection.
+43. `PL-0032 Button interaction states` - Complete; the whole-source audit
+    covers 315 ButtonBase declarations and 31 style owners, leaves zero
+    unbased/untemplated owners, completes nine post-correction custom
+    templates, and removes the Viewer platform-light selected-state leak.
+44. `PL-0033 auxiliary Viewer and Height palette clipping` - Complete after
+    owner evidence invalidated the first visual follow-up; the redundant glyph
+    and all five fixed-height ComboBox risks are removed, the 27-control source
+    inventory has zero fixed heights, and current Korean/English Wide/Compact
+    plus actual Height popup/input-state evidence retains view-only behavior at
+    the available 125% monitor scale.
+45. `PL-0034 LAS/LAZ responsive loading` - Complete; interactive recipe and
+    display-density decode runs outside the UI thread with localized progress,
+    latest-request cancellation, current-sample retention, and exact
+    source-and-budget sample reuse. Current actual EXE Wide/Compact, race, and
+    cache evidence passes without Preview, Publish, Run, or result mutation.
+46. `PL-0035 imported-mesh allocation guardrails` - Complete; GLB/STL file,
+    accessor/expanded geometry, buffer span, embedded texture, and existing STL
+    triangle bounds now fail before unsafe allocation, while the valid import
+    regression remains `35/35`.
+47. `PL-0036 source-scoped decoded C3D snapshot sharing` - Complete; one
+    binding-verified task in the active source session is shared by Source
+    Quality and Height Image, C3D decode no longer retains a whole-file byte
+    array, and Height Image no longer copies the full decoded value array.
+48. `Large-C3D memory/performance target` - Blocked; prerequisite:
     representative maximum C3D input plus accepted process-memory and
     load-time limits. Recommended model: none until the prerequisite exists;
     reasoning effort: none.
+49. `PL-0037 ROI/Crop typed inspection tool` - Complete; exact SDK-owned crop,
+    smaller immutable HeightField identity/origin/mask, explicit
+    Preview/Publish, compatible later-tool teaching, save/reopen, Viewer and
+    ordered Runner evidence are closed without mutating the source.
+50. `PL-0038 coherent proven-decoder Import surface` - Complete; one localized
+    exact-format action exposes C3D recipe binding and Viewer-only
+    GLB/STL/LAS/LAZ with progress, cancellation, retained current state on
+    failure/cancel, and truthful limitations.
+51. `PL-0039 thin conventional test facade over selected existing verifiers` -
+    Complete; one .NET 10 MTP/xUnit v3 project directly exposes two existing
+    Data verifiers through `dotnet test`, retains their reports, adds one
+    no-build CI discovery gate, and creates no second verifier architecture.
+52. `PL-0040 SourceQualityReport malformed/edge-case fixture suite` - Complete;
+    the existing Runner verifier now passes `18/18` for finite/missing
+    semantics and malformed C3D topology, deletes transient fixtures, and is
+    enforced by one hosted-workflow report-completeness gate.
+53. `PL-0041 cross-view selection atomicity suite` - Complete; the existing
+    Inspection Workspace verifier now passes `67/67`, proves one change per
+    distinct 3D/Height Image selection, suppresses same/case-varied repeats,
+    and retains recipe and execution state.
+54. `PL-0042 Completeness known-cell golden suite` - Complete; the existing
+    Runner verifier passes `30/30` for exact four-cell metrics, inclusive
+    policy decisions, deterministic direct/ordered output, source
+    immutability, and schema `1.9` JSON/HTML/CSV evidence, while CI requires
+    the complete report header.
+55. `PL-0043 Good/Bad/Held-out no-leakage suite` - Complete; the existing
+    Validation Set verifier passes `87/87` and proves that changing only an
+    extreme Held-out value and identity leaves the complete development
+    candidate and decision fingerprint unchanged. Current Runner JSON retains
+    `4` development / `1` excluded Held-out sample and zero Held-out decisions.
+56. `PL-0044 preparation source-immutability suite` - Complete; exactly four
+    current Prepare tools retain exact source file/object identity while
+    producing separately identified deterministic derived outputs. The
+    existing CI preparation step requires all four complete count and evidence
+    markers.
+57. `PL-0045 OrientedBox3D contract and pointer qualification` - Complete; the
+    shared selection verifier passes `32/32` with an exact named `11/11` box
+    subset, Runner/CI requires the complete marker, and current Wide/Compact
+    actual-pointer repeats pass seven gestures, three projections, eight
+    handles, and interaction recovery.
+58. `PL-0046 / B-10 deterministic malformed-source diagnostics` - Complete;
+    schema `1.1` retains four ordered typed grid checks, contradictory payloads
+    fail closed, stable malformed C3D reasons retain the previous source, and
+    Source Quality, Results, exports, and the support bundle reuse exact
+    evidence. Reusable calculation is owned by the committed and vendored SDK
+    `GridDiagnosticsTool`; Studio numerical migration debt remains zero.
+59. `PL-0047 / E-13 supported selection kind/role declaration` - Complete;
+    one Core-owned 15-tool/20-role matrix drives strict fail-closed recipe
+    validation and Workbench kind/cardinality decisions while incomplete
+    missing-role drafts remain saveable for explicit repair.
+60. `PL-0048 / E-14 GridCircle selection` - Complete; schema `1.6` owns one
+    exact grid-bound circle, two-pick and numeric editing remain transient
+    until Apply, save/reopen and Runner preserve identity, and no inspection
+    consumer or mask output is implied.
+
+Next dependency-ready order:
+
+1. `E-15 GridPolygon selection for irregular masks` | Recommended model: `gpt-5.6-sol` | Reasoning effort: `medium`
+
+The owner-deferred human R0 and the representative maximum-C3D qualification
+remain separate external prerequisites.
 
 ## Documentation decision
 

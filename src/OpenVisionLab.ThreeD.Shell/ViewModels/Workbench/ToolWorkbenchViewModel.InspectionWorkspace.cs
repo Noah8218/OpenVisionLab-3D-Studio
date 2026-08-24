@@ -225,6 +225,20 @@ public sealed partial class ToolWorkbenchViewModel
                         : "Preview");
         }
 
+        if (IsSelectedStepRoiCrop
+            && CurrentRoiCropPreviewOutput is { } crop)
+        {
+            return new SelectedToolOutputEvidence(
+                "Output cells",
+                (crop.Width * crop.Height).ToString(CultureInfo.InvariantCulture),
+                "count",
+                IsRoiCropPreviewPublished
+                    ? "Published"
+                    : IsRoiCropPreviewRunning
+                        ? "Preview running"
+                        : "Preview");
+        }
+
         if (SelectedPipelineStep is not { } step
             || CurrentMeasurementOutput is not { } measurementOutput
             || !string.Equals(

@@ -171,6 +171,16 @@ internal static class PrivacySafeSupportBundleVerification
 
             using var sourceQuality = JsonDocument.Parse(
                 entries["source-quality.json"]);
+            var retainedDiagnostics = sourceQuality.RootElement
+                .GetProperty("Evidence")
+                .GetProperty("Report")
+                .GetProperty("GridDiagnostics");
+            var retainedChecks = retainedDiagnostics
+                .GetProperty("Checks")
+                .EnumerateArray()
+                .ToArray();
+            var expectedDiagnostics = fixture.Record.SourceQualityEvidence!
+                .Report!.GridDiagnostics!;
             Check(
                 "exact recorded Source Quality identity is retained with its path omitted",
                 sourceQuality.RootElement.GetProperty("State").GetString() == "Available"
@@ -181,6 +191,36 @@ internal static class PrivacySafeSupportBundleVerification
                     .GetProperty("Report").GetProperty("Source")
                     .GetProperty("Path").GetString() == "<omitted-path>",
                 $"quality={fixture.SourceQualitySha256}");
+            Check(
+                "all four persisted grid diagnostics survive sanitization without private identity",
+                retainedDiagnostics.GetProperty("State").GetString()
+                    == expectedDiagnostics.State.ToString()
+                && retainedDiagnostics.GetProperty("DeclaredCellCount").GetInt64()
+                    == expectedDiagnostics.DeclaredCellCount
+                && retainedDiagnostics.GetProperty("ObservedSampleCount").GetInt64()
+                    == expectedDiagnostics.ObservedSampleCount
+                && retainedDiagnostics.GetProperty("UniqueLocatorCount").GetInt64()
+                    == expectedDiagnostics.UniqueLocatorCount
+                && retainedChecks.Length == expectedDiagnostics.Checks.Count
+                && retainedChecks.Zip(expectedDiagnostics.Checks).All(pair =>
+                    pair.First.GetProperty("Code").GetString()
+                        == pair.Second.Code.ToString()
+                    && pair.First.GetProperty("State").GetString()
+                        == pair.Second.State.ToString()
+                    && pair.First.GetProperty("AffectedCount").GetInt64()
+                        == pair.Second.AffectedCount
+                    && pair.First.GetProperty("Message").GetString()
+                        == pair.Second.Message)
+                && !retainedDiagnostics.GetRawText().Contains(
+                    privateRoot,
+                    StringComparison.OrdinalIgnoreCase)
+                && !retainedDiagnostics.GetRawText().Contains(
+                    Environment.UserName,
+                    StringComparison.OrdinalIgnoreCase)
+                && !retainedDiagnostics.GetRawText().Contains(
+                    Environment.MachineName,
+                    StringComparison.OrdinalIgnoreCase),
+                $"checks={retainedChecks.Length};state={retainedDiagnostics.GetProperty("State").GetString()}");
 
             using var currentResult = JsonDocument.Parse(
                 entries["current-result.json"]);
@@ -366,7 +406,53 @@ internal static class PrivacySafeSupportBundleVerification
                     SourceQualityChannel.Height,
                     SourceQualityChannelState.Available,
                     $"source={sourcePath}")
-            ]);
+            ])
+        {
+            GridDiagnostics = new SourceQualityGridDiagnostics(
+                SourceQualityGridDiagnostics.CurrentSchemaVersion,
+                SourceQualityGridDiagnosticState.Pass,
+                4,
+                4,
+                4,
+                [
+                    new SourceQualityGridDiagnosticCheck(
+                        SourceQualityGridDiagnosticCode.Topology,
+                        SourceQualityGridDiagnosticState.Pass,
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Declared grid topology matches the observed samples."),
+                    new SourceQualityGridDiagnosticCheck(
+                        SourceQualityGridDiagnosticCode.LocatorMonotonicity,
+                        SourceQualityGridDiagnosticState.Pass,
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Grid locators are monotonic in row-major order."),
+                    new SourceQualityGridDiagnosticCheck(
+                        SourceQualityGridDiagnosticCode.DuplicateLocator,
+                        SourceQualityGridDiagnosticState.Pass,
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Grid locators are unique."),
+                    new SourceQualityGridDiagnosticCheck(
+                        SourceQualityGridDiagnosticCode.CoordinateFiniteness,
+                        SourceQualityGridDiagnosticState.Pass,
+                        0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "Grid coordinates are finite.")
+                ])
+        };
         var quality = InspectionRunSourceQualityEvidence.Available(source, report);
         var runRecordPath = Path.Combine(root, "private-run-record.json");
         var timing = InspectionRunTiming.Available(

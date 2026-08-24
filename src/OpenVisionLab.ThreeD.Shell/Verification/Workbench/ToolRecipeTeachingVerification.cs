@@ -118,6 +118,112 @@ internal static class ToolRecipeTeachingVerification
                     item.Category is "Preview" or "Publish" or "Run") == routeActionLogCount,
                 $"actionLogs={routeActionLogCount}");
 
+            var circleSourcePath = Path.Combine(fixtureRoot, "grid-circle-source.C3D");
+            C3DHeightFieldSnapshot.CreateForVerification(
+                "source.circle",
+                7,
+                7,
+                Enumerable.Range(0, 49).Select(value => (double)value).ToArray()).SaveC3D(circleSourcePath);
+            var circleBinding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(circleSourcePath);
+            var circleSelection = new ToolRecipeSelection(
+                "selection.grid-circle.01",
+                "Circular region",
+                ToolRecipeSelectionKinds.GridCircle,
+                "source.circle",
+                "frame.c3d-grid-index",
+                circleBinding,
+                null,
+                null,
+                null,
+                GridCircle: new ToolRecipeGridCircle(3, 3, 2));
+            var circleDocument = new ToolRecipeDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                "GridCircle teaching fixture",
+                new ToolRecipeSource(
+                    "source.circle",
+                    "GridCircle source",
+                    "C3D",
+                    "raw-height",
+                    "frame.c3d-grid-index",
+                    circleSourcePath,
+                    new FileInfo(circleSourcePath).Length,
+                    circleBinding.ContentSha256,
+                    circleBinding.GridWidth,
+                    circleBinding.GridHeight),
+                [],
+                [
+                    new ToolRecipeStep(
+                        "step.grid-circle-authoring.01",
+                        "grid-circle-authoring",
+                        "Circular Region Authoring",
+                        2,
+                        ["source.circle", circleSelection.Id],
+                        "derived.grid-circle-authoring.01",
+                        [])
+                ],
+                [circleSelection]);
+            var circleRecipePath = Path.Combine(fixtureRoot, "grid-circle.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(circleRecipePath, circleDocument);
+            var circleWorkbench = new ToolWorkbenchViewModel(Path.Combine(fixtureRoot, "recent-circle.json"));
+            var circleOpened = circleWorkbench.TryOpenTeachingRecipe(circleRecipePath, out var circleOpenMessage);
+            Check(
+                "GridCircle recipe opens with its numeric editor context",
+                circleOpened
+                && circleWorkbench.SelectPipelineStep("step.grid-circle-authoring.01")
+                && circleWorkbench.SelectedStepTeachingSelection?.GridCircle == circleSelection.GridCircle
+                && circleWorkbench.IsTeachingGridCircleEditorVisible,
+                circleOpenMessage);
+
+            ToolWorkbenchTeachingCaptureRequestEventArgs? circleRequest = null;
+            circleWorkbench.BeginTeachingSelectionCaptureRequested += (_, args) => circleRequest = args;
+            var circleActionLogsBefore = circleWorkbench.RunLog.Count(item =>
+                item.Category is "Preview" or "Publish" or "Run");
+            circleWorkbench.BeginTeachingSelectionCaptureCommand.Execute(null);
+            circleWorkbench.UpdateTeachingSelectionCaptureState(true, 2, 2, true, "Circle ready");
+            circleWorkbench.UpdateTeachingGridCircleDraft(circleSelection.GridCircle);
+            ToolRecipeGridCircle? numericDraft = null;
+            circleWorkbench.TeachingGridCircleDraftChanged += (_, args) => numericDraft = args.Circle;
+            circleWorkbench.TeachingGridCircleCenterColumn = 4;
+            circleWorkbench.TeachingGridCircleRadius = 1;
+            Check(
+                "GridCircle center-and-boundary capture and numeric draft stay transient",
+                circleRequest is
+                {
+                    Kind: ToolRecipeSelectionKinds.GridCircle,
+                    RequiredPointCount: 2,
+                    ExistingSelection.GridCircle: not null
+                }
+                && numericDraft == new ToolRecipeGridCircle(3, 4, 1)
+                && circleWorkbench.SelectedStepTeachingSelection?.GridCircle == new ToolRecipeGridCircle(3, 3, 2)
+                && circleWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == circleActionLogsBefore,
+                $"draft={numericDraft};applied={circleWorkbench.SelectedStepTeachingSelection?.GridCircle}");
+
+            var appliedCircle = circleSelection with { GridCircle = numericDraft };
+            var circleApplied = circleWorkbench.TryApplyCapturedTeachingSelection(appliedCircle, out var circleApplyMessage);
+            Check(
+                "explicit Apply replaces the same GridCircle without inspection execution",
+                circleApplied
+                && circleWorkbench.SelectedStepTeachingSelection?.Id == circleSelection.Id
+                && circleWorkbench.SelectedStepTeachingSelection.GridCircle == numericDraft
+                && circleWorkbench.RunLog.Count(item =>
+                    item.Category is "Preview" or "Publish" or "Run") == circleActionLogsBefore,
+                circleApplyMessage);
+
+            var circleSavedPath = Path.Combine(fixtureRoot, "grid-circle-saved.ov3d-recipe.json");
+            var circleSaved = circleWorkbench.TrySaveTeachingRecipe(circleSavedPath, out var circleSaveMessage);
+            var circleReopened = circleSaved ? ToolRecipeDocumentStore.Load(circleSavedPath) : null;
+            Check(
+                "Workbench GridCircle save and reopen preserve exact geometry and route",
+                circleSaved
+                && circleReopened?.SchemaVersion == ToolRecipeDocument.CurrentSchemaVersion
+                && circleReopened.Selections is [var savedCircle]
+                && savedCircle.Id == circleSelection.Id
+                && savedCircle.GridCircle == numericDraft
+                && circleReopened.Steps.Single().InputEntityIds.SequenceEqual(
+                    ["source.circle", circleSelection.Id]),
+                circleSaveMessage);
+
             routeWarpage.InputEntityIdsText = routeThickness.OutputEntityId;
             var legacyRecipePath = Path.Combine(fixtureRoot, "legacy-incompatible-route.ov3d-recipe.json");
             Check(
@@ -362,6 +468,7 @@ internal static class ToolRecipeTeachingVerification
 
             workbench.RecipeName = "Fixture XYZ Affine Inspection";
             workbench.SetC3DSource(sourcePath);
+            var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
             var filter = AddTool(workbench, "Filter");
             filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value = "5";
             Check(
@@ -383,7 +490,18 @@ internal static class ToolRecipeTeachingVerification
             Check("focused Tool Lab request preserves selected Filter", requestedToolLabId == "filter" && ReferenceEquals(workbench.SelectedPipelineStep, filter), requestedToolLabId ?? "(none)");
 
             var edge = AddTool(workbench, "Height Difference Edge");
-            edge.InputEntityIdsText = filter.OutputEntityId;
+            var edgeSelection = new ToolRecipeSelection(
+                "selection.edge-search-roi",
+                "Edge search ROI",
+                ToolRecipeSelectionKinds.GridRectangle,
+                workbench.Source.Id,
+                workbench.Source.FrameId,
+                binding,
+                new ToolRecipeGridRectangle(0, 0, 2, 2),
+                null,
+                null);
+            workbench.Selections.Add(edgeSelection);
+            edge.InputEntityIdsText = $"{filter.OutputEntityId}; {edgeSelection.Id}";
             edge.Parameters.Single(parameter => parameter.Name == "ComparisonAxis").Value = "AcrossColumns";
 
             var firstLine = AddTool(workbench, "3D Line Fit");
@@ -400,12 +518,36 @@ internal static class ToolRecipeTeachingVerification
             workbench.AddReferenceCommand.Execute(null);
 
             var correspondence = AddTool(workbench, "Landmark Correspondence");
-            correspondence.InputEntityIdsText = $"{corner.OutputEntityId}; reference.fixture-landmarks";
+            var correspondenceSelection = new ToolRecipeSelection(
+                "selection.fixture-correspondences",
+                "Fixture correspondences",
+                ToolRecipeSelectionKinds.LandmarkCorrespondenceSet,
+                workbench.Source.Id,
+                workbench.Source.FrameId,
+                binding,
+                null,
+                null,
+                [
+                    new ToolRecipeLandmarkCorrespondence(edge.OutputEntityId, "fixture.p1", new ToolRecipeXyz(0, 0, 0), "frame.fixture"),
+                    new ToolRecipeLandmarkCorrespondence(firstLine.OutputEntityId, "fixture.p2", new ToolRecipeXyz(1, 0, 0), "frame.fixture"),
+                    new ToolRecipeLandmarkCorrespondence(secondLine.OutputEntityId, "fixture.p3", new ToolRecipeXyz(0, 1, 0), "frame.fixture"),
+                    new ToolRecipeLandmarkCorrespondence(corner.OutputEntityId, "fixture.p4", new ToolRecipeXyz(0, 0, 1), "frame.fixture")
+                ],
+                new ToolRecipeLandmarkCorrespondenceDescriptor(
+                    "frame.fixture",
+                    "raw-height",
+                    "Structural teaching fixture",
+                    "R1",
+                    "ExactlyFour",
+                    "CurrentPublishedCornerAnchor",
+                    "RequireNonDegenerateTetrahedra",
+                    0.000001));
+            workbench.Selections.Add(correspondenceSelection);
+            correspondence.InputEntityIdsText = correspondenceSelection.Id;
             var affine = AddTool(workbench, "XYZ Affine Solve");
             affine.InputEntityIdsText = correspondence.OutputEntityId;
             var regrid = AddTool(workbench, "Re-grid Height Map");
             regrid.InputEntityIdsText = affine.OutputEntityId;
-            var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
             var thicknessReferenceSelection = new OpenVisionLab.ThreeD.Core.ToolRecipeSelection(
                 "selection.thickness-reference-roi", "Thickness Reference ROI", OpenVisionLab.ThreeD.Core.ToolRecipeSelectionKinds.GridRectangle,
                 workbench.Source.Id, workbench.Source.FrameId, binding,
@@ -504,12 +646,19 @@ internal static class ToolRecipeTeachingVerification
             var template = new ToolWorkbenchViewModel();
             var templateOpened = template.TryOpenTeachingRecipe(templatePath, out var templateMessage);
             Check(
-                "shipped affine teaching template resolves its relative C3D source",
+                "shipped legacy affine scaffold opens as a repairable draft but cannot execute with missing selection roles",
                 templateOpened
                 && template.CanSaveTeachingRecipe
+                && !template.IsTeachingRecipeExecutionReady
                 && template.PipelineSteps.Count == 17
-                && File.Exists(template.Source.Path),
-                templateOpened ? template.Source.Path : templateMessage);
+                && File.Exists(template.Source.Path)
+                && template.ValidationMessages.Any(item => item.Message.Contains(
+                    "search-region",
+                    StringComparison.Ordinal))
+                && template.ValidationMessages.Any(item => item.Message.Contains(
+                    "correspondences",
+                    StringComparison.Ordinal)),
+                templateOpened ? $"{template.Source.Path} | {template.ValidationSummary}" : templateMessage);
 
             if (templateOpened)
             {

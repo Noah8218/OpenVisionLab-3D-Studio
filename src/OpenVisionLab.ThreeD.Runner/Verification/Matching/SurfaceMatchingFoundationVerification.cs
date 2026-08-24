@@ -729,7 +729,7 @@ internal static class SurfaceMatchingFoundationVerification
         var maximum = points.Max(point => point.Z);
         var mean = points.Average(point => point.Z);
         return new SourceQualityReport(
-            SourceQualityReport.CurrentSchemaVersion,
+            SourceQualityReport.LegacySchemaVersion,
             new SourceQualitySourceIdentity(
                 entityId,
                 "SYNTHETIC",

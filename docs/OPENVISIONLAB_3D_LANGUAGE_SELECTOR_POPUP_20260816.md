@@ -4,6 +4,12 @@ Date: 2026-08-16
 Status: Complete
 Issue: `PL-0014`
 
+> Historical evidence: this document records the 2026-08-16 popup-theme
+> correction. A later PL-0031 fractional-DPI style change introduced lower
+> glyph clipping; the product-owner screenshot reopened that claim and the
+> corrected 2026-08-22 audit is recorded in
+> `OPENVISIONLAB_3D_UI_RESPONSIVENESS_COMBOBOX_STATUS_CLOSURE_20260822.md`.
+
 ## Outcome
 
 The Studio language selector no longer opens a white, apparently blank Windows

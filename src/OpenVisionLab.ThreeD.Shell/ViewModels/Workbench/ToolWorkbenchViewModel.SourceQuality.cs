@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Input;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -24,6 +25,8 @@ public sealed partial class ToolWorkbenchViewModel
                 ? "Loading"
                 : SourceQuality.HasError
                     ? "Error"
+                    : SourceQuality.HasGridDiagnosticError
+                        ? "Error"
                     : SourceQuality.Report is { Coverage.MissingSampleCount: > 0 }
                         ? "Warning"
                         : SourceQuality.HasReport
@@ -31,11 +34,15 @@ public sealed partial class ToolWorkbenchViewModel
                             : "Unavailable";
 
     public string CurrentSourceQualitySummary => SourceQuality.Report is { } report
-        ? string.Format(
-            CultureInfo.InvariantCulture,
-            Localization.CurrentSourceQualitySummaryFormat,
-            report.Coverage.ValidRatio,
-            report.Coverage.MissingRatio)
+        ? string.Concat(
+            SourceQuality.GridDiagnosticsStatus,
+            " · ",
+            string.Format(
+                CultureInfo.InvariantCulture,
+                Localization.CurrentSourceQualitySummaryFormat,
+                report.Coverage.ValidRatio,
+                report.Coverage.MissingRatio)
+                .Replace(" %", "\u00A0%", StringComparison.Ordinal))
         : $"{Localization.SourceQuality}: {SourceQuality.State}";
 
     public string CurrentSourceQualityDetail => SourceQuality.Report is not null
@@ -46,6 +53,8 @@ public sealed partial class ToolWorkbenchViewModel
                 SourceQuality.GridValue,
                 SourceQuality.ValidValue,
                 SourceQuality.MissingValue),
+            Environment.NewLine,
+            SourceQuality.GridDiagnosticsSummary,
             Environment.NewLine,
             Localization.SourceQualityViewOnly)
         : SourceQuality.HasError
@@ -117,6 +126,7 @@ public sealed partial class ToolWorkbenchViewModel
 
         WorkspaceSelection.ClearRecipeSelection();
         NotifySourceQualityWorkspaceState();
+        SourceQualityWorkspaceRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void BeginSourceQualityLoad()
@@ -131,8 +141,18 @@ public sealed partial class ToolWorkbenchViewModel
             Source.Path,
             Source.Id,
             Source.Unit,
-            Source.FrameId);
+            Source.FrameId,
+            GetOrLoadDecodedC3DSourceAsync);
     }
+
+    private Task<C3DHeightFieldSnapshot> GetOrLoadDecodedC3DSourceAsync(
+        CancellationToken cancellationToken) =>
+        SourceSession.GetOrLoadDecodedSourceAsync(
+            Source.Path,
+            Source.Id,
+            Source.Unit,
+            Source.FrameId,
+            cancellationToken);
 
     private void OnSourceQualityPropertyChanged(
         object? sender,

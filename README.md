@@ -82,7 +82,8 @@ works after cloning or moving the whole package folder.
 
 | Area | Current workflow |
 | --- | --- |
-| Input review | C3D height data, glTF/GLB, STL, LAS, and LAZ loading with visible source-quality evidence plus explicit available/unavailable acquisition provenance, limitations, and optional source-frame sensor-to-scene direction |
+| Input review | C3D recipe-source loading plus Viewer-only GLB, STL, LAS, and LAZ import, with progress/cancel, visible limitations, source-quality evidence, and optional source-frame sensor-to-scene direction |
+| Preparation | Median filtering, outlier removal, surface leveling, and explicit ROI/Crop into a separate immutable HeightField; compatible later tools can teach against the Published crop |
 | Height inspection | Thickness, Warpage, Plane Flatness, Height Deviation, Gap/Flush, Volume, and grid/region statistics |
 | Geometry inspection | Point-pair and cross-section measurements, lines, planes, edges, landmarks, nominal/actual mesh comparison, and deterministic surface matching |
 | Teaching | Linked 3D and full-resolution Height Image ROI editing with explicit Review, Apply, Cancel, and Delete actions |
@@ -93,6 +94,11 @@ works after cloning or moving the whole package folder.
 Measurements use the unit declared by the source. A `raw-height` result is not
 automatically a calibrated physical measurement. Apply and verify the correct
 calibration and acceptance limits before using physical tolerances.
+
+Use the import button in the 3D Viewer toolbar for supported local 3D data.
+`C3D` becomes the recipe input; `GLB`, `STL`, `LAS`, and `LAZ` are displayed in
+the Viewer only and leave the recipe input unchanged. The application does not
+advertise `.gltf`, OBJ, PCD, XYZ, TIFF, or RAW as general import formats.
 
 When support evidence must be shared, open **Results → Run Record** and choose
 **Export privacy-safe support bundle**. The ZIP includes a manifest, sanitized
@@ -135,6 +141,7 @@ git clone https://github.com/Noah8218/OpenVisionLab-3D-Studio.git
 cd OpenVisionLab-3D-Studio
 dotnet restore OpenVisionLab.ThreeDStudio.sln
 dotnet build OpenVisionLab.ThreeDStudio.sln -c Release -p:Platform="Any CPU"
+dotnet test --project tests\OpenVisionLab.ThreeD.Data.Tests\OpenVisionLab.ThreeD.Data.Tests.csproj -c Release --no-build --no-restore --minimum-expected-tests 2
 dotnet run --no-build --project src\OpenVisionLab.ThreeD.Shell\OpenVisionLab.ThreeD.Shell.csproj -c Release
 ```
 

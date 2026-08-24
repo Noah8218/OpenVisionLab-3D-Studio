@@ -53,6 +53,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(SourceQuality), nameof(OpenSourceQuality),
         nameof(SourceQualityLoading), nameof(SourceQualityUnavailable), nameof(SourceQualityReady),
         nameof(SourceQualityError), nameof(SourceQualityHint), nameof(SourceQualityViewOnly),
+        nameof(SourceQualityGridDiagnostics), nameof(SourceQualityGridDiagnosticsSummaryFormat),
         nameof(SourceAcquisitionProvenanceTitle), nameof(SourceAcquisitionProvenanceHint),
         nameof(SourceAcquisitionState),
         nameof(SourceAcquisitionEvidence), nameof(SourceAcquisitionLimitations),
@@ -168,7 +169,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(RecipeJourneyGuide), nameof(JourneyRecipe), nameof(JourneyInput), nameof(JourneyTools),
         nameof(JourneyTeachPreview), nameof(JourneyValidateRun), nameof(NextAction),
         nameof(LoadInputActionTitle), nameof(LoadInputActionDetail), nameof(Open3DMap), nameof(Open3DMapToolTip),
-        nameof(Loading3DMapFormat), nameof(Cancel3DMapLoadToolTip), nameof(AddFirstToolActionTitle),
+        nameof(Import3DData), nameof(Import3DDataToolTip), nameof(Loading3DDataFormat),
+        nameof(ViewerOnlyImportSummaryFormat), nameof(Cancel3DMapLoadToolTip), nameof(AddFirstToolActionTitle),
         nameof(AddFirstToolActionDetail), nameof(SelectStepActionTitle), nameof(SelectStepActionDetail),
         nameof(TeachSelectedStepActionTitle), nameof(TeachSelectedStepActionDetail),
         nameof(NewRecipe), nameof(OpenExistingRecipe), nameof(CurrentRecipe), nameof(RecentRecipes),
@@ -259,6 +261,14 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.SourceQuality.ViewOnly",
         "\uD488\uC9C8 \uBD84\uC11D \uBCF4\uAE30 \uC804\uC6A9 \u00B7 \uCD9C\uCC98 \uBA54\uBAA8 \uC801\uC6A9 \uC2DC\uC5D0\uB9CC \uB808\uC2DC\uD53C \uBCC0\uACBD \u00B7 Preview/Run \uC2E4\uD589 \uC5C6\uC74C",
         "Quality analysis is read-only \u00b7 only Apply provenance changes the recipe \u00b7 no Preview or Run");
+    public string SourceQualityGridDiagnostics => T(
+        "ThreeD.SourceQuality.GridDiagnostics.Title",
+        "격자 무결성 진단",
+        "Grid integrity diagnostics");
+    public string SourceQualityGridDiagnosticsSummaryFormat => T(
+        "ThreeD.SourceQuality.GridDiagnostics.SummaryFormat",
+        "격자 무결성 {0} · 선언 {1:N0} · 관측 {2:N0} · 고유 위치 {3:N0}",
+        "Grid integrity {0} · declared {1:N0} · observed {2:N0} · unique locators {3:N0}");
     public string SourceAcquisitionProvenanceTitle => T(
         "ThreeD.SourceQuality.Acquisition.Title",
         "\uD68D\uB4DD/\uC18C\uC2A4 \uCD9C\uCC98",
@@ -828,11 +838,17 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string JourneyValidateRun => T("ThreeD.Workbench.JourneyValidateRun", "5  \uAC80\uC99D\u00B7\uC2E4\uD589", "5  Validate & Run");
     public string NextAction => T("ThreeD.Workbench.NextAction", "\uB2E4\uC74C \uD560 \uC77C", "Next action");
     public string LoadInputActionTitle => T("ThreeD.Workbench.LoadInputActionTitle", "3D \uC785\uB825 \uB370\uC774\uD130\uB97C \uC120\uD0DD\uD558\uC138\uC694", "Select 3D input data");
-    public string LoadInputActionDetail => T("ThreeD.Workbench.LoadInputActionDetail", "\uB808\uC2DC\uD53C\uC5D0 \uC0AC\uC6A9\uD560 C3D \uB192\uC774 \uB9F5\uC744 \uBD88\uB7EC\uC628 \uB4A4 \uB2E8\uACC4\uB97C \uCD94\uAC00\uD558\uC138\uC694.", "Load the C3D height map used by this recipe before adding a step.");
+    public string LoadInputActionDetail => T("ThreeD.Workbench.LoadInputActionDetail", "C3D\uB294 \uB808\uC2DC\uD53C \uC785\uB825\uC73C\uB85C \uC5F0\uACB0\uD558\uACE0 GLB, STL, LAS, LAZ\uB294 Viewer\uC5D0\uB9CC \uD45C\uC2DC\uD569\uB2C8\uB2E4.", "Bind C3D as the recipe input, or display GLB, STL, LAS, and LAZ in the Viewer only.");
     public string Open3DMap => T("ThreeD.Workbench.Open3DMap", "3D \uB9F5 \uC5F4\uAE30", "Open 3D Map");
     public string Open3DMapToolTip => T("ThreeD.Workbench.Open3DMapToolTip", "\uBDF0\uC5B4\uC640 \uD604\uC7AC \uB808\uC2DC\uD53C\uC5D0 C3D \uB192\uC774 \uB9F5\uC744 \uBD88\uB7EC\uC635\uB2C8\uB2E4. (Ctrl+Shift+O)", "Load a C3D height map into the Viewer and current recipe. (Ctrl+Shift+O)");
-    public string Loading3DMapFormat => T("ThreeD.Workbench.Loading3DMapFormat", "3D \uB9F5 \uBD88\uB7EC\uC624\uB294 \uC911 \u00B7 {0} \u00B7 {1:0}%", "Loading 3D map \u00B7 {0} \u00B7 {1:0}%");
-    public string Cancel3DMapLoadToolTip => T("ThreeD.Workbench.Cancel3DMapLoadToolTip", "\uD604\uC7AC \uC18C\uC2A4\uB97C \uC720\uC9C0\uD558\uACE0 \uC0C8 3D \uB9F5 \uBD88\uB7EC\uC624\uAE30\uB97C \uCDE8\uC18C\uD569\uB2C8\uB2E4.", "Cancel the new 3D map load and retain the current source.");
+    public string Import3DData => T("ThreeD.Workbench.Import3DData", "3D \uB370\uC774\uD130 \uAC00\uC838\uC624\uAE30", "Import 3D Data");
+    public string Import3DDataToolTip => T(
+        "ThreeD.Workbench.Import3DDataToolTip",
+        "C3D\uB294 \uD604\uC7AC \uB808\uC2DC\uD53C \uC785\uB825\uC73C\uB85C \uC5F0\uACB0\uD558\uACE0 GLB, STL, LAS, LAZ\uB294 Viewer\uC5D0\uB9CC \uD45C\uC2DC\uD569\uB2C8\uB2E4. \uAC00\uC838\uC624\uAE30\uB294 \uAC80\uC0AC\uB97C \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        "Bind C3D to the current recipe input, or display GLB, STL, LAS, and LAZ in the Viewer only. Import never runs inspection.");
+    public string Loading3DDataFormat => T("ThreeD.Workbench.Loading3DDataFormat", "3D \uB370\uC774\uD130 \uAC00\uC838\uC624\uB294 \uC911 \u00B7 {0} \u00B7 {1:0}%", "Importing 3D data \u00B7 {0} \u00B7 {1:0}%");
+    public string ViewerOnlyImportSummaryFormat => T("ThreeD.Workbench.ViewerOnlyImportSummaryFormat", "{0} Viewer \uC804\uC6A9 \u00B7 {1} \u00B7 \uB808\uC2DC\uD53C \uC785\uB825 \uC720\uC9C0", "{0} Viewer only \u00B7 {1} \u00B7 recipe input unchanged");
+    public string Cancel3DMapLoadToolTip => T("ThreeD.Workbench.Cancel3DMapLoadToolTip", "\uD604\uC7AC \uC18C\uC2A4\uB97C \uC720\uC9C0\uD558\uACE0 \uC0C8 3D \uB370\uC774\uD130 \uAC00\uC838\uC624\uAE30\uB97C \uCDE8\uC18C\uD569\uB2C8\uB2E4.", "Cancel the new 3D data import and retain the current source.");
     public string AddFirstToolActionTitle => T("ThreeD.Workbench.AddFirstToolActionTitle", "\uCCAB \uAC80\uC0AC \uB3C4\uAD6C\uB97C \uCD94\uAC00\uD558\uC138\uC694", "Add the first inspection tool");
     public string AddFirstToolActionDetail => T("ThreeD.Workbench.AddFirstToolActionDetail", "\uB3C4\uAD6C \uB77C\uC774\uBE0C\uB7EC\uB9AC\uC5D0\uC11C \uD638\uD658 \uD56D\uBAA9\uC744 \uCD94\uAC00\uD558\uC138\uC694. \uC120\uD0DD\uB9CC\uC73C\uB85C\uB294 \uC2E4\uD589\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Add a compatible item from Tool Library. Selection alone never executes it.");
     public string SelectStepActionTitle => T("ThreeD.Workbench.SelectStepActionTitle", "\uC124\uC815\uD560 \uB808\uC2DC\uD53C \uB2E8\uACC4\uB97C \uC120\uD0DD\uD558\uC138\uC694", "Select a recipe step to configure");
@@ -974,9 +990,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
 
     private void Refresh()
     {
-        foreach (var propertyName in PropertyNames)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        // WPF treats an empty property name as "all properties changed". Raising
+        // 538 individual events made unfiltered presentation subscribers rebuild
+        // the same ComboBox items and diagnostics hundreds of times per switch.
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
     }
 }

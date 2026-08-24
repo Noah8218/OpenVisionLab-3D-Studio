@@ -54,7 +54,10 @@ public sealed partial class ToolWorkbenchViewModel
             item.NodeKind == "Source" && string.Equals(item.State, "Ready", StringComparison.Ordinal));
         var gridSelection = ArtifactRegistry.FirstOrDefault(item =>
             item.NodeKind == "Selection"
-            && string.Equals(item.Contract, "grid-rectangle", StringComparison.Ordinal)
+            && ToolRecipeSelectionContract.IsSupported(
+                "height-difference-edge",
+                1,
+                item.Contract)
             && string.Equals(item.State, "Current selection", StringComparison.Ordinal));
         var publishedFilter = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)

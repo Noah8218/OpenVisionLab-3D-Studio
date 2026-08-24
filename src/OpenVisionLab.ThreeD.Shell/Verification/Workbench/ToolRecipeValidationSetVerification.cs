@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -23,6 +24,16 @@ internal static class ToolRecipeValidationSetVerification
             lines.Add($"{(condition ? "PASS" : "FAIL")} | {name} | {detail}");
             if (condition) passed++;
         }
+
+        static string DevelopmentFingerprint(
+            ToolRecipeThresholdCandidateReport report) =>
+            JsonSerializer.Serialize(new
+            {
+                report.DevelopmentSampleCount,
+                report.Candidates,
+                report.Warnings,
+                report.EvidenceWarnings
+            });
 
         try
         {
@@ -260,11 +271,14 @@ internal static class ToolRecipeValidationSetVerification
                 Path.Combine(artifactRoot, "threshold-bad-high.C3D");
             var thresholdHeldOutPath =
                 Path.Combine(artifactRoot, "threshold-held-out.C3D");
+            var thresholdAlternateHeldOutPath =
+                Path.Combine(artifactRoot, "threshold-held-out-extreme.C3D");
             CreateThicknessFixture(thresholdGoodLowPath, 2);
             CreateThicknessFixture(thresholdGoodHighPath, 4);
             CreateThicknessFixture(thresholdBadLowPath, -10);
             CreateThicknessFixture(thresholdBadHighPath, 20);
             CreateThicknessFixture(thresholdHeldOutPath, 3);
+            CreateThicknessFixture(thresholdAlternateHeldOutPath, 1_000_000);
             var thresholdResult = ToolRecipeValidationSetExecution.Execute(
                 document,
                 [
@@ -528,6 +542,44 @@ internal static class ToolRecipeValidationSetVerification
                         repeatedThresholdReport.Candidates.Select(candidate =>
                             candidate.CandidateId)),
                 $"{thresholdReport.Candidates.Count} candidate(s)");
+            var alternateHeldOutResult =
+                ToolRecipeValidationSetExecution.Execute(
+                    document,
+                    [
+                        new ToolRecipeValidationSampleInput(
+                            thresholdGoodLowPath,
+                            ToolRecipeValidationSampleRole.Good),
+                        new ToolRecipeValidationSampleInput(
+                            thresholdGoodHighPath,
+                            ToolRecipeValidationSampleRole.Good),
+                        new ToolRecipeValidationSampleInput(
+                            thresholdBadLowPath,
+                            ToolRecipeValidationSampleRole.Bad),
+                        new ToolRecipeValidationSampleInput(
+                            thresholdBadHighPath,
+                            ToolRecipeValidationSampleRole.Bad),
+                        new ToolRecipeValidationSampleInput(
+                            thresholdAlternateHeldOutPath,
+                            ToolRecipeValidationSampleRole.HeldOut)
+                    ]);
+            var alternateHeldOutReport =
+                ToolRecipeThresholdCandidateAnalyzer.Analyze(
+                    document,
+                    alternateHeldOutResult);
+            var heldOutIdentityChanged =
+                !thresholdReport.HeldOutSampleIdentities.SequenceEqual(
+                    alternateHeldOutReport.HeldOutSampleIdentities);
+            var developmentFingerprintUnchanged = string.Equals(
+                DevelopmentFingerprint(thresholdReport),
+                DevelopmentFingerprint(alternateHeldOutReport),
+                StringComparison.Ordinal);
+            Check(
+                "Held-out value and identity cannot affect candidate fingerprints",
+                heldOutIdentityChanged
+                && alternateHeldOutReport.DevelopmentSampleCount == 4
+                && alternateHeldOutReport.HeldOutSampleCount == 1
+                && developmentFingerprintUnchanged,
+                $"heldOutIdentityChanged={heldOutIdentityChanged};developmentFingerprintUnchanged={developmentFingerprintUnchanged};candidates={alternateHeldOutReport.Candidates.Count}");
 
             Check(
                 "range candidate maps to exact typed Thickness parameters",
@@ -1634,7 +1686,7 @@ internal static class ToolRecipeValidationSetVerification
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
         File.WriteAllLines(reportPath, lines);
         summary = $"Validation Set verification: {passed}/{total} passed | {Path.GetFullPath(reportPath)}";
-        return passed == total && total == 86;
+        return passed == total && total == 87;
     }
 
     private static ToolRecipeThresholdCandidate CreateMappingCandidate(

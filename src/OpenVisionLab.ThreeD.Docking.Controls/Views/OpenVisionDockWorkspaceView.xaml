@@ -164,7 +164,8 @@
                                                     ToolTip="Collapse panel to the side"
                                                     AutomationProperties.Name="Collapse panel to the side">
                                                 <Button.Style>
-                                                    <Style TargetType="{x:Type Button}">
+                                                    <Style TargetType="{x:Type Button}"
+                                                           BasedOn="{StaticResource {x:Type Button}}">
                                                         <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding CanHide}" Value="False">

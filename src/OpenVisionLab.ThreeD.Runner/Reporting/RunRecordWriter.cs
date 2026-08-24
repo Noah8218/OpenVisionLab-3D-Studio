@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.RunRecords;
@@ -529,23 +530,58 @@ internal static class RunRecordWriter
             Environment.NewLine,
             report.Channels.Select(channel =>
                 $"<tr><td>{Encode(channel.Channel.ToString())}</td><td>{Encode(channel.State.ToString())}</td><td>{Encode(channel.Evidence)}</td></tr>"));
+        var gridDiagnostics = FormatSourceQualityGridDiagnosticsHtml(
+            report.GridDiagnostics);
         return $"""
-               <section>
-                 <h2>Source Quality evidence</h2>
-                 <dl>
-                   <dt>State</dt><dd>{evidence.State}</dd>
-                   <dt>Report SHA-256</dt><dd>{evidence.SourceQualitySha256}</dd>
-                   <dt>Source entity</dt><dd>{Encode(report.Source.EntityId)}</dd>
-                   <dt>Grid</dt><dd>{report.Grid.Width} x {report.Grid.Height} ({report.Grid.CellCount} cells)</dd>
-                   <dt>Coverage</dt><dd>{report.Coverage.ValidSampleCount} valid ({Format(report.Coverage.ValidRatio)}); {report.Coverage.MissingSampleCount} missing ({Format(report.Coverage.MissingRatio)})</dd>
-                   <dt>Invalid-cell mask</dt><dd>{Encode(report.Coverage.InvalidCellMask.Encoding)}; {report.Coverage.InvalidCellMask.ByteLength} bytes; SHA-256 {report.Coverage.InvalidCellMask.Sha256}</dd>
-                   <dt>Height</dt><dd>{Encode(report.Height.ScalarMeaning)}; min {FormatNullable(report.Height.Minimum)}; max {FormatNullable(report.Height.Maximum)}; mean {FormatNullable(report.Height.Mean)}</dd>
-                   <dt>Coordinates</dt><dd>{Encode(report.Coordinates.FrameId)}; {Encode(report.Coordinates.Unit)}; {Encode(report.Coordinates.CoordinateConvention)}</dd>
-                   <dt>Provenance</dt><dd>{Encode(report.Provenance)}</dd>
-                   <dt>Derived</dt><dd>{report.IsDerived}</dd>
-                 </dl>
-                 <table><thead><tr><th>Channel</th><th>State</th><th>Evidence</th></tr></thead><tbody>{channels}</tbody></table>
-               </section>
+                <section>
+                  <h2>Source Quality evidence</h2>
+                  <dl>
+                    <dt>State</dt><dd>{evidence.State}</dd>
+                    <dt>Report SHA-256</dt><dd>{evidence.SourceQualitySha256}</dd>
+                    <dt>Source entity</dt><dd>{Encode(report.Source.EntityId)}</dd>
+                    <dt>Grid</dt><dd>{report.Grid.Width} x {report.Grid.Height} ({report.Grid.CellCount} cells)</dd>
+                    <dt>Coverage</dt><dd>{report.Coverage.ValidSampleCount} valid ({Format(report.Coverage.ValidRatio)}); {report.Coverage.MissingSampleCount} missing ({Format(report.Coverage.MissingRatio)})</dd>
+                    <dt>Invalid-cell mask</dt><dd>{Encode(report.Coverage.InvalidCellMask.Encoding)}; {report.Coverage.InvalidCellMask.ByteLength} bytes; SHA-256 {report.Coverage.InvalidCellMask.Sha256}</dd>
+                    <dt>Height</dt><dd>{Encode(report.Height.ScalarMeaning)}; min {FormatNullable(report.Height.Minimum)}; max {FormatNullable(report.Height.Maximum)}; mean {FormatNullable(report.Height.Mean)}</dd>
+                    <dt>Coordinates</dt><dd>{Encode(report.Coordinates.FrameId)}; {Encode(report.Coordinates.Unit)}; {Encode(report.Coordinates.CoordinateConvention)}</dd>
+                    <dt>Provenance</dt><dd>{Encode(report.Provenance)}</dd>
+                    <dt>Derived</dt><dd>{report.IsDerived}</dd>
+                  </dl>
+                  <table><thead><tr><th>Channel</th><th>State</th><th>Evidence</th></tr></thead><tbody>{channels}</tbody></table>
+                  {gridDiagnostics}
+                </section>
+                """;
+    }
+
+    private static string FormatSourceQualityGridDiagnosticsHtml(
+        SourceQualityGridDiagnostics? diagnostics)
+    {
+        if (diagnostics is null)
+        {
+            return "<p><strong>Grid diagnostics:</strong> Unavailable in this legacy Source Quality report.</p>";
+        }
+
+        var rows = string.Join(
+            Environment.NewLine,
+            diagnostics.Checks.Select(check =>
+                $"<tr><td>{Encode(check.Code.ToString())}</td>"
+                + $"<td class=\"{check.State}\">{Encode(check.State.ToString())}</td>"
+                + $"<td>{check.AffectedCount}</td>"
+                + $"<td>{Encode(check.FirstSampleOrdinal?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)}</td>"
+                + $"<td>{Encode(check.FirstRow?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)}</td>"
+                + $"<td>{Encode(check.FirstColumn?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)}</td>"
+                + $"<td>{Encode(check.FirstComponent ?? string.Empty)}</td>"
+                + $"<td>{Encode(check.Message)}</td></tr>"));
+        return $"""
+               <h3>Grid diagnostics</h3>
+               <dl>
+                 <dt>Schema</dt><dd>{Encode(diagnostics.SchemaVersion)}</dd>
+                 <dt>State</dt><dd class="{diagnostics.State}">{Encode(diagnostics.State.ToString())}</dd>
+                 <dt>Declared cells</dt><dd>{diagnostics.DeclaredCellCount}</dd>
+                 <dt>Observed samples</dt><dd>{diagnostics.ObservedSampleCount}</dd>
+                 <dt>Unique locators</dt><dd>{diagnostics.UniqueLocatorCount}</dd>
+               </dl>
+               <table><thead><tr><th>Check</th><th>State</th><th>Affected</th><th>First sample ordinal</th><th>First row</th><th>First column</th><th>First component</th><th>Message</th></tr></thead><tbody>{rows}</tbody></table>
                """;
     }
 
@@ -834,6 +870,28 @@ internal static class RunRecordWriter
             add("source-quality-channel", $"{channel.Channel}.state", channel.State.ToString(), string.Empty, reportSha);
             add("source-quality-channel", $"{channel.Channel}.evidence", channel.Evidence, string.Empty, reportSha);
         }
+
+        if (report.GridDiagnostics is not { } diagnostics)
+        {
+            return;
+        }
+
+        add("source-quality-grid-diagnostics", "schemaVersion", diagnostics.SchemaVersion, string.Empty, reportSha);
+        add("source-quality-grid-diagnostics", "state", diagnostics.State.ToString(), string.Empty, reportSha);
+        add("source-quality-grid-diagnostics", "declaredCellCount", diagnostics.DeclaredCellCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        add("source-quality-grid-diagnostics", "observedSampleCount", diagnostics.ObservedSampleCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        add("source-quality-grid-diagnostics", "uniqueLocatorCount", diagnostics.UniqueLocatorCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+        foreach (var check in diagnostics.Checks)
+        {
+            var field = check.Code.ToString();
+            add("source-quality-grid-diagnostic", $"{field}.state", check.State.ToString(), string.Empty, reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.affectedCount", check.AffectedCount.ToString(CultureInfo.InvariantCulture), "count", reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.firstSampleOrdinal", check.FirstSampleOrdinal?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, string.Empty, reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.firstRow", check.FirstRow?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, string.Empty, reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.firstColumn", check.FirstColumn?.ToString(CultureInfo.InvariantCulture) ?? string.Empty, string.Empty, reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.firstComponent", check.FirstComponent ?? string.Empty, string.Empty, reportSha);
+            add("source-quality-grid-diagnostic", $"{field}.message", check.Message, string.Empty, reportSha);
+        }
     }
 
     private static void AddAssessmentRows(
@@ -852,7 +910,7 @@ internal static class RunRecordWriter
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason" };
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason" };
         lines.AddRange(record.Steps!.SelectMany(step =>
         {
             var stepRows = step.Metrics.Count == 0
@@ -907,6 +965,7 @@ internal static class RunRecordWriter
             Csv(record.SourceQualityEvidence?.Report?.Coordinates.Unit ?? string.Empty),
             Csv(record.SourceQualityEvidence?.Report?.Provenance ?? string.Empty),
             Csv(FormatSourceQualityChannels(record.SourceQualityEvidence)),
+            Csv(FormatSourceQualityGridDiagnostics(record.SourceQualityEvidence)),
             Csv(cell is not null ? "completenessCell" : metric is not null ? "stepMetric" : "step"),
             Csv(step.CompletenessGrid?.ContentSha256 ?? string.Empty),
             Csv(step.CompletenessGrid?.Unit ?? string.Empty),
@@ -963,6 +1022,12 @@ internal static class RunRecordWriter
                 "; ",
                 report.Channels.Select(channel =>
                     $"{channel.Channel}={channel.State}:{channel.Evidence}"))
+            : string.Empty;
+
+    private static string FormatSourceQualityGridDiagnostics(
+        InspectionRunSourceQualityEvidence? evidence) =>
+        evidence?.Report?.GridDiagnostics is { } diagnostics
+            ? JsonSerializer.Serialize(diagnostics)
             : string.Empty;
 
     private static InspectionRunEnvironment CreateExecutionEnvironment(string recipePath)

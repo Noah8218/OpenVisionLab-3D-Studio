@@ -182,7 +182,8 @@ public sealed partial class ToolWorkbenchViewModel
         object? sender,
         PropertyChangedEventArgs args)
     {
-        if (args.PropertyName is nameof(ThreeDLocalization.ThicknessRepeatReady)
+        if (string.IsNullOrEmpty(args.PropertyName)
+            || args.PropertyName is nameof(ThreeDLocalization.ThicknessRepeatReady)
             or nameof(ThreeDLocalization.ThicknessRepeatUnavailable)
             or nameof(ThreeDLocalization.ThicknessRepeatReviewFormat)
             or nameof(ThreeDLocalization.ThicknessGroupFormat))

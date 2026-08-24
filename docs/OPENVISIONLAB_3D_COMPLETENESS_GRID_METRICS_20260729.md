@@ -4,6 +4,12 @@ Date: 2026-07-29
 
 Status: Complete for `H-02/H-03/H-04`
 
+> Follow-up qualification (2026-08-23): `PL-0042/M-15` re-ran and qualified
+> the current existing `30/30` Completeness golden suite, including the exact
+> four-cell matrix, acceptance decisions, deterministic Runner parity, and
+> schema `1.9` JSON/HTML/CSV evidence. The original implementation record
+> below remains historical evidence for its recorded scope.
+
 ## Product-direction source
 
 This slice implements three OpenVisionLab completeness requirements:

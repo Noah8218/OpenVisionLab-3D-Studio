@@ -1,0 +1,134 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0035",
+    "aliases": [],
+    "type": "task",
+    "mode": "simple",
+    "title": "Reject unsafe imported-mesh allocation declarations",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "owner continuation request and 2026-08-22 project analysis",
+    "summary": "The owner deferred R0 and authorized the remaining analyzed development work. The next dependency-ready item is allocation guardrails and actionable GLB/STL import failures.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0035 remains resolved; final documentation paths exist, the issue validates, and diff hygiene passes."
+  },
+  "objective": {
+    "summary": "Fail closed with actionable InvalidDataException messages before unsafe GLB/STL allocations while preserving supported valid imports.",
+    "constraints": [
+      "Keep existing supported GLB 2.0 and STL workflows and the current 1000000-triangle STL ceiling.",
+      "Do not add a new UI surface or import framework; use the existing Viewer failure status path.",
+      "Do not add recipe, Preview, Publish, Run, or result-state side effects to the Data loaders.",
+      "Do not claim large-C3D qualification without the representative maximum source and accepted limits."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "GLB accessor count, stride, offsets, and required byte spans are validated against the declared bufferView and BIN chunk before allocating decoded arrays.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Embedded GLB texture ranges are validated before copying bytes and malformed declarations fail with actionable InvalidDataException messages.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "ASCII STL enforces the existing 1000000-triangle ceiling during parsing, and binary STL rejects an over-limit exact-length declaration before whole-file loading.",
+      "evidence_refs": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Representative valid public GLB, binary STL, and ASCII STL imports retain their existing geometry and normal-channel results.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused malformed/valid import verification, proportional Release build, structure guard, and diff hygiene pass with D-backed evidence.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0034"
+    }
+  ],
+  "context": [
+    {
+      "kind": "external prerequisite",
+      "location": "docs/OPENVISIONLAB_3D_PROJECT_ANALYSIS_20260822.md",
+      "summary": "Large-C3D qualification remains blocked on a representative maximum source and accepted memory/load-time limits."
+    },
+    {
+      "kind": "owner priority decision",
+      "location": "current task",
+      "summary": "Product-owner Wide/Compact R0 remains explicitly deferred."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0035-imported-mesh-guardrails/verification/source-channel-normal-quality.txt",
+      "observation": "Focused import/source-channel verification passed 35/35, including valid public GLB/ASCII STL and synthetic binary STL compatibility plus over-limit GLB accessor, buffer range, texture, whole-file, and binary STL declaration rejection.",
+      "observed_at": "2026-08-22T23:46:54.2067589+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0035-imported-mesh-guardrails/verification/",
+      "observation": "Current Shell and full solution Release builds passed with zero warnings/errors, and the code-structure guard passed 67/67.",
+      "observed_at": "2026-08-22T23:46:54.2067589+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "source",
+      "location": "src/OpenVisionLab.ThreeD.Data/Meshes/GlbMesh.cs; src/OpenVisionLab.ThreeD.Data/Meshes/StlMesh.cs",
+      "observation": "Source inspection confirms GLB count/range checks precede decoded array or texture-byte allocation, binary STL preflight precedes ReadAllBytes, and ASCII STL invokes the existing triangle ceiling before retaining the first over-limit vertex.",
+      "observed_at": "2026-08-22T23:46:54.2067589+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/artifacts/current/20260822-pl0035-imported-mesh-guardrails/verification/diff-and-doc-paths.txt",
+      "observation": "All six PL-0035 documentation and Proofline paths exist, the v2 issue validates, and final git diff --check exited 0; line-ending conversion notices are warnings rather than whitespace errors.",
+      "observed_at": "2026-08-22T23:46:54.2067589+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-22T23:46:54.2067589+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after focused valid/malformed import verification, current Release builds, structure guard, documentation, and diff hygiene passed."
+    }
+  ],
+  "created_at": "2026-08-22T23:36:22.0194782+09:00",
+  "updated_at": "2026-08-22T14:47:40.974Z"
+}

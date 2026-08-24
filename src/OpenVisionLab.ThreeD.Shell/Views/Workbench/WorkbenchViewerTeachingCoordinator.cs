@@ -29,6 +29,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.ApplyTeachingSelectionCaptureRequested += OnApplyTeachingCaptureRequested;
         workbench.AppliedTeachingSelectionsChanged += OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged += OnGridRectangleDraftChanged;
+        workbench.TeachingGridCircleDraftChanged += OnGridCircleDraftChanged;
         workbench.OrientedBoxEditor.DraftChanged += OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged += OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested += OnFitWorkspaceRegionRequested;
@@ -61,6 +62,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.ApplyTeachingSelectionCaptureRequested -= OnApplyTeachingCaptureRequested;
         workbench.AppliedTeachingSelectionsChanged -= OnAppliedTeachingSelectionsChanged;
         workbench.TeachingGridRectangleDraftChanged -= OnGridRectangleDraftChanged;
+        workbench.TeachingGridCircleDraftChanged -= OnGridCircleDraftChanged;
         workbench.OrientedBoxEditor.DraftChanged -= OnOrientedBoxDraftChanged;
         workbench.ThicknessRepeatGridPreviewChanged -= OnThicknessRepeatGridPreviewChanged;
         workbench.FitWorkspaceRegionRequested -= OnFitWorkspaceRegionRequested;
@@ -75,7 +77,25 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         object? sender,
         ToolWorkbenchTeachingCaptureRequestEventArgs args)
     {
-        if (string.Equals(args.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
+        if (string.Equals(args.SourceBinding.Format, "HeightField", StringComparison.Ordinal))
+        {
+            if (!workbench.TryGetPublishedRoiCropOutput(
+                    args.SourceBinding.OwnerEntityId ?? string.Empty,
+                    out var croppedHeightField)
+                || croppedHeightField is null
+                || string.IsNullOrWhiteSpace(workbench.CurrentRoiCropPreviewPath)
+                || !viewer.ShowC3DWorkbenchResult(
+                    workbench.CurrentRoiCropPreviewPath,
+                    $"Published ROI / Crop | {croppedHeightField.Width} x {croppedHeightField.Height}"))
+            {
+                workbench.RejectTeachingSelectionCapture(
+                    "The ROI owner HeightField is not currently Published or displayable.");
+                return;
+            }
+
+            SyncAppliedSelections();
+        }
+        else if (string.Equals(args.SourceBinding.Format, "TransformedHeightField", StringComparison.Ordinal))
         {
             if (!workbench.TryGetPublishedRegridHeightFieldOutput(
                     args.SourceBinding.OwnerEntityId ?? string.Empty,
@@ -113,7 +133,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
             return;
         }
 
-        if (string.Equals(args.Kind, ToolRecipeSelectionKinds.GridRectangle, StringComparison.Ordinal))
+        if (args.Kind is ToolRecipeSelectionKinds.GridRectangle or ToolRecipeSelectionKinds.GridCircle)
         {
             viewer.UseTopView();
         }
@@ -178,6 +198,12 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
                     Math.Abs(second.Locator.Row - first.Locator.Row) + 1,
                     Math.Abs(second.Locator.Column - first.Locator.Column) + 1));
         }
+        else if (state.IsActive
+                 && string.Equals(state.Kind, ToolRecipeSelectionKinds.GridCircle, StringComparison.Ordinal)
+                 && state.GridCircle is { } circle)
+        {
+            workbench.UpdateTeachingGridCircleDraft(circle);
+        }
     }
 
     private void UpdateWorkbenchCaptureState(TeachingCaptureState state, string message) =>
@@ -234,6 +260,18 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         ToolWorkbenchGridRectangleDraftChangedEventArgs args)
     {
         if (viewer.TrySetC3DTeachingGridRectangleCandidate(args.Rectangle, out var message))
+        {
+            return;
+        }
+
+        UpdateWorkbenchCaptureState(viewer.TeachingCaptureSnapshot, message);
+    }
+
+    private void OnGridCircleDraftChanged(
+        object? sender,
+        ToolWorkbenchGridCircleDraftChangedEventArgs args)
+    {
+        if (viewer.TrySetC3DTeachingGridCircleCandidate(args.Circle, out var message))
         {
             return;
         }

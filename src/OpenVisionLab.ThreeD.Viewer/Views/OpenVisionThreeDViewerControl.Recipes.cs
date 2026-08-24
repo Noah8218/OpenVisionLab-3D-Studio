@@ -171,7 +171,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         CaptureWindow(path);
     }
 
-    private void HandleOpenRecipeCommand()
+    private async void HandleOpenRecipeCommand()
     {
         var dialog = new OpenFileDialog
         {
@@ -182,7 +182,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         if (dialog.ShowDialog(Window.GetWindow(this)) == true)
         {
-            ApplyRecipeFile(dialog.FileName, isSmoke: false);
+            await ApplyRecipeFileAsync(dialog.FileName, isSmoke: false);
             RenderNow();
         }
     }
@@ -349,6 +349,18 @@ public sealed partial class OpenVisionThreeDViewerControl
     private async void SmokeCaptureOnLoaded(object sender, RoutedEventArgs e)
     {
         await Dispatcher.InvokeAsync(RenderNow);
+        if (smokeReloadImportedMeshTexture)
+        {
+            var sourcePath = viewModel.GlbSampleSourcePath;
+            ApplySmokeGlb(sourcePath);
+            await Dispatcher.InvokeAsync(RenderNow);
+            if (importedMeshTextureUploadCount < 2 || importedMeshTextureReleaseCount < 1)
+            {
+                SetSmokeFailure(
+                    $"Imported mesh texture reload failed: uploads={importedMeshTextureUploadCount}, releases={importedMeshTextureReleaseCount}");
+            }
+        }
+
         if (smokeNominalActualPreview
             && !await WaitForNominalActualPreviewAsync(TimeSpan.FromMinutes(10)))
         {
@@ -361,7 +373,18 @@ public sealed partial class OpenVisionThreeDViewerControl
             await Dispatcher.InvokeAsync(RenderNow);
         }
 
-        ApplyConfiguredSmokeNextDensity();
+        if (smokeRaceLazPointCloudDensityLoads)
+        {
+            await ApplyConfiguredSmokeLazDensityRaceAsync();
+        }
+        else
+        {
+            await ApplyConfiguredSmokeNextDensityAsync();
+        }
+        if (smokeReloadLazPointCloudCache && lazPointCloud is not null)
+        {
+            await ReloadCurrentLazPointCloudAsync();
+        }
         await Dispatcher.InvokeAsync(RenderNow);
 
         if (smokePickTarget is not null)
@@ -837,23 +860,51 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         try
         {
-            return recipeFile.LoadDocument() switch
-            {
-                NominalActualComparisonRecipe recipe => ApplyNominalActualRecipe(recipeFile, recipe, isSmoke),
-                LazTwoPointMeasurementRecipe recipe => ApplyLazTwoPointRecipe(recipeFile, recipe, isSmoke),
-                C3DThicknessRecipe recipe => ApplyC3DThicknessRecipe(recipeFile, recipe, isSmoke),
-                C3DWarpageRecipe recipe => ApplyC3DWarpageRecipe(recipeFile, recipe, isSmoke),
-                C3DGapFlushRecipe recipe => ApplyC3DGapFlushRecipe(recipeFile, recipe, isSmoke),
-                C3DPointPairDimensionsRecipe recipe => ApplyC3DPointPairDimensionsRecipe(recipeFile, recipe, isSmoke),
-                HeightDeviationRecipe recipe => ApplyHeightDeviationRecipe(recipeFile, recipe, isSmoke),
-                _ => throw new InvalidDataException($"Unsupported recipe type: {recipeFile.RecipeType}")
-            };
+            return ApplyRecipeDocument(recipeFile, recipeFile.LoadDocument(), isSmoke);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(GetRecipeLoadFailureLabel(recipeFile.RecipeType, isSmoke), ex);
         }
     }
+
+    private async Task<bool> ApplyRecipeFileAsync(string path, bool isSmoke)
+    {
+        ViewerRecipeFile recipeFile;
+        try
+        {
+            recipeFile = ViewerRecipeFile.Open(path);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            return SetRecipeLoadFailure(isSmoke ? "Smoke recipe" : "Recipe", ex);
+        }
+
+        try
+        {
+            var document = recipeFile.LoadDocument();
+            return document is LazTwoPointMeasurementRecipe lazRecipe
+                ? await ApplyLazTwoPointRecipeAsync(recipeFile, lazRecipe, isSmoke)
+                : ApplyRecipeDocument(recipeFile, document, isSmoke);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            return SetRecipeLoadFailure(GetRecipeLoadFailureLabel(recipeFile.RecipeType, isSmoke), ex);
+        }
+    }
+
+    private bool ApplyRecipeDocument(ViewerRecipeFile recipeFile, object document, bool isSmoke) =>
+        document switch
+        {
+            NominalActualComparisonRecipe recipe => ApplyNominalActualRecipe(recipeFile, recipe, isSmoke),
+            LazTwoPointMeasurementRecipe recipe => ApplyLazTwoPointRecipe(recipeFile, recipe, isSmoke),
+            C3DThicknessRecipe recipe => ApplyC3DThicknessRecipe(recipeFile, recipe, isSmoke),
+            C3DWarpageRecipe recipe => ApplyC3DWarpageRecipe(recipeFile, recipe, isSmoke),
+            C3DGapFlushRecipe recipe => ApplyC3DGapFlushRecipe(recipeFile, recipe, isSmoke),
+            C3DPointPairDimensionsRecipe recipe => ApplyC3DPointPairDimensionsRecipe(recipeFile, recipe, isSmoke),
+            HeightDeviationRecipe recipe => ApplyHeightDeviationRecipe(recipeFile, recipe, isSmoke),
+            _ => throw new InvalidDataException($"Unsupported recipe type: {recipeFile.RecipeType}")
+        };
 
     private static string GetRecipeLoadFailureLabel(string recipeType, bool isSmoke)
     {
@@ -1093,22 +1144,56 @@ public sealed partial class OpenVisionThreeDViewerControl
                 throw new InvalidDataException("LAZ/LAS two-point recipe source could not be decoded.");
             }
 
-            viewModel.SetLazSampleSource(sourcePath, recipe.Source.Name);
-            viewModel.LazTwoPointExpectedDistance = recipe.Acceptance.ExpectedDistance;
-            viewModel.LazTwoPointDistanceTolerance = recipe.Acceptance.DistanceTolerance;
-            viewModel.LazTwoPointExpectedHeightDelta = recipe.Acceptance.ExpectedHeightDelta;
-            viewModel.LazTwoPointHeightDeltaTolerance = recipe.Acceptance.HeightDeltaTolerance;
-            ApplySmokeLazTwoPointMeasurement(recipe.Measurement.HeightUnit);
-            viewModel.SetLazRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath);
-            viewModel.ViewerStatus = isSmoke
-                ? $"Smoke LAZ/LAS recipe: {Path.GetFileName(fullRecipePath)}"
-                : $"LAZ/LAS recipe loaded: {Path.GetFileName(fullRecipePath)}";
-            return true;
+            return ApplyLoadedLazTwoPointRecipe(recipe, isSmoke, fullRecipePath, sourcePath);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
         {
             return SetRecipeLoadFailure(isSmoke ? "Smoke LAZ/LAS recipe" : "LAZ/LAS recipe", ex);
         }
+    }
+
+    private async Task<bool> ApplyLazTwoPointRecipeAsync(
+        ViewerRecipeFile recipeFile,
+        LazTwoPointMeasurementRecipe recipe,
+        bool isSmoke)
+    {
+        try
+        {
+            var fullRecipePath = recipeFile.Path;
+            var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
+            var loaded = await LoadLazPointCloudAsync(sourcePath, recipe.Measurement.MaxSampledPoints);
+            if (loaded is null)
+            {
+                return false;
+            }
+
+            lazPointCloud = loaded;
+            lazSample = loaded.Metadata;
+            return ApplyLoadedLazTwoPointRecipe(recipe, isSmoke, fullRecipePath, sourcePath);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException or NotSupportedException)
+        {
+            return SetRecipeLoadFailure(isSmoke ? "Smoke LAZ/LAS recipe" : "LAZ/LAS recipe", ex);
+        }
+    }
+
+    private bool ApplyLoadedLazTwoPointRecipe(
+        LazTwoPointMeasurementRecipe recipe,
+        bool isSmoke,
+        string fullRecipePath,
+        string sourcePath)
+    {
+        viewModel.SetLazSampleSource(sourcePath, recipe.Source.Name);
+        viewModel.LazTwoPointExpectedDistance = recipe.Acceptance.ExpectedDistance;
+        viewModel.LazTwoPointDistanceTolerance = recipe.Acceptance.DistanceTolerance;
+        viewModel.LazTwoPointExpectedHeightDelta = recipe.Acceptance.ExpectedHeightDelta;
+        viewModel.LazTwoPointHeightDeltaTolerance = recipe.Acceptance.HeightDeltaTolerance;
+        ApplySmokeLazTwoPointMeasurement(recipe.Measurement.HeightUnit);
+        viewModel.SetLazRecipeLoaded(fullRecipePath, recipe.Source.Name, sourcePath);
+        viewModel.ViewerStatus = isSmoke
+            ? $"Smoke LAZ/LAS recipe: {Path.GetFileName(fullRecipePath)}"
+            : $"LAZ/LAS recipe loaded: {Path.GetFileName(fullRecipePath)}";
+        return true;
     }
 
     private bool SetRecipeLoadFailure(string label, Exception exception)

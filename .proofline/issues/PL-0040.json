@@ -1,0 +1,140 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0040",
+    "aliases": [
+      "M-09"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Qualify SourceQualityReport malformed and edge fixtures",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "owner continuation request and canonical backlog selection",
+    "summary": "The owner authorized continued work after PL-0039; M-09 is the smallest dependency-ready backlog item and requires deterministic finite, missing, and topology edge fixtures.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_REPORT_20260727.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "M-09 remains resolved; the final focused-build setup retry is now explicitly recorded without changing any acceptance outcome."
+  },
+  "objective": {
+    "summary": "Close M-09 with a deterministic SourceQualityReport malformed and edge-case fixture suite using the existing Runner verifier and command path.",
+    "constraints": [
+      "Reuse SourceQualityReportVerification and the existing --verify-source-quality-report command; do not create another verifier architecture or production validation abstraction.",
+      "Cover finite/missing semantics and malformed C3D topology at the owning load/analyze boundary with exact expected exception types.",
+      "Write generated fixtures and reports only under the supplied D-backed report directory and delete fixture files after the verifier finishes.",
+      "Do not change product behavior, SourceQualityReport schema, UI, recipe execution, version, R0 package, or release state."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The existing Runner verifier covers finite negative/positive values, zero/non-finite missing semantics, all-missing output, and deterministic statistics/ratios/mask/distribution evidence.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "Malformed C3D fixtures deterministically reject incomplete headers, non-positive dimensions, mismatched declared lengths, and overflowing grid dimensions before SourceQualityReport creation.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The fixture suite uses the existing --verify-source-quality-report command, produces its report and JSON under the D-backed evidence root, cleans transient fixture files, and changes no production behavior or schema.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Hosted CI invokes the existing SourceQualityReport verifier after build and rejects a non-passing or incomplete case matrix without altering other verifier commands.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused Release verification, standard dotnet test facade, full Release build, NuGet health, structure, Vision SDK package boundary, issue validation, documentation links, and diff hygiene pass.",
+      "evidence_refs": [
+        "E4",
+        "E5"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0039"
+    }
+  ],
+  "context": [
+    {
+      "kind": "existing verifier",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Verification/Data/SourceQualityReportVerification.cs",
+      "summary": "Existing 13-case report verifier and report writer."
+    },
+    {
+      "kind": "existing command",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Application/RunnerCommandRouter.cs",
+      "summary": "Existing --verify-source-quality-report command route."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0040-source-quality-edge-fixtures\\source-quality-edge-fixtures-final.txt",
+      "observation": "The current Runner verifier passed 18/18. Its report records signed finite statistics, existing zero/non-finite and all-missing semantics, and exact rejection cases for incomplete headers, non-positive dimensions, declared-length mismatch, and grid-dimension overflow.",
+      "observed_at": "2026-08-23T14:13:23.6894094+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "inspection",
+      "location": "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md",
+      "observation": "The suite reuses --verify-source-quality-report, writes report/JSON and generated malformed fixtures beside the D-backed report, deletes every fixture in finally, and left zero C3D files in the evidence root. The scoped diff changes only verifier, CI, documentation, and ledger surfaces; no production contract or schema changed.",
+      "observed_at": "2026-08-23T14:13:23.6894094+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "inspection",
+      "location": ".github/workflows/ci.yml",
+      "observation": "The hosted workflow runs the existing SourceQualityReport Runner command after build and throws on either a nonzero exit or absence of the exact 18/18 complete-report marker; existing verifier commands remain in place.",
+      "observed_at": "2026-08-23T14:13:23.6894094+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0040-source-quality-edge-fixtures",
+      "observation": "Current-tree checks passed: focused and full Release builds with zero warnings/errors across 15 projects, SourceQualityReport 18/18, standard facade 2/2, NuGet vulnerable/deprecated findings 0/0, structure 68/68, fixed Vision SDK package identity/checksum, documentation targets present, issue validation, and diff hygiene.",
+      "observed_at": "2026-08-23T14:13:23.6894094+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0040-source-quality-edge-fixtures\\focused-final-build.log",
+      "observation": "A first final focused --no-restore build against a newly introduced empty artifacts path failed with NETSDK1004 because project.assets.json was absent. After an explicit restore into that same D-backed path, the focused Release build passed with zero warnings and zero errors; focused-final-restore.log preserves the prerequisite recovery.",
+      "observed_at": "2026-08-23T14:15:21.3634345+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-23T14:13:23.6894094+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after all five acceptance criteria received current evidence."
+    }
+  ],
+  "created_at": "2026-08-23T14:04:54.5631822+09:00",
+  "updated_at": "2026-08-23T05:15:37.343Z"
+}

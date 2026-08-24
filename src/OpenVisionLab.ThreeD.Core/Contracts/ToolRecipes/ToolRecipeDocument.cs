@@ -21,18 +21,25 @@ public sealed record ToolRecipeDocument(
     public const string ArtifactOwnedSelectionSchemaVersion = "1.3";
     public const string OrientedBox3DSchemaVersion = "1.4";
     public const string DualRoiRoutingSchemaVersion = "1.5";
-    public const string CurrentSchemaVersion = DualRoiRoutingSchemaVersion;
+    public const string GridCircleSchemaVersion = "1.6";
+    public const string CurrentSchemaVersion = GridCircleSchemaVersion;
 
     public static bool SupportsArtifactOwnedSelections(string? schemaVersion) =>
         string.Equals(schemaVersion, ArtifactOwnedSelectionSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsOrientedBox3D(string? schemaVersion) =>
         string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsDualRoiRouting(string? schemaVersion) =>
+        string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
+
+    public static bool SupportsGridCircle(string? schemaVersion) =>
         string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 }
 
@@ -140,7 +147,8 @@ public sealed record ToolRecipeSelection(
     IReadOnlyList<ToolRecipeSelectionPoint>? Points,
     IReadOnlyList<ToolRecipeLandmarkCorrespondence>? Rows,
     ToolRecipeLandmarkCorrespondenceDescriptor? CorrespondenceDescriptor = null,
-    ToolRecipeOrientedBox3D? OrientedBox3D = null);
+    ToolRecipeOrientedBox3D? OrientedBox3D = null,
+    ToolRecipeGridCircle? GridCircle = null);
 
 public sealed record ToolRecipeSelectionSourceBinding(
     string Format,
@@ -157,6 +165,15 @@ public sealed record ToolRecipeGridRectangle(
     int Column,
     int RowCount,
     int ColumnCount);
+
+/// <summary>
+/// Circular footprint in height-field grid coordinates. CenterRow maps to Z,
+/// CenterColumn maps to X, and Radius is measured between grid-cell centers.
+/// </summary>
+public sealed record ToolRecipeGridCircle(
+    int CenterRow,
+    int CenterColumn,
+    double Radius);
 
 public sealed record ToolRecipeGridCellLocator(
     string Kind,
@@ -199,6 +216,7 @@ public static class ToolRecipeSelectionKinds
     public const string PointSet = "point-set";
     public const string LandmarkCorrespondenceSet = "landmark-correspondence-set";
     public const string OrientedBox3D = "oriented-box-3d";
+    public const string GridCircle = "grid-circle";
 }
 
 public sealed record ToolRecipeValidationResult(

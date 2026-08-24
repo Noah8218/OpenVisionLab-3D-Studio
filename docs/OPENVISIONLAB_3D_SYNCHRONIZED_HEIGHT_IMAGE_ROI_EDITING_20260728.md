@@ -6,6 +6,11 @@ Backlog: `C-09`, `C-10`
 
 Status: Complete for the documented software scope
 
+Follow-up: `PL-0041` later added a `67/67` headless cross-view selection
+atomicity suite to the same existing Inspection Workspace verifier. See
+`OPENVISIONLAB_3D_CROSS_VIEW_SELECTION_ATOMICITY_CLOSURE_20260823.md`. The
+original C-09/C-10 runtime evidence below remains historical and unchanged.
+
 ## Outcome
 
 The full-size Height Image and main 3D Viewer now display and edit the same

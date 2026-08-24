@@ -240,14 +240,10 @@ public sealed class C3DHeightGrid
         cancellationToken.ThrowIfCancellationRequested();
         progress?.Report(0.0);
         using var reader = new BinaryReader(File.OpenRead(path));
-        var width = reader.ReadInt32();
-        var height = reader.ReadInt32();
-        var sampleCount = checked(width * height);
-        var expectedBytes = 8L + sampleCount * sizeof(float);
-        if (width <= 0 || height <= 0 || reader.BaseStream.Length != expectedBytes)
-        {
-            throw new InvalidDataException($"Unsupported C3D height-grid layout: {path}");
-        }
+        var layout = C3DSourceTopology.ReadAndValidate(reader.BaseStream);
+        var width = layout.Width;
+        var height = layout.Height;
+        var sampleCount = layout.SampleCount;
 
         var samples = new float[sampleCount];
         var readStart = Stopwatch.GetTimestamp();

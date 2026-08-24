@@ -105,7 +105,8 @@
                     </Border.Style>
                     <TextBlock x:Name="CurrentSourceQualityStatusText"
                                FontSize="10.5"
-                               Text="{Binding SourceQualityStatusText, ElementName=Root}">
+                               Text="{Binding SourceQualityStatusText, ElementName=Root}"
+                               TextWrapping="Wrap">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />

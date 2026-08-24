@@ -168,6 +168,10 @@ public static class SourceQualityReportContentIdentity
         ArgumentNullException.ThrowIfNull(report.Height);
         ArgumentNullException.ThrowIfNull(report.Coordinates);
         ArgumentNullException.ThrowIfNull(report.Channels);
+        if (!report.TryValidateGridDiagnostics(out var validationMessage))
+        {
+            throw new InvalidDataException(validationMessage);
+        }
 
         using var stream = new MemoryStream();
         using (var writer = new BinaryWriter(
@@ -241,6 +245,28 @@ public static class SourceQualityReportContentIdentity
                 writer.Write((int)channel.State);
                 writer.Write(channel.Evidence ?? string.Empty);
             }
+
+            if (report.SchemaVersion == SourceQualityReport.CurrentSchemaVersion)
+            {
+                var diagnostics = report.GridDiagnostics!;
+                writer.Write(diagnostics.SchemaVersion ?? string.Empty);
+                writer.Write((int)diagnostics.State);
+                writer.Write(diagnostics.DeclaredCellCount);
+                writer.Write(diagnostics.ObservedSampleCount);
+                writer.Write(diagnostics.UniqueLocatorCount);
+                writer.Write(diagnostics.Checks.Count);
+                foreach (var check in diagnostics.Checks)
+                {
+                    writer.Write((int)check.Code);
+                    writer.Write((int)check.State);
+                    writer.Write(check.AffectedCount);
+                    WriteNullable(writer, check.FirstSampleOrdinal);
+                    WriteNullable(writer, check.FirstRow);
+                    WriteNullable(writer, check.FirstColumn);
+                    writer.Write(check.FirstComponent ?? string.Empty);
+                    writer.Write(check.Message ?? string.Empty);
+                }
+            }
         }
 
         return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
@@ -249,6 +275,28 @@ public static class SourceQualityReportContentIdentity
     private static void WriteNullable(
         BinaryWriter writer,
         double? value)
+    {
+        writer.Write(value.HasValue);
+        if (value.HasValue)
+        {
+            writer.Write(value.Value);
+        }
+    }
+
+    private static void WriteNullable(
+        BinaryWriter writer,
+        long? value)
+    {
+        writer.Write(value.HasValue);
+        if (value.HasValue)
+        {
+            writer.Write(value.Value);
+        }
+    }
+
+    private static void WriteNullable(
+        BinaryWriter writer,
+        int? value)
     {
         writer.Write(value.HasValue);
         if (value.HasValue)

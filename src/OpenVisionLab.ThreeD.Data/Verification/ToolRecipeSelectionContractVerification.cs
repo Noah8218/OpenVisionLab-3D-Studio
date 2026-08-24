@@ -9,6 +9,34 @@ namespace OpenVisionLab.ThreeD.Data;
 /// </summary>
 public static class ToolRecipeSelectionContractVerification
 {
+    private static readonly string[] OrientedBoxContractCaseNames =
+    [
+        "schema 1.4 accepts a finite rotated right-handed OrientedBox3D",
+        "current schema accepts the schema 1.4 OrientedBox3D contract",
+        "rotated OrientedBox3D center axes and half-extents survive save and reopen",
+        "schema 1.3 rejects the new OrientedBox3D kind",
+        "zero-length OrientedBox3D axis is rejected",
+        "finite non-unit OrientedBox3D axis is rejected",
+        "parallel non-orthogonal OrientedBox3D axes are rejected",
+        "left-handed OrientedBox3D axes are rejected",
+        "non-finite OrientedBox3D center axis and half-extent are rejected",
+        "non-positive OrientedBox3D half-extent is rejected",
+        "OrientedBox3D rejects mixed rectangle payloads"
+    ];
+
+    private static readonly string[] GridCircleContractCaseNames =
+    [
+        "current schema accepts an in-bounds GridCircle",
+        "GridCircle center and radius survive save and reopen",
+        "schema 1.5 rejects the new GridCircle kind",
+        "GridCircle requires its geometry payload",
+        "GridCircle rejects a radius below one cell",
+        "GridCircle rejects a non-finite radius",
+        "GridCircle rejects an out-of-grid footprint",
+        "GridCircle rejects mixed rectangle payloads",
+        "undeclared GridCircle consumer fails closed"
+    ];
+
     public static bool Verify(string reportPath, out string summary)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
@@ -19,6 +47,8 @@ public static class ToolRecipeSelectionContractVerification
         };
         var passed = 0;
         var total = 0;
+        var orientedBoxSubsetComplete = false;
+        var gridCircleSubsetComplete = false;
         var fixtureRoot = Path.Combine(
             Path.GetTempPath(),
             "OpenVisionLab.ThreeD",
@@ -122,6 +152,216 @@ public static class ToolRecipeSelectionContractVerification
                 ToolRecipeValidator.Validate(dualRoiDocument).IsValid,
                 string.Join(" | ", ToolRecipeValidator.Validate(dualRoiDocument).Errors));
 
+            var declaredTools = ToolRecipeSelectionContract.Declarations
+                .Select(requirement => requirement.ToolId)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            var expectedDeclaredTools = new[]
+            {
+                "completeness-grid",
+                "cross-section-dimensions",
+                "datum-plane-raw-height-deviation",
+                "gap-flush",
+                "grid-circle-authoring",
+                "height-difference-edge",
+                "landmark-correspondence",
+                "level-surface",
+                "plane-flatness",
+                "point-pair-dimensions",
+                "roi-crop",
+                "thickness",
+                "three-point-plane",
+                "two-point-line",
+                "volume",
+                "warpage"
+            };
+            Check(
+                "selection-consuming tool inventory has one explicit compatibility matrix",
+                ToolRecipeSelectionContract.Declarations.Count == 21
+                && declaredTools.SequenceEqual(expectedDeclaredTools, StringComparer.Ordinal)
+                && ToolRecipeSelectionContract.Declarations
+                    .GroupBy(requirement => (requirement.ToolId, requirement.Role))
+                    .All(group => group.Count() == 1)
+                && ToolRecipeSelectionContract.Declarations.All(requirement =>
+                    requirement.FirstInputIndex >= 0
+                    && requirement.LastInputIndex >= requirement.FirstInputIndex
+                    && requirement.MinimumCount >= 1
+                    && requirement.MaximumCount >= requirement.MinimumCount)
+                && declaredTools.All(toolId => Enumerable.Range(0, 24).All(inputIndex =>
+                    ToolRecipeSelectionContract.Declarations.Count(requirement =>
+                        requirement.ToolId == toolId
+                        && requirement.AcceptsInputIndex(inputIndex)) <= 1)),
+                $"rows={ToolRecipeSelectionContract.Declarations.Count};tools={string.Join(',', declaredTools)}");
+            var hasThicknessReference = ToolRecipeSelectionContract.TryGetRequirement(
+                "thickness",
+                1,
+                out var thicknessReference);
+            var hasThicknessMeasurement = ToolRecipeSelectionContract.TryGetRequirement(
+                "thickness",
+                2,
+                out var thicknessMeasurement);
+            Check(
+                "dual-ROI roles are declared independently",
+                hasThicknessReference
+                && thicknessReference.Role == ToolRecipeSelectionRoles.ReferenceRegion
+                && hasThicknessMeasurement
+                && thicknessMeasurement.Role == ToolRecipeSelectionRoles.MeasurementRegion
+                && thicknessReference.Kind == ToolRecipeSelectionKinds.GridRectangle
+                && thicknessMeasurement.Kind == ToolRecipeSelectionKinds.GridRectangle,
+                $"reference={thicknessReference};measurement={thicknessMeasurement}");
+
+            var undeclaredToolValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        dualRoiDocument.Steps[0] with
+                        {
+                            ToolId = "undeclared-selection-consumer",
+                            ToolName = "Undeclared selection consumer",
+                            MinimumInputCount = 2,
+                            InputEntityIds = [current.Source.Id, dualReference.Id],
+                            DualRoiRouting = null,
+                            Parameters = []
+                        }
+                    ],
+                    Selections = [dualReference]
+                });
+            Check(
+                "undeclared tool selection route fails closed",
+                !undeclaredToolValidation.IsValid
+                && undeclaredToolValidation.Errors.Any(error =>
+                    error.Contains("no declared selection role", StringComparison.Ordinal)),
+                string.Join(" | ", undeclaredToolValidation.Errors));
+
+            var wrongKindValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        new ToolRecipeStep(
+                            "step.two-point-line.wrong-kind",
+                            "two-point-line",
+                            "2-Point Line",
+                            2,
+                            [current.Source.Id, dualReference.Id],
+                            "derived.two-point-line.wrong-kind",
+                            [])
+                    ],
+                    Selections = [dualReference]
+                });
+            Check(
+                "declared role rejects an unsupported selection kind",
+                !wrongKindValidation.IsValid
+                && wrongKindValidation.Errors.Any(error =>
+                    error.Contains("line-points", StringComparison.Ordinal)
+                    && error.Contains(ToolRecipeSelectionKinds.PointSet, StringComparison.Ordinal)),
+                string.Join(" | ", wrongKindValidation.Errors));
+
+            var threePointSelection = CreatePointSetSelection(
+                dualReference.SourceBinding,
+                collinear: false);
+            var wrongPointCountValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        new ToolRecipeStep(
+                            "step.two-point-line.wrong-count",
+                            "two-point-line",
+                            "2-Point Line",
+                            2,
+                            [current.Source.Id, threePointSelection.Id],
+                            "derived.two-point-line.wrong-count",
+                            [])
+                    ],
+                    Selections = [threePointSelection]
+                });
+            Check(
+                "declared PointSet role rejects the wrong point count",
+                !wrongPointCountValidation.IsValid
+                && wrongPointCountValidation.Errors.Any(error =>
+                    error.Contains("requires exactly 2 point", StringComparison.Ordinal)),
+                string.Join(" | ", wrongPointCountValidation.Errors));
+
+            var supportedThreePointValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        new ToolRecipeStep(
+                            "step.three-point-plane.supported",
+                            "three-point-plane",
+                            "3-Point Plane",
+                            2,
+                            [current.Source.Id, threePointSelection.Id],
+                            "derived.three-point-plane.supported",
+                            [])
+                    ],
+                    Selections = [threePointSelection]
+                });
+            Check(
+                "declared PointSet role accepts its exact point count",
+                supportedThreePointValidation.IsValid,
+                string.Join(" | ", supportedThreePointValidation.Errors));
+
+            var routedOrientedBox = CreateOrientedBoxSelection(
+                dualReference.SourceBinding);
+            var unsupportedOrientedBoxValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        new ToolRecipeStep(
+                            "step.roi-crop.unsupported-box",
+                            "roi-crop",
+                            "ROI / Crop",
+                            2,
+                            [current.Source.Id, routedOrientedBox.Id],
+                            "derived.roi-crop.unsupported-box",
+                            [
+                                new ToolRecipeParameter("ROI", "Select in Viewer"),
+                                new ToolRecipeParameter("Output frame", "Keep source frame")
+                            ])
+                    ],
+                    Selections = [routedOrientedBox]
+                });
+            Check(
+                "existing OrientedBox3D is rejected until a tool role explicitly supports it",
+                !unsupportedOrientedBoxValidation.IsValid
+                && unsupportedOrientedBoxValidation.Errors.Any(error =>
+                    error.Contains("role 'region' requires grid-rectangle", StringComparison.Ordinal)),
+                string.Join(" | ", unsupportedOrientedBoxValidation.Errors));
+
+            var selectionlessToolValidation = ToolRecipeValidator.Validate(
+                dualRoiDocument with
+                {
+                    Steps =
+                    [
+                        new ToolRecipeStep(
+                            "step.filter.selection-route",
+                            "filter",
+                            "Filter",
+                            1,
+                            [current.Source.Id, dualReference.Id],
+                            "derived.filter.selection-route",
+                            [
+                                new ToolRecipeParameter("Method", "Median"),
+                                new ToolRecipeParameter("KernelSize", "3"),
+                                new ToolRecipeParameter("MissingValuePolicy", "PreserveMask"),
+                                new ToolRecipeParameter("BoundaryPolicy", "AvailableNeighbors")
+                            ])
+                    ],
+                    Selections = [dualReference]
+                });
+            Check(
+                "selectionless tool rejects an injected selection route",
+                !selectionlessToolValidation.IsValid
+                && selectionlessToolValidation.Errors.Any(error =>
+                    error.Contains("no declared selection role", StringComparison.Ordinal)),
+                string.Join(" | ", selectionlessToolValidation.Errors));
+
             var incompleteDualRoiDocument = dualRoiDocument with
             {
                 Steps =
@@ -163,6 +403,8 @@ public static class ToolRecipeSelectionContractVerification
                     error.Contains("schema 1.5", StringComparison.OrdinalIgnoreCase)),
                 string.Join(" | ", oldSchemaDualRoutingValidation.Errors));
 
+            var orientedBoxPassedBefore = passed;
+            var orientedBoxTotalBefore = total;
             var orientedBox = CreateOrientedBoxSelection(binding);
             var orientedBoxDocument = CreateDocument(
                 ToolRecipeDocument.OrientedBox3DSchemaVersion,
@@ -171,15 +413,25 @@ public static class ToolRecipeSelectionContractVerification
                 orientedBox.Id);
             var orientedBoxValidation = ToolRecipeValidator.Validate(orientedBoxDocument);
             Check(
-                "schema 1.4 accepts a finite right-handed OrientedBox3D",
+                "schema 1.4 accepts a finite rotated right-handed OrientedBox3D",
                 orientedBoxValidation.IsValid,
                 string.Join(" | ", orientedBoxValidation.Errors));
+
+            var currentSchemaOrientedBoxValidation = ToolRecipeValidator.Validate(
+                orientedBoxDocument with
+                {
+                    SchemaVersion = ToolRecipeDocument.CurrentSchemaVersion
+                });
+            Check(
+                "current schema accepts the schema 1.4 OrientedBox3D contract",
+                currentSchemaOrientedBoxValidation.IsValid,
+                string.Join(" | ", currentSchemaOrientedBoxValidation.Errors));
 
             var orientedBoxPath = Path.Combine(fixtureRoot, "oriented-box.ov3d-teach.json");
             ToolRecipeDocumentStore.Save(orientedBoxPath, orientedBoxDocument);
             var reopenedOrientedBox = ToolRecipeDocumentStore.Load(orientedBoxPath);
             Check(
-                "OrientedBox3D center axes and half-extents survive save and reopen",
+                "rotated OrientedBox3D center axes and half-extents survive save and reopen",
                 reopenedOrientedBox.SchemaVersion == ToolRecipeDocument.OrientedBox3DSchemaVersion
                 && reopenedOrientedBox.Selections is { Count: 1 } reopenedBoxes
                 && reopenedBoxes[0].Kind == ToolRecipeSelectionKinds.OrientedBox3D
@@ -214,17 +466,33 @@ public static class ToolRecipeSelectionContractVerification
                     error.Contains("unit length", StringComparison.OrdinalIgnoreCase)),
                 string.Join(" | ", zeroAxisValidation.Errors));
 
+            var nonUnitAxis = orientedBox with
+            {
+                OrientedBox3D = orientedBox.OrientedBox3D! with
+                {
+                    AxisX = new ToolRecipeXyz(2, 0, 0)
+                }
+            };
+            var nonUnitAxisValidation = ToolRecipeValidator.Validate(
+                orientedBoxDocument with { Selections = [nonUnitAxis] });
+            Check(
+                "finite non-unit OrientedBox3D axis is rejected",
+                !nonUnitAxisValidation.IsValid
+                && nonUnitAxisValidation.Errors.Any(error =>
+                    error.Contains("unit length", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", nonUnitAxisValidation.Errors));
+
             var nonOrthogonal = orientedBox with
             {
                 OrientedBox3D = orientedBox.OrientedBox3D! with
                 {
-                    AxisY = new ToolRecipeXyz(1, 0, 0)
+                    AxisY = orientedBox.OrientedBox3D.AxisX
                 }
             };
             var nonOrthogonalValidation = ToolRecipeValidator.Validate(
                 orientedBoxDocument with { Selections = [nonOrthogonal] });
             Check(
-                "non-orthogonal OrientedBox3D axes are rejected",
+                "parallel non-orthogonal OrientedBox3D axes are rejected",
                 !nonOrthogonalValidation.IsValid
                 && nonOrthogonalValidation.Errors.Any(error =>
                     error.Contains("orthogonal", StringComparison.OrdinalIgnoreCase)),
@@ -245,6 +513,28 @@ public static class ToolRecipeSelectionContractVerification
                 && leftHandedValidation.Errors.Any(error =>
                     error.Contains("right-handed", StringComparison.OrdinalIgnoreCase)),
                 string.Join(" | ", leftHandedValidation.Errors));
+
+            var nonFiniteGeometry = orientedBox with
+            {
+                OrientedBox3D = orientedBox.OrientedBox3D! with
+                {
+                    Center = new ToolRecipeXyz(double.NaN, 20, 1.5),
+                    AxisX = new ToolRecipeXyz(double.PositiveInfinity, 0, 0),
+                    HalfExtents = new ToolRecipeXyz(1, 2, double.NegativeInfinity)
+                }
+            };
+            var nonFiniteGeometryValidation = ToolRecipeValidator.Validate(
+                orientedBoxDocument with { Selections = [nonFiniteGeometry] });
+            Check(
+                "non-finite OrientedBox3D center axis and half-extent are rejected",
+                !nonFiniteGeometryValidation.IsValid
+                && nonFiniteGeometryValidation.Errors.Any(error =>
+                    error.Contains("center XYZ must be finite", StringComparison.OrdinalIgnoreCase))
+                && nonFiniteGeometryValidation.Errors.Any(error =>
+                    error.Contains("X axis XYZ must be finite", StringComparison.OrdinalIgnoreCase))
+                && nonFiniteGeometryValidation.Errors.Any(error =>
+                    error.Contains("half-extents XYZ must be finite", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", nonFiniteGeometryValidation.Errors));
 
             var invalidExtent = orientedBox with
             {
@@ -274,6 +564,143 @@ public static class ToolRecipeSelectionContractVerification
                 && mixedPayloadValidation.Errors.Any(error =>
                     error.Contains("cannot contain", StringComparison.OrdinalIgnoreCase)),
                 string.Join(" | ", mixedPayloadValidation.Errors));
+
+            var orientedBoxPassed = passed - orientedBoxPassedBefore;
+            var orientedBoxTotal = total - orientedBoxTotalBefore;
+            orientedBoxSubsetComplete =
+                orientedBoxTotal == OrientedBoxContractCaseNames.Length
+                && orientedBoxPassed == orientedBoxTotal
+                && OrientedBoxContractCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"OrientedBox3DContractVerification|{(orientedBoxSubsetComplete ? "PASS" : "FAIL")}|cases={orientedBoxTotal}|passed={orientedBoxPassed}|failed={orientedBoxTotal - orientedBoxPassed}");
+
+            var gridCirclePassedBefore = passed;
+            var gridCircleTotalBefore = total;
+            var gridCircle = CreateGridCircleSelection(binding);
+            var gridCircleDocument = CreateDocument(
+                ToolRecipeDocument.CurrentSchemaVersion,
+                sourcePath,
+                [gridCircle],
+                gridCircle.Id);
+            var gridCircleValidation = ToolRecipeValidator.Validate(gridCircleDocument);
+            Check(
+                "current schema accepts an in-bounds GridCircle",
+                gridCircleValidation.IsValid,
+                string.Join(" | ", gridCircleValidation.Errors));
+
+            var gridCirclePath = Path.Combine(fixtureRoot, "grid-circle.ov3d-teach.json");
+            ToolRecipeDocumentStore.Save(gridCirclePath, gridCircleDocument);
+            var reopenedGridCircle = ToolRecipeDocumentStore.Load(gridCirclePath);
+            Check(
+                "GridCircle center and radius survive save and reopen",
+                reopenedGridCircle.Selections is [var reopenedCircle]
+                && reopenedCircle.Id == gridCircle.Id
+                && reopenedCircle.Kind == ToolRecipeSelectionKinds.GridCircle
+                && reopenedCircle.GridCircle == gridCircle.GridCircle
+                && reopenedCircle.SourceBinding == binding,
+                $"schema={reopenedGridCircle.SchemaVersion};circle={reopenedGridCircle.Selections?[0].GridCircle}");
+
+            var oldSchemaGridCircleValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    SchemaVersion = ToolRecipeDocument.DualRoiRoutingSchemaVersion
+                });
+            Check(
+                "schema 1.5 rejects the new GridCircle kind",
+                !oldSchemaGridCircleValidation.IsValid
+                && oldSchemaGridCircleValidation.Errors.Any(error =>
+                    error.Contains("schema 1.6", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", oldSchemaGridCircleValidation.Errors));
+
+            var missingGridCircleValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Selections = [gridCircle with { GridCircle = null }]
+                });
+            Check(
+                "GridCircle requires its geometry payload",
+                !missingGridCircleValidation.IsValid
+                && missingGridCircleValidation.Errors.Any(error =>
+                    error.Contains("payload is required", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", missingGridCircleValidation.Errors));
+
+            var smallRadiusValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Selections = [gridCircle with { GridCircle = gridCircle.GridCircle! with { Radius = 0.5 } }]
+                });
+            Check(
+                "GridCircle rejects a radius below one cell",
+                !smallRadiusValidation.IsValid
+                && smallRadiusValidation.Errors.Any(error =>
+                    error.Contains("at least", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", smallRadiusValidation.Errors));
+
+            var nonFiniteRadiusValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Selections = [gridCircle with { GridCircle = gridCircle.GridCircle! with { Radius = double.NaN } }]
+                });
+            Check(
+                "GridCircle rejects a non-finite radius",
+                !nonFiniteRadiusValidation.IsValid
+                && nonFiniteRadiusValidation.Errors.Any(error =>
+                    error.Contains("finite", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", nonFiniteRadiusValidation.Errors));
+
+            var outsideGridCircleValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Selections = [gridCircle with { GridCircle = gridCircle.GridCircle! with { CenterRow = 3 } }]
+                });
+            Check(
+                "GridCircle rejects an out-of-grid footprint",
+                !outsideGridCircleValidation.IsValid
+                && outsideGridCircleValidation.Errors.Any(error =>
+                    error.Contains("inside", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", outsideGridCircleValidation.Errors));
+
+            var mixedGridCircleValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Selections = [gridCircle with { GridRectangle = new ToolRecipeGridRectangle(0, 0, 1, 1) }]
+                });
+            Check(
+                "GridCircle rejects mixed rectangle payloads",
+                !mixedGridCircleValidation.IsValid
+                && mixedGridCircleValidation.Errors.Any(error =>
+                    error.Contains("cannot contain", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", mixedGridCircleValidation.Errors));
+
+            var undeclaredGridCircleValidation = ToolRecipeValidator.Validate(
+                gridCircleDocument with
+                {
+                    Steps =
+                    [
+                        gridCircleDocument.Steps[0] with
+                        {
+                            ToolId = "roi-crop",
+                            ToolName = "ROI / Crop"
+                        }
+                    ]
+                });
+            Check(
+                "undeclared GridCircle consumer fails closed",
+                !undeclaredGridCircleValidation.IsValid
+                && undeclaredGridCircleValidation.Errors.Any(error =>
+                    error.Contains("requires grid-rectangle", StringComparison.OrdinalIgnoreCase)),
+                string.Join(" | ", undeclaredGridCircleValidation.Errors));
+
+            var gridCirclePassed = passed - gridCirclePassedBefore;
+            var gridCircleTotal = total - gridCircleTotalBefore;
+            gridCircleSubsetComplete =
+                gridCircleTotal == GridCircleContractCaseNames.Length
+                && gridCirclePassed == gridCircleTotal
+                && GridCircleContractCaseNames.All(caseName => lines.Any(line =>
+                    line.StartsWith($"PASS | {caseName} | ", StringComparison.Ordinal)));
+            lines.Add(
+                $"GridCircleContractVerification|{(gridCircleSubsetComplete ? "PASS" : "FAIL")}|cases={gridCircleTotal}|passed={gridCirclePassed}|failed={gridCircleTotal - gridCirclePassed}");
 
             var outOfBounds = rectangle with
             {
@@ -474,7 +901,9 @@ public static class ToolRecipeSelectionContractVerification
         if (!string.IsNullOrWhiteSpace(reportDirectory)) Directory.CreateDirectory(reportDirectory);
         var succeeded = passed == total
             && total > 0
-            && !lines.Any(line => line.StartsWith("FAIL | unexpected exception", StringComparison.Ordinal));
+            && orientedBoxSubsetComplete
+            && gridCircleSubsetComplete
+            && !lines.Any(line => line.StartsWith("FAIL |", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(reportPath, lines);
         summary = $"Tool Recipe selection contract verification: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)";
@@ -485,27 +914,60 @@ public static class ToolRecipeSelectionContractVerification
         string schemaVersion,
         string sourcePath,
         IReadOnlyList<ToolRecipeSelection>? selections,
-        string inputEntityId) =>
-        new(
+        string inputEntityId)
+    {
+        var routedSelection = selections?.FirstOrDefault(selection =>
+            string.Equals(selection.Id, inputEntityId, StringComparison.OrdinalIgnoreCase));
+        var sourceId = "source.c3d.height-map";
+        var toolId = routedSelection?.Kind switch
+        {
+            ToolRecipeSelectionKinds.GridRectangle => "roi-crop",
+            ToolRecipeSelectionKinds.PointSet when routedSelection.Points?.Count == 2 => "two-point-line",
+            ToolRecipeSelectionKinds.PointSet => "three-point-plane",
+            ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "landmark-correspondence",
+            ToolRecipeSelectionKinds.GridCircle => "grid-circle-authoring",
+            _ => "selection-fixture"
+        };
+        var stepInputs = toolId switch
+        {
+            "landmark-correspondence" => new[] { inputEntityId },
+            "selection-fixture" => new[] { sourceId },
+            _ => new[] { sourceId, inputEntityId }
+        };
+        var parameters = toolId == "roi-crop"
+            ? new[]
+            {
+                new ToolRecipeParameter("ROI", "Select in Viewer"),
+                new ToolRecipeParameter("Output frame", "Keep source frame")
+            }
+            : [];
+        var file = new FileInfo(sourcePath);
+        var binding = routedSelection?.SourceBinding;
+        return new(
             schemaVersion,
             "Selection contract fixture",
             new ToolRecipeSource(
-                "source.c3d.height-map",
+                sourceId,
                 "Selection source",
                 "C3D",
                 "raw-height",
                 "frame.c3d-grid-index",
-                sourcePath),
+                sourcePath,
+                file.Exists ? file.Length : null,
+                binding?.ContentSha256,
+                binding?.GridWidth,
+                binding?.GridHeight),
             [],
             [new ToolRecipeStep(
                 "step.fixture.01",
-                "fixture-tool",
-                "Fixture Tool",
-                1,
-                [inputEntityId],
+                toolId,
+                toolId,
+                stepInputs.Length,
+                stepInputs,
                 "derived.fixture.01",
-                [])],
+                parameters)],
             selections);
+    }
 
     private static ToolRecipeSelection CreateRectangleSelection(ToolRecipeSelectionSourceBinding binding) =>
         new(
@@ -541,8 +1003,10 @@ public static class ToolRecipeSelectionContractVerification
             null);
 
     private static ToolRecipeSelection CreateOrientedBoxSelection(
-        ToolRecipeSelectionSourceBinding binding) =>
-        new(
+        ToolRecipeSelectionSourceBinding binding)
+    {
+        var diagonal = Math.Sqrt(0.5);
+        return new(
             "selection.box.01",
             "Inspection volume",
             ToolRecipeSelectionKinds.OrientedBox3D,
@@ -555,10 +1019,25 @@ public static class ToolRecipeSelectionContractVerification
             null,
             new ToolRecipeOrientedBox3D(
                 new ToolRecipeXyz(1.5, 20, 1.5),
-                new ToolRecipeXyz(1, 0, 0),
-                new ToolRecipeXyz(0, 1, 0),
+                new ToolRecipeXyz(diagonal, diagonal, 0),
+                new ToolRecipeXyz(-diagonal, diagonal, 0),
                 new ToolRecipeXyz(0, 0, 1),
                 new ToolRecipeXyz(1, 2, 1)));
+    }
+
+    private static ToolRecipeSelection CreateGridCircleSelection(
+        ToolRecipeSelectionSourceBinding binding) =>
+        new(
+            "selection.circle.01",
+            "Circular inspection region",
+            ToolRecipeSelectionKinds.GridCircle,
+            "source.c3d.height-map",
+            "frame.c3d-grid-index",
+            binding,
+            null,
+            null,
+            null,
+            GridCircle: new ToolRecipeGridCircle(1, 1, 1));
 
     private static void WriteC3D(string path, int width, int height, float offset)
     {

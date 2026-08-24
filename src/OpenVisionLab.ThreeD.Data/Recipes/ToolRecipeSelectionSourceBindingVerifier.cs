@@ -37,6 +37,36 @@ public static class ToolRecipeSelectionSourceBindingVerifier
             output.ReferenceFrameId);
     }
 
+    public static ToolRecipeSelectionSourceBinding FromHeightField(C3DHeightFieldSnapshot output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        return new ToolRecipeSelectionSourceBinding(
+            "HeightField",
+            output.ContentSha256,
+            output.Width,
+            output.Height,
+            output.EntityId,
+            output.RootSourceSha256,
+            output.Unit,
+            output.FrameId);
+    }
+
+    public static ToolRecipeSelectionSourceBindingVerificationResult Verify(
+        C3DHeightFieldSnapshot output,
+        ToolRecipeSelectionSourceBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        ArgumentNullException.ThrowIfNull(binding);
+        var current = FromHeightField(output);
+        var matches = BindingsEqual(current, binding);
+        return new ToolRecipeSelectionSourceBindingVerificationResult(
+            matches,
+            matches
+                ? $"HeightField selection binding is current ({current.GridWidth} x {current.GridHeight}, owner {current.OwnerEntityId}, SHA-256 {current.ContentSha256})."
+                : "HeightField selection binding is stale because owner, bytes, grid, unit, frame, or root-source identity changed.",
+            current);
+    }
+
     public static ToolRecipeSelectionSourceBindingVerificationResult Verify(
         C3DTransformedHeightField output,
         ToolRecipeSelectionSourceBinding binding)

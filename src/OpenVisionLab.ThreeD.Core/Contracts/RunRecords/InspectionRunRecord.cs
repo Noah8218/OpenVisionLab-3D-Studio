@@ -108,7 +108,7 @@ public sealed record InspectionRunSourceQualityEvidence(
         }
 
         if (Report is null
-            || Report.SchemaVersion != SourceQualityReport.CurrentSchemaVersion
+            || !Report.TryValidateGridDiagnostics(out _)
             || string.IsNullOrWhiteSpace(Message)
             || !string.Equals(
                 SourceQualitySha256,

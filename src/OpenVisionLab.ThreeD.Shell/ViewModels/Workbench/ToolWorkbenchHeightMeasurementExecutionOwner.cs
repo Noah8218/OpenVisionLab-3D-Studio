@@ -1,5 +1,6 @@
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -11,6 +12,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
     private readonly Func<bool> hasPendingStepParameterChanges;
     private readonly Func<string?> getRecipePath;
     private readonly Func<string> getSourceEntityId;
+    private readonly Func<string, C3DHeightFieldSnapshot?> getPublishedCroppedHeightField;
     private readonly Func<string, C3DTransformedHeightField?> getPublishedHeightField;
     private readonly Func<string, ToolWorkbenchPipelineStepItem?> findStepByOutputEntityId;
     private readonly Func<ToolRecipeDocument> createDocument;
@@ -32,6 +34,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         Func<bool> hasPendingStepParameterChanges,
         Func<string?> getRecipePath,
         Func<string> getSourceEntityId,
+        Func<string, C3DHeightFieldSnapshot?> getPublishedCroppedHeightField,
         Func<string, C3DTransformedHeightField?> getPublishedHeightField,
         Func<string, ToolWorkbenchPipelineStepItem?> findStepByOutputEntityId,
         Func<ToolRecipeDocument> createDocument,
@@ -44,6 +47,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         this.hasPendingStepParameterChanges = hasPendingStepParameterChanges;
         this.getRecipePath = getRecipePath;
         this.getSourceEntityId = getSourceEntityId;
+        this.getPublishedCroppedHeightField = getPublishedCroppedHeightField;
         this.getPublishedHeightField = getPublishedHeightField;
         this.findStepByOutputEntityId = findStepByOutputEntityId;
         this.createDocument = createDocument;
@@ -88,6 +92,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
                 () => ToolRecipeHeightMeasurementExecution.Execute(
                     createDocument(),
                     step.Id,
+                    GetCurrentCroppedHeightField(),
                     GetCurrentTransformedHeightField(),
                     GetRecipeDirectory(),
                     previewCancellation.Token),
@@ -133,6 +138,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         return ToolRecipeHeightMeasurementExecution.TryPrepare(
             createDocument(),
             step.Id,
+            GetCurrentCroppedHeightField(),
             GetCurrentTransformedHeightField(),
             GetRecipeDirectory(),
             out _,
@@ -192,6 +198,27 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         SetSummary("Source, route, ROI, output, or parameter changed. Preview again before Publish.");
     }
 
+    public void MarkInputStaleIfNeeded(string? inputEntityId)
+    {
+        if (previewOutput is null || isPreviewRunning || string.IsNullOrWhiteSpace(inputEntityId))
+        {
+            return;
+        }
+
+        var step = findStepByOutputEntityId(previewOutput.OutputEntityId);
+        if (step is null || step.InputEntityIds.Count == 0
+            || !string.Equals(step.InputEntityIds[0], inputEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        isPreviewStale = true;
+        isPreviewPublished = false;
+        updateCompletenessPresentation(null);
+        step.State = "Preview stale";
+        SetSummary("The Published input HeightField changed. Preview this measurement again before Publish.");
+    }
+
     public void RefreshState()
     {
         if (getSelectedPipelineStep() is { } step && isSelectedStepMeasurement()
@@ -201,6 +228,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
             if (ToolRecipeHeightMeasurementExecution.TryPrepare(
                 createDocument(),
                 step.Id,
+                GetCurrentCroppedHeightField(),
                 GetCurrentTransformedHeightField(),
                 GetRecipeDirectory(),
                 out _,
@@ -231,6 +259,20 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         }
 
         return getPublishedHeightField(step.InputEntityIds[0]);
+    }
+
+    private C3DHeightFieldSnapshot? GetCurrentCroppedHeightField()
+    {
+        if (getSelectedPipelineStep() is not { InputEntityIds.Count: > 0 } step
+            || string.Equals(
+                step.InputEntityIds[0],
+                getSourceEntityId(),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return getPublishedCroppedHeightField(step.InputEntityIds[0]);
     }
 
     private string? GetRecipeDirectory()

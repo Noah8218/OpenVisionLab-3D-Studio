@@ -85,6 +85,104 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
+                        Visibility="{Binding HasGridDiagnostics, Converter={StaticResource BoolToVisibilityConverter}}"
+                        AutomationProperties.AutomationId="SourceQualityGridDiagnostics">
+                    <StackPanel>
+                        <TextBlock FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Localization.SourceQualityGridDiagnostics}" />
+                        <TextBlock Margin="0,3,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding GridDiagnosticsSummary}"
+                                   TextWrapping="Wrap" />
+                        <ItemsControl Margin="0,7,0,0"
+                                      ItemsSource="{Binding GridDiagnostics}"
+                                      AutomationProperties.AutomationId="SourceQualityGridDiagnosticItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,5"
+                                            Padding="8,7"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            AutomationProperties.AutomationId="{Binding AutomationId}"
+                                            AutomationProperties.Name="{Binding Title}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="True">
+                                                <ui:SymbolIcon Width="17"
+                                                               Height="17"
+                                                               Margin="0,0,6,0"
+                                                               VerticalAlignment="Top">
+                                                    <ui:SymbolIcon.Style>
+                                                        <Style TargetType="ui:SymbolIcon">
+                                                            <Setter Property="Symbol" Value="CheckmarkCircle24" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                    <Setter Property="Symbol" Value="ErrorCircle24" />
+                                                                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:SymbolIcon.Style>
+                                                </ui:SymbolIcon>
+                                                <TextBlock FontSize="9.5"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Title}"
+                                                           TextWrapping="Wrap" />
+                                            </DockPanel>
+                                            <TextBlock Margin="23,3,0,0"
+                                                       FontSize="8.5"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding State}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Margin="23,2,0,0"
+                                                       FontSize="8.5"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{Binding Detail}"
+                                                       TextWrapping="Wrap" />
+                                            <TextBlock Margin="23,3,0,0"
+                                                       FontSize="8"
+                                                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                       Text="{Binding Evidence}"
+                                                       TextWrapping="Wrap"
+                                                       Visibility="{Binding HasEvidence, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,7,0,0"
+                        Padding="10"
+                        Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
                         AutomationProperties.AutomationId="SourceAcquisitionProvenanceEditor">
                     <StackPanel>
                         <Grid>
@@ -92,9 +190,11 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock FontSize="10.5"
+                            <TextBlock MinWidth="0"
+                                       FontSize="10.5"
                                        FontWeight="SemiBold"
-                                       Text="{Binding Localization.SourceAcquisitionProvenanceTitle}" />
+                                       Text="{Binding Localization.SourceAcquisitionProvenanceTitle}"
+                                       TextWrapping="Wrap" />
                             <TextBlock Grid.Column="1"
                                        Margin="8,0,0,0"
                                        FontSize="9"
@@ -121,8 +221,7 @@
                                    FontSize="9"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding Localization.SourceAcquisitionState}" />
-                        <ComboBox Height="27"
-                                  ItemsSource="{Binding AcquisitionStateOptions}"
+                        <ComboBox ItemsSource="{Binding AcquisitionStateOptions}"
                                   DisplayMemberPath="Label"
                                   SelectedItem="{Binding SelectedAcquisitionStateOption, Mode=TwoWay}"
                                   AutomationProperties.AutomationId="SourceAcquisitionProvenanceState"
@@ -170,8 +269,7 @@
                                            FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                            Text="{Binding Localization.SourceAcquisitionDirectionState}" />
-                                <ComboBox Height="27"
-                                          ItemsSource="{Binding AcquisitionDirectionStateOptions}"
+                                <ComboBox ItemsSource="{Binding AcquisitionDirectionStateOptions}"
                                           DisplayMemberPath="Label"
                                           SelectedItem="{Binding SelectedAcquisitionDirectionStateOption, Mode=TwoWay}"
                                           AutomationProperties.AutomationId="SourceAcquisitionDirectionState"

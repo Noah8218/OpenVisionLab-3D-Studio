@@ -812,6 +812,10 @@
                                                     <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
                                                     <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
                                                 </DataTrigger>
+                                                <DataTrigger Binding="{Binding RunRecordContext.SourceQualityState, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="Error">
+                                                    <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+                                                </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>

@@ -6,6 +6,19 @@ Backlog item: `B-07`
 
 Status: Complete
 
+Follow-up: `PL-0040` later extended the same Runner verifier from this
+historical B-07 baseline to `18/18` signed finite, missing-value, and malformed
+C3D topology cases. `PL-0046/B-10` then moved reusable grid-diagnostic
+calculation into the committed and vendored SDK `GridDiagnosticsTool`, raised
+the current report schema to `1.1`, and extended the same verifier to `22/22`.
+Current reports require ordered Topology, Locator Monotonicity, Duplicate
+Locator, and Coordinate Finiteness evidence with fail-closed payload
+validation. Legacy schema `1.0` omits diagnostics and retains exact JSON
+SHA-256 `E2176611372E01F26A8208A9C7C09154209A8DB50BA4774A1F4DA6670B9F82A2`.
+See `OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md` and
+`OPENVISIONLAB_3D_DETERMINISTIC_MALFORMED_SOURCE_DIAGNOSTICS_CLOSURE_20260823.md`.
+The original B-07 evidence below is intentionally preserved as recorded.
+
 ## Outcome
 
 The first Source Trust contract is now implemented without WPF or Viewer

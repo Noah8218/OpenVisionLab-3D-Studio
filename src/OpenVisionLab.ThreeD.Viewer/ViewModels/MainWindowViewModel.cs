@@ -64,6 +64,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private string lastScreenshotPath = "(none)";
     private string viewerStatus = "Ready: generated cube and point cloud loaded";
     private string bottomStatus = "Model units: unitless | Camera: orbit | Source/result separation: source only";
+    private bool isLazPointCloudLoading;
+    private double lazPointCloudLoadProgress;
+    private string lazPointCloudLoadStatus = string.Empty;
     private string measurementSummary = "Cube width: 2.000 model units\nExpected center: (0.000, 0.000, 0.000)";
     private string pointCloudPointCount = "(pending)";
     private string c3DSamplePointCount = "(not loaded)";
@@ -1657,6 +1660,68 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     {
         get => bottomStatus;
         set => SetField(ref bottomStatus, value);
+    }
+
+    public bool IsLazPointCloudLoading
+    {
+        get => isLazPointCloudLoading;
+        private set => SetField(ref isLazPointCloudLoading, value);
+    }
+
+    public double LazPointCloudLoadProgress
+    {
+        get => lazPointCloudLoadProgress;
+        private set => SetField(ref lazPointCloudLoadProgress, value);
+    }
+
+    public string LazPointCloudLoadStatus
+    {
+        get => lazPointCloudLoadStatus;
+        private set => SetField(ref lazPointCloudLoadStatus, value);
+    }
+
+    internal void BeginLazPointCloudLoad(string sourceName)
+    {
+        IsLazPointCloudLoading = true;
+        LazPointCloudLoadProgress = 0.0;
+        LazPointCloudLoadStatus = $"LAZ/LAS loading · 0% · {sourceName}";
+        ViewerStatus = LazPointCloudLoadStatus;
+    }
+
+    internal void ReportLazPointCloudLoadProgress(string sourceName, double progress)
+    {
+        if (!IsLazPointCloudLoading)
+        {
+            return;
+        }
+
+        LazPointCloudLoadProgress = Math.Clamp(progress, 0.0, 100.0);
+        LazPointCloudLoadStatus = $"LAZ/LAS loading · {LazPointCloudLoadProgress:F0}% · {sourceName}";
+        ViewerStatus = LazPointCloudLoadStatus;
+    }
+
+    internal void CompleteLazPointCloudLoad(string sourceName, double milliseconds, bool reused)
+    {
+        LazPointCloudLoadProgress = 100.0;
+        IsLazPointCloudLoading = false;
+        LazPointCloudLoadStatus = string.Empty;
+        ViewerStatus = reused
+            ? $"LAZ/LAS sample reused · {sourceName}"
+            : $"LAZ/LAS loaded · {milliseconds:F0} ms · {sourceName}";
+    }
+
+    internal void CancelLazPointCloudLoad(string sourceName)
+    {
+        IsLazPointCloudLoading = false;
+        LazPointCloudLoadStatus = string.Empty;
+        ViewerStatus = $"LAZ/LAS load cancelled; current point cloud retained · {sourceName}";
+    }
+
+    internal void FailLazPointCloudLoad(string sourceName, string message)
+    {
+        IsLazPointCloudLoading = false;
+        LazPointCloudLoadStatus = string.Empty;
+        ViewerStatus = $"LAZ/LAS load failed; current point cloud retained · {sourceName} · {message}";
     }
 
     public double YawDegrees

@@ -715,6 +715,42 @@ internal static class InspectionWorkspaceSelectionVerification
                     roiWorkbench.HeightImageViewer.RoiWorkspace.Overlays.Select(item =>
                         $"{item.Role}:{item.SelectionId}:{item.Rectangle}")));
 
+            var linkedSelectionChanges = new List<InspectionWorkspaceSelectionChangedEventArgs>();
+            roiWorkbench.WorkspaceSelection.SelectionChanged += (_, args) =>
+                linkedSelectionChanges.Add(args);
+            var linkedSelectionCount = roiWorkbench.Selections.Count;
+            var linkedSelectionGeometry = roiWorkbench.Selections
+                .Select(item => (item.Id, item.GridRectangle))
+                .ToArray();
+            var linkedRoute = roiStep.InputEntityIdsText;
+            var linkedState = roiStep.State;
+            var linkedDirty = roiWorkbench.IsDirty;
+            var linkedPreview = roiWorkbench.HasCurrentMeasurementPreview;
+            var linkedOutput = roiWorkbench.CurrentMeasurementOutput;
+            var selectedFromThreeDAdapter =
+                roiWorkbench.SelectPipelineStepForSelection(roiReference.Id);
+            Check(
+                "3D Viewer adapter route selects one recipe-owned ROI atomically",
+                selectedFromThreeDAdapter
+                && linkedSelectionChanges.Count == 1
+                && roiWorkbench.WorkspaceSelection.ActiveRegionRole
+                    == InspectionWorkspaceRegionRole.Reference
+                && roiWorkbench.WorkspaceSelection.SelectedRegionId == roiReference.Id
+                && roiWorkbench.SelectedStepTeachingSelection?.Id == roiReference.Id
+                && roiWorkbench.HeightImageViewer.RoiWorkspace.ActiveOverlay?.SelectionId
+                    == roiReference.Id,
+                $"changes={linkedSelectionChanges.Count}; role={roiWorkbench.WorkspaceSelection.ActiveRegionRole}; selection={roiWorkbench.SelectedStepTeachingSelection?.Id}");
+
+            var repeatedThreeDSelection = roiWorkbench.SelectPipelineStepForSelection(
+                roiReference.Id.ToUpperInvariant());
+            Check(
+                "repeated case-varied 3D selection emits no duplicate selection change",
+                repeatedThreeDSelection
+                && linkedSelectionChanges.Count == 1
+                && roiWorkbench.Selections.Count(item =>
+                    string.Equals(item.Id, roiReference.Id, StringComparison.OrdinalIgnoreCase)) == 1,
+                $"changes={linkedSelectionChanges.Count}; selections={roiWorkbench.Selections.Count}");
+
             roiWorkbench.HeightImageViewer.RoiWorkspace.TryBeginPointer(
                 row: 2,
                 column: 2,
@@ -722,10 +758,33 @@ internal static class InspectionWorkspaceSelectionVerification
                 columnTolerance: 0);
             Check(
                 "clicking an applied Height Image ROI selects the same recipe role and identity",
-                roiWorkbench.WorkspaceSelection.ActiveRegionRole
+                linkedSelectionChanges.Count == 2
+                && roiWorkbench.WorkspaceSelection.ActiveRegionRole
                     == InspectionWorkspaceRegionRole.Measurement
-                && roiWorkbench.SelectedStepTeachingSelection?.Id == roiMeasurement.Id,
-                $"role={roiWorkbench.WorkspaceSelection.ActiveRegionRole}; selection={roiWorkbench.SelectedStepTeachingSelection?.Id}");
+                && roiWorkbench.WorkspaceSelection.SelectedRegionId == roiMeasurement.Id
+                && roiWorkbench.SelectedStepTeachingSelection?.Id == roiMeasurement.Id
+                && roiWorkbench.HeightImageViewer.RoiWorkspace.ActiveOverlay?.SelectionId
+                    == roiMeasurement.Id,
+                $"changes={linkedSelectionChanges.Count}; role={roiWorkbench.WorkspaceSelection.ActiveRegionRole}; selection={roiWorkbench.SelectedStepTeachingSelection?.Id}");
+
+            roiWorkbench.HeightImageViewer.RoiWorkspace.TryBeginPointer(
+                row: 2,
+                column: 2,
+                rowTolerance: 0,
+                columnTolerance: 0);
+            Check(
+                "repeated cross-view selection neither duplicates identity nor executes inspection",
+                linkedSelectionChanges.Count == 2
+                && roiWorkbench.Selections.Count == linkedSelectionCount
+                && roiWorkbench.Selections
+                    .Select(item => (item.Id, item.GridRectangle))
+                    .SequenceEqual(linkedSelectionGeometry)
+                && roiStep.InputEntityIdsText == linkedRoute
+                && roiStep.State == linkedState
+                && roiWorkbench.IsDirty == linkedDirty
+                && roiWorkbench.HasCurrentMeasurementPreview == linkedPreview
+                && ReferenceEquals(roiWorkbench.CurrentMeasurementOutput, linkedOutput),
+                $"changes={linkedSelectionChanges.Count}; selections={roiWorkbench.Selections.Count}; dirty={linkedDirty}->{roiWorkbench.IsDirty}; state={linkedState}->{roiStep.State}; output={roiWorkbench.CurrentMeasurementOutput?.OutputEntityId ?? "(none)"}");
 
             var geometryBeforeHeightImageEdit =
                 roiWorkbench.Selections.Single(item => item.Id == roiMeasurement.Id).GridRectangle;
@@ -1020,8 +1079,8 @@ internal static class InspectionWorkspaceSelectionVerification
         }
 
         var succeeded = passed == total
-                        && total > 0
-                        && !lines.Any(line => line.StartsWith("FAIL | unexpected", StringComparison.Ordinal));
+                         && total > 0
+                         && !lines.Any(line => line.StartsWith("FAIL |", StringComparison.Ordinal));
         lines.Add($"Result: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)");
         File.WriteAllLines(reportPath, lines);
         summary = $"Inspection Workspace selection verification: {(succeeded ? "Pass" : "Fail")} ({passed}/{total} checks)";

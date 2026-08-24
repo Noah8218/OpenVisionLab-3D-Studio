@@ -63,6 +63,10 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? OpenRecipeLifecycleSmokeReportPath => GetValue("--smoke-open-recipe-lifecycle-report");
     public string? AsyncC3DLoadSmokePath => GetValue("--smoke-async-c3d-load");
     public string? AsyncC3DLoadSmokeReportPath => GetValue("--smoke-async-c3d-load-report");
+    public string? AsyncC3DLoadExpectedStatusFragment =>
+        GetValue("--smoke-async-c3d-load-expected-status");
+    public string? ViewerOnlyImportSmokePath => GetValue("--smoke-viewer-only-import");
+    public string? ViewerOnlyImportSmokeReportPath => GetValue("--smoke-viewer-only-import-report");
     public string? SourceQualitySmokeReportPath => GetValue("--smoke-source-quality-report");
     public string? SourceAcquisitionProvenanceSmokeState =>
         GetValue("--smoke-source-acquisition-provenance-state");
@@ -71,6 +75,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? HeightImagePaletteSmoke => GetValue("--smoke-height-image-palette");
     public string? HeightImageDisplayRangeSmokeReportPath =>
         GetValue("--smoke-height-image-display-range-report");
+    public string? HeightImagePaletteStateEvidenceDirectory =>
+        GetValue("--smoke-height-image-palette-state-evidence");
     public string? SharedHeightHoverSmokeReportPath =>
         GetValue("--smoke-shared-height-hover-report");
     public string? HeightImageRoiPointerSmoke =>
@@ -122,6 +128,8 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-tool-remove-outlier-preview");
     public bool LevelSurfacePreviewSmoke =>
         HasFlag("--smoke-tool-level-surface-preview");
+    public bool RoiCropPreviewSmoke =>
+        HasFlag("--smoke-tool-roi-crop-preview");
     public bool MeasurementPreviewSmoke => HasFlag("--smoke-tool-measurement-preview");
     public bool TwoPointLinePublishSmoke => HasFlag("--smoke-tool-two-point-line-publish");
     public bool TwoPointLinePreviewSmoke => TwoPointLinePublishSmoke || HasFlag("--smoke-tool-two-point-line-preview");
@@ -152,6 +160,12 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-surface-match-collection-navigation-focus-hover");
     public bool RecipeHealthNavigationPressedSmoke =>
         HasFlag("--smoke-recipe-health-navigation-pressed");
+    public bool ViewerToolbarPressedSmoke =>
+        HasFlag("--smoke-viewer-toolbar-pressed");
+    public bool Import3DDataPressedSmoke =>
+        HasFlag("--smoke-import-3d-data-pressed");
+    public bool OpenImport3DDataDialogSmoke =>
+        HasFlag("--smoke-open-import-3d-data-dialog");
     public bool CurrentRecipeRunReadySmoke =>
         HasFlag("--smoke-current-recipe-run-ready");
     public bool CurrentRecipeRunPressedSmoke =>
@@ -184,6 +198,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || EdgePreviewSmoke
         || RemoveOutlierPreviewSmoke
         || LevelSurfacePreviewSmoke
+        || RoiCropPreviewSmoke
         || LineFitPreviewSmoke
         || TwoPointLinePreviewSmoke
         || ThreePointPlanePreviewSmoke
@@ -208,6 +223,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || FilterPreviewSmoke
         || RemoveOutlierPreviewSmoke
         || LevelSurfacePreviewSmoke
+        || RoiCropPreviewSmoke
         || MeasurementPreviewSmoke
         || ViewerLayoutSmoke is not null
         || IntegrationExchangeSmokeState is not null
@@ -216,10 +232,12 @@ internal sealed class ShellSmokeCommandLineOptions
         || NewRecipeLifecycleSmokePath is not null
         || OpenRecipeLifecycleSmokePath is not null
         || AsyncC3DLoadSmokePath is not null
+        || ViewerOnlyImportSmokePath is not null
         || SourceQualitySmoke
         || SourceAcquisitionProvenanceSmokeState is not null
         || SourceAcquisitionProvenancePopupScreenshotPath is not null
         || HeightImageDisplayRangeSmoke
+        || HeightImagePaletteStateEvidenceDirectory is not null
         || SharedHeightHoverSmoke
         || HeightImageRoiPointerSmoke is not null
         || OrientedBoxPointerSmokeReportPath is not null
@@ -230,6 +248,9 @@ internal sealed class ShellSmokeCommandLineOptions
         || SurfaceMatchCollectionPopupSmoke
         || SurfaceMatchCollectionDisabledSmoke
         || SurfaceMatchCollectionNavigationFocusHoverSmoke
+        || ViewerToolbarPressedSmoke
+        || Import3DDataPressedSmoke
+        || OpenImport3DDataDialogSmoke
         || CurrentRecipeRunReadySmoke
         || CurrentRecipeRunPressedSmoke
         || SupportBundlePressedSmoke

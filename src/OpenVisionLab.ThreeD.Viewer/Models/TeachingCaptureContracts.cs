@@ -21,7 +21,8 @@ public sealed record TeachingCaptureState(
     bool CanUndo,
     bool CanApply,
     string Message,
-    int AppliedSelectionCount)
+    int AppliedSelectionCount,
+    ToolRecipeGridCircle? GridCircle = null)
 {
     public int CapturedPointCount => Points.Count;
 

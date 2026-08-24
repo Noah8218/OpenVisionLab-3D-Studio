@@ -1,0 +1,148 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0044",
+    "aliases": [
+      "M-13"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Qualify preparation source immutability",
+    "risk": "low"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved the next ranked item. M-13 remained New although the four current Prepare tools already had individual golden verifiers; those verifiers did not uniformly re-hash the successful input file after execution, and CI directly covered only Median Filter.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchToolCatalog.cs"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "M-13 is closed by strengthening the four existing Prepare Runner suites and the existing typed-preparation CI step: exact source file/object identity is preserved, each result remains separately derived with root provenance, all four suites and affected regressions pass, and no product or SDK behavior changed."
+  },
+  "objective": {
+    "summary": "Close M-13 by proving that every current typed Prepare tool creates a separate deterministic derived output while preserving the exact input C3D file and root-source provenance.",
+    "constraints": [
+      "Scope exactly the four ToolWorkbenchToolCatalog Prepare entries: filter, remove-outlier-pixels, level-surface, and roi-crop.",
+      "Exclude Transform, Match, measurement, point-cloud, future preparation tools, and all product behavior outside the current four suites.",
+      "Reuse the four existing Runner golden verifiers and the existing preparation CI step; add no new verifier framework, product algorithm, SDK algorithm, dependency, or UI surface.",
+      "Preserve explicit Preview, Publish, Run, cancellation, recipe, source/result separation, tool-specific metrics, and fail-closed behavior.",
+      "Leave the existing Median Filter unknown-parameter contract discrepancy unchanged because it is outside M-13.",
+      "Store generated local evidence under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The qualification inventory contains each of the four current Prepare catalog tools exactly once and excludes Transform-category Affine Apply and Re-grid.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "For every included tool, a successful current Runner suite proves the source file path, byte length, and SHA-256 are identical before and after all execution paths exercised by that suite, and the loaded source values, valid count, and missing count remain unchanged where the source object is retained.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Every included tool records a separate derived output entity/path and 64-character output SHA-256, preserves RootSourceSha256 equal to the pre-execution source SHA-256, and retains deterministic repeated, adapter, ordered, or saved-output parity already owned by that tool's suite.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "The four existing Runner commands pass their complete exact reports at 13/13, 9/9, 9/9, and 6/6, and the existing hosted preparation step requires all four complete markers so an omitted or partial tool report fails CI.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Current-tree focused and full Release builds, four preparation suites, affected Workbench regressions, standard test facade, NuGet health, structure guard, fixed Vision SDK package guard, issue validation, documentation targets, repository JSON, and diff hygiene pass.",
+      "evidence_refs": [
+        "E4",
+        "E5"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0043"
+    }
+  ],
+  "context": [
+    {
+      "kind": "catalog owner",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchToolCatalog.cs",
+      "summary": "Declares exactly four current Prepare entries before the Feature, Transform, Match, Measure, and Review categories."
+    },
+    {
+      "kind": "existing verifiers",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Verification/Inspection",
+      "summary": "Owns the Median Filter, Remove Outlier Pixels, Level Surface, and ROI/Crop golden suites."
+    },
+    {
+      "kind": "existing CI owner",
+      "location": ".github/workflows/ci.yml",
+      "summary": "The typed C3D preparation adapter step currently runs Median Filter and can host the other three existing headless commands."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "inspection",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchToolCatalog.cs",
+      "observation": "The current catalog declares exactly four Prepare entries once each: filter, remove-outlier-pixels, level-surface, and roi-crop. Apply XYZ Affine and Re-grid Height Map are declared under Transform and are excluded from PL-0044.",
+      "observed_at": "2026-08-23T20:29:12.8368527+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0044-preparation-source-immutability\\final",
+      "observation": "The current Release Runner suites pass exactly 13/13, 9/9, 9/9, and 6/6. Median, Remove Outlier, Level, and ROI/Crop record unchanged source byte lengths 44, 488, 776, and 128 and identical pre/post SHA-256 values; retained source values/counts remain unchanged where owned. Each output has a separate path/entity, IsDerived=True, a 64-character content hash, matching RootSourceSha256, and its prior deterministic adapter/repeat/mask/transform/ordered/save parity. The no-op-safe contract does not require output SHA to differ from source SHA.",
+      "observed_at": "2026-08-23T20:29:12.8368527+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0044-preparation-source-immutability\\final\\preparation-source-immutability.txt",
+      "observation": "The local equivalent of the strengthened existing hosted preparation step passed all four exact count markers plus the new source-identity and derived-output evidence markers and produced PreparationSourceImmutabilityVerification|PASS|tools=4|passed=4|failed=0. Source inspection confirms CI invokes all four existing Runner commands and fails when any required marker is absent. Hosted GitHub Actions was not executed locally.",
+      "observed_at": "2026-08-23T20:29:12.8368527+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0044-preparation-source-immutability",
+      "observation": "Current-tree verification passed after restoring the isolated artifact path: focused Runner and 15-project Release builds produced zero warnings/errors; the four Runner suites passed 13/13, 9/9, 9/9, and 6/6; affected Workbench regressions passed 14/14, 17/17, and 19/19; Tool Recipe teaching passed 51/51; standard tests passed 2/2; NuGet health covered 15 projects with vulnerable/deprecated 0/0; structure passed 68/68; and the fixed Vision SDK package identity/checksum passed. All 64 Git-visible repository JSON files parsed, all eight PL-0044 durable targets existed, the canonical 235-row inventory recounted to 149 C / 16 P / 45 N / 9 E / 16 O with M-13 Complete, PL-0044 validated as v2, and git diff --check exited successfully. No UI code changed and hosted CI was not run locally.",
+      "observed_at": "2026-08-23T20:29:12.8368527+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0044-preparation-source-immutability\\final\\final-hygiene-checks.txt",
+      "observation": "After terminal documentation and ledger updates, all 64 Git-visible repository JSON files parsed; all eight required PL-0044 durable targets existed; the canonical inventory recounted to 149 C / 16 P / 45 N / 9 E / 16 O across 235 rows; PL-0044 validated as resolved v2 with evidence on all 5/5 criteria; the exact four-tool aggregate remained PASS; and git diff --check exited successfully.",
+      "observed_at": "2026-08-23T20:30:38.9096922+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-23T20:29:12.8368527+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after all five acceptance criteria received current reusable evidence."
+    }
+  ],
+  "created_at": "2026-08-23T20:05:57.3258073+09:00",
+  "updated_at": "2026-08-23T11:30:55.728Z"
+}

@@ -17,13 +17,13 @@ public sealed class C3DHeightImageFrame
     private static readonly (byte B, byte G, byte R, byte A) MissingOverlayPixel =
         (0x8D, 0x1D, 0xE1, byte.MaxValue);
 
-    private readonly double[] values;
+    private readonly ReadOnlyMemory<double> values;
     private readonly byte[] bgra32Pixels;
 
     private C3DHeightImageFrame(
         C3DHeightFieldSnapshot source,
         C3DInvalidCellMap invalidCellMap,
-        double[] values,
+        ReadOnlyMemory<double> values,
         byte[] bgra32Pixels,
         string pixelSha256)
     {
@@ -81,10 +81,10 @@ public sealed class C3DHeightImageFrame
         ArgumentNullException.ThrowIfNull(source);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var values = source.Values.ToArray();
+        var values = source.Values;
         var invalidCellMap = C3DInvalidCellMap.Create(source);
         var pixels = RenderPixels(
-            values,
+            values.Span,
             invalidCellMap,
             C3DHeightImagePalette.Height,
             source.Minimum,
@@ -141,7 +141,7 @@ public sealed class C3DHeightImageFrame
         }
 
         var pixels = RenderPixels(
-            values,
+            values.Span,
             InvalidCellMap,
             palette,
             minimum,
@@ -171,7 +171,7 @@ public sealed class C3DHeightImageFrame
             return false;
         }
 
-        var value = values[checked(pixelY * Width + pixelX)];
+        var value = values.Span[checked(pixelY * Width + pixelX)];
         cell = new C3DHeightImageCell(
             pixelX,
             pixelY,
@@ -183,7 +183,7 @@ public sealed class C3DHeightImageFrame
     }
 
     private static byte[] RenderPixels(
-        IReadOnlyList<double> values,
+        ReadOnlySpan<double> values,
         C3DInvalidCellMap invalidCellMap,
         C3DHeightImagePalette palette,
         double minimum,
@@ -191,12 +191,12 @@ public sealed class C3DHeightImageFrame
         C3DHeightImageInvalidOverlayMode invalidOverlayMode,
         CancellationToken cancellationToken)
     {
-        var pixels = new byte[checked(values.Count * 4)];
+        var pixels = new byte[checked(values.Length * 4)];
         var hasRange = double.IsFinite(minimum)
                        && double.IsFinite(maximum)
                        && maximum > minimum;
 
-        for (var index = 0; index < values.Count; index++)
+        for (var index = 0; index < values.Length; index++)
         {
             if ((index & 0x3fff) == 0)
             {

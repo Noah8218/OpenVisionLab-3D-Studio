@@ -195,6 +195,7 @@ public static class PreparedSceneArtifactValidator
             }
             catch (Exception exception)
                 when (exception is ArgumentException
+                      or InvalidDataException
                       or InvalidOperationException
                       or NullReferenceException
                       or OverflowException)
@@ -269,11 +270,11 @@ public static class PreparedSceneArtifactValidator
             return;
         }
 
-        if (quality.SchemaVersion
-            != SourceQualityReport.CurrentSchemaVersion)
+        if (!quality.TryValidateGridDiagnostics(
+                out var gridDiagnosticsValidationMessage))
         {
             errors.Add(
-                $"Unsupported Source Quality schema '{quality.SchemaVersion}'.");
+                $"Source Quality grid diagnostics are invalid: {gridDiagnosticsValidationMessage}");
         }
 
         var source = quality.Source;

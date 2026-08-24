@@ -135,6 +135,84 @@ internal static class SurfaceMatchRunRecordExportVerification
                 csvPath,
                 null));
 
+        var currentDiagnostics =
+            SourceQualityGridDiagnosticsAnalyzer.AnalyzeExplicit(
+                scene.SourceQuality.Grid.Width,
+                scene.SourceQuality.Grid.Height,
+                scene.Points.Select((point, index) =>
+                    new SourceQualityGridCoordinateSample(
+                        index / scene.SourceQuality.Grid.Width,
+                        index % scene.SourceQuality.Grid.Width,
+                        point.X,
+                        point.Y,
+                        point.Z)).ToArray());
+        var currentQuality = scene.SourceQuality with
+        {
+            SchemaVersion = SourceQualityReport.CurrentSchemaVersion,
+            GridDiagnostics = currentDiagnostics
+        };
+        var currentScene = PreparedSceneArtifact.Create(
+            scene.ArtifactId,
+            scene.Name,
+            scene.CoordinateConvention,
+            currentQuality,
+            scene.Preparation,
+            scene.Points,
+            scene.Samples);
+        var currentCoverage = new SurfaceCoverageEvaluation(
+            SurfaceCoverageEvaluation.CurrentSemantics,
+            model.Samples.Length,
+            currentScene.Samples.Length,
+            0,
+            model.Samples.Length,
+            0.0,
+            null,
+            execution.PoseResult.Parameters.MaximumCorrespondenceDistance,
+            [],
+            "No model samples were matched in this projection-only export fixture.");
+        var currentPose = RigidSurfacePoseSearchResult.Create(
+            model.ContentSha256,
+            currentScene.ContentSha256,
+            execution.PoseResult.Parameters,
+            RigidSurfacePoseSearchState.NoMatch,
+            1,
+            null,
+            currentCoverage,
+            "No candidate matched; this fixture verifies projection only.");
+        var currentExecution = SurfaceMatchExecutionArtifact.Create(
+            model,
+            currentScene,
+            currentPose);
+        var currentJsonPath = Path.Combine(
+            directory,
+            "surface-match.current-quality.run-record.json");
+        var currentHtmlPath = Path.Combine(
+            directory,
+            "surface-match.current-quality.run-record.html");
+        var currentCsvPath = Path.Combine(
+            directory,
+            "surface-match.current-quality.run-record.csv");
+        RunRecordWriter.WriteSurfaceMatch(
+            new RunArtifactOptions(
+                currentJsonPath,
+                currentHtmlPath,
+                currentCsvPath,
+                null),
+            recipePath,
+            ToolRecipeDocumentStore.Load(recipePath),
+            model,
+            currentScene,
+            currentExecution,
+            null,
+            null,
+            null,
+            exportReportPath);
+        var currentRecord = JsonSerializer.Deserialize<InspectionRunRecord>(
+            File.ReadAllText(currentJsonPath),
+            JsonOptions);
+        var currentHtml = File.ReadAllText(currentHtmlPath);
+        var currentCsv = File.ReadAllText(currentCsvPath);
+
         var record = File.Exists(jsonPath)
             ? JsonSerializer.Deserialize<InspectionRunRecord>(
                 File.ReadAllText(jsonPath),
@@ -193,11 +271,55 @@ internal static class SurfaceMatchRunRecordExportVerification
             && sourceQualityEvidence.Report.Grid == scene.SourceQuality.Grid
             && sourceQualityEvidence.Report.Coverage.ValidSampleCount
                 == scene.SourceQuality.Coverage.ValidSampleCount
+            && JsonSerializer.Serialize(
+                    sourceQualityEvidence.Report.GridDiagnostics,
+                    JsonOptions)
+                == JsonSerializer.Serialize(
+                    scene.SourceQuality.GridDiagnostics,
+                    JsonOptions)
             && sourceQualityEvidence.Report.Channels.Select(channel =>
                     (channel.Channel, channel.State, channel.Evidence))
                 .SequenceEqual(scene.SourceQuality.Channels.Select(channel =>
                     (channel.Channel, channel.State, channel.Evidence))),
             $"state={record?.SourceQualityEvidence?.State};sha256={record?.SourceQualityEvidence?.SourceQualitySha256};scene={scene.SourceQualitySha256}");
+        Check(
+            "current-grid-diagnostics-are-projected-verbatim-without-source-reanalysis",
+            currentRecord?.SourceQualityEvidence is
+            {
+                State: InspectionRunSourceQualityEvidenceState.Available,
+                Report.GridDiagnostics: not null
+            } currentQualityEvidence
+            && currentQualityEvidence.SourceQualitySha256
+                == currentScene.SourceQualitySha256
+            && JsonSerializer.Serialize(
+                    currentQualityEvidence.Report.GridDiagnostics,
+                    JsonOptions)
+                == JsonSerializer.Serialize(currentDiagnostics, JsonOptions),
+            $"state={currentRecord?.SourceQualityEvidence?.State};sha256={currentRecord?.SourceQualityEvidence?.SourceQualitySha256};expected={currentScene.SourceQualitySha256}");
+        var currentDiagnosticValues = new[]
+        {
+            currentDiagnostics.SchemaVersion,
+            currentDiagnostics.State.ToString(),
+            currentDiagnostics.DeclaredCellCount.ToString(CultureInfo.InvariantCulture),
+            currentDiagnostics.ObservedSampleCount.ToString(CultureInfo.InvariantCulture),
+            currentDiagnostics.UniqueLocatorCount.ToString(CultureInfo.InvariantCulture)
+        }.Concat(currentDiagnostics.Checks.SelectMany(check => new[]
+        {
+            check.Code.ToString(),
+            check.State.ToString(),
+            check.AffectedCount.ToString(CultureInfo.InvariantCulture),
+            check.Message
+        })).Distinct(StringComparer.Ordinal).ToArray();
+        Check(
+            "current-grid-diagnostics-have-html-and-long-csv-parity",
+            currentDiagnosticValues.All(value =>
+                currentHtml.Contains(value, StringComparison.Ordinal)
+                && currentCsv.Contains(value, StringComparison.Ordinal))
+            && currentDiagnostics.Checks.All(check =>
+                currentCsv.Contains(
+                    $"\"source-quality-grid-diagnostic\",\"{check.Code}.message\",\"{check.Message}\"",
+                    StringComparison.Ordinal)),
+            $"values={currentDiagnosticValues.Length};htmlLength={currentHtml.Length};csvLines={currentCsv.Split('\n').Length}");
         Check(
             "persisted-stage-timing-is-projected-without-reexecution",
             record?.Timing is { State: InspectionRunTimingState.Available } timing
@@ -277,6 +399,30 @@ internal static class SurfaceMatchRunRecordExportVerification
                 == SurfaceAndEdgeMatchAssessmentArtifact.CurrentSemantics,
             $"decision={exported?.Assessment?.Decision};reason={exported?.Assessment?.Reason}");
 
+        var diagnosticValues = scene.SourceQuality.GridDiagnostics is not { } diagnostics
+            ? Array.Empty<string>()
+            : new[]
+                {
+                    diagnostics.SchemaVersion,
+                    diagnostics.State.ToString(),
+                    diagnostics.DeclaredCellCount.ToString(CultureInfo.InvariantCulture),
+                    diagnostics.ObservedSampleCount.ToString(CultureInfo.InvariantCulture),
+                    diagnostics.UniqueLocatorCount.ToString(CultureInfo.InvariantCulture)
+                }
+                .Concat(diagnostics.Checks.SelectMany(check => new[]
+                {
+                    check.Code.ToString(),
+                    check.State.ToString(),
+                    check.AffectedCount.ToString(CultureInfo.InvariantCulture),
+                    check.FirstSampleOrdinal?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                    check.FirstRow?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                    check.FirstColumn?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                    check.FirstComponent ?? string.Empty,
+                    check.Message
+                }))
+                .Where(value => !string.IsNullOrEmpty(value))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
         var requiredValues = new[]
         {
             execution.ContentSha256,
@@ -296,7 +442,7 @@ internal static class SurfaceMatchRunRecordExportVerification
             execution.PoseResult.Pose!.TranslationX.ToString("R", CultureInfo.InvariantCulture),
             execution.PoseResult.Pose.TranslationY.ToString("R", CultureInfo.InvariantCulture),
             execution.PoseResult.Pose.TranslationZ.ToString("R", CultureInfo.InvariantCulture)
-        };
+        }.Concat(diagnosticValues).ToArray();
         Check(
             "html-pose-score-assessment-parity",
             requiredValues.All(value => html.Contains(

@@ -2,6 +2,8 @@
 
 Date: 2026-08-05
 
+Updated: 2026-08-23 for the deterministic grid-diagnostics SDK addition
+
 Status: Active architecture contract
 
 ## Decision
@@ -11,8 +13,11 @@ measurement, inspection, and statistical algorithms belong to
 `OpenVisionLab-Vision-SDK`. Studio consumes the committed, vendored
 `OpenVisionLab.Vision3D` package and must not contain a second implementation.
 
-The SDK migration is an identity and ownership change from `Lib.ThreeD 2.9.1`
-to `OpenVisionLab.Vision3D 3.0.0`. The SDK migration guide is authoritative for
+The original SDK migration was an identity and ownership change from
+`Lib.ThreeD 2.9.1` to `OpenVisionLab.Vision3D 3.0.0`. The current fixed
+development package is
+`OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1`.
+The SDK migration guide is authoritative for
 the namespace mapping. Existing formulas, tolerances, units, coordinate-frame
 requirements, missing-value behavior, coverage gates, result ordering, and
 controlled-failure semantics remain unchanged. The fixed SDK commit also uses
@@ -51,16 +56,28 @@ Studio must not calculate a fit, distance, transform, correspondence,
 neighborhood result, distribution, measurement, candidate ranking, or
 statistical estimate that belongs in the SDK.
 
+### Current grid-diagnostics boundary
+
+`GridDiagnosticsTool` owns declared/observed/unique grid counts, locator-order
+analysis, duplicate-locator analysis, coordinate-finiteness analysis, and
+typed deterministic results for implicit and explicit grids. Studio's
+`SourceQualityGridDiagnosticsAnalyzer` is a zero-signal Data adapter: it maps
+source-neutral samples and typed SDK results, applies the supported C3D
+implicit-row-major format policy, validates the Core report contract, and
+composes product evidence. The dependency direction is Studio Data -> fixed
+vendored SDK; the SDK has no Studio, WPF, Viewer, recipe, or lifecycle
+dependency.
+
 ## Current fixed SDK input
 
 | Item | Value |
 | --- | --- |
 | Repository | `C:\Git\OpenVisionLab-Vision-SDK` |
-| Source commit | `f34fdf912ff38fe20f36dbb063837e14b4f922b3` |
-| Package | `OpenVisionLab.Vision3D 3.0.0` |
+| Source commit | `8be38403d0d00698431d7ffa4de60a63289672c6` |
+| Package | `OpenVisionLab.Vision3D 3.0.1-dev.20260823.grid-diagnostics.1` |
 | Target | `netstandard2.0` |
-| Vendored path | `third_party/OpenVisionLabVisionSdk/OpenVisionLab.Vision3D.3.0.0.nupkg` |
-| SHA-256 | `F7324DC43ABF8E130D6F88C034287C192CFEA89E16A8A906A60F52DE341045B4` |
+| Vendored path | `third_party/OpenVisionLabVisionSdk/OpenVisionLab.Vision3D.3.0.1-dev.20260823.grid-diagnostics.1.nupkg` |
+| SHA-256 | `964A543C007687ED93F2AFEC682245A76C61DA2AE42EC9B786FB8CC27BED976C` |
 
 Do not add a cross-repository `ProjectReference`, do not mix a package and a
 project reference, and do not package an uncommitted SDK worktree.
@@ -69,7 +86,7 @@ project reference, and do not package an uncommitted SDK worktree.
 
 The machine-readable decreasing migration baseline is
 `docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_MIGRATION_BASELINE_20260805.json`.
-It records zero Studio migration-debt files and 33 reviewed Studio-boundary
+It records zero Studio migration-debt files and 35 reviewed Studio-boundary
 files. A ceiling may not be raised merely to make the structure guard pass.
 
 `scripts/verify-code-structure.ps1` verifies that:

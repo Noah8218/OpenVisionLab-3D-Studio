@@ -41,6 +41,15 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _ = Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            () =>
+            {
+                if (!IsLoaded)
+                {
+                    lazPointCloudLoadCancellation?.Cancel();
+                }
+            });
         visibleFrameRequestGeneration++;
         visibleFrameRetryTimer?.Stop();
         visibleFrameRetryTimer = null;
@@ -342,7 +351,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         else if (args.PropertyName == nameof(MainWindowViewModel.SelectedRenderDensity))
         {
             ReloadDefaultC3DSample();
-            ReloadCurrentLazPointCloud();
+            if (!suppressLazPointCloudDensityReload)
+            {
+                lazPointCloudDensityEventReloadCount++;
+                lazPointCloudReloadTask = ReloadCurrentLazPointCloudAsync();
+            }
             if (viewModel.SelectedSelectionMode == RoiStepSelectionMode)
             {
                 UpdateRoiStepMeasurement();

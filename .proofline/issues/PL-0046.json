@@ -1,0 +1,175 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0046",
+    "aliases": [
+      "B-10"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Add deterministic malformed-source diagnostics",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved the next ranked dependency-ready item. B-10 remained New after PL-0040 closed basic malformed C3D rejection because the product still lacked shared, structured, visible diagnostics for grid monotonicity, duplicate locators, non-finite coordinates, and topology.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_REPORT_20260727.md",
+      "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "B-10 is complete with SDK-owned deterministic grid diagnostics, a thin Studio Data adapter, SourceQualityReport schema 1.1 and exact schema 1.0 compatibility, fail-closed malformed-source handling, persisted UI/export evidence, current Wide/Compact and failure-path EXE proof, and durable inventory/documentation closure. B-13, R0, hosted CI, unrun DPI scales, maximum-C3D qualification, physical metrology, Studio commit/push/release, and SDK push remain outside this result."
+  },
+  "objective": {
+    "summary": "Close B-10 with reusable, deterministic malformed-source diagnostics that are preserved in SourceQualityReport evidence and shown consistently without rerunning analysis.",
+    "constraints": [
+      "Treat C3D width, height, and row-major samples honestly: the format has implicit locators and no explicit XYZ payload, so malformed explicit-locator fixtures must exercise a real production diagnostic seam rather than fabricated C3D bytes or Runner-only logic.",
+      "Preserve legacy SourceQualityReport schema 1.0 deserialization and canonical content identities; include diagnostics in identity only for the new schema contract.",
+      "Keep Source Quality review presentation-only and preserve explicit Preview, Publish, Run, recipe, source-selection, and result contracts.",
+      "Use one exact clean committed OpenVisionLab Vision SDK package for source-neutral grid diagnostics, keep Studio as a strict adapter and product-policy owner, and do not implement B-13 compatible-tool gating, unrelated numerical algorithms, acquisition hardware, or certified metrology claims.",
+      "Reuse the existing semantic WPF theme, MVVM ownership, Source Quality and Results surfaces, and current export writers; add no UI framework or parallel report system.",
+      "Keep product-owner Wide and Compact R0 deferred as requested and store generated local evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "One public SDK-owned source-neutral tool plus one thin production Data adapter emits deterministic, structured diagnostics with stable code, state, count, message, and first offending locator/component evidence for grid monotonicity, duplicate locators, non-finite coordinates, and topology; C3D reports use their real implicit-grid guarantees and malformed parser failures use stable owned reasons.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The current SourceQualityReport schema serializes, validates, round-trips, and hashes the diagnostic payload while legacy schema 1.0 reports retain exact readability and canonical identity behavior.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Existing Source Quality, global quality status, Results/Run Record, JSON, HTML, CSV, Shell text, and Runner text consumers project the same persisted diagnostics without reanalysis, with localized actionable UI text and no recipe, source, Preview, Publish, or Run mutation.",
+      "evidence_refs": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Focused contracts prove all four diagnostic classes, deterministic ordering, exact malformed reasons, legacy/current compatibility, export parity, localization, and prior-source retention on malformed asynchronous load; fresh current-build Wide 1920x1040 and Compact 1280x760 runtime evidence shows the diagnostic surface without clipping or unreachable required text.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Proportional Release builds and affected regressions, standard facade, structure and fixed SDK guards, repository JSON and issue validation, inventory recount, durable documentation, and diff hygiene pass on the current tree.",
+      "evidence_refs": [
+        "E1",
+        "E4",
+        "E5",
+        "E6"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0045"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current report owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/Data/SourceQualityReport.cs",
+      "summary": "Schema 1.1 owns structured grid diagnostics while preserving exact schema 1.0 readability and canonical identity behavior."
+    },
+    {
+      "kind": "numerical owner",
+      "location": "OpenVisionLab-Vision-SDK/FeatureExtraction/GridAndStatistics/GridDiagnosticsTool.cs",
+      "summary": "Committed SDK source owns source-neutral topology, locator ordering, duplicate, and coordinate-finiteness analysis; Studio maps typed inputs/results and validates the Core contract."
+    },
+    {
+      "kind": "current C3D owner",
+      "location": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs",
+      "summary": "The parser owns width, height, exact byte topology, implicit row-major locators, and raw sample normalization."
+    },
+    {
+      "kind": "visible consumer",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/SourceQualityWorkspaceView.xaml",
+      "summary": "The existing Source Quality surface is the smallest product-owned home for visible B-10 diagnostics."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\sdk-boundary; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\gates",
+      "observation": "Committed SDK source 8be38403 builds with zero warnings/errors and passes 173/173 smoke checks; its package-only consumer passes. The vendored grid-diagnostics.1 package metadata and SHA-256 964A543C...976C pass, Studio's SDK adapter/provenance verifier passes 26/26, and the structure guard passes 68/68 with zero migration debt, 35 reviewed boundaries, and NoNewStudioNumericalOwnership satisfied.",
+      "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\focused-current-after-provenance",
+      "observation": "Current binaries pass Source Quality 22/22, including the four ordered diagnostic classes, contradictory-payload rejection, stable malformed reasons, schema 1.1 round trip, and the exact legacy schema 1.0 hash E2176611...82A2. The same persisted diagnostic evidence passes Surface Match export 25/25, Completeness 31/31, ordered Run 16/16, privacy bundle 15/15, and Source Quality workspace 28/28 without reanalysis.",
+      "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "runtime",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\runtime; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\focused-current-after-provenance\\error-state",
+      "observation": "Current Release Wide Korean 1920x1040 and Compact English 1280x760 EXEs exit 0 with all four diagnostic cards visible, full wrapped title-bar quality text, view-only state, and first-attempt screenshot quality. The actual WPF Error row uses semantic fail resources and wraps all 276 evidence characters. Malformed async load exits 0, retains the previous source, clears load state, and exactly matches CellCountOverflow. Windows reported two monitors; the smaller left monitor was selected and intersection passed at current 125% scaling.",
+      "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current",
+      "observation": "The final 15-project Release solution build passes with zero warnings/errors. Standard tests pass 2/2, Shell option parsing passes 47/47, NuGet health covers all 15 projects with vulnerable/deprecated 0/0, current package provenance has no stale 3.0.0/f34fdf C# consumer, and all focused B-10 regressions were rerun after that provenance correction.",
+      "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\gates\\terminal-hygiene.txt",
+      "observation": "Terminal hygiene parses all 70 Git-visible JSON files, validates all 46 Proofline issues, resolves 58 checked local document links, confirms 19 closure evidence targets, finds no stale SDK provenance or B-10 TODO/FIXME, and records git diff --check exit 0. The canonical inventory has 235 unique rows at 151 C / 16 P / 43 N / 9 E / 16 O with B-10 Complete and E-13 the sole next dependency-ready item.",
+      "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "final verification",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\gates\\terminal-hygiene.txt",
+      "observation": "Post-resolution terminal hygiene parses all 71 Git-visible JSON files, validates all 46 Proofline issues with PL-0046 resolved and all five criteria linked, resolves 58 checked local document links, confirms 19 closure evidence targets, finds no stale SDK provenance or B-10 code TODO/FIXME, and records git diff --check exit 0 with no errors. The inventory remains 235 unique rows at 151 C / 16 P / 43 N / 9 E / 16 O with B-10 Complete.",
+      "observed_at": "2026-08-23T22:58:20.6487336+09:00",
+      "supersedes": [
+        "E5"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-23T22:54:55.4842654+09:00",
+      "summary": "After the first Data-owned analyzer failed NoNewStudioNumericalOwnership, reusable topology, locator-order, duplicate, and coordinate-finiteness calculation moved to a committed public SDK GridDiagnosticsTool. Studio retains only typed adaptation, C3D implicit-format policy, product evidence composition, and Core validation.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-23T22:54:55.4842654+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "Resolved after all five B-10 acceptance criteria received current reusable evidence."
+    }
+  ],
+  "created_at": "2026-08-23T21:45:11.6944876+09:00",
+  "updated_at": "2026-08-23T22:58:20.6487336+09:00"
+}

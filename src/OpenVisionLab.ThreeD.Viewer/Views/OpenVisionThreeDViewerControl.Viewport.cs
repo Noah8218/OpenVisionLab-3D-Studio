@@ -42,6 +42,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         c3dDisplayListKey = null;
         c3dInteractionDisplayListId = 0;
         c3dInteractionDisplayListKey = null;
+        importedMeshTextureId = 0;
+        importedMeshTextureSource = null;
+        importedMeshTextureReleasePending = false;
+        importedMeshTextureUploadFailed = false;
+        importedMeshTextureUploadSummary = "texture none";
         pendingC3DDisplayListBuildReason = "opengl-initialized";
         var gl = args.OpenGL;
         openGLVendor = ReadOpenGLString(gl, 0x1F00);
@@ -84,6 +89,11 @@ public sealed partial class OpenVisionThreeDViewerControl
         if (c3dGpuReleasePending)
         {
             ReleaseC3DGpuBuffers(gl);
+        }
+
+        if (importedMeshTextureReleasePending)
+        {
+            ReleaseImportedMeshTexture(gl);
         }
 
         gl.Clear(OpenGL.GL_COLOR_BUFFER_BIT | OpenGL.GL_DEPTH_BUFFER_BIT);
@@ -638,8 +648,16 @@ public sealed partial class OpenVisionThreeDViewerControl
         RequestInteractiveRender();
     }
 
-    private void Viewport_MouseLeave(object sender, MouseEventArgs e) =>
+    private void Viewport_MouseLeave(object sender, MouseEventArgs e)
+    {
         PublishThreeDGridHover(null);
+        if (teachingOrientedBoxEditMode == TeachingOrientedBox3DEditMode.None
+            && teachingOrientedBoxHoverMode != TeachingOrientedBox3DEditMode.None)
+        {
+            ClearTeachingOrientedBoxHover(restoreStatus: true);
+            RenderNow();
+        }
+    }
 
     private void RequestInteractiveRender()
     {
