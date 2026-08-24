@@ -49,6 +49,10 @@ Current baseline and immediate gate
   passes the formerly failing command with unchanged SHA-256, selection 51/51,
   teaching 55/55, affected typed adapters, integration 16/16, standard tests
   2/2, structure 68/68, Release 0/0, and git diff --check.
+- The repair is pushed as a075faa85ed81888a7e5525916a9bc7334e67d81. Hosted
+  CI run 32691809439 confirmed the new selection verifier passes 51/51, then
+  failed because .github/workflows/ci.yml still expected the former 49/49
+  total. The working tree contains the one-line 51/51 workflow correction.
 
 First review the existing bounded repair and confirm that it preserves all of
 these contracts:
@@ -63,10 +67,10 @@ these contracts:
 - Focused regression coverage proves both the allowed targeted path and the
   rejected missing-role selected-step/whole-recipe paths.
 
-PL-0049 criteria C1-C3 pass locally. C4 remains open: a hosted CI rerun requires
-a separately authorized commit and push. Do not commit or push until the user
-explicitly authorizes both actions, and do not resolve PL-0049 or claim hosted
-recovery until CI succeeds at the exact repair commit.
+PL-0049 criteria C1-C3 pass locally. The user authorized commit and push. Commit
+and push the prepared exact-count correction, then keep C4 open until the
+complete hosted CI succeeds at the resulting exact commit. Do not resolve
+PL-0049 or claim hosted recovery from the partial run.
 
 Remaining project priority after the gate
 

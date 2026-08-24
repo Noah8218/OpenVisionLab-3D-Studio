@@ -19,8 +19,8 @@
   },
   "state": {
     "status": "doing",
-    "current_summary": "The shared selected-step validation boundary is implemented and all local C1-C3 gates pass; hosted CI success at the exact repair commit remains pending separate commit and push authorization.",
-    "next_action": "After explicit commit and push authorization, commit the repair and documentation, push the exact commit, and require hosted CI success before resolving PL-0049."
+    "current_summary": "The repair commit a075faa is pushed; hosted CI confirmed selection verification 51/51 but stopped on the workflow's stale 49/49 exact-count assertion before reaching the repaired preparation gate.",
+    "next_action": "Commit and push the one-line 51/51 workflow correction, then require complete hosted CI success before resolving PL-0049."
   },
   "problem": {
     "claims": [
@@ -119,9 +119,26 @@
       "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/20260824-pl0049-targeted-validation",
       "observation": "The formerly failing Filter command returned 0 with the unchanged output SHA-256; Release built with zero warnings/errors; preparation, Edge, Line Fit, Line Intersection, Teaching 55/55, integration 16/16, standard tests 2/2, and structure 68/68 passed.",
       "observed_at": "2026-08-24T13:40:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "hosted-ci",
+      "location": "https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32691809439",
+      "observation": "The pushed repair built and selection verification passed 51/51; the job then failed only because the workflow asserted the previous literal Result: Pass (49/49 checks).",
+      "observed_at": "2026-08-24T14:02:00+09:00"
     }
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "D1",
+      "kind": "decision",
+      "at": "2026-08-24T14:02:00+09:00",
+      "summary": "Update only the CI exact-count assertion from 49/49 to 51/51; the verifier itself passed and no product validation behavior changes.",
+      "evidence_refs": [
+        "E4"
+      ]
+    }
+  ],
   "created_at": "2026-08-24T13:30:48+09:00",
-  "updated_at": "2026-08-24T13:40:00+09:00"
+  "updated_at": "2026-08-24T14:02:00+09:00"
 }

@@ -61,7 +61,7 @@ jobs:
           $content = Get-Content $report
           if ($content -notcontains 'OrientedBox3DContractVerification|PASS|cases=11|passed=11|failed=0') { throw 'OrientedBox3D Runner subset is incomplete.' }
           if ($content -notcontains 'GridCircleContractVerification|PASS|cases=9|passed=9|failed=0') { throw 'GridCircle Runner subset is incomplete.' }
-          if ($content -notcontains 'Result: Pass (49/49 checks)') { throw 'Tool Recipe selection contract report is incomplete.' }
+          if ($content -notcontains 'Result: Pass (51/51 checks)') { throw 'Tool Recipe selection contract report is incomplete.' }
 
       - name: Verify SourceQualityReport edge fixtures
         shell: pwsh

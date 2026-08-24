@@ -625,9 +625,14 @@ Boundary / next dependency: this completes the local verified-development slice 
 
 Immediate authorization gate before new inventory work:
 
-1. Review and explicitly authorize committing and pushing the PL-0049 repair;
-   then require hosted CI success at that exact commit before resolving the
-   issue | Recommended model: `gpt-5.6-luna` | Reasoning effort: `low`
+1. Commit `a075faa85ed81888a7e5525916a9bc7334e67d81` is pushed to `origin/main`.
+   Hosted CI run
+   [`32691809439`](https://github.com/Noah8218/OpenVisionLab-3D-Studio/actions/runs/32691809439)
+   executed the new selection checks successfully as `51/51`, but the workflow
+   still expected the former `49/49` total and stopped before the repaired
+   preparation gate. Update that exact-count assertion to `51/51`, push the
+   correction, and require a complete hosted CI success before resolving
+   PL-0049 | Recommended model: `gpt-5.6-luna` | Reasoning effort: `low`
 
 Remaining dependency-ready project priority after that gate:
 
