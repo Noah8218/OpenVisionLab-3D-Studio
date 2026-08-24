@@ -27,9 +27,9 @@ jobs:
       - name: Verify vendored packages
         shell: pwsh
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-vision-sdk-package.ps1
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-wpg-package.ps1
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify-integration-contracts-package.ps1
+          & .\scripts\verify-vision-sdk-package.ps1
+          & .\scripts\verify-wpg-package.ps1
+          & .\scripts\verify-integration-contracts-package.ps1
 
       - name: Restore
         run: dotnet restore OpenVisionLab.ThreeDStudio.slnx
