@@ -190,14 +190,10 @@ The package quick-start source is available at
 - [Documentation map](docs/README.md)
 - [User tutorial](docs/OPENVISIONLAB_3D_USER_TUTORIAL.md)
 - [System requirements and setup](docs/OPENVISIONLAB_3D_SYSTEM_REQUIREMENTS_AND_SETUP.md)
-- [Development and verification guide](docs/OPENVISIONLAB_3D_DEVELOPMENT_AND_VERIFICATION_GUIDE.md)
+- [Windows package quick start](docs/OPENVISIONLAB_3D_WINDOWS_PACKAGE_QUICK_START.md)
+- [Sample data](docs/OPENVISIONLAB_3D_SAMPLE_DATA.md)
 - [Changelog](CHANGELOG.md)
-- [Release and version policy](docs/OPENVISIONLAB_3D_RELEASE_VERSION_POLICY.md)
-- [Acquisition/source provenance contract](docs/OPENVISIONLAB_3D_ACQUISITION_SOURCE_PROVENANCE_20260804.md)
-- [Acquisition direction and edge orientation](docs/OPENVISIONLAB_3D_ACQUISITION_DIRECTION_AND_EDGE_ORIENTATION_20260804.md)
 - [Sample data and attribution](3D/PublicSamples/README.md)
-- [Product direction and master backlog](docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md)
-- [Code rules](docs/OPENVISIONLAB_3D_CODE_RULES.md)
 
 ## License and attribution
 
