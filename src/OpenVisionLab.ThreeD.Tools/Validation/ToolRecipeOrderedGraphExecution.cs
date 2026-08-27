@@ -14,7 +14,8 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     string? OutputContentSha256,
     ToolResult Result,
     string Evidence,
-    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null,
+    C3DPresenceCheckOutput? PresenceCheck = null);
 
 public sealed record ToolRecipeOrderedGraphExecutionResult(
     ResultStatus Status,
@@ -54,7 +55,8 @@ public static class ToolRecipeOrderedGraphExecution
         "gap-flush",
         "volume",
         "cross-section-dimensions",
-        "completeness-grid"
+        "completeness-grid",
+        "presence-check"
     };
 
     private static readonly HashSet<string> MeasurementToolIds = new(StringComparer.Ordinal)
@@ -66,7 +68,8 @@ public static class ToolRecipeOrderedGraphExecution
         "gap-flush",
         "volume",
         "cross-section-dimensions",
-        "completeness-grid"
+        "completeness-grid",
+        "presence-check"
     };
 
     public static bool CanExecute(ToolRecipeDocument document, out string message)
@@ -174,6 +177,9 @@ public static class ToolRecipeOrderedGraphExecution
                     Evidence(execution.Result, execution.Output),
                     execution.Output is ToolRecipeHeightMeasurementOutput measurement
                         ? measurement.CompletenessGrid
+                        : null,
+                    execution.Output is ToolRecipeHeightMeasurementOutput presenceMeasurement
+                        ? presenceMeasurement.PresenceCheck
                         : null));
 
                 if (execution.Output is not null)

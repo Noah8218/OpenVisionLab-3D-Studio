@@ -158,6 +158,12 @@ internal static class RunnerCommandRouter
         var verifyC3DCompletenessGrid = args.Contains(
             "--verify-c3d-completeness-grid",
             StringComparer.OrdinalIgnoreCase);
+        var verifyC3DConnectedRegion = args.Contains(
+            "--verify-c3d-connected-region",
+            StringComparer.OrdinalIgnoreCase);
+        var verifyC3DPresenceCheck = args.Contains(
+            "--verify-c3d-presence-check",
+            StringComparer.OrdinalIgnoreCase);
         var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
         if (sourceQualityC3DPath is not null)
@@ -476,6 +482,30 @@ internal static class RunnerCommandRouter
             }
 
             return C3DCompletenessGridGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DConnectedRegion)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-connected-region --report <path>");
+                return 2;
+            }
+
+            return C3DConnectedRegionGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DPresenceCheck)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-presence-check --report <path>");
+                return 2;
+            }
+
+            return C3DPresenceCheckGoldenVerification.Run(reportPath);
         }
 
         if (verifyArtifactOwnedRoiRunner)
@@ -1100,6 +1130,8 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-oriented-box-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-polygon --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-connected-region --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-presence-check --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");

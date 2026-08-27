@@ -1298,6 +1298,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             DrawWorkbenchLineIntersection(gl);
             DrawWorkbenchLandmarkCorrespondence(gl);
             DrawCompletenessCellOverlays(gl);
+            DrawWorkbenchConnectedRegion(gl);
 
             var capture = viewModel.TeachingCaptureSnapshot;
             if (capture.IsActive)

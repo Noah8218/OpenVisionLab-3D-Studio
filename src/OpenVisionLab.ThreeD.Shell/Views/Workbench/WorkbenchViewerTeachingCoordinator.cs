@@ -45,6 +45,7 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
     {
         viewer.SetAppliedTeachingSelections(workbench.GetCurrentAppliedTeachingSelections());
         SyncCompletenessCellOverlays();
+        SyncConnectedRegionOverlays();
         SyncOrientedBoxDraft();
         SyncSelectedSelection();
     }
@@ -248,6 +249,13 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         {
             SyncCompletenessCellOverlays();
         }
+
+        if (args.PropertyName is nameof(ToolWorkbenchViewModel.CurrentConnectedRegionOutput)
+            or nameof(ToolWorkbenchViewModel.HasConnectedRegionOutput)
+            or nameof(ToolWorkbenchViewModel.SelectedConnectedRegionId))
+        {
+            SyncConnectedRegionOverlays();
+        }
     }
 
     private void SyncCompletenessCellOverlays()
@@ -263,6 +271,18 @@ internal sealed class WorkbenchViewerTeachingCoordinator : IDisposable
         workbench.HeightImageViewer.SetCompletenessCellOverlays(overlays);
         workbench.HeightImageViewer.SetSelectedCompletenessCellId(
             overlays.Count > 0 ? workbench.SelectedCompletenessCellId : null);
+    }
+
+    private void SyncConnectedRegionOverlays()
+    {
+        var output = workbench.HasConnectedRegionOutput
+            ? workbench.CurrentConnectedRegionOutput
+            : null;
+        var selectedRegionId = output is null
+            ? null
+            : workbench.SelectedConnectedRegionId;
+        viewer.SetConnectedRegionOverlay(output, selectedRegionId);
+        workbench.HeightImageViewer.SetConnectedRegionOverlay(output, selectedRegionId);
     }
 
     private void OnGridRectangleDraftChanged(

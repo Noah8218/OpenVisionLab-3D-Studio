@@ -69,8 +69,8 @@ internal static class VisionSdkThreeDPackageVerification
     {
         var passed = VisionSdkHeightMapInspection.PackageAssemblyName == "OpenVisionLab.Vision3D"
             && VisionSdkHeightMapInspection.PackageId == "OpenVisionLab.Vision3D"
-            && VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260823.grid-diagnostics.1"
-            && VisionSdkHeightMapInspection.PackageSourceCommit == "8be38403d0d00698431d7ffa4de60a63289672c6";
+            && VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260826.domain-mask.1"
+            && VisionSdkHeightMapInspection.PackageSourceCommit == "db8b8a281dd028c62fabfc49febcde9b4d345d37";
         return (passed, $"assembly={VisionSdkHeightMapInspection.PackageAssemblyName},version={VisionSdkHeightMapInspection.PackageVersion},commit={VisionSdkHeightMapInspection.PackageSourceCommit}");
     }
 

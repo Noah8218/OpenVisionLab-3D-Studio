@@ -27,8 +27,9 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
     public bool IsSelectedStepCrossSectionDimensions => string.Equals(SelectedPipelineStep?.ToolId, "cross-section-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepCompletenessGrid => string.Equals(SelectedPipelineStep?.ToolId, "completeness-grid", StringComparison.Ordinal);
+    public bool IsSelectedStepPresenceCheck => string.Equals(SelectedPipelineStep?.ToolId, "presence-check", StringComparison.Ordinal);
     public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume || IsSelectedStepCompletenessGrid;
-    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
+    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions || IsSelectedStepPresenceCheck;
     public bool IsMeasurementPreviewRunning => heightMeasurementExecutionOwner.IsPreviewRunning;
     public bool HasCurrentMeasurementPreview => heightMeasurementExecutionOwner.HasCurrentPreview;
     public bool IsMeasurementPreviewPublished => heightMeasurementExecutionOwner.IsPreviewPublished;
@@ -308,6 +309,7 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepVolume));
         OnPropertyChanged(nameof(IsSelectedStepCrossSectionDimensions));
         OnPropertyChanged(nameof(IsSelectedStepCompletenessGrid));
+        OnPropertyChanged(nameof(IsSelectedStepPresenceCheck));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();

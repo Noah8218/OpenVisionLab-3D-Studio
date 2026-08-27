@@ -61,6 +61,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
         { ToolId: "volume" } => FormatAdapterStatus(step, VolumeStepProperties.MappedNames),
         { ToolId: "cross-section-dimensions" } => FormatAdapterStatus(step, CrossSectionDimensionsStepProperties.MappedNames),
         { ToolId: "completeness-grid" } => FormatAdapterStatus(step, CompletenessGridStepProperties.MappedNames),
+        { ToolId: "presence-check" } => FormatAdapterStatus(step, PresenceCheckStepProperties.MappedNames),
         _ => "Partially supported - parameters are preserved read-only"
     };
 
@@ -91,6 +92,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
             "volume" => VolumeStepProperties.From(step),
             "cross-section-dimensions" => CrossSectionDimensionsStepProperties.From(step),
             "completeness-grid" => CompletenessGridStepProperties.From(step),
+            "presence-check" => PresenceCheckStepProperties.From(step),
             _ => null
         };
 
@@ -625,6 +627,20 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
                         parameter => parameter.Value,
                         StringComparer.Ordinal);
                 break;
+            case PresenceCheckStepProperties presence:
+                if (!presence.TryCreatePolicy(out var presencePolicy, out message)
+                    || presencePolicy is null)
+                {
+                    SetStatus(message);
+                    return false;
+                }
+
+                values = presencePolicy.ToRecipeParameters()
+                    .ToDictionary(
+                        parameter => parameter.Name,
+                        parameter => parameter.Value,
+                        StringComparer.Ordinal);
+                break;
             default:
                 message = "This step has no typed parameter adapter.";
                 SetStatus(message);
@@ -634,7 +650,7 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     }
 
     public static bool IsSupportedTool(ToolWorkbenchPipelineStepItem step) =>
-        step.ToolId is "filter" or "remove-outlier-pixels" or "level-surface" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "surface-match" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid";
+        step.ToolId is "filter" or "remove-outlier-pixels" or "level-surface" or "height-difference-edge" or "two-point-line" or "three-point-plane" or "datum-plane-raw-height-deviation" or "three-d-line-fit" or "line-intersection" or "landmark-correspondence" or "xyz-affine-solve" or "xyz-affine-apply" or "re-grid-height-map" or "surface-match" or "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check";
 
     internal static string GetParameter(ToolWorkbenchPipelineStepItem step, string name) =>
         step.Parameters.FirstOrDefault(parameter =>

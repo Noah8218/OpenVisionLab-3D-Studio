@@ -7,6 +7,84 @@ using OpenVisionLab.ThreeD.Core;
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 [CategoryOrder("Acceptance", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class PresenceCheckStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+        C3DPresenceCheckPolicy.ParameterNames.ToHashSet(StringComparer.Ordinal);
+
+    [Category("Acceptance")]
+    [DisplayName("Minimum finite coverage ratio")]
+    [Description("Inclusive minimum finite-cell ratio from 0 through 1. Missing samples never fabricate a height.")]
+    [PropertyOrder(0)]
+    public double MinimumFiniteCoverageRatio { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Minimum mean raw height")]
+    [Description("Inclusive lower limit for the explicitly selected feature in the source field's declared raw-height unit.")]
+    [PropertyOrder(1)]
+    public double MinimumMeanRawHeight { get; set; }
+
+    [Category("Acceptance")]
+    [DisplayName("Maximum mean raw height")]
+    [Description("Inclusive upper limit for the explicitly selected feature in the source field's declared raw-height unit.")]
+    [PropertyOrder(2)]
+    public double MaximumMeanRawHeight { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static PresenceCheckStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+        {
+            MinimumFiniteCoverageRatio = ParseDouble(step, "MinimumFiniteCoverageRatio"),
+            MinimumMeanRawHeight = ParseDouble(step, "MinimumMeanRawHeight"),
+            MaximumMeanRawHeight = ParseDouble(step, "MaximumMeanRawHeight"),
+            UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(
+                step,
+                MappedNames)
+        };
+
+    internal bool TryCreatePolicy(
+        out C3DPresenceCheckPolicy? policy,
+        out string message)
+    {
+        try
+        {
+            policy = new C3DPresenceCheckPolicy(
+                MinimumFiniteCoverageRatio,
+                MinimumMeanRawHeight,
+                MaximumMeanRawHeight);
+            policy.Validate();
+            message = string.Empty;
+            return true;
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException
+            or ArgumentException
+            or OverflowException)
+        {
+            policy = null;
+            message = exception.Message;
+            return false;
+        }
+    }
+
+    private static double ParseDouble(
+        ToolWorkbenchPipelineStepItem step,
+        string name) =>
+        double.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var value)
+            ? value
+            : double.NaN;
+}
+
+[CategoryOrder("Acceptance", 0)]
 [CategoryOrder("Sampling", 1)]
 [CategoryOrder("Compatibility", 2)]
 public sealed class ThicknessStepProperties

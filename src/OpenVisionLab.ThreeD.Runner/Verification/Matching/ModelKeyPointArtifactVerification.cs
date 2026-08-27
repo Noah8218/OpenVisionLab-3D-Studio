@@ -212,9 +212,9 @@ internal static class ModelKeyPointArtifactVerification
                 $"artifact={first.Semantics};overlay={overlayValidity.Evidence}"),
             Check(
                 "vision-sdk-package-provenance",
-                VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260823.grid-diagnostics.1"
+                VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260826.domain-mask.1"
                 && VisionSdkHeightMapInspection.PackageSourceCommit
-                    == "8be38403d0d00698431d7ffa4de60a63289672c6",
+                    == "db8b8a281dd028c62fabfc49febcde9b4d345d37",
                 $"version={VisionSdkHeightMapInspection.PackageVersion};commit={VisionSdkHeightMapInspection.PackageSourceCommit}")
         };
 

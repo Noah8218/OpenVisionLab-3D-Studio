@@ -199,6 +199,12 @@ internal sealed class WorkbenchViewerDisplayCoordinator : IDisposable
     {
         var label = $"{args.DisplayName} | {args.Contract} | {args.State}";
         args.WasDisplayed = viewer.ShowC3DWorkbenchResult(args.C3DPath, label);
+        if (args.WasDisplayed && args.ConnectedRegionOutput is { } connectedRegionOutput)
+        {
+            args.WasDisplayed = viewer.ShowWorkbenchConnectedRegion(
+                connectedRegionOutput,
+                workbench.SelectedConnectedRegionId);
+        }
         if (args.WasDisplayed)
         {
             RefreshViewerSourceState(syncTeaching: true);

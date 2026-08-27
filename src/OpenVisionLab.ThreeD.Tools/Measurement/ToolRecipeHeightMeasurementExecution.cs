@@ -30,7 +30,8 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     string ContentSha256,
     ToolResult Result,
     string EvidenceSummary,
-    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null,
+    C3DPresenceCheckOutput? PresenceCheck = null);
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
@@ -93,7 +94,40 @@ public static class ToolRecipeHeightMeasurementExecution
         ToolResult result;
         string evidence;
         C3DCompletenessGridMetricOutput? completenessGrid = null;
-        if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
+        C3DPresenceCheckOutput? presenceCheck = null;
+        if (string.Equals(step.ToolId, "presence-check", StringComparison.Ordinal))
+        {
+            var policy = C3DPresenceCheckPolicy.FromRecipeParameters(
+                step.Parameters ?? []);
+            var evaluation = C3DPresenceCheckRule.Evaluate(
+                new C3DPresenceCheckInput(
+                    step.OutputEntityId,
+                    document.Source.Id,
+                    prepared.InputEntityId,
+                    prepared.InputContentSha256,
+                    prepared.Unit,
+                    prepared.FrameId,
+                    prepared.Width,
+                    prepared.Height,
+                    prepared.Values,
+                    prepared.Selections.Single(),
+                    policy),
+                cancellationToken);
+            if (evaluation.Output is null)
+            {
+                return new ToolRecipeHeightMeasurementEvaluation(
+                    evaluation.Result,
+                    null);
+            }
+
+            presenceCheck = evaluation.Output;
+            result = evaluation.Result;
+            var mean = presenceCheck.Feature.MeanRawHeight is { } value
+                ? value.ToString("G6", CultureInfo.InvariantCulture)
+                : "missing";
+            evidence = $"feature {presenceCheck.Feature.FeatureId} | {presenceCheck.Feature.Decision} | finite coverage {presenceCheck.Feature.FiniteCoverageRatio:P1} | mean raw height {mean} {prepared.Unit} | {presenceCheck.Feature.FiniteCellCount:N0} finite, {presenceCheck.Feature.MissingCellCount:N0} missing cells";
+        }
+        else if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
         {
             var profile = C3DCompletenessGridProfile.FromRecipeParameters(
                 step.Parameters ?? []);
@@ -349,7 +383,8 @@ public static class ToolRecipeHeightMeasurementExecution
             }
         }
 
-        var hash = completenessGrid?.ContentSha256
+        var hash = presenceCheck?.ContentSha256
+            ?? completenessGrid?.ContentSha256
             ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
         var output = new ToolRecipeHeightMeasurementOutput(
             step.OutputEntityId,
@@ -361,7 +396,8 @@ public static class ToolRecipeHeightMeasurementExecution
             hash,
             result,
             evidence,
-            completenessGrid);
+            completenessGrid,
+            presenceCheck);
         return new ToolRecipeHeightMeasurementEvaluation(result, output);
     }
 
@@ -401,7 +437,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"))
+            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check"))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
@@ -550,10 +586,11 @@ public static class ToolRecipeHeightMeasurementExecution
             "volume" => VolumeParameterNames,
             "cross-section-dimensions" => CrossSectionParameterNames,
             "completeness-grid" => [],
+            "presence-check" => C3DPresenceCheckPolicy.ParameterNames,
             _ => PlaneFlatnessParameterNames
         };
         var parameters = step.Parameters ?? [];
-        if (step.ToolId != "completeness-grid"
+        if (step.ToolId is not ("completeness-grid" or "presence-check")
             && (parameters.Count != expected.Length
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
@@ -606,6 +643,11 @@ public static class ToolRecipeHeightMeasurementExecution
             _ = C3DCompletenessGridProfile.FromRecipeParameters(
                 step.Parameters ?? []);
             _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
+                step.Parameters ?? []);
+        }
+        else if (step.ToolId == "presence-check")
+        {
+            _ = C3DPresenceCheckPolicy.FromRecipeParameters(
                 step.Parameters ?? []);
         }
         else

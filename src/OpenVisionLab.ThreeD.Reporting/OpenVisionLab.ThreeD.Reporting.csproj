@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenVisionLab.Integration.Contracts" Version="[0.1.0]" />
+    <PackageReference Include="OpenVisionLab.Integration.Contracts" Version="[0.2.0-alpha.1]" />
   </ItemGroup>
 
   <ItemGroup>

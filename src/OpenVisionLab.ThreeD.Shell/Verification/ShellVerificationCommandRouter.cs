@@ -26,9 +26,15 @@ internal static class ShellVerificationCommandRouter
                 Shutdown(2);
                 return;
             }
-            var passed = ThreeDIntegrationViewModelVerification.Verify(
-                args[integrationViewModelIndex + 1],
-                out var summary);
+            var verification = Task.Run(() =>
+            {
+                var passed = ThreeDIntegrationViewModelVerification.Verify(
+                    args[integrationViewModelIndex + 1],
+                    out var summary);
+                return (Passed: passed, Summary: summary);
+            }).GetAwaiter().GetResult();
+            var passed = verification.Passed;
+            var summary = verification.Summary;
             Console.WriteLine(summary);
             Shutdown(passed ? 0 : 1);
             return;
@@ -441,6 +447,8 @@ internal static class ShellVerificationCommandRouter
         const string xyzAffineWorkbenchVerificationOption = "--verify-tool-xyz-affine-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
+        const string connectedRegionWorkbenchVerificationOption = "--verify-connected-region-workbench";
+        const string presenceCheckWorkbenchVerificationOption = "--verify-presence-check-workbench";
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
         const string validationSetVerificationOption = "--verify-validation-set";
         const string runRecordHistoryVerificationOption = "--verify-run-record-history";
@@ -579,6 +587,32 @@ internal static class ShellVerificationCommandRouter
             Shutdown(result.Passed ? 0 : 1);
             return;
         }
+        var presenceCheckWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                presenceCheckWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (presenceCheckWorkbenchVerificationIndex >= 0)
+        {
+            if (presenceCheckWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{presenceCheckWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = PresenceCheckWorkbenchVerification.Verify(
+                    args[presenceCheckWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
         var artifactNavigatorVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(artifactNavigatorVerificationOption, StringComparison.OrdinalIgnoreCase));
@@ -595,6 +629,33 @@ internal static class ShellVerificationCommandRouter
             {
                 var passed = ToolArtifactNavigatorVerification.Verify(
                     args[artifactNavigatorVerificationIndex + 1],
+                    out var summary);
+                return (Passed: passed, Summary: summary);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Summary);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
+        var connectedRegionWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                connectedRegionWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (connectedRegionWorkbenchVerificationIndex >= 0)
+        {
+            if (connectedRegionWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{connectedRegionWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = ConnectedRegionWorkbenchVerification.Verify(
+                    args[connectedRegionWorkbenchVerificationIndex + 1],
                     out var summary);
                 return (Passed: passed, Summary: summary);
             }).GetAwaiter().GetResult();

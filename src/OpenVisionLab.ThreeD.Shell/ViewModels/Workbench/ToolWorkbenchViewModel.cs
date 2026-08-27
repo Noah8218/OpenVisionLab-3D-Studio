@@ -579,6 +579,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         InitializeViewerWorkspace();
         InitializeSurfaceMatchCollectionNavigation();
         InitializeDisplayedOutputs();
+        InitializeConnectedRegionPresentation();
         Localization.PropertyChanged += OnDisplayedOutputsLocalizationChanged;
         InitializeFlowDiagnostics();
         Localization.PropertyChanged += OnFlowDiagnosticsLocalizationChanged;
@@ -1533,6 +1534,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         var sourceBindingChanged = SourceSession.SetSourceBinding(sourceBinding);
         if (sourcePathChanged || sourceBindingChanged)
         {
+            ClearConnectedRegionPreviewCore("Source binding changed; a new connected-region evaluation is required.");
             HeightImageViewer.ClearSource();
         }
         AcceptCurrentSourceIdentity();
@@ -1658,6 +1660,8 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         {
             CancelTeachingSelectionCapture();
         }
+
+        ClearConnectedRegionPreviewCore("New recipe created.");
 
         MutateRecipe(() =>
         {
@@ -1808,6 +1812,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             case "volume":
             case "cross-section-dimensions":
             case "completeness-grid":
+            case "presence-check":
                 RefreshMeasurementExecutionState();
                 break;
         }
@@ -2736,6 +2741,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         string previewStatus,
         bool captureOpenedSourceIdentity)
     {
+        ClearConnectedRegionPreviewCore("Recipe document changed.");
         ClearFilterPreview(previewStatus);
         ClearRemoveOutlierPreview(previewStatus);
         ClearLevelSurfacePreview(previewStatus);
@@ -3197,7 +3203,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         out ToolRecipeSelectionSourceBinding binding,
         out string frameId)
     {
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check")
         {
             if (step.InputEntityIds.Count == 0)
             {
@@ -3631,6 +3637,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             "volume" => CreatePlaneFlatnessSelectionRequirement(),
             "cross-section-dimensions" => new(Localization.CrossSectionSelection, string.Empty, 0, true, Localization.CrossSectionSelectionDetail),
             "completeness-grid" => CreatePlaneFlatnessSelectionRequirement(),
+            "presence-check" => new("Presence feature", string.Empty, 0, true, "Pick two opposite grid-cell corners for the explicit presence feature."),
             "two-point-line" => new("Line points", string.Empty, 0, true, "Pick exactly two distinct C3D grid cells."),
             "three-point-plane" => new("Plane points", string.Empty, 0, true, "Pick exactly three distinct, non-collinear C3D grid cells."),
             "datum-plane-raw-height-deviation" => new("Datum measurement ROI", string.Empty, 0, true, "Pick two opposite grid-cell corners for raw-height residual measurement."),
@@ -3698,7 +3705,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
                     : (isPlaneFlatnessMeasurementRole ? "measurement-roi" : "reference-roi")
             : requirement.Kind switch
         {
-            ToolRecipeSelectionKinds.GridRectangle => "roi",
+            ToolRecipeSelectionKinds.GridRectangle => step.ToolId == "presence-check" ? "presence-feature" : "roi",
             ToolRecipeSelectionKinds.GridPolygon => "polygon",
             ToolRecipeSelectionKinds.PointSet => "points",
             ToolRecipeSelectionKinds.LandmarkCorrespondenceSet => "correspondences",
@@ -3797,6 +3804,16 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         if (suppressRecipeRefresh)
         {
             return;
+        }
+
+        if (ReferenceEquals(sender, Source)
+            && args.PropertyName is nameof(ToolWorkbenchSourceItem.Id)
+                or nameof(ToolWorkbenchSourceItem.Format)
+                or nameof(ToolWorkbenchSourceItem.Unit)
+                or nameof(ToolWorkbenchSourceItem.FrameId)
+                or nameof(ToolWorkbenchSourceItem.Path))
+        {
+            ClearConnectedRegionPreviewCore("Source metadata changed; a new connected-region evaluation is required.");
         }
 
         if (!HasPendingStepParameterChanges

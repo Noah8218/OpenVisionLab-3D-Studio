@@ -301,6 +301,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var stageStart = Stopwatch.GetTimestamp();
             c3dSample = loaded;
+            viewModel.SetConnectedRegionOverlay(null, null);
             CurrentViewerOnlySourcePath = null;
             CurrentViewerOnlySourceFormat = null;
             if (preparedRenderProxy is not null && preparedPositions is not null)
@@ -408,6 +409,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         ResetInteractionWireframeLodForSourceChange(sourceApplied: false);
         c3dSample = null;
+        viewModel.SetConnectedRegionOverlay(null, null);
         ClearTeachingSelectionsForSourceChange();
         planeFlatnessEvaluation = null;
         planeReferenceMeasurement = null;
@@ -427,6 +429,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var fullPath = Path.GetFullPath(path);
             c3dSample = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
+            viewModel.SetConnectedRegionOverlay(null, null);
             SetC3DSampleStatus();
             viewModel.UseC3DSmokeScene();
             viewModel.SetC3DAlignment(ModelTransform.Identity, "C3D grid-index scalar frame", label);

@@ -85,7 +85,9 @@ public partial class HeightImageViewerView : UserControl
         if (args.PropertyName is nameof(HeightImageViewerViewModel.Frame)
             or nameof(HeightImageViewerViewModel.DisplayFrame)
             or nameof(HeightImageViewerViewModel.CompletenessCellOverlays)
-            or nameof(HeightImageViewerViewModel.SelectedCompletenessCellId))
+            or nameof(HeightImageViewerViewModel.SelectedCompletenessCellId)
+            or nameof(HeightImageViewerViewModel.ConnectedRegionOutput)
+            or nameof(HeightImageViewerViewModel.SelectedConnectedRegionId))
         {
             RefreshFrame();
             UpdateRoiOverlay();
@@ -409,6 +411,10 @@ public partial class HeightImageViewerView : UserControl
         {
             AddCompletenessCellOverlay(frame.Width, frame.Height, overlay);
         }
+        foreach (var region in viewModel.ConnectedRegionOutput?.Regions ?? [])
+        {
+            AddConnectedRegionOverlay(frame.Width, frame.Height, region);
+        }
         foreach (var overlay in viewModel.RoiWorkspace.VisibleOverlays)
         {
             AddRoiOverlay(frame.Width, frame.Height, overlay);
@@ -475,6 +481,74 @@ public partial class HeightImageViewerView : UserControl
         };
         Canvas.SetLeft(label, Math.Max(0, left + 2));
         Canvas.SetTop(label, Math.Max(0, top + 2));
+        RoiOverlay.Children.Add(label);
+    }
+
+    private void AddConnectedRegionOverlay(
+        int frameWidth,
+        int frameHeight,
+        C3DConnectedRegionMetricOutput region)
+    {
+        var color = Color.FromRgb(255, 184, 31);
+        var brush = new SolidColorBrush(color);
+        var isSelected = string.Equals(
+            region.RegionId,
+            viewModel?.SelectedConnectedRegionId,
+            StringComparison.OrdinalIgnoreCase);
+
+        foreach (var cell in region.Cells)
+        {
+            if (cell.Row < 0 || cell.Row >= frameHeight || cell.Column < 0 || cell.Column >= frameWidth)
+            {
+                continue;
+            }
+
+            var left = cell.Column / (double)frameWidth * HeightImage.Width;
+            var top = cell.Row / (double)frameHeight * HeightImage.Height;
+            var right = (cell.Column + 1) / (double)frameWidth * HeightImage.Width;
+            var bottom = (cell.Row + 1) / (double)frameHeight * HeightImage.Height;
+            var shape = new Rectangle
+            {
+                Width = Math.Max(1, right - left),
+                Height = Math.Max(1, bottom - top),
+                Fill = new SolidColorBrush(Color.FromArgb(
+                    isSelected ? (byte)84 : (byte)42,
+                    color.R,
+                    color.G,
+                    color.B)),
+                Stroke = isSelected ? Brushes.White : brush,
+                StrokeThickness = isSelected ? 4.0 : 2.5
+            };
+            Canvas.SetLeft(shape, left);
+            Canvas.SetTop(shape, top);
+            RoiOverlay.Children.Add(shape);
+        }
+
+        if (region.Cells.Count == 0)
+        {
+            return;
+        }
+
+        var firstCell = region.Cells[0];
+        var labelLeft = firstCell.Column / (double)frameWidth * HeightImage.Width + 2;
+        var labelTop = firstCell.Row / (double)frameHeight * HeightImage.Height + 2;
+        var label = new Border
+        {
+            Padding = new Thickness(4, 1, 4, 1),
+            Background = new SolidColorBrush(Color.FromArgb(220, 17, 24, 39)),
+            BorderBrush = isSelected ? Brushes.White : brush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(2),
+            Child = new TextBlock
+            {
+                Text = $"{(isSelected ? "▶ " : string.Empty)}{region.RegionId} · {region.CellCount} cells",
+                FontSize = 9,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White
+            }
+        };
+        Canvas.SetLeft(label, Math.Max(0, labelLeft));
+        Canvas.SetTop(label, Math.Max(0, labelTop));
         RoiOverlay.Children.Add(label);
     }
 

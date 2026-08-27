@@ -23,7 +23,7 @@
                 <TextBlock Margin="0,2,0,0"
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='Handoff를 명시적으로 새로고침하고 검토한 뒤 기존 Run Record 결과를 게시합니다.', English='Explicitly refresh and review handoffs, then publish an existing Run Record result.'}" />
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='Handoff를 명시적으로 새로고침하고 검토한 뒤 HeightMap을 실행하거나 기존 Run Record 결과를 게시합니다.', English='Explicitly refresh and review handoffs, then run HeightMap or publish an existing Run Record result.'}" />
             </StackPanel>
         </Border>
 
@@ -170,7 +170,23 @@
 
                         <Separator Margin="0,16" />
                         <TextBlock FontWeight="SemiBold"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Publish, Korean='2. 기존 Run Record 결과 게시', English='2. Publish an existing Run Record result'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.RunHeightMap, Korean='2. Accepted HeightMap 실행', English='2. Run accepted HeightMap'}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.RunHeightMapHint, Korean='승인된 ThreeD/HeightMap만 복사된 레시피의 ROI와 기준으로 실행합니다. 다른 입력 형식이나 이미 결과가 있는 거래에서는 비활성화됩니다.', English='Only an accepted ThreeD/HeightMap runs from the copied recipe ROI and limits. Other input kinds and completed transactions remain disabled.'}" />
+                        <ui:Button Margin="0,10,0,0"
+                                   HorizontalAlignment="Left"
+                                   Appearance="Primary"
+                                   Icon="{ui:SymbolIcon Play24}"
+                                   Content="{views:ThreeDText Key=ThreeD.Exchange.RunHeightMapButton, Korean='Accepted HeightMap 실행', English='Run accepted HeightMap'}"
+                                   Command="{Binding IntegrationExchange.RunHeightMapCommand}"
+                                   AutomationProperties.AutomationId="RunAcceptedHeightMap"
+                                   ToolTip="{views:ThreeDText Key=ThreeD.Exchange.RunHeightMapTooltip, Korean='승인된 ThreeD/HeightMap Handoff를 레시피 설정으로 실행', English='Run the accepted ThreeD/HeightMap handoff from its recipe settings'}" />
+
+                        <Separator Margin="0,16" />
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Publish, Korean='3. 기존 Run Record 결과 게시', English='3. Publish an existing Run Record result'}" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    Text="{Binding IntegrationExchange.CurrentRunRecordSummary}"

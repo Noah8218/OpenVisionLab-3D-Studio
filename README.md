@@ -16,6 +16,19 @@ overlays, and records in one application.
 
 ![Thickness ROI teaching workflow](docs/assets/openvisionlab-3d-roi-workflow.gif)
 
+## Version
+
+Current version: `v0.2.0-dev`
+
+This project is maintained using explicit version numbers.
+
+### Recent version history
+
+#### `v0.2.0-dev` (2026-08-27)
+
+- Adds the deterministic 3D integration and connected-region inspection
+  workflows alongside the existing recipe and evidence loop.
+
 ## Start here
 
 Choose the path that matches what you have:

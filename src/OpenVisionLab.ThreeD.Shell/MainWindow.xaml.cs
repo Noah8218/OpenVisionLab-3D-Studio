@@ -2,6 +2,7 @@ extern alias OvlMessageDialogs;
 
 using Microsoft.Win32;
 using OpenVisionLab;
+using OpenVisionLab.Integration.Contracts;
 using OpenVisionLab.Logging;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
@@ -36,6 +37,7 @@ namespace OpenVisionLab.ThreeD.Shell;
 
 public partial class MainWindow : Window
 {
+    private static readonly TimeSpan HeightMapShutdownTimeout = TimeSpan.FromSeconds(2);
     private readonly OpenVisionThreeDViewerControl _viewer;
     private readonly ShellMainWindowViewModel _viewModel;
     private readonly EventHandler<ViewerHostStateChangedEventArgs> _viewerHostStateChangedHandler;
@@ -50,6 +52,8 @@ public partial class MainWindow : Window
     private readonly StudioLayoutController _studioLayout;
     private readonly ToolLabWindowManager _toolLabWindows;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
+    private bool heightMapShutdownInProgress;
+    private bool closeAfterHeightMapShutdown;
 
     private FilterToolLabWindow? filterToolLabWindow => _toolLabWindows.Filter;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow => _toolLabWindows.HeightDifferenceEdge;
@@ -76,7 +80,11 @@ public partial class MainWindow : Window
             GetCommandLineValue("--run-record"),
             GetCommandLineValue("--html-report"),
             GetCommandLineValue("--csv-report"),
-            recentRecipesPath: IsAutomatedShellRun() ? null : GetPersistentRecentRecipesPath());
+            recentRecipesPath: IsAutomatedShellRun() ? null : GetPersistentRecentRecipesPath(),
+            integrationSettingsPath: GetCommandLineValue("--smoke-integration-settings-path"),
+            integrationProducerIdentityProvider: IsHeightMapIntegrationSmoke()
+                ? CreateIntegrationSmokeProducerIdentity
+                : null);
         _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, ShowMissingToolLabStep);
@@ -220,14 +228,56 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        if (closeAfterHeightMapShutdown)
+        {
+            _studioLayout.Save();
+            base.OnClosing(e);
+            return;
+        }
+
+        if (heightMapShutdownInProgress)
+        {
+            e.Cancel = true;
+            return;
+        }
+
         if (!IsAutomatedShellRun() && !_workbenchLifecycle.TryResolveWorkbenchChanges("closing 3D Studio"))
         {
             e.Cancel = true;
             return;
         }
 
-        _studioLayout.Save();
-        base.OnClosing(e);
+        e.Cancel = true;
+        heightMapShutdownInProgress = true;
+        _ = CloseAfterHeightMapShutdownAsync();
+    }
+
+    private async Task CloseAfterHeightMapShutdownAsync()
+    {
+        try
+        {
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
+            if (!await _viewModel.IntegrationExchange.ShutdownAsync(HeightMapShutdownTimeout))
+            {
+                OVLog.Write(
+                    LogCategory.System,
+                    LogLevel.Warning,
+                    "HeightMap shutdown exceeded its bounded wait; closing while detached work completes.");
+            }
+        }
+        catch (Exception exception)
+        {
+            OVLog.Write(
+                LogCategory.System,
+                LogLevel.Warning,
+                $"HeightMap shutdown failed during close: {exception.Message}");
+        }
+        finally
+        {
+            heightMapShutdownInProgress = false;
+            closeAfterHeightMapShutdown = true;
+            Close();
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -386,6 +436,7 @@ public partial class MainWindow : Window
         var screenshotQualityReportPath = smoke.ScreenshotQualityReportPath;
         var viewerLayoutSmoke = smoke.ViewerLayoutSmoke;
         var integrationExchangeSmokeState = smoke.IntegrationExchangeSmokeState;
+        var integrationExchangeSmokeRoot = smoke.IntegrationExchangeRootPath;
         var thicknessRepeatGridSmoke = smoke.ThicknessRepeatGridSmoke;
         var viewerPopoutScreenshotPath = smoke.ViewerPopoutScreenshotPath;
         var viewerPopoutScreenshotQualityReportPath = smoke.ViewerPopoutScreenshotQualityReportPath;
@@ -482,6 +533,11 @@ public partial class MainWindow : Window
         var edgeStepId = smoke.EdgeStepId;
         var edgeSmokeReportPath = smoke.EdgeSmokeReportPath;
         var lineFitSmokeReportPath = smoke.LineFitSmokeReportPath;
+        var connectedRegionOutputSmokeSourcePath = smoke.ConnectedRegionOutputSmokeSourcePath;
+        var connectedRegionOutputSmokeReportPath = smoke.ConnectedRegionOutputSmokeReportPath;
+        var connectedRegionOutputSmokeScreenshotPath = smoke.ConnectedRegionOutputSmokeScreenshotPath;
+        var connectedRegionOutputSmokeScreenshotQualityReportPath =
+            smoke.ConnectedRegionOutputSmokeScreenshotQualityReportPath;
         if (smoke.NeedsCompactWorkbench)
         {
             Width = 1280;
@@ -604,6 +660,46 @@ public partial class MainWindow : Window
                     _viewModel.SetViewerSmokeFailed("Asynchronous C3D load smoke did not satisfy its source-retention, status, or responsiveness contract.");
                     Application.Current.Shutdown(1);
                     return;
+                }
+
+                if (smoke.ConnectedRegionOutputSmoke)
+                {
+                    if (string.IsNullOrWhiteSpace(connectedRegionOutputSmokeSourcePath))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Connected Region output smoke requires --smoke-connected-region-output-source.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    var connectedRegionSmokePassed =
+                        await ShellConnectedRegionOutputSmoke.RunAsync(
+                            this,
+                            _viewModel,
+                            _viewer,
+                            ToolWorkbench,
+                            _workbenchLifecycle,
+                            _workbenchViewerTeaching,
+                            Dispatcher,
+                            connectedRegionOutputSmokeSourcePath,
+                            connectedRegionOutputSmokeReportPath,
+                            connectedRegionOutputSmokeScreenshotPath,
+                            connectedRegionOutputSmokeScreenshotQualityReportPath);
+                    if (connectedRegionOutputSmokeScreenshotPath is not null
+                        && connectedRegionOutputSmokeScreenshotQualityReportPath is not null)
+                    {
+                        AppendWindowMonitorEvidence(
+                            this,
+                            connectedRegionOutputSmokeScreenshotQualityReportPath);
+                    }
+
+                    if (!connectedRegionSmokePassed)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "Connected Region output smoke did not satisfy typed-output, selection, 2D/3D overlay, or recipe-boundary checks.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
                 }
 
                 if (viewerOnlyImportSmokePath is not null
@@ -1555,7 +1651,8 @@ public partial class MainWindow : Window
                         return;
                     }
 
-                    const string representativeExchangeRoot =
+                    var representativeExchangeRoot = integrationExchangeSmokeRoot
+                        ??
                         @"D:\OpenVisionLab-Exchange\Projects\Automated-Optical-Inspection-Line-With-A-Deliberately-Long-Commissioning-Name\Shared-Exchange";
                     _viewModel.IntegrationExchange.ExchangeRoot = representativeExchangeRoot;
                     await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -1581,6 +1678,73 @@ public partial class MainWindow : Window
                         {
                             _viewModel.SetViewerSmokeFailed(
                                 "Integration exchange folder did not complete its two-way binding and focus round trip.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+                    }
+                    else if (integrationExchangeSmokeState.Equals("heightmap-run", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (string.IsNullOrWhiteSpace(integrationExchangeSmokeRoot)
+                            || string.IsNullOrWhiteSpace(smoke.IntegrationExchangeSettingsPath)
+                            || string.IsNullOrWhiteSpace(shellScreenshotPath))
+                        {
+                            _viewModel.SetViewerSmokeFailed(
+                                "HeightMap click smoke requires an exchange root, isolated settings path, and screenshot path.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+
+                        _viewModel.IntegrationExchange.SaveSetupCommand.Execute(null);
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                        if (!File.Exists(Path.GetFullPath(smoke.IntegrationExchangeSettingsPath)))
+                        {
+                            WriteTextReport(
+                                screenshotQualityReportPath,
+                                [
+                                    $"IntegrationExchangeHeightMapSetup|failure=settings-not-persisted|settingsPath={smoke.IntegrationExchangeSettingsPath}"
+                                ]);
+                            _viewModel.SetViewerSmokeFailed(
+                                "HeightMap click smoke could not persist its isolated exchange settings.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+
+                        _viewModel.IntegrationExchange.RefreshHandoffsCommand.Execute(null);
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                        var beforeAcceptance = _viewModel.IntegrationExchange.SelectedTransaction;
+                        if (beforeAcceptance is null
+                            || !beforeAcceptance.IsThreeDHeightMap
+                            || beforeAcceptance.IsAccepted
+                            || beforeAcceptance.HasResult
+                            || _viewModel.IntegrationExchange.RunHeightMapCommand.CanExecute(null))
+                        {
+                            WriteTextReport(
+                                screenshotQualityReportPath,
+                            [
+                                $"IntegrationExchangeHeightMapSetup|failure=pending-state|transactions={_viewModel.IntegrationExchange.Transactions.Count}|selected={beforeAcceptance?.TransactionId.ToString() ?? "none"}|isHeightMap={beforeAcceptance?.IsThreeDHeightMap.ToString() ?? "none"}|accepted={beforeAcceptance?.IsAccepted.ToString() ?? "none"}|hasResult={beforeAcceptance?.HasResult.ToString() ?? "none"}|canRun={_viewModel.IntegrationExchange.RunHeightMapCommand.CanExecute(null)}|status={_viewModel.IntegrationExchange.StatusText}"
+                            ]);
+                            _viewModel.SetViewerSmokeFailed(
+                                "HeightMap click smoke did not expose the expected pending transaction state.");
+                            Application.Current.Shutdown(1);
+                            return;
+                        }
+
+                        _viewModel.IntegrationExchange.AcceptCommand.Execute(null);
+                        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                        var afterAcceptance = _viewModel.IntegrationExchange.SelectedTransaction;
+                        if (afterAcceptance is null
+                            || !afterAcceptance.IsThreeDHeightMap
+                            || !afterAcceptance.IsAccepted
+                            || afterAcceptance.HasResult
+                            || !_viewModel.IntegrationExchange.RunHeightMapCommand.CanExecute(null))
+                        {
+                            WriteTextReport(
+                                screenshotQualityReportPath,
+                            [
+                                $"IntegrationExchangeHeightMapSetup|failure=accepted-state|transactions={_viewModel.IntegrationExchange.Transactions.Count}|selected={afterAcceptance?.TransactionId.ToString() ?? "none"}|isHeightMap={afterAcceptance?.IsThreeDHeightMap.ToString() ?? "none"}|accepted={afterAcceptance?.IsAccepted.ToString() ?? "none"}|hasResult={afterAcceptance?.HasResult.ToString() ?? "none"}|canRun={_viewModel.IntegrationExchange.RunHeightMapCommand.CanExecute(null)}|status={_viewModel.IntegrationExchange.StatusText}"
+                            ]);
+                            _viewModel.SetViewerSmokeFailed(
+                                "HeightMap click smoke did not enable the accepted transaction.");
                             Application.Current.Shutdown(1);
                             return;
                         }
@@ -1725,6 +1889,15 @@ public partial class MainWindow : Window
                             shellScreenshotPath,
                             screenshotQualityReportPath,
                             "IntegrationExchangeRefreshPressed")
+                        : integrationExchangeSmokeState?.Equals(
+                            "heightmap-run",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "RunAcceptedHeightMap",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "IntegrationExchangeHeightMapRunPressed")
                         : await CaptureWindowWithRetryAsync(
                             this,
                             shellScreenshotPath,
@@ -1734,6 +1907,73 @@ public partial class MainWindow : Window
                     _viewModel.SetViewerSmokeFailed("Shell screenshot remained blank or invalid after 3 attempts.");
                     Application.Current.Shutdown(1);
                     return;
+                }
+                if (integrationExchangeSmokeState?.Equals(
+                        "heightmap-run",
+                        StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                    await Task.Delay(150);
+                    try
+                    {
+                        await _viewModel.IntegrationExchange
+                            .WaitForHeightMapRunAsync()
+                            .WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                    catch (TimeoutException)
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "HeightMap click smoke did not complete within its verification bound.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.DataBind);
+                    var completedTransaction = _viewModel.IntegrationExchange.SelectedTransaction;
+                    if (completedTransaction is null
+                        || !completedTransaction.HasResult
+                        || _viewModel.IntegrationExchange.RunHeightMapCommand.CanExecute(null))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "HeightMap click did not publish a Result or disable rerun.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+
+                    var pressedScreenshotPath = Path.GetFullPath(shellScreenshotPath!);
+                    var resultScreenshotPath = Path.Combine(
+                        Path.GetDirectoryName(pressedScreenshotPath)!,
+                        $"{Path.GetFileNameWithoutExtension(pressedScreenshotPath)}-result{Path.GetExtension(pressedScreenshotPath)}");
+                    var resultQualityReportPath = string.IsNullOrWhiteSpace(screenshotQualityReportPath)
+                        ? null
+                        : Path.GetFullPath(screenshotQualityReportPath) + ".result.txt";
+                    if (!await CaptureWindowWithRetryAsync(
+                            this,
+                            resultScreenshotPath,
+                            resultQualityReportPath,
+                            "IntegrationExchangeHeightMapResult"))
+                    {
+                        _viewModel.SetViewerSmokeFailed(
+                            "HeightMap Result screenshot remained blank or invalid after 3 attempts.");
+                        Application.Current.Shutdown(1);
+                        return;
+                    }
+                    if (!string.IsNullOrWhiteSpace(screenshotQualityReportPath)
+                        && resultQualityReportPath is not null
+                        && File.Exists(resultQualityReportPath))
+                    {
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                            File.ReadAllLines(resultQualityReportPath));
+                    }
+                    if (!string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                    {
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                        [
+                            $"IntegrationExchangeHeightMapRun|pendingDisabled=true|acceptedEnabled=true|visibleClick=true|resultPublished=true|rerunDisabled=true|resultScreenshot={resultScreenshotPath}"
+                        ]);
+                    }
                 }
                 if (shellScreenshotPath is not null)
                 {
@@ -3944,13 +4184,6 @@ public partial class MainWindow : Window
         }
         finally
         {
-            if (forcedPressedState && pressedButton is not null)
-            {
-                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
-                    "SetIsPressed",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                setIsPressed?.Invoke(pressedButton, [false]);
-            }
             if (routedPointerDown && pressedButton is not null)
             {
                 pressedButton.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(
@@ -3965,6 +4198,13 @@ public partial class MainWindow : Window
             if (mouseDown)
             {
                 SendMouseEvent(leftButtonUp, 0, 0, 0, UIntPtr.Zero);
+            }
+            if (forcedPressedState && pressedButton is not null)
+            {
+                var setIsPressed = typeof(System.Windows.Controls.Primitives.ButtonBase).GetMethod(
+                    "SetIsPressed",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                setIsPressed?.Invoke(pressedButton, [false]);
             }
         }
     }
@@ -4045,6 +4285,20 @@ public partial class MainWindow : Window
         || argument.StartsWith("--regrid-height-map-tool-lab-", StringComparison.OrdinalIgnoreCase)
         || argument.StartsWith("--message-dialog-", StringComparison.OrdinalIgnoreCase)
         || argument.Equals("--shell-smoke-screenshot", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsHeightMapIntegrationSmoke() =>
+        IsAutomatedShellRun()
+        && string.Equals(
+            GetCommandLineValue("--smoke-integration-exchange-state"),
+            "heightmap-run",
+            StringComparison.OrdinalIgnoreCase);
+
+    private static IntegrationApplicationIdentity CreateIntegrationSmokeProducerIdentity() =>
+        new(
+            IntegrationApplicationIds.ThreeDStudio,
+            IntegrationBuildIdentity.Version,
+            IntegrationBuildIdentity.SourceCommit,
+            IntegrationSourceState.Clean);
 
     private static bool ShouldStartWithEmptyRecipeInput() =>
         !IsAutomatedShellRun()

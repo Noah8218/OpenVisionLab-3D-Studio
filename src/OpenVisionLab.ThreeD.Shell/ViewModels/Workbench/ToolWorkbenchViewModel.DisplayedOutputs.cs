@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -65,18 +66,41 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RequestDisplayedOutputInViewer(ToolWorkbenchDisplayedOutputItem? item)
     {
-        if (item is null || !item.CanShowInViewer || GetCompareCandidate(item.Id) is not { } candidate)
+        if (item is null || !item.CanShowInViewer)
         {
             return;
         }
 
-        var request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
-            item.Id,
-            candidate.C3DPath,
-            item.DisplayName,
-            item.Contract,
-            candidate.State,
-            candidate.IsSource);
+        ToolWorkbenchArtifactDisplayRequestEventArgs request;
+        if (item.Artifact.NodeKind == "ConnectedRegionOutput"
+            && HasConnectedRegionOutput
+            && CurrentConnectedRegionOutput is { } connectedRegionOutput
+            && File.Exists(Source.Path))
+        {
+            request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
+                item.Id,
+                Source.Path,
+                item.DisplayName,
+                item.Contract,
+                item.State,
+                false,
+                connectedRegionOutput);
+        }
+        else if (GetCompareCandidate(item.Id) is { } candidate)
+        {
+            request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
+                item.Id,
+                candidate.C3DPath,
+                item.DisplayName,
+                item.Contract,
+                candidate.State,
+                candidate.IsSource);
+        }
+        else
+        {
+            return;
+        }
+
         ViewerArtifactDisplayRequested?.Invoke(this, request);
         if (!request.WasDisplayed)
         {
@@ -125,15 +149,18 @@ public sealed partial class ToolWorkbenchViewModel
     {
         foreach (var item in DisplayedOutputs)
         {
-            var isRenderable = GetCompareCandidate(item.Id) is { C3DPath: var path } && File.Exists(path);
-            var pins = GetComparePins(item.Id);
+            var isConnectedRegion = item.Artifact.NodeKind == "ConnectedRegionOutput";
+            var isRenderable = isConnectedRegion
+                ? HasConnectedRegionOutput && File.Exists(Source.Path)
+                : GetCompareCandidate(item.Id) is { C3DPath: var path } && File.Exists(path);
+            var pins = isConnectedRegion ? string.Empty : GetComparePins(item.Id);
             item.UpdatePresentation(
                 isRenderable,
                 string.Equals(item.Id, displayedViewerArtifactId, StringComparison.OrdinalIgnoreCase),
                 pins,
-                isRenderable && pins.Length == 0 && HasEmptyCompareSlot(),
+                !isConnectedRegion && isRenderable && pins.Length == 0 && HasEmptyCompareSlot(),
                 isRenderable
-                    ? Localization.DisplayableC3DData
+                    ? isConnectedRegion ? Localization.ConnectedRegionOverlayAvailable : Localization.DisplayableC3DData
                     : item.IsEvidenceOnly
                         ? Localization.EvidenceOnlyOutput
                         : Localization.NoCurrentDisplayableOutput,
@@ -170,7 +197,8 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     string displayName,
     string contract,
     string state,
-    bool isSource) : EventArgs
+    bool isSource,
+    C3DConnectedRegionOutput? connectedRegionOutput = null) : EventArgs
 {
     public string ArtifactId { get; } = artifactId;
     public string C3DPath { get; } = c3DPath;
@@ -178,6 +206,7 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     public string Contract { get; } = contract;
     public string State { get; } = state;
     public bool IsSource { get; } = isSource;
+    public C3DConnectedRegionOutput? ConnectedRegionOutput { get; } = connectedRegionOutput;
     public bool WasDisplayed { get; set; }
 }
 

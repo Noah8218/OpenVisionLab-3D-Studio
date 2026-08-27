@@ -377,7 +377,7 @@ public static class ToolRecipeValidator
             }
 
             if (validateStepContract
-                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
+                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check")
             {
                 ValidateHeightMeasurementPrimaryInput(
                     step,
@@ -1039,6 +1039,7 @@ public static class ToolRecipeValidator
         var isVolume = step.ToolId == "volume";
         var isCrossSection = step.ToolId == "cross-section-dimensions";
         var isCompleteness = step.ToolId == "completeness-grid";
+        var isPresenceCheck = step.ToolId == "presence-check";
         var isDualRoi = isThickness || isPlaneFlatness || isGapFlush || isVolume || isCompleteness;
         var expectedInputCount = isDualRoi ? 3 : 2;
         if (inputs.Count != expectedInputCount)
@@ -1049,6 +1050,8 @@ public static class ToolRecipeValidator
                 ? $"{label} {Clean(step.ToolName)} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then {(isCompleteness ? "Inspection Grid ROI" : "Measurement ROI")}."
                 : isPointPair
                     ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
+                : isPresenceCheck
+                    ? $"{label} Presence Check v1 requires one HeightField first and one ordered GridRectangle feature second."
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
             return;
         }
@@ -1095,10 +1098,11 @@ public static class ToolRecipeValidator
             "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
             "cross-section-dimensions" => new[] { "ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance" },
             "completeness-grid" => [],
+            "presence-check" => C3DPresenceCheckPolicy.ParameterNames,
             _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
         };
         var parameters = step.Parameters ?? [];
-        if (!isCompleteness
+        if (!isCompleteness && !isPresenceCheck
             && (parameters.Count != expected.Length
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
@@ -1112,6 +1116,20 @@ public static class ToolRecipeValidator
                 _ = C3DCompletenessGridProfile.FromRecipeParameters(parameters);
                 _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
                     parameters);
+            }
+            catch (Exception exception) when (
+                exception is InvalidDataException
+                or ArgumentException
+                or OverflowException)
+            {
+                errors.Add($"{label} {exception.Message}");
+            }
+        }
+        else if (isPresenceCheck)
+        {
+            try
+            {
+                _ = C3DPresenceCheckPolicy.FromRecipeParameters(parameters);
             }
             catch (Exception exception) when (
                 exception is InvalidDataException

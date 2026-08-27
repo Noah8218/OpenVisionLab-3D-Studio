@@ -126,6 +126,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(DisplayedOutputsNoViewerSelection), nameof(CurrentViewerDisplay), nameof(DisplayedInViewer),
         nameof(ShowInViewer), nameof(PinToCompare), nameof(FocusStep), nameof(DisplayedOutputsSummaryFormat),
         nameof(DisplayableC3DData), nameof(EvidenceOnlyOutput), nameof(NoCurrentDisplayableOutput), nameof(PinnedSlotsFormat),
+        nameof(ConnectedRegionOutputTitle), nameof(ConnectedRegionOutputDetail), nameof(ConnectedRegionSummaryFormat),
+        nameof(ConnectedRegionSelectedSummaryFormat), nameof(ConnectedRegionNoOutput), nameof(ConnectedRegionNoSelection),
+        nameof(ConnectedRegionOverlayAvailable), nameof(ConnectedRegionSelect), nameof(ConnectedRegionShowOverlay),
         nameof(FlowMapDetail), nameof(FlowMapReadOnly), nameof(FlowMapInput), nameof(FlowMapOutput),
         nameof(FlowMapPortState), nameof(FlowMapEmptyHint), nameof(Problems), nameof(ProblemsTitle),
         nameof(ProblemsDetail), nameof(ProblemsSummaryFormat), nameof(ProblemsRouteChecks),
@@ -687,6 +690,15 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string EvidenceOnlyOutput => T("ThreeD.Workbench.EvidenceOnlyOutput", "\uC99D\uAC70 \uC804\uC6A9: \uAC00\uC9DC 3D \uD45C\uBA74\uC744 \uB9CC\uB4E4\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", "Evidence only; no synthetic 3D surface is created");
     public string NoCurrentDisplayableOutput => T("ThreeD.Workbench.NoCurrentDisplayableOutput", "\uD604\uC7AC \uD45C\uC2DC \uAC00\uB2A5\uD55C \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No current displayable output");
     public string PinnedSlotsFormat => T("ThreeD.Workbench.PinnedSlotsFormat", "\uBE44\uAD50 \uC2AC\uB86F {0}\uC5D0 \uACE0\uC815", "Pinned to comparison slot {0}");
+    public string ConnectedRegionOutputTitle => T("ThreeD.Workbench.ConnectedRegionOutputTitle", "Connected Region \uC0B0\uCD9C\uBB3C", "Connected-region output");
+    public string ConnectedRegionOutputDetail => T("ThreeD.Workbench.ConnectedRegionOutputDetail", "G-11 \uAC80\uCD9C \uACB0\uACFC\uB97C \uC7AC\uC2E4\uD589 \uC5C6\uC774 2D/3D \uD45C\uC2DC\uC640 \uC120\uD0DD\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4.", "Review G-11 detection metrics in 2D/3D without rerunning detection.");
+    public string ConnectedRegionSummaryFormat => T("ThreeD.Workbench.ConnectedRegionSummaryFormat", "{0}\uAC1C \uC601\uC5ED | \uC804\uACBD {1}\uCE78 | \uCD1D \uBA74\uC801 {2:0.###} grid-index²", "{0} regions | {1} foreground cells | total area {2:0.###} grid-index²");
+    public string ConnectedRegionSelectedSummaryFormat => T("ThreeD.Workbench.ConnectedRegionSelectedSummaryFormat", "{0} | {1}\uCE78 | \uBA74\uC801 {2} | \uC911\uC2EC {3}", "{0} | {1} cells | area {2} | center {3}");
+    public string ConnectedRegionNoOutput => T("ThreeD.Workbench.ConnectedRegionNoOutput", "\uD604\uC7AC \uC18C\uC2A4\uC640 \uC77C\uCE58\uD558\uB294 Connected Region \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No current source-bound connected-region output");
+    public string ConnectedRegionNoSelection => T("ThreeD.Workbench.ConnectedRegionNoSelection", "Connected Region \uC601\uC5ED \uC120\uD0DD \uC5C6\uC74C", "No connected region selected");
+    public string ConnectedRegionOverlayAvailable => T("ThreeD.Workbench.ConnectedRegionOverlayAvailable", "\uD604\uC7AC C3D \uC6D0\uBCF8\uC5D0 \uC624\uBC84\uB808\uC774 \uD45C\uC2DC \uAC00\uB2A5", "Overlay available on current C3D source");
+    public string ConnectedRegionSelect => T("ThreeD.Command.ConnectedRegionSelect", "\uC120\uD0DD", "Select");
+    public string ConnectedRegionShowOverlay => T("ThreeD.Command.ConnectedRegionShowOverlay", "\uC624\uBC84\uB808\uC774 \uD45C\uC2DC", "Show overlay");
     public string FlowMap => T("ThreeD.Workbench.FlowMap", "\uD750\uB984 \uB9F5", "Flow Map");
     public string FlowMapTitle => T("ThreeD.Workbench.FlowMapTitle", "\uC785\uB825 \u2192 \uB3C4\uAD6C \u2192 \uC815\uC2DD \uCD9C\uB825", "Input → Tool → Typed output");
     public string FlowMapDetail => T("ThreeD.Workbench.FlowMapDetail", "\uD2B8\uB9AC \uC120\uD0DD\uACFC \uB3D9\uAE30\uD654\uB41C \uC77D\uAE30 \uC804\uC6A9 \uB370\uC774\uD130 \uACBD\uB85C\uC785\uB2C8\uB2E4. \uC5F0\uACB0\uC744 \uC218\uC815\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only data routes synchronized with the tree. It does not edit connections or run a tool.");

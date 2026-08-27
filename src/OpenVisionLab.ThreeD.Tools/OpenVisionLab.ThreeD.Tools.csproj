@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.0.1-dev.20260823.grid-diagnostics.1]" />
+    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.0.1-dev.20260826.domain-mask.1]" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Core\OpenVisionLab.ThreeD.Core.csproj" />
     <ProjectReference Include="..\OpenVisionLab.ThreeD.Data\OpenVisionLab.ThreeD.Data.csproj" />
   </ItemGroup>

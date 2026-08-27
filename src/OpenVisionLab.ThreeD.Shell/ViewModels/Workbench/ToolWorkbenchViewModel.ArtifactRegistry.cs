@@ -68,6 +68,23 @@ public sealed partial class ToolWorkbenchViewModel
             artifacts.Add(CreateStepArtifact(step));
         }
 
+        if (HasConnectedRegionOutput && CurrentConnectedRegionOutput is { } connectedRegionOutput)
+        {
+            artifacts.Add(new ToolWorkbenchArtifactItem(
+                connectedRegionOutput.OutputEntityId,
+                "Connected Region",
+                "ConnectedRegionMetrics",
+                "Preview",
+                connectedRegionOutput.RootSourceEntityId,
+                $"{connectedRegionOutput.InputEntityId}; mask={connectedRegionOutput.MaskId}",
+                connectedRegionOutput.Unit,
+                connectedRegionOutput.FrameId,
+                connectedRegionOutput.ContentSha256,
+                $"{connectedRegionOutput.RegionCount:N0} region(s) | {connectedRegionOutput.ForegroundCellCount:N0} foreground cells | total area {connectedRegionOutput.Regions.Sum(region => region.Area):G6} grid-index² | source-bound",
+                null,
+                "ConnectedRegionOutput"));
+        }
+
         ArtifactRegistry.ReplaceAll(artifacts);
         var navigatorRoots = new List<ToolWorkbenchNavigatorItem>();
 
@@ -132,6 +149,18 @@ public sealed partial class ToolWorkbenchViewModel
                 selectionRoot.Children.Add(CreateArtifactNode(selection, null, "Selection"));
             }
             navigatorRoots.Add(selectionRoot);
+        }
+
+        var connectedRegionArtifact = ArtifactRegistry.FirstOrDefault(item => item.NodeKind == "ConnectedRegionOutput");
+        if (connectedRegionArtifact is not null)
+        {
+            var connectedRegionRoot = new ToolWorkbenchNavigatorItem(
+                "ConnectedRegionOutputs",
+                "Region outputs",
+                "Source-bound connected-region metrics; display-only selection.",
+                null);
+            connectedRegionRoot.Children.Add(CreateArtifactNode(connectedRegionArtifact, null, "Output"));
+            navigatorRoots.Add(connectedRegionRoot);
         }
 
         NavigatorRoots.ReplaceAll(navigatorRoots);
@@ -451,16 +480,18 @@ public sealed partial class ToolWorkbenchViewModel
                 "TransformedHeightField");
         }
 
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check"
             && CurrentMeasurementOutput is { } measurementOutput
             && string.Equals(measurementOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
                 measurementOutput.OutputEntityId,
                 step.ToolName,
-                measurementOutput.CompletenessGrid is null
-                    ? "MeasurementResult"
-                    : "CompletenessGridMetrics",
+                measurementOutput.PresenceCheck is not null
+                    ? "PresenceCheckResult"
+                    : measurementOutput.CompletenessGrid is null
+                        ? "MeasurementResult"
+                        : "CompletenessGridMetrics",
                 IsMeasurementPreviewStale ? "Stale" : IsMeasurementPreviewPublished ? "Published" : "Preview",
                 measurementOutput.RootSourceEntityId,
                 $"{measurementOutput.InputEntityId}; {measurementOutput.SelectionId}",
@@ -469,9 +500,11 @@ public sealed partial class ToolWorkbenchViewModel
                 measurementOutput.ContentSha256,
                 $"{measurementOutput.Result.Status} | {measurementOutput.EvidenceSummary}",
                 step,
-                measurementOutput.CompletenessGrid is null
-                    ? "MeasurementResult"
-                    : "CompletenessGridMetrics");
+                measurementOutput.PresenceCheck is not null
+                    ? "PresenceCheckResult"
+                    : measurementOutput.CompletenessGrid is null
+                        ? "MeasurementResult"
+                        : "CompletenessGridMetrics");
         }
 
         return new ToolWorkbenchArtifactItem(

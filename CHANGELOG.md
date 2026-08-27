@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.1.1-dev` development line onward. It does not claim that a version was
+`0.2.0-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.1.1-dev
+## [Unreleased] - 0.2.0-dev
 
 ### Added
 
@@ -36,6 +36,15 @@ released; publication state is owned by the release and version policy.
   locator order, duplicate locators, and coordinate finiteness—with localized
   Source Quality/Results state and exact JSON, HTML, CSV, text, and privacy-
   safe support-bundle evidence.
+- Added an explicit source-bound GridRectangle Presence Check with inclusive
+  finite-coverage and raw-height limits, fail-closed missing-feature behavior,
+  Workbench Preview/Publish, ordered Runner/Run Record parity, and JSON, HTML,
+  and CSV feature evidence.
+- Added deterministic connected-region detection and metrics with explicit
+  source-bound masks, Four/Eight connectivity, Workbench evidence, and Runner
+  golden verification.
+- Added a typed HeightMap integration exchange and consumer smoke path with
+  explicit acknowledgement, result publication, and Run Record evidence.
 
 ### Improved
 
@@ -86,5 +95,5 @@ released; publication state is owned by the release and version policy.
   fixture identity.
 - Schema `1.8` and older optional-field records remain readable under their
   documented compatibility boundaries.
-- Product version remains `0.1.1-dev`; no tag, release candidate, or public
+- Product version remains `0.2.0-dev`; no tag, release candidate, or public
   release is created by these changes.

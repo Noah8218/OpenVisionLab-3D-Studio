@@ -61,7 +61,8 @@ public static class ToolRecipeSelectionContract
         One("volume", ToolRecipeSelectionRoles.MeasurementRegion, ToolRecipeSelectionKinds.GridRectangle, 2),
         One("cross-section-dimensions", ToolRecipeSelectionRoles.MeasurementRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
         One("completeness-grid", ToolRecipeSelectionRoles.ReferenceRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
-        One("completeness-grid", ToolRecipeSelectionRoles.InspectionRegion, ToolRecipeSelectionKinds.GridRectangle, 2)
+        One("completeness-grid", ToolRecipeSelectionRoles.InspectionRegion, ToolRecipeSelectionKinds.GridRectangle, 2),
+        One("presence-check", ToolRecipeSelectionRoles.Region, ToolRecipeSelectionKinds.GridRectangle, 1)
     ];
 
     public static IReadOnlyList<ToolRecipeSelectionRouteRequirement> Declarations => Requirements;
