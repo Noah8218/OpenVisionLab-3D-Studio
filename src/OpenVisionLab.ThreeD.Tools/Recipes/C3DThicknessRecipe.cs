@@ -10,7 +10,8 @@ public sealed record C3DThicknessRecipe(
     string RecipeType,
     string Version,
     HeightDeviationRecipeSource Source,
-    C3DThicknessStep Step)
+    C3DThicknessStep Step,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "c3d-thickness";
 

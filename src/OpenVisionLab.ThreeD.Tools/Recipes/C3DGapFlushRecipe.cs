@@ -8,7 +8,8 @@ public sealed record C3DGapFlushRecipe(
     string Version,
     HeightDeviationRecipeSource Source,
     ModelTransform? Transform,
-    C3DGapFlushStep Step)
+    C3DGapFlushStep Step,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "c3d-gap-flush";
 

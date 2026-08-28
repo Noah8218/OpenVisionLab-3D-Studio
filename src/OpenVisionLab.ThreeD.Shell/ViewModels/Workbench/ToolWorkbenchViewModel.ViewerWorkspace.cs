@@ -30,6 +30,9 @@ public sealed partial class ToolWorkbenchViewModel
     private RelayCommand popOutViewerCommand = null!;
     private RelayCommand focusViewerWorkspaceSlotCommand = null!;
     private RelayCommand openHeightImageCommand = null!;
+    private RelayCommand clearMainViewerPinCommand = null!;
+    private RelayCommand clearAuxiliaryViewerPinCommand = null!;
+    private RelayCommand toggleViewerCameraLinkCommand = null!;
 
     public ViewerWorkspaceSession ViewerWorkspace { get; }
     public ICommand SetSingleViewerLayoutCommand => setSingleViewerLayoutCommand;
@@ -38,6 +41,9 @@ public sealed partial class ToolWorkbenchViewModel
     public ICommand PopOutViewerCommand => popOutViewerCommand;
     public ICommand FocusViewerWorkspaceSlotCommand => focusViewerWorkspaceSlotCommand;
     public ICommand OpenHeightImageCommand => openHeightImageCommand;
+    public ICommand ClearMainViewerPinCommand => clearMainViewerPinCommand;
+    public ICommand ClearAuxiliaryViewerPinCommand => clearAuxiliaryViewerPinCommand;
+    public ICommand ToggleViewerCameraLinkCommand => toggleViewerCameraLinkCommand;
     public SurfaceMatchExecutionArtifact? SurfaceMatchEvidence =>
         surfaceMatchEvidence;
     public bool HasSurfaceMatchEvidence =>
@@ -96,6 +102,45 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
+    public IReadOnlyList<ViewerWorkspaceCandidateItem> MainViewerCandidates =>
+        ViewerWorkspaceCandidates
+            .Where(candidate => candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact)
+            .ToArray();
+
+    public bool IsViewerCameraLinked => ViewerWorkspace.IsCameraLinked;
+
+    public bool CanLinkViewerCameras =>
+        ViewerWorkspace.HasAuxiliarySlot
+        && GetViewerWorkspaceCandidate(ViewerWorkspace.AuxiliaryContentId)?.Kind
+            == ViewerWorkspaceCandidateKind.ThreeDArtifact;
+
+    public string ViewerCameraLinkLabel =>
+        ViewerWorkspace.IsCameraLinked
+            ? Localization.ViewerCameraUnlink
+            : Localization.ViewerCameraLink;
+
+    public string ViewerCameraLinkSummary =>
+        ViewerWorkspace.IsCameraLinked
+            ? Localization.ViewerCameraLinked
+            : CanLinkViewerCameras
+                ? Localization.ViewerCameraLinkSummary
+                : Localization.ViewerCameraLinkUnavailable;
+
+    public string MainViewerContentId
+    {
+        get => ViewerWorkspace.MainContentId;
+        set
+        {
+            var candidate = GetMainViewerCandidate(value);
+            if (candidate is null)
+            {
+                return;
+            }
+
+            ViewerWorkspace.PinMainContent(candidate.Id);
+        }
+    }
+
     public string AuxiliaryViewerContentId
     {
         get => ViewerWorkspace.AuxiliaryContentId;
@@ -107,10 +152,11 @@ public sealed partial class ToolWorkbenchViewModel
                 return;
             }
 
-            ViewerWorkspace.PinAuxiliaryContent(value);
-            if (candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact)
+            ViewerWorkspace.PinAuxiliaryContent(candidate.Id);
+            if (candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact
+                && !candidate.IsSource)
             {
-                WorkspaceSelection.SelectOutput(value);
+                WorkspaceSelection.SelectOutput(candidate.Id);
             }
             FocusViewerWorkspaceSlot(ViewerWorkspaceSession.AuxiliarySlotId);
         }
@@ -131,10 +177,23 @@ public sealed partial class ToolWorkbenchViewModel
     public string AuxiliaryViewerSummary =>
         GetViewerWorkspaceCandidate(ViewerWorkspace.AuxiliaryContentId) is { } candidate
             ? $"{candidate.DisplayName} | {candidate.Contract}"
+            : ViewerWorkspace.IsAuxiliaryContentPinned
+                ? $"{Localization.ViewerPinnedUnavailable} | {ViewerWorkspace.AuxiliaryContentId}"
             : Localization.ViewerAuxiliaryNoOutput;
+
+    public string MainViewerSummary =>
+        GetMainViewerCandidate(ViewerWorkspace.MainContentId) is { } candidate
+            ? $"{candidate.DisplayName} | {candidate.Contract}"
+            : ViewerWorkspace.IsMainContentPinned
+                ? $"{Localization.ViewerPinnedUnavailable} | {ViewerWorkspace.MainContentId}"
+                : Localization.ViewerMainNoOutput;
 
     public ViewerWorkspaceCandidateItem? GetViewerWorkspaceCandidate(string? contentId) =>
         ViewerWorkspaceCandidates.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, contentId, StringComparison.OrdinalIgnoreCase));
+
+    public ViewerWorkspaceCandidateItem? GetMainViewerCandidate(string? contentId) =>
+        MainViewerCandidates.FirstOrDefault(candidate =>
             string.Equals(candidate.Id, contentId, StringComparison.OrdinalIgnoreCase));
 
     public Task EnsureHeightImageSourceAsync() =>
@@ -347,6 +406,15 @@ public sealed partial class ToolWorkbenchViewModel
         openHeightImageCommand = new RelayCommand(
             _ => OpenHeightImage(),
             _ => GetViewerWorkspaceCandidate(HeightImageViewerContentId) is not null);
+        clearMainViewerPinCommand = new RelayCommand(
+            _ => ViewerWorkspace.ClearMainContent(),
+            _ => ViewerWorkspace.IsMainContentPinned);
+        clearAuxiliaryViewerPinCommand = new RelayCommand(
+            _ => ViewerWorkspace.ClearAuxiliaryContent(),
+            _ => ViewerWorkspace.IsAuxiliaryContentPinned);
+        toggleViewerCameraLinkCommand = new RelayCommand(
+            _ => ToggleViewerCameraLink(),
+            _ => ViewerWorkspace.IsCameraLinked || CanLinkViewerCameras);
         focusViewerWorkspaceSlotCommand = new RelayCommand(
             parameter => FocusViewerWorkspaceSlot(parameter as string),
             parameter => parameter is string slotId
@@ -411,6 +479,18 @@ public sealed partial class ToolWorkbenchViewModel
         RaiseViewerWorkspaceCanExecuteChanged();
     }
 
+    private void ToggleViewerCameraLink()
+    {
+        if (ViewerWorkspace.IsCameraLinked)
+        {
+            ViewerWorkspace.SetCameraLinked(false);
+        }
+        else if (CanLinkViewerCameras)
+        {
+            ViewerWorkspace.SetCameraLinked(true);
+        }
+    }
+
     private string? GetPreferredViewerWorkspaceContentId(
         IReadOnlyList<ViewerWorkspaceCandidateItem> available,
         bool preferHeightImage)
@@ -433,6 +513,12 @@ public sealed partial class ToolWorkbenchViewModel
     {
         var available = ViewerWorkspaceCandidates;
         var preferred = GetPreferredViewerWorkspaceContentId(available, preferHeightImage);
+        var mainCandidates = available
+            .Where(candidate => candidate.Kind == ViewerWorkspaceCandidateKind.ThreeDArtifact)
+            .ToArray();
+        ViewerWorkspace.ReconcileMainContent(
+            mainCandidates.Select(candidate => candidate.Id),
+            GetPreferredMainViewerContentId(mainCandidates));
 
         if (preferHeightImage && !string.IsNullOrWhiteSpace(preferred))
         {
@@ -445,6 +531,8 @@ public sealed partial class ToolWorkbenchViewModel
                 preferred);
         }
         OnPropertyChanged(nameof(ViewerWorkspaceCandidates));
+        OnPropertyChanged(nameof(MainViewerCandidates));
+        OnPropertyChanged(nameof(MainViewerSummary));
         OnPropertyChanged(nameof(AuxiliaryViewerSummary));
         RaiseViewerWorkspaceCanExecuteChanged();
     }
@@ -456,10 +544,25 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSplitVerticalViewerLayout));
         OnPropertyChanged(nameof(IsSplitHorizontalViewerLayout));
         OnPropertyChanged(nameof(IsPopOutViewerLayout));
-        if (args.PropertyName == nameof(ViewerWorkspaceSession.AuxiliaryContentId))
+        if (args.PropertyName is nameof(ViewerWorkspaceSession.MainContentId)
+            or nameof(ViewerWorkspaceSession.IsMainContentPinned)
+            or nameof(ViewerWorkspaceSession.IsMainContentExplicitlyCleared)
+            or nameof(ViewerWorkspaceSession.AuxiliaryContentId)
+            or nameof(ViewerWorkspaceSession.IsAuxiliaryContentPinned)
+            or nameof(ViewerWorkspaceSession.IsAuxiliaryContentExplicitlyCleared)
+            or nameof(ViewerWorkspaceSession.IsCameraLinked))
         {
+            OnPropertyChanged(nameof(MainViewerContentId));
+            OnPropertyChanged(nameof(MainViewerSummary));
             OnPropertyChanged(nameof(AuxiliaryViewerContentId));
             OnPropertyChanged(nameof(AuxiliaryViewerSummary));
+            OnPropertyChanged(nameof(IsViewerCameraLinked));
+            OnPropertyChanged(nameof(CanLinkViewerCameras));
+            OnPropertyChanged(nameof(ViewerCameraLinkLabel));
+            OnPropertyChanged(nameof(ViewerCameraLinkSummary));
+            clearMainViewerPinCommand?.RaiseCanExecuteChanged();
+            clearAuxiliaryViewerPinCommand?.RaiseCanExecuteChanged();
+            toggleViewerCameraLinkCommand?.RaiseCanExecuteChanged();
         }
     }
 
@@ -471,11 +574,22 @@ public sealed partial class ToolWorkbenchViewModel
             or nameof(ThreeDLocalization.ViewerSplitHorizontal)
             or nameof(ThreeDLocalization.ViewerPopOut)
             or nameof(ThreeDLocalization.ViewerAuxiliaryNoOutput)
-            or nameof(ThreeDLocalization.HeightImage))
+            or nameof(ThreeDLocalization.ViewerMainNoOutput)
+            or nameof(ThreeDLocalization.ViewerPinnedUnavailable)
+            or nameof(ThreeDLocalization.HeightImage)
+            or nameof(ThreeDLocalization.ViewerCameraLink)
+            or nameof(ThreeDLocalization.ViewerCameraUnlink)
+            or nameof(ThreeDLocalization.ViewerCameraLinked)
+            or nameof(ThreeDLocalization.ViewerCameraLinkSummary)
+            or nameof(ThreeDLocalization.ViewerCameraLinkUnavailable))
         {
             OnPropertyChanged(nameof(ViewerWorkspaceLayoutSummary));
+            OnPropertyChanged(nameof(MainViewerSummary));
             OnPropertyChanged(nameof(AuxiliaryViewerSummary));
+            OnPropertyChanged(nameof(MainViewerCandidates));
             OnPropertyChanged(nameof(ViewerWorkspaceCandidates));
+            OnPropertyChanged(nameof(ViewerCameraLinkLabel));
+            OnPropertyChanged(nameof(ViewerCameraLinkSummary));
         }
     }
 
@@ -486,6 +600,16 @@ public sealed partial class ToolWorkbenchViewModel
         popOutViewerCommand?.RaiseCanExecuteChanged();
         openHeightImageCommand?.RaiseCanExecuteChanged();
         focusViewerWorkspaceSlotCommand?.RaiseCanExecuteChanged();
+        clearMainViewerPinCommand?.RaiseCanExecuteChanged();
+        clearAuxiliaryViewerPinCommand?.RaiseCanExecuteChanged();
+        toggleViewerCameraLinkCommand?.RaiseCanExecuteChanged();
+    }
+
+    private static string? GetPreferredMainViewerContentId(
+        IReadOnlyList<ViewerWorkspaceCandidateItem> available)
+    {
+        return available.FirstOrDefault(candidate => candidate.IsSource)?.Id
+            ?? available.FirstOrDefault()?.Id;
     }
 }
 

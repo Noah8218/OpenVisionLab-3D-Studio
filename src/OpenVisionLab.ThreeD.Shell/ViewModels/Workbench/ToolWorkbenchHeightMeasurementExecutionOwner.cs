@@ -14,6 +14,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
     private readonly Func<string> getSourceEntityId;
     private readonly Func<string, C3DHeightFieldSnapshot?> getPublishedCroppedHeightField;
     private readonly Func<string, C3DTransformedHeightField?> getPublishedHeightField;
+    private readonly Func<string, C3DEditableRegionArtifact?> getPublishedEditableRegion;
     private readonly Func<string, ToolWorkbenchPipelineStepItem?> findStepByOutputEntityId;
     private readonly Func<ToolRecipeDocument> createDocument;
     private readonly Action<string, string> appendLog;
@@ -36,6 +37,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         Func<string> getSourceEntityId,
         Func<string, C3DHeightFieldSnapshot?> getPublishedCroppedHeightField,
         Func<string, C3DTransformedHeightField?> getPublishedHeightField,
+        Func<string, C3DEditableRegionArtifact?> getPublishedEditableRegion,
         Func<string, ToolWorkbenchPipelineStepItem?> findStepByOutputEntityId,
         Func<ToolRecipeDocument> createDocument,
         Action<string, string> appendLog,
@@ -49,6 +51,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         this.getSourceEntityId = getSourceEntityId;
         this.getPublishedCroppedHeightField = getPublishedCroppedHeightField;
         this.getPublishedHeightField = getPublishedHeightField;
+        this.getPublishedEditableRegion = getPublishedEditableRegion;
         this.findStepByOutputEntityId = findStepByOutputEntityId;
         this.createDocument = createDocument;
         this.appendLog = appendLog;
@@ -94,6 +97,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
                     step.Id,
                     GetCurrentCroppedHeightField(),
                     GetCurrentTransformedHeightField(),
+                    GetCurrentEditableRegion(),
                     GetRecipeDirectory(),
                     previewCancellation.Token),
                 previewCancellation.Token);
@@ -140,6 +144,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
             step.Id,
             GetCurrentCroppedHeightField(),
             GetCurrentTransformedHeightField(),
+            GetCurrentEditableRegion(),
             GetRecipeDirectory(),
             out _,
             out _);
@@ -230,6 +235,7 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
                 step.Id,
                 GetCurrentCroppedHeightField(),
                 GetCurrentTransformedHeightField(),
+                GetCurrentEditableRegion(),
                 GetRecipeDirectory(),
                 out _,
                 out var message))
@@ -273,6 +279,18 @@ internal sealed class ToolWorkbenchHeightMeasurementExecutionOwner
         }
 
         return getPublishedCroppedHeightField(step.InputEntityIds[0]);
+    }
+
+    private C3DEditableRegionArtifact? GetCurrentEditableRegion()
+    {
+        if (getSelectedPipelineStep() is not { } step
+            || !string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal)
+            || step.InputEntityIds.Count < 3)
+        {
+            return null;
+        }
+
+        return getPublishedEditableRegion(step.InputEntityIds[2]);
     }
 
     private string? GetRecipeDirectory()

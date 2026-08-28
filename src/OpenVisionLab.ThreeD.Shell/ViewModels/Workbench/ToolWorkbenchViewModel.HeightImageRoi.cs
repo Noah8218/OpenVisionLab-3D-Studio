@@ -68,7 +68,7 @@ public sealed partial class ToolWorkbenchViewModel
     {
         var overlays = new List<HeightImageRoiOverlayItem>();
         var activeRole = GetInspectionWorkspaceRegionRole();
-        if (IsSelectedStepDualRoiMeasurement)
+        if (IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion)
         {
             AddHeightImageRoiOverlay(
                 overlays,

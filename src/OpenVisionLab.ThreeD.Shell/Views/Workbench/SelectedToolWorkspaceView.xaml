@@ -266,7 +266,7 @@
                         BorderBrush="{DynamicResource ThreeD.AccentBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}"
+                        Visibility="{Binding IsSelectedStepDualRoiTeaching, Converter={StaticResource BoolToVisibilityConverter}}"
                         AutomationProperties.AutomationId="SelectedToolSetupCard">
                     <StackPanel>
                         <Grid>
@@ -576,7 +576,7 @@
                                 <MultiDataTrigger>
                                     <MultiDataTrigger.Conditions>
                                         <Condition Binding="{Binding HasSelectedStepFlowProblem}" Value="True" />
-                                        <Condition Binding="{Binding IsSelectedStepDualRoiMeasurement}" Value="False" />
+                                        <Condition Binding="{Binding IsSelectedStepDualRoiTeaching}" Value="False" />
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible" />
                                 </MultiDataTrigger>
@@ -629,6 +629,22 @@
                                        FontSize="9.5"
                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
                                        Text="{Binding SelectedToolWorkspace.State}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       TextWrapping="Wrap">
+                                <Run Text="{Binding Localization.SelectedToolStateLabel, Mode=OneWay}" />
+                                <Run Text=": " />
+                                <Run Text="{Binding SelectedToolWorkspace.CommonState, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Margin="0,1,0,0"
+                                       FontSize="9"
+                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                       TextWrapping="Wrap">
+                                <Run Text="{Binding Localization.SelectedToolOutputPolicyLabel, Mode=OneWay}" />
+                                <Run Text=": " />
+                                <Run Text="{Binding SelectedToolWorkspace.OutputPolicy, Mode=OneWay}" />
+                            </TextBlock>
                         </StackPanel>
                         <ui:Button Grid.Column="1"
                                    Margin="7,0,0,0"
@@ -649,8 +665,14 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
-                        AutomationProperties.AutomationId="SelectedToolActionBar">
+                    AutomationProperties.AutomationId="SelectedToolActionBar">
                     <StackPanel Orientation="Horizontal">
+                        <CheckBox Margin="0,0,10,0"
+                                  VerticalAlignment="Center"
+                                  Content="{views:ThreeDText Key=ThreeD.Workspace.OutputEnabled, Korean='출력 생성', English='Output enabled'}"
+                                  IsChecked="{Binding SelectedPipelineStep.OutputEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  ToolTip="{views:ThreeDText Key=ThreeD.Workspace.OutputEnabledTip, Korean='끄면 출력은 레시피에 선언된 상태로 남고 실행 결과나 증거를 만들지 않습니다.', English='When off, the output remains declared in the recipe but is not executed or fabricated as evidence.'}"
+                                  AutomationProperties.AutomationId="SelectedToolOutputEnabledToggle" />
                         <ui:Button x:Name="PreviewActionButton"
                                    Width="34"
                                    Height="30"
@@ -890,6 +912,16 @@
                                    TextWrapping="Wrap" />
                         <TextBlock Margin="0,2,0,0"
                                    FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                   Text="{Binding LevelSurfaceFrameSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                   Text="{Binding LevelSurfaceFrameChainSummary}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0"
+                                   FontSize="9"
                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"
                                    Text="{Binding LevelSurfaceOutputSummary}"
                                    TextWrapping="Wrap" />
@@ -1094,7 +1126,7 @@
                                 BorderBrush="{DynamicResource ThreeD.AccentBrush}"
                                 BorderThickness="1"
                                 CornerRadius="3"
-                                Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Visibility="{Binding IsSelectedStepDualRoiTeaching, Converter={StaticResource BoolToVisibilityConverter}}"
                                 AutomationProperties.AutomationId="ActiveRoiLifecycleSummary">
                             <StackPanel>
                                 <Grid>
@@ -1373,7 +1405,7 @@
                             </StackPanel>
                         </Border>
 
-                        <StackPanel Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Visibility="{Binding IsSelectedStepDualRoiTeaching, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Border>
                                 <Border.Style>
                                     <Style TargetType="Border" BasedOn="{StaticResource RegionCardStyle}">
@@ -1527,7 +1559,7 @@
                                         <DataTrigger Binding="{Binding IsSelectedStepViewerCaptureSupported}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsSelectedStepDualRoiMeasurement}" Value="True">
+                                        <DataTrigger Binding="{Binding IsSelectedStepDualRoiTeaching}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -2240,13 +2272,43 @@
                 <Expander Margin="0,0,0,7"
                           IsExpanded="False"
                           Header="{views:ThreeDText Key=ThreeD.Workspace.Help, Korean='도움말', English='Help'}">
-                    <TextBlock Margin="0,5,0,0"
-                               Padding="8"
-                               Background="{DynamicResource ThreeD.PanelAlternateBrush}"
-                               FontSize="9.5"
-                               Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                               Text="{Binding SelectedToolWorkspace.Help}"
-                               TextWrapping="Wrap" />
+                    <StackPanel>
+                        <TextBlock Margin="0,5,0,0"
+                                   Padding="8"
+                                   Background="{DynamicResource ThreeD.PanelAlternateBrush}"
+                                   FontSize="9.5"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding SelectedToolWorkspace.Help}"
+                                   TextWrapping="Wrap" />
+                        <Border Margin="0,6,0,0"
+                                Padding="8"
+                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <StackPanel>
+                                <TextBlock FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                           Text="{Binding Localization.SelectedToolExampleLabel}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="9.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding SelectedToolWorkspace.Example}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Margin="0,6,0,0"
+                                           FontSize="9.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                           Text="{Binding Localization.SelectedToolExpectedOverlayLabel}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           FontSize="9.5"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding SelectedToolWorkspace.ExpectedOverlay}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Expander>
             </StackPanel>
         </ScrollViewer>

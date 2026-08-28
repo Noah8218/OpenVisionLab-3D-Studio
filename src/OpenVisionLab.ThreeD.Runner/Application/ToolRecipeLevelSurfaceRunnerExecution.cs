@@ -15,7 +15,9 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
                 document, stepId, Path.GetDirectoryName(fullRecipePath));
             if (evaluation.Result.Status != ResultStatus.Pass
                 || evaluation.Output is null
-                || evaluation.Transform is null)
+                || evaluation.Transform is null
+                || evaluation.LevelFrame is null
+                || evaluation.FrameChain is null)
             {
                 throw new InvalidDataException($"Runner Level Surface failed: {evaluation.Result.Message}");
             }
@@ -60,6 +62,57 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
                     matrix = evaluation.Transform.Matrix.Values,
                     referenceRegions = evaluation.Transform.ReferenceRegions
                 },
+                levelFrame = new
+                {
+                    contractVersion = C3DLevelFrameArtifact.ContractVersion,
+                    id = evaluation.LevelFrame.OutputEntityId,
+                    frameId = evaluation.LevelFrame.LevelFrameId,
+                    evaluation.LevelFrame.ContentSha256,
+                    evaluation.LevelFrame.RootSourceEntityId,
+                    evaluation.LevelFrame.RootSourceSha256,
+                    evaluation.LevelFrame.SourceUnit,
+                    evaluation.LevelFrame.SourceFrameId,
+                    evaluation.LevelFrame.LevelingTransformEntityId,
+                    evaluation.LevelFrame.LevelingTransformContentSha256,
+                    evaluation.LevelFrame.FittedSlopeX,
+                    evaluation.LevelFrame.FittedSlopeZ,
+                    evaluation.LevelFrame.FittedIntercept,
+                    evaluation.LevelFrame.TargetHeight,
+                    evaluation.LevelFrame.ReferenceSampleCount,
+                    evaluation.LevelFrame.ReferenceResidualRms,
+                    evaluation.LevelFrame.ReferenceResidualPeakToValley,
+                    origin = new
+                    {
+                        evaluation.LevelFrame.Origin.X,
+                        evaluation.LevelFrame.Origin.Y,
+                        evaluation.LevelFrame.Origin.Z
+                    },
+                    uAxis = new
+                    {
+                        evaluation.LevelFrame.UAxis.X,
+                        evaluation.LevelFrame.UAxis.Y,
+                        evaluation.LevelFrame.UAxis.Z
+                    },
+                    vAxis = new
+                    {
+                        evaluation.LevelFrame.VAxis.X,
+                        evaluation.LevelFrame.VAxis.Y,
+                        evaluation.LevelFrame.VAxis.Z
+                    },
+                    hAxis = new
+                    {
+                        evaluation.LevelFrame.HAxis.X,
+                        evaluation.LevelFrame.HAxis.Y,
+                        evaluation.LevelFrame.HAxis.Z
+                    },
+                    matrix = evaluation.LevelFrame.SourceToFrame.Values,
+                    referenceRegions = evaluation.LevelFrame.ReferenceRegions,
+                    framePolicy = C3DLevelFrameArtifact.FramePolicy,
+                    axisConvention = C3DLevelFrameArtifact.AxisConvention,
+                    originPolicy = C3DLevelFrameArtifact.OriginPolicy
+                },
+                qualityEvidence = evaluation.QualityEvidence,
+                frameChain = evaluation.FrameChain,
                 result = evaluation.Result,
                 outputReferenceSlopeX = evaluation.OutputReferenceSlopeX,
                 outputReferenceSlopeZ = evaluation.OutputReferenceSlopeZ
@@ -71,6 +124,7 @@ internal static class ToolRecipeLevelSurfaceRunnerExecution
             Console.WriteLine($"Leveled output: {Path.GetFullPath(outputC3DPath)}");
             Console.WriteLine($"Output SHA-256: {evaluation.Output.ContentSha256}");
             Console.WriteLine($"Leveling transform SHA-256: {evaluation.Transform.ContentSha256}");
+            Console.WriteLine($"Frame chain SHA-256: {evaluation.FrameChain.ContentSha256}");
             return 0;
         }
         catch (Exception exception) when (

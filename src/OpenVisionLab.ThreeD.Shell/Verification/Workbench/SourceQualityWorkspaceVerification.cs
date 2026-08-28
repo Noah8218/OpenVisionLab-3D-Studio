@@ -29,10 +29,15 @@ internal static class SourceQualityWorkspaceVerification
             .GetAwaiter()
             .GetResult();
         var errorViewRuntime = VerifyErrorDiagnosticViewRuntime(reportPath);
-        var passed = result.Passed + (errorViewRuntime.Passed ? 1 : 0);
-        var total = result.Total + 1;
+        var acquisitionFlagsRuntime = VerifyAcquisitionFlagsViewRuntime(reportPath);
+        var passed = result.Passed
+            + (errorViewRuntime.Passed ? 1 : 0)
+            + (acquisitionFlagsRuntime.Passed ? 1 : 0);
+        var total = result.Total + 2;
         result.Lines.Add(
             $"{(errorViewRuntime.Passed ? "PASS" : "FAIL")} | actual-wpf-error-row-resolves-semantic-trigger-and-long-binding | {errorViewRuntime.Detail}");
+        result.Lines.Add(
+            $"{(acquisitionFlagsRuntime.Passed ? "PASS" : "FAIL")} | actual-wpf-acquisition-flags-render-and-two-way-bind | {acquisitionFlagsRuntime.Detail}");
         var passedAll = passed == total;
         result.Lines.Add($"Result={(passedAll ? "PASS" : "FAIL")}|{passed}/{total}");
         var fullReportPath = Path.GetFullPath(reportPath);
@@ -534,6 +539,141 @@ internal static class SourceQualityWorkspaceVerification
             return new(
                 passed,
                 $"apartment=STA|visible={errorRow.IsVisible}|size={errorRow.ActualWidth:0.###}x{errorRow.ActualHeight:0.###}|background={DescribeBrush(errorRow.Background)}|border={DescribeBrush(errorRow.BorderBrush)}|icon={icon?.Symbol}|iconBrush={DescribeBrush(icon?.Foreground)}|state={stateText?.Text}|stateBrush={DescribeBrush(stateText?.Foreground)}|evidenceLength={evidenceText?.Text.Length ?? 0}|wrap={evidenceText?.TextWrapping}|evidenceSize={evidenceText?.ActualWidth:0.###}x{evidenceText?.ActualHeight:0.###}|screenshot={screenshotPath}");
+        }
+        catch (Exception exception)
+        {
+            return new(false, $"{exception.GetType().Name}: {exception.Message}");
+        }
+        finally
+        {
+            host?.Close();
+            application.ShutdownMode = originalShutdownMode;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+        }
+    }
+
+    private static ErrorDiagnosticViewRuntimeResult VerifyAcquisitionFlagsViewRuntime(
+        string reportPath)
+    {
+        if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
+        {
+            return new(
+                false,
+                $"apartment={Thread.CurrentThread.GetApartmentState()}|expected=STA");
+        }
+
+        var originalLanguage = OpenVisionLanguageService.CurrentLanguage;
+        var application = Application.Current;
+        if (application is null)
+        {
+            return new(false, "application=null");
+        }
+
+        var originalShutdownMode = application.ShutdownMode;
+        Window? host = null;
+        try
+        {
+            application.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var viewModel = new SourceQualityWorkspaceViewModel(ThreeDLocalization.Shared);
+            viewModel.LoadAcquisitionProvenance(
+                new ToolRecipeAcquisitionProvenance(
+                    ToolRecipeAcquisitionProvenanceState.Available,
+                    "Operator-confirmed reflective source with explicit coverage limitation.",
+                    "Reflective surface; low coverage is retained as an operator limitation.",
+                    ToolRecipeAcquisitionDirection.CreateUnavailable("frame.c3d-grid-index"),
+                    [
+                        new(
+                            ToolRecipeAcquisitionLimitationKind.Reflective,
+                            ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored),
+                        new(
+                            ToolRecipeAcquisitionLimitationKind.LowCoverage,
+                            ToolRecipeAcquisitionLimitationOrigin.Imported)
+                    ]),
+                "frame.c3d-grid-index");
+            var view = new SourceQualityWorkspaceView
+            {
+                Width = 520,
+                Height = 900,
+                DataContext = viewModel
+            };
+            host = new Window
+            {
+                Width = 520,
+                Height = 900,
+                Left = SystemParameters.VirtualScreenLeft,
+                Top = SystemParameters.VirtualScreenTop,
+                Content = view,
+                Opacity = 0.01,
+                ShowActivated = false,
+                ShowInTaskbar = false,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.None
+            };
+            host.Show();
+            host.UpdateLayout();
+            view.UpdateLayout();
+
+            var checkBoxes = FindVisualDescendants<CheckBox>(view)
+                .Where(checkBox => !string.IsNullOrWhiteSpace(
+                    AutomationProperties.GetAutomationId(checkBox)))
+                .ToDictionary(
+                    checkBox => AutomationProperties.GetAutomationId(checkBox),
+                    StringComparer.Ordinal);
+            var flagIds = new[]
+            {
+                "SourceAcquisitionFlagReflective",
+                "SourceAcquisitionFlagTransparent",
+                "SourceAcquisitionFlagTextureless",
+                "SourceAcquisitionFlagClipped",
+                "SourceAcquisitionFlagLowCoverage"
+            };
+            var allRendered = flagIds.All(checkBoxes.ContainsKey)
+                && checkBoxes.Values.All(checkBox =>
+                    checkBox.IsVisible
+                    && checkBox.ActualWidth > 0
+                    && checkBox.ActualHeight > 0);
+            var initialBinding = checkBoxes["SourceAcquisitionFlagReflective"].IsChecked == true
+                && checkBoxes["SourceAcquisitionFlagLowCoverage"].IsChecked == true
+                && checkBoxes["SourceAcquisitionFlagTransparent"].IsChecked != true
+                && checkBoxes["SourceAcquisitionFlagTextureless"].IsChecked != true
+                && checkBoxes["SourceAcquisitionFlagClipped"].IsChecked != true;
+
+            checkBoxes["SourceAcquisitionFlagReflective"].IsChecked = false;
+            checkBoxes["SourceAcquisitionFlagTransparent"].IsChecked = true;
+            checkBoxes["SourceAcquisitionFlagLowCoverage"].IsChecked = false;
+            view.UpdateLayout();
+            var twoWayBinding = !viewModel.IsAcquisitionReflectiveFlagDraft
+                && viewModel.IsAcquisitionTransparentFlagDraft
+                && !viewModel.IsAcquisitionLowCoverageFlagDraft
+                && viewModel.HasPendingAcquisitionProvenanceChanges;
+
+            var flagsPanel = FindVisualDescendants<WrapPanel>(view).SingleOrDefault(panel =>
+                AutomationProperties.GetAutomationId(panel)
+                == "SourceAcquisitionLimitationFlags");
+            var provenanceEditor = FindVisualDescendants<Border>(view).SingleOrDefault(border =>
+                AutomationProperties.GetAutomationId(border)
+                == "SourceAcquisitionProvenanceEditor");
+            var screenshotPath = Path.Combine(
+                Path.GetDirectoryName(Path.GetFullPath(reportPath))
+                    ?? Environment.CurrentDirectory,
+                "acquisition-flags",
+                "source-acquisition-flags.png");
+            if (provenanceEditor is not null)
+            {
+                WpfScreenshotCapture.Save(
+                    WpfScreenshotCapture.Capture(provenanceEditor).Bitmap,
+                    screenshotPath);
+            }
+
+            var passed = allRendered
+                && initialBinding
+                && twoWayBinding
+                && flagsPanel is not null
+                && provenanceEditor is not null;
+            return new(
+                passed,
+                $"apartment=STA|rendered={allRendered}|initial={initialBinding}|twoWay={twoWayBinding}|panel={flagsPanel is not null}|editor={provenanceEditor is not null}|screenshot={screenshotPath}");
         }
         catch (Exception exception)
         {

@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -35,6 +37,23 @@ public sealed partial class ToolWorkbenchViewModel
     public string CompareSlotASummary => outputCompareSession.CompareSlotASummary;
     public string CompareSlotBSummary => outputCompareSession.CompareSlotBSummary;
     public string CompareSlotCSummary => outputCompareSession.CompareSlotCSummary;
+    public string CompareSlotAQualitySummary => GetCompareSlotQualitySummary(CompareSlotAArtifactId);
+    public string CompareSlotBQualitySummary => GetCompareSlotQualitySummary(CompareSlotBArtifactId);
+    public string CompareSlotCQualitySummary => GetCompareSlotQualitySummary(CompareSlotCArtifactId);
+    public bool HasCompareSlotAQualitySummary => HasCompareSlotQualitySummary(CompareSlotAArtifactId);
+    public bool HasCompareSlotBQualitySummary => HasCompareSlotQualitySummary(CompareSlotBArtifactId);
+    public bool HasCompareSlotCQualitySummary => HasCompareSlotQualitySummary(CompareSlotCArtifactId);
+    public string PreparationQualityComparisonSummary =>
+        TryGetCurrentPreparationQualityComparison(out var source, out var prepared, out _)
+            ? string.Format(
+                CultureInfo.InvariantCulture,
+                Localization.OutputComparePreparationQualitySummaryFormat,
+                source.DisplayName,
+                prepared.DisplayName,
+                GetCompareSlotQualitySummary(prepared.Id))
+            : string.Empty;
+    public bool HasPreparationQualityComparisonSummary =>
+        TryGetCurrentPreparationQualityComparison(out _, out _, out _);
 
     public ToolWorkbenchCompareCandidateItem? GetCompareCandidate(string? artifactId) =>
         outputCompareSession.GetCompareCandidate(artifactId);
@@ -43,10 +62,25 @@ public sealed partial class ToolWorkbenchViewModel
     {
         outputCompareSession.PropertyChanged += OnOutputCompareSessionPropertyChanged;
         outputCompareSession.PinsChanged += (_, _) => RefreshDisplayedOutputPresentation();
+        Localization.PropertyChanged += OnOutputCompareLocalizationChanged;
     }
 
-    private void OnOutputCompareSessionPropertyChanged(object? sender, PropertyChangedEventArgs args) =>
+    private void OnOutputCompareSessionPropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
         OnPropertyChanged(args.PropertyName);
+        if (args.PropertyName is nameof(CompareSlotAArtifactId)
+            or nameof(CompareSlotBArtifactId)
+            or nameof(CompareSlotCArtifactId))
+        {
+            NotifyCompareSlotQualityPresentation();
+        }
+    }
+
+    private void OnOutputCompareLocalizationChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        RefreshCompareSlotSummaries();
+        NotifyCompareSlotQualityPresentation();
+    }
 
     private void RebuildOutputCompareCandidates()
     {
@@ -98,7 +132,8 @@ public sealed partial class ToolWorkbenchViewModel
                 filter.State,
                 filterPreviewPath,
                 filter.Detail,
-                false));
+                false,
+                filter.PreparationQualityDelta));
         }
 
         var outlierPreviewPath = CurrentRemoveOutlierPreviewPath;
@@ -118,7 +153,29 @@ public sealed partial class ToolWorkbenchViewModel
                 outlierArtifact.State,
                 outlierPreviewPath,
                 outlierArtifact.Detail,
-                false));
+                false,
+                outlierArtifact.PreparationQualityDelta));
+        }
+
+        var domainMaskPreviewPath = CurrentDomainMaskPreviewPath;
+        if (HasCurrentDomainMaskPreview
+            && !string.IsNullOrWhiteSpace(domainMaskPreviewPath)
+            && File.Exists(domainMaskPreviewPath)
+            && CurrentDomainMaskPreviewOutput is { } domainMaskOutput
+            && ArtifactRegistry.FirstOrDefault(item => string.Equals(
+                item.Id,
+                domainMaskOutput.EntityId,
+                StringComparison.OrdinalIgnoreCase)) is { } domainMaskArtifact)
+        {
+            candidates.Add(new ToolWorkbenchCompareCandidateItem(
+                domainMaskArtifact.Id,
+                domainMaskArtifact.DisplayName,
+                domainMaskArtifact.Contract,
+                domainMaskArtifact.State,
+                domainMaskPreviewPath,
+                domainMaskArtifact.Detail,
+                false,
+                domainMaskArtifact.PreparationQualityDelta));
         }
 
         var levelSurfacePreviewPath = CurrentLevelSurfacePreviewPath;
@@ -138,7 +195,8 @@ public sealed partial class ToolWorkbenchViewModel
                 levelArtifact.State,
                 levelSurfacePreviewPath,
                 levelArtifact.Detail,
-                false));
+                false,
+                levelArtifact.PreparationQualityDelta));
         }
 
         var roiCropPreviewPath = CurrentRoiCropPreviewPath;
@@ -158,7 +216,8 @@ public sealed partial class ToolWorkbenchViewModel
                 cropArtifact.State,
                 roiCropPreviewPath,
                 cropArtifact.Detail,
-                false));
+                false,
+                cropArtifact.PreparationQualityDelta));
         }
 
         outputCompareSession.ReplaceCandidates(candidates, Localization.OutputCompareNoSelection);
@@ -171,6 +230,155 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshCompareSlotSummaries() =>
         outputCompareSession.RefreshSummaries(Localization.OutputCompareNoSelection);
+
+    /// <summary>
+    /// Normalizes one current preparation artifact into the existing read-only
+    /// source/output comparison surface. No authored recipe state is changed.
+    /// </summary>
+    internal bool TryOpenPreparationQualityComparison(ToolWorkbenchDisplayedOutputItem? item)
+    {
+        if (item is null
+            || GetCompareCandidate(item.Id) is not { } prepared
+            || !TryGetCurrentPreparationQualityDelta(prepared, out _)
+            || GetCompareCandidate(Source.Id) is not { IsSource: true } source)
+        {
+            return false;
+        }
+
+        if (!ViewerWorkspace.TrySetLayout(
+                ViewerWorkspaceLayout.SplitVertical,
+                ViewerWorkspaceCandidates.Select(candidate => candidate.Id),
+                source.Id))
+        {
+            return false;
+        }
+
+        MainViewerContentId = source.Id;
+        AuxiliaryViewerContentId = prepared.Id;
+        CompareSlotAArtifactId = source.Id;
+        CompareSlotBArtifactId = prepared.Id;
+        CompareSlotCArtifactId = string.Empty;
+        OutputComparePaneRequested?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private string GetCompareSlotQualitySummary(string? artifactId)
+    {
+        var candidate = GetCompareCandidate(artifactId);
+        if (candidate is null)
+        {
+            return string.Empty;
+        }
+
+        if (candidate.IsSource)
+        {
+            return Localization.OutputCompareSourceBaseline;
+        }
+
+        return TryGetCurrentPreparationQualityDelta(candidate, out var delta)
+            ? string.Format(
+                CultureInfo.InvariantCulture,
+                Localization.OutputCompareQualityDeltaSummaryFormat,
+                delta.BeforeValidSampleCount,
+                delta.BeforeMissingSampleCount,
+                delta.AfterValidSampleCount,
+                FormatSigned(delta.ValidSampleDelta),
+                delta.AfterMissingSampleCount,
+                FormatSigned(delta.MissingSampleDelta),
+                DescribeOutliers(delta),
+                Localization.OutputCompareSourceIdentityRetained)
+            : string.Empty;
+    }
+
+    private bool HasCompareSlotQualitySummary(string? artifactId)
+    {
+        var candidate = GetCompareCandidate(artifactId);
+        return candidate?.IsSource == true
+            || TryGetCurrentPreparationQualityDelta(candidate, out _);
+    }
+
+    private bool TryGetCurrentPreparationQualityComparison(
+        out ToolWorkbenchCompareCandidateItem source,
+        out ToolWorkbenchCompareCandidateItem prepared,
+        out SourceQualityDelta delta)
+    {
+        source = null!;
+        prepared = null!;
+        delta = null!;
+        if (GetCompareCandidate(CompareSlotAArtifactId) is not { IsSource: true } sourceCandidate
+            || !string.Equals(sourceCandidate.Id, Source.Id, StringComparison.OrdinalIgnoreCase)
+            || GetCompareCandidate(CompareSlotBArtifactId) is not { IsSource: false } preparedCandidate
+            || !TryGetCurrentPreparationQualityDelta(preparedCandidate, out var currentDelta)
+            || !string.Equals(currentDelta.SourceEntityId, sourceCandidate.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        source = sourceCandidate;
+        prepared = preparedCandidate;
+        delta = currentDelta;
+        return true;
+    }
+
+    private bool TryGetCurrentPreparationQualityDelta(
+        ToolWorkbenchCompareCandidateItem? candidate,
+        out SourceQualityDelta delta)
+    {
+        delta = null!;
+        if (candidate is not { IsSource: false, PreparationQualityDelta: { } candidateDelta }
+            || string.Equals(candidate.State, "Stale", StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(candidate.C3DPath)
+            || !IsSourceReadyForRecipe
+            || SourceSession.SourceBinding is not { ContentSha256: { Length: > 0 } sourceContentSha256 }
+            || !File.Exists(Source.Path)
+            || GetCompareCandidate(Source.Id) is not { IsSource: true, C3DPath: var sourcePath }
+            || !string.Equals(sourcePath, Source.Path, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(sourcePath))
+        {
+            return false;
+        }
+
+        var artifact = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Id, candidate.Id, StringComparison.OrdinalIgnoreCase));
+        if (artifact is null
+            || string.Equals(artifact.State, "Stale", StringComparison.OrdinalIgnoreCase)
+            || !Equals(artifact.PreparationQualityDelta, candidateDelta)
+            || !string.Equals(candidateDelta.SourceEntityId, Source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(candidateDelta.SourceContentSha256, sourceContentSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(candidateDelta.DerivedEntityId, artifact.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(candidateDelta.DerivedContentSha256, artifact.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(artifact.RootSourceId, Source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(artifact.Unit, Source.Unit, StringComparison.Ordinal)
+            || !string.Equals(artifact.FrameId, Source.FrameId, StringComparison.Ordinal)
+            || !candidateDelta.SourceIdentityRetained)
+        {
+            return false;
+        }
+
+        delta = candidateDelta;
+        return true;
+    }
+
+    private string DescribeOutliers(SourceQualityDelta delta) =>
+        delta.DetectedOutlierCount is { } count
+            ? count.ToString("N0", CultureInfo.InvariantCulture)
+            : Localization.OutputCompareOutliersNotEvaluated;
+
+    private static string FormatSigned(long value) => value > 0
+        ? $"+{value.ToString("N0", CultureInfo.InvariantCulture)}"
+        : value.ToString("N0", CultureInfo.InvariantCulture);
+
+    private void NotifyCompareSlotQualityPresentation()
+    {
+        OnPropertyChanged(nameof(CompareSlotAQualitySummary));
+        OnPropertyChanged(nameof(CompareSlotBQualitySummary));
+        OnPropertyChanged(nameof(CompareSlotCQualitySummary));
+        OnPropertyChanged(nameof(HasCompareSlotAQualitySummary));
+        OnPropertyChanged(nameof(HasCompareSlotBQualitySummary));
+        OnPropertyChanged(nameof(HasCompareSlotCQualitySummary));
+        OnPropertyChanged(nameof(PreparationQualityComparisonSummary));
+        OnPropertyChanged(nameof(HasPreparationQualityComparisonSummary));
+    }
 
     private static string GetValidationSetCompareArtifactId(ValidationSetSampleRow sample) =>
         $"validation.sample.{sample.Order}";
@@ -186,4 +394,5 @@ public sealed record ToolWorkbenchCompareCandidateItem(
     string State,
     string C3DPath,
     string Detail,
-    bool IsSource);
+    bool IsSource,
+    SourceQualityDelta? PreparationQualityDelta = null);

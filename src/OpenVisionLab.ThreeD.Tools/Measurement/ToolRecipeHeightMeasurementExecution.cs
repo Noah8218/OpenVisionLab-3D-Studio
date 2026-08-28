@@ -30,8 +30,7 @@ public sealed record ToolRecipeHeightMeasurementOutput(
     string ContentSha256,
     ToolResult Result,
     string EvidenceSummary,
-    C3DCompletenessGridMetricOutput? CompletenessGrid = null,
-    C3DPresenceCheckOutput? PresenceCheck = null);
+    C3DCompletenessGridMetricOutput? CompletenessGrid = null);
 
 public sealed record ToolRecipeHeightMeasurementEvaluation(
     ToolResult Result,
@@ -65,7 +64,7 @@ public static class ToolRecipeHeightMeasurementExecution
         string stepId,
         string? recipeDirectory = null,
         CancellationToken cancellationToken = default) =>
-        Execute(document, stepId, null, recipeDirectory, cancellationToken);
+        Execute(document, stepId, null, null, null, recipeDirectory, cancellationToken);
 
     public static ToolRecipeHeightMeasurementEvaluation Execute(
         ToolRecipeDocument document,
@@ -73,7 +72,7 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DTransformedHeightField? publishedTransformedHeightField,
         string? recipeDirectory = null,
         CancellationToken cancellationToken = default) =>
-        Execute(document, stepId, null, publishedTransformedHeightField, recipeDirectory, cancellationToken);
+        Execute(document, stepId, null, publishedTransformedHeightField, null, recipeDirectory, cancellationToken);
 
     public static ToolRecipeHeightMeasurementEvaluation Execute(
         ToolRecipeDocument document,
@@ -82,8 +81,33 @@ public static class ToolRecipeHeightMeasurementExecution
         C3DTransformedHeightField? publishedTransformedHeightField,
         string? recipeDirectory = null,
         CancellationToken cancellationToken = default)
+        => Execute(
+            document,
+            stepId,
+            publishedHeightField,
+            publishedTransformedHeightField,
+            null,
+            recipeDirectory,
+            cancellationToken);
+
+    public static ToolRecipeHeightMeasurementEvaluation Execute(
+        ToolRecipeDocument document,
+        string stepId,
+        C3DHeightFieldSnapshot? publishedHeightField,
+        C3DTransformedHeightField? publishedTransformedHeightField,
+        C3DEditableRegionArtifact? publishedEditableRegionArtifact,
+        string? recipeDirectory = null,
+        CancellationToken cancellationToken = default)
     {
-        if (!TryPrepare(document, stepId, publishedHeightField, publishedTransformedHeightField, recipeDirectory, out var prepared, out var message))
+        if (!TryPrepare(
+                document,
+                stepId,
+                publishedHeightField,
+                publishedTransformedHeightField,
+                publishedEditableRegionArtifact,
+                recipeDirectory,
+                out var prepared,
+                out var message))
         {
             var error = new ToolResult("Height measurement", ResultStatus.Error, message, TimeSpan.Zero, [], []);
             return new ToolRecipeHeightMeasurementEvaluation(error, null);
@@ -94,40 +118,7 @@ public static class ToolRecipeHeightMeasurementExecution
         ToolResult result;
         string evidence;
         C3DCompletenessGridMetricOutput? completenessGrid = null;
-        C3DPresenceCheckOutput? presenceCheck = null;
-        if (string.Equals(step.ToolId, "presence-check", StringComparison.Ordinal))
-        {
-            var policy = C3DPresenceCheckPolicy.FromRecipeParameters(
-                step.Parameters ?? []);
-            var evaluation = C3DPresenceCheckRule.Evaluate(
-                new C3DPresenceCheckInput(
-                    step.OutputEntityId,
-                    document.Source.Id,
-                    prepared.InputEntityId,
-                    prepared.InputContentSha256,
-                    prepared.Unit,
-                    prepared.FrameId,
-                    prepared.Width,
-                    prepared.Height,
-                    prepared.Values,
-                    prepared.Selections.Single(),
-                    policy),
-                cancellationToken);
-            if (evaluation.Output is null)
-            {
-                return new ToolRecipeHeightMeasurementEvaluation(
-                    evaluation.Result,
-                    null);
-            }
-
-            presenceCheck = evaluation.Output;
-            result = evaluation.Result;
-            var mean = presenceCheck.Feature.MeanRawHeight is { } value
-                ? value.ToString("G6", CultureInfo.InvariantCulture)
-                : "missing";
-            evidence = $"feature {presenceCheck.Feature.FeatureId} | {presenceCheck.Feature.Decision} | finite coverage {presenceCheck.Feature.FiniteCoverageRatio:P1} | mean raw height {mean} {prepared.Unit} | {presenceCheck.Feature.FiniteCellCount:N0} finite, {presenceCheck.Feature.MissingCellCount:N0} missing cells";
-        }
-        else if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
+        if (string.Equals(step.ToolId, "completeness-grid", StringComparison.Ordinal))
         {
             var profile = C3DCompletenessGridProfile.FromRecipeParameters(
                 step.Parameters ?? []);
@@ -148,7 +139,8 @@ public static class ToolRecipeHeightMeasurementExecution
                     prepared.Selections[0],
                     prepared.Selections[1],
                     profile,
-                    presencePolicy));
+                    presencePolicy,
+                    prepared.InspectionRegionArtifact));
             if (evaluation.Output is null)
             {
                 return new ToolRecipeHeightMeasurementEvaluation(
@@ -383,8 +375,7 @@ public static class ToolRecipeHeightMeasurementExecution
             }
         }
 
-        var hash = presenceCheck?.ContentSha256
-            ?? completenessGrid?.ContentSha256
+        var hash = completenessGrid?.ContentSha256
             ?? CalculateHash(step, prepared.InputContentSha256, prepared.Selections);
         var output = new ToolRecipeHeightMeasurementOutput(
             step.OutputEntityId,
@@ -396,8 +387,7 @@ public static class ToolRecipeHeightMeasurementExecution
             hash,
             result,
             evidence,
-            completenessGrid,
-            presenceCheck);
+            completenessGrid);
         return new ToolRecipeHeightMeasurementEvaluation(result, output);
     }
 
@@ -407,7 +397,7 @@ public static class ToolRecipeHeightMeasurementExecution
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
         out string message) =>
-        TryPrepare(document, stepId, null, recipeDirectory, out prepared, out message);
+        TryPrepare(document, stepId, null, null, null, recipeDirectory, out prepared, out message);
 
     public static bool TryPrepare(
         ToolRecipeDocument document,
@@ -416,13 +406,32 @@ public static class ToolRecipeHeightMeasurementExecution
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
         out string message) =>
-        TryPrepare(document, stepId, null, publishedTransformedHeightField, recipeDirectory, out prepared, out message);
+        TryPrepare(document, stepId, null, publishedTransformedHeightField, null, recipeDirectory, out prepared, out message);
 
     public static bool TryPrepare(
         ToolRecipeDocument document,
         string stepId,
         C3DHeightFieldSnapshot? publishedHeightField,
         C3DTransformedHeightField? publishedTransformedHeightField,
+        string? recipeDirectory,
+        out PreparedHeightMeasurement? prepared,
+        out string message)
+        => TryPrepare(
+            document,
+            stepId,
+            publishedHeightField,
+            publishedTransformedHeightField,
+            null,
+            recipeDirectory,
+            out prepared,
+            out message);
+
+    public static bool TryPrepare(
+        ToolRecipeDocument document,
+        string stepId,
+        C3DHeightFieldSnapshot? publishedHeightField,
+        C3DTransformedHeightField? publishedTransformedHeightField,
+        C3DEditableRegionArtifact? publishedEditableRegionArtifact,
         string? recipeDirectory,
         out PreparedHeightMeasurement? prepared,
         out string message)
@@ -437,7 +446,7 @@ public static class ToolRecipeHeightMeasurementExecution
             var step = document.Steps.SingleOrDefault(candidate =>
                 string.Equals(candidate.Id, stepId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"Inspection recipe must contain exactly one step with ID '{stepId}'.");
-            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check"))
+            if (step.ToolId is not ("thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"))
             {
                 throw new InvalidDataException($"Step '{step.Id}' is not a supported height measurement adapter.");
             }
@@ -454,10 +463,40 @@ public static class ToolRecipeHeightMeasurementExecution
                     ? $"{step.ToolName} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then {(step.ToolId == "completeness-grid" ? "Inspection Grid ROI" : "Measurement ROI")}."
                     : $"{step.ToolName} v1 requires one HeightField first and one GridRectangle second.");
             }
-            var selections = step.InputEntityIds.Skip(1).Select(inputId =>
+            var usesEditableRegionArtifact = step.ToolId == "completeness-grid"
+                && step.InputEntityIds.Count == 3
+                && (document.Selections ?? []).All(selection =>
+                    !string.Equals(selection.Id, step.InputEntityIds[2], StringComparison.OrdinalIgnoreCase));
+            var inspectionRegionArtifact = usesEditableRegionArtifact
+                ? publishedEditableRegionArtifact
+                    ?? throw new InvalidDataException(
+                        $"{step.ToolName} v1 is waiting for its exact EditableRegionArtifact input '{step.InputEntityIds[2]}'.")
+                : null;
+            if (inspectionRegionArtifact is not null
+                && !string.Equals(
+                    inspectionRegionArtifact.ArtifactId,
+                    step.InputEntityIds[2],
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidDataException(
+                    $"{step.ToolName} v1 editable-region input identity does not match '{step.InputEntityIds[2]}'.");
+            }
+
+            var selectionInputIds = usesEditableRegionArtifact
+                ? step.InputEntityIds.Skip(1).Take(1)
+                : step.InputEntityIds.Skip(1);
+            var selections = selectionInputIds.Select(inputId =>
                 (document.Selections ?? []).SingleOrDefault(candidate =>
                     string.Equals(candidate.Id, inputId, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidDataException($"{step.ToolName} v1 requires recipe-owned selection inputs.")).ToArray();
+            if (inspectionRegionArtifact is not null)
+            {
+                selections =
+                [
+                    selections.Single(),
+                    CreateEditableRegionSelection(inspectionRegionArtifact)
+                ];
+            }
             var pointPair = step.ToolId == "point-pair-dimensions";
             if (pointPair
                 ? selections.Length != 1 || selections[0].Kind != ToolRecipeSelectionKinds.PointSet || selections[0].Points?.Count != 2
@@ -493,10 +532,19 @@ public static class ToolRecipeHeightMeasurementExecution
                 var snapshot = C3DHeightFieldSnapshot.LoadVerified(
                     path, source.Id, source.Unit, source.FrameId, source.ByteLength.Value,
                     source.ContentSha256, source.GridWidth.Value, source.GridHeight.Value);
+                ValidateEditableRegionCompatibility(
+                    inspectionRegionArtifact,
+                    step.InputEntityIds[0],
+                    snapshot.ContentSha256,
+                    snapshot.RootSourceSha256,
+                    snapshot.Unit,
+                    snapshot.FrameId,
+                    snapshot.Width,
+                    snapshot.Height);
                 prepared = new PreparedHeightMeasurement(
                     step, selections, snapshot.EntityId, snapshot.ContentSha256, snapshot.Unit, snapshot.FrameId,
                     snapshot.Height, snapshot.Width, snapshot.Values.ToArray(), null,
-                    twoRoi ? rois[0] : null, rois[^1]);
+                    twoRoi ? rois[0] : null, rois[^1], inspectionRegionArtifact);
                 message = twoRoi
                     ? $"{step.ToolName} v1 is ready from the verified raw C3D and ordered Reference/Measurement GridRectangles."
                     : $"{step.ToolName} v1 is ready from the verified raw C3D and source-owned GridRectangle.";
@@ -506,11 +554,20 @@ public static class ToolRecipeHeightMeasurementExecution
             if (publishedHeightField is not null
                 && string.Equals(step.InputEntityIds[0], publishedHeightField.EntityId, StringComparison.OrdinalIgnoreCase))
             {
-                foreach (var selection in selections)
+                foreach (var selection in selections.Take(usesEditableRegionArtifact ? 1 : selections.Length))
                 {
                     var binding = ToolRecipeSelectionSourceBindingVerifier.Verify(publishedHeightField, selection.SourceBinding);
                     if (!binding.IsCurrent) throw new InvalidDataException(binding.Message);
                 }
+                ValidateEditableRegionCompatibility(
+                    inspectionRegionArtifact,
+                    step.InputEntityIds[0],
+                    publishedHeightField.ContentSha256,
+                    publishedHeightField.RootSourceSha256,
+                    publishedHeightField.Unit,
+                    publishedHeightField.FrameId,
+                    publishedHeightField.Width,
+                    publishedHeightField.Height);
                 prepared = new PreparedHeightMeasurement(
                     step,
                     selections,
@@ -523,7 +580,8 @@ public static class ToolRecipeHeightMeasurementExecution
                     publishedHeightField.Values.ToArray(),
                     null,
                     twoRoi ? rois[0] : null,
-                    pointPair ? null : rois[^1]);
+                    pointPair ? null : rois[^1],
+                    inspectionRegionArtifact);
                 message = $"{step.ToolName} v1 is ready from the exact Published HeightField and {selections.Length} artifact-owned selection input(s).";
                 return true;
             }
@@ -533,11 +591,20 @@ public static class ToolRecipeHeightMeasurementExecution
             {
                 throw new InvalidDataException($"{step.ToolName} v1 is waiting for its exact Published compatible HeightField first input.");
             }
-            foreach (var selection in selections)
+            foreach (var selection in selections.Take(usesEditableRegionArtifact ? 1 : selections.Length))
             {
                 var binding = ToolRecipeSelectionSourceBindingVerifier.Verify(publishedTransformedHeightField, selection.SourceBinding);
                 if (!binding.IsCurrent) throw new InvalidDataException(binding.Message);
             }
+            ValidateEditableRegionCompatibility(
+                inspectionRegionArtifact,
+                step.InputEntityIds[0],
+                publishedTransformedHeightField.ContentSha256,
+                publishedTransformedHeightField.RootSourceSha256,
+                publishedTransformedHeightField.ReferenceUnit,
+                publishedTransformedHeightField.ReferenceFrameId,
+                publishedTransformedHeightField.ColumnCount,
+                publishedTransformedHeightField.RowCount);
             prepared = new PreparedHeightMeasurement(
                 step,
                 selections,
@@ -550,7 +617,8 @@ public static class ToolRecipeHeightMeasurementExecution
                 publishedTransformedHeightField.Cells.Select(cell => cell.HasValue ? cell.Height : double.NaN).ToArray(),
                 publishedTransformedHeightField.ReferenceGridProfile,
                 twoRoi ? rois[0] : null,
-                pointPair ? null : rois[^1]);
+                pointPair ? null : rois[^1],
+                inspectionRegionArtifact);
             message = $"{step.ToolName} v1 is ready from the exact Published TransformedHeightField and {selections.Length} artifact-owned selection input(s).";
             return true;
         }
@@ -573,7 +641,60 @@ public static class ToolRecipeHeightMeasurementExecution
         double[] Values,
         C3DReferenceGridProfile? ReferenceGridProfile,
         C3DGridRoi? ReferenceRoi,
-        C3DGridRoi? MeasurementRoi);
+        C3DGridRoi? MeasurementRoi,
+        C3DEditableRegionArtifact? InspectionRegionArtifact);
+
+    private static ToolRecipeSelection CreateEditableRegionSelection(
+        C3DEditableRegionArtifact artifact) =>
+        new(
+            artifact.ArtifactId,
+            artifact.Name,
+            ToolRecipeSelectionKinds.GridRectangle,
+            artifact.SourceEntityId,
+            artifact.FrameId,
+            new ToolRecipeSelectionSourceBinding(
+                "HeightField",
+                artifact.SourceContentSha256,
+                artifact.GridWidth,
+                artifact.GridHeight,
+                artifact.SourceEntityId,
+                artifact.RootSourceSha256,
+                artifact.Unit,
+                artifact.FrameId),
+            new ToolRecipeGridRectangle(
+                artifact.Region.MinimumRow,
+                artifact.Region.MinimumColumn,
+                artifact.Bounding.Height,
+                artifact.Bounding.Width),
+            null,
+            null);
+
+    private static void ValidateEditableRegionCompatibility(
+        C3DEditableRegionArtifact? artifact,
+        string inputEntityId,
+        string inputContentSha256,
+        string rootSourceSha256,
+        string unit,
+        string frameId,
+        int width,
+        int height)
+    {
+        if (artifact is null)
+        {
+            return;
+        }
+        if (!string.Equals(artifact.SourceEntityId, inputEntityId, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(artifact.SourceContentSha256, inputContentSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(artifact.RootSourceSha256, rootSourceSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(artifact.Unit, unit, StringComparison.Ordinal)
+            || !string.Equals(artifact.FrameId, frameId, StringComparison.Ordinal)
+            || artifact.GridWidth != width
+            || artifact.GridHeight != height)
+        {
+            throw new InvalidDataException(
+                "Completeness Grid EditableRegionArtifact does not match its HeightField input identity, grid, unit, or frame.");
+        }
+    }
 
     private static void ValidateParameters(ToolRecipeStep step)
     {
@@ -586,11 +707,10 @@ public static class ToolRecipeHeightMeasurementExecution
             "volume" => VolumeParameterNames,
             "cross-section-dimensions" => CrossSectionParameterNames,
             "completeness-grid" => [],
-            "presence-check" => C3DPresenceCheckPolicy.ParameterNames,
             _ => PlaneFlatnessParameterNames
         };
         var parameters = step.Parameters ?? [];
-        if (step.ToolId is not ("completeness-grid" or "presence-check")
+        if (step.ToolId != "completeness-grid"
             && (parameters.Count != expected.Length
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
@@ -643,11 +763,6 @@ public static class ToolRecipeHeightMeasurementExecution
             _ = C3DCompletenessGridProfile.FromRecipeParameters(
                 step.Parameters ?? []);
             _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
-                step.Parameters ?? []);
-        }
-        else if (step.ToolId == "presence-check")
-        {
-            _ = C3DPresenceCheckPolicy.FromRecipeParameters(
                 step.Parameters ?? []);
         }
         else

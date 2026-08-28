@@ -49,6 +49,17 @@ internal static class RoiCropWorkbenchVerification
                     && tool.OutputContract == "HeightField"),
                 "Prepare -> ROI / Crop -> HeightField");
             Check("open typed recipe", workbench.TryOpenTeachingRecipe(recipePath, out var openMessage), openMessage);
+            workbench.SourceQuality.EnsureSourceAsync(
+                sourcePath,
+                workbench.Source.Id,
+                workbench.Source.Unit,
+                workbench.Source.FrameId,
+                cancellationToken => workbench.SourceSession.GetOrLoadDecodedSourceAsync(
+                    workbench.Source.Path,
+                    workbench.Source.Id,
+                    workbench.Source.Unit,
+                    workbench.Source.FrameId,
+                    cancellationToken)).GetAwaiter().GetResult();
             workbench.SelectPipelineStep("step.roi-crop.01");
             Check(
                 "Preview is explicit",
@@ -114,6 +125,15 @@ internal static class RoiCropWorkbenchVerification
             Check(
                 "artifact and compare registry expose the crop",
                 artifact is { Contract: "HeightField", NodeKind: "HeightField" }
+                    && artifact.PreparationQualityDelta is
+                    {
+                        BeforeValidSampleCount: 29,
+                        AfterValidSampleCount: 8,
+                        BeforeMissingSampleCount: 1,
+                        AfterMissingSampleCount: 1,
+                        DetectedOutlierCount: null,
+                        SourceIdentityRetained: true
+                    }
                     && workbench.CompareCandidates.Any(candidate => candidate.Id == artifact.Id
                         && candidate.C3DPath == workbench.CurrentRoiCropPreviewPath),
                 artifact?.Detail ?? "missing artifact");

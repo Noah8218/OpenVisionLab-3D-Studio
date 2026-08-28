@@ -6,6 +6,93 @@
              xmlns:shell="clr-namespace:OpenVisionLab.ThreeD.Shell"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              Background="{DynamicResource ThreeD.AppBackgroundBrush}">
+    <UserControl.Resources>
+        <Style x:Key="CalibrationTabItemStyle"
+               TargetType="{x:Type TabItem}"
+               BasedOn="{StaticResource {x:Type TabItem}}">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="11,5" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <Border x:Name="TabSurface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1,1,1,2"
+                                CornerRadius="4,4,0,0"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              ContentSource="Header"
+                                              RecognizesAccessKey="True"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsSelected" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="TabSurface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                <Setter TargetName="TabSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.DividerBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabSurface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="TabSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Panel.ZIndex" Value="1" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TabSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.FocusBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TabSurface"
+                                        Property="Background"
+                                        Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                                <Setter TargetName="TabSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource ThreeD.DividerBrush}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CalibrationTabControlStyle"
+               TargetType="{x:Type TabControl}"
+               BasedOn="{StaticResource {x:Type TabControl}}">
+            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource CalibrationTabItemStyle}" />
+        </Style>
+    </UserControl.Resources>
     <DockPanel LastChildFill="True">
         <Border DockPanel.Dock="Bottom"
                 Height="28"
@@ -44,12 +131,15 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,1,0"
                         Padding="12">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer HorizontalContentAlignment="Stretch"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                        Text="{shell:ThreeDText Key=ThreeD.Calibration.Center, Korean='교정 센터', English='Calibration Center'}" />
                             <TextBlock Margin="0,4,0,0"
                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                       TextWrapping="Wrap"
                                        Text="{shell:ThreeDText Key=ThreeD.Calibration.CenterDetail, Korean='센서 독립형 프로파일 작업공간', English='Sensor-neutral profile workspace'}" />
 
                             <StackPanel Margin="0,10,0,0">
@@ -162,8 +252,10 @@
                 <Border Background="{DynamicResource ThreeD.PanelBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,0,0">
-                    <TabControl SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
-                        <TabItem Header="{Binding CalibrationOverview, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                    <TabControl Style="{StaticResource CalibrationTabControlStyle}"
+                                SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
+                        <TabItem AutomationProperties.Name="{Binding CalibrationOverview, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 Header="{Binding CalibrationOverview, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid Margin="14">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -194,7 +286,8 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem IsEnabled="False"
+                        <TabItem AutomationProperties.Name="{Binding CalibrationHeightCalibration, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 IsEnabled="False"
                                  ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -239,7 +332,8 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem IsEnabled="False"
+                        <TabItem AutomationProperties.Name="{Binding CalibrationSensorAlignment, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 IsEnabled="False"
                                  ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -289,7 +383,8 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem Header="{Binding CalibrationRepeatability, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                        <TabItem AutomationProperties.Name="{Binding CalibrationRepeatability, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 Header="{Binding CalibrationRepeatability, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -444,12 +539,16 @@
                                                 BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                                 BorderThickness="1">
                                             <Grid Margin="8">
+                                                <!-- LiveCharts consumes SkiaSharp colors rather than WPF brushes; keep these literal paints aligned with the graphite semantic palette above. -->
                                                 <lvc:CartesianChart Margin="12,4,4,8"
                                                                     AutomationProperties.Name="Repeatability run chart"
                                                                     AnimationsSpeed="0:0:0"
                                                                     AutoUpdateEnabled="True"
+                                                                    Background="{DynamicResource ThreeD.PanelBrush}"
                                                                     ChartPointPointerDownCommand="{Binding SelectRepeatabilityChartPointCommand}"
-                                                                    LegendPosition="Hidden">
+                                                                    LegendPosition="Hidden"
+                                                                    TooltipBackgroundPaint="{lvc:SolidColorPaint Color='#202B38'}"
+                                                                    TooltipTextPaint="{lvc:SolidColorPaint Color='#E7EEF6'}">
                                                     <lvc:CartesianChart.SeriesSource>
                                                         <Binding Path="RepeatabilityChartSeries" />
                                                     </lvc:CartesianChart.SeriesSource>
@@ -458,10 +557,10 @@
                                                             <lvc:XamlLineSeries Values="{Binding Values}"
                                                                                 GeometrySize="10"
                                                                                 LineSmoothness="0"
-                                                                                Stroke="{lvc:SolidColorPaint Color='#007C78', StrokeWidth=2.5}"
+                                                                                Stroke="{lvc:SolidColorPaint Color='#39C6C1', StrokeWidth=2.5}"
                                                                                 Fill="{x:Null}"
-                                                                                GeometryFill="{lvc:SolidColorPaint Color='#007C78'}"
-                                                                                GeometryStroke="{lvc:SolidColorPaint Color='#FFFFFF', StrokeWidth=1.5}" />
+                                                                                GeometryFill="{lvc:SolidColorPaint Color='#39C6C1'}"
+                                                                                GeometryStroke="{lvc:SolidColorPaint Color='#E7EEF6', StrokeWidth=1.5}" />
                                                         </DataTemplate>
                                                     </lvc:CartesianChart.SeriesTemplate>
                                                     <lvc:CartesianChart.XAxes>
@@ -469,16 +568,16 @@
                                                             <lvc:XamlAxis Labels="{Binding RepeatabilityChartRunLabels}"
                                                                           ForceStepToMin="True"
                                                                           MinStep="1"
-                                                                          LabelsPaint="{lvc:SolidColorPaint Color='#5B6573'}"
-                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#E2E7ED', StrokeWidth=1}"
-                                                                          TicksPaint="{lvc:SolidColorPaint Color='#B8C2CD', StrokeWidth=1}" />
+                                                                          LabelsPaint="{lvc:SolidColorPaint Color='#BECADA'}"
+                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#334155', StrokeWidth=1}"
+                                                                          TicksPaint="{lvc:SolidColorPaint Color='#657487', StrokeWidth=1}" />
                                                         </lvc:AxesCollection>
                                                     </lvc:CartesianChart.XAxes>
                                                     <lvc:CartesianChart.YAxes>
                                                         <lvc:AxesCollection>
-                                                            <lvc:XamlAxis LabelsPaint="{lvc:SolidColorPaint Color='#5B6573'}"
-                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#E2E7ED', StrokeWidth=1}"
-                                                                          TicksPaint="{lvc:SolidColorPaint Color='#B8C2CD', StrokeWidth=1}" />
+                                                            <lvc:XamlAxis LabelsPaint="{lvc:SolidColorPaint Color='#BECADA'}"
+                                                                          SeparatorsPaint="{lvc:SolidColorPaint Color='#334155', StrokeWidth=1}"
+                                                                          TicksPaint="{lvc:SolidColorPaint Color='#657487', StrokeWidth=1}" />
                                                         </lvc:AxesCollection>
                                                     </lvc:CartesianChart.YAxes>
                                                 </lvc:CartesianChart>
@@ -521,7 +620,8 @@
                             </Grid>
                         </TabItem>
 
-                        <TabItem IsEnabled="False"
+                        <TabItem AutomationProperties.Name="{Binding CalibrationHistory, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 IsEnabled="False"
                                  ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -558,7 +658,9 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="1,1,0,0"
                         Padding="12">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer HorizontalContentAlignment="Stretch"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{DynamicResource ThreeD.PanelTitleTextStyle}"
                                        Text="{shell:ThreeDText Key=ThreeD.Calibration.Inspector, Korean='교정 속성', English='Calibration Inspector'}" />
@@ -638,8 +740,9 @@
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                         BorderThickness="0,1,0,0"
                         Padding="10,6">
-                    <TabControl>
-                        <TabItem Header="{Binding CalibrationRunLog, Source={x:Static shell:ThreeDLocalization.Shared}}">
+                    <TabControl Style="{StaticResource CalibrationTabControlStyle}">
+                        <TabItem AutomationProperties.Name="{Binding CalibrationRunLog, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 Header="{Binding CalibrationRunLog, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <Grid>
                                 <DataGrid ItemsSource="{Binding RepeatabilityRuns}"
                                           SelectedItem="{Binding SelectedRepeatabilityRun, Mode=TwoWay}"
@@ -670,7 +773,8 @@
                                 </TextBlock>
                             </Grid>
                         </TabItem>
-                        <TabItem IsEnabled="False"
+                        <TabItem AutomationProperties.Name="{Binding CalibrationProfileHistory, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 IsEnabled="False"
                                  ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -688,7 +792,8 @@
                                                Text="{shell:ThreeDText Key=ThreeD.Calibration.NoProfileHistory, Korean='프로파일 이력이 없습니다', English='No profile history'}" />
                             </Grid>
                         </TabItem>
-                        <TabItem IsEnabled="False"
+                        <TabItem AutomationProperties.Name="{Binding CalibrationTransform, Source={x:Static shell:ThreeDLocalization.Shared}}"
+                                 IsEnabled="False"
                                  ToolTip="{Binding CalibrationComingSoonToolTip, Source={x:Static shell:ThreeDLocalization.Shared}}">
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">

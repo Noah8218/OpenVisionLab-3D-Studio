@@ -60,90 +60,13 @@ public static class ToolRecipeOrderedGraphRunRecordProjection
                     .ToArray())
             {
                 OutputContentSha256 = step.OutputContentSha256,
+                LevelFrameContentSha256 = step.LevelFrameContentSha256,
+                LevelFrameQualityContentSha256 = step.LevelFrameQualityContentSha256,
+                FrameChainContentSha256 = step.FrameChainContentSha256,
                 Timing = CreateToolTiming(step.Result.Elapsed.TotalMilliseconds),
-                CompletenessGrid = ValidateCompletenessGrid(recipeStep, step),
-                PresenceCheck = ValidatePresenceCheck(recipeStep, step)
+                CompletenessGrid = ValidateCompletenessGrid(recipeStep, step)
             };
         }).ToArray();
-    }
-
-    private static C3DPresenceCheckOutput? ValidatePresenceCheck(
-        ToolRecipeStep recipeStep,
-        ToolRecipeOrderedGraphStepResult step)
-    {
-        var output = step.PresenceCheck;
-        if (output is null)
-        {
-            if (string.Equals(
-                    recipeStep.ToolId,
-                    "presence-check",
-                    StringComparison.Ordinal)
-                && step.Result.Status is not (ResultStatus.Error or ResultStatus.NotRun))
-            {
-                throw new InvalidDataException(
-                    $"Presence Check output for successful step '{recipeStep.Id}' is missing.");
-            }
-
-            return null;
-        }
-
-        var feature = output.Feature;
-        var valid = string.Equals(
-                recipeStep.ToolId,
-                "presence-check",
-                StringComparison.Ordinal)
-            && string.Equals(
-                recipeStep.OutputEntityId,
-                output.OutputEntityId,
-                StringComparison.Ordinal)
-            && string.Equals(
-                step.OutputContentSha256,
-                output.ContentSha256,
-                StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(output.RootSourceEntityId)
-            && !string.IsNullOrWhiteSpace(output.InputEntityId)
-            && !string.IsNullOrWhiteSpace(output.InputContentSha256)
-            && !string.IsNullOrWhiteSpace(output.Unit)
-            && !string.IsNullOrWhiteSpace(output.FrameId)
-            && !string.IsNullOrWhiteSpace(output.FeatureSelectionId)
-            && !string.IsNullOrWhiteSpace(output.ContentSha256)
-            && output.Policy is not null
-            && feature is not null
-            && string.Equals(
-                output.FeatureSelectionId,
-                feature.FeatureId,
-                StringComparison.Ordinal)
-            && output.FeatureRegion == feature.Region
-            && feature.TotalCellCount > 0
-            && feature.FiniteCellCount >= 0
-            && feature.MissingCellCount >= 0
-            && feature.FiniteCellCount + feature.MissingCellCount
-                == feature.TotalCellCount
-            && double.IsFinite(feature.FiniteCoverageRatio)
-            && feature.FiniteCoverageRatio is >= 0d and <= 1d
-            && (feature.MeanRawHeight is not { } mean
-                || double.IsFinite(mean))
-            && feature.Decision is ResultStatus.Pass or ResultStatus.Fail
-            && !string.IsNullOrWhiteSpace(feature.DecisionReason)
-            && (output.Policy.MinimumFiniteCoverageRatio is >= 0d and <= 1d)
-            && double.IsFinite(output.Policy.MinimumMeanRawHeight)
-            && double.IsFinite(output.Policy.MaximumMeanRawHeight)
-            && output.Policy.MinimumMeanRawHeight
-                <= output.Policy.MaximumMeanRawHeight
-            && ((feature.Decision == ResultStatus.Pass
-                    && feature.MeanRawHeight is { } passMean
-                    && feature.FiniteCoverageRatio
-                        >= output.Policy.MinimumFiniteCoverageRatio
-                    && passMean >= output.Policy.MinimumMeanRawHeight
-                    && passMean <= output.Policy.MaximumMeanRawHeight)
-                || (feature.Decision == ResultStatus.Fail));
-        if (!valid)
-        {
-            throw new InvalidDataException(
-                $"Presence Check output for step '{recipeStep.Id}' is incomplete or incompatible with its ordered Run evidence.");
-        }
-
-        return output;
     }
 
     private static C3DCompletenessGridMetricOutput? ValidateCompletenessGrid(

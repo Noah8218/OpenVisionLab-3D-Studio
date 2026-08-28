@@ -83,6 +83,7 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
     private int activePreviewDisplaySampleBudget;
     private string currentDisplayDensity = "(none)";
     private int currentDisplaySampleBudget;
+    private bool outputEnabled = true;
     private bool hasPreviewResult;
     private NominalActualComparisonResult? previewResult;
     private NominalActualComparisonState state = NominalActualComparisonState.NoInputs;
@@ -190,6 +191,26 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool OutputEnabled
+    {
+        get => outputEnabled;
+        set
+        {
+            if (!SetField(ref outputEnabled, value))
+            {
+                return;
+            }
+
+            if (!value)
+            {
+                ClearPreviewResult();
+                RefreshFreshnessState();
+            }
+
+            RefreshDerivedProperties();
+        }
+    }
+
     public bool ActualVisible
     {
         get => actualVisible;
@@ -234,10 +255,11 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
         && LowerTolerance < UpperTolerance;
 
     public bool CanEdit => InputsReady && State != NominalActualComparisonState.PreviewRunning;
-    public bool CanPreview => InputsReady && ToleranceIsValid && State != NominalActualComparisonState.PreviewRunning;
+    public bool CanPreview => OutputEnabled && InputsReady && ToleranceIsValid && State != NominalActualComparisonState.PreviewRunning;
     public bool CanCancel => State == NominalActualComparisonState.PreviewRunning && activeRequestId != 0;
     public bool CanPublish =>
-        State == NominalActualComparisonState.PreviewReady
+        OutputEnabled
+        && State == NominalActualComparisonState.PreviewReady
         && hasPreviewResult
         && string.Equals(BuildPreviewFingerprint(), completedPreviewFingerprint, StringComparison.Ordinal);
 
@@ -399,6 +421,11 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
             && normalizedNominal != "Nominal: not loaded"
             && normalizedQuery != "Validation query: not loaded"
             && normalizedUnit != "(not set)";
+        var nextInputFingerprint = ready ? normalizedFingerprint : "(none)";
+        var inputChanged = !string.Equals(
+            currentInputFingerprint,
+            nextInputFingerprint,
+            StringComparison.Ordinal);
 
         if (State == NominalActualComparisonState.PreviewRunning)
         {
@@ -406,6 +433,10 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
         }
 
         ClearSelectedDeviation();
+        if (inputChanged && hasPreviewResult)
+        {
+            ClearPreviewResult();
+        }
 
         ActualSourceSummary = normalizedActual;
         NominalSourceSummary = normalizedNominal;
@@ -413,7 +444,7 @@ public sealed class NominalActualComparisonViewModel : INotifyPropertyChanged
         FrameSummary = normalizedFrame;
         AlignmentSummary = normalizedAlignment;
         Unit = normalizedUnit;
-        currentInputFingerprint = ready ? normalizedFingerprint : "(none)";
+        currentInputFingerprint = nextInputFingerprint;
         inputValidationSummary = ready ? "Inputs validated." : Normalize(normalizedIssue, "Actual and nominal inputs are required.");
         InputsReady = ready;
 

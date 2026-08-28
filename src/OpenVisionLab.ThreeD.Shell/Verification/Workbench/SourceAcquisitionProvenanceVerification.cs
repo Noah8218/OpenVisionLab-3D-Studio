@@ -76,6 +76,8 @@ internal static class SourceAcquisitionProvenanceVerification
                 "Structured-light scan exported by station S-04; batch record ACQ-20260804-17.";
             editor.AcquisitionLimitationNotesDraft =
                 "Sensor pose and calibration file were not included; viewpoint is not inferred.";
+            editor.IsAcquisitionReflectiveFlagDraft = true;
+            editor.IsAcquisitionLowCoverageFlagDraft = true;
 
             Check(
                 "draft-is-visible-but-does-not-mutate-recipe",
@@ -98,6 +100,8 @@ internal static class SourceAcquisitionProvenanceVerification
                 !editor.HasPendingAcquisitionProvenanceChanges
                 && editor.SelectedAcquisitionStateOption?.State
                     == ToolRecipeAcquisitionProvenanceState.Unavailable
+                && !editor.IsAcquisitionReflectiveFlagDraft
+                && !editor.IsAcquisitionLowCoverageFlagDraft
                 && !workbench.IsDirty
                 && workbench.RunLog.Count == logsBeforeDraft,
                 $"pending={editor.HasPendingAcquisitionProvenanceChanges};dirty={workbench.IsDirty};logs={workbench.RunLog.Count}");
@@ -108,6 +112,8 @@ internal static class SourceAcquisitionProvenanceVerification
                 "Structured-light scan exported by station S-04; batch record ACQ-20260804-17.";
             editor.AcquisitionLimitationNotesDraft =
                 "Sensor pose and calibration file were not included; viewpoint is not inferred.";
+            editor.IsAcquisitionReflectiveFlagDraft = true;
+            editor.IsAcquisitionLowCoverageFlagDraft = true;
             editor.SelectedAcquisitionDirectionStateOption =
                 editor.AcquisitionDirectionStateOptions.Single(option =>
                     option.State == ToolRecipeAcquisitionDirectionState.Available);
@@ -132,6 +138,11 @@ internal static class SourceAcquisitionProvenanceVerification
                         Vector: ToolRecipeXyz { X: 0.0, Y: 0.0, Z: -1.0 }
                     }
                 }
+                && workbench.SourceAcquisitionProvenance.LimitationFlags is
+                [
+                    { Kind: ToolRecipeAcquisitionLimitationKind.Reflective, Origin: ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored },
+                    { Kind: ToolRecipeAcquisitionLimitationKind.LowCoverage, Origin: ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored }
+                ]
                 && editor.IsAcquisitionProvenancePersisted
                 && editor.IsAcquisitionDirectionPersisted
                 && !editor.HasPendingAcquisitionProvenanceChanges,
@@ -151,8 +162,9 @@ internal static class SourceAcquisitionProvenanceVerification
                 "available-contract-saves-in-source-descriptor",
                 savedAvailable
                 && loadedAvailable is not null
-                && loadedAvailable.Source.AcquisitionProvenance
-                    == workbench.SourceAcquisitionProvenance
+                && SameProvenance(
+                    loadedAvailable.Source.AcquisitionProvenance,
+                    workbench.SourceAcquisitionProvenance)
                 && loadedAvailable.Source.ByteLength == new FileInfo(firstSourcePath).Length
                 && loadedAvailable.Source.ContentSha256 is { Length: 64 }
                 && File.ReadAllText(recipePath).Contains(
@@ -160,6 +172,9 @@ internal static class SourceAcquisitionProvenanceVerification
                     StringComparison.Ordinal)
                 && File.ReadAllText(recipePath).Contains(
                     "\"convention\": \"SensorToScene\"",
+                    StringComparison.Ordinal)
+                && File.ReadAllText(recipePath).Contains(
+                    "\"limitationFlags\"",
                     StringComparison.Ordinal),
                 $"saved={savedAvailable};message={availableSaveMessage};state={loadedAvailable?.Source.AcquisitionProvenance?.State};sourceSha256={loadedAvailable?.Source.ContentSha256}");
 
@@ -168,14 +183,18 @@ internal static class SourceAcquisitionProvenanceVerification
             Check(
                 "available-contract-reopens-exactly",
                 reopenedOk
-                && reopened.SourceAcquisitionProvenance
-                    == loadedAvailable?.Source.AcquisitionProvenance
-                && reopened.SourceQuality.AppliedAcquisitionProvenance
-                    == loadedAvailable?.Source.AcquisitionProvenance
+                && SameProvenance(
+                    reopened.SourceAcquisitionProvenance,
+                    loadedAvailable?.Source.AcquisitionProvenance)
+                && SameProvenance(
+                    reopened.SourceQuality.AppliedAcquisitionProvenance,
+                    loadedAvailable?.Source.AcquisitionProvenance)
                 && reopened.SourceQuality.AcquisitionEvidenceDraft
                     == loadedAvailable?.Source.AcquisitionProvenance?.Evidence
                 && reopened.SourceQuality.AcquisitionLimitationNotesDraft
                     == loadedAvailable?.Source.AcquisitionProvenance?.LimitationNotes
+                && reopened.SourceQuality.IsAcquisitionReflectiveFlagDraft
+                && reopened.SourceQuality.IsAcquisitionLowCoverageFlagDraft
                 && reopened.SourceQuality.IsAcquisitionProvenancePersisted
                 && reopened.SourceQuality.IsAcquisitionDirectionPersisted
                 && reopened.SourceQuality.AcquisitionDirectionXDraft == "0"
@@ -202,6 +221,8 @@ internal static class SourceAcquisitionProvenanceVerification
                     == ToolRecipeAcquisitionDirectionState.Unavailable
                 && !string.IsNullOrWhiteSpace(reopened.SourceAcquisitionProvenance.Evidence)
                 && !string.IsNullOrWhiteSpace(reopened.SourceAcquisitionProvenance.LimitationNotes)
+                && reopened.SourceQuality.IsAcquisitionReflectiveFlagDraft == false
+                && reopened.SourceQuality.IsAcquisitionLowCoverageFlagDraft == false
                 && !reopened.SourceQuality.AcquisitionEvidenceDraft.Contains(
                     "ACQ-20260804-17",
                     StringComparison.Ordinal),
@@ -329,12 +350,32 @@ internal static class SourceAcquisitionProvenanceVerification
                         "Known limitation")
                 }
             };
+            var invalidLimitationFlags = legacyDocument with
+            {
+                Source = legacyDocument.Source with
+                {
+                    AcquisitionProvenance = new(
+                        ToolRecipeAcquisitionProvenanceState.Unavailable,
+                        "Evidence supplied",
+                        "Known limitation",
+                        null,
+                        [
+                            new(
+                                ToolRecipeAcquisitionLimitationKind.Reflective,
+                                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored),
+                            new(
+                                ToolRecipeAcquisitionLimitationKind.Reflective,
+                                ToolRecipeAcquisitionLimitationOrigin.Imported)
+                        ])
+                }
+            };
             Check(
-                "present-contract-requires-defined-state-evidence-and-limitations",
+                "present-contract-requires-defined-state-evidence-limitations-and-unique-flags",
                 !ToolRecipeValidator.ValidateForStorage(invalidEvidence).IsValid
                 && !ToolRecipeValidator.ValidateForStorage(invalidLimitations).IsValid
-                && !ToolRecipeValidator.ValidateForStorage(invalidState).IsValid,
-                $"stateErrors={ToolRecipeValidator.ValidateForStorage(invalidState).Errors.Count};evidenceErrors={ToolRecipeValidator.ValidateForStorage(invalidEvidence).Errors.Count};limitationErrors={ToolRecipeValidator.ValidateForStorage(invalidLimitations).Errors.Count}");
+                && !ToolRecipeValidator.ValidateForStorage(invalidState).IsValid
+                && !ToolRecipeValidator.ValidateForStorage(invalidLimitationFlags).IsValid,
+                $"stateErrors={ToolRecipeValidator.ValidateForStorage(invalidState).Errors.Count};evidenceErrors={ToolRecipeValidator.ValidateForStorage(invalidEvidence).Errors.Count};limitationErrors={ToolRecipeValidator.ValidateForStorage(invalidLimitations).Errors.Count};flagErrors={ToolRecipeValidator.ValidateForStorage(invalidLimitationFlags).Errors.Count}");
 
             var invalidDirectionFrame = loadedAvailable with
             {
@@ -419,5 +460,25 @@ internal static class SourceAcquisitionProvenanceVerification
         File.WriteAllLines(fullReportPath, lines);
         summary = lines[^1];
         return passedAll;
+    }
+
+    private static bool SameProvenance(
+        ToolRecipeAcquisitionProvenance? left,
+        ToolRecipeAcquisitionProvenance? right)
+    {
+        if (left is null || right is null)
+        {
+            return left is null && right is null;
+        }
+
+        return left.State == right.State
+            && left.Evidence == right.Evidence
+            && left.LimitationNotes == right.LimitationNotes
+            && left.AcquisitionDirection == right.AcquisitionDirection
+            && (left.LimitationFlags ?? [])
+                .Select(flag => (flag.Kind, flag.Origin))
+                .SequenceEqual(
+                    (right.LimitationFlags ?? [])
+                        .Select(flag => (flag.Kind, flag.Origin)));
     }
 }

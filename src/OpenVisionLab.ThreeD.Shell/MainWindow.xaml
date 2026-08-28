@@ -29,6 +29,20 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+        <Style x:Key="DiagnosticChannelComboBoxItemStyle"
+               TargetType="{x:Type ComboBoxItem}"
+               BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+            <Setter Property="IsEnabled" Value="{Binding IsSelectable}" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                    <Setter Property="Opacity" Value="0.78" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -168,6 +182,10 @@
                                        Foreground="{DynamicResource ThreeD.PrimaryTextBrush}"
                                        Text="{views:ThreeDText Key=ThreeD.Expert.Display, Korean='표시', English='Display'}" />
                             <Grid Margin="0,6,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
@@ -195,6 +213,33 @@
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1"
+                                            Grid.ColumnSpan="2"
+                                            Margin="0,6,0,0">
+                                    <TextBlock Margin="0,0,0,4"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               Text="{views:ThreeDText Key=ThreeD.Expert.DiagnosticChannel, Korean='진단 채널', English='Diagnostic Channel'}" />
+                                    <ComboBox ItemsSource="{Binding Display.DiagnosticChannelOptions}"
+                                              SelectedItem="{Binding Display.SelectedDiagnosticChannel, Mode=TwoWay}"
+                                              IsEnabled="{Binding Display.CanSelectDiagnosticChannel}"
+                                              ItemContainerStyle="{StaticResource DiagnosticChannelComboBoxItemStyle}"
+                                              AutomationProperties.Name="{views:ThreeDText Key=ThreeD.Expert.DiagnosticChannel, Korean='진단 채널', English='Diagnostic Channel'}"
+                                              AutomationProperties.HelpText="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock TextWrapping="Wrap"
+                                                           Text="{Binding DisplayLabel, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                                           ToolTip="{Binding HelpText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                                 </StackPanel>
                             </Grid>
 

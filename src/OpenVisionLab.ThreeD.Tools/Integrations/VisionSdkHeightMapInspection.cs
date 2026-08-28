@@ -88,8 +88,8 @@ public sealed record VisionSdkInspectionEvaluation(
 public static class VisionSdkHeightMapInspection
 {
     public const string PackageId = "OpenVisionLab.Vision3D";
-    public const string PackageVersion = "3.0.1-dev.20260826.domain-mask.1";
-    public const string PackageSourceCommit = "db8b8a281dd028c62fabfc49febcde9b4d345d37";
+    public const string PackageVersion = "3.0.1-dev.20260828.point-cloud-background-filter.1";
+    public const string PackageSourceCommit = "35f1eef6626db710ac18452cd1e729530f2c0f2f";
 
     public static string PackageAssemblyName => typeof(SdkHeightMap3D).Assembly.GetName().Name ?? string.Empty;
 
@@ -371,8 +371,8 @@ public static class VisionSdkHeightMapInspection
         return ResolveMetricKind(name) switch
         {
             MetricKind.Count => "count",
-            MetricKind.Number => "ratio",
             _ when name is "PlaneSlopeX" or "PlaneSlopeY" => $"{heightUnit}/{planarUnit}",
+            MetricKind.Number => "ratio",
             _ => heightUnit
         };
     }

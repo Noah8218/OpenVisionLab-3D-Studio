@@ -26,6 +26,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DWarpage()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Warpage requires a visible C3D height grid";
@@ -73,6 +78,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var fullRecipePath = recipeFile.Path;
             var sourcePath = recipeFile.ResolveSourcePath(recipe.Source.Path);
+            viewModel.RecipeOutputEnabled = recipe.OutputEnabled;
             c3dSample = C3DHeightGrid.Load(sourcePath, viewModel.C3DMaxRenderedPoints);
             if (!IsC3DGridRoiInside(recipe.Step.Roi, c3dSample))
             {
@@ -97,7 +103,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.SelectedSelectionMode = MainWindowViewModel.WarpageRoiSelectionMode;
             viewModel.SelectionOverlayVisible = true;
 
-            if (recipe.Step.Enabled && !PreviewC3DWarpage())
+            if (isSmoke && recipe.OutputEnabled && recipe.Step.Enabled && !PreviewC3DWarpage())
             {
                 throw new InvalidDataException("Warpage preview failed for the configured grid ROI.");
             }
@@ -117,9 +123,10 @@ public sealed partial class OpenVisionThreeDViewerControl
         c3dSample is not null
         && viewModel.C3DSampleVisible
         && viewModel.WarpageConfigured
-        && viewModel.WarpageVisible
-        && viewModel.PreviewToolResult.ToolName.Equals(C3DWarpageRule.ToolName, StringComparison.Ordinal)
-        && viewModel.PreviewToolResult.Status != ResultStatus.Error;
+        && (!viewModel.RecipeOutputEnabled
+            || (viewModel.WarpageVisible
+                && viewModel.PreviewToolResult.ToolName.Equals(C3DWarpageRule.ToolName, StringComparison.Ordinal)
+                && viewModel.PreviewToolResult.Status != ResultStatus.Error));
 
     private bool SaveCurrentWarpageRecipe(string path, bool isSmoke)
     {
@@ -127,7 +134,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (c3dSample is null || !ShouldSaveCurrentWarpageRecipe())
             {
-                viewModel.ViewerStatus = "Warpage recipe save requires a current non-error Warpage Preview";
+                viewModel.ViewerStatus = viewModel.RecipeOutputEnabled
+                    ? "Warpage recipe save requires a current non-error Warpage Preview"
+                    : "Warpage recipe save requires a taught Warpage ROI when output is disabled";
                 return false;
             }
 
@@ -150,7 +159,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                     viewModel.RecipeSourceName,
                     sourceRecipePath,
                     viewModel.RecipeSourceUnit),
-                step);
+                step,
+                viewModel.RecipeOutputEnabled);
 
             recipe.Save(fullRecipePath);
             viewModel.SetRecipeSaved(fullRecipePath);

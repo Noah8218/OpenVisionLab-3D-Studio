@@ -193,7 +193,7 @@ public sealed partial class MainWindowViewModel
 
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:G6}, {NominalActual.UpperTolerance:G6}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}");
+            $"Recipe: {recipeFileName}\nActual: {input.ActualSource.Name}\nNominal: {input.NominalSource.Name}\nDirection: {NominalActualComparisonInput.Direction}\nTolerance: [{NominalActual.LowerTolerance:G6}, {NominalActual.UpperTolerance:G6}] {input.Unit}\nFrame: {input.FrameId}\nAlignment: {input.AlignmentId}\n{RecipeOutputPolicySummary}");
     }
 
     private static string FormatNominalActualSource(
@@ -252,7 +252,7 @@ public sealed partial class MainWindowViewModel
             : string.Empty;
         RecipeSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}");
+            $"Recipe: {recipeFileName}\nSource: {RecipeSourceName}\nTolerance: {RecipePeakTolerance:F3} {RecipeSourceUnit}{thicknessLine}{warpageLine}{flatnessLine}{pointPairLine}{gapFlushLine}{volumeLine}{crossSectionLine}\n{RecipeOutputPolicySummary}");
     }
 
     private void RefreshRecipeParameterSummary()

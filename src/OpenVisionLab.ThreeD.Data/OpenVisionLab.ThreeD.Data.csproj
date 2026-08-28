@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.0.1-dev.20260826.domain-mask.1]" />
+    <PackageReference Include="OpenVisionLab.Vision3D" Version="[3.0.1-dev.20260828.point-cloud-background-filter.1]" />
     <PackageReference Include="Unofficial.laszip.netstandard" Version="5.6.2" />
   </ItemGroup>
 

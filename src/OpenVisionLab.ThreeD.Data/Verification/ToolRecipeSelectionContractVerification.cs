@@ -187,7 +187,6 @@ public static class ToolRecipeSelectionContractVerification
                 "level-surface",
                 "plane-flatness",
                 "point-pair-dimensions",
-                "presence-check",
                 "roi-crop",
                 "thickness",
                 "three-point-plane",
@@ -197,7 +196,7 @@ public static class ToolRecipeSelectionContractVerification
             };
             Check(
                 "selection-consuming tool inventory has one explicit compatibility matrix",
-                ToolRecipeSelectionContract.Declarations.Count == 23
+                ToolRecipeSelectionContract.Declarations.Count == 22
                 && declaredTools.SequenceEqual(expectedDeclaredTools, StringComparer.Ordinal)
                 && ToolRecipeSelectionContract.Declarations
                     .GroupBy(requirement => (requirement.ToolId, requirement.Role))

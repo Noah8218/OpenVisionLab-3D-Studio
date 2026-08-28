@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Input;
-using OpenVisionLab.Integration.Contracts;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -103,9 +102,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
         string? csvReportPath = null,
         string? recentRunRecordsPath = null,
         string? recentRecipesPath = null,
-        string? orderedRunRecordRoot = null,
-        string? integrationSettingsPath = null,
-        Func<IntegrationApplicationIdentity>? integrationProducerIdentityProvider = null)
+        string? orderedRunRecordRoot = null)
     {
         this.comparisonContractPath = comparisonContractPath;
         this.comparisonReportPath = comparisonReportPath;
@@ -132,10 +129,7 @@ public sealed class ShellMainWindowViewModel : INotifyPropertyChanged
             ?? languageOptions[0];
         ResultsWorkspace = new ResultsWorkspaceViewModel();
         Workbench = new ToolWorkbenchViewModel(recentRecipesPath);
-        IntegrationExchange = new ThreeDIntegrationViewModel(
-            () => currentRunRecordPath,
-            integrationSettingsPath,
-            integrationProducerIdentityProvider);
+        IntegrationExchange = new ThreeDIntegrationViewModel(() => currentRunRecordPath);
         InspectionSteps.CollectionChanged += (_, _) =>
             RaisePropertyChanged(nameof(ResultsOperatorAffectedStepsSummary));
         Calibration = new CalibrationCenterViewModel();

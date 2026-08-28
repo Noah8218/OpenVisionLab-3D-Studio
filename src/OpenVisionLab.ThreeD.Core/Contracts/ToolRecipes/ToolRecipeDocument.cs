@@ -23,32 +23,39 @@ public sealed record ToolRecipeDocument(
     public const string DualRoiRoutingSchemaVersion = "1.5";
     public const string GridCircleSchemaVersion = "1.6";
     public const string GridPolygonSchemaVersion = "1.7";
-    public const string CurrentSchemaVersion = GridPolygonSchemaVersion;
+    public const string OutputPolicySchemaVersion = "1.8";
+    public const string CurrentSchemaVersion = OutputPolicySchemaVersion;
 
     public static bool SupportsArtifactOwnedSelections(string? schemaVersion) =>
         string.Equals(schemaVersion, ArtifactOwnedSelectionSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsOrientedBox3D(string? schemaVersion) =>
         string.Equals(schemaVersion, OrientedBox3DSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsDualRoiRouting(string? schemaVersion) =>
         string.Equals(schemaVersion, DualRoiRoutingSchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
         || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridCircle(string? schemaVersion) =>
         string.Equals(schemaVersion, GridCircleSchemaVersion, StringComparison.Ordinal)
-        || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal);
+        || string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal);
 
     public static bool SupportsGridPolygon(string? schemaVersion) =>
-        string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal);
+        string.Equals(schemaVersion, GridPolygonSchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, OutputPolicySchemaVersion, StringComparison.Ordinal)
+        || string.Equals(schemaVersion, CurrentSchemaVersion, StringComparison.Ordinal);
 }
 
 public sealed record ToolRecipeSource(
@@ -71,6 +78,27 @@ public enum ToolRecipeAcquisitionProvenanceState
     Unavailable
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionLimitationKind>))]
+public enum ToolRecipeAcquisitionLimitationKind
+{
+    Reflective,
+    Transparent,
+    Textureless,
+    Clipped,
+    LowCoverage
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter<ToolRecipeAcquisitionLimitationOrigin>))]
+public enum ToolRecipeAcquisitionLimitationOrigin
+{
+    OperatorAuthored,
+    Imported
+}
+
+public sealed record ToolRecipeAcquisitionLimitationFlag(
+    ToolRecipeAcquisitionLimitationKind Kind,
+    ToolRecipeAcquisitionLimitationOrigin Origin);
+
 /// <summary>
 /// Operator-authored or imported acquisition evidence for one recipe source.
 /// Text is retained verbatim as declared evidence; it does not establish a
@@ -80,7 +108,8 @@ public sealed record ToolRecipeAcquisitionProvenance(
     ToolRecipeAcquisitionProvenanceState State,
     string Evidence,
     string LimitationNotes,
-    ToolRecipeAcquisitionDirection? AcquisitionDirection = null)
+    ToolRecipeAcquisitionDirection? AcquisitionDirection = null,
+    IReadOnlyList<ToolRecipeAcquisitionLimitationFlag>? LimitationFlags = null)
 {
     public static ToolRecipeAcquisitionProvenance CreateUnavailable() => new(
         ToolRecipeAcquisitionProvenanceState.Unavailable,
@@ -131,7 +160,8 @@ public sealed record ToolRecipeStep(
     IReadOnlyList<string> InputEntityIds,
     string OutputEntityId,
     IReadOnlyList<ToolRecipeParameter> Parameters,
-    ToolRecipeDualRoiRouting? DualRoiRouting = null);
+    ToolRecipeDualRoiRouting? DualRoiRouting = null,
+    bool OutputEnabled = true);
 
 /// <summary>
 /// Persists the semantic region roles owned by one dual-ROI inspection step.

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows.Threading;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -573,6 +574,27 @@ internal static class ToolRecipeTeachingVerification
 
             workbench.RecipeName = "Fixture XYZ Affine Inspection";
             workbench.SetC3DSource(sourcePath);
+            var filterTool = workbench.Tools.Single(tool => tool.Name == "Filter");
+            var unavailableFilterGate = SourceQualityToolGate.Evaluate(
+                filterTool.Id,
+                "SourceC3D / RawHeightField",
+                report: null,
+                expectedSourceEntityId: workbench.Source.Id,
+                expectedSourceContentSha256: workbench.SourceSession.SourceBinding?.ContentSha256);
+            Check(
+                "Filter remains blocked while Source Quality is unavailable",
+                !unavailableFilterGate.IsAllowed
+                && unavailableFilterGate.Reason == SourceQualityToolGateReason.ReportUnavailable,
+                $"allowed={unavailableFilterGate.IsAllowed};reason={unavailableFilterGate.Reason};detail={unavailableFilterGate.Detail}");
+            var sourceQualityReport = WaitForSourceQuality(workbench.SourceQuality);
+            Check(
+                "Filter becomes addable only after current Source Quality is ready",
+                sourceQualityReport is not null
+                && !workbench.SourceQuality.HasError
+                && sourceQualityReport.Source.ContentSha256
+                    == workbench.SourceSession.SourceBinding?.ContentSha256
+                && workbench.AddSelectedToolCommand.CanExecute(filterTool),
+                $"report={sourceQualityReport is not null};error={workbench.SourceQuality.Error};source={sourceQualityReport?.Source.ContentSha256};binding={workbench.SourceSession.SourceBinding?.ContentSha256};canAdd={workbench.AddSelectedToolCommand.CanExecute(filterTool)}");
             var binding = ToolRecipeSelectionSourceBindingVerifier.ReadIdentity(sourcePath);
             var filter = AddTool(workbench, "Filter");
             filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value = "5";
@@ -917,5 +939,41 @@ internal static class ToolRecipeTeachingVerification
         workbench.AddSelectedToolCommand.Execute(tool);
         return workbench.SelectedPipelineStep
             ?? throw new InvalidOperationException($"The '{name}' teaching tool was not focused after being added.");
+    }
+
+    private static SourceQualityReport? WaitForSourceQuality(
+        SourceQualityWorkspaceViewModel workspace)
+    {
+        if (workspace.Report is not null || workspace.HasError)
+        {
+            return workspace.Report;
+        }
+
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+        timer.Tick += (_, _) =>
+        {
+            if (workspace.Report is not null
+                || workspace.HasError
+                || DateTimeOffset.UtcNow >= deadline)
+            {
+                frame.Continue = false;
+            }
+        };
+        timer.Start();
+        try
+        {
+            Dispatcher.PushFrame(frame);
+        }
+        finally
+        {
+            timer.Stop();
+        }
+
+        return workspace.Report;
     }
 }

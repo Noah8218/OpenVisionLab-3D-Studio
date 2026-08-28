@@ -2,16 +2,117 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:avalonDock="https://github.com/Dirkster99/AvalonDock"
+             xmlns:avalonDockControls="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
              xmlns:local="clr-namespace:OpenVisionLab.ThreeD.Docking.Controls">
+    <UserControl.Resources>
+        <Style x:Key="CalibrationDocumentPaneStyle"
+               TargetType="{x:Type avalonDockControls:LayoutDocumentPaneControl}">
+            <Setter Property="Foreground"
+                    Value="{Binding Model.Root.Manager.Foreground, RelativeSource={RelativeSource Self}}" />
+            <Setter Property="Background"
+                    Value="{Binding Model.Root.Manager.Background, RelativeSource={RelativeSource Self}}" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="{x:Type TabItem}">
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                        <Setter Property="ToolTip" Value="{Binding ToolTip}" />
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                        <Setter Property="AutomationProperties.AutomationId" Value="{Binding ContentId}" />
+                        <Setter Property="MinHeight" Value="29" />
+                        <Setter Property="Padding" Value="11,5" />
+                        <Setter Property="Foreground"
+                                Value="{DynamicResource ThreeD.SecondaryTextBrush}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="FontSize" Value="10.5" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type TabItem}">
+                                    <Border x:Name="TabSurface"
+                                            Padding="{TemplateBinding Padding}"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="1,1,1,2"
+                                            CornerRadius="4,4,0,0"
+                                            SnapsToDevicePixels="True">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          ContentSource="Header"
+                                                          RecognizesAccessKey="True"
+                                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsMouseOver" Value="True" />
+                                                <Condition Property="IsSelected" Value="False" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="TabSurface"
+                                                    Property="Background"
+                                                    Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                            <Setter TargetName="TabSurface"
+                                                    Property="BorderBrush"
+                                                    Value="{DynamicResource ThreeD.DividerBrush}" />
+                                        </MultiTrigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="TabSurface"
+                                                    Property="Background"
+                                                    Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                            <Setter TargetName="TabSurface"
+                                                    Property="BorderBrush"
+                                                    Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            <Setter Property="Foreground"
+                                                    Value="{DynamicResource ThreeD.AccentBrush}" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                            <Setter Property="Panel.ZIndex" Value="1" />
+                                        </Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                            <Setter TargetName="TabSurface"
+                                                    Property="BorderBrush"
+                                                    Value="{DynamicResource ThreeD.FocusBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Foreground"
+                                                    Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                            <Setter Property="Cursor" Value="Arrow" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <avalonDockControls:LayoutDocumentTabItem Model="{Binding}" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <avalonDockControls:LayoutDocumentControl Model="{Binding}" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid>
         <avalonDock:DockingManager Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                                    Foreground="{DynamicResource ThreeD.TextBrush}"
                                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
-                                   BorderThickness="1">
+                                   BorderThickness="1"
+                                   DocumentPaneControlStyle="{StaticResource CalibrationDocumentPaneStyle}">
             <avalonDock:LayoutRoot>
                 <avalonDock:LayoutPanel Orientation="Vertical">
                     <avalonDock:LayoutPanel x:Name="workbenchPane" Orientation="Horizontal">
-                        <avalonDock:LayoutAnchorablePane x:Name="explorerPane" DockWidth="245">
+                        <avalonDock:LayoutAnchorablePane x:Name="explorerPane"
+                                                         DockWidth="245"
+                                                         DockMinWidth="190">
                             <avalonDock:LayoutAnchorable x:Name="explorerAnchorable"
                                                          Title="Calibration Explorer"
                                                          ContentId="calibration-explorer"
@@ -21,7 +122,8 @@
                                 <ContentPresenter Content="{Binding ExplorerContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionCalibrationDockWorkspaceView}}" />
                             </avalonDock:LayoutAnchorable>
                         </avalonDock:LayoutAnchorablePane>
-                        <avalonDock:LayoutDocumentPane x:Name="workspacePane">
+                        <avalonDock:LayoutDocumentPane x:Name="workspacePane"
+                                                       DockMinWidth="420">
                             <avalonDock:LayoutDocument x:Name="workspaceDocument"
                                                        Title="Calibration Workspace"
                                                        ContentId="calibration-workspace"
@@ -30,7 +132,9 @@
                                 <ContentPresenter Content="{Binding WorkspaceContent, RelativeSource={RelativeSource AncestorType=local:OpenVisionCalibrationDockWorkspaceView}}" />
                             </avalonDock:LayoutDocument>
                         </avalonDock:LayoutDocumentPane>
-                        <avalonDock:LayoutAnchorablePane x:Name="inspectorPane" DockWidth="320">
+                        <avalonDock:LayoutAnchorablePane x:Name="inspectorPane"
+                                                         DockWidth="320"
+                                                         DockMinWidth="240">
                             <avalonDock:LayoutAnchorable x:Name="inspectorAnchorable"
                                                          Title="Calibration Inspector"
                                                          ContentId="calibration-inspector"

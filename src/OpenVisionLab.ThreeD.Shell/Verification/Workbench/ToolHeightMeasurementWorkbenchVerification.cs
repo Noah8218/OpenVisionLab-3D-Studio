@@ -64,6 +64,7 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             var referenceOnlyWorkbench = new ToolWorkbenchViewModel(Path.Combine(root, "reference-only-recent.json"));
             var referenceOnlyOpened = referenceOnlySaved
                 && referenceOnlyWorkbench.TryOpenTeachingRecipe(referenceOnlyPath, out _);
+            WaitForSourceQualityIdle(referenceOnlyWorkbench.SourceQuality);
             Check(
                 "saved current-schema Reference-only Thickness reopens with Measurement ROI drawing enabled",
                 referenceOnlyOpened
@@ -110,7 +111,10 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && legacyWorkbench.PlaneFlatnessReferenceSelection is null
                 && legacyWorkbench.PlaneFlatnessMeasurementSelection?.Id == selection.Id
                 && legacyWorkbench.MeasurementExecutionSummary.Contains("legacy one-ROI Thickness", StringComparison.OrdinalIgnoreCase),
-                legacyOpenMessage);
+                $"opened={legacyOpened};message={legacyOpenMessage};schema={legacyWorkbench.RecipeSchemaVersion};" +
+                $"reference={legacyWorkbench.PlaneFlatnessReferenceSelection?.Id ?? "(none)"};" +
+                $"measurement={legacyWorkbench.PlaneFlatnessMeasurementSelection?.Id ?? "(none)"};" +
+                $"summary={legacyWorkbench.MeasurementExecutionSummary}");
             legacyWorkbench.SelectedCompatibleSelection = legacyWorkbench.Selections.Single(item => item.Id == thicknessReferenceSelection.Id);
             legacyWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(null);
             Check("Teaching Reference upgrades legacy Thickness without losing Measurement",
@@ -383,8 +387,15 @@ internal static class ToolHeightMeasurementWorkbenchVerification
             completenessWorkbench.Selections.Add(completenessGrid);
             completenessWorkbench.SelectedTool = completenessWorkbench.Tools.Single(
                 tool => tool.Id == "completeness-grid");
-            completenessWorkbench.AddSelectedToolCommand.Execute(null);
-            var completenessStep = completenessWorkbench.SelectedPipelineStep!;
+            var completenessAddReady = WaitForCanExecute(
+                completenessWorkbench,
+                null);
+            if (completenessAddReady)
+            {
+                completenessWorkbench.AddSelectedToolCommand.Execute(null);
+            }
+
+            var completenessStep = completenessWorkbench.SelectedPipelineStep;
             Check(
                 "Completeness Grid is a typed dual-ROI Measure tool",
                 completenessStep is
@@ -397,7 +408,21 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && completenessWorkbench.IsSelectedStepPropertyGridSupported
                 && completenessWorkbench.SelectedStepPropertyDraft
                     is CompletenessGridStepProperties,
-                completenessWorkbench.SelectedStepAdapterStatus);
+                $"{completenessWorkbench.SelectedStepAdapterStatus};" +
+                $"sourceReady={completenessWorkbench.IsSourceReadyForRecipe};" +
+                $"source={completenessWorkbench.Source.Path};" +
+                $"selectedTool={completenessWorkbench.SelectedTool?.Id};" +
+                $"canAddBefore={completenessAddReady};" +
+                $"canAdd={completenessWorkbench.AddSelectedToolCommand.CanExecute(null)};" +
+                $"route={completenessWorkbench.SelectedToolProposedRouteDetail};" +
+                $"pipelineCount={completenessWorkbench.PipelineSteps.Count};" +
+                $"pipeline={string.Join(",", completenessWorkbench.PipelineSteps.Select(item => $"{item.Id}:{item.ToolId}"))};" +
+                $"artifacts={string.Join(",", completenessWorkbench.ArtifactRegistry.Select(item => $"{item.Id}:{item.Contract}:{item.State}"))}");
+            if (completenessStep is null)
+            {
+                throw new InvalidOperationException(
+                    "Completeness Grid was not added after its command became ready.");
+            }
             completenessWorkbench.SelectedCompatibleSelection =
                 completenessReference;
             completenessWorkbench.ReusePlaneFlatnessReferenceRoiCommand.Execute(
@@ -671,7 +696,14 @@ internal static class ToolHeightMeasurementWorkbenchVerification
                 && incompleteReopened.Steps.Single(step => step.ToolId == "plane-flatness").InputEntityIds.Count == 2
                 && incompleteReopened.Steps.Single(step => step.ToolId == "plane-flatness").DualRoiRouting
                     == new ToolRecipeDualRoiRouting(null, recapturedMeasurement.Id),
-                incompleteSaveMessage);
+                $"save={incompleteSaved};message={incompleteSaveMessage};" +
+                $"route={string.Join(" -> ", captureStep.InputEntityIds)};" +
+                $"reference={captureWorkbench.PlaneFlatnessReferenceSelection?.Id ?? "(none)"};" +
+                $"measurement={captureWorkbench.PlaneFlatnessMeasurementSelection?.Id ?? "(none)"};" +
+                $"captureMeasurement={captureWorkbench.CapturePlaneFlatnessMeasurementRoiCommand.CanExecute(null)};" +
+                $"reopenedSchema={incompleteReopened?.SchemaVersion ?? "(none)"};" +
+                $"reopenedRoute={string.Join(" -> ", incompleteReopened?.Steps.SingleOrDefault(step => step.ToolId == "plane-flatness")?.InputEntityIds ?? [])};" +
+                $"reopenedDual={incompleteReopened?.Steps.SingleOrDefault(step => step.ToolId == "plane-flatness")?.DualRoiRouting}");
 
             request = null;
             captureWorkbench.CapturePlaneFlatnessReferenceRoiCommand.Execute(null);
@@ -785,6 +817,12 @@ internal static class ToolHeightMeasurementWorkbenchVerification
     private static ToolWorkbenchPipelineStepItem Add(ToolWorkbenchViewModel workbench, string name, string selectionId)
     {
         workbench.SelectedTool = workbench.Tools.Single(tool => tool.Name == name);
+        if (!WaitForCanExecute(workbench, null))
+        {
+            throw new InvalidOperationException(
+                $"{name} was not ready to add: {workbench.SelectedToolProposedRouteDetail}");
+        }
+
         workbench.AddSelectedToolCommand.Execute(null);
         var step = workbench.SelectedPipelineStep ?? throw new InvalidOperationException($"{name} was not added.");
         step.InputEntityIdsText = $"{workbench.Source.Id}; {selectionId}";
@@ -796,7 +834,39 @@ internal static class ToolHeightMeasurementWorkbenchVerification
         foreach (var toolId in new[] { "xyz-affine-apply", "re-grid-height-map" })
         {
             var tool = workbench.Tools.Single(candidate => candidate.Id == toolId);
+            if (!WaitForCanExecute(workbench, tool))
+            {
+                throw new InvalidOperationException(
+                    $"{toolId} was not ready to add: {workbench.SelectedToolProposedRouteDetail}");
+            }
+
             workbench.AddSelectedToolCommand.Execute(tool);
+        }
+    }
+
+    private static bool WaitForCanExecute(
+        ToolWorkbenchViewModel workbench,
+        object? parameter)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTimeOffset.UtcNow < deadline
+               && (workbench.SourceQuality.IsLoading
+                   || !workbench.AddSelectedToolCommand.CanExecute(parameter)))
+        {
+            Thread.Sleep(10);
+        }
+
+        return !workbench.SourceQuality.IsLoading
+               && workbench.AddSelectedToolCommand.CanExecute(parameter);
+    }
+
+    private static void WaitForSourceQualityIdle(
+        SourceQualityWorkspaceViewModel workspace)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (workspace.IsLoading && DateTimeOffset.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
         }
     }
 

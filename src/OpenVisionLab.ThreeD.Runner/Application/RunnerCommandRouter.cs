@@ -26,6 +26,13 @@ internal static class RunnerCommandRouter
         var sourceQualityEntityId = ReadOption(args, "--entity-id");
         var sourceQualityFrameId = ReadOption(args, "--frame");
         var heightImageC3DPath = ReadOption(args, "--height-image-c3d");
+        var heightImageAlignmentSpecificationPath = ReadOption(args, "--height-image-alignment-spec");
+        var rigidPointPairAlignmentSpecificationPath = ReadOption(args, "--rigid-point-pair-alignment-spec");
+        var constrainedBestFitRigidAlignmentSpecificationPath = ReadOption(args, "--constrained-best-fit-rigid-alignment-spec");
+        var heightThresholdBackgroundRemovalSpecificationPath = ReadOption(args, "--height-threshold-background-removal-spec");
+        var heightBackgroundSubtractionSpecificationPath = ReadOption(args, "--height-background-subtraction-spec");
+        var pointCloudBackgroundFilterSpecificationPath = ReadOption(args, "--point-cloud-background-filter-spec");
+        var regionGrowingComponentSpecificationPath = ReadOption(args, "--region-growing-component-spec");
         var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
         var c3DMapPlyPath = ReadOption(args, "--ply");
         var recipePath = ReadOption(args, "--recipe");
@@ -87,6 +94,9 @@ internal static class RunnerCommandRouter
         var verifyC3DRoiCrop = args.Contains(
             "--verify-c3d-roi-crop",
             StringComparer.OrdinalIgnoreCase);
+        var verifyC3DDomainMask = args.Contains(
+            "--verify-c3d-domain-mask",
+            StringComparer.OrdinalIgnoreCase);
         var verifyC3DEdge = args.Contains("--verify-c3d-edge", StringComparer.OrdinalIgnoreCase);
         var verifyC3DLineFit = args.Contains("--verify-c3d-line-fit", StringComparer.OrdinalIgnoreCase);
         var verifyC3DTwoPointLine = args.Contains("--verify-c3d-two-point-line", StringComparer.OrdinalIgnoreCase);
@@ -118,6 +128,13 @@ internal static class RunnerCommandRouter
         var verifyVisionSdkThreeD = args.Contains("--verify-vision-sdk-3d", StringComparer.OrdinalIgnoreCase);
         var verifySourceQualityReport = args.Contains("--verify-source-quality-report", StringComparer.OrdinalIgnoreCase);
         var verifyC3DHeightImage = args.Contains("--verify-c3d-height-image", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DHeightImageAlignment = args.Contains("--verify-c3d-height-image-alignment", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRigidPointPairAlignment = args.Contains("--verify-c3d-rigid-point-pair-alignment", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DConstrainedBestFitRigidAlignment = args.Contains("--verify-c3d-constrained-best-fit-rigid-alignment", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DHeightThresholdBackgroundRemoval = args.Contains("--verify-c3d-height-threshold-background-removal", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DHeightBackgroundSubtraction = args.Contains("--verify-c3d-height-background-subtraction", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DPointCloudBackgroundFilter = args.Contains("--verify-c3d-point-cloud-background-filter", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRegionGrowingComponent = args.Contains("--verify-c3d-region-growing-component", StringComparer.OrdinalIgnoreCase);
         var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
         var verifySurfaceModelFoundation = args.Contains(
             "--verify-surface-model-foundation",
@@ -158,11 +175,8 @@ internal static class RunnerCommandRouter
         var verifyC3DCompletenessGrid = args.Contains(
             "--verify-c3d-completeness-grid",
             StringComparer.OrdinalIgnoreCase);
-        var verifyC3DConnectedRegion = args.Contains(
-            "--verify-c3d-connected-region",
-            StringComparer.OrdinalIgnoreCase);
-        var verifyC3DPresenceCheck = args.Contains(
-            "--verify-c3d-presence-check",
+        var verifyC3DRegionCompletenessOutputState = args.Contains(
+            "--verify-c3d-region-completeness-output-state",
             StringComparer.OrdinalIgnoreCase);
         var c3DMapPointOnly = args.Contains("--point-only", StringComparer.OrdinalIgnoreCase);
 
@@ -201,6 +215,97 @@ internal static class RunnerCommandRouter
                 sourceQualityEntityId,
                 stlStreamProbeUnit,
                 sourceQualityFrameId,
+                reportPath);
+        }
+
+        if (heightImageAlignmentSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --height-image-alignment-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DHeightImageAlignmentRunnerExecution.Run(
+                heightImageAlignmentSpecificationPath,
+                reportPath);
+        }
+
+        if (rigidPointPairAlignmentSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --rigid-point-pair-alignment-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DRigidPointPairAlignmentRunnerExecution.Run(
+                rigidPointPairAlignmentSpecificationPath,
+                reportPath);
+        }
+
+        if (constrainedBestFitRigidAlignmentSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --constrained-best-fit-rigid-alignment-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DConstrainedBestFitRigidAlignmentRunnerExecution.Run(
+                constrainedBestFitRigidAlignmentSpecificationPath,
+                reportPath);
+        }
+
+        if (heightThresholdBackgroundRemovalSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --height-threshold-background-removal-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DHeightThresholdBackgroundRemovalRunnerExecution.Run(
+                heightThresholdBackgroundRemovalSpecificationPath,
+                reportPath);
+        }
+
+        if (heightBackgroundSubtractionSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --height-background-subtraction-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DHeightBackgroundSubtractionRunnerExecution.Run(
+                heightBackgroundSubtractionSpecificationPath,
+                reportPath);
+        }
+
+        if (pointCloudBackgroundFilterSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --point-cloud-background-filter-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DPointCloudBackgroundFilterRunnerExecution.Run(
+                pointCloudBackgroundFilterSpecificationPath,
+                reportPath);
+        }
+
+        if (regionGrowingComponentSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --region-growing-component-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DRegionGrowingComponentRunnerExecution.Run(
+                regionGrowingComponentSpecificationPath,
                 reportPath);
         }
 
@@ -456,6 +561,18 @@ internal static class RunnerCommandRouter
             return C3DRoiCropGoldenVerification.Run(reportPath);
         }
 
+        if (verifyC3DDomainMask)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine(
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-domain-mask --report <path>");
+                return 2;
+            }
+
+            return C3DDomainMaskGoldenVerification.Run(reportPath);
+        }
+
         if (verifyOrientedBox3D || verifyGridCircle || verifyGridPolygon)
         {
             if (reportPath is null)
@@ -484,28 +601,16 @@ internal static class RunnerCommandRouter
             return C3DCompletenessGridGoldenVerification.Run(reportPath);
         }
 
-        if (verifyC3DConnectedRegion)
+        if (verifyC3DRegionCompletenessOutputState)
         {
             if (reportPath is null)
             {
                 Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-connected-region --report <path>");
+                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-completeness-output-state --report <path>");
                 return 2;
             }
 
-            return C3DConnectedRegionGoldenVerification.Run(reportPath);
-        }
-
-        if (verifyC3DPresenceCheck)
-        {
-            if (reportPath is null)
-            {
-                Console.Error.WriteLine(
-                    "Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-presence-check --report <path>");
-                return 2;
-            }
-
-            return C3DPresenceCheckGoldenVerification.Run(reportPath);
+            return C3DRegionCompletenessOutputStateVerification.Run(reportPath);
         }
 
         if (verifyArtifactOwnedRoiRunner)
@@ -659,6 +764,83 @@ internal static class RunnerCommandRouter
             }
 
             return C3DHeightImageVerification.Run(reportPath);
+        }
+
+        if (verifyC3DHeightImageAlignment)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-image-alignment --report <path>");
+                return 2;
+            }
+
+            return C3DHeightImageAlignmentGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRigidPointPairAlignment)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-rigid-point-pair-alignment --report <path>");
+                return 2;
+            }
+
+            return C3DRigidPointPairAlignmentGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DConstrainedBestFitRigidAlignment)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-constrained-best-fit-rigid-alignment --report <path>");
+                return 2;
+            }
+
+            return C3DConstrainedBestFitRigidAlignmentGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DHeightThresholdBackgroundRemoval)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-threshold-background-removal --report <path>");
+                return 2;
+            }
+
+            return C3DHeightThresholdBackgroundRemovalGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DHeightBackgroundSubtraction)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-background-subtraction --report <path>");
+                return 2;
+            }
+
+            return C3DHeightBackgroundSubtractionGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DPointCloudBackgroundFilter)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-background-filter --report <path>");
+                return 2;
+            }
+
+            return C3DPointCloudBackgroundFilterGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRegionGrowingComponent)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-growing-component --report <path>");
+                return 2;
+            }
+
+            return C3DRegionGrowingComponentGoldenVerification.Run(reportPath);
         }
 
         if (verifyC3DInvalidCellMap)
@@ -1123,6 +1305,13 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --stanford-transform-parity <conf> --transform-reference <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --c3d-map-probe <path> --ply <path> --report <path> [--max-sampled-points <count>] [--point-only]");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --source-quality-c3d <path> --entity-id <id> --unit <unit> --frame <frame> --report <json>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-image-alignment-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --rigid-point-pair-alignment-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --constrained-best-fit-rigid-alignment-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-threshold-background-removal-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-background-subtraction-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --point-cloud-background-filter-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --region-growing-component-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-thickness --report <path>");
@@ -1130,13 +1319,12 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-oriented-box-3d --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-circle --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-grid-polygon --report <path>");
-        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-connected-region --report <path>");
-        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-presence-check --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-artifact-owned-roi-runner --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-edge --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-remove-outliers --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-level-surface --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-roi-crop --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-domain-mask --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-line-fit --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-point-pair-dimensions --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-gap-flush --report <path>");
@@ -1145,6 +1333,13 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-map-fidelity --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-source-quality-report --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-invalid-cell-map --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-image-alignment --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-rigid-point-pair-alignment --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-constrained-best-fit-rigid-alignment --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-threshold-background-removal --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-background-subtraction --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-background-filter --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-region-growing-component --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-surface-model-foundation --report <path>");

@@ -7,6 +7,7 @@ using SdkCompletenessGridProfile = OpenVisionLab.Vision3D.FeatureExtraction.Comp
 using SdkCompletenessHeightDisposition = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessHeightDisposition;
 using SdkCompletenessPresencePolicy = OpenVisionLab.Vision3D.FeatureExtraction.CompletenessPresencePolicy;
 using SdkHeightGridRegion = OpenVisionLab.Vision3D.FeatureExtraction.HeightGridRegion;
+using SdkHeightGridMask = OpenVisionLab.Vision3D.FeatureExtraction.HeightGridMask;
 using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Tools;
@@ -24,7 +25,8 @@ public sealed record C3DCompletenessGridInput(
     ToolRecipeSelection ReferenceSelection,
     ToolRecipeSelection InspectionGridSelection,
     C3DCompletenessGridProfile Profile,
-    C3DCompletenessPresencePolicy? PresencePolicy = null);
+    C3DCompletenessPresencePolicy? PresencePolicy = null,
+    C3DEditableRegionArtifact? InspectionRegionArtifact = null);
 
 public sealed record C3DCompletenessGridEvaluation(
     ToolResult Result,
@@ -43,29 +45,45 @@ public static class C3DCompletenessGridRule
             ValidateStudioContract(input);
             var reference = input.ReferenceSelection.GridRectangle!;
             var inspection = input.InspectionGridSelection.GridRectangle!;
-            var inspectionResult = new SdkCompletenessGridInspectionTool().Execute(
-                input.GridHeight,
-                input.GridWidth,
-                input.Values,
-                ToSdkRegion(reference),
-                ToSdkRegion(inspection),
-                new SdkCompletenessGridProfile
+            var sdkProfile = new SdkCompletenessGridProfile
+            {
+                Rows = input.Profile.Rows,
+                Columns = input.Profile.Columns,
+                XPitchColumns = input.Profile.XPitchColumns,
+                ZPitchRows = input.Profile.ZPitchRows,
+                CellWidthColumns = input.Profile.CellWidthColumns,
+                CellHeightRows = input.Profile.CellHeightRows
+            };
+            var sdkPolicy = input.PresencePolicy is null
+                ? null
+                : new SdkCompletenessPresencePolicy
                 {
-                    Rows = input.Profile.Rows,
-                    Columns = input.Profile.Columns,
-                    XPitchColumns = input.Profile.XPitchColumns,
-                    ZPitchRows = input.Profile.ZPitchRows,
-                    CellWidthColumns = input.Profile.CellWidthColumns,
-                    CellHeightRows = input.Profile.CellHeightRows
-                },
-                input.PresencePolicy is null
-                    ? null
-                    : new SdkCompletenessPresencePolicy
-                    {
-                        MinimumFiniteCoverageRatio = input.PresencePolicy.MinimumFiniteCoverageRatio,
-                        MinimumReferenceRelativeMeanHeight = input.PresencePolicy.MinimumReferenceRelativeMeanRawHeight,
-                        MaximumReferenceRelativeMeanHeight = input.PresencePolicy.MaximumReferenceRelativeMeanRawHeight
-                    });
+                    MinimumFiniteCoverageRatio = input.PresencePolicy.MinimumFiniteCoverageRatio,
+                    MinimumReferenceRelativeMeanHeight = input.PresencePolicy.MinimumReferenceRelativeMeanRawHeight,
+                    MaximumReferenceRelativeMeanHeight = input.PresencePolicy.MaximumReferenceRelativeMeanRawHeight
+                };
+            var inspectionMask = input.InspectionRegionArtifact is null
+                ? null
+                : ToSdkMask(input.InspectionRegionArtifact);
+            var inspectionTool = new SdkCompletenessGridInspectionTool();
+            var inspectionResult = inspectionMask is null
+                ? inspectionTool.Execute(
+                    input.GridHeight,
+                    input.GridWidth,
+                    input.Values,
+                    ToSdkRegion(reference),
+                    ToSdkRegion(inspection),
+                    sdkProfile,
+                    sdkPolicy)
+                : inspectionTool.ExecuteMaskAware(
+                    input.GridHeight,
+                    input.GridWidth,
+                    input.Values,
+                    ToSdkRegion(reference),
+                    ToSdkRegion(inspection),
+                    inspectionMask,
+                    sdkProfile,
+                    sdkPolicy);
             if (!inspectionResult.Success)
             {
                 throw new InvalidDataException(inspectionResult.Message);
@@ -137,7 +155,9 @@ public static class C3DCompletenessGridRule
                 passedCellCount,
                 failedCellCount,
                 aggregateStatus,
-                cellOverlays);
+                cellOverlays,
+                input.InspectionRegionArtifact?.ArtifactId,
+                input.InspectionRegionArtifact?.ContentSha256);
             var metrics = new List<Metric>
             {
                 new(
@@ -241,6 +261,45 @@ public static class C3DCompletenessGridRule
             throw new InvalidDataException(
                 "Completeness Grid v1 supports only the typed GridRectangle cell shape.");
         }
+
+        if (input.InspectionRegionArtifact is { } artifact)
+        {
+            var validity = C3DEditableRegionArtifactValidator.Inspect(artifact);
+            if (!validity.IsValid)
+            {
+                throw new InvalidDataException(validity.Evidence);
+            }
+
+            if (!string.Equals(
+                    artifact.ArtifactId,
+                    input.InspectionGridSelection.Id,
+                    StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(
+                    artifact.SourceEntityId,
+                    input.InputEntityId,
+                    StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(
+                    artifact.SourceContentSha256,
+                    input.InputContentSha256,
+                    StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(artifact.Unit, input.Unit, StringComparison.Ordinal)
+                || !string.Equals(artifact.FrameId, input.FrameId, StringComparison.Ordinal)
+                || artifact.GridWidth != input.GridWidth
+                || artifact.GridHeight != input.GridHeight)
+            {
+                throw new InvalidDataException(
+                    "Completeness Grid EditableRegionArtifact does not match its inspection selection, input identity, grid, unit, or frame.");
+            }
+
+            if (artifact.Region.MinimumRow != inspection.Row
+                || artifact.Region.MinimumColumn != inspection.Column
+                || artifact.Bounding.Height != inspection.RowCount
+                || artifact.Bounding.Width != inspection.ColumnCount)
+            {
+                throw new InvalidDataException(
+                    "Completeness Grid EditableRegionArtifact bounds must match the authored Inspection Grid ROI.");
+            }
+        }
     }
 
     private static void ValidateRegion(
@@ -283,6 +342,11 @@ public static class C3DCompletenessGridRule
             writer.Write(referenceMean);
             writer.Write(input.InspectionGridSelection.Id);
             Write(writer, input.InspectionGridSelection.GridRectangle!);
+            if (input.InspectionRegionArtifact is { } inspectionArtifact)
+            {
+                writer.Write(inspectionArtifact.ArtifactId);
+                writer.Write(inspectionArtifact.ContentSha256.ToUpperInvariant());
+            }
             writer.Write(input.Profile.Rows);
             writer.Write(input.Profile.Columns);
             writer.Write(input.Profile.XPitchColumns);
@@ -351,6 +415,21 @@ public static class C3DCompletenessGridRule
 
     private static SdkHeightGridRegion ToSdkRegion(ToolRecipeGridRectangle region) =>
         new(region.Row, region.Column, region.RowCount, region.ColumnCount);
+
+    private static SdkHeightGridMask ToSdkMask(
+        C3DEditableRegionArtifact artifact)
+    {
+        var foreground = new bool[checked(artifact.GridWidth * artifact.GridHeight)];
+        foreach (var cell in artifact.Cells)
+        {
+            foreground[checked(cell.Row * artifact.GridWidth + cell.Column)] = true;
+        }
+
+        return new SdkHeightGridMask(
+            artifact.GridHeight,
+            artifact.GridWidth,
+            foreground);
+    }
 
     private static ResultStatus? ToStudioDecision(SdkCompletenessCellDecision decision) =>
         decision switch

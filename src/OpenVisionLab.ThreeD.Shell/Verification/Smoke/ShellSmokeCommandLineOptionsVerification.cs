@@ -40,6 +40,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("LoadedHandler", VerifyLoadedHandler()),
             ("AsyncC3DLoadFailure", VerifyAsyncC3DLoadFailure()),
             ("FilterPreviewLoadedHandler", VerifyFilterPreviewLoadedHandler()),
+            ("PreparationQualityComparison", VerifyPreparationQualityComparison()),
             ("MeasurementPreviewLoadedHandler", VerifyMeasurementPreviewLoadedHandler()),
             ("ThicknessRepeatGrid", VerifyThicknessRepeatGrid()),
             ("ThicknessRepeatGridLoadedHandler", VerifyThicknessRepeatGridLoadedHandler()),
@@ -76,7 +77,6 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ViewerOnlyImport", VerifyViewerOnlyImport()),
             ("Import3DDataPressed", VerifyImport3DDataPressed()),
             ("OpenImport3DDataDialog", VerifyOpenImport3DDataDialog())
-            ,("ConnectedRegionOutput", VerifyConnectedRegionOutput())
         };
         passed = checks.All(check => check.Passed);
         var lines = new List<string>
@@ -315,6 +315,15 @@ internal static class ShellSmokeCommandLineOptionsVerification
             && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
+    private static bool VerifyPreparationQualityComparison()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+            ["shell.exe", "--smoke-preparation-quality-compare"]);
+        return options.PreparationQualityComparisonSmoke
+            && options.FilterPreviewSmoke
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
     private static bool VerifyMeasurementPreviewLoadedHandler()
     {
         var options = ShellSmokeCommandLineOptions.Parse(
@@ -382,29 +391,6 @@ internal static class ShellSmokeCommandLineOptionsVerification
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-open-import-3d-data-dialog"]);
         return options.OpenImport3DDataDialogSmoke
-            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
-    }
-
-    private static bool VerifyConnectedRegionOutput()
-    {
-        var options = ShellSmokeCommandLineOptions.Parse(
-        [
-            "shell.exe",
-            "--smoke-connected-region-output-source",
-            "source.C3D",
-            "--smoke-connected-region-output-report",
-            "connected-region.txt",
-            "--smoke-connected-region-output-screenshot",
-            "connected-region.png",
-            "--smoke-connected-region-output-screenshot-quality-report",
-            "connected-region-quality.txt"
-        ]);
-        return options.ConnectedRegionOutputSmoke
-            && options.ConnectedRegionOutputSmokeSourcePath == "source.C3D"
-            && options.ConnectedRegionOutputSmokeReportPath == "connected-region.txt"
-            && options.ConnectedRegionOutputSmokeScreenshotPath == "connected-region.png"
-            && options.ConnectedRegionOutputSmokeScreenshotQualityReportPath == "connected-region-quality.txt"
-            && options.NeedsCompactWorkbench
             && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
@@ -637,23 +623,7 @@ internal static class ShellSmokeCommandLineOptionsVerification
     {
         var options = ShellSmokeCommandLineOptions.Parse(
             ["shell.exe", "--smoke-integration-exchange-state", "validation-error"]);
-        var heightMap = ShellSmokeCommandLineOptions.Parse(
-        [
-            "shell.exe",
-            "--smoke-integration-exchange-state",
-            "heightmap-run",
-            "--smoke-integration-exchange-root",
-            "exchange",
-            "--smoke-integration-settings-path",
-            "settings.json",
-            "--shell-smoke-screenshot",
-            "heightmap.png"
-        ]);
         return options.IntegrationExchangeSmokeState == "validation-error"
-            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false)
-            && heightMap.IntegrationExchangeSmokeState == "heightmap-run"
-            && heightMap.IntegrationExchangeRootPath == "exchange"
-            && heightMap.IntegrationExchangeSettingsPath == "settings.json"
-            && heightMap.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 }

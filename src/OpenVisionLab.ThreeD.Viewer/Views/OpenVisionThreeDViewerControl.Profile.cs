@@ -3,6 +3,7 @@ using System.IO;
 using System.Numerics;
 using System.Windows;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using SharpGL;
 
@@ -33,6 +34,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             profileFirst = null;
             profileSecond = null;
+            profileSamples = [];
             viewModel.ClearProfile();
             viewModel.ViewerStatus = "Profile requires a visible C3D height grid";
             return;
@@ -48,6 +50,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             profileFirst = null;
             profileSecond = null;
+            profileSamples = [];
             viewModel.ClearProfile();
             viewModel.ViewerStatus = "Profile requires two valid C3D cells";
             return;
@@ -84,6 +87,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             profileFirst = point;
             profileSecond = null;
+            profileSamples = [];
             profileSourceSha256 = c3dSample?.ContentSha256;
             viewModel.SetProfileStart(point.Row, point.Column, TransformC3DPosition(point.Position), point.RawValue);
             viewModel.ViewerStatus = "Profile P1 set; choose P2";
@@ -183,6 +187,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var samples = c3dSample.ReadLineProfile(first.Row, first.Column, second.Row, second.Column);
             if (samples.Length == 0)
             {
+                profileSamples = [];
                 viewModel.ClearProfile();
                 viewModel.ViewerStatus = "Profile line contains no valid C3D samples";
                 return;
@@ -192,6 +197,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var maximum = samples.Max(point => (double)point.RawValue);
             var mean = samples.Average(point => (double)point.RawValue);
             var expected = Math.Max(Math.Abs(second.Row - first.Row), Math.Abs(second.Column - first.Column)) + 1;
+            profileSamples = samples;
             viewModel.SetProfile(
                 first.Row,
                 first.Column,
@@ -207,6 +213,7 @@ public sealed partial class OpenVisionThreeDViewerControl
                 maximum,
                 mean,
                 BuildSectionProfilePath(samples, minimum, maximum));
+            UpdateLinkedProfileCursor(linkedHeightCursor);
             viewModel.SelectedEntity = "C3D Height Profile";
             viewModel.SelectionSummary = viewModel.ProfileSummary;
             viewModel.MeasurementSummary = viewModel.ProfileRange;
@@ -216,6 +223,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
+            profileSamples = [];
+            viewModel.ClearProfileLinkedCursor();
             viewModel.ViewerStatus = $"Profile update failed: {exception.Message}";
         }
     }
@@ -266,6 +275,55 @@ public sealed partial class OpenVisionThreeDViewerControl
     private static bool SameGridCell(HeightGridPoint first, HeightGridPoint second) =>
         first.Row == second.Row && first.Column == second.Column;
 
+    private void UpdateLinkedProfileCursor(C3DGridCursor? cursor)
+    {
+        if (cursor is not { IsValid: true } value
+            || c3dSample is null
+            || profileFirst is null
+            || profileSecond is null
+            || profileSamples.Length == 0
+            || string.IsNullOrWhiteSpace(profileSourceSha256)
+            || !string.Equals(
+                profileSourceSha256,
+                c3dSample.ContentSha256,
+                StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(
+                value.SourceContentSha256,
+                profileSourceSha256,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            viewModel.ClearProfileLinkedCursor();
+            return;
+        }
+
+        var sampleIndex = Array.FindIndex(
+            profileSamples,
+            sample => sample.Row == value.Row && sample.Column == value.Column);
+        if (sampleIndex < 0)
+        {
+            viewModel.SetProfileLinkedCursorUnavailable();
+            return;
+        }
+
+        var sample = profileSamples[sampleIndex];
+        if (!float.IsFinite(sample.RawValue) || sample.RawValue != value.RawHeight)
+        {
+            viewModel.ClearProfileLinkedCursor();
+            return;
+        }
+
+        var minimum = profileSamples.Min(point => (double)point.RawValue);
+        var maximum = profileSamples.Max(point => (double)point.RawValue);
+        viewModel.SetProfileLinkedCursor(
+            value.Row,
+            value.Column,
+            sample.RawValue,
+            sampleIndex,
+            profileSamples.Length,
+            minimum,
+            maximum);
+    }
+
     private void ResetProfileIfSourceChanged()
     {
         var currentSha256 = c3dSample?.ContentSha256;
@@ -278,6 +336,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
         profileFirst = null;
         profileSecond = null;
+        profileSamples = [];
         profileDraggedEndpoint = 0;
         profileSourceSha256 = null;
         viewModel.ClearProfile();

@@ -11,7 +11,8 @@ public static class ToolRecipePrimaryInputContract
         "thickness",
         "warpage",
         "completeness-grid",
-        "presence-check"
+        "connected-region",
+        "domain-mask"
     };
 
     private static readonly HashSet<string> TransformedHeightFieldTools = new(StringComparer.OrdinalIgnoreCase)
@@ -77,7 +78,9 @@ public static class ToolRecipePrimaryInputContract
         "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions"
             or "gap-flush" or "volume" or "cross-section-dimensions" => "MeasurementResult",
         "completeness-grid" => "CompletenessGridMetrics",
-        "presence-check" => "PresenceCheckResult",
+        "connected-region" => "ConnectedRegionArtifact",
+        "domain-mask" => "HeightField",
+        "editable-region" => "EditableRegionArtifact",
         _ => string.Empty
     };
 }

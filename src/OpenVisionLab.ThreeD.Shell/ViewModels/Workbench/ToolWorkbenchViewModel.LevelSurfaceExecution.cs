@@ -13,12 +13,17 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsLevelSurfacePreviewPublished => levelSurfaceExecutionOwner.IsLevelSurfacePreviewPublished;
     public C3DHeightFieldSnapshot? CurrentLevelSurfacePreviewOutput => levelSurfaceExecutionOwner.CurrentLevelSurfacePreviewOutput;
     public C3DLevelingTransform? CurrentLevelSurfaceTransform => levelSurfaceExecutionOwner.CurrentLevelSurfaceTransform;
+    public C3DLevelFrameArtifact? CurrentLevelSurfaceLevelFrame => levelSurfaceExecutionOwner.CurrentLevelSurfaceLevelFrame;
+    public C3DLevelFrameQualityEvidence? CurrentLevelSurfaceQualityEvidence => levelSurfaceExecutionOwner.CurrentLevelSurfaceQualityEvidence;
+    public C3DLevelSurfaceCoordinateFrameChain? CurrentLevelSurfaceFrameChain => levelSurfaceExecutionOwner.CurrentLevelSurfaceFrameChain;
     public double CurrentLevelSurfaceOutputSlopeX => levelSurfaceExecutionOwner.CurrentLevelSurfaceOutputSlopeX;
     public double CurrentLevelSurfaceOutputSlopeZ => levelSurfaceExecutionOwner.CurrentLevelSurfaceOutputSlopeZ;
     public string? CurrentLevelSurfacePreviewPath => levelSurfaceExecutionOwner.CurrentLevelSurfacePreviewPath;
     public string LevelSurfaceExecutionSummary => levelSurfaceExecutionOwner.LevelSurfaceExecutionSummary;
     public string LevelSurfaceReferenceSummary => levelSurfaceExecutionOwner.LevelSurfaceReferenceSummary;
     public string LevelSurfaceTransformSummary => levelSurfaceExecutionOwner.LevelSurfaceTransformSummary;
+    public string LevelSurfaceFrameSummary => levelSurfaceExecutionOwner.LevelSurfaceFrameSummary;
+    public string LevelSurfaceFrameChainSummary => levelSurfaceExecutionOwner.LevelSurfaceFrameChainSummary;
     public string LevelSurfaceResidualSummary => levelSurfaceExecutionOwner.LevelSurfaceResidualSummary;
     public string LevelSurfaceOutputSummary => levelSurfaceExecutionOwner.LevelSurfaceOutputSummary;
 

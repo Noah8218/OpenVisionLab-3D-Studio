@@ -43,6 +43,15 @@ released; publication state is owned by the release and version policy.
 - Added deterministic connected-region detection and metrics with explicit
   source-bound masks, Four/Eight connectivity, Workbench evidence, and Runner
   golden verification.
+- Added bounded 2D height-image alignment over immutable reference and moving
+  C3D snapshots, with explicit software pose and acceptance evidence.
+- Added deterministic rigid-pose preparation from ordered point pairs and
+  constrained all-correspondence best-fit alignment with residual evidence.
+- Added bounded height-field background removal/subtraction and nearest-distance
+  point-cloud filtering, each with separate derived-output identity and replay
+  evidence.
+- Added selected connected-region component preparation that preserves exact
+  source-grid cells and missing values in a separate derived raw-height output.
 - Added a typed HeightMap integration exchange and consumer smoke path with
   explicit acknowledgement, result publication, and Run Record evidence.
 

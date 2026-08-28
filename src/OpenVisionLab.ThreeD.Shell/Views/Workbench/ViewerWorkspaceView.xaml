@@ -3,6 +3,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:workbenchViews="clr-namespace:OpenVisionLab.ThreeD.Shell.Views.Workbench"
              AutomationProperties.AutomationId="ViewerWorkspace">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -96,13 +97,21 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="ViewerCameraLinkToggleStyle"
+               TargetType="{x:Type ToggleButton}"
+               BasedOn="{StaticResource ViewerLayoutIconToggleStyle}">
+            <Setter Property="Width" Value="152" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
     </UserControl.Resources>
     <Grid Background="{DynamicResource ThreeD.PanelBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Border x:Name="ViewerLayoutToolbar"
+                Grid.Row="0"
                 Margin="0,6,0,0"
                 Padding="0"
                 HorizontalAlignment="Center"
@@ -195,22 +204,88 @@
                         </Canvas>
                     </Viewbox>
                 </ToggleButton>
+                <ToggleButton Style="{StaticResource ViewerCameraLinkToggleStyle}"
+                              Command="{Binding ToggleViewerCameraLinkCommand}"
+                              IsChecked="{Binding ViewerWorkspace.IsCameraLinked, Mode=OneWay}"
+                              ToolTip="{Binding ViewerCameraLinkSummary}"
+                              AutomationProperties.Name="{Binding ViewerCameraLinkLabel}"
+                              AutomationProperties.HelpText="{Binding ViewerCameraLinkSummary}"
+                              AutomationProperties.AutomationId="ViewerCameraLink">
+                    <TextBlock Text="{Binding ViewerCameraLinkLabel}"
+                               TextWrapping="NoWrap" />
+                </ToggleButton>
+                <StackPanel Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                    <TextBlock Margin="0,0,5,0"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.ViewerMainSlot}" />
+                    <ComboBox Width="210"
+                              MinHeight="30"
+                              ItemsSource="{Binding MainViewerCandidates}"
+                              DisplayMemberPath="DisplayName"
+                              SelectedValuePath="Id"
+                              SelectedValue="{Binding MainViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              ToolTip="{Binding MainViewerSummary}"
+                              AutomationProperties.Name="{Binding Localization.ViewerMainSlot}"
+                              AutomationProperties.AutomationId="MainViewerContentPin" />
+                    <ui:Button Margin="4,0,0,0"
+                               Padding="7,3"
+                               Content="×"
+                               Command="{Binding ClearMainViewerPinCommand}"
+                               ToolTip="{Binding Localization.ViewerClearPin}"
+                               AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
+                               AutomationProperties.AutomationId="ClearMainViewerPin" />
+                    <TextBlock Width="220"
+                               Margin="6,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding MainViewerSummary}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding MainViewerSummary}" />
+                </StackPanel>
                 <StackPanel Margin="0,0,8,0"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
                             Visibility="{Binding ViewerWorkspace.HasAuxiliarySlot, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <ComboBox Width="190"
+                    <TextBlock Margin="0,0,5,0"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding Localization.ViewerAuxiliarySlot}" />
+                    <ComboBox Width="210"
                               MinHeight="30"
                               ItemsSource="{Binding ViewerWorkspaceCandidates}"
                               DisplayMemberPath="DisplayName"
                               SelectedValuePath="Id"
                               SelectedValue="{Binding AuxiliaryViewerContentId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                              AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}" />
+                              ToolTip="{Binding AuxiliaryViewerSummary}"
+                              AutomationProperties.Name="{Binding Localization.ViewerAuxiliaryOutput}"
+                              AutomationProperties.AutomationId="AuxiliaryViewerContentPin" />
+                    <ui:Button Margin="4,0,0,0"
+                               Padding="7,3"
+                               Content="×"
+                               Command="{Binding ClearAuxiliaryViewerPinCommand}"
+                               ToolTip="{Binding Localization.ViewerClearPin}"
+                               AutomationProperties.Name="{Binding Localization.ViewerClearPin}"
+                               AutomationProperties.AutomationId="ClearAuxiliaryViewerPin" />
+                    <TextBlock Width="220"
+                               Margin="6,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="9"
+                               Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                               Text="{Binding AuxiliaryViewerSummary}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding AuxiliaryViewerSummary}" />
                 </StackPanel>
             </WrapPanel>
         </Border>
 
-        <Border Margin="12,44,12,0"
+        <Border Grid.Row="1"
+                Margin="12,12,12,0"
                 Padding="9,5"
                 MaxWidth="520"
                 HorizontalAlignment="Left"
@@ -229,7 +304,7 @@
         </Border>
 
         <Grid x:Name="ViewerGrid"
-              Grid.Row="0"
+              Grid.Row="1"
               Margin="8">
             <Grid.RowDefinitions>
                 <RowDefinition x:Name="FirstRow" Height="*" />
@@ -268,22 +343,32 @@
                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                             BorderThickness="0,0,0,1"
                             Visibility="{Binding ViewerWorkspace.HasAuxiliarySlot, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel Orientation="Horizontal">
-                            <Border Margin="0,0,6,0"
-                                    Padding="5,2"
-                                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
-                                    CornerRadius="2">
-                                <TextBlock FontSize="9"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
-                                           Text="A" />
-                            </Border>
-                            <TextBlock VerticalAlignment="Center"
-                                       FontSize="10"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource ThreeD.TextBrush}"
-                                       Text="{Binding Localization.ViewerMainSlot}" />
-                        </StackPanel>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Margin="0,0,6,0"
+                                        Padding="5,2"
+                                        Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                        CornerRadius="2">
+                                    <TextBlock FontSize="9"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                               Text="A" />
+                                </Border>
+                                <TextBlock VerticalAlignment="Center"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ThreeD.TextBrush}"
+                                           Text="{Binding Localization.ViewerMainSlot}" />
+                            </StackPanel>
+                            <workbenchViews:ViewerPresentationBar Grid.Row="1"
+                                                                   Margin="-7,4,-7,-4"
+                                                                   ViewerViewModel="{Binding MainViewerContent.ViewModel, ElementName=Root}"
+                                                                   SlotLabel="{Binding Localization.ViewerMainSlot}" />
+                        </Grid>
                     </Border>
                     <Grid Grid.Row="1">
                         <ContentPresenter x:Name="MainViewerPresenter"
@@ -414,6 +499,10 @@
                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                             BorderThickness="0,0,0,1">
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -435,9 +524,14 @@
                                 <TextBlock Margin="0,1,0,0"
                                            FontSize="9"
                                            Foreground="{DynamicResource ThreeD.MutedTextBrush}"
-                                           Text="{Binding AuxiliaryViewerSummary}"
-                                           TextTrimming="CharacterEllipsis" />
+                                       Text="{Binding AuxiliaryViewerSummary}"
+                                       TextTrimming="CharacterEllipsis" />
                             </StackPanel>
+                    <workbenchViews:ViewerPresentationBar x:Name="AuxiliaryViewerPresentationBar"
+                                                                   Grid.Row="1"
+                                                                   Grid.ColumnSpan="2"
+                                                                   Margin="-7,4,-7,-4"
+                                                                   SlotLabel="{Binding Localization.ViewerAuxiliarySlot}" />
                         </Grid>
                     </Border>
                     <Grid Grid.Row="1">

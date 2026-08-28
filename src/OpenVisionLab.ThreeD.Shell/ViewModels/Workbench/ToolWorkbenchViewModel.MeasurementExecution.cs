@@ -27,9 +27,16 @@ public sealed partial class ToolWorkbenchViewModel
     public bool IsSelectedStepVolume => string.Equals(SelectedPipelineStep?.ToolId, "volume", StringComparison.Ordinal);
     public bool IsSelectedStepCrossSectionDimensions => string.Equals(SelectedPipelineStep?.ToolId, "cross-section-dimensions", StringComparison.Ordinal);
     public bool IsSelectedStepCompletenessGrid => string.Equals(SelectedPipelineStep?.ToolId, "completeness-grid", StringComparison.Ordinal);
-    public bool IsSelectedStepPresenceCheck => string.Equals(SelectedPipelineStep?.ToolId, "presence-check", StringComparison.Ordinal);
+    public bool IsSelectedStepCompletenessGridUsingEditableRegion =>
+        IsSelectedStepCompletenessGrid
+        && SelectedPipelineStep?.InputEntityIds.ElementAtOrDefault(2) is { } inspectionInputId
+        && PipelineSteps.Any(step =>
+            string.Equals(step.OutputEntityId, inspectionInputId, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(step.ToolId, "editable-region", StringComparison.OrdinalIgnoreCase));
     public bool IsSelectedStepDualRoiMeasurement => IsSelectedStepThickness || IsSelectedStepPlaneFlatness || IsSelectedStepGapFlush || IsSelectedStepVolume || IsSelectedStepCompletenessGrid;
-    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions || IsSelectedStepPresenceCheck;
+    public bool IsSelectedStepDualRoiTeaching =>
+        IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion;
+    public bool IsSelectedStepMeasurement => IsSelectedStepThickness || IsSelectedStepWarpage || IsSelectedStepDualRoiMeasurement || IsSelectedStepPointPairDimensions || IsSelectedStepCrossSectionDimensions;
     public bool IsMeasurementPreviewRunning => heightMeasurementExecutionOwner.IsPreviewRunning;
     public bool HasCurrentMeasurementPreview => heightMeasurementExecutionOwner.HasCurrentPreview;
     public bool IsMeasurementPreviewPublished => heightMeasurementExecutionOwner.IsPreviewPublished;
@@ -309,8 +316,9 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(IsSelectedStepVolume));
         OnPropertyChanged(nameof(IsSelectedStepCrossSectionDimensions));
         OnPropertyChanged(nameof(IsSelectedStepCompletenessGrid));
-        OnPropertyChanged(nameof(IsSelectedStepPresenceCheck));
+        OnPropertyChanged(nameof(IsSelectedStepCompletenessGridUsingEditableRegion));
         OnPropertyChanged(nameof(IsSelectedStepDualRoiMeasurement));
+        OnPropertyChanged(nameof(IsSelectedStepDualRoiTeaching));
         OnPropertyChanged(nameof(IsSelectedStepMeasurement));
         RefreshPlaneFlatnessTeachingState();
         heightMeasurementExecutionOwner.RefreshState();

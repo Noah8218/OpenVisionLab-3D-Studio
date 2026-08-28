@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using OpenVisionLab;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 namespace OpenVisionLab.ThreeD.Shell;
@@ -31,8 +32,14 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ProposedToolRoute), nameof(ProposedToolRouteFormat), nameof(ProposedToolRouteUnavailableFormat), nameof(Viewer),
         nameof(ViewerLayout), nameof(ViewerSingle), nameof(ViewerSplitVertical), nameof(ViewerSplitHorizontal),
         nameof(ViewerPopOut), nameof(ViewerMainSlot), nameof(ViewerAuxiliarySlot), nameof(ViewerAuxiliaryOutput),
-        nameof(ViewerAuxiliaryNoOutput), nameof(ViewerPresentationOnly), nameof(ViewerPopOutTitle),
-        nameof(ViewerReturnToSingle), nameof(HeightImage), nameof(OpenHeightImage), nameof(HeightImageLoading),
+        nameof(ViewerAuxiliaryNoOutput), nameof(ViewerMainNoOutput), nameof(ViewerPinnedUnavailable),
+        nameof(ViewerClearPin), nameof(ViewerPresentationOnly), nameof(ViewerPopOutTitle),
+        nameof(ViewerReturnToSingle), nameof(ViewerCameraLink), nameof(ViewerCameraUnlink),
+        nameof(ViewerCameraLinked), nameof(ViewerCameraLinkSummary), nameof(ViewerCameraLinkUnavailable),
+        nameof(ViewerPalette), nameof(ViewerDiagnosticChannel), nameof(ViewerOverlays),
+        nameof(ViewerSelectionOverlay), nameof(ViewerResultOverlay), nameof(ViewerMeasurementOverlay),
+        nameof(ViewerAutoHeightRange), nameof(ViewerHeightRangeMinimum), nameof(ViewerHeightRangeMaximum),
+        nameof(HeightImage), nameof(OpenHeightImage), nameof(HeightImageLoading),
         nameof(HeightImageUnavailable), nameof(HeightImageFit), nameof(HeightImageActualPixels),
         nameof(HeightImageZoomOut), nameof(HeightImageZoomIn),
         nameof(HeightImageCoordinateHint), nameof(HeightImagePanZoomHint), nameof(HeightImageViewOnly),
@@ -57,6 +64,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(SourceAcquisitionProvenanceTitle), nameof(SourceAcquisitionProvenanceHint),
         nameof(SourceAcquisitionState),
         nameof(SourceAcquisitionEvidence), nameof(SourceAcquisitionLimitations),
+        nameof(SourceAcquisitionLimitationsHint), nameof(SourceAcquisitionFlagReflective),
+        nameof(SourceAcquisitionFlagTransparent), nameof(SourceAcquisitionFlagTextureless),
+        nameof(SourceAcquisitionFlagClipped), nameof(SourceAcquisitionFlagLowCoverage),
         nameof(SourceAcquisitionAvailable), nameof(SourceAcquisitionUnavailable),
         nameof(SourceAcquisitionDirectionTitle), nameof(SourceAcquisitionDirectionState),
         nameof(SourceAcquisitionDirectionAvailable), nameof(SourceAcquisitionDirectionUnavailable),
@@ -121,14 +131,13 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ValidationSetExpected), nameof(ValidationSetPredicted), nameof(ValidationSetDecision),
         nameof(ColumnEvidence), nameof(SessionLog), nameof(WorkbenchApplicationLogRetention), nameof(HeightProfile), nameof(FitDiagnostics),
         nameof(IntersectionEvidence), nameof(CorrespondenceEvidence), nameof(OutputCompare), nameof(OutputCompareTitle),
-        nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput), nameof(FlowMap), nameof(FlowMapTitle),
+        nameof(OutputCompareDetail), nameof(OutputCompareNoSelection), nameof(OutputComparePinnedOutput),
+        nameof(OutputCompareSourceBaseline), nameof(OutputCompareQualityDeltaSummaryFormat),
+        nameof(OutputComparePreparationQualitySummaryFormat), nameof(OutputCompareOutliersNotEvaluated), nameof(OutputCompareSourceIdentityRetained), nameof(FlowMap), nameof(FlowMapTitle),
         nameof(DisplayedOutputs), nameof(DisplayedOutputsTitle), nameof(DisplayedOutputsDetail),
         nameof(DisplayedOutputsNoViewerSelection), nameof(CurrentViewerDisplay), nameof(DisplayedInViewer),
         nameof(ShowInViewer), nameof(PinToCompare), nameof(FocusStep), nameof(DisplayedOutputsSummaryFormat),
         nameof(DisplayableC3DData), nameof(EvidenceOnlyOutput), nameof(NoCurrentDisplayableOutput), nameof(PinnedSlotsFormat),
-        nameof(ConnectedRegionOutputTitle), nameof(ConnectedRegionOutputDetail), nameof(ConnectedRegionSummaryFormat),
-        nameof(ConnectedRegionSelectedSummaryFormat), nameof(ConnectedRegionNoOutput), nameof(ConnectedRegionNoSelection),
-        nameof(ConnectedRegionOverlayAvailable), nameof(ConnectedRegionSelect), nameof(ConnectedRegionShowOverlay),
         nameof(FlowMapDetail), nameof(FlowMapReadOnly), nameof(FlowMapInput), nameof(FlowMapOutput),
         nameof(FlowMapPortState), nameof(FlowMapEmptyHint), nameof(Problems), nameof(ProblemsTitle),
         nameof(ProblemsDetail), nameof(ProblemsSummaryFormat), nameof(ProblemsRouteChecks),
@@ -141,6 +150,7 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(RecipeNavigator), nameof(CompatibleToolCatalogTitle), nameof(CompatibleToolCatalogDetail),
         nameof(CompatibleToolCatalogSummaryFormat), nameof(CompatibleToolCatalogEmpty), nameof(SelectCompatibleTool),
         nameof(AddCompatibleTool), nameof(AddCompatibleToolToolTip), nameof(CompatibleToolBlockerLabel),
+        nameof(CompatibleToolBlocked),
         nameof(CompatibleToolBlockerDetailFormat), nameof(RepairRoute), nameof(RepairRouteToolTip),
         nameof(AddInspectionStep), nameof(StepProperties), nameof(NoRecipeStepSelected),
         nameof(NoRecipeStepSelectedDetail), nameof(RecipePipelineTeachReview), nameof(Validate), nameof(MoveUp),
@@ -148,6 +158,8 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ColumnTypedOutput), nameof(ColumnState), nameof(Preview), nameof(Run), nameof(Publish), nameof(Cancel),
         nameof(SelectedPaletteItem), nameof(Input), nameof(Output), nameof(ParameterAdapter), nameof(Inputs),
         nameof(InputParameterOutputSummary), nameof(TypedParameters), nameof(StepPropertiesEditDetail),
+        nameof(SelectedToolExampleLabel), nameof(SelectedToolExpectedOverlayLabel), nameof(SelectedToolStateLabel),
+        nameof(SelectedToolOutputPolicyLabel), nameof(OutputEnabled), nameof(OutputDisabled),
         nameof(Discard), nameof(ApplyParameters), nameof(Produces), nameof(OutputEntity),
         nameof(ExpectedData), nameof(InputEntities), nameof(ToolboxSequenceHint), nameof(SelectedRoute),
         nameof(OpenSelectedToolLab), nameof(ToolLabReview), nameof(ToolLabReviewDetail),
@@ -292,6 +304,30 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         "ThreeD.SourceQuality.Acquisition.Limitations",
         "\uC81C\uC57D \uBC0F \uBD80\uC871\uD55C \uC815\uBCF4",
         "Limitations and missing information");
+    public string SourceAcquisitionLimitationsHint => T(
+        "ThreeD.SourceQuality.Acquisition.LimitationsHint",
+        "\uC544\uB798 \uD50C\uB798\uADF8\uB294 \uD68D\uB4DD \uC81C\uD55C\uC758 \uC120\uC5B8\uC774\uBA70, \uC18C\uD504\uD2B8\uAC00 \uC790\uB3D9 \uCD94\uB860\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.",
+        "These flags declare acquisition limitations; the software does not infer them.");
+    public string SourceAcquisitionFlagReflective => T(
+        "ThreeD.SourceQuality.Acquisition.Flag.Reflective",
+        "\uBC18\uC0AC\uCCB4",
+        "Reflective");
+    public string SourceAcquisitionFlagTransparent => T(
+        "ThreeD.SourceQuality.Acquisition.Flag.Transparent",
+        "\uD22C\uBA85\uCCB4",
+        "Transparent");
+    public string SourceAcquisitionFlagTextureless => T(
+        "ThreeD.SourceQuality.Acquisition.Flag.Textureless",
+        "\uD14D\uC2A4\uCC98 \uBD80\uC7AC",
+        "Textureless");
+    public string SourceAcquisitionFlagClipped => T(
+        "ThreeD.SourceQuality.Acquisition.Flag.Clipped",
+        "\uCE74\uD53C\uB428",
+        "Clipped");
+    public string SourceAcquisitionFlagLowCoverage => T(
+        "ThreeD.SourceQuality.Acquisition.Flag.LowCoverage",
+        "\uB0AE\uC740 \uCEE4\uBC84\uB9AC\uC9C0",
+        "Low coverage");
     public string SourceAcquisitionDirectionTitle => T(
         "ThreeD.SourceQuality.Acquisition.Direction.Title",
         "구조화된 획득 방향",
@@ -434,9 +470,26 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ViewerAuxiliarySlot => T("ThreeD.Workbench.ViewerAuxiliarySlot", "\uBCF4\uC870 \uBDF0", "Auxiliary view");
     public string ViewerAuxiliaryOutput => T("ThreeD.Workbench.ViewerAuxiliaryOutput", "\uBCF4\uC870 \uBDF0 \uCD9C\uB825", "Auxiliary view output");
     public string ViewerAuxiliaryNoOutput => T("ThreeD.Workbench.ViewerAuxiliaryNoOutput", "\uD45C\uC2DC\uD560 \uC2E4\uC81C 3D \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No real 3D output is available");
+    public string ViewerMainNoOutput => T("ThreeD.Workbench.ViewerMainNoOutput", "\uC8FC \uBDF0\uC5D0 \uACE0\uC815\uB41C 3D \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No 3D artifact is pinned to the main view");
+    public string ViewerPinnedUnavailable => T("ThreeD.Workbench.ViewerPinnedUnavailable", "\uACE0\uC815\uB41C \uCF58\uD150\uCE20\uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C", "Pinned content is unavailable");
+    public string ViewerClearPin => T("ThreeD.Command.ViewerClearPin", "\uACE0\uC815 \uD574\uC81C", "Clear pin");
     public string ViewerPresentationOnly => T("ThreeD.Workbench.ViewerPresentationOnly", "\uBCF4\uAE30 \uC804\uC6A9 \u00B7 \uB808\uC2DC\uD53C/\uAC80\uC0AC \uBCC0\uACBD \uC5C6\uC74C", "View only \u00B7 recipe and inspection stay unchanged");
     public string ViewerPopOutTitle => T("ThreeD.Workbench.ViewerPopOutTitle", "OpenVisionLab 3D \uBCF4\uC870 \uBDF0", "OpenVisionLab 3D Auxiliary View");
     public string ViewerReturnToSingle => T("ThreeD.Command.ViewerReturnToSingle", "\uB2E8\uC77C \uBDF0\uB85C \uBCF5\uADC0", "Return to single view");
+    public string ViewerCameraLink => T("ThreeD.Command.ViewerCameraLink", "\uCE74\uBA54\uB77C \uB9C1\uD06C", "Link camera");
+    public string ViewerCameraUnlink => T("ThreeD.Command.ViewerCameraUnlink", "\uCE74\uBA54\uB77C \uB9C1\uD06C \uD574\uC81C", "Unlink camera");
+    public string ViewerCameraLinked => T("ThreeD.Workbench.ViewerCameraLinked", "Main \u2192 Auxiliary \uCE74\uBA54\uB77C \uB9C1\uD06C \uC0C1\uD0DC", "Camera linked Main \u2192 Auxiliary");
+    public string ViewerCameraLinkSummary => T("ThreeD.Workbench.ViewerCameraLinkSummary", "Main \uCE74\uBA54\uB77C\uB97C Auxiliary\uC5D0 \uB3D9\uAE30\uD654\uD569\uB2C8\uB2E4. \uBCF4\uAE30 \uC804\uC6A9.", "Main camera will drive Auxiliary. View only.");
+    public string ViewerCameraLinkUnavailable => T("ThreeD.Workbench.ViewerCameraLinkUnavailable", "\uC2E4\uC81C 3D Auxiliary \uBDF0\uC5D0\uC11C\uB9CC \uCE74\uBA54\uB77C \uB9C1\uD06C\uAC00 \uAC00\uB2A5\uD569\uB2C8\uB2E4.", "Camera linking requires a real 3D Auxiliary view.");
+    public string ViewerPalette => T("ThreeD.Workbench.ViewerPalette", "\uD314\uB808\uD2B8", "Palette");
+    public string ViewerDiagnosticChannel => T("ThreeD.Workbench.ViewerDiagnosticChannel", "\uC9C4\uB2E8 \uCC44\uB110", "Diagnostic channel");
+    public string ViewerOverlays => T("ThreeD.Workbench.ViewerOverlays", "\uC624\uBC84\uB808\uC774", "Overlays");
+    public string ViewerSelectionOverlay => T("ThreeD.Workbench.ViewerSelectionOverlay", "\uC120\uD0DD", "Selection");
+    public string ViewerResultOverlay => T("ThreeD.Workbench.ViewerResultOverlay", "\uACB0\uACFC", "Result");
+    public string ViewerMeasurementOverlay => T("ThreeD.Workbench.ViewerMeasurementOverlay", "\uCE21\uC815", "Measurement");
+    public string ViewerAutoHeightRange => T("ThreeD.Command.ViewerAutoHeightRange", "AUTO", "AUTO");
+    public string ViewerHeightRangeMinimum => T("ThreeD.Workbench.ViewerHeightRangeMinimum", "\uD558\uD55C", "Min");
+    public string ViewerHeightRangeMaximum => T("ThreeD.Workbench.ViewerHeightRangeMaximum", "\uC0C1\uD55C", "Max");
     public string HeightImage => T("ThreeD.Workbench.HeightImage", "\uB192\uC774 \uC774\uBBF8\uC9C0", "Height Image");
     public string OpenHeightImage => T("ThreeD.Command.OpenHeightImage", "\uB192\uC774 \uC774\uBBF8\uC9C0 \uC5F4\uAE30", "Open Height Image");
     public string HeightImageLoading => T("ThreeD.Workbench.HeightImageLoading", "\uC804\uCCB4 \uD574\uC0C1\uB3C4 \uB192\uC774 \uC774\uBBF8\uC9C0 \uB85C\uB4DC \uC911\u2026", "Loading full-resolution Height Image\u2026");
@@ -676,6 +729,26 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string OutputCompareDetail => T("ThreeD.Workbench.OutputCompareDetail", "\uC2E4\uC81C\uB85C \uB85C\uB4DC\uB41C \uC18C\uC2A4\uC640 \uC0B0\uCD9C\uBB3C\uB9CC \uB3C4\uD0B9 \uBE44\uAD50 \uC2AC\uB86F\uC5D0 \uACE0\uC815\uD569\uB2C8\uB2E4. \uC120\uD0DD\uC740 \uB808\uC2DC\uD53C\uB97C \uC218\uC815\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Pin only currently loaded sources or outputs to docked compare slots. Selection never edits or executes the recipe.");
     public string OutputCompareNoSelection => T("ThreeD.Workbench.OutputCompareNoSelection", "\uACE0\uC815\uB41C \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No output pinned");
     public string OutputComparePinnedOutput => T("ThreeD.Workbench.OutputComparePinnedOutput", "\uACE0\uC815 \uC0B0\uCD9C\uBB3C", "Pinned output");
+    public string OutputCompareSourceBaseline => T(
+        "ThreeD.Workbench.OutputCompareSourceBaseline",
+        "\uC6D0\uBCF8 \uD488\uC9C8 \uAE30\uC900\uC120",
+        "Source quality baseline");
+    public string OutputCompareQualityDeltaSummaryFormat => T(
+        "ThreeD.Workbench.OutputCompareQualityDeltaSummaryFormat",
+        "\uC6D0\uBCF8 \uC720\uD6A8 {0:N0} \u00B7 \uB204\uB77D {1:N0} \u2192 \uC900\uBE44 \uACB0\uACFC \uC720\uD6A8 {2:N0} ({3}) \u00B7 \uB204\uB77D {4:N0} ({5}) \u00B7 \uC774\uC0C1\uCE58 {6} \u00B7 {7}",
+        "Source valid {0:N0} \u00B7 missing {1:N0} \u2192 prepared valid {2:N0} ({3}) \u00B7 missing {4:N0} ({5}) \u00B7 outliers {6} \u00B7 {7}");
+    public string OutputComparePreparationQualitySummaryFormat => T(
+        "ThreeD.Workbench.OutputComparePreparationQualitySummaryFormat",
+        "\uC6D0\uBCF8 {0} \u2192 \uC900\uBE44 \uACB0\uACFC {1} | {2}",
+        "Source {0} \u2192 prepared {1} | {2}");
+    public string OutputCompareOutliersNotEvaluated => T(
+        "ThreeD.Workbench.OutputCompareOutliersNotEvaluated",
+        "\uD3C9\uAC00\uD558\uC9C0 \uC54A\uC74C",
+        "not evaluated");
+    public string OutputCompareSourceIdentityRetained => T(
+        "ThreeD.Workbench.OutputCompareSourceIdentityRetained",
+        "\uC6D0\uBCF8 ID \uC720\uC9C0",
+        "source identity retained");
     public string DisplayedOutputs => T("ThreeD.Workbench.DisplayedOutputs", "\uD45C\uC2DC \uC0B0\uCD9C\uBB3C", "Displayed Outputs");
     public string DisplayedOutputsTitle => T("ThreeD.Workbench.DisplayedOutputsTitle", "\uC0B0\uCD9C\uBB3C \uD45C\uC2DC \uAD00\uB9AC", "Displayed Outputs / Overlay Manager");
     public string DisplayedOutputsDetail => T("ThreeD.Workbench.DisplayedOutputsDetail", "\uC2E4\uC81C C3D \uC0B0\uCD9C\uBB3C\uB9CC 3D \uBDF0\uC5D0 \uD45C\uC2DC\uD558\uAC70\uB098 \uBE44\uAD50\uC5D0 \uACE0\uC815\uD569\uB2C8\uB2E4. \uD53C\uCC98 \uC0B0\uCD9C\uBB3C\uC740 \uAC00\uC9DC \uD45C\uBA74 \uC5C6\uC774 \uC99D\uAC70\uB85C\uB9CC \uBCF4\uC5EC\uC90D\uB2C8\uB2E4.", "Show or pin only existing C3D artifacts. Feature outputs stay evidence-only; no synthetic surface is created.");
@@ -690,15 +763,6 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string EvidenceOnlyOutput => T("ThreeD.Workbench.EvidenceOnlyOutput", "\uC99D\uAC70 \uC804\uC6A9: \uAC00\uC9DC 3D \uD45C\uBA74\uC744 \uB9CC\uB4E4\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4", "Evidence only; no synthetic 3D surface is created");
     public string NoCurrentDisplayableOutput => T("ThreeD.Workbench.NoCurrentDisplayableOutput", "\uD604\uC7AC \uD45C\uC2DC \uAC00\uB2A5\uD55C \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No current displayable output");
     public string PinnedSlotsFormat => T("ThreeD.Workbench.PinnedSlotsFormat", "\uBE44\uAD50 \uC2AC\uB86F {0}\uC5D0 \uACE0\uC815", "Pinned to comparison slot {0}");
-    public string ConnectedRegionOutputTitle => T("ThreeD.Workbench.ConnectedRegionOutputTitle", "Connected Region \uC0B0\uCD9C\uBB3C", "Connected-region output");
-    public string ConnectedRegionOutputDetail => T("ThreeD.Workbench.ConnectedRegionOutputDetail", "G-11 \uAC80\uCD9C \uACB0\uACFC\uB97C \uC7AC\uC2E4\uD589 \uC5C6\uC774 2D/3D \uD45C\uC2DC\uC640 \uC120\uD0DD\uC5D0 \uC0AC\uC6A9\uD569\uB2C8\uB2E4.", "Review G-11 detection metrics in 2D/3D without rerunning detection.");
-    public string ConnectedRegionSummaryFormat => T("ThreeD.Workbench.ConnectedRegionSummaryFormat", "{0}\uAC1C \uC601\uC5ED | \uC804\uACBD {1}\uCE78 | \uCD1D \uBA74\uC801 {2:0.###} grid-index²", "{0} regions | {1} foreground cells | total area {2:0.###} grid-index²");
-    public string ConnectedRegionSelectedSummaryFormat => T("ThreeD.Workbench.ConnectedRegionSelectedSummaryFormat", "{0} | {1}\uCE78 | \uBA74\uC801 {2} | \uC911\uC2EC {3}", "{0} | {1} cells | area {2} | center {3}");
-    public string ConnectedRegionNoOutput => T("ThreeD.Workbench.ConnectedRegionNoOutput", "\uD604\uC7AC \uC18C\uC2A4\uC640 \uC77C\uCE58\uD558\uB294 Connected Region \uC0B0\uCD9C\uBB3C \uC5C6\uC74C", "No current source-bound connected-region output");
-    public string ConnectedRegionNoSelection => T("ThreeD.Workbench.ConnectedRegionNoSelection", "Connected Region \uC601\uC5ED \uC120\uD0DD \uC5C6\uC74C", "No connected region selected");
-    public string ConnectedRegionOverlayAvailable => T("ThreeD.Workbench.ConnectedRegionOverlayAvailable", "\uD604\uC7AC C3D \uC6D0\uBCF8\uC5D0 \uC624\uBC84\uB808\uC774 \uD45C\uC2DC \uAC00\uB2A5", "Overlay available on current C3D source");
-    public string ConnectedRegionSelect => T("ThreeD.Command.ConnectedRegionSelect", "\uC120\uD0DD", "Select");
-    public string ConnectedRegionShowOverlay => T("ThreeD.Command.ConnectedRegionShowOverlay", "\uC624\uBC84\uB808\uC774 \uD45C\uC2DC", "Show overlay");
     public string FlowMap => T("ThreeD.Workbench.FlowMap", "\uD750\uB984 \uB9F5", "Flow Map");
     public string FlowMapTitle => T("ThreeD.Workbench.FlowMapTitle", "\uC785\uB825 \u2192 \uB3C4\uAD6C \u2192 \uC815\uC2DD \uCD9C\uB825", "Input → Tool → Typed output");
     public string FlowMapDetail => T("ThreeD.Workbench.FlowMapDetail", "\uD2B8\uB9AC \uC120\uD0DD\uACFC \uB3D9\uAE30\uD654\uB41C \uC77D\uAE30 \uC804\uC6A9 \uB370\uC774\uD130 \uACBD\uB85C\uC785\uB2C8\uB2E4. \uC5F0\uACB0\uC744 \uC218\uC815\uD558\uAC70\uB098 \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Read-only data routes synchronized with the tree. It does not edit connections or run a tool.");
@@ -711,11 +775,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string RecipeNavigator => T("ThreeD.Workbench.RecipeNavigator", "\uAC80\uC0AC \uB2E8\uACC4 \uBAA9\uB85D", "Inspection steps");
     public string CompatibleToolCatalogTitle => T("ThreeD.Workbench.CompatibleToolCatalogTitle", "\uD638\uD658 \uB2E4\uC74C \uB3C4\uAD6C", "Compatible next tools");
     public string CompatibleToolCatalogDetail => T("ThreeD.Workbench.CompatibleToolCatalogDetail", "\uD604\uC7AC \uC785\uB825\uB9CC \uD655\uC778\uD569\uB2C8\uB2E4. \uB3C4\uAD6C \uC120\uD0DD\uC740 \uB2E8\uACC4\u00B7\uC5F0\uACB0\u00B7\uC2E4\uD589\uC744 \uBC14\uAFB8\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Checks current inputs only. Selecting never adds, connects, or runs.");
-    public string CompatibleToolCatalogSummaryFormat => T("ThreeD.Workbench.CompatibleToolCatalogSummaryFormat", "\uD638\uD658 \uB3C4\uAD6C {0}\uAC1C", "{0} compatible");
+    public string CompatibleToolCatalogSummaryFormat => T("ThreeD.Workbench.CompatibleToolCatalogSummaryFormat", "\uD638\uD658 {0}\uAC1C \u00B7 \uCC28\uB2E8 {1}\uAC1C", "{0} compatible \u00B7 {1} blocked");
     public string CompatibleToolCatalogEmpty => T("ThreeD.Workbench.CompatibleToolCatalogEmpty", "\uB2E4\uC74C \uB3C4\uAD6C \uCD94\uCC9C\uC744 \uC704\uD55C \uD604\uC7AC \uC785\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.", "No current inputs are available for a next-tool suggestion.");
     public string SelectCompatibleTool => T("ThreeD.Command.SelectCompatibleTool", "\uD234\uBC15\uC2A4\uC5D0\uC11C \uC120\uD0DD", "Select in Toolbox");
     public string AddCompatibleTool => T("ThreeD.Command.AddCompatibleTool", "\uCD94\uAC00", "Add");
     public string AddCompatibleToolToolTip => T("ThreeD.Command.AddCompatibleToolToolTip", "\uD45C\uC2DC\uB41C \uC785\uB825\uC73C\uB85C \uAC80\uC0AC \uB2E8\uACC4\uB97C \uBA85\uC2DC\uC801\uC73C\uB85C \uCD94\uAC00\uD569\uB2C8\uB2E4. \uC2E4\uD589\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.", "Explicitly add a step with the displayed inputs. It does not run.");
+    public string CompatibleToolBlocked => T("ThreeD.Workbench.CompatibleToolBlocked", "\uC18C\uC2A4 \uD488\uC9C8\uB85C \uCC28\uB2E8", "Blocked by source quality");
     public string CompatibleToolBlockerLabel => T("ThreeD.Workbench.CompatibleToolBlockerLabel", "\uB2E4\uC74C \uBBF8\uCDA9\uC871 \uC785\uB825", "Next missing input");
     public string CompatibleToolBlockerDetailFormat => T("ThreeD.Workbench.CompatibleToolBlockerDetailFormat", "{0}: {1} \uD544\uC694", "{0}: requires {1}");
     public string RepairRoute => T("ThreeD.Command.RepairRoute", "\uACBD\uB85C \uC218\uC815", "Repair route");
@@ -746,6 +811,12 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string InputParameterOutputSummary => T("ThreeD.Label.InputParameterOutputSummary", "\uC785\uB825 \u2192 \uD30C\uB77C\uBBF8\uD130 \u2192 \uCD9C\uB825", "Inputs → Parameters → Output");
     public string TypedParameters => T("ThreeD.Label.TypedParameters", "\uC815\uC2DD \uD30C\uB77C\uBBF8\uD130", "Typed parameters");
     public string StepPropertiesEditDetail => T("ThreeD.Workbench.StepPropertiesEditDetail", "\uD3B8\uC9D1\uC740 \uC791\uC131\uB41C \uB808\uC2DC\uD53C\uB9CC \uBC14\uAFC9\uB2C8\uB2E4. \uC9C0\uC6D0\uB41C \uC815\uC2DD \uB2E8\uACC4\uB294 \uBBF8\uB9AC\uBCF4\uAE30\uB85C \uBA85\uC2DC\uC801\uC73C\uB85C \uC2E4\uD589\uD569\uB2C8\uB2E4.", "Editing changes only the authored recipe. Use Preview explicitly to execute a supported typed step.");
+    public string SelectedToolExampleLabel => T("ThreeD.Workbench.SelectedToolExampleLabel", "입력 예시", "Example");
+    public string SelectedToolExpectedOverlayLabel => T("ThreeD.Workbench.SelectedToolExpectedOverlayLabel", "예상 오버레이", "Expected overlay");
+    public string SelectedToolStateLabel => T("ThreeD.Workbench.SelectedToolStateLabel", "공통 상태", "Common state");
+    public string SelectedToolOutputPolicyLabel => T("ThreeD.Workbench.SelectedToolOutputPolicyLabel", "출력 정책", "Output policy");
+    public string OutputEnabled => T("ThreeD.Workbench.OutputEnabled", "생성 허용", "Enabled");
+    public string OutputDisabled => T("ThreeD.Workbench.OutputDisabled", "생성 안 함", "Disabled");
     public string Discard => T("ThreeD.Command.Discard", "\uBC84\uB9AC\uAE30", "Discard");
     public string ApplyParameters => T("ThreeD.Command.ApplyParameters", "\uD30C\uB77C\uBBF8\uD130 \uC801\uC6A9", "Apply parameters");
     public string Produces => T("ThreeD.Label.Produces", "\uC0B0\uCD9C \uC815\uC2DD", "Produces");
@@ -989,6 +1060,21 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string FlowPortCurrentDetailFormat => T("ThreeD.Workbench.FlowPortCurrentDetailFormat", "\uC815\uC2DD \uCD9C\uB825 '{0}'\uC774(\uAC00) \uD604\uC7AC \uC0C1\uD0DC\uC785\uB2C8\uB2E4.", "Typed output '{0}' is current.");
     public string FlowPortIncompatible => T("ThreeD.Workbench.FlowPortIncompatible", "\uD638\uD658\uB418\uC9C0 \uC54A\uB294 \uC785\uB825", "Incompatible input");
     public string FlowPortIncompatibleDetailFormat => T("ThreeD.Workbench.FlowPortIncompatibleDetailFormat", "\uC785\uB825 '{0}'\uC758 \uD0C0\uC785\uC740 {1}\uC785\uB2C8\uB2E4. \uD544\uC694\uD55C {2} \uC785\uB825\uC73C\uB85C \uACBD\uB85C\uB97C \uC218\uC815\uD558\uC138\uC694.", "Input '{0}' is {1}. Repair the route with a {2} input.");
+
+    internal string StateLabel(InspectionStepState state) => state switch
+    {
+        InspectionStepState.Empty => T("ThreeD.Inspection.State.Empty", "비어 있음", "Empty"),
+        InspectionStepState.Incomplete => T("ThreeD.Inspection.State.Incomplete", "미완료", "Incomplete"),
+        InspectionStepState.Stale => T("ThreeD.Inspection.State.Stale", "재생성 필요", "Stale"),
+        InspectionStepState.Ready => T("ThreeD.Inspection.State.Ready", "준비됨", "Ready"),
+        InspectionStepState.Running => T("ThreeD.Inspection.State.Running", "실행 중", "Running"),
+        InspectionStepState.Pass => T("ThreeD.Inspection.State.Pass", "통과", "Pass"),
+        InspectionStepState.Fail => T("ThreeD.Inspection.State.Fail", "실패", "Fail"),
+        InspectionStepState.Error => T("ThreeD.Inspection.State.Error", "오류", "Error"),
+        _ => state.ToString()
+    };
+
+    internal string OutputPolicyLabel(bool enabled) => enabled ? OutputEnabled : OutputDisabled;
 
     private static string T(string key, string korean, string english)
     {

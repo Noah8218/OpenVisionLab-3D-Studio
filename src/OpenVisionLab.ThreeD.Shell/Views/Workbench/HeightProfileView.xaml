@@ -26,11 +26,11 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Margin="0,0,10,0"
                         Style="{DynamicResource ThreeD.DockPanelStatusCardStyle}"
-                        ToolTip="The trace reflects two explicit endpoints in the 3D View."
-                        AutomationProperties.Name="Viewer-linked height profile">
+                        ToolTip="The exact current-source cell can be linked across Height Image, Profile, and the 3D View."
+                        AutomationProperties.Name="Cross-view linked height profile">
                     <StackPanel Orientation="Horizontal">
                         <ui:SymbolIcon Width="13" Height="13" Margin="0,0,4,0" Foreground="{DynamicResource ThreeD.InfoBrush}" Symbol="Link24" />
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Viewer-linked" />
+                        <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource ThreeD.InfoBrush}" Text="Cross-view linked" />
                     </StackPanel>
                 </Border>
                 <Ellipse Width="9" Height="9" Fill="#33e6ff" />
@@ -63,6 +63,44 @@
                               StrokeLineJoin="Round"
                               StrokeStartLineCap="Round"
                               StrokeEndLineCap="Round" />
+                        <Line X1="{Binding ProfileLinkedCursorX}"
+                              X2="{Binding ProfileLinkedCursorX}"
+                              Y1="0"
+                              Y2="54"
+                              Stroke="{DynamicResource ThreeD.InfoBrush}"
+                              StrokeDashArray="2,1"
+                              StrokeThickness="1.5"
+                              AutomationProperties.Name="Linked C3D Profile cursor">
+                            <Line.Style>
+                                <Style TargetType="Line">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ProfileLinkedCursorVisible}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Line.Style>
+                        </Line>
+                        <Ellipse Width="6"
+                                 Height="6"
+                                 Canvas.Left="{Binding ProfileLinkedCursorMarkerLeft}"
+                                 Canvas.Top="{Binding ProfileLinkedCursorMarkerTop}"
+                                 Fill="{DynamicResource ThreeD.InfoBrush}"
+                                 Stroke="{DynamicResource ThreeD.PrimaryTextBrush}"
+                                 StrokeThickness="0.8"
+                                 AutomationProperties.Name="Linked C3D Profile sample">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ProfileLinkedCursorVisible}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
                     </Canvas>
                 </Viewbox>
             </Border>
@@ -77,6 +115,13 @@
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                            TextWrapping="Wrap"
                            Text="{Binding ProfileEndpointSummary}" />
+                <TextBlock Margin="0,5,0,0"
+                           FontFamily="Consolas"
+                           FontSize="10.5"
+                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.Name="Linked C3D Profile cursor status"
+                           Text="{Binding ProfileLinkedCursorSummary}" />
             </StackPanel>
         </Grid>
 

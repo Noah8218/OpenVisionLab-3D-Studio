@@ -254,6 +254,54 @@
                                  VerticalScrollBarVisibility="Auto"
                                   AutomationProperties.AutomationId="SourceAcquisitionLimitations"
                                   AutomationProperties.Name="{Binding Localization.SourceAcquisitionLimitations}" />
+                        <TextBlock Margin="0,7,0,1"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                   Text="{Binding Localization.SourceAcquisitionLimitationsHint}"
+                                   TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,1,0,0"
+                                    AutomationProperties.AutomationId="SourceAcquisitionLimitationFlags">
+                            <CheckBox Margin="0,2,12,2"
+                                      IsChecked="{Binding IsAcquisitionReflectiveFlagDraft, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="SourceAcquisitionFlagReflective"
+                                      AutomationProperties.Name="{Binding Localization.SourceAcquisitionFlagReflective}">
+                                <TextBlock MaxWidth="150"
+                                           Text="{Binding Localization.SourceAcquisitionFlagReflective}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
+                            <CheckBox Margin="0,2,12,2"
+                                      IsChecked="{Binding IsAcquisitionTransparentFlagDraft, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="SourceAcquisitionFlagTransparent"
+                                      AutomationProperties.Name="{Binding Localization.SourceAcquisitionFlagTransparent}">
+                                <TextBlock MaxWidth="150"
+                                           Text="{Binding Localization.SourceAcquisitionFlagTransparent}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
+                            <CheckBox Margin="0,2,12,2"
+                                      IsChecked="{Binding IsAcquisitionTexturelessFlagDraft, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="SourceAcquisitionFlagTextureless"
+                                      AutomationProperties.Name="{Binding Localization.SourceAcquisitionFlagTextureless}">
+                                <TextBlock MaxWidth="150"
+                                           Text="{Binding Localization.SourceAcquisitionFlagTextureless}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
+                            <CheckBox Margin="0,2,12,2"
+                                      IsChecked="{Binding IsAcquisitionClippedFlagDraft, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="SourceAcquisitionFlagClipped"
+                                      AutomationProperties.Name="{Binding Localization.SourceAcquisitionFlagClipped}">
+                                <TextBlock MaxWidth="150"
+                                           Text="{Binding Localization.SourceAcquisitionFlagClipped}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
+                            <CheckBox Margin="0,2,12,2"
+                                      IsChecked="{Binding IsAcquisitionLowCoverageFlagDraft, Mode=TwoWay}"
+                                      AutomationProperties.AutomationId="SourceAcquisitionFlagLowCoverage"
+                                      AutomationProperties.Name="{Binding Localization.SourceAcquisitionFlagLowCoverage}">
+                                <TextBlock MaxWidth="150"
+                                           Text="{Binding Localization.SourceAcquisitionFlagLowCoverage}"
+                                           TextWrapping="Wrap" />
+                            </CheckBox>
+                        </WrapPanel>
                         <Border Margin="0,8,0,0"
                                 Padding="8"
                                 Background="{DynamicResource ThreeD.CommandBarBrush}"

@@ -301,7 +301,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var stageStart = Stopwatch.GetTimestamp();
             c3dSample = loaded;
-            viewModel.SetConnectedRegionOverlay(null, null);
             CurrentViewerOnlySourcePath = null;
             CurrentViewerOnlySourceFormat = null;
             if (preparedRenderProxy is not null && preparedPositions is not null)
@@ -409,7 +408,6 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         ResetInteractionWireframeLodForSourceChange(sourceApplied: false);
         c3dSample = null;
-        viewModel.SetConnectedRegionOverlay(null, null);
         ClearTeachingSelectionsForSourceChange();
         planeFlatnessEvaluation = null;
         planeReferenceMeasurement = null;
@@ -429,7 +427,6 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             var fullPath = Path.GetFullPath(path);
             c3dSample = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
-            viewModel.SetConnectedRegionOverlay(null, null);
             SetC3DSampleStatus();
             viewModel.UseC3DSmokeScene();
             viewModel.SetC3DAlignment(ModelTransform.Identity, "C3D grid-index scalar frame", label);
@@ -903,7 +900,9 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         var renderProxy = GetC3DRenderProxy();
-        viewModel.SetC3DDisplayCapabilities(renderProxy.HasSurface);
+        viewModel.SetC3DDisplayCapabilities(
+            renderProxy.HasSurface,
+            SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid());
         viewModel.C3DSamplePointCount = c3dSample.Points.Length.ToString("N0", CultureInfo.InvariantCulture);
         viewModel.C3DSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
@@ -917,8 +916,15 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void SetGlbSampleStatus()
     {
+        var normalQuality = importedMesh is { } normalMesh
+            ? ImportedMeshNormalQualityAnalyzer.Create(normalMesh)
+            : null;
         viewModel.SetImportedMeshDisplayCapabilities(
-            importedMesh is { } mesh && (mesh.HasVertexColors || mesh.HasBaseColorTexture));
+            importedMesh is { } mesh && (mesh.HasVertexColors || mesh.HasBaseColorTexture),
+            importedMesh is { } importedMeshValue
+                ? SourceChannelCatalogAnalyzer.CreateForImportedMesh(importedMeshValue)
+                : null,
+            normalQuality);
 
         if (importedMesh is null)
         {
@@ -934,16 +940,24 @@ public sealed partial class OpenVisionThreeDViewerControl
         var textureSummary = importedMesh.HasBaseColorTexture
             ? $"texture {importedMesh.BaseColorTexture!.MimeType} {importedMesh.BaseColorTexture.Bytes.Length:N0} bytes | texcoords {importedMesh.TextureCoordinates.Length:N0}"
             : "texture none";
+        var normalSummary = normalQuality is { } report
+            ? $"normals {report.State} {report.NormalCount:N0}/{report.PositionCount:N0} | normal evidence {report.Evidence}"
+            : "normals unavailable";
         viewModel.GlbSampleSummary = string.Create(
             CultureInfo.InvariantCulture,
-            $"{Path.GetFileName(importedMesh.SourcePath)} | format {importedMesh.Format} | vertices {importedMesh.Positions.Length:N0} | triangles {importedMesh.TriangleCount:N0} | {colorSummary} | {textureSummary} | bounds {FormatVector(importedMesh.Min)} to {FormatVector(importedMesh.Max)}");
+            $"{Path.GetFileName(importedMesh.SourcePath)} | format {importedMesh.Format} | vertices {importedMesh.Positions.Length:N0} | triangles {importedMesh.TriangleCount:N0} | {colorSummary} | {textureSummary} | {normalSummary} | bounds {FormatVector(importedMesh.Min)} to {FormatVector(importedMesh.Max)}");
         viewModel.SetGlbSampleSource(importedMesh.SourcePath, Path.GetFileNameWithoutExtension(importedMesh.SourcePath), importedMesh.Format);
         viewModel.SetGlbSampleBounds(importedMesh.Min, importedMesh.Max);
     }
 
     private void SetLazSampleStatus()
     {
-        viewModel.SetLazDisplayCapabilities(lazPointCloud?.HasRgb == true);
+        viewModel.SetLazDisplayCapabilities(
+            lazPointCloud?.HasRgb == true,
+            lazPointCloud?.HasIntensity == true,
+            lazPointCloud is { } pointCloud
+                ? SourceChannelCatalogAnalyzer.CreateForLazPointCloud(pointCloud)
+                : null);
 
         if (lazSample is null)
         {

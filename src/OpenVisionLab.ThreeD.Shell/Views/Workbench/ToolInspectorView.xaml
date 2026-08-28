@@ -91,7 +91,8 @@
                                 DataContext="{Binding SelectedPipelineStep}"
                                 Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
                                 ToolTip="{Binding State, StringFormat=Pipeline step state: {0}}"
-                                AutomationProperties.Name="{Binding State, StringFormat=Pipeline step state: {0}}">
+                                AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
+                                AutomationProperties.HelpText="{Binding State}">
                             <StackPanel Orientation="Horizontal">
                                 <ui:SymbolIcon Width="14"
                                                Height="14"
@@ -101,7 +102,7 @@
                                            FontSize="9.5"
                                            FontWeight="SemiBold"
                                            Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
-                                           Text="{Binding State}"
+                                           Text="{Binding CanonicalStateLabel}"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Border>
@@ -337,7 +338,7 @@
                             </Border>
 
                             <StackPanel Margin="0,7,0,0"
-                                        Visibility="{Binding IsSelectedStepDualRoiMeasurement, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsSelectedStepDualRoiTeaching, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock FontWeight="SemiBold"
                                            Text="{Binding DualRoiTeachingTitle}" />
                                 <TextBlock Margin="0,2,0,7"
@@ -508,7 +509,7 @@
                                         <Setter Property="Visibility"
                                                 Value="{Binding IsSelectedStepViewerCaptureSupported, Converter={StaticResource BoolToVisibilityConverter}}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelectedStepDualRoiMeasurement}" Value="True">
+                                            <DataTrigger Binding="{Binding IsSelectedStepDualRoiTeaching}" Value="True">
                                                 <Setter Property="Visibility" Value="Collapsed" />
                                             </DataTrigger>
                                         </Style.Triggers>

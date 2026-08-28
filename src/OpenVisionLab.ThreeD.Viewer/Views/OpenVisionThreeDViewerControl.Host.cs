@@ -88,6 +88,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.NominalActual.PublishRequested += nominalActualPublishRequestedHandler;
         viewModel.NominalActual.PropertyChanged += nominalActualPropertyChangedHandler;
         viewModel.PropertyChanged += viewModelPropertyChangedHandler;
+        viewModel.CameraChanged += OnViewModelCameraChanged;
         OpenVisionLanguageService.LanguageChanged += languageChangedHandler;
         viewModelEventsSubscribed = true;
     }
@@ -118,6 +119,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         viewModel.NominalActual.PublishRequested -= nominalActualPublishRequestedHandler;
         viewModel.NominalActual.PropertyChanged -= nominalActualPropertyChangedHandler;
         viewModel.PropertyChanged -= viewModelPropertyChangedHandler;
+        viewModel.CameraChanged -= OnViewModelCameraChanged;
         OpenVisionLanguageService.LanguageChanged -= languageChangedHandler;
         viewModelEventsSubscribed = false;
     }
@@ -141,6 +143,22 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public MainWindowViewModel ViewModel => viewModel;
 
+    public event EventHandler? CameraChanged;
+
+    public ViewerCameraState CaptureCameraState() =>
+        viewModel.CaptureCameraState();
+
+    public bool TryApplyCameraState(ViewerCameraState state)
+    {
+        if (!viewModel.TryApplyCameraState(state))
+        {
+            return false;
+        }
+
+        RequestVisibleFrame();
+        return true;
+    }
+
     public int SmokeExitCode => smokeExitCode;
 
     public int VisibleFrameRequestCount { get; private set; }
@@ -160,6 +178,9 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public event EventHandler<ViewerHostStateChangedEventArgs>? HostStateChanged;
     public event EventHandler? ProfileViewRequested;
+
+    private void OnViewModelCameraChanged(object? sender, EventArgs args) =>
+        CameraChanged?.Invoke(this, args);
 
     public void FitAll() => ExecuteHostCommand(viewModel.FitAllCommand);
 
@@ -236,6 +257,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PublishCurrentPreviewResult()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (viewModel.NominalActualInput is not null)
         {
             if (!viewModel.NominalActual.CanPublish)
@@ -395,6 +421,13 @@ public sealed partial class OpenVisionThreeDViewerControl
         NominalActualPreviewRequestedEventArgs args)
     {
         var comparison = viewModel.NominalActual;
+        if (!viewModel.RecipeOutputEnabled)
+        {
+            comparison.FailPreview(args.RequestId, "Recipe output is disabled; Preview did not run.");
+            viewModel.ViewerStatus = "Recipe output is disabled; Preview did not run";
+            return;
+        }
+
         if (viewModel.NominalActualInput is not { } configuredInput)
         {
             comparison.FailPreview(args.RequestId, "Comparison inputs are not connected.");
@@ -463,6 +496,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         NominalActualPublishRequestedEventArgs args)
     {
         var comparison = viewModel.NominalActual;
+        if (!viewModel.RecipeOutputEnabled)
+        {
+            viewModel.ViewerStatus = "Recipe output is disabled; Publish did not run";
+            return;
+        }
+
         var result = comparison.PreviewResult;
         if (result is null
             || !result.Input.ExecutionFingerprint.Equals(args.Fingerprint, StringComparison.Ordinal)

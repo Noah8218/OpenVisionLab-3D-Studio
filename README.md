@@ -24,10 +24,14 @@ This project is maintained using explicit version numbers.
 
 ### Recent version history
 
-#### `v0.2.0-dev` (2026-08-27)
+#### `v0.2.0-dev` (2026-08-28)
 
-- Adds the deterministic 3D integration and connected-region inspection
-  workflows alongside the existing recipe and evidence loop.
+- Adds deterministic 3D integration, connected-region analysis, height-image
+  alignment, and rigid-pose preparation workflows.
+- Adds bounded background preparation for height fields and identified point
+  clouds, with explicit derived-output identity and replay evidence.
+- Keeps the current development line software-only and does not claim physical
+  calibration or production metrology.
 
 ## Start here
 

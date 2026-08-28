@@ -262,6 +262,7 @@ public sealed partial class MainWindowViewModel
 
     public void UseC3DSmokeScene()
     {
+        ClearC3DHeightDeviationPreview();
         HudDetailsVisible = true;
         CubeVisible = false;
         PointCloudVisible = false;
@@ -416,6 +417,7 @@ public sealed partial class MainWindowViewModel
 
     private void ClearC3DLinkedViews()
     {
+        ClearC3DHeightDeviationPreview();
         ClearThicknessPreview();
         ClearPlaneFlatnessPreview();
         ClearPointPairDimensionsPreview();
@@ -518,6 +520,14 @@ public sealed partial class MainWindowViewModel
         if (SelectedSelectionMode == "Two Point Measure")
         {
             SelectionSummary = TwoPointMeasurementSummary;
+        }
+
+        if (inspectionSession.ActiveKind == ViewerInspectionKind.LazTwoPointMeasurement)
+        {
+            inspectionSession.Reset();
+            PreviewToolResult = CreateNotRunToolResult();
+            ResultSummary = FormatToolResult(PreviewToolResult);
+            RefreshSceneContracts();
         }
     }
 

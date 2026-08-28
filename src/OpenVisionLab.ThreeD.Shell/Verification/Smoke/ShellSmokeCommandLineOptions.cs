@@ -17,13 +17,11 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? ShellScreenshotPath => GetValue("--shell-smoke-screenshot");
     public string? ScreenshotQualityReportPath => GetValue("--shell-screenshot-quality-report");
     public string? ViewerLayoutSmoke => GetValue("--smoke-viewer-layout");
+    public bool ViewerPresentationSmoke => HasFlag("--smoke-viewer-presentation");
+    public bool ViewerPresentationPressedSmoke => HasFlag("--smoke-viewer-presentation-pressed");
     public string? ThicknessRepeatGridSmoke => GetValue("--smoke-thickness-repeat-grid");
     public string? IntegrationExchangeSmokeState =>
         GetValue("--smoke-integration-exchange-state");
-    public string? IntegrationExchangeRootPath =>
-        GetValue("--smoke-integration-exchange-root");
-    public string? IntegrationExchangeSettingsPath =>
-        GetValue("--smoke-integration-settings-path");
     public string? ViewerPopoutScreenshotPath => GetValue("--viewer-popout-screenshot");
     public string? ViewerPopoutScreenshotQualityReportPath => GetValue("--viewer-popout-screenshot-quality-report");
     public string? RecipeManagerScreenshotPath => GetValue("--recipe-manager-screenshot");
@@ -103,14 +101,6 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? EdgeStepId => GetValue("--tool-teaching-step");
     public string? EdgeSmokeReportPath => GetValue("--smoke-tool-edge-report");
     public string? LineFitSmokeReportPath => GetValue("--smoke-tool-line-fit-report");
-    public string? ConnectedRegionOutputSmokeSourcePath =>
-        GetValue("--smoke-connected-region-output-source");
-    public string? ConnectedRegionOutputSmokeReportPath =>
-        GetValue("--smoke-connected-region-output-report");
-    public string? ConnectedRegionOutputSmokeScreenshotPath =>
-        GetValue("--smoke-connected-region-output-screenshot");
-    public string? ConnectedRegionOutputSmokeScreenshotQualityReportPath =>
-        GetValue("--smoke-connected-region-output-screenshot-quality-report");
 
     public double? AsyncC3DLoadCancelAt =>
         GetInvariantDouble("--smoke-async-c3d-load-cancel-at");
@@ -135,7 +125,11 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-shared-height-hover");
     public bool PlaneFlatnessLiveA3PointerSmoke => HasFlag("--smoke-plane-flatness-live-a3-pointer");
     public bool FilterPublishSmoke => HasFlag("--smoke-tool-filter-publish");
-    public bool FilterPreviewSmoke => FilterPublishSmoke || HasFlag("--smoke-tool-filter-preview");
+    public bool PreparationQualityComparisonSmoke =>
+        HasFlag("--smoke-preparation-quality-compare");
+    public bool FilterPreviewSmoke => FilterPublishSmoke
+        || PreparationQualityComparisonSmoke
+        || HasFlag("--smoke-tool-filter-preview");
     public bool RemoveOutlierPreviewSmoke =>
         HasFlag("--smoke-tool-remove-outlier-preview");
     public bool LevelSurfacePreviewSmoke =>
@@ -191,10 +185,6 @@ internal sealed class ShellSmokeCommandLineOptions
     public bool MessageDialogPrimaryPressedSmoke =>
         HasFlag("--smoke-message-dialog-primary-pressed");
     public bool WorkbenchRunLogSmoke => HasFlag("--smoke-workbench-run-log");
-    public bool ConnectedRegionOutputSmoke =>
-        ConnectedRegionOutputSmokeSourcePath is not null
-        || ConnectedRegionOutputSmokeReportPath is not null
-        || ConnectedRegionOutputSmokeScreenshotPath is not null;
     public bool WaitForNominalActualPreview => HasFlag("--smoke-nominal-actual");
     public bool SoftwareRendering => HasFlag("--smoke-software-rendering");
     public bool UseLeftmostVirtualScreenOrigin =>
@@ -218,8 +208,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || LineFitPreviewSmoke
         || TwoPointLinePreviewSmoke
         || ThreePointPlanePreviewSmoke
-        || DatumPlaneDeviationPreviewSmoke
-        || ConnectedRegionOutputSmoke;
+        || DatumPlaneDeviationPreviewSmoke;
 
     public bool ShouldAttachLoadedHandler(bool hasViewerSmokeScreenshot) =>
         ShellScreenshotPath is not null
@@ -238,11 +227,14 @@ internal sealed class ShellSmokeCommandLineOptions
         || hasViewerSmokeScreenshot
         || NeedsCompactWorkbench
         || FilterPreviewSmoke
+        || PreparationQualityComparisonSmoke
         || RemoveOutlierPreviewSmoke
         || LevelSurfacePreviewSmoke
         || RoiCropPreviewSmoke
         || MeasurementPreviewSmoke
         || ViewerLayoutSmoke is not null
+        || ViewerPresentationSmoke
+        || ViewerPresentationPressedSmoke
         || IntegrationExchangeSmokeState is not null
         || ThicknessRepeatGridSmoke is not null
         || ViewerPopoutScreenshotPath is not null
@@ -273,8 +265,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || SupportBundlePressedSmoke
         || WorkbenchRunLogSmoke
         || WorkbenchInteractionReportPath is not null
-        || SurfaceMatchCollectionPath is not null
-        || ConnectedRegionOutputSmoke;
+        || SurfaceMatchCollectionPath is not null;
 
     private bool HasFlag(string name) =>
         arguments.Contains(name, StringComparer.OrdinalIgnoreCase);

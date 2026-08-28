@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
 
 namespace OpenVisionLab.ThreeD.Viewer;
@@ -25,6 +26,16 @@ public sealed partial class OpenVisionThreeDViewerControl
         var secondClickPassed = false;
         var endpointDragPassed = false;
         var outsideDragOrbitPassed = false;
+        var heightImageCursorPassed = false;
+        var threeDCursorPassed = false;
+        var offTraceCursorPassed = false;
+        var clearedCursorPassed = false;
+        var finalMarkerRestoredPassed = false;
+        C3DGridCursor? finalMarkerCursor = null;
+        var offTraceCursorSummary = string.Empty;
+        var clearedCursorSummary = string.Empty;
+        var finalMarkerSummary = string.Empty;
+        var profileSourceBootstrap = "not needed";
         var previewUnchanged = false;
         var sourceBindingPassed = false;
         var failure = string.Empty;
@@ -38,7 +49,21 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             if (!viewModel.C3DSampleVisible || c3dSample is null)
             {
-                throw new InvalidOperationException("Profile pointer smoke requires a visible loaded C3D source.");
+                var defaultSourcePath = FindDefaultC3DSamplePath();
+                if (defaultSourcePath is null || !LoadC3DSource(defaultSourcePath))
+                {
+                    throw new InvalidOperationException(
+                        "Profile pointer smoke requires a visible loaded C3D source.");
+                }
+
+                profileSourceBootstrap = defaultSourcePath;
+                await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+            }
+
+            if (!viewModel.C3DSampleVisible || c3dSample is null)
+            {
+                throw new InvalidOperationException(
+                    "Profile pointer smoke could not establish the default C3D source.");
             }
 
             hostWindow = Window.GetWindow(this)
@@ -51,7 +76,10 @@ public sealed partial class OpenVisionThreeDViewerControl
             await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
             await Task.Delay(240);
 
-            if (!Viewport.IsVisible || Viewport.ActualWidth < 200.0 || Viewport.ActualHeight < 180.0)
+            // The supported Compact Shell baseline reserves a 178 px-high 3D
+            // viewport. Keep a small readiness margin below that while still
+            // requiring enough surface for exact point picking.
+            if (!Viewport.IsVisible || Viewport.ActualWidth < 200.0 || Viewport.ActualHeight < 160.0)
             {
                 throw new InvalidOperationException(
                     $"Viewport is not ready for profile pointer input ({Viewport.ActualWidth:F0}x{Viewport.ActualHeight:F0}).");
@@ -59,6 +87,7 @@ public sealed partial class OpenVisionThreeDViewerControl
 
             profileFirst = null;
             profileSecond = null;
+            profileSamples = [];
             profileDraggedEndpoint = 0;
             profileSourceSha256 = c3dSample.ContentSha256;
             viewModel.ClearProfile();
@@ -107,6 +136,74 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && !string.Equals(profileBeforeDrag, viewModel.ProfileEndpointSummary, StringComparison.Ordinal)
                 && viewModel.ProfileValidSampleCount >= 2;
 
+            if (profileFirst is not { } currentFirst
+                || profileSecond is not { } currentSecond
+                || profileSamples.Length < 2)
+            {
+                throw new InvalidOperationException("Profile pointer smoke did not retain an exact P1-P2 sample trace.");
+            }
+
+            SetLinkedHeightCursor(new C3DGridCursor(
+                C3DGridCursorOrigin.HeightImage,
+                c3dSample.ContentSha256,
+                currentFirst.Row,
+                currentFirst.Column,
+                currentFirst.RawValue,
+                true));
+            heightImageCursorPassed = viewModel.ProfileLinkedCursorVisible
+                && viewModel.ProfileLinkedCursorSummary.Contains(
+                    $"({currentFirst.Row},{currentFirst.Column})",
+                    StringComparison.Ordinal)
+                && viewModel.ProfileLinkedCursorSummary.Contains(
+                    $"1/{profileSamples.Length}",
+                    StringComparison.Ordinal);
+
+            SetLinkedHeightCursor(new C3DGridCursor(
+                C3DGridCursorOrigin.ThreeDViewer,
+                c3dSample.ContentSha256,
+                currentSecond.Row,
+                currentSecond.Column,
+                currentSecond.RawValue,
+                true));
+            threeDCursorPassed = viewModel.ProfileLinkedCursorVisible
+                && viewModel.ProfileLinkedCursorSummary.Contains(
+                    $"({currentSecond.Row},{currentSecond.Column})",
+                    StringComparison.Ordinal)
+                && viewModel.ProfileLinkedCursorSummary.Contains(
+                    $"{profileSamples.Length}/{profileSamples.Length}",
+                    StringComparison.Ordinal);
+
+            var offTraceCandidates = c3dSample.Points
+                .Where(point => !profileSamples.Any(sample => SameGridCell(sample, point)))
+                .ToArray();
+            if (offTraceCandidates.Length > 0)
+            {
+                var offTrace = offTraceCandidates[0];
+                SetLinkedHeightCursor(new C3DGridCursor(
+                    C3DGridCursorOrigin.HeightImage,
+                    c3dSample.ContentSha256,
+                    offTrace.Row,
+                    offTrace.Column,
+                    offTrace.RawValue,
+                    true));
+                offTraceCursorPassed = !viewModel.ProfileLinkedCursorVisible
+                    && viewModel.ProfileLinkedCursorSummary.Contains("outside", StringComparison.Ordinal);
+                offTraceCursorSummary = viewModel.ProfileLinkedCursorSummary;
+            }
+
+            SetLinkedHeightCursor(null);
+            clearedCursorPassed = !viewModel.ProfileLinkedCursorVisible
+                && viewModel.ProfileLinkedCursorSummary.Contains("unavailable", StringComparison.Ordinal);
+            clearedCursorSummary = viewModel.ProfileLinkedCursorSummary;
+
+            finalMarkerCursor = new C3DGridCursor(
+                C3DGridCursorOrigin.ThreeDViewer,
+                c3dSample.ContentSha256,
+                currentSecond.Row,
+                currentSecond.Column,
+                currentSecond.RawValue,
+                true);
+
             var endpointsBeforeOrbit = viewModel.ProfileEndpointSummary;
             beforeOrbit = CaptureCameraSnapshot();
             var orbitStart = new Point(Viewport.ActualWidth * 0.82, Viewport.ActualHeight * 0.24);
@@ -150,10 +247,38 @@ public sealed partial class OpenVisionThreeDViewerControl
             }
         }
 
+        if (string.IsNullOrWhiteSpace(failure) && finalMarkerCursor is { } cursor)
+        {
+            try
+            {
+                // Restore after the smoke's own pointer cleanup. This verifies the
+                // same display-only shared-cursor presentation the screenshot will
+                // capture, rather than an earlier transient state before orbit input.
+                SetLinkedHeightCursor(cursor);
+                await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+                await Task.Delay(1_100);
+                await Dispatcher.InvokeAsync(RenderNow, DispatcherPriority.Render);
+                finalMarkerRestoredPassed = viewModel.ProfileLinkedCursorVisible
+                    && viewModel.ProfileLinkedCursorSummary.Contains(
+                        $"({cursor.Row},{cursor.Column})",
+                        StringComparison.Ordinal);
+            }
+            catch (Exception exception)
+            {
+                failure = exception.Message;
+            }
+        }
+
+        finalMarkerSummary = viewModel.ProfileLinkedCursorSummary;
         var passed = firstClickPassed
             && secondClickPassed
             && endpointDragPassed
             && outsideDragOrbitPassed
+            && heightImageCursorPassed
+            && threeDCursorPassed
+            && offTraceCursorPassed
+            && clearedCursorPassed
+            && finalMarkerRestoredPassed
             && previewUnchanged
             && sourceBindingPassed;
         if (!passed && string.IsNullOrWhiteSpace(failure))
@@ -165,6 +290,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         lines.Add($"SecondClick|pass={secondClickPassed}|summary={viewModel.ProfileEndpointSummary}");
         lines.Add($"EndpointDrag|pass={endpointDragPassed}|summary={viewModel.ProfileEndpointSummary}");
         lines.Add($"OutsideHandleLeftDragOrbit|pass={outsideDragOrbitPassed}|before={beforeOrbit}|after={afterOrbit}");
+        lines.Add($"LinkedCursorFromHeightImage|pass={heightImageCursorPassed}");
+        lines.Add($"LinkedCursorFrom3D|pass={threeDCursorPassed}");
+        lines.Add($"LinkedCursorOffTrace|pass={offTraceCursorPassed}|summary={offTraceCursorSummary}");
+        lines.Add($"LinkedCursorClear|pass={clearedCursorPassed}|summary={clearedCursorSummary}");
+        lines.Add($"LinkedCursorFinalMarker|pass={finalMarkerRestoredPassed}|summary={finalMarkerSummary}");
+        lines.Add($"SourceBootstrap|value={profileSourceBootstrap}");
         lines.Add($"DisplayOnlyBoundary|pass={previewUnchanged}|previewStatus={viewModel.PreviewToolResult.Status}|results={viewModel.ResultEntities.Count}|pointPairUnchanged={Equals(initialPointPairStep, viewModel.CreatePointPairDimensionsRecipeStep())}");
         lines.Add($"SourceBinding|pass={sourceBindingPassed}|sha256={profileSourceSha256 ?? "(none)"}");
         lines.Add($"Profile|visible={viewModel.ProfileVisible}|valid={viewModel.ProfileValidSampleCount}|missing={viewModel.ProfileMissingSampleCount}|summary={viewModel.ProfileSummary}|range={viewModel.ProfileRange}");

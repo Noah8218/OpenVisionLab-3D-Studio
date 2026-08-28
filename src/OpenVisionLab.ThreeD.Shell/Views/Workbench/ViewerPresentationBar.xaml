@@ -1,0 +1,293 @@
+<UserControl x:Class="OpenVisionLab.ThreeD.Shell.Views.Workbench.ViewerPresentationBar"
+             x:Name="Root"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:viewerLocalization="clr-namespace:OpenVisionLab.ThreeD.Viewer.Localization;assembly=OpenVisionLab.ThreeD.Viewer"
+             AutomationProperties.AutomationId="ViewerPresentationBar">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <viewerLocalization:ViewerRuntimeTextConverter x:Key="ViewerRuntimeTextConverter" />
+        <Style x:Key="ViewerPresentationComboBoxItemStyle"
+               TargetType="{x:Type ComboBoxItem}"
+               BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.PanelBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ViewerPresentationDiagnosticItemStyle"
+               TargetType="{x:Type ComboBoxItem}"
+               BasedOn="{StaticResource ViewerPresentationComboBoxItemStyle}">
+            <Setter Property="IsEnabled" Value="{Binding IsSelectable}" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                    <Setter Property="Opacity" Value="0.78" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ViewerPresentationComboBoxStyle"
+               TargetType="{x:Type ComboBox}"
+               BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ViewerPresentationComboBoxItemStyle}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ViewerPresentationButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Height" Value="27" />
+            <Setter Property="MinWidth" Value="27" />
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Surface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ViewerPresentationToggleStyle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Height" Value="27" />
+            <Setter Property="MinWidth" Value="66" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="Margin" Value="3,0,0,0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="Surface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Padding="6,4"
+            Background="{DynamicResource ThreeD.PanelBrush}"
+            BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+            BorderThickness="0,1,0,0"
+            ToolTip="{Binding ViewerViewModel.Display.DiagnosticChannelSummary, ElementName=Root, Converter={StaticResource ViewerRuntimeTextConverter}}">
+        <WrapPanel VerticalAlignment="Center">
+            <TextBlock Margin="0,0,6,0"
+                       VerticalAlignment="Center"
+                       FontSize="9"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                       Text="{Binding SlotLabel, ElementName=Root}" />
+            <StackPanel Margin="0,0,4,0" Orientation="Horizontal">
+                <TextBlock Margin="0,0,4,0"
+                           VerticalAlignment="Center"
+                           FontSize="9"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding Localization.ViewerPalette}" />
+                <ComboBox Width="112"
+                          Style="{StaticResource ViewerPresentationComboBoxStyle}"
+                          ItemsSource="{Binding ViewerViewModel.Display.AvailableColorMaps, ElementName=Root}"
+                          SelectedItem="{Binding ViewerViewModel.Display.SelectedColorMap, ElementName=Root, Mode=TwoWay}"
+                          IsEnabled="{Binding ViewerViewModel.Display.CanSelectColorMap, ElementName=Root}"
+                          AutomationProperties.Name="{Binding Localization.ViewerPalette}"
+                          AutomationProperties.AutomationId="ViewerPalette">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Margin="0,0,4,0" Orientation="Horizontal">
+                <TextBlock Margin="0,0,4,0"
+                           VerticalAlignment="Center"
+                           FontSize="9"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding Localization.ViewerDiagnosticChannel}" />
+                <ComboBox Width="142"
+                          Style="{StaticResource ViewerPresentationComboBoxStyle}"
+                          ItemsSource="{Binding ViewerViewModel.Display.DiagnosticChannelOptions, ElementName=Root}"
+                          SelectedItem="{Binding ViewerViewModel.Display.SelectedDiagnosticChannel, ElementName=Root, Mode=TwoWay}"
+                          IsEnabled="{Binding ViewerViewModel.Display.CanSelectDiagnosticChannel, ElementName=Root}"
+                          ItemContainerStyle="{StaticResource ViewerPresentationDiagnosticItemStyle}"
+                          AutomationProperties.Name="{Binding Localization.ViewerDiagnosticChannel}"
+                          AutomationProperties.AutomationId="ViewerDiagnosticChannel">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayLabel, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                       ToolTip="{Binding HelpText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+            <TextBlock Margin="3,0,3,0"
+                       VerticalAlignment="Center"
+                       FontSize="9"
+                       Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                       Text="{Binding Localization.ViewerOverlays}" />
+            <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
+                          Content="{Binding Localization.ViewerSelectionOverlay}"
+                          IsChecked="{Binding ViewerViewModel.SelectionOverlayVisible, ElementName=Root, Mode=TwoWay}"
+                          AutomationProperties.Name="{Binding Localization.ViewerSelectionOverlay}"
+                          AutomationProperties.AutomationId="ViewerSelectionOverlay" />
+            <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
+                          Content="{Binding Localization.ViewerResultOverlay}"
+                          IsChecked="{Binding ViewerViewModel.ResultOverlayVisible, ElementName=Root, Mode=TwoWay}"
+                          AutomationProperties.Name="{Binding Localization.ViewerResultOverlay}"
+                          AutomationProperties.AutomationId="ViewerResultOverlay" />
+            <ToggleButton Style="{StaticResource ViewerPresentationToggleStyle}"
+                          Content="{Binding Localization.ViewerMeasurementOverlay}"
+                          IsChecked="{Binding ViewerViewModel.MeasurementVisible, ElementName=Root, Mode=TwoWay}"
+                          AutomationProperties.Name="{Binding Localization.ViewerMeasurementOverlay}"
+                          AutomationProperties.AutomationId="ViewerMeasurementOverlay" />
+            <StackPanel Margin="7,0,0,0"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal"
+                        Visibility="{Binding ViewerViewModel.C3DHeightDistributionVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Margin="0,0,3,0"
+                           VerticalAlignment="Center"
+                           FontSize="9"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding Localization.ViewerHeightRangeMinimum}" />
+                <Button Style="{StaticResource ViewerPresentationButtonStyle}"
+                        Content="−"
+                        Click="DecreaseHeightMinimum_Click"
+                        ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                        AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMinimum}"
+                        AutomationProperties.AutomationId="ViewerHeightRangeMinimumDecrease" />
+                <Button Style="{StaticResource ViewerPresentationButtonStyle}"
+                        Content="+"
+                        Click="IncreaseHeightMinimum_Click"
+                        AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMinimum}"
+                        AutomationProperties.AutomationId="ViewerHeightRangeMinimumIncrease" />
+                <TextBlock Margin="7,0,3,0"
+                           VerticalAlignment="Center"
+                           FontSize="9"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding Localization.ViewerHeightRangeMaximum}" />
+                <Button Style="{StaticResource ViewerPresentationButtonStyle}"
+                        Content="−"
+                        Click="DecreaseHeightMaximum_Click"
+                        AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMaximum}"
+                        AutomationProperties.AutomationId="ViewerHeightRangeMaximumDecrease" />
+                <Button Style="{StaticResource ViewerPresentationButtonStyle}"
+                        Content="+"
+                        Click="IncreaseHeightMaximum_Click"
+                        AutomationProperties.Name="{Binding Localization.ViewerHeightRangeMaximum}"
+                        AutomationProperties.AutomationId="ViewerHeightRangeMaximumIncrease" />
+                <Button Margin="5,0,0,0"
+                        Style="{StaticResource ViewerPresentationButtonStyle}"
+                        Content="{Binding Localization.ViewerAutoHeightRange}"
+                        Click="ResetHeightRange_Click"
+                        ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                        AutomationProperties.Name="{Binding Localization.ViewerAutoHeightRange}"
+                        AutomationProperties.AutomationId="ViewerHeightRangeAuto" />
+                <TextBlock MaxWidth="260"
+                           Margin="7,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="9"
+                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                           Text="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding ViewerViewModel.C3DHeightColorRangeSummary, ElementName=Root}" />
+            </StackPanel>
+        </WrapPanel>
+    </Border>
+</UserControl>

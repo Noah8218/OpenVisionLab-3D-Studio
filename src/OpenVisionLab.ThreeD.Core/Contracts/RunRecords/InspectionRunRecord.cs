@@ -251,9 +251,11 @@ public sealed record InspectionRunStepResult(
     IReadOnlyList<InspectionRunOverlay> Overlays)
 {
     public string? OutputContentSha256 { get; init; }
+    public string? LevelFrameContentSha256 { get; init; }
+    public string? LevelFrameQualityContentSha256 { get; init; }
+    public string? FrameChainContentSha256 { get; init; }
     public InspectionRunTiming? Timing { get; init; }
     public C3DCompletenessGridMetricOutput? CompletenessGrid { get; init; }
-    public C3DPresenceCheckOutput? PresenceCheck { get; init; }
 }
 
 public enum InspectionRunTimingState

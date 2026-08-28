@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -36,10 +37,27 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         ]);
     private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSourceColorMaps =
         Array.AsReadOnly([ViewerColorMap.Source]);
+    private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSourceNormalColorMaps =
+        Array.AsReadOnly([ViewerColorMap.Source, ViewerColorMap.Normal]);
     private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSolidColorMaps =
         Array.AsReadOnly([ViewerColorMap.Solid]);
+    private static readonly IReadOnlyList<ViewerColorMap> ImportedMeshSolidNormalColorMaps =
+        Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Normal]);
     private static readonly IReadOnlyList<ViewerColorMap> PointCloudColorMaps =
         Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Height, ViewerColorMap.Rgb]);
+    private static readonly IReadOnlyList<ViewerColorMap> PointCloudRgbAndIntensityColorMaps =
+        Array.AsReadOnly([
+            ViewerColorMap.Solid,
+            ViewerColorMap.Height,
+            ViewerColorMap.Rgb,
+            ViewerColorMap.Intensity
+        ]);
+    private static readonly IReadOnlyList<ViewerColorMap> PointCloudIntensityColorMaps =
+        Array.AsReadOnly([
+            ViewerColorMap.Solid,
+            ViewerColorMap.Height,
+            ViewerColorMap.Intensity
+        ]);
     private static readonly IReadOnlyList<ViewerColorMap> PointCloudWithoutRgbColorMaps =
         Array.AsReadOnly([ViewerColorMap.Solid, ViewerColorMap.Height]);
     private static readonly IReadOnlyList<ViewerColorMap> NominalActualColorMaps =
@@ -52,11 +70,14 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     private IReadOnlyList<ViewerColorMap> availableColorMapIds = GeneratedColorMaps;
     private IReadOnlyList<string> availableGeometryStyles = ToGeometryStyleLabels(PointGeometryStyles);
     private IReadOnlyList<string> availableColorMaps = ToColorMapLabels(GeneratedColorMaps);
+    private IReadOnlyList<ViewerDiagnosticChannelOption> diagnosticChannelOptions = [];
     private ViewerGeometryStyle selectedGeometryStyle = ViewerGeometryStyle.Points;
     private ViewerColorMap selectedColorMap = ViewerColorMap.Height;
+    private ViewerDiagnosticChannelOption? selectedDiagnosticChannel;
     private bool fallbackApplied;
     private string fallbackSummary = "No display fallback.";
     private int displaySettingsRevision;
+    private SourceNormalQualityReport? importedMeshNormalQuality;
     private double pointSize = 2.0;
     private string selectedRenderDensity = "Balanced";
     private string renderDensitySummary = FormatRenderDensitySummary("Balanced");
@@ -77,6 +98,24 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         get => availableColorMaps;
         private set => SetField(ref availableColorMaps, value);
     }
+
+    public IReadOnlyList<ViewerDiagnosticChannelOption> DiagnosticChannelOptions
+    {
+        get => diagnosticChannelOptions;
+        private set => SetField(ref diagnosticChannelOptions, value);
+    }
+
+    public ViewerDiagnosticChannelOption? SelectedDiagnosticChannel
+    {
+        get => selectedDiagnosticChannel;
+        set => SelectDiagnosticChannel(value);
+    }
+
+    public bool CanSelectDiagnosticChannel => DiagnosticChannelOptions.Count > 0;
+
+    public string DiagnosticChannelSummary => selectedDiagnosticChannel is { } channel
+        ? $"Diagnostic channel: {channel.Label} | {channel.Evidence} | Display only."
+        : $"No selectable source diagnostic channel for {ActiveSource}; {EffectiveColorMap} remains display-only.";
 
     public string SelectedGeometryStyle
     {
@@ -217,17 +256,23 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             PointGeometryStyles,
             deviationAvailable ? GeneratedResultColorMaps : GeneratedColorMaps,
             ViewerGeometryStyle.Points,
-            ViewerColorMap.Height);
+            ViewerColorMap.Height,
+            CreateUnavailableSourceChannels("Generated geometry does not expose source diagnostic channels."));
 
     internal void ConfigureC3DHeightGrid(
         bool deviationAvailable,
-        bool surfaceGeometryAvailable = true) =>
+        bool surfaceGeometryAvailable = true,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null) =>
         Configure(
             ViewerDisplaySourceKind.C3DHeightGrid,
             surfaceGeometryAvailable ? SurfaceGeometryStyles : PointGeometryStyles,
             deviationAvailable ? C3DResultColorMaps : C3DColorMaps,
             surfaceGeometryAvailable ? ViewerGeometryStyle.Surface : ViewerGeometryStyle.Points,
-            ViewerColorMap.Height);
+            ViewerColorMap.Height,
+            sourceChannels ?? CreateFallbackSourceChannels(
+                ViewerDisplaySourceKind.C3DHeightGrid,
+                sourceColorAvailable: false,
+                sourceIntensityAvailable: false));
 
     internal void ResetC3DHeightGridGeometryStyle(bool surfaceGeometryAvailable = true)
     {
@@ -243,21 +288,56 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    internal void ConfigureImportedMesh(bool sourceColorAvailable) =>
+    internal void ConfigureImportedMesh(
+        bool sourceColorAvailable,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null,
+        SourceNormalQualityReport? normalQuality = null)
+    {
+        importedMeshNormalQuality = normalQuality;
+        var normalDisplayable = IsImportedMeshNormalDisplayable;
         Configure(
             ViewerDisplaySourceKind.ImportedTriangleMesh,
             SurfaceGeometryStyles,
-            sourceColorAvailable ? ImportedMeshSourceColorMaps : ImportedMeshSolidColorMaps,
+            sourceColorAvailable
+                ? normalDisplayable ? ImportedMeshSourceNormalColorMaps : ImportedMeshSourceColorMaps
+                : normalDisplayable ? ImportedMeshSolidNormalColorMaps : ImportedMeshSolidColorMaps,
             ViewerGeometryStyle.SurfaceWithEdges,
-            sourceColorAvailable ? ViewerColorMap.Source : ViewerColorMap.Solid);
+            sourceColorAvailable ? ViewerColorMap.Source : ViewerColorMap.Solid,
+            sourceChannels ?? CreateFallbackSourceChannels(
+                ViewerDisplaySourceKind.ImportedTriangleMesh,
+                sourceColorAvailable,
+                sourceIntensityAvailable: false));
+    }
 
-    internal void ConfigurePointCloud(bool sourceColorAvailable) =>
+    internal bool IsImportedMeshNormalDisplayable =>
+        importedMeshNormalQuality is { IsUsable: true, IsDense: true };
+
+    internal SourceNormalQualityReport? ImportedMeshNormalQuality => importedMeshNormalQuality;
+
+    internal void ConfigurePointCloud(
+        bool sourceColorAvailable,
+        bool sourceIntensityAvailable = false,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null) =>
         Configure(
             ViewerDisplaySourceKind.PointCloud,
             PointGeometryStyles,
-            sourceColorAvailable ? PointCloudColorMaps : PointCloudWithoutRgbColorMaps,
+            sourceColorAvailable && sourceIntensityAvailable
+                ? PointCloudRgbAndIntensityColorMaps
+                : sourceColorAvailable
+                    ? PointCloudColorMaps
+                    : sourceIntensityAvailable
+                        ? PointCloudIntensityColorMaps
+                        : PointCloudWithoutRgbColorMaps,
             ViewerGeometryStyle.Points,
-            sourceColorAvailable ? ViewerColorMap.Rgb : ViewerColorMap.Height);
+            sourceColorAvailable
+                ? ViewerColorMap.Rgb
+                : sourceIntensityAvailable
+                    ? ViewerColorMap.Intensity
+                    : ViewerColorMap.Height,
+            sourceChannels ?? CreateFallbackSourceChannels(
+                ViewerDisplaySourceKind.PointCloud,
+                sourceColorAvailable,
+                sourceIntensityAvailable));
 
     internal void ConfigureNominalActualComparison(bool deviationAvailable) =>
         Configure(
@@ -265,7 +345,8 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             PointGeometryStyles,
             deviationAvailable ? NominalActualResultColorMaps : NominalActualColorMaps,
             ViewerGeometryStyle.Points,
-            deviationAvailable ? ViewerColorMap.Deviation : ViewerColorMap.Solid);
+            deviationAvailable ? ViewerColorMap.Deviation : ViewerColorMap.Solid,
+            CreateUnavailableSourceChannels("Nominal/actual comparison does not expose a source diagnostic channel."));
 
     internal static string GetColorMapLabel(ViewerColorMap colorMap) => colorMap switch
     {
@@ -276,6 +357,8 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         ViewerColorMap.Thermal => "Thermal",
         ViewerColorMap.Deviation => "Deviation",
         ViewerColorMap.Rgb => "RGB",
+        ViewerColorMap.Intensity => "Intensity",
+        ViewerColorMap.Normal => "Normal",
         _ => throw new ArgumentOutOfRangeException(nameof(colorMap), colorMap, null)
     };
 
@@ -283,8 +366,11 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(AvailableGeometryStyles));
         OnPropertyChanged(nameof(AvailableColorMaps));
+        OnPropertyChanged(nameof(DiagnosticChannelOptions));
         OnPropertyChanged(nameof(SelectedGeometryStyle));
         OnPropertyChanged(nameof(SelectedColorMap));
+        OnPropertyChanged(nameof(SelectedDiagnosticChannel));
+        OnPropertyChanged(nameof(DiagnosticChannelSummary));
         OnPropertyChanged(nameof(EffectiveGeometryStyle));
         OnPropertyChanged(nameof(EffectiveColorMap));
         OnPropertyChanged(nameof(EffectiveSummary));
@@ -295,7 +381,8 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
         IReadOnlyList<ViewerGeometryStyle> geometryStyles,
         IReadOnlyList<ViewerColorMap> colorMaps,
         ViewerGeometryStyle defaultGeometryStyle,
-        ViewerColorMap defaultColorMap)
+        ViewerColorMap defaultColorMap,
+        IReadOnlyList<SourceQualityChannelAvailability> sourceChannels)
     {
         var sourceChanged = activeSource != source;
         if (sourceChanged)
@@ -341,8 +428,12 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             ClearFallback();
         }
 
+        ConfigureDiagnosticChannelOptions(sourceChannels);
+        RefreshDiagnosticChannelSelection();
+
         OnPropertyChanged(nameof(CanSelectGeometryStyle));
         OnPropertyChanged(nameof(CanSelectColorMap));
+        OnPropertyChanged(nameof(CanSelectDiagnosticChannel));
         OnPropertyChanged(nameof(EffectiveSummary));
         if (sourceChanged || geometryChanged)
         {
@@ -383,13 +474,225 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(EffectiveSettings));
             NotifyRenderSettingsChanged();
         }
+
+        RefreshDiagnosticChannelSelection();
+        OnPropertyChanged(nameof(DiagnosticChannelSummary));
     }
+
+    private void SelectDiagnosticChannel(ViewerDiagnosticChannelOption? requestedChannel)
+    {
+        if (requestedChannel is null)
+        {
+            if (SetField(ref selectedDiagnosticChannel, null, nameof(SelectedDiagnosticChannel)))
+            {
+                OnPropertyChanged(nameof(DiagnosticChannelSummary));
+            }
+
+            return;
+        }
+
+        var channel = DiagnosticChannelOptions.FirstOrDefault(
+            option => option.Channel == requestedChannel.Channel);
+        if (channel is null)
+        {
+            SetFallback($"Diagnostic channel '{requestedChannel.Label}' is not available for {ActiveSource}; display only.");
+            return;
+        }
+
+        if (!channel.IsSelectable)
+        {
+            SetFallback($"Diagnostic channel '{channel.Label}' is not selectable for {ActiveSource}; {channel.HelpText}");
+            return;
+        }
+
+        if (!TryGetColorMapForDiagnosticChannel(channel.Channel, out var colorMap)
+            || !availableColorMapIds.Contains(colorMap))
+        {
+            SetFallback($"Diagnostic channel '{channel.Label}' has no display path for {ActiveSource}; display only.");
+            return;
+        }
+
+        ClearFallback();
+        if (SetField(ref selectedDiagnosticChannel, channel, nameof(SelectedDiagnosticChannel)))
+        {
+            OnPropertyChanged(nameof(DiagnosticChannelSummary));
+        }
+
+        ApplyColorMap(colorMap, null);
+    }
+
+    private void ConfigureDiagnosticChannelOptions(
+        IReadOnlyList<SourceQualityChannelAvailability> sourceChannels)
+    {
+        ArgumentNullException.ThrowIfNull(sourceChannels);
+
+        var options = sourceChannels
+            .Select(channel => new ViewerDiagnosticChannelOption(
+                channel.Channel,
+                GetDiagnosticChannelLabel(channel.Channel),
+                channel.State,
+                IsDiagnosticChannelDisplayable(channel.Channel),
+                GetDiagnosticChannelEvidence(channel)))
+            .ToArray();
+        DiagnosticChannelOptions = Array.AsReadOnly(options);
+        OnPropertyChanged(nameof(CanSelectDiagnosticChannel));
+        OnPropertyChanged(nameof(DiagnosticChannelSummary));
+    }
+
+    private void RefreshDiagnosticChannelSelection()
+    {
+        var channel = ResolveDiagnosticChannel(selectedColorMap);
+        var next = channel is null
+            ? null
+            : DiagnosticChannelOptions.FirstOrDefault(
+                option => option.Channel == channel.Value && option.IsSelectable);
+        if (SetField(ref selectedDiagnosticChannel, next, nameof(SelectedDiagnosticChannel)))
+        {
+            OnPropertyChanged(nameof(DiagnosticChannelSummary));
+        }
+    }
+
+    private SourceQualityChannel? ResolveDiagnosticChannel(ViewerColorMap colorMap) =>
+        activeSource switch
+        {
+            ViewerDisplaySourceKind.C3DHeightGrid when colorMap is ViewerColorMap.Grayscale
+                or ViewerColorMap.Height
+                or ViewerColorMap.Thermal => SourceQualityChannel.Height,
+            ViewerDisplaySourceKind.ImportedTriangleMesh when colorMap == ViewerColorMap.Source => SourceQualityChannel.Color,
+            ViewerDisplaySourceKind.ImportedTriangleMesh when colorMap == ViewerColorMap.Normal => SourceQualityChannel.Normal,
+            ViewerDisplaySourceKind.PointCloud when colorMap == ViewerColorMap.Rgb => SourceQualityChannel.Color,
+            ViewerDisplaySourceKind.PointCloud when colorMap == ViewerColorMap.Intensity => SourceQualityChannel.Intensity,
+            _ => null
+        };
+
+    private bool TryGetColorMapForDiagnosticChannel(
+        SourceQualityChannel channel,
+        out ViewerColorMap colorMap)
+    {
+        colorMap = (activeSource, channel) switch
+        {
+            (ViewerDisplaySourceKind.C3DHeightGrid, SourceQualityChannel.Height) => ViewerColorMap.Height,
+            (ViewerDisplaySourceKind.ImportedTriangleMesh, SourceQualityChannel.Color) => ViewerColorMap.Source,
+            (ViewerDisplaySourceKind.ImportedTriangleMesh, SourceQualityChannel.Normal) => ViewerColorMap.Normal,
+            (ViewerDisplaySourceKind.PointCloud, SourceQualityChannel.Color) => ViewerColorMap.Rgb,
+            (ViewerDisplaySourceKind.PointCloud, SourceQualityChannel.Intensity) => ViewerColorMap.Intensity,
+            _ => default
+        };
+        return (activeSource, channel) is
+            (ViewerDisplaySourceKind.C3DHeightGrid, SourceQualityChannel.Height)
+            or (ViewerDisplaySourceKind.ImportedTriangleMesh, SourceQualityChannel.Color)
+            or (ViewerDisplaySourceKind.ImportedTriangleMesh, SourceQualityChannel.Normal)
+            or (ViewerDisplaySourceKind.PointCloud, SourceQualityChannel.Color)
+            or (ViewerDisplaySourceKind.PointCloud, SourceQualityChannel.Intensity);
+    }
+
+    private bool IsDiagnosticChannelDisplayable(SourceQualityChannel channel) =>
+        TryGetColorMapForDiagnosticChannel(channel, out var colorMap)
+        && availableColorMapIds.Contains(colorMap);
+
+    private string GetDiagnosticChannelEvidence(SourceQualityChannelAvailability channel)
+    {
+        if (channel.Channel == SourceQualityChannel.Normal
+            && activeSource == ViewerDisplaySourceKind.ImportedTriangleMesh
+            && importedMeshNormalQuality is { IsUsable: false } report)
+        {
+            return $"{channel.Evidence} Normal-quality report: {report.Evidence}";
+        }
+
+        return channel.Evidence;
+    }
+
+    private IReadOnlyList<SourceQualityChannelAvailability> CreateFallbackSourceChannels(
+        ViewerDisplaySourceKind source,
+        bool sourceColorAvailable,
+        bool sourceIntensityAvailable) =>
+        source switch
+        {
+            ViewerDisplaySourceKind.C3DHeightGrid => CreateSourceChannelCatalog(
+                height: true,
+                color: false,
+                intensity: false,
+                "C3D height grid"),
+            ViewerDisplaySourceKind.ImportedTriangleMesh => CreateSourceChannelCatalog(
+                height: false,
+                color: sourceColorAvailable,
+                intensity: false,
+                "Imported triangle mesh"),
+            ViewerDisplaySourceKind.PointCloud => CreateSourceChannelCatalog(
+                height: false,
+                color: sourceColorAvailable,
+                intensity: sourceIntensityAvailable,
+                "LAZ/LAS point cloud"),
+            _ => CreateUnavailableSourceChannels(
+                $"{GetSourceLabel(source)} does not expose source diagnostic channels.")
+        };
+
+    private static IReadOnlyList<SourceQualityChannelAvailability> CreateSourceChannelCatalog(
+        bool height,
+        bool color,
+        bool intensity,
+        string sourceLabel) =>
+        Array.AsReadOnly<SourceQualityChannelAvailability>(
+        [
+            CreateChannel(SourceQualityChannel.Height, height, sourceLabel),
+            CreateChannel(SourceQualityChannel.Intensity, intensity, sourceLabel),
+            CreateChannel(SourceQualityChannel.Color, color, sourceLabel),
+            CreateUnavailableChannel(SourceQualityChannel.Depth, sourceLabel),
+            CreateUnavailableChannel(SourceQualityChannel.Normal, sourceLabel),
+            CreateUnavailableChannel(SourceQualityChannel.Confidence, sourceLabel),
+            CreateUnavailableChannel(SourceQualityChannel.SignalToNoiseRatio, sourceLabel)
+        ]);
+
+    private static IReadOnlyList<SourceQualityChannelAvailability> CreateUnavailableSourceChannels(
+        string evidence) =>
+        Array.AsReadOnly<SourceQualityChannelAvailability>(
+        [
+            new(SourceQualityChannel.Height, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.Intensity, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.Color, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.Depth, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.Normal, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.Confidence, SourceQualityChannelState.Unavailable, evidence),
+            new(SourceQualityChannel.SignalToNoiseRatio, SourceQualityChannelState.Unavailable, evidence)
+        ]);
+
+    private static SourceQualityChannelAvailability CreateChannel(
+        SourceQualityChannel channel,
+        bool available,
+        string sourceLabel) =>
+        available
+            ? new(
+                channel,
+                SourceQualityChannelState.Available,
+                $"{sourceLabel} exposes {GetDiagnosticChannelLabel(channel)} for display.")
+            : CreateUnavailableChannel(channel, sourceLabel);
+
+    private static SourceQualityChannelAvailability CreateUnavailableChannel(
+        SourceQualityChannel channel,
+        string sourceLabel) =>
+        new(
+            channel,
+            SourceQualityChannelState.Unavailable,
+            $"{sourceLabel} does not expose a supported {GetDiagnosticChannelLabel(channel)} channel.");
+
+    private static string GetDiagnosticChannelLabel(SourceQualityChannel channel) => channel switch
+    {
+        SourceQualityChannel.Height => "Height",
+        SourceQualityChannel.Intensity => "Intensity",
+        SourceQualityChannel.Color => "Color",
+        SourceQualityChannel.Depth => "Depth",
+        SourceQualityChannel.Normal => "Normal",
+        SourceQualityChannel.Confidence => "Confidence",
+        SourceQualityChannel.SignalToNoiseRatio => "Signal/Noise",
+        _ => throw new ArgumentOutOfRangeException(nameof(channel), channel, null)
+    };
 
     private ViewerColorMap DefaultColorMap() => activeSource switch
     {
         ViewerDisplaySourceKind.C3DHeightGrid => ViewerColorMap.Height,
         ViewerDisplaySourceKind.ImportedTriangleMesh => availableColorMapIds[0],
         ViewerDisplaySourceKind.PointCloud when availableColorMapIds.Contains(ViewerColorMap.Rgb) => ViewerColorMap.Rgb,
+        ViewerDisplaySourceKind.PointCloud when availableColorMapIds.Contains(ViewerColorMap.Intensity) => ViewerColorMap.Intensity,
         ViewerDisplaySourceKind.PointCloud => ViewerColorMap.Height,
         ViewerDisplaySourceKind.NominalActualComparison when availableColorMapIds.Contains(ViewerColorMap.Deviation) => ViewerColorMap.Deviation,
         ViewerDisplaySourceKind.NominalActualComparison => ViewerColorMap.Solid,
@@ -480,9 +783,11 @@ public sealed class ViewerDisplaySettingsViewModel : INotifyPropertyChanged
             "Thermal" => ViewerColorMap.Thermal,
             "Deviation" => ViewerColorMap.Deviation,
             "RGB" => ViewerColorMap.Rgb,
+            "Intensity" => ViewerColorMap.Intensity,
+            "Normal" => ViewerColorMap.Normal,
             _ => default
         };
-        return label is "Source" or "Solid" or "Grayscale" or "Height" or "Thermal" or "Deviation" or "RGB";
+        return label is "Source" or "Solid" or "Grayscale" or "Height" or "Thermal" or "Deviation" or "RGB" or "Intensity" or "Normal";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

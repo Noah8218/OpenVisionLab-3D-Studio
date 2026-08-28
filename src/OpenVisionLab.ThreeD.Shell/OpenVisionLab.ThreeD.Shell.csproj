@@ -46,7 +46,6 @@
 
   <ItemGroup>
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.5" />
-    <PackageReference Include="OpenVisionLab.Integration.Contracts" Version="[0.2.0-alpha.1]" />
     <PackageReference Include="OpenVisionLab.WpfPropertyGrid.ThreeD" Version="[1.0.0-ovl3d.1]" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>

@@ -102,6 +102,7 @@ internal static class ToolWorkbenchDockingVerification
                     (Key.Enter, ModifierKeys.None),
                     (Key.O, ModifierKeys.Control | ModifierKeys.Shift),
                     (Key.F5, ModifierKeys.None),
+                    (Key.Enter, ModifierKeys.Control),
                     (Key.F5, ModifierKeys.Control),
                 ]),
                 string.Join(", ", shortcutGestures.OrderBy(item => item.Key).ThenBy(item => item.Modifiers)));
@@ -1063,15 +1064,15 @@ internal static class ToolWorkbenchDockingVerification
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
             Check(
-                "All 27 repository ComboBoxes use the shared 30-pixel minimum without undersized overrides",
-                comboBoxTags.Length == 27
+                "All 33 repository ComboBoxes use the shared 30-pixel minimum without undersized overrides",
+                comboBoxTags.Length == 33
                 && undersizedComboBoxes.Length == 0
                 && undersizedComboBoxStyleSetters.Length == 0,
                 $"count={comboBoxTags.Length}; tagUndersized={string.Join(',', undersizedComboBoxes)}; styleUndersized={string.Join(',', undersizedComboBoxStyleSetters)}");
             Check(
                 "All ComboBox style owners preserve fractional-DPI glyph bounds",
-                comboBoxStyles.Length == 4
-                && comboBoxItemStyles.Length == 3
+                comboBoxStyles.Length == 6
+                && comboBoxItemStyles.Length == 7
                 && unsafeComboBoxTextStyles.Length == 0
                 && unsafeComboBoxItemTextStyles.Length == 0,
                 $"comboStyles={comboBoxStyles.Length}; itemStyles={comboBoxItemStyles.Length}; unsafeCombo={string.Join(',', unsafeComboBoxTextStyles)}; unsafeItems={string.Join(',', unsafeComboBoxItemTextStyles)}");
@@ -1162,9 +1163,9 @@ internal static class ToolWorkbenchDockingVerification
                 "MainWindow.xaml.cs"));
             Check(
                 "Button audit covers all declarations, style owners, custom templates, and dynamic dialog buttons",
-                buttonBaseControls.Length == 324
-                && buttonBaseStyles.Length == 31
-                && appButtonTemplates.Length == 9
+                buttonBaseControls.Length == 347
+                 && buttonBaseStyles.Length == 35
+                && appButtonTemplates.Length == 11
                 && messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)
                 && messageDialogSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal),
                 $"controls={buttonBaseControls.Length}; styles={buttonBaseStyles.Length}; templates={appButtonTemplates.Length}; dynamicDialog={messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)}; primaryId={messageDialogSource.Contains("MessageDialogPrimaryButton", StringComparison.Ordinal)}");

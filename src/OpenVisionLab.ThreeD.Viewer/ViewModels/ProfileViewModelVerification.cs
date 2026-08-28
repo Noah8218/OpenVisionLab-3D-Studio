@@ -50,10 +50,34 @@ public static class ProfileViewModelVerification
                 mean: 107.0,
                 pathData: "M 0,30 L 240,10");
             Check("P1-P2 metrics and chart state update", viewModel.ProfileValidSampleCount == 9 && viewModel.ProfileMissingSampleCount == 1 && viewModel.ProfilePathData == "M 0,30 L 240,10" && viewModel.ProfileSummary.Contains("ΔH 6.000", StringComparison.Ordinal), $"{viewModel.ProfileSummary}|{viewModel.ProfileRange}");
+
+            viewModel.SetProfileLinkedCursor(
+                row: 7,
+                column: 11,
+                rawHeight: 107.0,
+                sampleIndex: 4,
+                sampleCount: 9,
+                minimum: 101.0,
+                maximum: 113.0);
+            Check(
+                "Exact profile cursor maps to the sampled chart coordinate",
+                viewModel.ProfileLinkedCursorVisible
+                && Math.Abs(viewModel.ProfileLinkedCursorX - 120.0) < 0.001
+                && Math.Abs(viewModel.ProfileLinkedCursorY - 27.0) < 0.001
+                && viewModel.ProfileLinkedCursorSummary.Contains("(7,11)", StringComparison.Ordinal)
+                && viewModel.ProfileLinkedCursorSummary.Contains("5/9", StringComparison.Ordinal),
+                $"visible={viewModel.ProfileLinkedCursorVisible}|x={viewModel.ProfileLinkedCursorX:R}|y={viewModel.ProfileLinkedCursorY:R}|summary={viewModel.ProfileLinkedCursorSummary}");
+
+            viewModel.SetProfileLinkedCursorUnavailable();
+            Check(
+                "Off-trace cursor has no fabricated profile marker",
+                !viewModel.ProfileLinkedCursorVisible
+                && viewModel.ProfileLinkedCursorSummary.Contains("outside", StringComparison.Ordinal),
+                viewModel.ProfileLinkedCursorSummary);
             Check("Profile remains display-only", ReferenceEquals(initialPreview, viewModel.PreviewToolResult) && ReferenceEquals(initialResults, viewModel.ResultEntities) && Equals(initialPointPair, viewModel.CreatePointPairDimensionsRecipeStep()), $"preview={viewModel.PreviewToolResult.Status}|results={viewModel.ResultEntities.Count}");
 
             viewModel.ClearProfile();
-            Check("Profile clear removes live display state", !viewModel.ProfileVisible && viewModel.ProfileValidSampleCount == 0 && viewModel.ProfileMissingSampleCount == 0, viewModel.ProfileSummary);
+            Check("Profile clear removes live display state", !viewModel.ProfileVisible && viewModel.ProfileValidSampleCount == 0 && viewModel.ProfileMissingSampleCount == 0 && !viewModel.ProfileLinkedCursorVisible && viewModel.ProfileLinkedCursorSummary.Contains("unavailable", StringComparison.Ordinal), viewModel.ProfileSummary);
 
             summary = $"Height-profile ViewModel verification: Pass ({passed} checks)";
             lines.Add(summary);

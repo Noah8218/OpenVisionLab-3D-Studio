@@ -308,4 +308,6 @@ public sealed record C3DCompletenessGridMetricOutput(
     int PassedCellCount = 0,
     int FailedCellCount = 0,
     ResultStatus AggregateStatus = ResultStatus.Warning,
-    IReadOnlyList<C3DCompletenessCellOverlay>? CellOverlays = null);
+    IReadOnlyList<C3DCompletenessCellOverlay>? CellOverlays = null,
+    string? InspectionRegionArtifactId = null,
+    string? InspectionRegionArtifactContentSha256 = null);

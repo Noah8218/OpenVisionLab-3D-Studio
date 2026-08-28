@@ -6,7 +6,8 @@ namespace OpenVisionLab.ThreeD.Tools;
 public sealed record NominalActualComparisonRecipe(
     string RecipeType,
     string Version,
-    NominalActualComparisonRecipeStep Step)
+    NominalActualComparisonRecipeStep Step,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "nominal-actual-surface-deviation";
     public const string FullQuerySampling = "full-query";

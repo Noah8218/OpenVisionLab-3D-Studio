@@ -221,6 +221,7 @@ public sealed partial class ToolWorkbenchViewModel
         {
             MarkFilterPreviewStaleIfNeeded(step);
             MarkRemoveOutlierPreviewStaleIfNeeded(step);
+            MarkDomainMaskPreviewStaleIfNeeded(step);
             MarkLevelSurfacePreviewStaleIfNeeded(step);
             MarkHeightDifferenceEdgePreviewStaleIfNeeded(step);
             MarkTwoPointLinePreviewStaleIfNeeded(step);

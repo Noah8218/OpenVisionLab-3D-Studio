@@ -20,6 +20,7 @@
     <SolidColorBrush x:Key="ThreeD.PanelHeaderBorderBrush" Color="#27374A" />
     <SolidColorBrush x:Key="ThreeD.PanelHeaderTextBrush" Color="#F5F9FC" />
     <SolidColorBrush x:Key="ThreeD.PanelHeaderMutedTextBrush" Color="#A7B6C7" />
+    <SolidColorBrush x:Key="ThreeD.ContextBadgeBrush" Color="#203650" />
     <SolidColorBrush x:Key="ThreeD.AccentBrush" Color="#39C6C1" />
     <SolidColorBrush x:Key="ThreeD.AccentHoverBrush" Color="#56D8D2" />
     <SolidColorBrush x:Key="ThreeD.SelectedSurfaceBrush" Color="#15383D" />
@@ -39,6 +40,92 @@
     <SolidColorBrush x:Key="ThreeD.PassSurfaceBrush" Color="#123322" />
     <SolidColorBrush x:Key="ThreeD.FailSurfaceBrush" Color="#3A1C27" />
     <SolidColorBrush x:Key="ThreeD.DisabledSurfaceBrush" Color="#222B36" />
+
+    <!--
+        WPF-UI's Button template consumes these resource names instead of the
+        ordinary WPF Button properties.  Keep that shared template on the
+        graphite semantic palette so Appearance=Primary/Secondary does not
+        reintroduce the library's light-blue accent.
+    -->
+    <SolidColorBrush x:Key="ButtonBackground" Color="#202B38" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="#E7EEF6" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1B2531" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#15383D" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#39C6C1" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#F3F7FB" />
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#222B36" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#334155" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#657487" />
+    <SolidColorBrush x:Key="AccentButtonBackground" Color="#39C6C1" />
+    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#56D8D2" />
+    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#15383D" />
+    <SolidColorBrush x:Key="AccentButtonForeground" Color="#071318" />
+    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="#071318" />
+    <SolidColorBrush x:Key="AccentControlElevationBorderBrush" Color="#334155" />
+
+    <!--
+        The WPF-UI Button template exposes its state brushes as dependency
+        properties.  This implicit layer gives those properties deterministic
+        graphite states while preserving each control's Appearance contract.
+    -->
+    <Style TargetType="{x:Type ui:Button}"
+           BasedOn="{StaticResource {x:Type ui:Button}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="MouseOverBackground" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+        <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+        <Setter Property="PressedBackground" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+        <Setter Property="PressedBorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+        <Setter Property="PressedForeground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+            <Trigger Property="Appearance" Value="Primary">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AppBackgroundBrush}" />
+                <Setter Property="MouseOverBackground" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                <Setter Property="MouseOverBorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="Appearance" Value="Primary" />
+                    <Condition Property="IsMouseOver" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </MultiTrigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="Appearance" Value="Primary" />
+                    <Condition Property="IsPressed" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            </MultiTrigger>
+            <!-- Keep disabled actions muted even when Appearance=Primary is set. -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
 
     <Style x:Key="ThreeD.WorkflowStateBadgeStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
@@ -83,6 +170,42 @@
                 <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
             </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="empty">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="incomplete">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="stale">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.WarningSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.WarningBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="ready">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="running">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.InfoSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.InfoBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="pass">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PassSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.PassBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="fail">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="error">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.FailSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FailBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="disabled">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
 
@@ -126,6 +249,42 @@
                 <Setter Property="Symbol" Value="ErrorCircle24" />
                 <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
             </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="empty">
+                <Setter Property="Symbol" Value="Clock24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.MutedTextBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="incomplete">
+                <Setter Property="Symbol" Value="Warning24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="stale">
+                <Setter Property="Symbol" Value="ArrowClockwise24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="ready">
+                <Setter Property="Symbol" Value="CheckmarkCircle24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="running">
+                <Setter Property="Symbol" Value="ArrowClockwise24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="pass">
+                <Setter Property="Symbol" Value="CheckmarkCircle24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="fail">
+                <Setter Property="Symbol" Value="ErrorCircle24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="error">
+                <Setter Property="Symbol" Value="ErrorCircle24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="disabled">
+                <Setter Property="Symbol" Value="DismissCircle24" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
 
@@ -141,6 +300,14 @@
             <DataTrigger Binding="{Binding State}" Value="Taught / needs correction"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
             <DataTrigger Binding="{Binding State}" Value="Taught incomplete"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
             <DataTrigger Binding="{Binding State}" Value="Error"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="incomplete"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="stale"><Setter Property="Foreground" Value="{DynamicResource ThreeD.WarningBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="ready"><Setter Property="Foreground" Value="{DynamicResource ThreeD.AccentBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="running"><Setter Property="Foreground" Value="{DynamicResource ThreeD.InfoBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="pass"><Setter Property="Foreground" Value="{DynamicResource ThreeD.PassBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="fail"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="error"><Setter Property="Foreground" Value="{DynamicResource ThreeD.FailBrush}" /></DataTrigger>
+            <DataTrigger Binding="{Binding CanonicalStateKey}" Value="disabled"><Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" /></DataTrigger>
         </Style.Triggers>
     </Style>
 
@@ -192,7 +359,7 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.AccentBrush}" />
                             <Setter TargetName="ModeBorder" Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
-                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="Foreground" Value="{DynamicResource ThreeD.PanelHeaderTextBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="ModeBorder" Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
@@ -243,7 +410,7 @@
         <Setter Property="Cursor" Value="Hand" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="#263749" />
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -323,8 +490,80 @@
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource ThreeD.ControlBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                    <Border x:Name="ComboBoxItemBorder"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="2">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          ContentSource="Content"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="Background"
+                                    Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="Background"
+                                    Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource ThreeD.AccentBrush}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource ThreeD.FocusBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="Background"
+                                    Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                            <Setter TargetName="ComboBoxItemBorder"
+                                    Property="BorderBrush"
+                                    Value="{DynamicResource ThreeD.DividerBrush}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource ThreeD.DisabledBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.DisabledSurfaceBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="{x:Type ListBoxItem}">
@@ -360,6 +599,59 @@
         </Style.Triggers>
     </Style>
 
+    <Style x:Key="ThreeD.CalibrationDataGridHeaderStyle"
+           TargetType="{x:Type DataGridColumnHeader}"
+           BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+        <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.DividerBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.PrimaryTextBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ThreeD.SelectedSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.AccentBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="ThreeD.CalibrationDataGridCellStyle"
+           TargetType="{x:Type DataGridCell}"
+           BasedOn="{StaticResource {x:Type DataGridCell}}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+        <Setter Property="Padding" Value="8,4" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.TextBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThreeD.FocusBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource ThreeD.DisabledBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="ThreeD.CalibrationDataGridStyle" TargetType="{x:Type DataGrid}">
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="CanUserAddRows" Value="False" />
@@ -376,6 +668,8 @@
         <Setter Property="AlternatingRowBackground" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
         <Setter Property="AlternationCount" Value="2" />
         <Setter Property="RowStyle" Value="{StaticResource ThreeD.CalibrationDataGridRowStyle}" />
+        <Setter Property="ColumnHeaderStyle" Value="{StaticResource ThreeD.CalibrationDataGridHeaderStyle}" />
+        <Setter Property="CellStyle" Value="{StaticResource ThreeD.CalibrationDataGridCellStyle}" />
         <Setter Property="IsReadOnly" Value="True" />
     </Style>
 </ResourceDictionary>

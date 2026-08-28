@@ -25,7 +25,9 @@ internal enum ViewerColorMap
     Height,
     Thermal,
     Deviation,
-    Rgb
+    Rgb,
+    Intensity,
+    Normal
 }
 
 internal readonly record struct ViewerDisplaySettingsSnapshot(

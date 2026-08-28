@@ -26,35 +26,56 @@ public static class ViewerRecipeLoadPlanVerification
             Check("recipe path is normalized", plan.FullRecipePath == recipePath, plan.FullRecipePath);
             Check("source path resolves beside recipe", File.Exists(plan.SourcePath), plan.SourcePath);
             Check("grid remains source-backed", plan.Grid.Width == 1280 && plan.Grid.Height == 840, $"grid={plan.Grid.Width}x{plan.Grid.Height}");
-            Check("preview result is controlled", plan.PreviewResult.Status is not OpenVisionLab.ThreeD.Core.ResultStatus.Error, plan.PreviewResult.Status.ToString());
             Check("recipe identity is retained", ReferenceEquals(plan.Recipe, recipe), plan.Recipe.RecipeType);
 
-            var viewModel = new OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel();
+            var normalViewModel = new OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel();
             var sampleStatusCalls = 0;
             var roiApplyCalls = 0;
             var planePreviewCalls = 0;
             var volumePreviewCalls = 0;
             var crossSectionPreviewCalls = 0;
-            var applied = HeightDeviationRecipeApplyCoordinator.Apply(
+            var appliedNormally = HeightDeviationRecipeApplyCoordinator.Apply(
                 plan,
-                viewModel,
-                isSmoke: true,
+                normalViewModel,
+                isSmoke: false,
                 applySampleStatus: () => sampleStatusCalls++,
                 applyRoiStep: _ => roiApplyCalls++,
                 previewPlaneFlatness: () => { planePreviewCalls++; return true; },
                 previewVolume: () => { volumePreviewCalls++; return true; },
                 previewCrossSection: () => { crossSectionPreviewCalls++; return true; });
             Check(
-                "apply coordinator owns ViewModel state sequence",
-                applied
+                "normal apply restores state without Preview",
+                appliedNormally
                 && sampleStatusCalls == 1
                 && roiApplyCalls == 1
                 && planePreviewCalls == 0
                 && volumePreviewCalls == 0
                 && crossSectionPreviewCalls == 0
-                && viewModel.RecipeSourcePath == plan.SourcePath
-                && viewModel.ViewerStatus.StartsWith("Smoke recipe:", StringComparison.Ordinal),
-                $"applied={applied}|sampleStatus={sampleStatusCalls}|roi={roiApplyCalls}|source={viewModel.RecipeSourcePath}");
+                && normalViewModel.RecipeSourcePath == plan.SourcePath
+                && normalViewModel.PreviewToolResult.Status == OpenVisionLab.ThreeD.Core.ResultStatus.NotRun
+                && !normalViewModel.ResultOverlayVisible
+                && normalViewModel.ViewerStatus.StartsWith("Recipe loaded:", StringComparison.Ordinal),
+                $"applied={appliedNormally}|sampleStatus={sampleStatusCalls}|roi={roiApplyCalls}|preview={normalViewModel.PreviewToolResult.Status}|source={normalViewModel.RecipeSourcePath}");
+
+            var smokeViewModel = new OpenVisionLab.ThreeD.Viewer.ViewModels.MainWindowViewModel();
+            var smokeApplied = HeightDeviationRecipeApplyCoordinator.Apply(
+                plan,
+                smokeViewModel,
+                isSmoke: true,
+                applySampleStatus: () => { },
+                applyRoiStep: _ => { },
+                previewPlaneFlatness: () => true,
+                previewVolume: () => true,
+                previewCrossSection: () => true);
+            Check(
+                "smoke apply keeps Preview explicit to the smoke path",
+                smokeApplied
+                && smokeViewModel.PreviewToolResult.Status is not OpenVisionLab.ThreeD.Core.ResultStatus.NotRun
+                && smokeViewModel.ResultOverlayVisible
+                && smokeViewModel.ViewerStatus.StartsWith("Smoke recipe:", StringComparison.Ordinal),
+                $"applied={smokeApplied}|preview={smokeViewModel.PreviewToolResult.Status}|overlay={smokeViewModel.ResultOverlayVisible}");
+
+            var viewModel = normalViewModel;
 
             var reportDirectory = Path.GetDirectoryName(Path.GetFullPath(reportPath))!;
             var savedRecipePath = Path.Combine(reportDirectory, "height-deviation-save.recipe.json");
@@ -63,7 +84,8 @@ public static class ViewerRecipeLoadPlanVerification
                 isSmoke: true,
                 viewModel: viewModel,
                 sourcePath: plan.SourcePath,
-                roiStep: null);
+                roiStep: null,
+                outputEnabled: true);
             Check(
                 "save coordinator persists the recipe",
                 saved && File.Exists(savedRecipePath),
@@ -95,7 +117,8 @@ public static class ViewerRecipeLoadPlanVerification
                 isSmoke: true,
                 viewModel: viewModel,
                 sourcePath: plan.SourcePath,
-                roiStep: null);
+                roiStep: null,
+                outputEnabled: true);
             Check(
                 "save coordinator reports persistence failures",
                 !failedSave && viewModel.ViewerStatus.StartsWith("Smoke recipe save failed:", StringComparison.Ordinal),

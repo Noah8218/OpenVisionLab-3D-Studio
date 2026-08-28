@@ -42,12 +42,13 @@
                             DataContext="{Binding SelectedPipelineStep}"
                             Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
                             ToolTip="{Binding State, StringFormat=Pipeline step state: {0}}"
-                            AutomationProperties.Name="{Binding State, StringFormat=Pipeline step state: {0}}">
+                            AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
+                            AutomationProperties.HelpText="{Binding State}">
                         <TextBlock MaxWidth="122"
                                    FontSize="9.5"
                                    FontWeight="SemiBold"
                                    Style="{DynamicResource ThreeD.WorkflowStateTextStyle}"
-                                   Text="{Binding State}"
+                                   Text="{Binding CanonicalStateLabel}"
                                    TextTrimming="CharacterEllipsis" />
                     </Border>
                 </Grid>

@@ -5,6 +5,13 @@ namespace OpenVisionLab.ThreeD.Docking.Controls;
 
 public sealed partial class OpenVisionCalibrationDockWorkspaceView : UserControl
 {
+    private const double CompactWidthThreshold = 1500;
+    private const double WideExplorerWidth = 245;
+    private const double CompactExplorerWidth = 220;
+    private const double WideInspectorWidth = 320;
+    private const double CompactInspectorWidth = 280;
+    private bool? isCompactLayout;
+
     public static readonly DependencyProperty ExplorerTitleProperty =
         DependencyProperty.Register(
             nameof(ExplorerTitle),
@@ -65,7 +72,8 @@ public sealed partial class OpenVisionCalibrationDockWorkspaceView : UserControl
     {
         InitializeComponent();
         ApplyDockTitles();
-        Loaded += (_, _) => ApplyInitialDockSizes();
+        Loaded += (_, _) => ApplyResponsiveDockSizes();
+        SizeChanged += (_, _) => ApplyResponsiveDockSizes();
     }
 
     public string ExplorerTitle
@@ -173,11 +181,25 @@ public sealed partial class OpenVisionCalibrationDockWorkspaceView : UserControl
         evidenceAnchorable.Title = EvidenceTitle;
     }
 
-    private void ApplyInitialDockSizes()
+    private void ApplyResponsiveDockSizes()
     {
+        if (ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var useCompactLayout = ActualWidth < CompactWidthThreshold;
+        if (isCompactLayout == useCompactLayout)
+        {
+            return;
+        }
+
+        isCompactLayout = useCompactLayout;
         workbenchPane.DockHeight = new GridLength(1, GridUnitType.Star);
         evidencePane.DockHeight = new GridLength(175);
-        explorerPane.DockWidth = new GridLength(245);
-        inspectorPane.DockWidth = new GridLength(320);
+        explorerPane.DockWidth = new GridLength(
+            useCompactLayout ? CompactExplorerWidth : WideExplorerWidth);
+        inspectorPane.DockWidth = new GridLength(
+            useCompactLayout ? CompactInspectorWidth : WideInspectorWidth);
     }
 }

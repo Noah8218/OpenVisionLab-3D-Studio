@@ -20,11 +20,6 @@ public sealed record ThreeDIntegrationTransactionItem(
     string CameraId,
     string State)
 {
-    public bool IsThreeDHeightMap { get; init; }
-    public bool IsAccepted { get; init; }
-    public bool HasResult { get; init; }
-    public bool CanRunHeightMap => IsThreeDHeightMap && IsAccepted && !HasResult;
-
     public string Title => $"{ProjectId} | {State}";
     public string Detail => $"{SequenceId} / {StepId} | {CameraId} | {CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
 }
@@ -34,29 +29,17 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
     private readonly Func<string?> runRecordPathProvider;
     private readonly string settingsPath;
     private readonly Func<IntegrationApplicationIdentity> producerIdentityProvider;
-    private readonly Func<
-        string,
-        Guid,
-        IntegrationApplicationIdentity,
-        CancellationToken,
-        Task<IntegrationResultV2>> heightMapRunner;
     private string exchangeRoot = string.Empty;
     private string rejectionReason = string.Empty;
     private string statusText = L("Restore", "설정을 복원했습니다. 폴더를 스캔하거나 작업을 실행하지 않았습니다.", "Setup restored. No folder was scanned and no action was run.");
     private string selectedSummary = L("ChooseRefresh", "새로고침을 눌러 Machine Studio Handoff를 찾으세요.", "Choose Refresh to find Machine Studio handoffs.");
     private string currentRunRecordSummary = L("NoRunRecord", "선택한 Run Record가 없습니다.", "No Run Record is selected.");
     private ThreeDIntegrationTransactionItem? selectedTransaction;
-    private bool isHeightMapRunning;
-    private bool isHeightMapShutdownRequested;
-    private CancellationTokenSource? heightMapCancellation;
-    private Task? heightMapRunTask;
-    private TaskCompletionSource<bool>? heightMapRunStarted;
 
     public ThreeDIntegrationViewModel(
         Func<string?> runRecordPathProvider,
         string? settingsPath = null,
-        Func<IntegrationApplicationIdentity>? producerIdentityProvider = null,
-        Func<string, Guid, IntegrationApplicationIdentity, CancellationToken, Task<IntegrationResultV2>>? heightMapRunner = null)
+        Func<IntegrationApplicationIdentity>? producerIdentityProvider = null)
     {
         this.runRecordPathProvider = runRecordPathProvider ?? throw new ArgumentNullException(nameof(runRecordPathProvider));
         this.settingsPath = settingsPath ?? Path.Combine(
@@ -65,14 +48,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
             "ThreeDStudio",
             "machine-exchange.json");
         this.producerIdentityProvider = producerIdentityProvider ?? CreateProducerIdentity;
-        this.heightMapRunner = heightMapRunner ?? ((root, transactionId, consumerBuild, cancellationToken) =>
-            Task.Run(
-                () => ThreeDIntegrationHeightMapRunner.RunAcceptedHandoffFromRecipe(
-                    root,
-                    transactionId,
-                    consumerBuild,
-                    cancellationToken),
-                cancellationToken));
         var settings = ExchangeSettings.Load(this.settingsPath);
         exchangeRoot = settings.ExchangeRoot;
         BrowseExchangeRootCommand = new RelayCommand(_ => BrowseExchangeRoot());
@@ -81,11 +56,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
         RefreshHandoffsCommand = new RelayCommand(_ => RefreshHandoffs());
         AcceptCommand = new RelayCommand(_ => AcceptSelected(), _ => SelectedTransaction is not null);
         RejectCommand = new RelayCommand(_ => RejectSelected(), _ => SelectedTransaction is not null);
-        RunHeightMapCommand = new RelayCommand(
-            _ => RunHeightMap(),
-            _ => SelectedTransaction?.CanRunHeightMap == true
-                && !isHeightMapRunning
-                && !isHeightMapShutdownRequested);
         PublishResultCommand = new RelayCommand(_ => PublishResult(), _ => SelectedTransaction is not null);
         SyncRunRecord();
     }
@@ -99,7 +69,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
     public RelayCommand RefreshHandoffsCommand { get; }
     public RelayCommand AcceptCommand { get; }
     public RelayCommand RejectCommand { get; }
-    public RelayCommand RunHeightMapCommand { get; }
     public RelayCommand PublishResultCommand { get; }
 
     public string ExchangeRoot
@@ -146,7 +115,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
                 : string.Format(L("SelectedFormat", "거래 {0:D} | {1} | {2}", "Transaction {0:D} | {1} | {2}"), value.TransactionId, value.ProjectId, value.State);
             AcceptCommand.RaiseCanExecuteChanged();
             RejectCommand.RaiseCanExecuteChanged();
-            RunHeightMapCommand.RaiseCanExecuteChanged();
             PublishResultCommand.RaiseCanExecuteChanged();
         }
     }
@@ -219,17 +187,10 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
             Transactions.Clear();
             foreach (var transaction in discovered)
             {
-                var acknowledgementStatus = transaction.HasAcknowledgement
-                    ? ThreeDIntegrationExchange.ReadAcknowledgement(
-                        root,
-                        transaction.Handoff.TransactionId).Status
-                    : (IntegrationAcknowledgementStatus?)null;
                 var state = transaction.HasResult
                     ? L("StatePublished", "결과 게시됨", "Result published")
-                    : acknowledgementStatus == IntegrationAcknowledgementStatus.Accepted
+                    : transaction.HasAcknowledgement
                         ? L("StateReviewed", "검토됨", "Reviewed")
-                        : acknowledgementStatus == IntegrationAcknowledgementStatus.Rejected
-                            ? L("StateRejected", "거절됨", "Rejected")
                         : L("StatePending", "검토 대기", "Pending review");
                 Transactions.Add(new(
                     transaction.Handoff.TransactionId,
@@ -238,13 +199,7 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
                     transaction.Handoff.Context.SequenceId,
                     transaction.Handoff.Context.StepId,
                     transaction.Handoff.Context.CameraId,
-                    state)
-                {
-                    IsThreeDHeightMap = transaction.Handoff.Context.Modality == IntegrationInspectionModality.ThreeD
-                        && transaction.Handoff.Context.InputKind == IntegrationInspectionInputKind.HeightMap,
-                    IsAccepted = acknowledgementStatus == IntegrationAcknowledgementStatus.Accepted,
-                    HasResult = transaction.HasResult
-                });
+                    state));
             }
             SelectedTransaction = Transactions.FirstOrDefault(item => item.TransactionId == preferredTransactionId)
                 ?? Transactions.FirstOrDefault();
@@ -321,173 +276,6 @@ public sealed class ThreeDIntegrationViewModel : INotifyPropertyChanged
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or IntegrationContractException)
         {
             StatusText = exception.Message;
-        }
-    }
-
-    public bool IsHeightMapRunning => isHeightMapRunning;
-
-    internal async Task WaitForHeightMapRunAsync()
-    {
-        if (heightMapRunTask is null && !isHeightMapShutdownRequested)
-        {
-            if (heightMapRunStarted is { } runStarted)
-            {
-                await runStarted.Task;
-            }
-        }
-
-        if (heightMapRunTask is { } activeTask)
-        {
-            await activeTask;
-        }
-    }
-
-    /// <summary>
-    /// Requests cooperative cancellation and waits at most <paramref name="timeout"/>
-    /// for the active HeightMap operation. A false result means the work was
-    /// detached after the bound; no UI state is applied after shutdown is requested.
-    /// </summary>
-    public async Task<bool> ShutdownAsync(TimeSpan timeout)
-    {
-        if (timeout <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(timeout), "Shutdown timeout must be positive.");
-        }
-
-        isHeightMapShutdownRequested = true;
-        RunHeightMapCommand.RaiseCanExecuteChanged();
-        heightMapCancellation?.Cancel();
-        heightMapRunStarted?.TrySetResult(true);
-
-        var activeTask = heightMapRunTask;
-        if (activeTask is null || activeTask.IsCompleted)
-        {
-            return true;
-        }
-
-        try
-        {
-            await activeTask.WaitAsync(timeout);
-            return true;
-        }
-        catch (TimeoutException)
-        {
-            return false;
-        }
-    }
-
-    private void RunHeightMap()
-    {
-        if (isHeightMapRunning || isHeightMapShutdownRequested)
-        {
-            return;
-        }
-
-        try
-        {
-            var selected = SelectedTransaction
-                ?? throw new InvalidOperationException("Choose an accepted HeightMap handoff first.");
-            if (!selected.CanRunHeightMap)
-            {
-                throw new InvalidOperationException(
-                    L(
-                        "HeightMapRunUnavailable",
-                        "승인된 ThreeD/HeightMap Handoff만 실행할 수 있습니다.",
-                        "Only an accepted ThreeD/HeightMap handoff can run."));
-            }
-
-            var root = RequireSavedRoot();
-            var consumerBuild = producerIdentityProvider();
-            var cancellation = new CancellationTokenSource();
-            var runStarted = new TaskCompletionSource<bool>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            isHeightMapRunning = true;
-            heightMapCancellation = cancellation;
-            heightMapRunStarted = runStarted;
-            heightMapRunTask = null;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHeightMapRunning)));
-            RunHeightMapCommand.RaiseCanExecuteChanged();
-            StatusText = L(
-                "HeightMapRunning",
-                "레시피 설정으로 HeightMap 검사를 실행하는 중입니다.",
-                "Running the HeightMap inspection from the recipe settings.");
-
-            heightMapRunTask = RunHeightMapAsync(
-                root,
-                selected.TransactionId,
-                consumerBuild,
-                cancellation);
-            runStarted.TrySetResult(true);
-        }
-        catch (Exception exception) when (exception is IOException
-            or UnauthorizedAccessException
-            or ArgumentException
-            or InvalidDataException
-            or InvalidOperationException
-            or IntegrationContractException)
-        {
-            StatusText = exception.Message;
-            heightMapRunStarted?.TrySetResult(true);
-        }
-    }
-
-    private async Task RunHeightMapAsync(
-        string root,
-        Guid transactionId,
-        IntegrationApplicationIdentity consumerBuild,
-        CancellationTokenSource cancellation)
-    {
-        try
-        {
-            var result = await heightMapRunner(
-                root,
-                transactionId,
-                consumerBuild,
-                cancellation.Token);
-            if (isHeightMapShutdownRequested || cancellation.IsCancellationRequested)
-            {
-                return;
-            }
-
-            RefreshHandoffs(transactionId);
-            StatusText = string.Format(
-                L(
-                    "HeightMapRunCompleted",
-                    "HeightMap 검사 완료: {0} | Run {1}.",
-                    "HeightMap inspection completed: {0} | Run {1}."),
-                result.Outcome,
-                result.RunId);
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested || isHeightMapShutdownRequested)
-        {
-            // Shutdown owns the visible state; do not replace it with a late cancellation message.
-        }
-        catch (Exception exception)
-        {
-            if (!isHeightMapShutdownRequested)
-            {
-                StatusText = exception.Message;
-            }
-        }
-        finally
-        {
-            if (ReferenceEquals(heightMapCancellation, cancellation))
-            {
-                heightMapCancellation = null;
-            }
-
-            if (isHeightMapRunning)
-            {
-                isHeightMapRunning = false;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHeightMapRunning)));
-            }
-
-            if (!isHeightMapShutdownRequested)
-            {
-                RunHeightMapCommand.RaiseCanExecuteChanged();
-            }
-
-            cancellation.Dispose();
         }
     }
 

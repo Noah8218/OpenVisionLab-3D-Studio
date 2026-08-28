@@ -7,84 +7,6 @@ using OpenVisionLab.ThreeD.Core;
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 [CategoryOrder("Acceptance", 0)]
-[CategoryOrder("Compatibility", 1)]
-public sealed class PresenceCheckStepProperties
-{
-    internal static readonly HashSet<string> MappedNames =
-        C3DPresenceCheckPolicy.ParameterNames.ToHashSet(StringComparer.Ordinal);
-
-    [Category("Acceptance")]
-    [DisplayName("Minimum finite coverage ratio")]
-    [Description("Inclusive minimum finite-cell ratio from 0 through 1. Missing samples never fabricate a height.")]
-    [PropertyOrder(0)]
-    public double MinimumFiniteCoverageRatio { get; set; }
-
-    [Category("Acceptance")]
-    [DisplayName("Minimum mean raw height")]
-    [Description("Inclusive lower limit for the explicitly selected feature in the source field's declared raw-height unit.")]
-    [PropertyOrder(1)]
-    public double MinimumMeanRawHeight { get; set; }
-
-    [Category("Acceptance")]
-    [DisplayName("Maximum mean raw height")]
-    [Description("Inclusive upper limit for the explicitly selected feature in the source field's declared raw-height unit.")]
-    [PropertyOrder(2)]
-    public double MaximumMeanRawHeight { get; set; }
-
-    [Category("Compatibility")]
-    [DisplayName("Unmapped parameters")]
-    [ReadOnly(true)]
-    public string UnmappedParameters { get; init; } = "(none)";
-
-    internal static PresenceCheckStepProperties From(
-        ToolWorkbenchPipelineStepItem step) => new()
-        {
-            MinimumFiniteCoverageRatio = ParseDouble(step, "MinimumFiniteCoverageRatio"),
-            MinimumMeanRawHeight = ParseDouble(step, "MinimumMeanRawHeight"),
-            MaximumMeanRawHeight = ParseDouble(step, "MaximumMeanRawHeight"),
-            UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(
-                step,
-                MappedNames)
-        };
-
-    internal bool TryCreatePolicy(
-        out C3DPresenceCheckPolicy? policy,
-        out string message)
-    {
-        try
-        {
-            policy = new C3DPresenceCheckPolicy(
-                MinimumFiniteCoverageRatio,
-                MinimumMeanRawHeight,
-                MaximumMeanRawHeight);
-            policy.Validate();
-            message = string.Empty;
-            return true;
-        }
-        catch (Exception exception) when (
-            exception is InvalidDataException
-            or ArgumentException
-            or OverflowException)
-        {
-            policy = null;
-            message = exception.Message;
-            return false;
-        }
-    }
-
-    private static double ParseDouble(
-        ToolWorkbenchPipelineStepItem step,
-        string name) =>
-        double.TryParse(
-            ToolWorkbenchStepPropertySession.GetParameter(step, name),
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out var value)
-            ? value
-            : double.NaN;
-}
-
-[CategoryOrder("Acceptance", 0)]
 [CategoryOrder("Sampling", 1)]
 [CategoryOrder("Compatibility", 2)]
 public sealed class ThicknessStepProperties
@@ -908,6 +830,171 @@ public sealed class RemoveOutlierPixelsStepProperties
         {
             message =
                 $"Minimum valid neighbors must be between 1 and {maximumNeighbors} for a {WindowSize} x {WindowSize} window.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
+}
+
+public enum ConnectedRegionConnectivity
+{
+    Four,
+    Eight
+}
+
+[CategoryOrder("Connectivity", 0)]
+[CategoryOrder("Coordinates", 1)]
+[CategoryOrder("Compatibility", 2)]
+public sealed class ConnectedRegionStepProperties
+{
+    internal static readonly HashSet<string> MappedNames =
+    [
+        "Connectivity",
+        "OriginX",
+        "OriginY",
+        "ColumnPitch",
+        "RowPitch",
+        "AreaUnit"
+    ];
+
+    [Category("Connectivity")]
+    [DisplayName("Connectivity")]
+    [Description("Four-connectivity or eight-connectivity over the exact published source-grid outlier mask.")]
+    [PropertyOrder(0)]
+    public ConnectedRegionConnectivity Connectivity { get; set; }
+
+    [Category("Coordinates")]
+    [DisplayName("Origin X")]
+    [Description("X coordinate of the source-grid cell-center origin.")]
+    [PropertyOrder(1)]
+    public double OriginX { get; set; }
+
+    [Category("Coordinates")]
+    [DisplayName("Origin Y")]
+    [Description("Y coordinate of the source-grid cell-center origin.")]
+    [PropertyOrder(2)]
+    public double OriginY { get; set; }
+
+    [Category("Coordinates")]
+    [DisplayName("Column pitch")]
+    [Description("Positive X spacing between adjacent source-grid columns.")]
+    [PropertyOrder(3)]
+    [NumberRange(0.000001, double.MaxValue, 1)]
+    public double ColumnPitch { get; set; }
+
+    [Category("Coordinates")]
+    [DisplayName("Row pitch")]
+    [Description("Positive Y spacing between adjacent source-grid rows.")]
+    [PropertyOrder(4)]
+    [NumberRange(0.000001, double.MaxValue, 1)]
+    public double RowPitch { get; set; }
+
+    [Category("Coordinates")]
+    [DisplayName("Area unit")]
+    [Description("Unit label for region area; it is persisted as evidence and is not a calibration claim.")]
+    [PropertyOrder(5)]
+    public string AreaUnit { get; set; } = "grid-unit^2";
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are retained unchanged when known parameters are applied.")]
+    [PropertyOrder(10)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static ConnectedRegionStepProperties From(
+        ToolWorkbenchPipelineStepItem step) => new()
+    {
+        Connectivity = Enum.TryParse<ConnectedRegionConnectivity>(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "Connectivity"),
+            out var connectivity)
+            ? connectivity
+            : ConnectedRegionConnectivity.Four,
+        OriginX = ParseDouble(step, "OriginX"),
+        OriginY = ParseDouble(step, "OriginY"),
+        ColumnPitch = ParseDouble(step, "ColumnPitch"),
+        RowPitch = ParseDouble(step, "RowPitch"),
+        AreaUnit = ToolWorkbenchStepPropertySession.GetParameter(step, "AreaUnit"),
+        UnmappedParameters =
+            ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (!double.IsFinite(OriginX) || !double.IsFinite(OriginY))
+        {
+            message = "Origin X and Origin Y must be finite.";
+            return false;
+        }
+
+        if (!double.IsFinite(ColumnPitch) || ColumnPitch <= 0d
+            || !double.IsFinite(RowPitch) || RowPitch <= 0d)
+        {
+            message = "Column pitch and row pitch must be finite and greater than zero.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(AreaUnit))
+        {
+            message = "Area unit must not be empty.";
+            return false;
+        }
+
+        message = string.Empty;
+        return true;
+    }
+
+    private static double ParseDouble(
+        ToolWorkbenchPipelineStepItem step,
+        string name) =>
+        double.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, name),
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var value)
+            ? value
+            : double.NaN;
+}
+
+[CategoryOrder("Region", 0)]
+[CategoryOrder("Compatibility", 1)]
+public sealed class EditableRegionStepProperties
+{
+    internal static readonly HashSet<string> MappedNames = ["SelectedRegionIndex"];
+
+    [Category("Region")]
+    [DisplayName("Selected region index")]
+    [Description("Stable zero-based index from the current Published Connected Region artifact. Preview selects the exact region without changing that upstream artifact.")]
+    [PropertyOrder(0)]
+    [NumberRange(0, int.MaxValue, 1)]
+    public int SelectedRegionIndex { get; set; }
+
+    [Category("Compatibility")]
+    [DisplayName("Unmapped parameters")]
+    [Description("Unknown parameters are retained unchanged when the known region index is applied.")]
+    [PropertyOrder(10)]
+    [ReadOnly(true)]
+    public string UnmappedParameters { get; init; } = "(none)";
+
+    internal static EditableRegionStepProperties From(ToolWorkbenchPipelineStepItem step) => new()
+    {
+        SelectedRegionIndex = int.TryParse(
+            ToolWorkbenchStepPropertySession.GetParameter(step, "SelectedRegionIndex"),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var index)
+            ? index
+            : -1,
+        UnmappedParameters = ToolWorkbenchStepPropertySession.GetUnmappedParameters(step, MappedNames)
+    };
+
+    internal bool TryValidate(out string message)
+    {
+        if (SelectedRegionIndex < 0)
+        {
+            message = "Selected region index must be zero or greater.";
             return false;
         }
 
@@ -1813,6 +1900,35 @@ public sealed class XYZAffineApplyStepProperties
     public string ExcludedOperations { get; init; } = "No re-grid / no measurement";
 
     internal static XYZAffineApplyStepProperties From(ToolWorkbenchPipelineStepItem step) => new();
+}
+
+[CategoryOrder("D-07 contract", 0)]
+public sealed class DomainMaskStepProperties
+{
+    internal static readonly HashSet<string> MappedNames = [];
+
+    [Category("D-07 contract")]
+    [DisplayName("Domain policy")]
+    [Description("The complete Published ConnectedRegionArtifact is unioned into one same-grid foreground mask. No parameters are authored.")]
+    [PropertyOrder(0)]
+    [ReadOnly(true)]
+    public string DomainPolicy { get; init; } = "Complete Published ConnectedRegionArtifact";
+
+    [Category("D-07 contract")]
+    [DisplayName("Missing-value policy")]
+    [Description("Cells outside the domain become missing; in-domain values, including existing missing cells, are preserved.")]
+    [PropertyOrder(1)]
+    [ReadOnly(true)]
+    public string MissingValuePolicy { get; init; } = "Outside → missing; inside → preserve";
+
+    [Category("D-07 contract")]
+    [DisplayName("Execution policy")]
+    [Description("Preview, Publish, Run, and save/reopen remain explicit. Selection or editing never executes the tool.")]
+    [PropertyOrder(2)]
+    [ReadOnly(true)]
+    public string ExecutionPolicy { get; init; } = "Explicit Preview → Publish → Run";
+
+    internal static DomainMaskStepProperties From(ToolWorkbenchPipelineStepItem step) => new();
 }
 
 [CategoryOrder("A3 reference grid", 0)]

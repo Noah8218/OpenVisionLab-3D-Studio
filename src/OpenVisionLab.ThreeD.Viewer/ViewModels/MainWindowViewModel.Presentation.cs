@@ -37,8 +37,28 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    public void ClearC3DHeightDeviationPreview()
+    {
+        c3dHeightDeviationPreview = null;
+        if (inspectionSession.ActiveKind != ViewerInspectionKind.C3DHeightDeviation)
+        {
+            return;
+        }
+
+        inspectionSession.Reset();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        RefreshSceneContracts();
+    }
+
     public bool PublishPreviewResult()
     {
+        if (!RecipeOutputEnabled)
+        {
+            ViewerStatus = "Recipe output is disabled; Publish did not create an output artifact";
+            return false;
+        }
+
         if (PreviewToolResult.Status == ResultStatus.NotRun)
         {
             ViewerStatus = "No preview result to publish";
@@ -51,6 +71,28 @@ public sealed partial class MainWindowViewModel
         ViewerStatus = $"Result published: {resultEntity.Name}";
         RefreshSceneContracts();
         return true;
+    }
+
+    private void ClearOutputArtifactsForDisabledPolicy()
+    {
+        ClearC3DHeightDeviationPreview();
+        ClearThicknessPreview();
+        ClearWarpagePreview();
+        ClearPlaneFlatnessPreview();
+        ClearPointPairDimensionsPreview();
+        ClearGapFlushPreview();
+        ClearVolumePreview();
+        ClearCrossSectionPreview();
+        NominalActual.OutputEnabled = false;
+
+        ResultOverlayVisible = false;
+        inspectionSession.Reset();
+        PreviewToolResult = CreateNotRunToolResult();
+        ResultSummary = FormatToolResult(PreviewToolResult);
+        ResultEntities = [];
+        PublishedResultSummary = "No published result: output disabled";
+        ViewerStatus = "Recipe output disabled; existing preview and published artifacts cleared";
+        RefreshSceneContracts();
     }
 
     public void ConfigureNominalActualComparison(NominalActualComparisonInput input)
@@ -158,6 +200,43 @@ public sealed partial class MainWindowViewModel
         BottomStatus = ProjectionMode == ViewerProjectionMode.TopOrthographic
             ? $"Model units: {modelUnit} | View: Top orthographic | height {OrthographicHeight:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})"
             : $"Model units: {modelUnit} | View: Perspective | Camera: yaw {YawDegrees:F1}, pitch {PitchDegrees:F1}, distance {CameraDistance:F2}, target ({CameraTargetX:F2}, {CameraTargetY:F2}, {CameraTargetZ:F2})";
+        CameraChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public ViewerCameraState CaptureCameraState() =>
+        new(
+            YawDegrees,
+            PitchDegrees,
+            CameraDistance,
+            CameraTargetX,
+            CameraTargetY,
+            CameraTargetZ,
+            ProjectionMode,
+            OrthographicHeight);
+
+    /// <summary>
+    /// Applies only a validated presentation camera state. This does not load
+    /// data, change selection, edit a recipe, or run inspection.
+    /// </summary>
+    public bool TryApplyCameraState(ViewerCameraState state)
+    {
+        if (!state.IsValid)
+        {
+            return false;
+        }
+
+        ProjectionMode = state.ProjectionMode;
+        YawDegrees = state.YawDegrees;
+        PitchDegrees = state.PitchDegrees;
+        CameraDistance = state.Distance;
+        OrthographicHeight = state.OrthographicHeight;
+        CameraTargetX = state.TargetX;
+        CameraTargetY = state.TargetY;
+        CameraTargetZ = state.TargetZ;
+        CameraSession.ClearSavedPerspective();
+        UpdateCameraStatus();
+        RefreshCommandCanExecute();
+        return true;
     }
 
     private void SetCameraTarget(double x, double y, double z)
@@ -256,17 +335,24 @@ public sealed partial class MainWindowViewModel
         }
         else if (LazSampleVisible)
         {
-            Display.ConfigurePointCloud(lazSourceColorAvailable);
+            Display.ConfigurePointCloud(
+                lazSourceColorAvailable,
+                lazSourceIntensityAvailable,
+                lazSourceChannelAvailability);
         }
         else if (GlbSampleVisible)
         {
-            Display.ConfigureImportedMesh(importedMeshSourceColorAvailable);
+            Display.ConfigureImportedMesh(
+                importedMeshSourceColorAvailable,
+                importedMeshSourceChannelAvailability,
+                importedMeshNormalQuality);
         }
         else if (C3DSampleVisible)
         {
             Display.ConfigureC3DHeightGrid(
                 ResultOverlayVisible && (inspectionSession.SourceEntityId == C3DEntityId || inspectionSession.SourceEntityId == C3DWarpageEntityId),
-                c3dSurfaceGeometryAvailable);
+                c3dSurfaceGeometryAvailable,
+                c3DSourceChannelAvailability);
         }
         else
         {

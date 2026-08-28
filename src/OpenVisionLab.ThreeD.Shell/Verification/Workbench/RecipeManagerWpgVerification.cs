@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.WpfPropertyGrid;
 using System.Windows.Media;
+using System.Windows.Threading;
 using OpenVisionLab;
 using WpfMessageDialogButtons = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogButtons;
 using WpfMessageDialogControl = OvlMessageDialogs::OpenVisionLab.Wpf.MessageDialogs.WpfMessageDialogControl;
@@ -876,10 +877,58 @@ internal static class RecipeManagerWpgVerification
 
     private static ToolWorkbenchPipelineStepItem AddTool(ToolWorkbenchViewModel workbench, string toolId)
     {
-        workbench.SelectedTool = workbench.Tools.Single(tool => tool.Id == toolId);
+        var tool = workbench.Tools.Single(item => item.Id == toolId);
+        if (SourceQualityToolGate.RequiresSourceQuality(tool.Id))
+        {
+            WaitForSourceQuality(workbench.SourceQuality);
+        }
+
+        workbench.SelectedTool = tool;
+        if (!workbench.AddSelectedToolCommand.CanExecute(null))
+        {
+            throw new InvalidOperationException(
+                $"Tool '{toolId}' cannot be added: {workbench.SelectedToolProposedRouteDetail}");
+        }
+
         workbench.AddSelectedToolCommand.Execute(null);
         return workbench.SelectedPipelineStep
             ?? throw new InvalidOperationException($"Tool '{toolId}' was not added.");
+    }
+
+    private static SourceQualityReport? WaitForSourceQuality(
+        SourceQualityWorkspaceViewModel workspace)
+    {
+        if (workspace.Report is not null || workspace.HasError)
+        {
+            return workspace.Report;
+        }
+
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+        timer.Tick += (_, _) =>
+        {
+            if (workspace.Report is not null
+                || workspace.HasError
+                || DateTimeOffset.UtcNow >= deadline)
+            {
+                frame.Continue = false;
+            }
+        };
+        timer.Start();
+        try
+        {
+            Dispatcher.PushFrame(frame);
+        }
+        finally
+        {
+            timer.Stop();
+        }
+
+        return workspace.Report;
     }
 
     private static bool MatchesInvariantNumber(string text, double expected) =>

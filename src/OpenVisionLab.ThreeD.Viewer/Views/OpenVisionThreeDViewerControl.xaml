@@ -24,16 +24,81 @@
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Foreground" Value="#E7EEF6" />
             <Setter Property="Background" Value="#202B38" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="Surface"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              ContentSource="Content"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#1B3539" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#56D8D2" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#1B3539" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#56D8D2" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#15383D" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#39C6C1" />
+                                <Setter Property="Foreground" Value="#F3F7FB" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#67E8F9" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Background" Value="#222B36" />
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#334155" />
+                                <Setter Property="Foreground" Value="#657487" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
                     <Setter Property="Background" Value="#1B3539" />
+                    <Setter Property="BorderBrush" Value="#56D8D2" />
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="#15383D" />
+                    <Setter Property="BorderBrush" Value="#39C6C1" />
                     <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#67E8F9" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#222B36" />
+                    <Setter Property="BorderBrush" Value="#334155" />
+                    <Setter Property="Foreground" Value="#657487" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ViewerDiagnosticChannelItemStyle"
+               TargetType="{x:Type ComboBoxItem}"
+               BasedOn="{StaticResource ViewerToolbarComboBoxItemStyle}">
+            <Setter Property="IsEnabled" Value="{Binding IsSelectable}" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="{StaticResource Viewer.Toolbar.DisabledTextBrush}" />
+                    <Setter Property="Opacity" Value="0.78" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -208,6 +273,12 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="ViewerToolbarDiagnosticComboBoxStyle"
+               TargetType="{x:Type ComboBox}"
+               BasedOn="{StaticResource ViewerToolbarComboBoxStyle}">
+            <Setter Property="Width" Value="148" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ViewerDiagnosticChannelItemStyle}" />
+        </Style>
         <Style x:Key="ViewerToolbarToggleStyle" TargetType="{x:Type ToggleButton}">
             <Setter Property="Height" Value="30" />
             <Setter Property="Padding" Value="9,2" />
@@ -312,6 +383,20 @@
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <ComboBox Style="{StaticResource ViewerToolbarDiagnosticComboBoxStyle}"
+                              ItemsSource="{Binding Display.DiagnosticChannelOptions}"
+                              SelectedItem="{Binding Display.SelectedDiagnosticChannel, Mode=TwoWay}"
+                              IsEnabled="{Binding Display.CanSelectDiagnosticChannel}"
+                              ToolTip="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                              AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.DiagnosticChannel, Korean='진단 채널 선택', English='Select diagnostic channel'}"
+                              AutomationProperties.HelpText="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayLabel, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                           ToolTip="{Binding HelpText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
@@ -552,6 +637,29 @@
                 <ComboBox ItemsSource="{Binding Display.AvailableColorMaps}"
                           SelectedItem="{Binding Display.SelectedColorMap, Mode=TwoWay}"
                           IsEnabled="{Binding Display.CanSelectColorMap}" />
+                <TextBlock Margin="0,10,0,4"
+                           Foreground="#6b7280"
+                           Text="{localization:ViewerText Key=ThreeD.Viewer.DiagnosticChannel, Korean='진단 채널', English='Diagnostic Channel'}" />
+                <ComboBox ItemsSource="{Binding Display.DiagnosticChannelOptions}"
+                          SelectedItem="{Binding Display.SelectedDiagnosticChannel, Mode=TwoWay}"
+                          IsEnabled="{Binding Display.CanSelectDiagnosticChannel}"
+                          AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.DiagnosticChannel, Korean='진단 채널', English='Diagnostic Channel'}"
+                          AutomationProperties.HelpText="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}">
+                    <ComboBox.ItemContainerStyle>
+                        <StaticResource ResourceKey="ViewerDiagnosticChannelItemStyle" />
+                    </ComboBox.ItemContainerStyle>
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock TextWrapping="Wrap"
+                                       Text="{Binding DisplayLabel, Converter={StaticResource ViewerRuntimeTextConverter}}"
+                                       ToolTip="{Binding HelpText, Converter={StaticResource ViewerRuntimeTextConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="#6b7280"
+                           TextWrapping="Wrap"
+                           Text="{Binding Display.DiagnosticChannelSummary, Converter={StaticResource ViewerRuntimeTextConverter}}" />
                 <TextBlock Margin="0,12,0,4" Foreground="#6b7280" Text="Point Size" />
                 <Slider Minimum="1"
                         Maximum="6"
@@ -1063,6 +1171,15 @@
                                TextWrapping="Wrap"
                                Text="{Binding AlignmentWorkflowSummary}" />
                 </StackPanel>
+                <CheckBox Margin="0,8,0,0"
+                          Content="Output enabled"
+                          IsChecked="{Binding RecipeOutputEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          ToolTip="When off, the recipe remains declared but Preview, Publish, and Runner Run create no output artifact."
+                          AutomationProperties.AutomationId="ViewerRecipeOutputEnabledToggle" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="#6b7280"
+                           TextWrapping="Wrap"
+                           Text="{Binding RecipeOutputPolicySummary}" />
                 <Button Margin="0,8,0,0"
                         Content="Save Recipe"
                         Command="{Binding SaveRecipeCommand}" />

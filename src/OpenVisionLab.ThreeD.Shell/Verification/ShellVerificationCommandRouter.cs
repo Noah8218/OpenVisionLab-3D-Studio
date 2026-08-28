@@ -26,15 +26,9 @@ internal static class ShellVerificationCommandRouter
                 Shutdown(2);
                 return;
             }
-            var verification = Task.Run(() =>
-            {
-                var passed = ThreeDIntegrationViewModelVerification.Verify(
-                    args[integrationViewModelIndex + 1],
-                    out var summary);
-                return (Passed: passed, Summary: summary);
-            }).GetAwaiter().GetResult();
-            var passed = verification.Passed;
-            var summary = verification.Summary;
+            var passed = ThreeDIntegrationViewModelVerification.Verify(
+                args[integrationViewModelIndex + 1],
+                out var summary);
             Console.WriteLine(summary);
             Shutdown(passed ? 0 : 1);
             return;
@@ -332,6 +326,35 @@ internal static class ShellVerificationCommandRouter
             return;
         }
 
+        const string domainMaskWorkbenchVerificationOption =
+            "--verify-domain-mask-workbench";
+        var domainMaskWorkbenchVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                domainMaskWorkbenchVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (domainMaskWorkbenchVerificationIndex >= 0)
+        {
+            if (domainMaskWorkbenchVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{domainMaskWorkbenchVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var result = Task.Run(() =>
+            {
+                var passed = DomainMaskWorkbenchVerification.Verify(
+                    args[domainMaskWorkbenchVerificationIndex + 1],
+                    out var detail);
+                return (Passed: passed, Detail: detail);
+            }).GetAwaiter().GetResult();
+            Console.WriteLine(result.Detail);
+            Shutdown(result.Passed ? 0 : 1);
+            return;
+        }
+
         const string levelSurfaceWorkbenchVerificationOption =
             "--verify-level-surface-workbench";
         var levelSurfaceWorkbenchVerificationIndex = Array.FindIndex(
@@ -447,8 +470,8 @@ internal static class ShellVerificationCommandRouter
         const string xyzAffineWorkbenchVerificationOption = "--verify-tool-xyz-affine-workbench";
         const string recipeManagerWpgVerificationOption = "--verify-recipe-manager-wpg";
         const string artifactNavigatorVerificationOption = "--verify-artifact-navigator";
-        const string connectedRegionWorkbenchVerificationOption = "--verify-connected-region-workbench";
-        const string presenceCheckWorkbenchVerificationOption = "--verify-presence-check-workbench";
+        const string viewerWorkspacePresentationVerificationOption =
+            "--verify-viewer-workspace-presentation";
         const string heightMeasurementWorkbenchVerificationOption = "--verify-tool-height-measurement-workbench";
         const string validationSetVerificationOption = "--verify-validation-set";
         const string runRecordHistoryVerificationOption = "--verify-run-record-history";
@@ -587,32 +610,6 @@ internal static class ShellVerificationCommandRouter
             Shutdown(result.Passed ? 0 : 1);
             return;
         }
-        var presenceCheckWorkbenchVerificationIndex = Array.FindIndex(
-            args,
-            argument => argument.Equals(
-                presenceCheckWorkbenchVerificationOption,
-                StringComparison.OrdinalIgnoreCase));
-        if (presenceCheckWorkbenchVerificationIndex >= 0)
-        {
-            if (presenceCheckWorkbenchVerificationIndex + 1 >= args.Length)
-            {
-                Console.WriteLine(
-                    $"{presenceCheckWorkbenchVerificationOption} requires a report path.");
-                Shutdown(2);
-                return;
-            }
-
-            var result = Task.Run(() =>
-            {
-                var passed = PresenceCheckWorkbenchVerification.Verify(
-                    args[presenceCheckWorkbenchVerificationIndex + 1],
-                    out var detail);
-                return (Passed: passed, Detail: detail);
-            }).GetAwaiter().GetResult();
-            Console.WriteLine(result.Detail);
-            Shutdown(result.Passed ? 0 : 1);
-            return;
-        }
         var artifactNavigatorVerificationIndex = Array.FindIndex(
             args,
             argument => argument.Equals(artifactNavigatorVerificationOption, StringComparison.OrdinalIgnoreCase));
@@ -629,33 +626,6 @@ internal static class ShellVerificationCommandRouter
             {
                 var passed = ToolArtifactNavigatorVerification.Verify(
                     args[artifactNavigatorVerificationIndex + 1],
-                    out var summary);
-                return (Passed: passed, Summary: summary);
-            }).GetAwaiter().GetResult();
-            Console.WriteLine(result.Summary);
-            Shutdown(result.Passed ? 0 : 1);
-            return;
-        }
-
-        var connectedRegionWorkbenchVerificationIndex = Array.FindIndex(
-            args,
-            argument => argument.Equals(
-                connectedRegionWorkbenchVerificationOption,
-                StringComparison.OrdinalIgnoreCase));
-        if (connectedRegionWorkbenchVerificationIndex >= 0)
-        {
-            if (connectedRegionWorkbenchVerificationIndex + 1 >= args.Length)
-            {
-                Console.WriteLine(
-                    $"{connectedRegionWorkbenchVerificationOption} requires a report path.");
-                Shutdown(2);
-                return;
-            }
-
-            var result = Task.Run(() =>
-            {
-                var passed = ConnectedRegionWorkbenchVerification.Verify(
-                    args[connectedRegionWorkbenchVerificationIndex + 1],
                     out var summary);
                 return (Passed: passed, Summary: summary);
             }).GetAwaiter().GetResult();
@@ -974,6 +944,54 @@ internal static class ShellVerificationCommandRouter
 
             var passed = ToolWorkbenchDockingVerification.Verify(
                 args[workbenchDockingVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
+        var viewerWorkspacePresentationVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                viewerWorkspacePresentationVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (viewerWorkspacePresentationVerificationIndex >= 0)
+        {
+            if (viewerWorkspacePresentationVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{viewerWorkspacePresentationVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = ViewerWorkspacePresentationVerification.Verify(
+                args[viewerWorkspacePresentationVerificationIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
+
+        const string commonStateKeyboardAccessibilityVerificationOption =
+            "--verify-common-state-keyboard-accessibility";
+        var commonStateKeyboardAccessibilityVerificationIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                commonStateKeyboardAccessibilityVerificationOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (commonStateKeyboardAccessibilityVerificationIndex >= 0)
+        {
+            if (commonStateKeyboardAccessibilityVerificationIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{commonStateKeyboardAccessibilityVerificationOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = CommonStateKeyboardAccessibilityVerification.Verify(
+                args[commonStateKeyboardAccessibilityVerificationIndex + 1],
                 out var summary);
             Console.WriteLine(summary);
             Shutdown(passed ? 0 : 1);

@@ -400,6 +400,45 @@ public sealed partial class ToolRecipeWorkbenchView : UserControl
         };
     }
 
+    public bool ConfigureViewerWorkspacePresentationForSmoke()
+    {
+        if (DataContext is not ShellMainWindowViewModel shell
+            || !ConfigureViewerWorkspaceLayoutForSmoke("vertical"))
+        {
+            return false;
+        }
+
+        var mainContentId = shell.Workbench.MainViewerContentId;
+        if (string.IsNullOrWhiteSpace(mainContentId))
+        {
+            return false;
+        }
+
+        shell.Workbench.AuxiliaryViewerContentId = mainContentId;
+        if (!string.Equals(
+                shell.Workbench.AuxiliaryViewerContentId,
+                mainContentId,
+                StringComparison.OrdinalIgnoreCase)
+            || !shell.Workbench.ToggleViewerCameraLinkCommand.CanExecute(null))
+        {
+            return false;
+        }
+
+        shell.Workbench.ToggleViewerCameraLinkCommand.Execute(null);
+        return shell.Workbench.IsViewerCameraLinked;
+    }
+
+    public bool VerifyViewerWorkspaceCameraLinkForSmoke(out string summary)
+    {
+        if (ViewerWorkspaceSurface is null)
+        {
+            summary = "CameraLinkPropagation|failure=workspace-surface-unavailable";
+            return false;
+        }
+
+        return ViewerWorkspaceSurface.VerifyLinkedCameraPropagationForSmoke(out summary);
+    }
+
     public Task<HeightImageRoiPointerSmokeResult> RunHeightImageRoiPointerSmokeAsync() =>
         ViewerWorkspaceSurface?.RunHeightImageRoiPointerSmokeAsync()
         ?? Task.FromResult(new HeightImageRoiPointerSmokeResult(

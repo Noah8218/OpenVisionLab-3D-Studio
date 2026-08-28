@@ -4,12 +4,16 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              MinHeight="390"
              AutomationProperties.AutomationId="OutputCompareView">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
     <Border Background="{DynamicResource ThreeD.PanelBrush}"
             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
             BorderThickness="0,1,0,0"
             Padding="12">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
@@ -48,7 +52,22 @@
                 </Border>
             </Grid>
 
-            <ScrollViewer Grid.Row="1"
+            <Border Grid.Row="1"
+                    Margin="0,8,0,0"
+                    Padding="7,5"
+                    Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                    BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    Visibility="{Binding HasPreparationQualityComparisonSummary, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.Name="{Binding PreparationQualityComparisonSummary}">
+                <TextBlock FontSize="9.5"
+                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                           Text="{Binding PreparationQualityComparisonSummary}"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <ScrollViewer Grid.Row="2"
                           Margin="0,8,0,0"
                           HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Disabled">
@@ -97,6 +116,17 @@
                                                    Text="{Binding CompareSlotASummary}"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextWrapping="NoWrap" />
+                                        <Border Margin="0,4,0,0"
+                                                Padding="5,3"
+                                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                                CornerRadius="2"
+                                                Visibility="{Binding HasCompareSlotAQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                AutomationProperties.Name="{Binding CompareSlotAQualitySummary}">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{Binding CompareSlotAQualitySummary}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -148,6 +178,17 @@
                                                    Text="{Binding CompareSlotBSummary}"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextWrapping="NoWrap" />
+                                        <Border Margin="0,4,0,0"
+                                                Padding="5,3"
+                                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                                CornerRadius="2"
+                                                Visibility="{Binding HasCompareSlotBQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                AutomationProperties.Name="{Binding CompareSlotBQualitySummary}">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{Binding CompareSlotBQualitySummary}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -199,6 +240,17 @@
                                                    Text="{Binding CompareSlotCSummary}"
                                                    TextTrimming="CharacterEllipsis"
                                                    TextWrapping="NoWrap" />
+                                        <Border Margin="0,4,0,0"
+                                                Padding="5,3"
+                                                Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                                CornerRadius="2"
+                                                Visibility="{Binding HasCompareSlotCQualitySummary, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                AutomationProperties.Name="{Binding CompareSlotCQualitySummary}">
+                                            <TextBlock FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{Binding CompareSlotCQualitySummary}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
                                     </StackPanel>
                                 </Grid>
                             </Border>

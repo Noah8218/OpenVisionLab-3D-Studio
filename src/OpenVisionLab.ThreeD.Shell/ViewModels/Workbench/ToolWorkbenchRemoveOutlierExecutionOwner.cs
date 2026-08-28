@@ -91,6 +91,21 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
             ? "Outlier mask SHA-256 is available after Preview."
             : $"Outlier mask SHA-256 {mask.Sha256}";
 
+    internal (C3DHeightFieldSnapshot Output, C3DOutlierCellMap Mask)? TryGetPublishedInput(
+        string entityId)
+    {
+        if (!isRemoveOutlierPreviewPublished
+            || isRemoveOutlierPreviewStale
+            || removeOutlierPreview?.Output is not { } output
+            || removeOutlierPreview.OutlierMask is not { } mask
+            || !string.Equals(output.EntityId, entityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return (output, mask);
+    }
+
     public async Task<bool> PreviewSelectedRemoveOutlierPixelsAsync()
     {
         if (!CanPreviewSelectedRemoveOutlierPixels() || getSelectedPipelineStep() is not { } step)
@@ -276,11 +291,15 @@ internal sealed class ToolWorkbenchRemoveOutlierExecutionOwner
 
     private static string CreateRemoveOutlierPreviewPath(string hash)
     {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenVisionLab",
-            "3DStudio",
-            "Preview");
+        var testArtifactRoot = Environment.GetEnvironmentVariable(
+            "OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        var directory = string.IsNullOrWhiteSpace(testArtifactRoot)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "OpenVisionLab",
+                "3DStudio",
+                "Preview")
+            : Path.Combine(Path.GetFullPath(testArtifactRoot), "Preview");
         return Path.Combine(directory, $"remove-outlier-{hash}.c3d");
     }
 }

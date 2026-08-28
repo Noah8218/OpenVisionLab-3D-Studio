@@ -112,6 +112,14 @@ internal static class NominalActualComparisonViewModelVerification
                 && rootViewModel.NominalActual.NextPreviewDisplaySampleBudget == 150000
                 && rootViewModel.NominalActual.NextPreviewSamplingSummary.Contains("run Preview to apply", StringComparison.Ordinal),
                 rootViewModel.NominalActual.NextPreviewSamplingSummary);
+            rootViewModel.ConfigureNominalActualComparison(
+                rootInput with { StepId = "step.verification-surface-deviation-reloaded" });
+            Check(
+                "new comparison input clears the previous Preview",
+                rootViewModel.NominalActual.State == NominalActualComparisonState.InputsReady
+                && rootViewModel.NominalActual.PreviewResult is null
+                && !rootViewModel.NominalActual.CanPublish,
+                $"state={rootViewModel.NominalActual.State}|preview={rootViewModel.NominalActual.PreviewResult is not null}");
 
             var unwiredViewModel = new NominalActualComparisonViewModel();
             ApplyReadyInputs(unwiredViewModel);
@@ -127,6 +135,19 @@ internal static class NominalActualComparisonViewModelVerification
             Check("default visibility", viewModel.ActualVisible && !viewModel.NominalVisible, $"actual={viewModel.ActualVisible}|nominal={viewModel.NominalVisible}");
             Check("explicit unit", viewModel.Unit == "mm", viewModel.Unit);
             Check("query identity", viewModel.QuerySourceSummary.Contains("validation-query.ply", StringComparison.Ordinal), viewModel.QuerySourceSummary);
+
+            viewModel.OutputEnabled = false;
+            Check(
+                "disabled output blocks comparison commands",
+                !viewModel.CanPreview
+                && !viewModel.PreviewCommand.CanExecute(null)
+                && !viewModel.CanPublish
+                && !viewModel.PublishCommand.CanExecute(null)
+                && viewModel.PreviewResult is null
+                && viewModel.State == NominalActualComparisonState.InputsReady,
+                $"enabled={viewModel.OutputEnabled}|state={viewModel.State}|preview={viewModel.PreviewResult is not null}");
+            viewModel.OutputEnabled = true;
+            Check("re-enabled output restores preview command", viewModel.CanPreview && viewModel.PreviewCommand.CanExecute(null), viewModel.StateSummary);
 
             viewModel.LowerTolerance = 0.100;
             Check("invalid tolerance", !viewModel.ToleranceIsValid, viewModel.ValidationSummary);

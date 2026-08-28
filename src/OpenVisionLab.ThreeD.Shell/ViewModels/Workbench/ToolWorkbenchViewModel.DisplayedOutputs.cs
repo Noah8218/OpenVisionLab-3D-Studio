@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
-using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Viewer;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
@@ -66,49 +65,32 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RequestDisplayedOutputInViewer(ToolWorkbenchDisplayedOutputItem? item)
     {
-        if (item is null || !item.CanShowInViewer)
+        if (item is null || !item.CanShowInViewer || GetCompareCandidate(item.Id) is not { } candidate)
         {
             return;
         }
 
-        ToolWorkbenchArtifactDisplayRequestEventArgs request;
-        if (item.Artifact.NodeKind == "ConnectedRegionOutput"
-            && HasConnectedRegionOutput
-            && CurrentConnectedRegionOutput is { } connectedRegionOutput
-            && File.Exists(Source.Path))
-        {
-            request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
-                item.Id,
-                Source.Path,
-                item.DisplayName,
-                item.Contract,
-                item.State,
-                false,
-                connectedRegionOutput);
-        }
-        else if (GetCompareCandidate(item.Id) is { } candidate)
-        {
-            request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
-                item.Id,
-                candidate.C3DPath,
-                item.DisplayName,
-                item.Contract,
-                candidate.State,
-                candidate.IsSource);
-        }
-        else
-        {
-            return;
-        }
-
+        var request = new ToolWorkbenchArtifactDisplayRequestEventArgs(
+            item.Id,
+            candidate.C3DPath,
+            item.DisplayName,
+            item.Contract,
+            candidate.State,
+            candidate.IsSource);
         ViewerArtifactDisplayRequested?.Invoke(this, request);
         if (!request.WasDisplayed)
         {
             return;
         }
 
+        // Showing an existing typed artifact in the primary Viewer is an
+        // explicit presentation action, so retain its stable identity as the
+        // Main slot pin. This does not change recipe routing or execute work.
+        ViewerWorkspace.PinMainContent(item.Id);
+        ViewerWorkspace.FocusSlot(ViewerWorkspaceSession.MainSlotId);
         displayedViewerArtifactId = item.Id;
         WorkspaceSelection.SelectOutput(item.Id);
+        WorkspaceSelection.FocusViewerSlot(ViewerWorkspaceSession.MainSlotId);
         RefreshDisplayedOutputPresentation();
         RefreshSelectedToolWorkspaceProjection();
     }
@@ -147,20 +129,20 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshDisplayedOutputPresentation()
     {
-        foreach (var item in DisplayedOutputs)
+        // Source Quality may complete on a worker while the recipe projection
+        // is being rebuilt. Refresh against a stable item snapshot so a
+        // concurrent registry rebuild cannot invalidate this enumeration.
+        foreach (var item in DisplayedOutputs.ToArray())
         {
-            var isConnectedRegion = item.Artifact.NodeKind == "ConnectedRegionOutput";
-            var isRenderable = isConnectedRegion
-                ? HasConnectedRegionOutput && File.Exists(Source.Path)
-                : GetCompareCandidate(item.Id) is { C3DPath: var path } && File.Exists(path);
-            var pins = isConnectedRegion ? string.Empty : GetComparePins(item.Id);
+            var isRenderable = GetCompareCandidate(item.Id) is { C3DPath: var path } && File.Exists(path);
+            var pins = GetComparePins(item.Id);
             item.UpdatePresentation(
                 isRenderable,
                 string.Equals(item.Id, displayedViewerArtifactId, StringComparison.OrdinalIgnoreCase),
                 pins,
-                !isConnectedRegion && isRenderable && pins.Length == 0 && HasEmptyCompareSlot(),
+                isRenderable && pins.Length == 0 && HasEmptyCompareSlot(),
                 isRenderable
-                    ? isConnectedRegion ? Localization.ConnectedRegionOverlayAvailable : Localization.DisplayableC3DData
+                    ? Localization.DisplayableC3DData
                     : item.IsEvidenceOnly
                         ? Localization.EvidenceOnlyOutput
                         : Localization.NoCurrentDisplayableOutput,
@@ -197,8 +179,7 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     string displayName,
     string contract,
     string state,
-    bool isSource,
-    C3DConnectedRegionOutput? connectedRegionOutput = null) : EventArgs
+    bool isSource) : EventArgs
 {
     public string ArtifactId { get; } = artifactId;
     public string C3DPath { get; } = c3DPath;
@@ -206,7 +187,6 @@ public sealed class ToolWorkbenchArtifactDisplayRequestEventArgs(
     public string Contract { get; } = contract;
     public string State { get; } = state;
     public bool IsSource { get; } = isSource;
-    public C3DConnectedRegionOutput? ConnectedRegionOutput { get; } = connectedRegionOutput;
     public bool WasDisplayed { get; set; }
 }
 

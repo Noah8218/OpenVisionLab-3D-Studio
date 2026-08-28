@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using OpenVisionLab.ThreeD.Core;
 
 namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
@@ -8,6 +9,8 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// </summary>
 public sealed partial class ToolWorkbenchViewModel
 {
+    private readonly object artifactRegistryGate = new();
+
     private ToolWorkbenchNavigatorItem? selectedNavigatorItem;
 
     public ToolWorkbenchNavigatorItem? SelectedNavigatorItem
@@ -39,6 +42,14 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RebuildArtifactRegistryAndNavigator()
     {
+        lock (artifactRegistryGate)
+        {
+            RebuildArtifactRegistryAndNavigatorCore();
+        }
+    }
+
+    private void RebuildArtifactRegistryAndNavigatorCore()
+    {
         var artifacts = new List<ToolWorkbenchArtifactItem>
         {
             CreateSourceArtifact()
@@ -66,23 +77,6 @@ public sealed partial class ToolWorkbenchViewModel
         foreach (var step in PipelineSteps)
         {
             artifacts.Add(CreateStepArtifact(step));
-        }
-
-        if (HasConnectedRegionOutput && CurrentConnectedRegionOutput is { } connectedRegionOutput)
-        {
-            artifacts.Add(new ToolWorkbenchArtifactItem(
-                connectedRegionOutput.OutputEntityId,
-                "Connected Region",
-                "ConnectedRegionMetrics",
-                "Preview",
-                connectedRegionOutput.RootSourceEntityId,
-                $"{connectedRegionOutput.InputEntityId}; mask={connectedRegionOutput.MaskId}",
-                connectedRegionOutput.Unit,
-                connectedRegionOutput.FrameId,
-                connectedRegionOutput.ContentSha256,
-                $"{connectedRegionOutput.RegionCount:N0} region(s) | {connectedRegionOutput.ForegroundCellCount:N0} foreground cells | total area {connectedRegionOutput.Regions.Sum(region => region.Area):G6} grid-index² | source-bound",
-                null,
-                "ConnectedRegionOutput"));
         }
 
         ArtifactRegistry.ReplaceAll(artifacts);
@@ -151,18 +145,6 @@ public sealed partial class ToolWorkbenchViewModel
             navigatorRoots.Add(selectionRoot);
         }
 
-        var connectedRegionArtifact = ArtifactRegistry.FirstOrDefault(item => item.NodeKind == "ConnectedRegionOutput");
-        if (connectedRegionArtifact is not null)
-        {
-            var connectedRegionRoot = new ToolWorkbenchNavigatorItem(
-                "ConnectedRegionOutputs",
-                "Region outputs",
-                "Source-bound connected-region metrics; display-only selection.",
-                null);
-            connectedRegionRoot.Children.Add(CreateArtifactNode(connectedRegionArtifact, null, "Output"));
-            navigatorRoots.Add(connectedRegionRoot);
-        }
-
         NavigatorRoots.ReplaceAll(navigatorRoots);
         RefreshNavigatorSelection();
         RebuildOutputCompareCandidates();
@@ -194,9 +176,30 @@ public sealed partial class ToolWorkbenchViewModel
 
     private ToolWorkbenchArtifactItem CreateStepArtifact(ToolWorkbenchPipelineStepItem step)
     {
+        if (!step.OutputEnabled)
+        {
+            return new ToolWorkbenchArtifactItem(
+                step.OutputEntityId,
+                step.ToolName,
+                step.OutputContract,
+                "Disabled",
+                Source.Id,
+                string.Join("; ", step.InputEntityIds),
+                Source.Unit,
+                Source.FrameId,
+                string.Empty,
+                $"Declared by {step.Id}; output policy disabled it. No Preview, Run output, or evidence is fabricated.",
+                step,
+                "DisabledOutput");
+        }
+
         if (string.Equals(step.ToolId, "roi-crop", StringComparison.Ordinal)
             && CurrentRoiCropPreviewOutput is { } cropOutput)
         {
+            var qualityDelta = CreateSourceQualityDelta(
+                cropOutput,
+                null,
+                "not evaluated by ROI / Crop");
             return new ToolWorkbenchArtifactItem(
                 cropOutput.EntityId,
                 step.ToolName,
@@ -211,19 +214,26 @@ public sealed partial class ToolWorkbenchViewModel
                 cropOutput.Unit,
                 cropOutput.FrameId,
                 cropOutput.ContentSha256,
-                $"{cropOutput.Width} x {cropOutput.Height} | source origin ({cropOutput.GridOriginColumn}, {cropOutput.GridOriginRow}) | valid {cropOutput.ValidCount:N0} | missing {cropOutput.MissingCount:N0} | source unchanged",
+                $"{cropOutput.Width} x {cropOutput.Height} | source origin ({cropOutput.GridOriginColumn}, {cropOutput.GridOriginRow}) | valid {cropOutput.ValidCount:N0} | missing {cropOutput.MissingCount:N0} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
                 step,
-                "HeightField");
+                "HeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
         }
 
         if (string.Equals(step.ToolId, "level-surface", StringComparison.Ordinal)
             && CurrentLevelSurfacePreviewOutput is { } leveledOutput
             && CurrentLevelSurfaceTransform is { } levelingTransform)
         {
+            var qualityDelta = CreateSourceQualityDelta(
+                leveledOutput,
+                null,
+                "not evaluated by Level Surface");
             return new ToolWorkbenchArtifactItem(
                 leveledOutput.EntityId,
                 step.ToolName,
-                "LeveledHeightField + LevelingTransform",
+                "LeveledHeightField + LevelingTransform + LevelFrame",
                 IsLevelSurfacePreviewStale
                     ? "Stale"
                     : IsLevelSurfacePreviewPublished
@@ -234,9 +244,106 @@ public sealed partial class ToolWorkbenchViewModel
                 leveledOutput.Unit,
                 leveledOutput.FrameId,
                 leveledOutput.ContentSha256,
-                $"{leveledOutput.Width} x {leveledOutput.Height} | reference RMS {levelingTransform.ReferenceResidualRms:G6} | transform {levelingTransform.ContentSha256} | source unchanged",
+                $"{leveledOutput.Width} x {leveledOutput.Height} | reference RMS {levelingTransform.ReferenceResidualRms:G6} | transform {levelingTransform.ContentSha256} | level frame {CurrentLevelSurfaceLevelFrame?.ContentSha256 ?? "(none)"} | frame chain {CurrentLevelSurfaceFrameChain?.ContentSha256 ?? "(none)"} | quality {CurrentLevelSurfaceQualityEvidence?.State.ToString() ?? "(none)"} {CurrentLevelSurfaceQualityEvidence?.ContentSha256 ?? ""} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
                 step,
-                "LeveledHeightField");
+                "LeveledHeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
+        }
+
+        if (string.Equals(
+                step.ToolId,
+                "connected-region",
+                StringComparison.Ordinal)
+            && CurrentConnectedRegionArtifact is { } connectedRegionArtifact
+            && string.Equals(
+                connectedRegionArtifact.ArtifactId,
+                step.OutputEntityId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                connectedRegionArtifact.ArtifactId,
+                step.ToolName,
+                "ConnectedRegionArtifact",
+                IsConnectedRegionPreviewStale
+                    ? "Stale"
+                    : IsConnectedRegionPreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                connectedRegionArtifact.SourceEntityId,
+                connectedRegionArtifact.Unit,
+                connectedRegionArtifact.FrameId,
+                connectedRegionArtifact.ContentSha256,
+                $"{connectedRegionArtifact.Regions.Count:N0} region(s) | mask {connectedRegionArtifact.MaskContentSha256} | filtered {connectedRegionArtifact.SourceContentSha256} | root {connectedRegionArtifact.RootSourceSha256}",
+                step,
+                "ConnectedRegionArtifact");
+        }
+
+        if (string.Equals(
+                step.ToolId,
+                "domain-mask",
+                StringComparison.Ordinal)
+            && CurrentDomainMaskPreviewOutput is { } domainMaskOutput
+            && string.Equals(
+                domainMaskOutput.EntityId,
+                step.OutputEntityId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var qualityDelta = CreateSourceQualityDelta(
+                domainMaskOutput,
+                null,
+                "domain cells are the explicit Connected Region union");
+            return new ToolWorkbenchArtifactItem(
+                domainMaskOutput.EntityId,
+                step.ToolName,
+                "HeightField",
+                IsDomainMaskPreviewStale
+                    ? "Stale"
+                    : IsDomainMaskPreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                string.Join("; ", step.InputEntityIds),
+                domainMaskOutput.Unit,
+                domainMaskOutput.FrameId,
+                domainMaskOutput.ContentSha256,
+                $"{domainMaskOutput.Width} × {domainMaskOutput.Height} | valid {domainMaskOutput.ValidCount:N0} | missing {domainMaskOutput.MissingCount:N0} | domain-reduced | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
+                step,
+                "HeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
+        }
+
+        if (string.Equals(
+                step.ToolId,
+                "editable-region",
+                StringComparison.Ordinal)
+            && CurrentEditableRegionArtifact is { } editableRegionArtifact
+            && string.Equals(
+                editableRegionArtifact.ArtifactId,
+                step.OutputEntityId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return new ToolWorkbenchArtifactItem(
+                editableRegionArtifact.ArtifactId,
+                step.ToolName,
+                "EditableRegionArtifact",
+                IsEditableRegionPreviewStale
+                    ? "Stale"
+                    : IsEditableRegionPreviewPublished
+                        ? "Published"
+                        : "Preview",
+                Source.Id,
+                editableRegionArtifact.SourceConnectedRegionArtifactId,
+                editableRegionArtifact.Unit,
+                editableRegionArtifact.FrameId,
+                editableRegionArtifact.ContentSha256,
+                $"region {editableRegionArtifact.RegionIndex} | {editableRegionArtifact.Cells.Count:N0} exact cell(s) | bounds {editableRegionArtifact.Bounding.Width} × {editableRegionArtifact.Bounding.Height} | connected {editableRegionArtifact.SourceConnectedRegionContentSha256}",
+                step,
+                "EditableRegionArtifact");
         }
 
         if (string.Equals(
@@ -246,6 +353,10 @@ public sealed partial class ToolWorkbenchViewModel
             && CurrentRemoveOutlierPreviewOutput is { } outlierOutput
             && CurrentRemoveOutlierMask is { } outlierMask)
         {
+            var qualityDelta = CreateSourceQualityDelta(
+                outlierOutput,
+                outlierMask.OutlierCellCount,
+                "detected by Remove Outlier Pixels mask");
             return new ToolWorkbenchArtifactItem(
                 outlierOutput.EntityId,
                 step.ToolName,
@@ -260,14 +371,21 @@ public sealed partial class ToolWorkbenchViewModel
                 outlierOutput.Unit,
                 outlierOutput.FrameId,
                 outlierOutput.ContentSha256,
-                $"{outlierOutput.Width} × {outlierOutput.Height} | removed {outlierMask.OutlierCellCount:N0} | outlier mask {outlierMask.Sha256} | source unchanged",
+                $"{outlierOutput.Width} × {outlierOutput.Height} | removed {outlierMask.OutlierCellCount:N0} | outlier mask {outlierMask.Sha256} | source unchanged | {qualityDelta?.Summary ?? "quality delta unavailable"}",
                 step,
-                "FilteredHeightField");
+                "FilteredHeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
         }
 
         if (string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
             && filterPreviewOutput is not null)
         {
+            var qualityDelta = CreateSourceQualityDelta(
+                filterPreviewOutput,
+                null,
+                "not evaluated by Median Filter");
             return new ToolWorkbenchArtifactItem(
                 filterPreviewOutput.EntityId,
                 step.ToolName,
@@ -278,9 +396,12 @@ public sealed partial class ToolWorkbenchViewModel
                 filterPreviewOutput.Unit,
                 filterPreviewOutput.FrameId,
                 filterPreviewOutput.ContentSha256,
-                $"{filterPreviewOutput.Width} × {filterPreviewOutput.Height} | {filterPreviewOutput.Provenance}",
+                $"{filterPreviewOutput.Width} × {filterPreviewOutput.Height} | {filterPreviewOutput.Provenance} | {qualityDelta?.Summary ?? "quality delta unavailable"}",
                 step,
-                "FilteredHeightField");
+                "FilteredHeightField")
+            {
+                PreparationQualityDelta = qualityDelta
+            };
         }
 
         if (string.Equals(step.ToolId, "height-difference-edge", StringComparison.Ordinal)
@@ -480,18 +601,16 @@ public sealed partial class ToolWorkbenchViewModel
                 "TransformedHeightField");
         }
 
-        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check"
+        if (step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid"
             && CurrentMeasurementOutput is { } measurementOutput
             && string.Equals(measurementOutput.OutputEntityId, step.OutputEntityId, StringComparison.OrdinalIgnoreCase))
         {
             return new ToolWorkbenchArtifactItem(
                 measurementOutput.OutputEntityId,
                 step.ToolName,
-                measurementOutput.PresenceCheck is not null
-                    ? "PresenceCheckResult"
-                    : measurementOutput.CompletenessGrid is null
-                        ? "MeasurementResult"
-                        : "CompletenessGridMetrics",
+                measurementOutput.CompletenessGrid is null
+                    ? "MeasurementResult"
+                    : "CompletenessGridMetrics",
                 IsMeasurementPreviewStale ? "Stale" : IsMeasurementPreviewPublished ? "Published" : "Preview",
                 measurementOutput.RootSourceEntityId,
                 $"{measurementOutput.InputEntityId}; {measurementOutput.SelectionId}",
@@ -500,11 +619,9 @@ public sealed partial class ToolWorkbenchViewModel
                 measurementOutput.ContentSha256,
                 $"{measurementOutput.Result.Status} | {measurementOutput.EvidenceSummary}",
                 step,
-                measurementOutput.PresenceCheck is not null
-                    ? "PresenceCheckResult"
-                    : measurementOutput.CompletenessGrid is null
-                        ? "MeasurementResult"
-                        : "CompletenessGridMetrics");
+                measurementOutput.CompletenessGrid is null
+                    ? "MeasurementResult"
+                    : "CompletenessGridMetrics");
         }
 
         return new ToolWorkbenchArtifactItem(
@@ -619,6 +736,7 @@ public sealed record ToolWorkbenchArtifactItem(
     ToolWorkbenchPipelineStepItem? PipelineStep,
     string NodeKind)
 {
+    public SourceQualityDelta? PreparationQualityDelta { get; init; }
     public bool HasContentHash => ContentSha256.Length == 64;
     public string HashShortSuffix => HasContentHash ? $" | SHA {ContentSha256[..12]}" : string.Empty;
 }

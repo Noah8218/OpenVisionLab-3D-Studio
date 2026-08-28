@@ -31,6 +31,9 @@
                     Command="{Binding Workbench.LoadC3DSourceCommand}" />
         <KeyBinding Key="F5"
                     Command="{Binding Workbench.PreviewSelectedStepCommand}" />
+        <KeyBinding Key="Enter"
+                    Modifiers="Control"
+                    Command="{Binding Workbench.PublishSelectedStepCommand}" />
         <KeyBinding Key="F5"
                     Modifiers="Control"
                     Command="{Binding Workbench.RunTeachingRecipeCommand}" />
@@ -60,19 +63,19 @@
                     <Grid>
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   Text="검사 구성"
+                                   Text="{Binding Localization.RecipeFlow}"
                                    Visibility="{Binding IsSetupWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   Text="티칭"
+                                   Text="{Binding Localization.Teach}"
                                    Visibility="{Binding IsTeachWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   Text="검증"
+                                   Text="{Binding Localization.Validate}"
                                    Visibility="{Binding IsValidateWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
                         <TextBlock FontSize="14"
                                    FontWeight="SemiBold"
-                                   Text="결과"
+                                   Text="{Binding Localization.ResultsWorkspaceTitle}"
                                    Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </Grid>
                     <TextBlock Margin="0,1,0,0"
@@ -112,11 +115,11 @@
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
                                Appearance="Primary"
-                               Content="선택 단계 티칭"
+                               Content="{Binding Localization.Teach}"
                                Icon="{ui:SymbolIcon Edit24}"
                                Command="{Binding SelectWorkspaceCommand}"
                                CommandParameter="{x:Static views:ShellWorkspaceMode.Teach}"
-                               AutomationProperties.Name="Teach selected inspection step" />
+                               AutomationProperties.Name="{Binding Localization.Teach}" />
                     <ui:Button Padding="8,4"
                                Content="{Binding Localization.Save}"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
@@ -136,28 +139,29 @@
                                Command="{Binding Workbench.PreviewSelectedStepCommand}"
                                ToolTip="F5"
                                AutomationProperties.AutomationId="PreviewTeachingToolButton"
-                               AutomationProperties.Name="Preview selected inspection step" />
+                               AutomationProperties.Name="{Binding Localization.Preview}" />
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
                                Content="{Binding Localization.Publish}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding Workbench.PublishSelectedStepCommand}"
-                               ToolTip="Publish the current non-stale Preview without re-running"
-                               AutomationProperties.Name="Publish selected inspection output" />
+                               ToolTip="Ctrl+Enter"
+                               AutomationProperties.Name="{Binding Localization.Publish}"
+                               AutomationProperties.HelpText="Publish the current non-stale Preview without re-running" />
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
                                Content="{Binding Localization.Cancel}"
                                Icon="{ui:SymbolIcon ArrowUndo24}"
                                Command="{Binding Workbench.CancelSelectedPreviewCommand}"
                                Visibility="{Binding Workbench.IsSelectedStepPreviewRunning, Converter={StaticResource BoolToVisibilityConverter}}"
-                               AutomationProperties.Name="Cancel selected Preview" />
+                               AutomationProperties.Name="{Binding Localization.Cancel}" />
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
-                               Content="검증으로"
+                               Content="{Binding Localization.Validate}"
                                Icon="{ui:SymbolIcon CheckmarkCircle24}"
                                Command="{Binding SelectWorkspaceCommand}"
                                CommandParameter="{x:Static views:ShellWorkspaceMode.Inspect}"
-                               AutomationProperties.Name="Open validation workspace" />
+                               AutomationProperties.Name="{Binding Localization.Validate}" />
                     <ui:Button Padding="8,4"
                                Content="{Binding Localization.Save}"
                                Icon="{ui:SymbolIcon DocumentCheckmark24}"
@@ -177,13 +181,14 @@
                                Icon="{ui:SymbolIcon PlayCircle24}"
                                Command="{Binding Workbench.RunTeachingRecipeCommand}"
                                ToolTip="Ctrl+F5"
-                               AutomationProperties.Name="Run complete inspection recipe" />
+                               AutomationProperties.Name="{Binding Localization.Run}"
+                               AutomationProperties.HelpText="Run the complete inspection recipe" />
                     <ui:Button Padding="8,4"
-                               Content="결과 보기"
+                               Content="{Binding Localization.ResultsWorkspaceTitle}"
                                Icon="{ui:SymbolIcon DataHistogram24}"
                                Command="{Binding SelectWorkspaceCommand}"
                                CommandParameter="{x:Static views:ShellWorkspaceMode.Review}"
-                               AutomationProperties.Name="Open inspection results workspace" />
+                               AutomationProperties.Name="{Binding Localization.ResultsWorkspaceTitle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="3"
                             VerticalAlignment="Center"
@@ -191,11 +196,11 @@
                             Visibility="{Binding IsResultsWorkspaceSelected, Converter={StaticResource BoolToVisibilityConverter}}">
                     <ui:Button Margin="0,0,5,0"
                                Padding="8,4"
-                               Content="티칭으로"
+                               Content="{Binding Localization.Teach}"
                                Icon="{ui:SymbolIcon Edit24}"
                                Command="{Binding SelectWorkspaceCommand}"
                                CommandParameter="{x:Static views:ShellWorkspaceMode.Teach}"
-                               AutomationProperties.Name="Return to teaching workspace" />
+                               AutomationProperties.Name="{Binding Localization.Teach}" />
                 </StackPanel>
             </Grid>
         </Border>

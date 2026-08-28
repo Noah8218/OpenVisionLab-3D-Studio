@@ -44,8 +44,6 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     private IReadOnlyList<HeightImagePaletteChoice> paletteChoices = [];
     private IReadOnlyList<C3DCompletenessCellOverlay> completenessCellOverlays = [];
     private string? selectedCompletenessCellId;
-    private C3DConnectedRegionOutput? connectedRegionOutput;
-    private string? selectedConnectedRegionId;
     private int loadGeneration;
     private int displayRangeRevision;
 
@@ -103,8 +101,6 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
     public IReadOnlyList<C3DCompletenessCellOverlay> CompletenessCellOverlays =>
         completenessCellOverlays;
     public string? SelectedCompletenessCellId => selectedCompletenessCellId;
-    public C3DConnectedRegionOutput? ConnectedRegionOutput => connectedRegionOutput;
-    public string? SelectedConnectedRegionId => selectedConnectedRegionId;
     public C3DHeightImageDisplayFrame? DisplayFrame
     {
         get => displayFrame;
@@ -148,27 +144,6 @@ public sealed class HeightImageViewerViewModel : INotifyPropertyChanged
 
         selectedCompletenessCellId = cellId;
         OnPropertyChanged(nameof(SelectedCompletenessCellId));
-    }
-
-    public void SetConnectedRegionOverlay(
-        C3DConnectedRegionOutput? output,
-        string? selectedRegionId)
-    {
-        var normalizedSelectedRegionId = output?.Regions.FirstOrDefault(region =>
-            string.Equals(region.RegionId, selectedRegionId, StringComparison.OrdinalIgnoreCase))?.RegionId;
-        if (ReferenceEquals(connectedRegionOutput, output)
-            && string.Equals(
-                selectedConnectedRegionId,
-                normalizedSelectedRegionId,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        connectedRegionOutput = output;
-        selectedConnectedRegionId = normalizedSelectedRegionId;
-        OnPropertyChanged(nameof(ConnectedRegionOutput));
-        OnPropertyChanged(nameof(SelectedConnectedRegionId));
     }
 
     public string DisplayPixelSha256 => DisplayFrame?.PixelSha256 ?? string.Empty;

@@ -10,7 +10,8 @@ public sealed record C3DWarpageRecipe(
     string RecipeType,
     string Version,
     HeightDeviationRecipeSource Source,
-    C3DWarpageStep Step)
+    C3DWarpageStep Step,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "c3d-warpage";
     public const string BestFitInspectionRoiReferenceMode = "BestFitInspectionRoi";

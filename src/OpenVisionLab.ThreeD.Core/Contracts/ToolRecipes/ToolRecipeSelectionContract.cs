@@ -61,8 +61,7 @@ public static class ToolRecipeSelectionContract
         One("volume", ToolRecipeSelectionRoles.MeasurementRegion, ToolRecipeSelectionKinds.GridRectangle, 2),
         One("cross-section-dimensions", ToolRecipeSelectionRoles.MeasurementRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
         One("completeness-grid", ToolRecipeSelectionRoles.ReferenceRegion, ToolRecipeSelectionKinds.GridRectangle, 1),
-        One("completeness-grid", ToolRecipeSelectionRoles.InspectionRegion, ToolRecipeSelectionKinds.GridRectangle, 2),
-        One("presence-check", ToolRecipeSelectionRoles.Region, ToolRecipeSelectionKinds.GridRectangle, 1)
+        One("completeness-grid", ToolRecipeSelectionRoles.InspectionRegion, ToolRecipeSelectionKinds.GridRectangle, 2)
     ];
 
     public static IReadOnlyList<ToolRecipeSelectionRouteRequirement> Declarations => Requirements;
@@ -107,11 +106,20 @@ public static class ToolRecipeSelectionContract
             })
             .Where(route => route.Selection is not null)
             .ToArray();
+        var hasUnboundCompletenessInspectionInput =
+            string.Equals(step.ToolId, "completeness-grid", StringComparison.OrdinalIgnoreCase)
+            && (step.InputEntityIds ?? []).ElementAtOrDefault(2) is { } inspectionInputId
+            && !string.IsNullOrWhiteSpace(inspectionInputId)
+            && !selectionById.ContainsKey(inspectionInputId.Trim());
         var requirements = Requirements
             .Where(requirement => string.Equals(
                 requirement.ToolId,
                 step.ToolId,
                 StringComparison.OrdinalIgnoreCase))
+            .Where(requirement =>
+                !(string.Equals(step.ToolId, "completeness-grid", StringComparison.OrdinalIgnoreCase)
+                  && requirement.Role == ToolRecipeSelectionRoles.InspectionRegion
+                  && hasUnboundCompletenessInspectionInput))
             .ToArray();
 
         if (requirements.Length == 0)

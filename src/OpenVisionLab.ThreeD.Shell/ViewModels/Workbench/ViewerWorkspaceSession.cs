@@ -6,7 +6,9 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 /// <summary>
 /// Owns the presentation-only composition of the normal inspection Viewer.
 /// Each slot keeps its own Viewer instance and display state in the View; this
-/// session owns only layout, focus, and the auxiliary slot's content pin.
+/// session owns only layout, focus, and the session-only source/output identity
+/// pinned to each slot. A missing pin is retained instead of being replaced by
+/// another candidate so the View can report an explicit stale/unavailable state.
 /// </summary>
 public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
 {
@@ -14,13 +16,23 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
     public const string AuxiliarySlotId = "viewer.auxiliary";
 
     private ViewerWorkspaceLayout layout = ViewerWorkspaceLayout.Single;
+    private string mainContentId = string.Empty;
     private string auxiliaryContentId = string.Empty;
+    private bool mainContentExplicitlyCleared;
+    private bool auxiliaryContentExplicitlyCleared;
+    private bool cameraLinked;
     private string focusedSlotId = MainSlotId;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ViewerWorkspaceLayout Layout => layout;
+    public string MainContentId => mainContentId;
     public string AuxiliaryContentId => auxiliaryContentId;
+    public bool IsMainContentPinned => mainContentId.Length > 0;
+    public bool IsAuxiliaryContentPinned => auxiliaryContentId.Length > 0;
+    public bool IsMainContentExplicitlyCleared => mainContentExplicitlyCleared;
+    public bool IsAuxiliaryContentExplicitlyCleared => auxiliaryContentExplicitlyCleared;
+    public bool IsCameraLinked => cameraLinked;
     public string FocusedSlotId => focusedSlotId;
     public bool HasAuxiliarySlot => layout != ViewerWorkspaceLayout.Single;
     public bool IsInlineSplit =>
@@ -40,6 +52,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
         layout = value;
         if (layout == ViewerWorkspaceLayout.Single)
         {
+            SetCameraLinked(false);
             focusedSlotId = MainSlotId;
         }
 
@@ -70,6 +83,10 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
                 return false;
             }
 
+            // Returning to a split layout is an explicit request to populate a
+            // previously cleared auxiliary slot. A stale non-empty pin is
+            // intentionally preserved and is never replaced here.
+            auxiliaryContentExplicitlyCleared = false;
             ReconcileContents(available, preferredContentId);
             if (string.IsNullOrWhiteSpace(auxiliaryContentId))
             {
@@ -108,13 +125,144 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
     public void PinAuxiliaryContent(string? contentId)
     {
         var normalized = NormalizeIdentity(contentId);
-        if (string.Equals(auxiliaryContentId, normalized, StringComparison.OrdinalIgnoreCase))
+        var wasCleared = auxiliaryContentExplicitlyCleared;
+        if (string.Equals(auxiliaryContentId, normalized, StringComparison.OrdinalIgnoreCase)
+            && !wasCleared)
         {
             return;
         }
 
         auxiliaryContentId = normalized;
+        auxiliaryContentExplicitlyCleared = false;
         OnPropertyChanged(nameof(AuxiliaryContentId));
+        OnPropertyChanged(nameof(IsAuxiliaryContentPinned));
+        OnPropertyChanged(nameof(IsAuxiliaryContentExplicitlyCleared));
+    }
+
+    public void PinMainContent(string? contentId)
+    {
+        var normalized = NormalizeIdentity(contentId);
+        var wasCleared = mainContentExplicitlyCleared;
+        if (string.Equals(mainContentId, normalized, StringComparison.OrdinalIgnoreCase)
+            && !wasCleared)
+        {
+            return;
+        }
+
+        mainContentId = normalized;
+        mainContentExplicitlyCleared = false;
+        OnPropertyChanged(nameof(MainContentId));
+        OnPropertyChanged(nameof(IsMainContentPinned));
+        OnPropertyChanged(nameof(IsMainContentExplicitlyCleared));
+    }
+
+    public void ClearAuxiliaryContent()
+    {
+        if (auxiliaryContentId.Length == 0 && auxiliaryContentExplicitlyCleared)
+        {
+            return;
+        }
+
+        auxiliaryContentId = string.Empty;
+        auxiliaryContentExplicitlyCleared = true;
+        SetCameraLinked(false);
+        OnPropertyChanged(nameof(AuxiliaryContentId));
+        OnPropertyChanged(nameof(IsAuxiliaryContentPinned));
+        OnPropertyChanged(nameof(IsAuxiliaryContentExplicitlyCleared));
+    }
+
+    public void ClearMainContent()
+    {
+        if (mainContentId.Length == 0 && mainContentExplicitlyCleared)
+        {
+            return;
+        }
+
+        mainContentId = string.Empty;
+        mainContentExplicitlyCleared = true;
+        SetCameraLinked(false);
+        OnPropertyChanged(nameof(MainContentId));
+        OnPropertyChanged(nameof(IsMainContentPinned));
+        OnPropertyChanged(nameof(IsMainContentExplicitlyCleared));
+    }
+
+    /// <summary>
+    /// Links only the session-owned presentation cameras. The View validates
+    /// that both slots are real 3D Viewers before copying a camera state.
+    /// </summary>
+    public void SetCameraLinked(bool value)
+    {
+        if (cameraLinked == value)
+        {
+            return;
+        }
+
+        cameraLinked = value;
+        OnPropertyChanged(nameof(IsCameraLinked));
+    }
+
+    /// <summary>
+    /// Starts a new recipe/source presentation context without changing the
+    /// selected layout or focused slot. Opening a recipe is an explicit
+    /// context boundary; ordinary candidate refreshes must use
+    /// <see cref="ReconcileMainContent"/> and <see cref="ReconcileContents"/>
+    /// so they retain stale pins instead of silently rebinding them.
+    /// </summary>
+    public void ResetContentPins()
+    {
+        var mainChanged = mainContentId.Length > 0 || mainContentExplicitlyCleared;
+        var auxiliaryChanged = auxiliaryContentId.Length > 0 || auxiliaryContentExplicitlyCleared;
+        var cameraWasLinked = cameraLinked;
+        mainContentId = string.Empty;
+        auxiliaryContentId = string.Empty;
+        mainContentExplicitlyCleared = false;
+        auxiliaryContentExplicitlyCleared = false;
+        cameraLinked = false;
+        if (mainChanged)
+        {
+            OnPropertyChanged(nameof(MainContentId));
+            OnPropertyChanged(nameof(IsMainContentPinned));
+            OnPropertyChanged(nameof(IsMainContentExplicitlyCleared));
+        }
+
+        if (auxiliaryChanged)
+        {
+            OnPropertyChanged(nameof(AuxiliaryContentId));
+            OnPropertyChanged(nameof(IsAuxiliaryContentPinned));
+            OnPropertyChanged(nameof(IsAuxiliaryContentExplicitlyCleared));
+        }
+
+        if (cameraWasLinked)
+        {
+            OnPropertyChanged(nameof(IsCameraLinked));
+        }
+    }
+
+    public void ReconcileMainContent(
+        IEnumerable<string> availableContentIds,
+        string? preferredContentId)
+    {
+        ArgumentNullException.ThrowIfNull(availableContentIds);
+        if (mainContentId.Length > 0 || mainContentExplicitlyCleared)
+        {
+            return;
+        }
+
+        var available = availableContentIds
+            .Select(NormalizeIdentity)
+            .Where(id => id.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (available.Length == 0)
+        {
+            return;
+        }
+
+        var preferred = NormalizeIdentity(preferredContentId);
+        PinMainContent(
+            available.Contains(preferred, StringComparer.OrdinalIgnoreCase)
+                ? preferred
+                : available[0]);
     }
 
     public void ReconcileContents(IEnumerable<string> availableContentIds, string? preferredContentId)
@@ -126,7 +274,7 @@ public sealed class ViewerWorkspaceSession : INotifyPropertyChanged
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (available.Contains(auxiliaryContentId, StringComparer.OrdinalIgnoreCase))
+        if (auxiliaryContentId.Length > 0 || auxiliaryContentExplicitlyCleared)
         {
             return;
         }

@@ -350,7 +350,6 @@ internal static class RunRecordWriter
         var sourceQualitySection =
             FormatSourceQualityHtml(record.SourceQualityEvidence);
         var completenessSection = FormatCompletenessHtml(record.Steps);
-        var presenceCheckSection = FormatPresenceCheckHtml(record.Steps);
         var thresholdCorrectionSection =
             record.SurfaceMatchEvidence is null
                 ? FormatThresholdCorrectionHtml(
@@ -387,7 +386,6 @@ internal static class RunRecordWriter
           {{timingSection}}
           {{sourceQualitySection}}
           {{completenessSection}}
-          {{presenceCheckSection}}
           {{thresholdCorrectionSection}}
           {{surfaceMatchSection}}
           <table><thead>{{tableHeader}}</thead><tbody>
@@ -433,46 +431,6 @@ internal static class RunRecordWriter
                  <p>Grid and source-region coordinates are zero-based. Nullable heights remain empty.</p>
                  <div class="table-scroll"><table>
                    <thead><tr><th>Step ID</th><th>Cell ID</th><th>Grid row, column</th><th>Region row, column · size</th><th>Total / finite / missing</th><th>Finite coverage</th><th>Mean raw height</th><th>Reference mean raw height</th><th>Reference-relative mean raw height</th><th>Unit / frame</th><th>Decision</th><th>Reason</th><th>Completeness SHA-256</th></tr></thead>
-                   <tbody>{rows}</tbody>
-                 </table></div>
-               </section>
-               """;
-    }
-
-    private static string FormatPresenceCheckHtml(
-        IReadOnlyList<InspectionRunStepResult>? steps)
-    {
-        var outputs = (steps ?? [])
-            .Where(step => step.PresenceCheck is not null)
-            .Select(step => (Step: step, Output: step.PresenceCheck!))
-            .ToArray();
-        if (outputs.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        var rows = string.Join(
-            Environment.NewLine,
-            outputs.Select(item =>
-            {
-                var feature = item.Output.Feature;
-                return $"<tr><td>{Encode(item.Step.Id)}</td><td>{Encode(feature.FeatureId)}</td>"
-                    + $"<td>{feature.Region.Row}, {feature.Region.Column} · {feature.Region.RowCount} × {feature.Region.ColumnCount}</td>"
-                    + $"<td>{feature.TotalCellCount} / {feature.FiniteCellCount} / {feature.MissingCellCount}</td>"
-                    + $"<td>{Format(feature.FiniteCoverageRatio)}</td>"
-                    + $"<td>{FormatNullable(feature.MeanRawHeight)}</td>"
-                    + $"<td>{Encode(item.Output.Unit)} / {Encode(item.Output.FrameId)}</td>"
-                    + $"<td class=\"{feature.Decision}\">{Encode(feature.Decision.ToString())}</td>"
-                    + $"<td>{Encode(feature.DecisionReason)}</td>"
-                    + $"<td>{Encode(item.Output.ContentSha256)}</td></tr>";
-            }));
-
-        return $"""
-               <section>
-                 <h2>Presence Check feature results</h2>
-                 <p>One explicitly authored source-grid feature is evaluated. Coverage and raw-height limits are inclusive; a missing mean remains empty and fails closed.</p>
-                 <div class="table-scroll"><table>
-                   <thead><tr><th>Step ID</th><th>Feature ID</th><th>Region row, column · size</th><th>Total / finite / missing</th><th>Finite coverage</th><th>Mean raw height</th><th>Unit / frame</th><th>Decision</th><th>Reason</th><th>Presence SHA-256</th></tr></thead>
                    <tbody>{rows}</tbody>
                  </table></div>
                </section>
@@ -952,7 +910,7 @@ internal static class RunRecordWriter
 
     private static void WriteMultiStepCsv(string path, InspectionRunRecord record)
     {
-        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason,presenceContentSha256,presenceUnit,presenceFrame,presenceFeatureId,presenceRegionRow,presenceRegionColumn,presenceRegionRowCount,presenceRegionColumnCount,presenceTotalCellCount,presenceFiniteCellCount,presenceMissingCellCount,presenceFiniteCoverageRatio,presenceMeanRawHeight,presenceDecision,presenceDecisionReason" };
+        var lines = new List<string> { "runId,recordedAtUtc,recipeIndex,stepId,toolId,toolName,inputEntityIds,outputEntityId,stepStatus,elapsedMilliseconds,timingState,timingClock,stageTimings,outputContentSha256,overlayIds,metric,kind,value,unit,metricStatus,recipeSha256,sourceSha256,viewerRunnerMatch,sourceQualityState,sourceQualitySha256,sourceQualityGrid,sourceQualityValidCount,sourceQualityMissingCount,sourceQualityValidRatio,sourceQualityMissingRatio,sourceQualityInvalidMaskSha256,sourceQualityFrame,sourceQualityUnit,sourceQualityProvenance,sourceQualityChannels,sourceQualityGridDiagnostics,rowType,completenessContentSha256,completenessUnit,completenessFrame,cellId,gridRow,gridColumn,regionRow,regionColumn,regionRowCount,regionColumnCount,totalCellCount,finiteCellCount,missingCellCount,finiteCoverageRatio,meanRawHeight,referenceMeanRawHeight,referenceRelativeMeanRawHeight,decision,decisionReason" };
         lines.AddRange(record.Steps!.SelectMany(step =>
         {
             var stepRows = step.Metrics.Count == 0
@@ -961,10 +919,7 @@ internal static class RunRecordWriter
                     FormatMultiStepCsvRow(record, step, metric, null));
             var cellRows = step.CompletenessGrid?.Cells.Select(cell =>
                 FormatMultiStepCsvRow(record, step, null, cell)) ?? [];
-            IEnumerable<string> presenceRows = step.PresenceCheck is { } presence
-                ? [FormatMultiStepCsvRow(record, step, null, null, presence.Feature)]
-                : [];
-            return stepRows.Concat(cellRows).Concat(presenceRows);
+            return stepRows.Concat(cellRows);
         }));
         File.WriteAllLines(path, lines, new UTF8Encoding(false));
     }
@@ -973,8 +928,7 @@ internal static class RunRecordWriter
         InspectionRunRecord record,
         InspectionRunStepResult step,
         InspectionRunMetric? metric,
-        C3DCompletenessCellMetric? cell,
-        C3DPresenceCheckFeatureMetric? presence = null) =>
+        C3DCompletenessCellMetric? cell) =>
         string.Join(',',
             Csv(record.RunId),
             Csv(record.RecordedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
@@ -1012,7 +966,7 @@ internal static class RunRecordWriter
             Csv(record.SourceQualityEvidence?.Report?.Provenance ?? string.Empty),
             Csv(FormatSourceQualityChannels(record.SourceQualityEvidence)),
             Csv(FormatSourceQualityGridDiagnostics(record.SourceQualityEvidence)),
-            Csv(presence is not null ? "presenceFeature" : cell is not null ? "completenessCell" : metric is not null ? "stepMetric" : "step"),
+            Csv(cell is not null ? "completenessCell" : metric is not null ? "stepMetric" : "step"),
             Csv(step.CompletenessGrid?.ContentSha256 ?? string.Empty),
             Csv(step.CompletenessGrid?.Unit ?? string.Empty),
             Csv(step.CompletenessGrid?.FrameId ?? string.Empty),
@@ -1033,22 +987,7 @@ internal static class RunRecordWriter
                 ? Format(relative)
                 : string.Empty),
             Csv(cell?.Decision?.ToString() ?? string.Empty),
-            Csv(cell?.DecisionReason ?? string.Empty),
-            Csv(presence is null ? string.Empty : step.PresenceCheck?.ContentSha256 ?? string.Empty),
-            Csv(presence is null ? string.Empty : step.PresenceCheck?.Unit ?? string.Empty),
-            Csv(presence is null ? string.Empty : step.PresenceCheck?.FrameId ?? string.Empty),
-            Csv(presence?.FeatureId ?? string.Empty),
-            Csv(presence?.Region.Row.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.Region.Column.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.Region.RowCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.Region.ColumnCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.TotalCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.FiniteCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence?.MissingCellCount.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
-            Csv(presence is null ? string.Empty : Format(presence.FiniteCoverageRatio)),
-            Csv(presence?.MeanRawHeight is { } presenceMean ? Format(presenceMean) : string.Empty),
-            Csv(presence?.Decision.ToString() ?? string.Empty),
-            Csv(presence?.DecisionReason ?? string.Empty));
+            Csv(cell?.DecisionReason ?? string.Empty));
 
     private static string FormatHtmlStepRow(
         InspectionRunStepResult step,

@@ -8,7 +8,8 @@ public sealed record C3DPointPairDimensionsRecipe(
     string Version,
     HeightDeviationRecipeSource Source,
     ModelTransform? Transform,
-    C3DPointPairDimensionsStep Step)
+    C3DPointPairDimensionsStep Step,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "c3d-point-pair-dimensions";
 

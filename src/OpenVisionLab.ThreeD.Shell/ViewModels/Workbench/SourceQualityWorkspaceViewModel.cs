@@ -33,6 +33,11 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
     private SourceAcquisitionProvenanceStateOption? selectedAcquisitionStateOption;
     private string acquisitionEvidenceDraft = string.Empty;
     private string acquisitionLimitationNotesDraft = string.Empty;
+    private bool acquisitionReflectiveFlagDraft;
+    private bool acquisitionTransparentFlagDraft;
+    private bool acquisitionTexturelessFlagDraft;
+    private bool acquisitionClippedFlagDraft;
+    private bool acquisitionLowCoverageFlagDraft;
     private bool isAcquisitionProvenancePersisted;
     private string sourceFrameId = string.Empty;
     private ToolRecipeAcquisitionDirection appliedAcquisitionDirection =
@@ -104,6 +109,66 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
         set
         {
             if (SetField(ref acquisitionLimitationNotesDraft, value ?? string.Empty))
+            {
+                NotifyAcquisitionDraftProperties();
+            }
+        }
+    }
+
+    public bool IsAcquisitionReflectiveFlagDraft
+    {
+        get => acquisitionReflectiveFlagDraft;
+        set
+        {
+            if (SetField(ref acquisitionReflectiveFlagDraft, value))
+            {
+                NotifyAcquisitionDraftProperties();
+            }
+        }
+    }
+
+    public bool IsAcquisitionTransparentFlagDraft
+    {
+        get => acquisitionTransparentFlagDraft;
+        set
+        {
+            if (SetField(ref acquisitionTransparentFlagDraft, value))
+            {
+                NotifyAcquisitionDraftProperties();
+            }
+        }
+    }
+
+    public bool IsAcquisitionTexturelessFlagDraft
+    {
+        get => acquisitionTexturelessFlagDraft;
+        set
+        {
+            if (SetField(ref acquisitionTexturelessFlagDraft, value))
+            {
+                NotifyAcquisitionDraftProperties();
+            }
+        }
+    }
+
+    public bool IsAcquisitionClippedFlagDraft
+    {
+        get => acquisitionClippedFlagDraft;
+        set
+        {
+            if (SetField(ref acquisitionClippedFlagDraft, value))
+            {
+                NotifyAcquisitionDraftProperties();
+            }
+        }
+    }
+
+    public bool IsAcquisitionLowCoverageFlagDraft
+    {
+        get => acquisitionLowCoverageFlagDraft;
+        set
+        {
+            if (SetField(ref acquisitionLowCoverageFlagDraft, value))
             {
                 NotifyAcquisitionDraftProperties();
             }
@@ -209,6 +274,9 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             AcquisitionLimitationNotesDraft.Trim(),
             appliedAcquisitionProvenance.LimitationNotes,
             StringComparison.Ordinal)
+        || !LimitationKindsEqual(
+            CreateDraftLimitationFlags(),
+            appliedAcquisitionProvenance.LimitationFlags)
         || HasPendingAcquisitionDirectionChanges;
 
     public bool CanApplyAcquisitionProvenance =>
@@ -399,12 +467,32 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
         RebuildAcquisitionDirectionStateOptions(appliedAcquisitionDirection.State);
         acquisitionEvidenceDraft = appliedAcquisitionProvenance.Evidence;
         acquisitionLimitationNotesDraft = appliedAcquisitionProvenance.LimitationNotes;
+        acquisitionReflectiveFlagDraft = HasLimitationFlag(
+            appliedAcquisitionProvenance,
+            ToolRecipeAcquisitionLimitationKind.Reflective);
+        acquisitionTransparentFlagDraft = HasLimitationFlag(
+            appliedAcquisitionProvenance,
+            ToolRecipeAcquisitionLimitationKind.Transparent);
+        acquisitionTexturelessFlagDraft = HasLimitationFlag(
+            appliedAcquisitionProvenance,
+            ToolRecipeAcquisitionLimitationKind.Textureless);
+        acquisitionClippedFlagDraft = HasLimitationFlag(
+            appliedAcquisitionProvenance,
+            ToolRecipeAcquisitionLimitationKind.Clipped);
+        acquisitionLowCoverageFlagDraft = HasLimitationFlag(
+            appliedAcquisitionProvenance,
+            ToolRecipeAcquisitionLimitationKind.LowCoverage);
         acquisitionDirectionXDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.X);
         acquisitionDirectionYDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.Y);
         acquisitionDirectionZDraft = FormatDirectionComponent(appliedAcquisitionDirection.Vector?.Z);
         OnPropertyChanged(nameof(AppliedAcquisitionProvenance));
         OnPropertyChanged(nameof(AcquisitionEvidenceDraft));
         OnPropertyChanged(nameof(AcquisitionLimitationNotesDraft));
+        OnPropertyChanged(nameof(IsAcquisitionReflectiveFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionTransparentFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionTexturelessFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionClippedFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionLowCoverageFlagDraft));
         OnPropertyChanged(nameof(AcquisitionDirectionXDraft));
         OnPropertyChanged(nameof(AcquisitionDirectionYDraft));
         OnPropertyChanged(nameof(AcquisitionDirectionZDraft));
@@ -459,7 +547,8 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             unit,
             frameId);
         if (string.Equals(loadedSourceKey, sourceKey, StringComparison.OrdinalIgnoreCase)
-            && Report is not null)
+            && Report is not null
+            && !IsLoading)
         {
             return;
         }
@@ -755,9 +844,64 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
             SelectedAcquisitionStateOption.State,
             AcquisitionEvidenceDraft.Trim(),
             AcquisitionLimitationNotesDraft.Trim(),
-            direction);
+            direction,
+            CreateDraftLimitationFlags());
         applyAcquisitionProvenance!(provenance);
         LoadAcquisitionProvenance(provenance, sourceFrameId);
+    }
+
+    private IReadOnlyList<ToolRecipeAcquisitionLimitationFlag> CreateDraftLimitationFlags()
+    {
+        var flags = new List<ToolRecipeAcquisitionLimitationFlag>();
+        if (IsAcquisitionReflectiveFlagDraft)
+        {
+            flags.Add(new(
+                ToolRecipeAcquisitionLimitationKind.Reflective,
+                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
+        }
+        if (IsAcquisitionTransparentFlagDraft)
+        {
+            flags.Add(new(
+                ToolRecipeAcquisitionLimitationKind.Transparent,
+                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
+        }
+        if (IsAcquisitionTexturelessFlagDraft)
+        {
+            flags.Add(new(
+                ToolRecipeAcquisitionLimitationKind.Textureless,
+                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
+        }
+        if (IsAcquisitionClippedFlagDraft)
+        {
+            flags.Add(new(
+                ToolRecipeAcquisitionLimitationKind.Clipped,
+                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
+        }
+        if (IsAcquisitionLowCoverageFlagDraft)
+        {
+            flags.Add(new(
+                ToolRecipeAcquisitionLimitationKind.LowCoverage,
+                ToolRecipeAcquisitionLimitationOrigin.OperatorAuthored));
+        }
+
+        return flags;
+    }
+
+    private static bool HasLimitationFlag(
+        ToolRecipeAcquisitionProvenance provenance,
+        ToolRecipeAcquisitionLimitationKind kind) =>
+        provenance.LimitationFlags?.Any(flag => flag?.Kind == kind) == true;
+
+    private static bool LimitationKindsEqual(
+        IReadOnlyList<ToolRecipeAcquisitionLimitationFlag> draft,
+        IReadOnlyList<ToolRecipeAcquisitionLimitationFlag>? applied)
+    {
+        var draftKinds = draft.Select(flag => flag.Kind).ToHashSet();
+        var appliedKinds = (applied ?? [])
+            .Where(flag => flag is not null)
+            .Select(flag => flag.Kind)
+            .ToHashSet();
+        return draftKinds.SetEquals(appliedKinds);
     }
 
     private void RebuildAcquisitionDirectionStateOptions(
@@ -852,6 +996,11 @@ public sealed class SourceQualityWorkspaceViewModel : INotifyPropertyChanged
 
     private void NotifyAcquisitionDraftProperties()
     {
+        OnPropertyChanged(nameof(IsAcquisitionReflectiveFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionTransparentFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionTexturelessFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionClippedFlagDraft));
+        OnPropertyChanged(nameof(IsAcquisitionLowCoverageFlagDraft));
         OnPropertyChanged(nameof(IsAcquisitionStateAvailable));
         OnPropertyChanged(nameof(IsAcquisitionDirectionAvailable));
         OnPropertyChanged(nameof(HasPendingAcquisitionDirectionChanges));

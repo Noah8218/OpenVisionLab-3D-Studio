@@ -55,6 +55,21 @@ internal static class RunnerApplication
 
             var recipe = HeightDeviationRecipe.Load(fullRecipePath);
             var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+            if (!recipe.OutputEnabled)
+            {
+                return RunDisabledLegacyRecipe(
+                    fullRecipePath,
+                    reportPath,
+                    expectedStatus,
+                    runArtifacts,
+                    recipe.RecipeType,
+                    recipe.Version,
+                    sourcePath,
+                    recipe.Source.EntityId,
+                    recipe.Source.Unit,
+                    "C3D Height Deviation Rule");
+            }
+
             var maxSampledPoints = new[]
             {
             recipe.RoiStep?.MaxSampledPoints ?? 0,
@@ -133,6 +148,63 @@ internal static class RunnerApplication
         }
     }
 
+    static int RunDisabledLegacyRecipe(
+        string fullRecipePath,
+        string reportPath,
+        string? expectedStatus,
+        RunArtifactOptions runArtifacts,
+        string recipeType,
+        string recipeVersion,
+        string sourcePath,
+        string sourceEntityId,
+        string sourceUnit,
+        string toolName)
+    {
+        var result = new ToolResult(
+            toolName,
+            ResultStatus.Warning,
+            $"Output is disabled by recipe policy; '{recipeType}' was not executed and no result artifact was created.",
+            TimeSpan.Zero,
+            [],
+            []);
+        var fullReportPath = Path.GetFullPath(reportPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);
+        File.WriteAllLines(
+            fullReportPath,
+            [
+                "OpenVisionLab 3D disabled-output Runner report",
+                $"Recipe|{recipeType}|version={recipeVersion}|path={Path.GetFullPath(fullRecipePath)}",
+                $"Source|{sourceEntityId}|path={sourcePath}|unit={sourceUnit}",
+                "OutputPolicy|enabled=False|executed=False|artifactCreated=False",
+                InspectionContractText.FormatToolResult(result, includePrefix: true),
+                InspectionContractText.MetricsMarker,
+                InspectionContractText.OverlaysMarker
+            ]);
+
+        RunRecordWriter.Write(
+            runArtifacts,
+            fullRecipePath,
+            recipeType,
+            recipeVersion,
+            sourcePath,
+            sourceEntityId,
+            sourceUnit,
+            step: null,
+            result: result,
+            runnerReportPath: fullReportPath,
+            viewerContractPath: null);
+
+        if (expectedStatus is not null
+            && (!Enum.TryParse<ResultStatus>(expectedStatus, true, out var status) || result.Status != status))
+        {
+            Console.Error.WriteLine($"Expected status {expectedStatus}, actual status {result.Status}.");
+            return 3;
+        }
+
+        Console.WriteLine($"{result.ToolName}: {result.Status} | output disabled");
+        return 0;
+    }
+
     static int RunNominalActualComparisonRecipe(
         string fullRecipePath,
         string reportPath,
@@ -141,6 +213,24 @@ internal static class RunnerApplication
         RunArtifactOptions runArtifacts)
     {
         var recipe = NominalActualComparisonRecipe.Load(fullRecipePath);
+        var actualSourcePath = ResolveRecipePath(
+            recipe.Step.ActualSource.Path,
+            Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                actualSourcePath,
+                recipe.Step.ActualSource.Id,
+                recipe.Step.Unit,
+                NominalActualComparisonContract.ToolName);
+        }
+
         var input = recipe.ToInput(fullRecipePath);
         var result = new NominalActualComparisonExecutor()
             .ExecuteAsync(input, maximumDisplaySamples: 0)
@@ -212,6 +302,21 @@ internal static class RunnerApplication
     {
         var recipe = C3DThicknessRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                sourcePath,
+                recipe.Source.EntityId,
+                recipe.Source.Unit,
+                C3DThicknessRule.ToolName);
+        }
+
         var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
         var evaluation = C3DThicknessRule.Evaluate(new C3DThicknessInput(
             recipe.Step.SourceEntityId,
@@ -258,6 +363,21 @@ internal static class RunnerApplication
     {
         var recipe = C3DWarpageRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                sourcePath,
+                recipe.Source.EntityId,
+                recipe.Source.Unit,
+                C3DWarpageRule.ToolName);
+        }
+
         var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
         var evaluation = C3DWarpageRule.Evaluate(new C3DWarpageInput(
             recipe.Step.SourceEntityId,
@@ -304,6 +424,21 @@ internal static class RunnerApplication
     {
         var recipe = C3DPointPairDimensionsRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                sourcePath,
+                recipe.Source.EntityId,
+                recipe.Source.Unit,
+                PointPairDimensionsRule.ToolName);
+        }
+
         var grid = C3DHeightGrid.Load(sourcePath, maxRenderedPoints: 0);
         var first = grid.ReadPoint(recipe.Step.First.Row, recipe.Step.First.Column);
         var second = grid.ReadPoint(recipe.Step.Second.Row, recipe.Step.Second.Column);
@@ -357,6 +492,21 @@ internal static class RunnerApplication
     {
         var recipe = C3DGapFlushRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                sourcePath,
+                recipe.Source.EntityId,
+                recipe.Source.Unit,
+                GapFlushRule.ToolName);
+        }
+
         var grid = C3DHeightGrid.Load(sourcePath, recipe.Step.MaxSampledPoints);
         var transform = recipe.Transform ?? ModelTransform.Identity;
         TryCalculateRoiStats(grid.Points, recipe.Step.LeftRegion, transform, out var left);
@@ -405,6 +555,21 @@ internal static class RunnerApplication
     {
         var recipe = LazTwoPointMeasurementRecipe.Load(fullRecipePath);
         var sourcePath = ResolveRecipePath(recipe.Source.Path, Path.GetDirectoryName(fullRecipePath)!);
+        if (!recipe.OutputEnabled)
+        {
+            return RunDisabledLegacyRecipe(
+                fullRecipePath,
+                reportPath,
+                expectedStatus,
+                runArtifacts,
+                recipe.RecipeType,
+                recipe.Version,
+                sourcePath,
+                recipe.Source.EntityId,
+                recipe.Source.Unit,
+                "LAZ/LAS Two Point Measurement");
+        }
+
         var pointCloud = LazPointCloud.Load(sourcePath, recipe.Measurement.MaxSampledPoints);
         if (pointCloud.SampledPoints.Length < 2)
         {
@@ -470,7 +635,7 @@ internal static class RunnerApplication
                         $"Step|order={step.Order}|id={step.StepId}|toolId={step.ToolId}|tool={CleanReportValue(step.ToolName)}"
                         + $"|inputs={string.Join(";", document.Steps[step.Order - 1].InputEntityIds)}|output={step.OutputEntityId}"
                         + $"|outputSha256={step.OutputContentSha256}|status={step.Result.Status}|elapsedMs={step.Result.Elapsed.TotalMilliseconds:R}"
-                        + $"|metrics={step.Result.Metrics.Count}|overlays={step.Result.Overlays.Count}|message={CleanReportValue(step.Result.Message)}")
+                        + $"|levelFrameSha256={step.LevelFrameContentSha256}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256}|frameChainSha256={step.FrameChainContentSha256}|metrics={step.Result.Metrics.Count}|overlays={step.Result.Overlays.Count}|message={CleanReportValue(step.Result.Message)}")
                 ]);
 
             if (File.Exists(sourcePath))

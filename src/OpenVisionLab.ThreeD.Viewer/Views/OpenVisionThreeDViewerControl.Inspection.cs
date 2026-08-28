@@ -596,6 +596,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DPlaneFlatness()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Plane flatness requires a visible C3D height grid";
@@ -667,6 +672,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DThickness()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Thickness requires a visible C3D height grid";
@@ -707,6 +717,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DPointPairDimensions()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Point pair dimensions require a visible C3D height grid";
@@ -750,6 +765,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DGapFlush()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Gap / Flush requires a visible C3D height grid";
@@ -846,6 +866,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DVolume()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Volume requires a visible C3D height grid";
@@ -900,6 +925,11 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     public bool PreviewC3DCrossSection()
     {
+        if (!EnsureRecipeOutputEnabled())
+        {
+            return false;
+        }
+
         if (c3dSample is null || !viewModel.C3DSampleVisible)
         {
             viewModel.ViewerStatus = "Cross-section Dimensions requires a visible C3D height grid";

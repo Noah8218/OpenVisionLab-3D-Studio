@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace OpenVisionLab.ThreeD.Viewer.Models;
 
 internal static class ViewerColorMapPalette
@@ -22,6 +24,14 @@ internal static class ViewerColorMapPalette
         }
 
         return (1.0, 1.0, (normalized - 2.0 / 3.0) * 3.0);
+    }
+
+    public static (double R, double G, double B) NormalMap(Vector3 normal)
+    {
+        return (
+            Normalize(normal.X * 0.5 + 0.5),
+            Normalize(normal.Y * 0.5 + 0.5),
+            Normalize(normal.Z * 0.5 + 0.5));
     }
 
     private static double Normalize(double value) =>

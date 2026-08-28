@@ -15,7 +15,8 @@ internal static class HeightDeviationRecipeSaveCoordinator
         bool isSmoke,
         MainWindowViewModel viewModel,
         string sourcePath,
-        HeightDeviationRecipeRoiStep? roiStep)
+        HeightDeviationRecipeRoiStep? roiStep,
+        bool outputEnabled)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(viewModel);
@@ -40,7 +41,8 @@ internal static class HeightDeviationRecipeSaveCoordinator
                 roiStep,
                 viewModel.PlaneFlatnessConfigured ? viewModel.CreatePlaneFlatnessRecipeStep() : null,
                 viewModel.VolumeConfigured ? viewModel.CreateVolumeRecipeStep() : null,
-                viewModel.CrossSectionConfigured ? viewModel.CreateCrossSectionRecipeStep() : null);
+                viewModel.CrossSectionConfigured ? viewModel.CreateCrossSectionRecipeStep() : null,
+                outputEnabled);
 
             recipe.Save(fullRecipePath);
             viewModel.SetRecipeSaved(fullRecipePath);

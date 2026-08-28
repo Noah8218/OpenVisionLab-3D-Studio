@@ -17,6 +17,10 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     private bool hasPendingParameterChanges;
     private string parameterStatus = "Select an inspection step.";
     private string help = "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance.";
+    private string example = "Select an inspection step to see a concrete authoring example.";
+    private string expectedOverlay = "Select an inspection step to see the expected review overlay.";
+    private string commonState = "Empty";
+    private string outputPolicy = "Enabled";
 
     internal SelectedToolWorkspaceViewModel(InspectionWorkspaceSelectionSession selection)
     {
@@ -50,6 +54,10 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
     public bool HasPendingParameterChanges => hasPendingParameterChanges;
     public string ParameterStatus => parameterStatus;
     public string Help => help;
+    public string Example => example;
+    public string ExpectedOverlay => expectedOverlay;
+    public string CommonState => commonState;
+    public string OutputPolicy => outputPolicy;
 
     internal void Refresh(SelectedToolWorkspaceProjection projection)
     {
@@ -58,7 +66,14 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
         isParameterEditorSupported = projection.IsParameterEditorSupported;
         hasPendingParameterChanges = projection.HasPendingParameterChanges;
         parameterStatus = projection.ParameterStatus;
-        help = CreateHelp(projection.Step);
+        help = CreateHelp(projection.Step, projection.Localization);
+        var guidance = CreateGuidance(projection);
+        example = guidance.Example;
+        expectedOverlay = guidance.ExpectedOverlay;
+        commonState = CreateCommonState(projection.Step, projection.Localization);
+        outputPolicy = projection.Step is { } policyStep
+            ? projection.Localization.OutputPolicyLabel(policyStep.OutputEnabled)
+            : projection.Localization.OutputPolicyLabel(true);
 
         Inputs.ReplaceAll(CreateInputs(projection));
         Regions.ReplaceAll(CreateRegions(projection));
@@ -73,6 +88,10 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasPendingParameterChanges));
         OnPropertyChanged(nameof(ParameterStatus));
         OnPropertyChanged(nameof(Help));
+        OnPropertyChanged(nameof(Example));
+        OnPropertyChanged(nameof(ExpectedOverlay));
+        OnPropertyChanged(nameof(CommonState));
+        OnPropertyChanged(nameof(OutputPolicy));
         OnPropertyChanged(nameof(ActiveRegion));
         OnPropertyChanged(nameof(ActiveRegionPosition));
     }
@@ -225,12 +244,123 @@ public sealed class SelectedToolWorkspaceViewModel : INotifyPropertyChanged
                 ? "No recipe-owned region."
                 : $"{selection.Kind} | {selection.Id}";
 
-    private static string CreateHelp(ToolWorkbenchPipelineStepItem? step) =>
+    private static string CreateHelp(
+        ToolWorkbenchPipelineStepItem? step,
+        ThreeDLocalization localization) =>
         step is null
-            ? "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance."
-            : $"{step.Tool.Description} Required inputs: {step.InputContract}. "
-              + $"Authoring: confirm inputs, teach regions, apply parameters, then run Preview explicitly. "
-              + $"Output: {step.OutputContract}; units remain those declared by the current source or reference frame.";
+            ? localization.Resolve(
+                "ThreeD.Workbench.SelectedToolHelpEmpty",
+                "검사 단계를 선택하면 입력, 파라미터, 영역, 출력, 작성 안내가 표시됩니다.",
+                "Select an inspection step to see its inputs, parameters, regions, outputs, and authoring guidance.")
+            : $"{step.Tool.Description} "
+              + localization.Resolve(
+                  "ThreeD.Workbench.SelectedToolHelpInputs",
+                  $"필수 입력: {step.InputContract}.",
+                  $"Required inputs: {step.InputContract}.")
+              + " "
+              + localization.Resolve(
+                  "ThreeD.Workbench.SelectedToolHelpAuthoring",
+                  "입력을 확인하고 영역을 티칭한 뒤 파라미터를 적용하고 Preview를 명시적으로 실행하세요.",
+                  "Confirm inputs, teach regions, apply parameters, then select Preview explicitly.")
+              + " "
+              + localization.Resolve(
+                  "ThreeD.Workbench.SelectedToolHelpOutput",
+                  $"출력: {step.OutputContract}. 단위는 현재 소스 또는 기준 프레임이 선언한 값을 유지합니다.",
+                  $"Output: {step.OutputContract}. Units remain those declared by the current source or reference frame.");
+
+    private static string CreateCommonState(
+        ToolWorkbenchPipelineStepItem? step,
+        ThreeDLocalization localization)
+    {
+        if (step is null)
+        {
+            return localization.StateLabel(InspectionStepState.Empty);
+        }
+
+        var descriptor = InspectionStepStateMatrix.Describe(step.State);
+        return $"{localization.StateLabel(descriptor.State)} ({descriptor.Key})";
+    }
+
+    private static ToolGuidance CreateGuidance(SelectedToolWorkspaceProjection projection)
+    {
+        if (projection.Step is not { } step)
+        {
+            return new(
+                "Select an inspection step to see a concrete authoring example.",
+                "Select an inspection step to see the expected review overlay.");
+        }
+
+        var localization = projection.Localization;
+        if (string.Equals(step.ToolId, "connected-region", StringComparison.OrdinalIgnoreCase))
+        {
+            return new(
+                localization.Resolve(
+                    "ThreeD.Workbench.ConnectedRegionExample",
+                    "예: Published FilteredHeightField를 연결하고 Connectivity=Four를 확인한 뒤 Preview를 누릅니다.",
+                    "Example: connect a Published FilteredHeightField, confirm Connectivity=Four, then select Preview."),
+                localization.Resolve(
+                    "ThreeD.Workbench.ConnectedRegionExpectedOverlay",
+                    "예상: 원본 격자 위에 연결 영역별 셀과 경계 상자가 표시됩니다. 입력과 상위 출력은 변경되지 않습니다.",
+                    "Expected: connected-region cells and bounding boxes appear on the source grid; the input and upstream output stay unchanged."));
+        }
+
+        if (string.Equals(step.ToolId, "domain-mask", StringComparison.OrdinalIgnoreCase))
+        {
+            return new(
+                localization.Resolve(
+                    "ThreeD.Workbench.DomainMaskExample",
+                    "예: Published HeightField와 그 결과를 만든 Published ConnectedRegionArtifact를 연결한 뒤 Preview, 결과를 확인하고 Publish합니다.",
+                    "Example: connect the Published HeightField and its matching Published ConnectedRegionArtifact, then Preview, review, and Publish."),
+                localization.Resolve(
+                    "ThreeD.Workbench.DomainMaskExpectedOverlay",
+                    "예상: 연결 영역의 모든 셀만 원래 값 또는 기존 missing으로 남고, 영역 밖은 missing인 별도 same-grid HeightField로 표시됩니다. 입력은 변경되지 않습니다.",
+                    "Expected: every connected-region cell keeps its value or existing missing state, outside cells become missing in a separate same-grid HeightField, and inputs remain unchanged."));
+        }
+
+        if (string.Equals(step.ToolId, "editable-region", StringComparison.OrdinalIgnoreCase))
+        {
+            return new(
+                localization.Resolve(
+                    "ThreeD.Workbench.EditableRegionExample",
+                    "예: Connected Region을 먼저 Publish한 뒤 SelectedRegionIndex=0으로 한 영역만 선택하고 Preview 후 Publish합니다.",
+                    "Example: Publish Connected Region first, choose one region with SelectedRegionIndex=0, then Preview and Publish."),
+                localization.Resolve(
+                    "ThreeD.Workbench.EditableRegionExpectedOverlay",
+                    "예상: 선택한 영역의 정확한 source-grid 셀과 경계가 강조되고, Connected Region 전체 출력은 유지됩니다.",
+                    "Expected: the selected region's exact source-grid cells and bounds are highlighted while the full Connected Region output remains intact."));
+        }
+
+        var usesEditableRegion =
+            string.Equals(step.ToolId, "completeness-grid", StringComparison.OrdinalIgnoreCase)
+            && step.InputEntityIds.ElementAtOrDefault(2) is { } inspectionInputId
+            && projection.Artifacts.Any(item =>
+                string.Equals(item.Id, inspectionInputId, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(item.Contract, "EditableRegionArtifact", StringComparison.OrdinalIgnoreCase));
+        if (usesEditableRegion)
+        {
+            return new(
+                localization.Resolve(
+                    "ThreeD.Workbench.CompletenessEditableRegionExample",
+                    "예: 기준 GridRectangle를 두 번째 입력으로 연결하고 EditableRegionArtifact를 세 번째 입력으로 연결한 뒤 Preview를 누릅니다.",
+                    "Example: route the reference GridRectangle as input 2 and the EditableRegionArtifact as input 3, then select Preview."),
+                localization.Resolve(
+                    "ThreeD.Workbench.CompletenessEditableRegionExpectedOverlay",
+                    "예상: 선택 영역의 provenance가 Completeness 결과에 기록되고, 파생 검사 영역과 셀별 Pass/Fail evidence가 표시됩니다. 기존 SDK 경로는 영역 경계를 평가합니다.",
+                    "Expected: selected-region provenance is recorded in Completeness evidence and the derived inspection region and cell Pass/Fail evidence are shown. The existing SDK path evaluates the region bounds."));
+        }
+
+        return new(
+            localization.Resolve(
+                "ThreeD.Workbench.GenericToolExample",
+                "예: 입력과 레시피 소유 영역을 확인하고 파라미터를 적용한 뒤 Preview를 누릅니다.",
+                "Example: confirm inputs and recipe-owned regions, apply parameters, then select Preview."),
+            localization.Resolve(
+                "ThreeD.Workbench.GenericToolExpectedOverlay",
+                "예상: 현재 도구가 선언한 입력·영역·출력 evidence만 표시되며 원본은 변경되지 않습니다.",
+                "Expected: only this tool's declared inputs, regions, and output evidence are shown; the source remains unchanged."));
+    }
+
+    private sealed record ToolGuidance(string Example, string ExpectedOverlay);
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

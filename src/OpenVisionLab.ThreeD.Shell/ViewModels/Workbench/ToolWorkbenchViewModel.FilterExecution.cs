@@ -66,6 +66,9 @@ public sealed partial class ToolWorkbenchViewModel
         IsSelectedStepSurfaceMatch ? IsSurfaceMatchExperimentRunning
             : IsSelectedStepFilter ? isFilterPreviewRunning
             : IsSelectedStepRemoveOutlierPixels ? IsRemoveOutlierPreviewRunning
+            : IsSelectedStepConnectedRegion ? IsConnectedRegionPreviewRunning
+            : IsSelectedStepDomainMask ? IsDomainMaskPreviewRunning
+            : IsSelectedStepEditableRegion ? IsEditableRegionPreviewRunning
             : IsSelectedStepLevelSurface ? IsLevelSurfacePreviewRunning
             : IsSelectedStepRoiCrop ? IsRoiCropPreviewRunning
             : IsSelectedStepHeightDifferenceEdge ? IsEdgePreviewRunning
@@ -152,6 +155,12 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepMeasurement ? PreviewSelectedMeasurementAsync()
         : IsSelectedStepRemoveOutlierPixels
         ? PreviewSelectedRemoveOutlierPixelsAsync()
+        : IsSelectedStepConnectedRegion
+        ? PreviewSelectedConnectedRegionAsync()
+        : IsSelectedStepDomainMask
+        ? PreviewSelectedDomainMaskAsync()
+        : IsSelectedStepEditableRegion
+        ? PreviewSelectedEditableRegionAsync()
         : IsSelectedStepLevelSurface
         ? PreviewSelectedLevelSurfaceAsync()
         : IsSelectedStepRoiCrop
@@ -173,11 +182,18 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepLineFit ? PreviewSelectedLineFitAsync()
         : IsSelectedStepHeightDifferenceEdge ? PreviewSelectedHeightDifferenceEdgeAsync() : PreviewSelectedFilterAsync();
 
-    private bool CanPreviewSelectedStep() => IsSelectedStepSurfaceMatch
+    private bool CanPreviewSelectedStep() => SelectedPipelineStep?.OutputEnabled == true
+        && (IsSelectedStepSurfaceMatch
         ? CanPreviewSelectedSurfaceMatchExperiment()
         : IsSelectedStepMeasurement ? CanPreviewSelectedMeasurement()
         : IsSelectedStepRemoveOutlierPixels
         ? CanPreviewSelectedRemoveOutlierPixels()
+        : IsSelectedStepConnectedRegion
+        ? CanPreviewSelectedConnectedRegion()
+        : IsSelectedStepDomainMask
+        ? CanPreviewSelectedDomainMask()
+        : IsSelectedStepEditableRegion
+        ? CanPreviewSelectedEditableRegion()
         : IsSelectedStepLevelSurface
         ? CanPreviewSelectedLevelSurface()
         : IsSelectedStepRoiCrop
@@ -197,10 +213,15 @@ public sealed partial class ToolWorkbenchViewModel
         : IsSelectedStepTwoPointLine ? CanPreviewSelectedTwoPointLine()
         : IsSelectedStepThreePointPlane ? CanPreviewSelectedThreePointPlane()
         : IsSelectedStepLineFit ? CanPreviewSelectedLineFit()
-        : IsSelectedStepHeightDifferenceEdge ? CanPreviewSelectedHeightDifferenceEdge() : CanPreviewSelectedFilter();
+        : IsSelectedStepHeightDifferenceEdge ? CanPreviewSelectedHeightDifferenceEdge() : CanPreviewSelectedFilter());
 
     private void PublishSelectedStep()
     {
+        if (SelectedPipelineStep?.OutputEnabled == false)
+        {
+            return;
+        }
+
         if (IsSelectedStepSurfaceMatch)
         {
             PublishSelectedSurfaceMatchExperiment();
@@ -212,6 +233,18 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepRemoveOutlierPixels)
         {
             PublishSelectedRemoveOutlierPixels();
+        }
+        else if (IsSelectedStepConnectedRegion)
+        {
+            PublishSelectedConnectedRegion();
+        }
+        else if (IsSelectedStepDomainMask)
+        {
+            PublishSelectedDomainMask();
+        }
+        else if (IsSelectedStepEditableRegion)
+        {
+            PublishSelectedEditableRegion();
         }
         else if (IsSelectedStepLevelSurface)
         {
@@ -267,11 +300,18 @@ public sealed partial class ToolWorkbenchViewModel
         }
     }
 
-    private bool CanPublishSelectedStep() => IsSelectedStepSurfaceMatch
+    private bool CanPublishSelectedStep() => SelectedPipelineStep?.OutputEnabled == true
+        && (IsSelectedStepSurfaceMatch
         ? CanPublishSelectedSurfaceMatchExperiment()
         : IsSelectedStepMeasurement ? HasCurrentMeasurementPreview && !IsMeasurementPreviewPublished
         : IsSelectedStepRemoveOutlierPixels
         ? HasCurrentRemoveOutlierPreview && !IsRemoveOutlierPreviewPublished
+        : IsSelectedStepConnectedRegion
+        ? HasCurrentConnectedRegionPreview && !IsConnectedRegionPreviewPublished
+        : IsSelectedStepDomainMask
+        ? HasCurrentDomainMaskPreview && !IsDomainMaskPreviewPublished
+        : IsSelectedStepEditableRegion
+        ? HasCurrentEditableRegionPreview && !IsEditableRegionPreviewPublished
         : IsSelectedStepLevelSurface
         ? HasCurrentLevelSurfacePreview && !IsLevelSurfacePreviewPublished
         : IsSelectedStepRoiCrop
@@ -294,7 +334,7 @@ public sealed partial class ToolWorkbenchViewModel
         ? HasCurrentThreePointPlanePreview && !IsThreePointPlanePreviewPublished
         : IsSelectedStepLineFit
         ? HasCurrentLineFitPreview && !IsLineFitPreviewPublished
-        : IsSelectedStepHeightDifferenceEdge ? HasCurrentEdgePreview && !IsEdgePreviewPublished : IsSelectedStepFilter && HasCurrentFilterPreview && !isFilterPreviewPublished;
+        : IsSelectedStepHeightDifferenceEdge ? HasCurrentEdgePreview && !IsEdgePreviewPublished : IsSelectedStepFilter && HasCurrentFilterPreview && !isFilterPreviewPublished);
 
     private void CancelSelectedPreview()
     {
@@ -309,6 +349,18 @@ public sealed partial class ToolWorkbenchViewModel
         else if (IsSelectedStepRemoveOutlierPixels)
         {
             CancelRemoveOutlierPreview();
+        }
+        else if (IsSelectedStepConnectedRegion)
+        {
+            CancelConnectedRegionPreview();
+        }
+        else if (IsSelectedStepDomainMask)
+        {
+            CancelDomainMaskPreview();
+        }
+        else if (IsSelectedStepEditableRegion)
+        {
+            CancelEditableRegionPreview();
         }
         else if (IsSelectedStepLevelSurface)
         {

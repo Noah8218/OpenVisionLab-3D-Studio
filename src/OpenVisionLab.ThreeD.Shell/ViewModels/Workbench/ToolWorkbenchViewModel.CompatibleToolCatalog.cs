@@ -24,7 +24,10 @@ public sealed partial class ToolWorkbenchViewModel
 
     public string CompatibleToolCatalogSummary => CompatibleToolSuggestions.Count == 0
         ? Localization.CompatibleToolCatalogEmpty
-        : string.Format(Localization.CompatibleToolCatalogSummaryFormat, CompatibleToolSuggestions.Count);
+        : string.Format(
+            Localization.CompatibleToolCatalogSummaryFormat,
+            CompatibleToolSuggestions.Count(item => item.IsAvailable),
+            CompatibleToolSuggestions.Count(item => !item.IsAvailable));
 
     public bool HasCompatibleToolBlocker => !string.IsNullOrWhiteSpace(CompatibleToolBlockerDetail);
     public string CompatibleToolBlockerTitle => compatibleToolBlockerTitle;
@@ -42,6 +45,7 @@ public sealed partial class ToolWorkbenchViewModel
             parameter => AddCompatibleTool(parameter as ToolWorkbenchCompatibleToolItem),
             parameter => parameter is ToolWorkbenchCompatibleToolItem suggestion
                 && IsSourceReadyForRecipe
+                && suggestion.IsAvailable
                 && CompatibleToolSuggestions.Contains(suggestion));
     }
 
@@ -61,6 +65,16 @@ public sealed partial class ToolWorkbenchViewModel
             && string.Equals(item.State, "Current selection", StringComparison.Ordinal));
         var publishedFilter = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedOutlier = ArtifactRegistry.FirstOrDefault(item =>
+            item.PipelineStep?.ToolId == "remove-outlier-pixels"
+            && string.Equals(item.Contract, "FilteredHeightField", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedConnectedRegion = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
+            && string.Equals(item.State, "Published", StringComparison.Ordinal));
+        var publishedEditableRegion = ArtifactRegistry.FirstOrDefault(item =>
+            string.Equals(item.Contract, "EditableRegionArtifact", StringComparison.Ordinal)
             && string.Equals(item.State, "Published", StringComparison.Ordinal));
         var publishedEdge = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Contract, "EdgePointSet", StringComparison.Ordinal)
@@ -86,6 +100,32 @@ public sealed partial class ToolWorkbenchViewModel
             suggestions,
             "remove-outlier-pixels",
             source is null ? [] : [source]);
+        AddCompatibleTool(
+            suggestions,
+            "connected-region",
+            publishedOutlier is null ? [] : [publishedOutlier]);
+        IReadOnlyList<ToolWorkbenchArtifactItem> publishedDomainMask = publishedConnectedRegion is not null
+            && publishedOutlier is not null
+            && string.Equals(
+                publishedConnectedRegion.InputEntityIds,
+                publishedOutlier.Id,
+                StringComparison.OrdinalIgnoreCase)
+            ? [publishedOutlier, publishedConnectedRegion]
+            : [];
+        AddCompatibleTool(
+            suggestions,
+            "domain-mask",
+            publishedDomainMask);
+        AddCompatibleTool(
+            suggestions,
+            "editable-region",
+            publishedConnectedRegion is null ? [] : [publishedConnectedRegion]);
+        AddCompatibleTool(
+            suggestions,
+            "completeness-grid",
+            source is not null && gridSelection is not null && publishedEditableRegion is not null
+                ? [source, gridSelection, publishedEditableRegion]
+                : []);
         AddCompatibleTool(suggestions, "roi-crop", source is null ? [] : [source]);
         AddCompatibleTool(suggestions, "two-point-line", source is null ? [] : [source]);
         AddCompatibleTool(suggestions, "three-point-plane", source is null ? [] : [source]);
@@ -124,11 +164,18 @@ public sealed partial class ToolWorkbenchViewModel
             return;
         }
 
+        var qualityGate = EvaluateSourceQualityGate(tool, inputArtifacts);
         suggestions.Add(new ToolWorkbenchCompatibleToolItem(
             tool,
             string.Join("; ", inputArtifacts.Select(item => item.Id)),
-            Localization.FlowPortReady,
-            ReferenceEquals(tool, SelectedTool)));
+            qualityGate.IsAllowed
+                ? Localization.FlowPortReady
+                : Localization.CompatibleToolBlocked,
+            ReferenceEquals(tool, SelectedTool))
+        {
+            IsAvailable = qualityGate.IsAllowed,
+            BlockerReason = qualityGate.IsAllowed ? string.Empty : qualityGate.Detail
+        });
     }
 
     private void SelectCompatibleTool(ToolWorkbenchCompatibleToolItem? suggestion)
@@ -143,7 +190,9 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void AddCompatibleTool(ToolWorkbenchCompatibleToolItem? suggestion)
     {
-        if (suggestion is null || !CompatibleToolSuggestions.Contains(suggestion))
+        if (suggestion is null
+            || !suggestion.IsAvailable
+            || !CompatibleToolSuggestions.Contains(suggestion))
         {
             return;
         }
@@ -192,6 +241,60 @@ public sealed partial class ToolWorkbenchViewModel
             return new ToolWorkbenchInputRouteProposal(false, string.Empty, string.Empty);
         }
 
+        if (string.Equals(tool.Id, "domain-mask", StringComparison.Ordinal))
+        {
+            var primary = FindCompatiblePrimaryInput(tool);
+            var domain = ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Contract, "ConnectedRegionArtifact", StringComparison.Ordinal)
+                && string.Equals(item.State, "Published", StringComparison.Ordinal)
+                && primary is not null
+                && string.Equals(item.InputEntityIds, primary.Id, StringComparison.OrdinalIgnoreCase));
+            if (primary is null || domain is null)
+            {
+                return new ToolWorkbenchInputRouteProposal(
+                    false,
+                    string.Empty,
+                    "Domain / Mask requires a Published HeightField followed by its matching Published ConnectedRegionArtifact.");
+            }
+
+            var sourceGate = EvaluateSourceQualityGate(tool, primary);
+            var route = string.Join("; ", primary.Id, domain.Id);
+            return new ToolWorkbenchInputRouteProposal(
+                sourceGate.IsAllowed,
+                route,
+                sourceGate.IsAllowed
+                    ? string.Format(
+                        Localization.ProposedToolRouteFormat,
+                        route,
+                        tool.InputContract,
+                        tool.Name,
+                        tool.OutputContract)
+                    : sourceGate.Detail);
+        }
+
+        var sourceSuggestion = CompatibleToolSuggestions.FirstOrDefault(suggestion =>
+            ReferenceEquals(suggestion.Tool, tool)
+            && suggestion.InputArtifactIds
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(id => string.Equals(id, Source.Id, StringComparison.OrdinalIgnoreCase)));
+        if (sourceSuggestion is not null
+            && ArtifactRegistry.FirstOrDefault(item =>
+                string.Equals(item.Id, Source.Id, StringComparison.OrdinalIgnoreCase)) is { } sourceArtifact)
+        {
+            var sourceGate = EvaluateSourceQualityGate(tool, sourceArtifact);
+            return new ToolWorkbenchInputRouteProposal(
+                sourceGate.IsAllowed,
+                sourceArtifact.Id,
+                sourceGate.IsAllowed
+                    ? string.Format(
+                        Localization.ProposedToolRouteFormat,
+                        sourceArtifact.Id,
+                        sourceArtifact.Contract,
+                        tool.Name,
+                        tool.OutputContract)
+                    : sourceGate.Detail);
+        }
+
         if (ToolRecipePrimaryInputContract.TryGetRequiredContract(tool.Id, out var requiredContract))
         {
             var candidate = FindCompatiblePrimaryInput(tool);
@@ -204,14 +307,16 @@ public sealed partial class ToolWorkbenchViewModel
                         requiredContract,
                         tool.OutputContract))
                 : new ToolWorkbenchInputRouteProposal(
-                    true,
+                    EvaluateSourceQualityGate(tool, candidate).IsAllowed,
                     candidate.Id,
-                    string.Format(
-                        Localization.ProposedToolRouteFormat,
-                        candidate.Id,
-                        candidate.Contract,
-                        tool.Name,
-                        tool.OutputContract));
+                    EvaluateSourceQualityGate(tool, candidate).IsAllowed
+                        ? string.Format(
+                            Localization.ProposedToolRouteFormat,
+                            candidate.Id,
+                            candidate.Contract,
+                            tool.Name,
+                            tool.OutputContract)
+                        : EvaluateSourceQualityGate(tool, candidate).Detail);
         }
 
         var inputId = tool.Id == "landmark-correspondence"
@@ -225,20 +330,55 @@ public sealed partial class ToolWorkbenchViewModel
         var artifact = ArtifactRegistry.FirstOrDefault(item =>
             string.Equals(item.Id, inputId, StringComparison.OrdinalIgnoreCase));
         var inputContract = artifact?.Contract ?? tool.InputContract;
+        var qualityGate = EvaluateSourceQualityGate(tool, artifact);
         return new ToolWorkbenchInputRouteProposal(
-            true,
+            qualityGate.IsAllowed,
             inputId ?? string.Empty,
-            string.Format(
-                Localization.ProposedToolRouteFormat,
-                string.IsNullOrWhiteSpace(inputId) ? Localization.Input : inputId,
-                inputContract,
-                tool.Name,
-                tool.OutputContract));
+            qualityGate.IsAllowed
+                ? string.Format(
+                    Localization.ProposedToolRouteFormat,
+                    string.IsNullOrWhiteSpace(inputId) ? Localization.Input : inputId,
+                    inputContract,
+                    tool.Name,
+                    tool.OutputContract)
+                : qualityGate.Detail);
+    }
+
+    private SourceQualityToolGateResult EvaluateSourceQualityGate(
+        ToolWorkbenchToolItem tool,
+        IReadOnlyList<ToolWorkbenchArtifactItem> inputArtifacts)
+    {
+        var source = inputArtifacts.FirstOrDefault(item => item.NodeKind == "Source");
+        return EvaluateSourceQualityGate(tool, source);
+    }
+
+    private SourceQualityToolGateResult EvaluateSourceQualityGate(
+        ToolWorkbenchToolItem tool,
+        ToolWorkbenchArtifactItem? inputArtifact)
+    {
+        if (inputArtifact is null || inputArtifact.NodeKind != "Source")
+        {
+            return new(
+                true,
+                SourceQualityToolGateReason.NotApplicable,
+                "Source Quality gate is not required for this typed input route.");
+        }
+
+        return SourceQualityToolGate.Evaluate(
+            tool.Id,
+            inputArtifact.Contract,
+            SourceQuality.Report,
+            SourceQuality.Error,
+            Source.Id,
+            inputArtifact.ContentSha256);
     }
 
     private ToolWorkbenchArtifactItem? FindCompatiblePrimaryInput(ToolWorkbenchToolItem tool) =>
         ArtifactRegistry
             .Where(item => item.NodeKind == "Source" || item.PipelineStep is not null)
+            .Where(item => !string.Equals(tool.Id, "connected-region", StringComparison.Ordinal)
+                || item.PipelineStep?.ToolId == "remove-outlier-pixels"
+                    && string.Equals(item.State, "Published", StringComparison.Ordinal))
             .Reverse()
             .FirstOrDefault(item => ToolRecipePrimaryInputContract.IsCompatible(tool.Id, item.Contract));
 
@@ -261,8 +401,12 @@ public sealed record ToolWorkbenchCompatibleToolItem(
     string State,
     bool IsSelected)
 {
+    public bool IsAvailable { get; init; } = true;
+    public string BlockerReason { get; init; } = string.Empty;
     public string Title => Tool.Name;
     public string InputContract => Tool.InputContract;
-    public string Detail => $"{InputContract} ← {InputArtifactIds}";
+    public string Detail => IsAvailable
+        ? $"{State} | {InputContract} ← {InputArtifactIds}"
+        : $"{State} | {InputContract} ← {InputArtifactIds} | {BlockerReason}";
     public string AccessibleName => $"{Title}. {State}. {Detail}";
 }

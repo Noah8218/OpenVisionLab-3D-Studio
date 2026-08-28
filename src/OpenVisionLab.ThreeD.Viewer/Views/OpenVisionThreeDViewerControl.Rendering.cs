@@ -975,7 +975,8 @@ public sealed partial class OpenVisionThreeDViewerControl
         var mesh = importedMesh!;
         var triangleStride = GetImportedMeshRenderTriangleStride();
         var geometryStyle = viewModel.Display.EffectiveSettings.GeometryStyle;
-        var useTexture = EnsureImportedMeshTexture(gl);
+        var normalMapSelected = viewModel.Display.EffectiveSettings.ColorMap == ViewerColorMap.Normal;
+        var useTexture = !normalMapSelected && EnsureImportedMeshTexture(gl);
         if (useTexture)
         {
             gl.Enable(GlTexture2D);
@@ -1033,7 +1034,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.PointSize(1.0f);
     }
 
-    private static void DrawImportedMeshSurface(
+    private void DrawImportedMeshSurface(
         OpenGL gl,
         ImportedMesh mesh,
         int triangleStride,
@@ -1062,7 +1063,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
     }
 
-    private static void DrawImportedMeshEdges(
+    private void DrawImportedMeshEdges(
         OpenGL gl,
         ImportedMesh mesh,
         int triangleStride,
@@ -1088,7 +1089,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.LineWidth(1.0f);
     }
 
-    private static void DrawImportedMeshEdge(
+    private void DrawImportedMeshEdge(
         OpenGL gl,
         ImportedMesh mesh,
         int firstIndex,
@@ -1109,9 +1110,18 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(second.X, second.Y, second.Z);
     }
 
-    private static void DrawImportedMeshVertex(OpenGL gl, ImportedMesh mesh, int index, bool useTexture)
+    private void DrawImportedMeshVertex(OpenGL gl, ImportedMesh mesh, int index, bool useTexture)
     {
-        if (useTexture)
+        if (viewModel.Display.EffectiveSettings.ColorMap == ViewerColorMap.Normal
+            && viewModel.Display.IsImportedMeshNormalDisplayable
+            && index >= 0
+            && index < mesh.Normals.Length)
+        {
+            var normal = mesh.Normals[index];
+            var color = ViewerColorMapPalette.NormalMap(normal);
+            gl.Color(color.R, color.G, color.B);
+        }
+        else if (useTexture)
         {
             var uv = mesh.TextureCoordinates[index];
             gl.Color(1.0, 1.0, 1.0);
@@ -1347,6 +1357,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             "Solid" => (0.72, 0.84, 1.0),
             "Height" => C3DPointMapPalette.Height(NormalizeLazHeight(point.Position.Z)),
+            "Intensity" => ViewerColorMapPalette.Grayscale(Normalize(point.Intensity)),
             _ => (Normalize(point.Red), Normalize(point.Green), Normalize(point.Blue))
         };
 

@@ -96,6 +96,70 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
                 && sourceFileUnchanged,
                 $"status={adapter.Result.Status};sourceBefore={sourceSha256Before};sourceAfter={sourceSha256After};bytesBefore={sourceBytesBefore.LongLength};bytesAfter={sourceBytesAfter.LongLength};output={adapter.Output?.ContentSha256};outputEntity={adapter.Output?.EntityId};outputPath={outputPath};isDerived={adapter.Output?.IsDerived};root={adapter.Output?.RootSourceSha256};mask={adapter.OutlierMask?.Sha256}"));
 
+        var connectedRecipe = CreateConnectedRecipe(fixture, Path.GetFileName(fixturePath));
+        var connectedCanExecute = ToolRecipeOrderedGraphExecution.CanExecute(
+            connectedRecipe,
+            out var connectedCapabilityMessage);
+        var connectedRecipePath = Path.Combine(
+            directory,
+            "known-outlier-connected-region.ov3d-recipe.json");
+        ToolRecipeDocumentStore.Save(connectedRecipePath, connectedRecipe);
+        var connected = adapter.Output is { } filteredOutput
+            && adapter.OutlierMask is { } filteredMask
+            ? ToolRecipeConnectedRegionExecution.Execute(
+                connectedRecipe,
+                "step.connected-region.01",
+                filteredOutput,
+                filteredMask)
+            : new C3DConnectedRegionEvaluation(
+                new ToolResult(
+                    "Connected Region",
+                    ResultStatus.Error,
+                    "Remove Outlier Pixels did not produce the required typed upstream artifacts.",
+                    TimeSpan.Zero,
+                    [],
+                    []),
+                null);
+        var ordered = ToolRecipeOrderedGraphExecution.Execute(
+            ToolRecipeDocumentStore.Load(connectedRecipePath),
+            fixturePath);
+        var orderedRepeated = ToolRecipeOrderedGraphExecution.Execute(
+            ToolRecipeDocumentStore.Load(connectedRecipePath),
+            fixturePath);
+        var projection = ordered.Status is not ResultStatus.Error
+            ? ToolRecipeOrderedGraphRunRecordProjection.Create(connectedRecipe, ordered)
+            : Array.Empty<InspectionRunStepResult>();
+        var connectedArtifactPath = Path.Combine(
+            directory,
+            "known-outlier-connected-region.artifact.json");
+        if (connected.Output is { } connectedArtifact)
+        {
+            C3DConnectedRegionArtifactStore.Save(connectedArtifactPath, connectedArtifact);
+        }
+        var restoredConnectedArtifact = File.Exists(connectedArtifactPath)
+            ? C3DConnectedRegionArtifactStore.Load(connectedArtifactPath)
+            : null;
+        cases.Add(
+            Check(
+                "connected-region-ordered-route-and-sidecar",
+                connectedCanExecute
+                && connected.Result.Status == ResultStatus.Pass
+                && connected.Output is { } connectedOutput
+                && ordered.Status == ResultStatus.Pass
+                && ordered.Steps.Count == 2
+                && ordered.Steps[0].Result.Status == ResultStatus.Pass
+                && ordered.Steps[0].OutputContentSha256 == direct.Output?.ContentSha256
+                && ordered.Steps[1].Result.Status == ResultStatus.Pass
+                && ordered.Steps[1].OutputContentSha256 == connectedOutput.ContentSha256
+                && orderedRepeated.Status == ResultStatus.Pass
+                && orderedRepeated.Steps[1].OutputContentSha256 == ordered.Steps[1].OutputContentSha256
+                && projection.Count == 2
+                && projection[1].OutputContentSha256 == connectedOutput.ContentSha256
+                && restoredConnectedArtifact?.ContentSha256 == connectedOutput.ContentSha256
+                && restoredConnectedArtifact?.MaskContentSha256 == direct.OutlierMask?.Sha256
+                && sourceFileUnchanged,
+                $"canExecute={connectedCanExecute};capability={connectedCapabilityMessage};connectedStatus={connected.Result.Status};connected={connected.Output?.ContentSha256};ordered={ordered.Status};steps={ordered.Steps.Count};orderedOutput={ordered.Steps.LastOrDefault()?.OutputContentSha256};repeatedOutput={orderedRepeated.Steps.LastOrDefault()?.OutputContentSha256};projection={projection.Count};restored={restoredConnectedArtifact?.ContentSha256};mask={restoredConnectedArtifact?.MaskContentSha256};sourceUnchanged={sourceFileUnchanged}"));
+
         var passed = cases.Count(item => item.Passed);
         var lines = new List<string>
         {
@@ -274,6 +338,37 @@ internal static class C3DRemoveOutlierPixelsGoldenVerification
                     ])
             ],
             []);
+
+    private static ToolRecipeDocument CreateConnectedRecipe(
+        C3DHeightFieldSnapshot source,
+        string sourcePath)
+    {
+        var recipe = CreateRecipe(source, sourcePath);
+        return recipe with
+        {
+            Name = "Known Outlier Connected Region Fixture",
+            Steps = recipe.Steps
+                .Concat(
+                [
+                    new ToolRecipeStep(
+                        "step.connected-region.01",
+                        "connected-region",
+                        "Connected Region",
+                        1,
+                        ["derived.outlier-removed.01"],
+                        "derived.connected-regions.01",
+                        [
+                            new("Connectivity", "Four"),
+                            new("OriginX", "0"),
+                            new("OriginY", "0"),
+                            new("ColumnPitch", "1"),
+                            new("RowPitch", "1"),
+                            new("AreaUnit", "grid-unit^2")
+                        ])
+                ])
+                .ToArray()
+        };
+    }
 
     private static (string Name, bool Passed, string Evidence) Check(
         string name,

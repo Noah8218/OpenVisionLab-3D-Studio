@@ -32,8 +32,22 @@ internal static class HeightDeviationRecipeApplyCoordinator
         viewModel.ClearGapFlushRecipeStep();
         viewModel.ClearVolumeRecipeStep();
         viewModel.ClearCrossSectionRecipeStep();
-        viewModel.SetC3DHeightDeviationPreview(plan.PreviewResult);
-        viewModel.UseC3DHeightDeviationRuleSmokeScene();
+        viewModel.ClearC3DHeightDeviationPreview();
+        if (isSmoke && recipe.OutputEnabled)
+        {
+            viewModel.UseC3DHeightDeviationRuleSmokeScene();
+            viewModel.SetC3DHeightDeviationPreview(
+                HeightDeviationRuleCoordinator.CreatePreviewResult(
+                    plan.Grid,
+                    recipe.Source.Name,
+                    recipe.Rule.PeakTolerance,
+                    recipe.Source.Unit));
+        }
+        else
+        {
+            viewModel.UseC3DSmokeScene();
+        }
+
         viewModel.SetRecipeLoaded(
             plan.FullRecipePath,
             recipe.Source.Name,
@@ -49,7 +63,7 @@ internal static class HeightDeviationRecipeApplyCoordinator
         if (recipe.PlaneFlatness is { } planeFlatness)
         {
             viewModel.SetPlaneFlatnessRecipeStep(planeFlatness);
-            if (planeFlatness.Enabled)
+            if (isSmoke && recipe.OutputEnabled && planeFlatness.Enabled)
             {
                 previewPlaneFlatness();
             }
@@ -58,7 +72,7 @@ internal static class HeightDeviationRecipeApplyCoordinator
         if (recipe.Volume is { } volume)
         {
             viewModel.SetVolumeRecipeStep(volume);
-            if (volume.Enabled)
+            if (isSmoke && recipe.OutputEnabled && volume.Enabled)
             {
                 previewVolume();
             }
@@ -67,7 +81,7 @@ internal static class HeightDeviationRecipeApplyCoordinator
         if (recipe.CrossSection is { } crossSection)
         {
             viewModel.SetCrossSectionRecipeStep(crossSection);
-            if (crossSection.Enabled)
+            if (isSmoke && recipe.OutputEnabled && crossSection.Enabled)
             {
                 previewCrossSection();
             }

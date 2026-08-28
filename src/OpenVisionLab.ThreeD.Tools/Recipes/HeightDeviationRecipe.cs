@@ -12,7 +12,8 @@ public sealed record HeightDeviationRecipe(
     HeightDeviationRecipeRoiStep? RoiStep = null,
     HeightDeviationRecipePlaneFlatness? PlaneFlatness = null,
     HeightDeviationRecipeVolume? Volume = null,
-    HeightDeviationRecipeCrossSection? CrossSection = null)
+    HeightDeviationRecipeCrossSection? CrossSection = null,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "c3d-height-deviation";
 
@@ -281,7 +282,8 @@ public sealed record LazTwoPointMeasurementRecipe(
     string Version,
     HeightDeviationRecipeSource Source,
     LazTwoPointMeasurementRecipeMeasurement Measurement,
-    LazTwoPointMeasurementRecipeAcceptance Acceptance)
+    LazTwoPointMeasurementRecipeAcceptance Acceptance,
+    bool OutputEnabled = true)
 {
     public const string SupportedRecipeType = "laz-two-point-measurement";
 

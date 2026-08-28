@@ -51,10 +51,11 @@
                         AutomationProperties.Name="Active teaching recipe context">
                 <Border MaxWidth="230"
                         Padding="8,4"
-                        Background="#203650"
+                        Background="{DynamicResource ThreeD.ContextBadgeBrush}"
                         BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="4">
+                        CornerRadius="4"
+                        ToolTip="{Binding RecipeText, ElementName=Root}">
                     <TextBlock FontSize="10.5"
                                Foreground="{DynamicResource ThreeD.PanelHeaderTextBrush}"
                                Text="{Binding RecipeText, ElementName=Root, StringFormat=Recipe: {0}}"
@@ -63,10 +64,11 @@
                 <Border MaxWidth="300"
                         Margin="6,0,0,0"
                         Padding="8,4"
-                        Background="#203650"
+                        Background="{DynamicResource ThreeD.ContextBadgeBrush}"
                         BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="4">
+                        CornerRadius="4"
+                        ToolTip="{Binding SourceContextText, ElementName=Root}">
                     <TextBlock FontSize="10.5"
                                Foreground="{DynamicResource ThreeD.PanelHeaderMutedTextBrush}"
                                Text="{Binding SourceContextText, ElementName=Root}"
@@ -151,10 +153,11 @@
                     MaxWidth="250"
                     Padding="9,4"
                     VerticalAlignment="Center"
-                    Background="#203650"
+                    Background="{DynamicResource ThreeD.ContextBadgeBrush}"
                     BorderBrush="{DynamicResource ThreeD.PanelHeaderBorderBrush}"
                     BorderThickness="1"
-                    CornerRadius="4">
+                    CornerRadius="4"
+                    ToolTip="{Binding StatusText, ElementName=Root}">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Visible" />

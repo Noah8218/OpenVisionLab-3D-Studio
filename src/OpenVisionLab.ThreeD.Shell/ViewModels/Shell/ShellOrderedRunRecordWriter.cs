@@ -92,6 +92,7 @@ internal static class ShellOrderedRunRecordWriter
             var recordedStep = record.Steps![step.Order - 1];
             lines.Add(
                 $"Step|order={step.Order}|id={step.StepId}|tool={step.ToolId}|status={step.Result.Status}|output={step.OutputEntityId}|sha256={step.OutputContentSha256 ?? "(none)"}|elapsedMs={recordedStep.ElapsedMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}|stages={FormatStages(recordedStep.Timing)}");
+            lines[^1] += $"|levelFrameSha256={step.LevelFrameContentSha256 ?? "(none)"}|levelFrameQualitySha256={step.LevelFrameQualityContentSha256 ?? "(none)"}|frameChainSha256={step.FrameChainContentSha256 ?? "(none)"}";
             lines.Add($"Evidence|order={step.Order}|{step.Evidence}");
             lines.AddRange(step.Result.Metrics
                 .Where(metric => double.IsFinite(metric.Value))

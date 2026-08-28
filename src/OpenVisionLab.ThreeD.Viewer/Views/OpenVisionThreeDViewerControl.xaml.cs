@@ -178,6 +178,7 @@ public sealed partial class OpenVisionThreeDViewerControl : UserControl, IOpenVi
     private HeightGridPoint? twoPointSecond;
     private HeightGridPoint? profileFirst;
     private HeightGridPoint? profileSecond;
+    private HeightGridPoint[] profileSamples = [];
     private int profileDraggedEndpoint;
     private string? profileSourceSha256;
     private Point? profilePointerDownPosition;

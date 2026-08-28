@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Numerics;
+using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Tools;
 using OpenVisionLab.ThreeD.Viewer.Models;
@@ -183,6 +184,66 @@ internal static class ViewerDisplaySettingsViewModelVerification
             Check("point-cloud no-RGB capability", Sequence(c3dViewModel.AvailableColorMaps, "Solid", "Height"), string.Join(",", c3dViewModel.AvailableColorMaps));
             Check("point-cloud no-RGB fallback", c3dViewModel.SelectedColorMap == "Height" && c3dViewModel.FallbackApplied, c3dViewModel.FallbackSummary);
 
+            IReadOnlyList<SourceQualityChannelAvailability> lazDiagnosticCatalog =
+            [
+                new(SourceQualityChannel.Height, SourceQualityChannelState.Unavailable, "LAZ owns XYZ, not a native height grid."),
+                new(SourceQualityChannel.Intensity, SourceQualityChannelState.Available, "Decoder preserves LAS intensity."),
+                new(SourceQualityChannel.Color, SourceQualityChannelState.Available, "Decoder preserves RGB."),
+                new(SourceQualityChannel.Depth, SourceQualityChannelState.Unavailable, "No separate calibrated depth channel."),
+                new(SourceQualityChannel.Normal, SourceQualityChannelState.Unavailable, "No measured normal channel."),
+                new(SourceQualityChannel.Confidence, SourceQualityChannelState.Unavailable, "No confidence channel."),
+                new(SourceQualityChannel.SignalToNoiseRatio, SourceQualityChannelState.Unavailable, "No SNR channel.")
+            ];
+            var lazDiagnosticViewModel = new ViewerDisplaySettingsViewModel();
+            lazDiagnosticViewModel.ConfigurePointCloud(
+                sourceColorAvailable: true,
+                sourceIntensityAvailable: true,
+                sourceChannels: lazDiagnosticCatalog);
+            Check(
+                "diagnostic catalog is complete",
+                lazDiagnosticViewModel.DiagnosticChannelOptions.Count == 7
+                && lazDiagnosticViewModel.CanSelectDiagnosticChannel,
+                string.Join(",", lazDiagnosticViewModel.DiagnosticChannelOptions.Select(option => option.Channel)));
+            var colorOption = lazDiagnosticViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Color);
+            lazDiagnosticViewModel.SelectedDiagnosticChannel = colorOption;
+            Check(
+                "diagnostic RGB channel maps to source color",
+                lazDiagnosticViewModel.SelectedDiagnosticChannel?.Channel == SourceQualityChannel.Color
+                && lazDiagnosticViewModel.SelectedColorMap == "RGB",
+                lazDiagnosticViewModel.DiagnosticChannelSummary);
+            var intensityOption = lazDiagnosticViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Intensity);
+            lazDiagnosticViewModel.SelectedDiagnosticChannel = intensityOption;
+            Check(
+                "diagnostic intensity channel maps to intensity color",
+                lazDiagnosticViewModel.SelectedDiagnosticChannel?.Channel == SourceQualityChannel.Intensity
+                && lazDiagnosticViewModel.SelectedColorMap == "Intensity"
+                && lazDiagnosticViewModel.AvailableColorMaps.Contains("Intensity", StringComparer.Ordinal),
+                lazDiagnosticViewModel.EffectiveSummary);
+            var diagnosticRevision = lazDiagnosticViewModel.DisplaySettingsRevision;
+            var unavailableDepth = lazDiagnosticViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Depth);
+            lazDiagnosticViewModel.SelectedDiagnosticChannel = unavailableDepth;
+            Check(
+                "unavailable diagnostic channel is fail-closed",
+                lazDiagnosticViewModel.SelectedDiagnosticChannel?.Channel == SourceQualityChannel.Intensity
+                && lazDiagnosticViewModel.SelectedColorMap == "Intensity"
+                && lazDiagnosticViewModel.DisplaySettingsRevision == diagnosticRevision
+                && lazDiagnosticViewModel.FallbackSummary.Contains("not selectable", StringComparison.Ordinal),
+                lazDiagnosticViewModel.FallbackSummary);
+
+            var c3dDiagnosticViewModel = new ViewerDisplaySettingsViewModel();
+            c3dDiagnosticViewModel.ConfigureC3DHeightGrid(
+                deviationAvailable: false,
+                sourceChannels: SourceChannelCatalogAnalyzer.CreateForC3DHeightGrid());
+            Check(
+                "C3D source catalog selects height",
+                c3dDiagnosticViewModel.SelectedDiagnosticChannel?.Channel == SourceQualityChannel.Height
+                && c3dDiagnosticViewModel.SelectedColorMap == "Height"
+                && c3dDiagnosticViewModel.DiagnosticChannelOptions.Single(option => option.Channel == SourceQualityChannel.Depth).State == SourceQualityChannelState.Unavailable,
+                c3dDiagnosticViewModel.DiagnosticChannelSummary);
+
             var meshViewModel = new ViewerDisplaySettingsViewModel();
             var meshRenderChanges = 0;
             meshViewModel.RenderSettingsChanged += (_, _) => meshRenderChanges++;
@@ -218,6 +279,119 @@ internal static class ViewerDisplaySettingsViewModelVerification
 
             meshViewModel.ConfigureImportedMesh(sourceColorAvailable: true);
             Check("mesh source-color capability", Sequence(meshViewModel.AvailableColorMaps, "Source") && meshViewModel.SelectedColorMap == "Source" && !meshViewModel.CanSelectColorMap, meshViewModel.EffectiveSummary);
+            IReadOnlyList<SourceQualityChannelAvailability> meshNormalCatalog =
+            [
+                new(SourceQualityChannel.Height, SourceQualityChannelState.Unavailable, "Mesh has no height grid."),
+                new(SourceQualityChannel.Intensity, SourceQualityChannelState.Unavailable, "Mesh has no intensity."),
+                new(SourceQualityChannel.Color, SourceQualityChannelState.Available, "Mesh owns source colors."),
+                new(SourceQualityChannel.Depth, SourceQualityChannelState.Unavailable, "Mesh has no calibrated depth."),
+                new(SourceQualityChannel.Normal, SourceQualityChannelState.Available, "Mesh declares normals; C-18 mode is pending."),
+                new(SourceQualityChannel.Confidence, SourceQualityChannelState.Unavailable, "Mesh has no confidence."),
+                new(SourceQualityChannel.SignalToNoiseRatio, SourceQualityChannelState.Unavailable, "Mesh has no SNR.")
+            ];
+            meshViewModel.ConfigureImportedMesh(
+                sourceColorAvailable: true,
+                sourceChannels: meshNormalCatalog);
+            var normalOption = meshViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Normal);
+            Check(
+                "declared normal remains mode-pending",
+                normalOption.State == SourceQualityChannelState.Available
+                && !normalOption.IsSelectable
+                && normalOption.DisplayLabel.Contains("mode pending", StringComparison.Ordinal),
+                normalOption.HelpText);
+
+            var knownNormalPositions = new[]
+            {
+                new Vector3(0.0f, 0.0f, 0.0f),
+                new Vector3(1.0f, 0.0f, 0.0f),
+                new Vector3(0.0f, 1.0f, 0.0f)
+            };
+            var knownNormalMesh = ImportedMesh.CreateTriangleMesh(
+                "known-normal-plane",
+                "Known Normal Plane",
+                "GLB",
+                knownNormalPositions,
+                [0, 1, 2],
+                [Vector3.UnitZ, Vector3.UnitZ, Vector3.UnitZ]);
+            var knownNormalReport = ImportedMeshNormalQualityAnalyzer.Create(knownNormalMesh);
+            var knownNormalViewModel = new ViewerDisplaySettingsViewModel();
+            knownNormalViewModel.ConfigureImportedMesh(
+                sourceColorAvailable: false,
+                sourceChannels: SourceChannelCatalogAnalyzer.CreateForImportedMesh(knownNormalMesh),
+                normalQuality: knownNormalReport);
+            Check(
+                "valid declared normal enables Normal map",
+                knownNormalReport.IsUsable
+                && knownNormalReport.IsDense
+                && knownNormalViewModel.IsImportedMeshNormalDisplayable
+                && Sequence(knownNormalViewModel.AvailableColorMaps, "Solid", "Normal"),
+                $"report={knownNormalReport.State}|dense={knownNormalReport.IsDense}|maps={string.Join(",", knownNormalViewModel.AvailableColorMaps)}");
+            var knownNormalOption = knownNormalViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Normal);
+            var knownNormalRevision = knownNormalViewModel.DisplaySettingsRevision;
+            knownNormalViewModel.SelectedDiagnosticChannel = knownNormalOption;
+            Check(
+                "valid declared normal selects display-only Normal map",
+                knownNormalOption.IsSelectable
+                && knownNormalViewModel.SelectedDiagnosticChannel?.Channel == SourceQualityChannel.Normal
+                && knownNormalViewModel.SelectedColorMap == "Normal"
+                && knownNormalViewModel.DisplaySettingsRevision == knownNormalRevision + 1,
+                knownNormalViewModel.DiagnosticChannelSummary);
+            Check(
+                "Normal map encodes source vector deterministically",
+                ColorNear(ViewerColorMapPalette.NormalMap(Vector3.UnitZ), (0.5, 0.5, 1.0))
+                && ColorNear(ViewerColorMapPalette.NormalMap(-Vector3.UnitX), (0.0, 0.5, 0.5)),
+                $"unitZ={ViewerColorMapPalette.NormalMap(Vector3.UnitZ)}|negativeX={ViewerColorMapPalette.NormalMap(-Vector3.UnitX)}");
+
+            var invalidNormalMesh = ImportedMesh.CreateTriangleMesh(
+                "invalid-normal-plane",
+                "Invalid Normal Plane",
+                "GLB",
+                knownNormalPositions,
+                [0, 1, 2],
+                [Vector3.UnitZ, Vector3.UnitZ, -Vector3.UnitZ]);
+            var invalidNormalReport = ImportedMeshNormalQualityAnalyzer.Create(invalidNormalMesh);
+            var invalidNormalViewModel = new ViewerDisplaySettingsViewModel();
+            invalidNormalViewModel.ConfigureImportedMesh(
+                sourceColorAvailable: false,
+                sourceChannels: SourceChannelCatalogAnalyzer.CreateForImportedMesh(invalidNormalMesh),
+                normalQuality: invalidNormalReport);
+            var invalidNormalOption = invalidNormalViewModel.DiagnosticChannelOptions.Single(
+                option => option.Channel == SourceQualityChannel.Normal);
+            var invalidNormalRevision = invalidNormalViewModel.DisplaySettingsRevision;
+            invalidNormalViewModel.SelectedDiagnosticChannel = invalidNormalOption;
+            Check(
+                "invalid declared normal remains fail-closed",
+                invalidNormalReport.State == SourceNormalQualityState.Invalid
+                && !invalidNormalViewModel.IsImportedMeshNormalDisplayable
+                && invalidNormalViewModel.AvailableColorMaps.SequenceEqual(["Solid"])
+                && invalidNormalOption.State == SourceQualityChannelState.Available
+                && !invalidNormalOption.IsSelectable
+                && invalidNormalOption.HelpText.Contains("Normal-quality report", StringComparison.Ordinal)
+                && invalidNormalViewModel.SelectedColorMap == "Solid"
+                && invalidNormalViewModel.DisplaySettingsRevision == invalidNormalRevision
+                && invalidNormalViewModel.FallbackSummary.Contains("not selectable", StringComparison.Ordinal),
+                invalidNormalOption.HelpText);
+
+            var noNormalMesh = ImportedMesh.CreateTriangleMesh(
+                "no-normal-plane",
+                "No Normal Plane",
+                "GLB",
+                knownNormalPositions,
+                [0, 1, 2]);
+            var noNormalReport = ImportedMeshNormalQualityAnalyzer.Create(noNormalMesh);
+            var noNormalViewModel = new ViewerDisplaySettingsViewModel();
+            noNormalViewModel.ConfigureImportedMesh(
+                sourceColorAvailable: false,
+                sourceChannels: SourceChannelCatalogAnalyzer.CreateForImportedMesh(noNormalMesh),
+                normalQuality: noNormalReport);
+            Check(
+                "missing declared normal stays unavailable",
+                noNormalReport.State == SourceNormalQualityState.Unavailable
+                && noNormalViewModel.AvailableColorMaps.SequenceEqual(["Solid"])
+                && noNormalViewModel.DiagnosticChannelOptions.Single(option => option.Channel == SourceQualityChannel.Normal).State == SourceQualityChannelState.Unavailable,
+                noNormalViewModel.DiagnosticChannelSummary);
 
             c3dViewModel.ConfigureNominalActualComparison(deviationAvailable: true);
             Check("nominal-actual current geometry", c3dViewModel.SelectedGeometryStyle == "Points", c3dViewModel.EffectiveSummary);
@@ -496,6 +670,39 @@ internal static class ViewerDisplaySettingsViewModelVerification
                 && rootViewModel.CameraSession.HasSavedPerspective
                 && Math.Abs(rootViewModel.CameraDistance - savedPerspectiveDistance) < 0.000001,
                 rootViewModel.BottomStatus);
+
+            var linkedViewerViewModel = new MainWindowViewModel();
+            linkedViewerViewModel.UseC3DSmokeScene();
+            var rootCameraBeforeIndependentChange = rootViewModel.CaptureCameraState();
+            linkedViewerViewModel.Pan(1.0, 2.0, 3.0);
+            Check(
+                "separate Viewer camera state is independent",
+                rootViewModel.CaptureCameraState() == rootCameraBeforeIndependentChange
+                && linkedViewerViewModel.CaptureCameraState() != rootCameraBeforeIndependentChange,
+                $"root={rootViewModel.CaptureCameraState()}|secondary={linkedViewerViewModel.CaptureCameraState()}");
+
+            var linkedCameraState = new ViewerCameraState(
+                YawDegrees: 14.0,
+                PitchDegrees: 42.0,
+                Distance: 6.5,
+                TargetX: 1.0,
+                TargetY: 2.0,
+                TargetZ: 3.0,
+                ProjectionMode: ViewerProjectionMode.TopOrthographic,
+                OrthographicHeight: 8.0);
+            Check(
+                "validated camera state copies between Viewer owners",
+                linkedViewerViewModel.TryApplyCameraState(linkedCameraState)
+                && linkedViewerViewModel.CaptureCameraState() == linkedCameraState,
+                linkedViewerViewModel.BottomStatus);
+
+            var cameraBeforeInvalidCopy = linkedViewerViewModel.CaptureCameraState();
+            Check(
+                "invalid camera state fails closed without mutation",
+                !linkedViewerViewModel.TryApplyCameraState(
+                    linkedCameraState with { Distance = double.NaN })
+                && linkedViewerViewModel.CaptureCameraState() == cameraBeforeInvalidCopy,
+                linkedViewerViewModel.CaptureCameraState().ToString());
             var geometryRevision = rootViewModel.DisplaySettingsRevision;
             rootViewModel.Display.SelectedGeometryStyle = "Surface + Edges";
             Check(

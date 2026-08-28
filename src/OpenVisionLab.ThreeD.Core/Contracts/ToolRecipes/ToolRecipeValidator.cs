@@ -123,6 +123,10 @@ public static class ToolRecipeValidator
             {
                 errors.Add("Acquisition provenance limitation notes are required when the contract is recorded.");
             }
+            if (acquisition.LimitationFlags is { } limitationFlags)
+            {
+                ValidateAcquisitionLimitationFlags(limitationFlags, errors);
+            }
             if (acquisition.AcquisitionDirection is { } direction)
             {
                 ValidateAcquisitionDirection(source, acquisition, direction, errors);
@@ -231,9 +235,17 @@ public static class ToolRecipeValidator
             var requiresCompleteStep = !allowIncompleteSteps
                 || string.Equals(step.Id, requiredStepId, StringComparison.OrdinalIgnoreCase);
             var validateStepContract = !allowIncompleteSteps || hasMinimumInputs;
-            if (!hasMinimumInputs && requiresCompleteStep)
+            var isLegacyOneRoiThickness = step.ToolId == "thickness"
+                && inputs.Count == 2
+                && !ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion);
+            if (!hasMinimumInputs
+                && requiresCompleteStep
+                && !(validateStepContract && isLegacyOneRoiThickness))
             {
-                errors.Add($"{label} '{Clean(step.ToolName)}' requires {minimumInputCount} input entity ID(s).");
+                errors.Add(
+                    isLegacyOneRoiThickness
+                        ? $"{label} legacy one-ROI Thickness preserves its Measurement ROI but requires a Reference ROI first."
+                        : $"{label} '{Clean(step.ToolName)}' requires {minimumInputCount} input entity ID(s).");
             }
             else if (!hasMinimumInputs)
             {
@@ -328,6 +340,51 @@ public static class ToolRecipeValidator
             if (validateStepContract
                 && string.Equals(
                     step.ToolId,
+                    "connected-region",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateConnectedRegionStep(
+                    step,
+                    inputs,
+                    outputContracts,
+                    label,
+                    errors,
+                    warnings);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "editable-region",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateEditableRegionStep(
+                    step,
+                    inputs,
+                    outputContracts,
+                    label,
+                    errors,
+                    warnings);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
+                    "domain-mask",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ValidateDomainMaskStep(
+                    step,
+                    inputs,
+                    source,
+                    outputContracts,
+                    label,
+                    errors);
+            }
+
+            if (validateStepContract
+                && string.Equals(
+                    step.ToolId,
                     "level-surface",
                     StringComparison.OrdinalIgnoreCase))
             {
@@ -377,7 +434,7 @@ public static class ToolRecipeValidator
             }
 
             if (validateStepContract
-                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid" or "presence-check")
+                && step.ToolId is "thickness" or "warpage" or "plane-flatness" or "point-pair-dimensions" or "gap-flush" or "volume" or "cross-section-dimensions" or "completeness-grid")
             {
                 ValidateHeightMeasurementPrimaryInput(
                     step,
@@ -393,6 +450,7 @@ public static class ToolRecipeValidator
                     inputs,
                     source,
                     selections,
+                    outputContracts,
                     label,
                     ToolRecipeDocument.SupportsArtifactOwnedSelections(document.SchemaVersion),
                     errors);
@@ -758,6 +816,234 @@ public static class ToolRecipeValidator
         }
     }
 
+    private static void ValidateConnectedRegionStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count != 1)
+        {
+            errors.Add(
+                $"{label} Connected Region v1 requires exactly one earlier FilteredHeightField input.");
+        }
+        else if (!outputContracts.TryGetValue(inputs[0], out var contract)
+            || !string.Equals(contract, "FilteredHeightField", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 input '{inputs[0]}' must be an earlier FilteredHeightField artifact.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        var expectedNames = new HashSet<string>(
+            [
+                "Connectivity",
+                "OriginX",
+                "OriginY",
+                "ColumnPitch",
+                "RowPitch",
+                "AreaUnit"
+            ],
+            StringComparer.Ordinal);
+        if (expectedNames.Any(
+                name => parameters.Count(
+                    parameter => parameter is not null && parameter.Name == name) != 1))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 requires Connectivity, OriginX, OriginY, ColumnPitch, RowPitch, and AreaUnit.");
+            return;
+        }
+
+        var unknownNames = parameters
+            .Where(parameter => parameter is not null && !expectedNames.Contains(parameter.Name))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add(
+                $"{label} preserves unmapped Connected Region parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+
+        string Value(string name) =>
+            parameters.Single(parameter => parameter.Name == name).Value;
+
+        if (Value("Connectivity") is not ("Four" or "Eight"))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 Connectivity must be Four or Eight.");
+        }
+
+        if (!double.TryParse(
+                Value("OriginX"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var originX)
+            || !double.IsFinite(originX))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 OriginX must be finite.");
+        }
+
+        if (!double.TryParse(
+                Value("OriginY"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var originY)
+            || !double.IsFinite(originY))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 OriginY must be finite.");
+        }
+
+        if (!double.TryParse(
+                Value("ColumnPitch"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var columnPitch)
+            || !double.IsFinite(columnPitch)
+            || columnPitch <= 0d)
+        {
+            errors.Add(
+                $"{label} Connected Region v1 ColumnPitch must be finite and greater than zero.");
+        }
+
+        if (!double.TryParse(
+                Value("RowPitch"),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var rowPitch)
+            || !double.IsFinite(rowPitch)
+            || rowPitch <= 0d)
+        {
+            errors.Add(
+                $"{label} Connected Region v1 RowPitch must be finite and greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(Value("AreaUnit")))
+        {
+            errors.Add(
+                $"{label} Connected Region v1 AreaUnit must not be empty.");
+        }
+    }
+
+    private static void ValidateAcquisitionLimitationFlags(
+        IReadOnlyList<ToolRecipeAcquisitionLimitationFlag> limitationFlags,
+        List<string> errors)
+    {
+        var kinds = new HashSet<ToolRecipeAcquisitionLimitationKind>();
+        foreach (var flag in limitationFlags)
+        {
+            if (flag is null
+                || !Enum.IsDefined(flag.Kind)
+                || !Enum.IsDefined(flag.Origin))
+            {
+                errors.Add("Acquisition limitation flags must contain defined kinds and origins.");
+                continue;
+            }
+
+            if (!kinds.Add(flag.Kind))
+            {
+                errors.Add($"Acquisition limitation flag '{flag.Kind}' must not be repeated.");
+            }
+        }
+    }
+
+    private static void ValidateEditableRegionStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors,
+        List<string> warnings)
+    {
+        if (inputs.Count != 1)
+        {
+            errors.Add(
+                $"{label} Editable Region v1 requires exactly one earlier ConnectedRegionArtifact input.");
+        }
+        else if (!outputContracts.TryGetValue(inputs[0], out var contract)
+            || !string.Equals(contract, "ConnectedRegionArtifact", StringComparison.Ordinal))
+        {
+            errors.Add(
+                $"{label} Editable Region v1 input '{inputs[0]}' must be an earlier ConnectedRegionArtifact.");
+        }
+
+        var parameters = step.Parameters ?? [];
+        if (parameters.Count(parameter => parameter is not null
+                && string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal)) != 1)
+        {
+            errors.Add(
+                $"{label} Editable Region v1 requires exactly one SelectedRegionIndex parameter.");
+            return;
+        }
+
+        var unknownNames = parameters
+            .Where(parameter => parameter is not null
+                && !string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal))
+            .Select(parameter => parameter.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (unknownNames.Length > 0)
+        {
+            warnings.Add(
+                $"{label} preserves unmapped Editable Region parameter(s): {string.Join(", ", unknownNames)}.");
+        }
+
+        var value = parameters.Single(parameter =>
+            string.Equals(parameter.Name, "SelectedRegionIndex", StringComparison.Ordinal)).Value;
+        if (!int.TryParse(
+                value,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var index)
+            || index < 0)
+        {
+            errors.Add(
+                $"{label} Editable Region v1 SelectedRegionIndex must be a non-negative invariant integer.");
+        }
+    }
+
+    private static void ValidateDomainMaskStep(
+        ToolRecipeStep step,
+        IReadOnlyList<string> inputs,
+        ToolRecipeSource source,
+        IReadOnlyDictionary<string, string> outputContracts,
+        string label,
+        List<string> errors)
+    {
+        if (inputs.Count != 2)
+        {
+            errors.Add(
+                $"{label} Domain / Mask v1 requires exactly one HeightField input followed by one ConnectedRegionArtifact domain.");
+        }
+        else
+        {
+            var sourceInput = string.Equals(inputs[0], source.Id, StringComparison.OrdinalIgnoreCase)
+                || (outputContracts.TryGetValue(inputs[0], out var sourceContract)
+                    && ToolRecipePrimaryInputContract.IsCompatible("domain-mask", sourceContract));
+            if (!sourceInput)
+            {
+                errors.Add(
+                    $"{label} Domain / Mask v1 first input '{inputs[0]}' must be a compatible HeightField artifact.");
+            }
+
+            if (!outputContracts.TryGetValue(inputs[1], out var domainContract)
+                || !string.Equals(domainContract, "ConnectedRegionArtifact", StringComparison.Ordinal))
+            {
+                errors.Add(
+                    $"{label} Domain / Mask v1 second input '{inputs[1]}' must be an earlier ConnectedRegionArtifact.");
+            }
+        }
+
+        if ((step.Parameters ?? []).Count != 0)
+        {
+            errors.Add($"{label} Domain / Mask v1 does not accept parameters; the complete upstream domain is the contract.");
+        }
+    }
+
     private static void ValidateLevelSurfaceStep(
         ToolRecipeStep step,
         IReadOnlyList<string> inputs,
@@ -1028,6 +1314,7 @@ public static class ToolRecipeValidator
         IReadOnlyList<string> inputs,
         ToolRecipeSource source,
         IReadOnlyList<ToolRecipeSelection> selections,
+        IReadOnlyDictionary<string, string> outputContracts,
         string label,
         bool supportsArtifactOwnedSelections,
         List<string> errors)
@@ -1039,7 +1326,10 @@ public static class ToolRecipeValidator
         var isVolume = step.ToolId == "volume";
         var isCrossSection = step.ToolId == "cross-section-dimensions";
         var isCompleteness = step.ToolId == "completeness-grid";
-        var isPresenceCheck = step.ToolId == "presence-check";
+        var usesEditableRegionArtifact = isCompleteness
+            && inputs.Count > 2
+            && outputContracts.TryGetValue(inputs[2], out var inspectionContract)
+            && string.Equals(inspectionContract, "EditableRegionArtifact", StringComparison.Ordinal);
         var isDualRoi = isThickness || isPlaneFlatness || isGapFlush || isVolume || isCompleteness;
         var expectedInputCount = isDualRoi ? 3 : 2;
         if (inputs.Count != expectedInputCount)
@@ -1050,8 +1340,6 @@ public static class ToolRecipeValidator
                 ? $"{label} {Clean(step.ToolName)} v1 requires one HeightField and two ordered GridRectangles: Reference ROI, then {(isCompleteness ? "Inspection Grid ROI" : "Measurement ROI")}."
                 : isPointPair
                     ? $"{label} Point Pair Dimensions v1 requires one TransformedHeightField and one ordered PointSet(2)."
-                : isPresenceCheck
-                    ? $"{label} Presence Check v1 requires one HeightField first and one ordered GridRectangle feature second."
                 : $"{label} {Clean(step.ToolName)} v1 requires one HeightField first and one GridRectangle second.");
             return;
         }
@@ -1059,6 +1347,10 @@ public static class ToolRecipeValidator
         {
             var selection = selections.SingleOrDefault(candidate =>
                 candidate is not null && string.Equals(candidate.Id, inputs[inputIndex], StringComparison.OrdinalIgnoreCase));
+            if (usesEditableRegionArtifact && inputIndex == 2)
+            {
+                continue;
+            }
             var validSelection = isPointPair
                 ? selection?.Kind == ToolRecipeSelectionKinds.PointSet && selection.Points?.Count == 2
                 : selection?.Kind == ToolRecipeSelectionKinds.GridRectangle && selection.GridRectangle is not null;
@@ -1089,6 +1381,13 @@ public static class ToolRecipeValidator
                 errors.Add($"{label} {Clean(step.ToolName)} artifact input requires selections owned by its compatible first-input HeightField.");
             }
         }
+        if (usesEditableRegionArtifact
+            && (!outputContracts.TryGetValue(inputs[2], out var contract)
+                || !string.Equals(contract, "EditableRegionArtifact", StringComparison.Ordinal)))
+        {
+            errors.Add(
+                $"{label} Completeness Grid editable-region input '{inputs[2]}' must be an earlier EditableRegionArtifact.");
+        }
         var expected = step.ToolId switch
         {
             "thickness" => new[] { "MinimumThickness", "MaximumThickness", "MinimumValidSampleCount" },
@@ -1098,11 +1397,10 @@ public static class ToolRecipeValidator
             "volume" => new[] { "ExpectedNetVolume", "VolumeTolerance" },
             "cross-section-dimensions" => new[] { "ExpectedWidth", "WidthTolerance", "ExpectedHeightRange", "HeightTolerance" },
             "completeness-grid" => [],
-            "presence-check" => C3DPresenceCheckPolicy.ParameterNames,
             _ => new[] { "MaximumFlatness", "MinimumReferenceSampleCount", "MinimumMeasurementSampleCount" }
         };
         var parameters = step.Parameters ?? [];
-        if (!isCompleteness && !isPresenceCheck
+        if (!isCompleteness
             && (parameters.Count != expected.Length
                 || expected.Any(name =>
                     parameters.Count(parameter => parameter.Name == name) != 1)))
@@ -1116,20 +1414,6 @@ public static class ToolRecipeValidator
                 _ = C3DCompletenessGridProfile.FromRecipeParameters(parameters);
                 _ = C3DCompletenessPresencePolicy.FromOptionalRecipeParameters(
                     parameters);
-            }
-            catch (Exception exception) when (
-                exception is InvalidDataException
-                or ArgumentException
-                or OverflowException)
-            {
-                errors.Add($"{label} {exception.Message}");
-            }
-        }
-        else if (isPresenceCheck)
-        {
-            try
-            {
-                _ = C3DPresenceCheckPolicy.FromRecipeParameters(parameters);
             }
             catch (Exception exception) when (
                 exception is InvalidDataException

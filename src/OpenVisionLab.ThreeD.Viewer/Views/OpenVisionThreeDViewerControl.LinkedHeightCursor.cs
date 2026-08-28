@@ -31,6 +31,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         }
 
         linkedHeightCursor = next;
+        UpdateLinkedProfileCursor(next);
         // The SharpGL host already renders at 60 FPS. Keeping linked-hover
         // updates out of the camera interaction scheduler avoids activating
         // wireframe interaction LOD for a presentation-only cursor.
@@ -141,6 +142,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         lastPublishedThreeDGridHover = null;
         lastLinkedHeightHoverTimestamp = 0;
         linkedHeightCursor = null;
+        viewModel.ClearProfileLinkedCursor();
         if (hadPublishedHover)
         {
             C3DGridHoverChanged?.Invoke(

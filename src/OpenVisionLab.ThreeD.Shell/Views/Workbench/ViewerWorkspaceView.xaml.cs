@@ -29,6 +29,7 @@ public partial class ViewerWorkspaceView : UserControl
     private string loadedAuxiliaryPath = string.Empty;
     private bool subscriptionsAttached;
     private bool synchronizingLinkedHeightDisplayRange;
+    private bool synchronizingLinkedCamera;
     private bool roiFocusRatioApplied;
     private ViewerWorkspaceLayout roiFocusLayout;
     private GridLength roiFocusFirstLength;
@@ -66,6 +67,67 @@ public partial class ViewerWorkspaceView : UserControl
 
     public bool HasCoordinateTrueHeightImage =>
         heightImageViewer?.HasNativeCoordinateImage == true;
+
+    public bool VerifyLinkedCameraPropagationForSmoke(out string summary)
+    {
+        var currentWorkbench = workbench;
+        if (currentWorkbench?.ViewerWorkspace.IsCameraLinked != true
+            || mainViewer is null
+            || auxiliaryViewer is null)
+        {
+            summary = "CameraLinkPropagation|failure=linked-viewers-unavailable";
+            return false;
+        }
+
+        var originalMain = mainViewer.CaptureCameraState();
+        var originalAuxiliary = auxiliaryViewer.CaptureCameraState();
+        var originalLinked = currentWorkbench.ViewerWorkspace.IsCameraLinked;
+        var linkedState = new ViewerCameraState(
+            41.0,
+            27.0,
+            8.5,
+            0.5,
+            0.6,
+            0.7,
+            ViewerProjectionMode.Perspective,
+            10.0);
+        var unlinkedState = linkedState with { YawDegrees = 63.0 };
+        var linkedCopyPassed = false;
+        var unlinkDivergencePassed = false;
+        var relinkCopyPassed = false;
+        try
+        {
+            linkedCopyPassed = mainViewer.TryApplyCameraState(linkedState)
+                && auxiliaryViewer.CaptureCameraState() == linkedState;
+
+            currentWorkbench.ViewerWorkspace.SetCameraLinked(false);
+            var auxiliaryBeforeUnlinkedChange = auxiliaryViewer.CaptureCameraState();
+            unlinkDivergencePassed = mainViewer.TryApplyCameraState(unlinkedState)
+                && auxiliaryViewer.CaptureCameraState() == auxiliaryBeforeUnlinkedChange
+                && auxiliaryViewer.CaptureCameraState() != unlinkedState;
+
+            currentWorkbench.ViewerWorkspace.SetCameraLinked(true);
+            relinkCopyPassed = auxiliaryViewer.CaptureCameraState()
+                == mainViewer.CaptureCameraState();
+
+            summary =
+                $"CameraLinkPropagation|linkedCopy={linkedCopyPassed}|unlinkDivergence={unlinkDivergencePassed}|relinkCopy={relinkCopyPassed}";
+            return linkedCopyPassed && unlinkDivergencePassed && relinkCopyPassed;
+        }
+        finally
+        {
+            currentWorkbench.ViewerWorkspace.SetCameraLinked(originalLinked);
+            if (originalLinked)
+            {
+                mainViewer.TryApplyCameraState(originalMain);
+            }
+            else
+            {
+                mainViewer.TryApplyCameraState(originalMain);
+                auxiliaryViewer.TryApplyCameraState(originalAuxiliary);
+            }
+        }
+    }
 
     public bool ReactivateMainViewer(object? requestedContent)
     {
@@ -178,6 +240,7 @@ public partial class ViewerWorkspaceView : UserControl
         if (mainViewer is not null)
         {
             mainViewer.C3DGridHoverChanged -= OnMainViewerC3DGridHoverChanged;
+            mainViewer.CameraChanged -= OnMainViewerCameraChanged;
             mainViewer.ViewModel.PropertyChanged -= OnMainViewerPropertyChanged;
             mainViewer.SetLinkedHeightCursor(null);
         }
@@ -187,9 +250,11 @@ public partial class ViewerWorkspaceView : UserControl
         if (mainViewer is not null)
         {
             mainViewer.C3DGridHoverChanged += OnMainViewerC3DGridHoverChanged;
+            mainViewer.CameraChanged += OnMainViewerCameraChanged;
             mainViewer.ViewModel.PropertyChanged += OnMainViewerPropertyChanged;
         }
 
+        RefreshMainViewer();
         ApplySharedHeightCursorToMainViewer();
         SynchronizeLinkedHeightDisplayRangeFromMainViewer();
     }
@@ -218,6 +283,9 @@ public partial class ViewerWorkspaceView : UserControl
             SynchronizeLinkedHeightDisplayRangeToMainViewer();
         }
     }
+
+    private void OnMainViewerCameraChanged(object? sender, EventArgs args) =>
+        SynchronizeLinkedCamera();
 
     private void SynchronizeLinkedHeightDisplayRangeFromMainViewer()
     {
@@ -353,7 +421,11 @@ public partial class ViewerWorkspaceView : UserControl
     private void OnViewerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(ViewerWorkspaceSession.Layout)
-            or nameof(ViewerWorkspaceSession.AuxiliaryContentId))
+            or nameof(ViewerWorkspaceSession.MainContentId)
+            or nameof(ViewerWorkspaceSession.AuxiliaryContentId)
+            or nameof(ViewerWorkspaceSession.IsMainContentExplicitlyCleared)
+            or nameof(ViewerWorkspaceSession.IsAuxiliaryContentExplicitlyCleared)
+            or nameof(ViewerWorkspaceSession.IsCameraLinked))
         {
             RefreshWorkspace();
         }
@@ -373,8 +445,45 @@ public partial class ViewerWorkspaceView : UserControl
     private void RefreshWorkspace()
     {
         ApplyLayout(workbench?.ViewerWorkspace.Layout ?? ViewerWorkspaceLayout.Single);
+        RefreshMainViewer();
         RefreshAuxiliaryViewer();
         UpdateRoiFocusRatio();
+        SynchronizeLinkedCamera();
+    }
+
+    private void RefreshMainViewer()
+    {
+        var currentWorkbench = workbench;
+        var currentViewer = mainViewer;
+        var candidate = currentWorkbench?.GetMainViewerCandidate(
+            currentWorkbench.ViewerWorkspace.MainContentId);
+        if (currentWorkbench is null
+            || currentViewer is null
+            || candidate is null
+            || !File.Exists(candidate.SourcePath))
+        {
+            return;
+        }
+
+        var currentPath = currentViewer.CurrentC3DSourcePath;
+        if (string.Equals(
+                currentPath,
+                Path.GetFullPath(candidate.SourcePath),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (candidate.IsSource)
+        {
+            currentViewer.LoadC3DSource(candidate.SourcePath);
+        }
+        else
+        {
+            currentViewer.ShowC3DWorkbenchResult(
+                candidate.SourcePath,
+                $"{candidate.DisplayName} | {candidate.State}");
+        }
     }
 
     private void ApplyLayout(ViewerWorkspaceLayout layout)
@@ -529,6 +638,7 @@ public partial class ViewerWorkspaceView : UserControl
         {
             loadedAuxiliaryPath = string.Empty;
             AuxiliaryViewerHost.Content = null;
+            AuxiliaryViewerPresentationBar.ViewerViewModel = null;
             AuxiliaryEmptyText.Visibility = Visibility.Visible;
             popout?.SetViewerContent(
                 null,
@@ -571,9 +681,51 @@ public partial class ViewerWorkspaceView : UserControl
         PresentAuxiliaryContent(auxiliaryViewer, currentWorkbench);
     }
 
+    private void SynchronizeLinkedCamera()
+    {
+        var currentWorkbench = workbench;
+        if (currentWorkbench?.ViewerWorkspace.IsCameraLinked != true)
+        {
+            return;
+        }
+
+        var candidate = currentWorkbench.GetViewerWorkspaceCandidate(
+            currentWorkbench.ViewerWorkspace.AuxiliaryContentId);
+        if (candidate?.Kind != ViewerWorkspaceCandidateKind.ThreeDArtifact
+            || mainViewer is null
+            || auxiliaryViewer is null
+            || !File.Exists(candidate.SourcePath))
+        {
+            currentWorkbench.ViewerWorkspace.SetCameraLinked(false);
+            return;
+        }
+
+        if (synchronizingLinkedCamera)
+        {
+            return;
+        }
+
+        synchronizingLinkedCamera = true;
+        try
+        {
+            if (!auxiliaryViewer.TryApplyCameraState(mainViewer.CaptureCameraState()))
+            {
+                currentWorkbench.ViewerWorkspace.SetCameraLinked(false);
+            }
+        }
+        finally
+        {
+            synchronizingLinkedCamera = false;
+        }
+    }
+
     private void PresentAuxiliaryContent(object content, ToolWorkbenchViewModel currentWorkbench)
     {
         AuxiliaryEmptyText.Visibility = Visibility.Collapsed;
+        AuxiliaryViewerPresentationBar.ViewerViewModel =
+            content is OpenVisionThreeDViewerControl viewer
+                ? viewer.ViewModel
+                : null;
         if (currentWorkbench.ViewerWorkspace.IsPopOut)
         {
             AuxiliaryViewerHost.Content = null;

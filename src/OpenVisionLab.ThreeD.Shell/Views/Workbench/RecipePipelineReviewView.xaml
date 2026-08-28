@@ -254,7 +254,9 @@
                                             Padding="6,4"
                                             BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                                             BorderThickness="1"
-                                            CornerRadius="3">
+                                            CornerRadius="3"
+                                            AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
+                                            AutomationProperties.HelpText="{Binding State}">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="{DynamicResource ThreeD.PanelAlternateBrush}" />
@@ -283,7 +285,7 @@
                                                     Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="122" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding State}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="122" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>
@@ -471,10 +473,12 @@
                                                     Margin="8,0,0,0"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
-                                                    Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}">
+                                                    Style="{DynamicResource ThreeD.WorkflowStateBadgeStyle}"
+                                                    AutomationProperties.Name="{Binding CanonicalStateAccessibleName}"
+                                                    AutomationProperties.HelpText="{Binding State}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <ui:SymbolIcon Width="14" Height="14" Margin="0,0,4,0" Style="{DynamicResource ThreeD.WorkflowStateIconStyle}" />
-                                                    <TextBlock MaxWidth="108" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding State}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock MaxWidth="108" FontSize="9.5" FontWeight="SemiBold" Style="{DynamicResource ThreeD.WorkflowStateTextStyle}" Text="{Binding CanonicalStateLabel}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                             </Border>
                                         </Grid>

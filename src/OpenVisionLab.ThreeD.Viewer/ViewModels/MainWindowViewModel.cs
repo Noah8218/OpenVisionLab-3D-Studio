@@ -77,7 +77,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private string glbSampleSourcePath = @"3D\PublicSamples\glTF\Box.glb";
     private string importedMeshFormat = "GLB";
     private bool importedMeshSourceColorAvailable;
+    private IReadOnlyList<SourceQualityChannelAvailability>? importedMeshSourceChannelAvailability;
+    private SourceNormalQualityReport? importedMeshNormalQuality;
     private bool c3dSurfaceGeometryAvailable = true;
+    private IReadOnlyList<SourceQualityChannelAvailability>? c3DSourceChannelAvailability;
     private Vector3 importedMeshFitCenter = Vector3.Zero;
     private double importedMeshFitDistance = 5.2;
     private string lazSamplePointCount = "(not loaded)";
@@ -85,6 +88,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private string lazSampleName = "Public LAZ/LAS Point Cloud";
     private string lazSampleSourcePath = @"3D\PublicSamples\PointCloud\xyzrgb_manuscript.laz";
     private bool lazSourceColorAvailable;
+    private bool lazSourceIntensityAvailable;
+    private IReadOnlyList<SourceQualityChannelAvailability>? lazSourceChannelAvailability;
     private Vector3 lazFitCenter = Vector3.Zero;
     private double lazFitDistance = 220.0;
     private bool resultOverlayVisible;
@@ -95,6 +100,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     private string recipeSourcePath = @"3D\Samples\ThicknessCouponV1\thickness-coupon-v1.C3D";
     private string recipeSourceUnit = "raw-height";
     private double recipePeakTolerance = 1200.0;
+    private bool recipeOutputEnabled = true;
     private string recipeSaveSummary = "Recipe save: not saved";
     private string recipeParameterSummary = "Transform: identity | ROI: auto regions";
     private string recipeValidationSummary = string.Empty;
@@ -374,6 +380,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public event EventHandler? ScreenshotRequested;
     public event EventHandler? ProfileViewRequested;
     public event EventHandler? PublishPreviewResultRequested;
+    public event EventHandler? CameraChanged;
 
     public MainWindowViewModel()
     {
@@ -398,17 +405,17 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         applyRoiAlignmentCommand = new RelayCommand(_ => ApplyRoiAlignmentRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         fitPlaneCommand = new RelayCommand(_ => FitPlaneRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
         teachThicknessRoiCommand = new RelayCommand(_ => BeginThicknessRoiTeaching(), _ => C3DSampleVisible);
-        previewThicknessCommand = new RelayCommand(_ => PreviewThicknessRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible && ThicknessConfigured);
+        previewThicknessCommand = new RelayCommand(_ => PreviewThicknessRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible && ThicknessConfigured);
         teachWarpageRoiCommand = new RelayCommand(_ => BeginWarpageRoiTeaching(), _ => C3DSampleVisible);
-        previewWarpageCommand = new RelayCommand(_ => PreviewWarpageRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible && WarpageConfigured);
-        previewPlaneFlatnessCommand = new RelayCommand(_ => PreviewPlaneFlatnessRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
+        previewWarpageCommand = new RelayCommand(_ => PreviewWarpageRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible && WarpageConfigured);
+        previewPlaneFlatnessCommand = new RelayCommand(_ => PreviewPlaneFlatnessRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible);
         previewPointPairDimensionsCommand = new RelayCommand(
             _ => PreviewPointPairDimensionsRequested?.Invoke(this, EventArgs.Empty),
-            _ => C3DSampleVisible && pointPairFirstReference is not null && pointPairSecondReference is not null);
-        previewGapFlushCommand = new RelayCommand(_ => PreviewGapFlushRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
-        previewVolumeCommand = new RelayCommand(_ => PreviewVolumeRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
-        previewCrossSectionCommand = new RelayCommand(_ => PreviewCrossSectionRequested?.Invoke(this, EventArgs.Empty), _ => C3DSampleVisible);
-        publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => PreviewToolResult.Status != ResultStatus.NotRun);
+            _ => RecipeOutputEnabled && C3DSampleVisible && pointPairFirstReference is not null && pointPairSecondReference is not null);
+        previewGapFlushCommand = new RelayCommand(_ => PreviewGapFlushRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible);
+        previewVolumeCommand = new RelayCommand(_ => PreviewVolumeRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible);
+        previewCrossSectionCommand = new RelayCommand(_ => PreviewCrossSectionRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && C3DSampleVisible);
+        publishResultCommand = new RelayCommand(_ => PublishPreviewResultRequested?.Invoke(this, EventArgs.Empty), _ => RecipeOutputEnabled && PreviewToolResult.Status != ResultStatus.NotRun);
         saveRecipeCommand = new RelayCommand(_ => SaveRecipeRequested?.Invoke(this, EventArgs.Empty));
         screenshotCommand = new RelayCommand(_ => ScreenshotRequested?.Invoke(this, EventArgs.Empty));
         profileCommand = new RelayCommand(
@@ -624,6 +631,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         if (args.PropertyName is nameof(NominalActualComparisonViewModel.ActualVisible)
             or nameof(NominalActualComparisonViewModel.NominalVisible)
             or nameof(NominalActualComparisonViewModel.PreviewResult)
+            or nameof(NominalActualComparisonViewModel.OutputEnabled)
             or nameof(NominalActualComparisonViewModel.State))
         {
             RefreshSceneContracts();
@@ -936,6 +944,31 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
         get => recipeSummary;
         set => SetField(ref recipeSummary, value);
     }
+
+    public bool RecipeOutputEnabled
+    {
+        get => recipeOutputEnabled;
+        set
+        {
+            if (SetField(ref recipeOutputEnabled, value))
+            {
+                NominalActual.OutputEnabled = value;
+                if (!value)
+                {
+                    ClearOutputArtifactsForDisabledPolicy();
+                }
+
+                OnPropertyChanged(nameof(RecipeOutputPolicySummary));
+                RefreshRecipeSummary();
+                RefreshNominalActualRecipeSummary();
+                RefreshCommandCanExecute();
+            }
+        }
+    }
+
+    public string RecipeOutputPolicySummary => RecipeOutputEnabled
+        ? "Output policy: enabled"
+        : "Output policy: disabled; Preview, Publish, and Run create no output artifact";
 
     public string RecipeSourceName
     {
@@ -1727,19 +1760,40 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged
     public double YawDegrees
     {
         get => CameraSession.YawDegrees;
-        set => CameraSession.YawDegrees = value;
+        set
+        {
+            if (CameraSession.YawDegrees != value)
+            {
+                CameraSession.YawDegrees = value;
+                OnPropertyChanged(nameof(YawDegrees));
+            }
+        }
     }
 
     public double PitchDegrees
     {
         get => CameraSession.PitchDegrees;
-        set => CameraSession.PitchDegrees = value;
+        set
+        {
+            if (CameraSession.PitchDegrees != value)
+            {
+                CameraSession.PitchDegrees = value;
+                OnPropertyChanged(nameof(PitchDegrees));
+            }
+        }
     }
 
     public double CameraDistance
     {
         get => CameraSession.Distance;
-        set => CameraSession.Distance = value;
+        set
+        {
+            if (CameraSession.Distance != value)
+            {
+                CameraSession.Distance = value;
+                OnPropertyChanged(nameof(CameraDistance));
+            }
+        }
     }
 
     public ViewerProjectionMode ProjectionMode

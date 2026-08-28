@@ -9,6 +9,7 @@ namespace OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 
 public sealed partial class ToolWorkbenchViewModel
 {
+    private readonly System.Windows.Threading.Dispatcher? sourceQualityUiDispatcher;
     private RelayCommand selectSourceQualityCommand = null!;
 
     public SourceQualityWorkspaceViewModel SourceQuality { get; private set; } = null!;
@@ -154,16 +155,64 @@ public sealed partial class ToolWorkbenchViewModel
             Source.FrameId,
             cancellationToken);
 
+    internal SourceQualityDelta? CreateSourceQualityDelta(
+        C3DHeightFieldSnapshot derivedOutput,
+        long? detectedOutlierCount,
+        string outlierEvidence)
+    {
+        ArgumentNullException.ThrowIfNull(derivedOutput);
+        var report = SourceQuality.Report;
+        var sourceBinding = SourceSession.SourceBinding;
+        if (report is null
+            || sourceBinding is null
+            || !string.Equals(report.Source.EntityId, Source.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(report.Source.ContentSha256, sourceBinding.ContentSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(report.Source.RootSourceSha256, derivedOutput.RootSourceSha256, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(report.Coordinates.Unit, derivedOutput.Unit, StringComparison.Ordinal)
+            || !string.Equals(report.Coordinates.FrameId, derivedOutput.FrameId, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new SourceQualityDelta(
+            report.Source.EntityId,
+            report.Source.ContentSha256,
+            derivedOutput.EntityId,
+            derivedOutput.ContentSha256,
+            report.Source.RootSourceSha256,
+            derivedOutput.RootSourceSha256,
+            report.Coverage.ValidSampleCount,
+            derivedOutput.ValidCount,
+            report.Coverage.MissingSampleCount,
+            derivedOutput.MissingCount,
+            detectedOutlierCount,
+            outlierEvidence);
+    }
+
     private void OnSourceQualityPropertyChanged(
         object? sender,
         PropertyChangedEventArgs args)
     {
         if (args.PropertyName is nameof(SourceQualityWorkspaceViewModel.IsLoading)
+            or nameof(SourceQualityWorkspaceViewModel.Report)
             or nameof(SourceQualityWorkspaceViewModel.HasReport)
             or nameof(SourceQualityWorkspaceViewModel.HasError)
             or nameof(SourceQualityWorkspaceViewModel.IsAvailableOrLoading)
             or nameof(SourceQualityWorkspaceViewModel.State))
         {
+            if (sourceQualityUiDispatcher is { } dispatcher
+                && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(
+                    new Action(() => OnSourceQualityPropertyChanged(sender, args)));
+                return;
+            }
+
+            if (args.PropertyName is nameof(SourceQualityWorkspaceViewModel.Report)
+                or nameof(SourceQualityWorkspaceViewModel.HasError))
+            {
+                RebuildArtifactRegistryAndNavigator();
+            }
             NotifySourceQualityWorkspaceState();
         }
     }

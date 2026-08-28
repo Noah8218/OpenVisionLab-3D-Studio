@@ -173,7 +173,7 @@ public sealed partial class ToolWorkbenchViewModel
             CreateSelectedToolOutputEvidence(),
             SelectedStepSelectionRequirement,
             SelectedStepTeachingSelection,
-            IsSelectedStepDualRoiMeasurement,
+            IsSelectedStepDualRoiMeasurement && !IsSelectedStepCompletenessGridUsingEditableRegion,
             IsSelectedStepGapFlush,
             PlaneFlatnessReferenceSelection,
             PlaneFlatnessMeasurementSelection,
@@ -221,6 +221,20 @@ public sealed partial class ToolWorkbenchViewModel
                 IsLevelSurfacePreviewPublished
                     ? "Published"
                     : IsLevelSurfacePreviewRunning
+                        ? "Preview running"
+                : "Preview");
+        }
+
+        if (IsSelectedStepDomainMask
+            && CurrentDomainMaskPreviewOutput is { } domainMaskOutput)
+        {
+            return new SelectedToolOutputEvidence(
+                "Output missing cells",
+                domainMaskOutput.MissingCount.ToString(CultureInfo.InvariantCulture),
+                "count",
+                IsDomainMaskPreviewPublished
+                    ? "Published"
+                    : IsDomainMaskPreviewRunning
                         ? "Preview running"
                         : "Preview");
         }
@@ -296,6 +310,11 @@ public sealed partial class ToolWorkbenchViewModel
     {
         var displayed = ResolveDisplayedOutput(output);
         if (displayed is null)
+        {
+            return;
+        }
+
+        if (TryOpenPreparationQualityComparison(displayed))
         {
             return;
         }

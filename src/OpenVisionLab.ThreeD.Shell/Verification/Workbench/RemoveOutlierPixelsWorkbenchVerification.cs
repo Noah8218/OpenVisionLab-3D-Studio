@@ -16,9 +16,13 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
         };
         var passed = 0;
         var total = 0;
+        var configuredTestRoot = Environment.GetEnvironmentVariable(
+            "OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
+        var testDataRoot = string.IsNullOrWhiteSpace(configuredTestRoot)
+            ? Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD", "RemoveOutlierWorkbench")
+            : Path.GetFullPath(configuredTestRoot);
         var rootDirectory = Path.Combine(
-            Path.GetTempPath(),
-            "OpenVisionLab.ThreeD",
+            testDataRoot,
             "RemoveOutlierWorkbench",
             Guid.NewGuid().ToString("N"));
 
@@ -57,6 +61,17 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
                 "open typed recipe",
                 workbench.TryOpenTeachingRecipe(recipePath, out var openMessage),
                 openMessage);
+            workbench.SourceQuality.EnsureSourceAsync(
+                sourcePath,
+                workbench.Source.Id,
+                workbench.Source.Unit,
+                workbench.Source.FrameId,
+                cancellationToken => workbench.SourceSession.GetOrLoadDecodedSourceAsync(
+                    workbench.Source.Path,
+                    workbench.Source.Id,
+                    workbench.Source.Unit,
+                    workbench.Source.FrameId,
+                    cancellationToken)).GetAwaiter().GetResult();
             workbench.SelectPipelineStep("step.remove-outliers.01");
             Check(
                 "typed PropertyGrid draft",
@@ -124,8 +139,19 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
             Check(
                 "artifact exposes before-after mask evidence",
                 artifact?.Detail.Contains(
-                    "removed 2",
+                "removed 2",
                     StringComparison.Ordinal) == true
+                && artifact.PreparationQualityDelta is
+                {
+                    BeforeValidSampleCount: 63,
+                    BeforeMissingSampleCount: 1,
+                    DetectedOutlierCount: 2,
+                    SourceIdentityRetained: true
+                }
+                && artifact.PreparationQualityDelta.AfterValidSampleCount
+                    == workbench.CurrentRemoveOutlierPreviewOutput?.ValidCount
+                && artifact.PreparationQualityDelta.AfterMissingSampleCount
+                    == workbench.CurrentRemoveOutlierPreviewOutput?.MissingCount
                 && artifact.Detail.Contains(
                     workbench.CurrentRemoveOutlierMask!.Sha256,
                     StringComparison.Ordinal),
@@ -163,6 +189,118 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
                 && workbench.IsRemoveOutlierPreviewStale
                 && !workbench.IsRemoveOutlierPreviewPublished,
                 applyMessage);
+
+            var connectedSourceBytesBefore = File.ReadAllBytes(sourcePath);
+            var connectedDocument = CreateConnectedDocument(source, sourcePath);
+            var connectedRecipePath = Path.Combine(
+                rootDirectory,
+                "connected-region.ov3d-recipe.json");
+            ToolRecipeDocumentStore.Save(connectedRecipePath, connectedDocument);
+            var connectedWorkbench = new ToolWorkbenchViewModel();
+            Check(
+                "connected-region recipe opens with typed catalog route",
+                connectedWorkbench.TryOpenTeachingRecipe(connectedRecipePath, out var connectedOpenMessage)
+                && connectedWorkbench.Tools.Any(
+                    tool => tool.Id == "connected-region"
+                        && tool.Category == "Feature & Datum"
+                        && tool.OutputContract == "ConnectedRegionArtifact"),
+                connectedOpenMessage);
+            connectedWorkbench.SelectPipelineStep("step.connected-region.01");
+            Check(
+                "Connected Region waits for Published upstream",
+                connectedWorkbench.SelectedStepPropertyDraft is ConnectedRegionStepProperties
+                && !connectedWorkbench.PreviewSelectedStepCommand.CanExecute(null)
+                && !connectedWorkbench.HasCurrentConnectedRegionPreview,
+                connectedWorkbench.ConnectedRegionExecutionSummary);
+
+            connectedWorkbench.SelectPipelineStep("step.remove-outliers.01");
+            Check(
+                "Remove Outlier Preview remains explicit in two-step recipe",
+                connectedWorkbench.PreviewSelectedStepCommand.CanExecute(null),
+                connectedWorkbench.RemoveOutlierExecutionSummary);
+            Check(
+                "Remove Outlier Preview succeeds before downstream route",
+                connectedWorkbench.PreviewSelectedRemoveOutlierPixelsAsync()
+                    .GetAwaiter()
+                    .GetResult(),
+                connectedWorkbench.RemoveOutlierExecutionSummary);
+            connectedWorkbench.SelectPipelineStep("step.connected-region.01");
+            Check(
+                "Connected Region still blocks on Preview-only upstream",
+                !connectedWorkbench.PreviewSelectedStepCommand.CanExecute(null)
+                && !connectedWorkbench.HasCurrentConnectedRegionPreview,
+                connectedWorkbench.ConnectedRegionExecutionSummary);
+
+            connectedWorkbench.SelectPipelineStep("step.remove-outliers.01");
+            connectedWorkbench.PublishSelectedStepCommand.Execute(null);
+            var publishedMaskHash = connectedWorkbench.CurrentRemoveOutlierMask?.Sha256;
+            var publishedOutputHash = connectedWorkbench.CurrentRemoveOutlierPreviewOutput?.ContentSha256;
+            connectedWorkbench.SelectPipelineStep("step.connected-region.01");
+            Check(
+                "Connected Region enables after upstream Publish",
+                connectedWorkbench.PreviewSelectedStepCommand.CanExecute(null),
+                connectedWorkbench.ConnectedRegionExecutionSummary);
+            Check(
+                "Connected Region Preview creates typed artifact without implicit Publish",
+                connectedWorkbench.PreviewSelectedConnectedRegionAsync()
+                    .GetAwaiter()
+                    .GetResult()
+                && connectedWorkbench.CurrentConnectedRegionArtifact is { Regions.Count: > 0 }
+                && !connectedWorkbench.IsConnectedRegionPreviewPublished,
+                connectedWorkbench.ConnectedRegionExecutionSummary);
+            var connectedPreviewHash = connectedWorkbench.CurrentConnectedRegionArtifact?.ContentSha256;
+            var connectedPreviewRegistry = connectedWorkbench.ArtifactRegistry.FirstOrDefault(
+                item => item.Id == "derived.connected-regions.01");
+            Check(
+                "Connected Region Preview is registered with mask/source evidence",
+                connectedPreviewRegistry?.Contract == "ConnectedRegionArtifact"
+                && connectedPreviewRegistry.State == "Preview"
+                && publishedMaskHash is not null
+                && connectedPreviewRegistry.Detail.Contains(publishedMaskHash, StringComparison.Ordinal)
+                && publishedOutputHash is not null
+                && connectedPreviewRegistry.Detail.Contains(publishedOutputHash, StringComparison.Ordinal)
+                && connectedWorkbench.CurrentConnectedRegionArtifact?.RootSourceSha256 == source.ContentSha256,
+                $"contract={connectedPreviewRegistry?.Contract};state={connectedPreviewRegistry?.State};expectedMask={publishedMaskHash};expectedOutput={publishedOutputHash};expectedRoot={source.ContentSha256};detail={connectedPreviewRegistry?.Detail ?? "missing connected-region artifact"}");
+
+            connectedWorkbench.PublishSelectedStepCommand.Execute(null);
+            var connectedSidecarPath = connectedWorkbench.CurrentConnectedRegionArtifactPath;
+            var savedConnectedArtifact = !string.IsNullOrWhiteSpace(connectedSidecarPath)
+                && File.Exists(connectedSidecarPath)
+                ? C3DConnectedRegionArtifactStore.Load(connectedSidecarPath)
+                : null;
+            Check(
+                "Connected Region Publish persists one sidecar without rerun",
+                connectedWorkbench.IsConnectedRegionPreviewPublished
+                && savedConnectedArtifact?.ContentSha256 == connectedPreviewHash
+                && savedConnectedArtifact?.MaskContentSha256 == publishedMaskHash,
+                connectedWorkbench.ConnectedRegionExecutionSummary);
+            Check(
+                "Connected Region recipe save preserves sidecar",
+                connectedWorkbench.TrySaveTeachingRecipe(connectedRecipePath, out var connectedSaveMessage)
+                && connectedWorkbench.CurrentConnectedRegionArtifactPath == connectedSidecarPath
+                && File.Exists(connectedSidecarPath),
+                connectedSaveMessage);
+
+            var reopenedConnectedWorkbench = new ToolWorkbenchViewModel();
+            var reopenedConnected = reopenedConnectedWorkbench.TryOpenTeachingRecipe(
+                connectedRecipePath,
+                out var reopenedConnectedMessage);
+            reopenedConnectedWorkbench.SelectPipelineStep("step.connected-region.01");
+            Check(
+                "Connected Region sidecar restores Published artifact without execution",
+                reopenedConnected
+                && reopenedConnectedWorkbench.IsConnectedRegionPreviewPublished
+                && reopenedConnectedWorkbench.CurrentConnectedRegionArtifact?.ContentSha256 == connectedPreviewHash
+                && reopenedConnectedWorkbench.CurrentConnectedRegionArtifactPath == connectedSidecarPath
+                && !reopenedConnectedWorkbench.IsConnectedRegionPreviewRunning
+                && reopenedConnectedWorkbench.CurrentRemoveOutlierPreviewOutput is null,
+                $"open={reopenedConnectedMessage};summary={reopenedConnectedWorkbench.ConnectedRegionExecutionSummary};path={reopenedConnectedWorkbench.CurrentConnectedRegionArtifactPath}");
+            var connectedSourceBytesAfter = File.ReadAllBytes(sourcePath);
+            Check(
+                "Connected Region route keeps source file immutable",
+                connectedSourceBytesBefore.SequenceEqual(connectedSourceBytesAfter)
+                && reopenedConnectedWorkbench.CurrentConnectedRegionArtifact?.RootSourceSha256 == source.ContentSha256,
+                $"bytesUnchanged={connectedSourceBytesBefore.SequenceEqual(connectedSourceBytesAfter)};root={reopenedConnectedWorkbench.CurrentConnectedRegionArtifact?.RootSourceSha256}");
         }
         catch (Exception exception)
         {
@@ -238,4 +376,35 @@ internal static class RemoveOutlierPixelsWorkbenchVerification
                     ])
             ],
             []);
+
+    private static ToolRecipeDocument CreateConnectedDocument(
+        C3DHeightFieldSnapshot source,
+        string sourcePath)
+    {
+        var recipe = CreateDocument(source, sourcePath);
+        return recipe with
+        {
+            Name = "Connected Region Workbench",
+            Steps = recipe.Steps
+                .Concat(
+                [
+                    new ToolRecipeStep(
+                        "step.connected-region.01",
+                        "connected-region",
+                        "Connected Region",
+                        1,
+                        ["derived.outlier-removed.01"],
+                        "derived.connected-regions.01",
+                        [
+                            new("Connectivity", "Four"),
+                            new("OriginX", "0"),
+                            new("OriginY", "0"),
+                            new("ColumnPitch", "1"),
+                            new("RowPitch", "1"),
+                            new("AreaUnit", "grid-unit^2")
+                        ])
+                ])
+                .ToArray()
+        };
+    }
 }

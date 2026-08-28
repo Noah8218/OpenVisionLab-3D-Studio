@@ -15,7 +15,9 @@ public sealed record ToolRecipeOrderedGraphStepResult(
     ToolResult Result,
     string Evidence,
     C3DCompletenessGridMetricOutput? CompletenessGrid = null,
-    C3DPresenceCheckOutput? PresenceCheck = null);
+    string? LevelFrameContentSha256 = null,
+    string? LevelFrameQualityContentSha256 = null,
+    string? FrameChainContentSha256 = null);
 
 public sealed record ToolRecipeOrderedGraphExecutionResult(
     ResultStatus Status,
@@ -37,6 +39,11 @@ public static class ToolRecipeOrderedGraphExecution
     private static readonly HashSet<string> SupportedToolIds = new(StringComparer.Ordinal)
     {
         "filter",
+        "remove-outlier-pixels",
+        "connected-region",
+        "editable-region",
+        "domain-mask",
+        "level-surface",
         "roi-crop",
         "height-difference-edge",
         "two-point-line",
@@ -55,8 +62,7 @@ public static class ToolRecipeOrderedGraphExecution
         "gap-flush",
         "volume",
         "cross-section-dimensions",
-        "completeness-grid",
-        "presence-check"
+        "completeness-grid"
     };
 
     private static readonly HashSet<string> MeasurementToolIds = new(StringComparer.Ordinal)
@@ -68,8 +74,7 @@ public static class ToolRecipeOrderedGraphExecution
         "gap-flush",
         "volume",
         "cross-section-dimensions",
-        "completeness-grid",
-        "presence-check"
+        "completeness-grid"
     };
 
     public static bool CanExecute(ToolRecipeDocument document, out string message)
@@ -165,7 +170,17 @@ public static class ToolRecipeOrderedGraphExecution
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var step = rebound.Steps[index];
-                var execution = ExecuteStep(rebound, step, artifacts, cancellationToken);
+                var execution = !step.OutputEnabled
+                    ? new StepExecution(
+                        new ToolResult(
+                            step.ToolName,
+                            ResultStatus.Warning,
+                            $"Output '{step.OutputEntityId}' is disabled by recipe policy; the step was not executed and no artifact was created.",
+                            TimeSpan.Zero,
+                            [],
+                            []),
+                        null)
+                    : ExecuteStep(rebound, step, artifacts, cancellationToken);
                 steps.Add(new ToolRecipeOrderedGraphStepResult(
                     index + 1,
                     step.Id,
@@ -178,13 +193,39 @@ public static class ToolRecipeOrderedGraphExecution
                     execution.Output is ToolRecipeHeightMeasurementOutput measurement
                         ? measurement.CompletenessGrid
                         : null,
-                    execution.Output is ToolRecipeHeightMeasurementOutput presenceMeasurement
-                        ? presenceMeasurement.PresenceCheck
-                        : null));
+                    execution.LevelFrame?.ContentSha256,
+                    execution.LevelFrameQuality?.ContentSha256,
+                    execution.FrameChain?.ContentSha256));
+
+                if (!step.OutputEnabled)
+                {
+                    var downstream = rebound.Steps
+                        .Skip(index + 1)
+                        .FirstOrDefault(candidate => candidate.InputEntityIds.Contains(
+                            step.OutputEntityId,
+                            StringComparer.OrdinalIgnoreCase));
+                    if (downstream is not null)
+                    {
+                        stopwatch.Stop();
+                        return Error(
+                            rebound,
+                            identity.ContentSha256,
+                            $"Step {index + 1} '{step.ToolName}' is disabled and downstream step '{downstream.Id}' requires its non-existent output '{step.OutputEntityId}'.",
+                            stopwatch.Elapsed,
+                            steps,
+                            sourceQuality);
+                    }
+
+                    continue;
+                }
 
                 if (execution.Output is not null)
                 {
                     artifacts[step.OutputEntityId] = execution.Output;
+                    if (execution.OutlierMask is not null)
+                    {
+                        artifacts[OutlierMaskArtifactId(step.OutputEntityId)] = execution.OutlierMask;
+                    }
                     if (execution.Output is C3DTransformedHeightField field)
                     {
                         rebound = RebindTransformedSelections(rebound, field);
@@ -306,6 +347,77 @@ public static class ToolRecipeOrderedGraphExecution
                 var evaluation = ToolRecipeFilterExecution.Execute(document, step.Id, cancellationToken: cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
+            case "remove-outlier-pixels":
+            {
+                var evaluation = ToolRecipeRemoveOutlierPixelsExecution.Execute(
+                    document,
+                    step.Id,
+                    cancellationToken: cancellationToken);
+                return new(evaluation.Result, evaluation.Output, evaluation.OutlierMask);
+            }
+            case "connected-region":
+            {
+                var input = Required<C3DHeightFieldSnapshot>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var mask = Required<C3DOutlierCellMap>(
+                    artifacts,
+                    OutlierMaskArtifactId(step.InputEntityIds[0]),
+                    step);
+                var evaluation = ToolRecipeConnectedRegionExecution.Execute(
+                    document,
+                    step.Id,
+                    input,
+                    mask,
+                    cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
+            case "editable-region":
+            {
+                var input = Required<C3DConnectedRegionArtifact>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var evaluation = ToolRecipeEditableRegionExecution.Execute(
+                    document,
+                    step.Id,
+                    input,
+                    cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
+            case "domain-mask":
+            {
+                var source = Required<C3DHeightFieldSnapshot>(
+                    artifacts,
+                    step.InputEntityIds[0],
+                    step);
+                var domain = Required<C3DConnectedRegionArtifact>(
+                    artifacts,
+                    step.InputEntityIds[1],
+                    step);
+                var evaluation = ToolRecipeDomainMaskExecution.Execute(
+                    document,
+                    step.Id,
+                    source,
+                    domain,
+                    cancellationToken);
+                return new(evaluation.Result, evaluation.Output);
+            }
+            case "level-surface":
+            {
+                var evaluation = ToolRecipeLevelSurfaceExecution.Execute(
+                    document,
+                    step.Id,
+                    cancellationToken: cancellationToken);
+                return new(
+                    evaluation.Result,
+                    evaluation.Output,
+                    null,
+                    evaluation.LevelFrame,
+                    evaluation.QualityEvidence,
+                    evaluation.FrameChain);
+            }
             case "roi-crop":
             {
                 var evaluation = ToolRecipeRoiCropExecution.Execute(
@@ -377,14 +489,29 @@ public static class ToolRecipeOrderedGraphExecution
             {
                 C3DHeightFieldSnapshot? heightField = null;
                 C3DTransformedHeightField? field = null;
+                C3DEditableRegionArtifact? editableRegion = null;
                 if (step.InputEntityIds.Count > 0
                     && artifacts.TryGetValue(step.InputEntityIds[0], out var inputArtifact))
                 {
                     heightField = inputArtifact as C3DHeightFieldSnapshot;
                     field = inputArtifact as C3DTransformedHeightField;
                 }
+                if (step.ToolId == "completeness-grid"
+                    && step.InputEntityIds.Count > 2
+                    && artifacts.TryGetValue(step.InputEntityIds[2], out var inspectionArtifact))
+                {
+                    editableRegion = inspectionArtifact as C3DEditableRegionArtifact
+                        ?? throw new InvalidDataException(
+                            $"Step '{step.Id}' requires '{step.InputEntityIds[2]}' as EditableRegionArtifact.");
+                }
                 var evaluation = ToolRecipeHeightMeasurementExecution.Execute(
-                    document, step.Id, heightField, field, recipeDirectory: null, cancellationToken);
+                    document,
+                    step.Id,
+                    heightField,
+                    field,
+                    editableRegion,
+                    recipeDirectory: null,
+                    cancellationToken);
                 return new(evaluation.Result, evaluation.Output);
             }
             default:
@@ -561,6 +688,8 @@ public static class ToolRecipeOrderedGraphExecution
     private static string? OutputContentSha256(object? output) => output switch
     {
         C3DHeightFieldSnapshot value => value.ContentSha256,
+        C3DConnectedRegionArtifact value => value.ContentSha256,
+        C3DEditableRegionArtifact value => value.ContentSha256,
         C3DHeightDifferenceEdgePointSet value => value.ContentSha256,
         C3DTwoPointLineFeature value => value.ContentSha256,
         C3DThreePointPlaneFeature value => value.ContentSha256,
@@ -600,5 +729,14 @@ public static class ToolRecipeOrderedGraphExecution
         return ResultStatus.Pass;
     }
 
-    private sealed record StepExecution(ToolResult Result, object? Output);
+    private static string OutlierMaskArtifactId(string outputEntityId) =>
+        $"{outputEntityId}::outlier-mask";
+
+    private sealed record StepExecution(
+        ToolResult Result,
+        object? Output,
+        C3DOutlierCellMap? OutlierMask = null,
+        C3DLevelFrameArtifact? LevelFrame = null,
+        C3DLevelFrameQualityEvidence? LevelFrameQuality = null,
+        C3DLevelSurfaceCoordinateFrameChain? FrameChain = null);
 }

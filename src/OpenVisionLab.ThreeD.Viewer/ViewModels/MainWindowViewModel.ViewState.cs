@@ -110,28 +110,39 @@ public sealed partial class MainWindowViewModel
         RefreshSceneContracts();
     }
 
-    internal void SetImportedMeshDisplayCapabilities(bool sourceColorAvailable)
+    internal void SetImportedMeshDisplayCapabilities(
+        bool sourceColorAvailable,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null,
+        SourceNormalQualityReport? normalQuality = null)
     {
-        if (importedMeshSourceColorAvailable == sourceColorAvailable)
+        if (importedMeshSourceColorAvailable == sourceColorAvailable
+            && SourceChannelsEqual(importedMeshSourceChannelAvailability, sourceChannels)
+            && Equals(importedMeshNormalQuality, normalQuality))
         {
             return;
         }
 
         importedMeshSourceColorAvailable = sourceColorAvailable;
+        importedMeshSourceChannelAvailability = sourceChannels;
+        importedMeshNormalQuality = normalQuality;
         if (GlbSampleVisible)
         {
             RefreshSceneContracts();
         }
     }
 
-    internal void SetC3DDisplayCapabilities(bool surfaceGeometryAvailable)
+    internal void SetC3DDisplayCapabilities(
+        bool surfaceGeometryAvailable,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null)
     {
-        if (c3dSurfaceGeometryAvailable == surfaceGeometryAvailable)
+        if (c3dSurfaceGeometryAvailable == surfaceGeometryAvailable
+            && SourceChannelsEqual(c3DSourceChannelAvailability, sourceChannels))
         {
             return;
         }
 
         c3dSurfaceGeometryAvailable = surfaceGeometryAvailable;
+        c3DSourceChannelAvailability = sourceChannels;
         if (C3DSampleVisible)
         {
             RefreshSceneContracts();
@@ -153,18 +164,42 @@ public sealed partial class MainWindowViewModel
         RefreshSceneContracts();
     }
 
-    internal void SetLazDisplayCapabilities(bool sourceColorAvailable)
+    internal void SetLazDisplayCapabilities(
+        bool sourceColorAvailable,
+        bool sourceIntensityAvailable = false,
+        IReadOnlyList<SourceQualityChannelAvailability>? sourceChannels = null)
     {
-        if (lazSourceColorAvailable == sourceColorAvailable)
+        if (lazSourceColorAvailable == sourceColorAvailable
+            && lazSourceIntensityAvailable == sourceIntensityAvailable
+            && SourceChannelsEqual(lazSourceChannelAvailability, sourceChannels))
         {
             return;
         }
 
         lazSourceColorAvailable = sourceColorAvailable;
+        lazSourceIntensityAvailable = sourceIntensityAvailable;
+        lazSourceChannelAvailability = sourceChannels;
         if (LazSampleVisible)
         {
             RefreshSceneContracts();
         }
+    }
+
+    private static bool SourceChannelsEqual(
+        IReadOnlyList<SourceQualityChannelAvailability>? left,
+        IReadOnlyList<SourceQualityChannelAvailability>? right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left is null || right is null || left.Count != right.Count)
+        {
+            return false;
+        }
+
+        return left.SequenceEqual(right);
     }
 
     public void SetLazSampleBounds(Vector3 min, Vector3 max)

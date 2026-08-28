@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Reporting.RunRecords;
 using OpenVisionLab.ThreeD.Shell.ViewModels.Workbench;
 using OpenVisionLab.ThreeD.Tools;
 
@@ -17,9 +18,11 @@ internal static class LevelSurfaceWorkbenchVerification
         };
         var passed = 0;
         var total = 0;
+        var configuredTestRoot = Environment.GetEnvironmentVariable("OPENVISIONLAB_3D_TEST_ARTIFACT_ROOT");
         var rootDirectory = Path.Combine(
-            Path.GetTempPath(),
-            "OpenVisionLab.ThreeD",
+            string.IsNullOrWhiteSpace(configuredTestRoot)
+                ? Path.Combine(Path.GetTempPath(), "OpenVisionLab.ThreeD")
+                : Path.GetFullPath(configuredTestRoot),
             "LevelSurfaceWorkbench",
             Guid.NewGuid().ToString("N"));
 
@@ -62,6 +65,17 @@ internal static class LevelSurfaceWorkbenchVerification
                 "open typed recipe",
                 workbench.TryOpenTeachingRecipe(recipePath, out var openMessage),
                 openMessage);
+            workbench.SourceQuality.EnsureSourceAsync(
+                sourcePath,
+                workbench.Source.Id,
+                workbench.Source.Unit,
+                workbench.Source.FrameId,
+                cancellationToken => workbench.SourceSession.GetOrLoadDecodedSourceAsync(
+                    workbench.Source.Path,
+                    workbench.Source.Id,
+                    workbench.Source.Unit,
+                    workbench.Source.FrameId,
+                    cancellationToken)).GetAwaiter().GetResult();
             workbench.SelectPipelineStep("step.level-surface.01");
             Check(
                 "typed PropertyGrid and two explicit references",
@@ -113,7 +127,21 @@ internal static class LevelSurfaceWorkbenchVerification
                 "explicit Preview creates output and typed transform",
                 preview
                 && workbench.CurrentLevelSurfacePreviewOutput is not null
-                && workbench.CurrentLevelSurfaceTransform?.ReferenceRegions.Count == 2,
+                && workbench.CurrentLevelSurfaceTransform?.ReferenceRegions.Count == 2
+                && workbench.CurrentLevelSurfaceLevelFrame is not null
+                && workbench.CurrentLevelSurfaceFrameChain is
+                {
+                    Source.Role: C3DCoordinateFrameRole.Source,
+                    Reference.Role: C3DCoordinateFrameRole.Reference,
+                    Result.Role: C3DCoordinateFrameRole.Result,
+                    Level.Role: C3DCoordinateFrameRole.Level,
+                    Links.Count: 3
+                }
+                && workbench.CurrentLevelSurfaceQualityEvidence is
+                {
+                    State: C3DLevelFrameQualityState.Accepted,
+                    ReferenceCoverage.Count: 2
+                },
                 workbench.LevelSurfaceExecutionSummary);
             Check(
                 "reference slope is removed",
@@ -145,6 +173,33 @@ internal static class LevelSurfaceWorkbenchVerification
                     == direct.Transform?.ContentSha256,
                 $"workbench={workbench.CurrentLevelSurfaceTransform?.ContentSha256};tools={direct.Transform?.ContentSha256}");
             Check(
+                "Workbench and Tools Level Frame parity",
+                workbench.CurrentLevelSurfaceLevelFrame?.ContentSha256
+                    == direct.LevelFrame?.ContentSha256
+                && workbench.CurrentLevelSurfaceLevelFrame?.LevelingTransformContentSha256
+                    == workbench.CurrentLevelSurfaceTransform?.ContentSha256,
+                $"workbench={workbench.CurrentLevelSurfaceLevelFrame?.ContentSha256};tools={direct.LevelFrame?.ContentSha256};transformLink={workbench.CurrentLevelSurfaceLevelFrame?.LevelingTransformContentSha256}");
+            Check(
+                "Workbench and Tools quality-evidence parity",
+                workbench.CurrentLevelSurfaceQualityEvidence?.ContentSha256
+                    == direct.QualityEvidence?.ContentSha256
+                && workbench.CurrentLevelSurfaceQualityEvidence?.LevelFrameContentSha256
+                    == workbench.CurrentLevelSurfaceLevelFrame?.ContentSha256
+                && workbench.CurrentLevelSurfaceQualityEvidence?.LevelingTransformContentSha256
+                    == workbench.CurrentLevelSurfaceTransform?.ContentSha256
+                && workbench.CurrentLevelSurfaceQualityEvidence?.State
+                    == C3DLevelFrameQualityState.Accepted,
+                $"workbench={workbench.CurrentLevelSurfaceQualityEvidence?.ContentSha256};tools={direct.QualityEvidence?.ContentSha256};state={workbench.CurrentLevelSurfaceQualityEvidence?.State}");
+            Check(
+                "Workbench and Tools named frame-chain parity",
+                workbench.CurrentLevelSurfaceFrameChain?.ContentSha256
+                    == direct.FrameChain?.ContentSha256
+                && workbench.LevelSurfaceFrameChainSummary.Contains("Source:", StringComparison.Ordinal)
+                && workbench.LevelSurfaceFrameChainSummary.Contains("Reference:", StringComparison.Ordinal)
+                && workbench.LevelSurfaceFrameChainSummary.Contains("Result:", StringComparison.Ordinal)
+                && workbench.LevelSurfaceFrameChainSummary.Contains("Level:", StringComparison.Ordinal),
+                $"workbench={workbench.CurrentLevelSurfaceFrameChain?.ContentSha256};tools={direct.FrameChain?.ContentSha256};summary={workbench.LevelSurfaceFrameChainSummary}");
+            Check(
                 "source grid and missing mask remain immutable",
                 workbench.CurrentLevelSurfacePreviewOutput is { } output
                 && output.RootSourceSha256 == source.ContentSha256
@@ -157,10 +212,30 @@ internal static class LevelSurfaceWorkbenchVerification
                 item => item.Id == "derived.leveled-height.01");
             Check(
                 "artifact exposes residual and transform evidence",
-                artifact?.Contract == "LeveledHeightField + LevelingTransform"
+                artifact?.Contract == "LeveledHeightField + LevelingTransform + LevelFrame"
+                && artifact.PreparationQualityDelta is
+                {
+                    BeforeValidSampleCount: 191,
+                    BeforeMissingSampleCount: 1,
+                    DetectedOutlierCount: null,
+                    SourceIdentityRetained: true
+                }
+                && artifact.PreparationQualityDelta.AfterValidSampleCount
+                    == workbench.CurrentLevelSurfacePreviewOutput?.ValidCount
+                && artifact.PreparationQualityDelta.AfterMissingSampleCount
+                    == workbench.CurrentLevelSurfacePreviewOutput?.MissingCount
                 && artifact.Detail.Contains("reference RMS", StringComparison.Ordinal)
                 && artifact.Detail.Contains(
                     workbench.CurrentLevelSurfaceTransform!.ContentSha256,
+                    StringComparison.Ordinal)
+                && artifact.Detail.Contains(
+                    workbench.CurrentLevelSurfaceLevelFrame!.ContentSha256,
+                    StringComparison.Ordinal)
+                && artifact.Detail.Contains(
+                    workbench.CurrentLevelSurfaceQualityEvidence!.ContentSha256,
+                    StringComparison.Ordinal)
+                && artifact.Detail.Contains(
+                    workbench.CurrentLevelSurfaceFrameChain!.ContentSha256,
                     StringComparison.Ordinal),
                 artifact?.Detail ?? "missing artifact");
             Check(
@@ -172,17 +247,32 @@ internal static class LevelSurfaceWorkbenchVerification
                 $"candidate={workbench.CurrentLevelSurfacePreviewPath}");
 
             workbench.PublishSelectedStepCommand.Execute(null);
+            var publishOutputMatches = workbench.CurrentLevelSurfacePreviewOutput?.ContentSha256
+                == direct.Output?.ContentSha256;
             Check(
                 "Publish reuses Preview without rerun",
                 workbench.IsLevelSurfacePreviewPublished
-                && workbench.CurrentLevelSurfacePreviewOutput?.ContentSha256
-                    == direct.Output?.ContentSha256,
-                workbench.LevelSurfaceExecutionSummary);
+                && publishOutputMatches,
+                $"published={workbench.IsLevelSurfacePreviewPublished};stale={workbench.IsLevelSurfacePreviewStale};outputMatches={publishOutputMatches};{workbench.LevelSurfaceExecutionSummary}");
 
             var savePath = Path.Combine(rootDirectory, "saved-level-surface.ov3d-recipe.json");
             var saved = workbench.TrySaveTeachingRecipe(
                 savePath,
                 out var saveMessage);
+            var sidecarPath = Path.Combine(
+                rootDirectory,
+                "saved-level-surface.ov3d-recipe.level-surface.derived_leveled-height_01.json");
+            Check(
+                "save writes the Level Frame sidecar",
+                saved
+                && File.Exists(sidecarPath)
+                && File.ReadAllText(sidecarPath).Contains(
+                    workbench.CurrentLevelSurfaceQualityEvidence!.ContentSha256,
+                    StringComparison.Ordinal)
+                && File.ReadAllText(sidecarPath).Contains(
+                    workbench.CurrentLevelSurfaceFrameChain!.ContentSha256,
+                    StringComparison.Ordinal),
+                saved ? sidecarPath : saveMessage);
             var reopened = saved
                 ? ToolRecipeDocumentStore.Load(savePath)
                 : null;
@@ -199,6 +289,139 @@ internal static class LevelSurfaceWorkbenchVerification
                 reopenParity,
                 saveMessage);
 
+            var restoredWorkbench = new ToolWorkbenchViewModel();
+            var restored = restoredWorkbench.TryOpenTeachingRecipe(
+                savePath,
+                out var restoreMessage);
+            Check(
+                "reopen restores published Level Frame without executing",
+                restored
+                && restoredWorkbench.IsLevelSurfacePreviewPublished
+                && restoredWorkbench.CurrentLevelSurfacePreviewOutput?.ContentSha256
+                    == workbench.CurrentLevelSurfacePreviewOutput?.ContentSha256
+                && restoredWorkbench.CurrentLevelSurfaceTransform?.ContentSha256
+                    == workbench.CurrentLevelSurfaceTransform?.ContentSha256
+                && restoredWorkbench.CurrentLevelSurfaceLevelFrame?.ContentSha256
+                    == workbench.CurrentLevelSurfaceLevelFrame?.ContentSha256
+                && restoredWorkbench.CurrentLevelSurfaceQualityEvidence?.ContentSha256
+                    == workbench.CurrentLevelSurfaceQualityEvidence?.ContentSha256
+                && restoredWorkbench.CurrentLevelSurfaceQualityEvidence?.State
+                    == workbench.CurrentLevelSurfaceQualityEvidence?.State
+                && restoredWorkbench.CurrentLevelSurfaceFrameChain?.ContentSha256
+                    == workbench.CurrentLevelSurfaceFrameChain?.ContentSha256
+                && restoredWorkbench.LevelSurfaceExecutionSummary.Contains(
+                    "without executing",
+                    StringComparison.OrdinalIgnoreCase),
+                restored ? restoredWorkbench.LevelSurfaceExecutionSummary : restoreMessage);
+
+            var sidecarJson = File.ReadAllText(sidecarPath);
+            var tamperedQualityHash = new string('0', 64);
+            File.WriteAllText(
+                sidecarPath,
+                sidecarJson.Replace(
+                    workbench.CurrentLevelSurfaceQualityEvidence!.ContentSha256,
+                    tamperedQualityHash,
+                    StringComparison.Ordinal));
+            var tamperedWorkbench = new ToolWorkbenchViewModel();
+            var tamperedOpen = tamperedWorkbench.TryOpenTeachingRecipe(
+                savePath,
+                out var tamperedMessage);
+            Check(
+                "tampered quality sidecar is rejected without execution",
+                tamperedOpen
+                && !tamperedWorkbench.IsLevelSurfacePreviewPublished
+                && tamperedWorkbench.LevelSurfaceExecutionSummary.Contains(
+                    "not restored",
+                    StringComparison.OrdinalIgnoreCase),
+                tamperedOpen ? tamperedWorkbench.LevelSurfaceExecutionSummary : tamperedMessage);
+            File.WriteAllText(sidecarPath, sidecarJson);
+
+            var tamperedFrameChainHash = new string('1', 64);
+            File.WriteAllText(
+                sidecarPath,
+                sidecarJson.Replace(
+                    workbench.CurrentLevelSurfaceFrameChain!.ContentSha256,
+                    tamperedFrameChainHash,
+                    StringComparison.Ordinal));
+            var tamperedFrameChainWorkbench = new ToolWorkbenchViewModel();
+            var tamperedFrameChainOpen = tamperedFrameChainWorkbench.TryOpenTeachingRecipe(
+                savePath,
+                out var tamperedFrameChainMessage);
+            Check(
+                "tampered frame-chain sidecar is rejected without execution",
+                tamperedFrameChainOpen
+                && !tamperedFrameChainWorkbench.IsLevelSurfacePreviewPublished
+                && tamperedFrameChainWorkbench.LevelSurfaceExecutionSummary.Contains(
+                    "not restored",
+                    StringComparison.OrdinalIgnoreCase),
+                tamperedFrameChainOpen ? tamperedFrameChainWorkbench.LevelSurfaceExecutionSummary : tamperedFrameChainMessage);
+            File.WriteAllText(sidecarPath, sidecarJson);
+
+            var orderedRunRoot = Path.Combine(rootDirectory, "ordered-runs");
+            var shell = new ShellMainWindowViewModel(
+                recentRunRecordsPath: Path.Combine(rootDirectory, "recent-runs.json"),
+                recentRecipesPath: Path.Combine(rootDirectory, "recent-recipes.json"),
+                orderedRunRecordRoot: orderedRunRoot);
+            var orderedRunCount = 0;
+            ToolRecipeOrderedGraphExecutionResult? orderedExecution = null;
+            shell.Workbench.OrderedRunCompleted += (_, args) =>
+            {
+                orderedRunCount++;
+                orderedExecution = args.Execution;
+            };
+            var orderedOpened = shell.Workbench.TryOpenTeachingRecipe(
+                savePath,
+                out var orderedOpenMessage);
+            var orderedSourceQuality = WaitForSourceQuality(shell.Workbench.SourceQuality);
+            var orderedCanRun = shell.Workbench.RunTeachingRecipeCommand.CanExecute(null);
+            var sourceBytesBeforeOrderedRun = File.ReadAllBytes(sourcePath);
+            var orderedRunCompleted = shell.Workbench.RunTeachingRecipeAsync()
+                .GetAwaiter()
+                .GetResult();
+            var orderedRecordPath = shell.Workbench.CurrentOrderedRunRecordPath;
+            var orderedRecord = ReadRunRecord(orderedRecordPath);
+            var orderedRecordStep = orderedRecord?.Steps?.SingleOrDefault();
+            var sourceBytesAfterOrderedRun = File.ReadAllBytes(sourcePath);
+            var sourceUnchangedAfterOrderedRun = sourceBytesBeforeOrderedRun.SequenceEqual(
+                sourceBytesAfterOrderedRun);
+            var transformOverlayLabel = direct.Transform is { } directTransform
+                ? $"Leveling transform {directTransform.ContentSha256[..12]}"
+                : null;
+            var levelFrameOverlayLabel = direct.LevelFrame is { } directFrame
+                ? $"Level Frame {directFrame.ContentSha256[..12]}"
+                : null;
+            Check(
+                "saved Level Surface recipe runs through the current-recipe ordered graph",
+                orderedOpened
+                && orderedSourceQuality is not null
+                && orderedCanRun
+                && orderedRunCompleted
+                && orderedRunCount == 1
+                && orderedExecution?.Status == ResultStatus.Pass
+                && orderedRecord is not null
+                && orderedRecord.SchemaVersion == "1.9"
+                && orderedRecord.Status == ResultStatus.Pass
+                && orderedRecord.Source.Sha256 == source.ContentSha256
+                && orderedRecordStep is not null
+                && orderedRecordStep.ToolId == "level-surface"
+                && orderedRecordStep.OutputContentSha256 == direct.Output?.ContentSha256
+                && orderedRecordStep.Overlays.Any(overlay =>
+                    string.Equals(overlay.Label, transformOverlayLabel, StringComparison.Ordinal))
+                && orderedExecution?.Steps.SingleOrDefault()?.LevelFrameContentSha256
+                    == direct.LevelFrame?.ContentSha256
+                && orderedExecution?.Steps.SingleOrDefault()?.LevelFrameQualityContentSha256
+                    == direct.QualityEvidence?.ContentSha256
+                && orderedExecution?.Steps.SingleOrDefault()?.FrameChainContentSha256
+                    == direct.FrameChain?.ContentSha256
+                && orderedRecordStep.LevelFrameQualityContentSha256
+                    == direct.QualityEvidence?.ContentSha256
+                && orderedRecordStep.FrameChainContentSha256
+                    == direct.FrameChain?.ContentSha256
+                && orderedRecordStep.Overlays.Any(overlay =>
+                    string.Equals(overlay.Label, levelFrameOverlayLabel, StringComparison.Ordinal))
+                && sourceUnchangedAfterOrderedRun,
+                $"opened={orderedOpened};canRun={orderedCanRun};run={orderedRunCompleted};count={orderedRunCount};execution={orderedExecution?.Status};record={orderedRecordPath};schema={orderedRecord?.SchemaVersion};status={orderedRecord?.Status};output={orderedRecordStep?.OutputContentSha256};transformOverlay={transformOverlayLabel};levelFrame={levelFrameOverlayLabel};sourceUnchanged={sourceUnchangedAfterOrderedRun};open={orderedOpenMessage}");
+
             var draft = (LevelSurfaceStepProperties)workbench.SelectedStepPropertyDraft!;
             draft.MaximumReferenceRmsResidual = 0.2;
             workbench.MarkSelectedStepParameterDraftDirty();
@@ -207,7 +430,7 @@ internal static class LevelSurfaceWorkbenchVerification
                 workbench.HasPendingStepParameterChanges
                 && !workbench.IsLevelSurfacePreviewStale
                 && workbench.IsLevelSurfacePreviewPublished,
-                workbench.StepParameterEditStatus);
+                $"pending={workbench.HasPendingStepParameterChanges};published={workbench.IsLevelSurfacePreviewPublished};stale={workbench.IsLevelSurfacePreviewStale};{workbench.StepParameterEditStatus}");
             Check(
                 "explicit parameter Apply marks Preview stale",
                 workbench.TryApplySelectedStepParameterDraft(out var applyMessage)
@@ -329,4 +552,23 @@ internal static class LevelSurfaceWorkbenchVerification
                 columnCount),
             null,
             null);
+
+    private static SourceQualityReport? WaitForSourceQuality(
+        SourceQualityWorkspaceViewModel workspace)
+    {
+        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5);
+        while (workspace.Report is null
+               && !workspace.HasError
+               && DateTimeOffset.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
+        }
+
+        return workspace.Report;
+    }
+
+    private static InspectionRunRecord? ReadRunRecord(string? path) =>
+        string.IsNullOrWhiteSpace(path) || !File.Exists(path)
+            ? null
+            : InspectionRunRecordJson.Read(path);
 }
