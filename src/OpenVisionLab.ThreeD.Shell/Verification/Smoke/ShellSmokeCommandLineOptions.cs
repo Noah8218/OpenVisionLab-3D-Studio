@@ -93,6 +93,8 @@ internal sealed class ShellSmokeCommandLineOptions
     public string? OrientedBoxPointerSmokeReportPath =>
         GetValue("--smoke-oriented-box-pointer-report");
     public string? SmokeSelectToolId => GetValue("--smoke-select-tool");
+    public string? PreparationPresetAssistantSmoke =>
+        GetValue("--smoke-preparation-preset-assistant");
     public string? WorkbenchInteractionReportPath => GetValue("--smoke-workbench-interaction-report");
     public string? SurfaceMatchCollectionPath =>
         GetValue("--smoke-surface-match-collection");
@@ -178,6 +180,10 @@ internal sealed class ShellSmokeCommandLineOptions
         HasFlag("--smoke-current-recipe-run-pressed");
     public bool SupportBundlePressedSmoke =>
         HasFlag("--smoke-support-bundle-pressed");
+    public bool ValidationThresholdAssistantPressedSmoke =>
+        HasFlag("--smoke-validation-threshold-assistant-pressed");
+    public bool ValidationThresholdAssistantDisabledSmoke =>
+        HasFlag("--smoke-validation-threshold-assistant-disabled");
     public bool FirstRecipeSetupRememberSmoke => HasFlag("--smoke-first-recipe-remember");
     public bool FirstRecipeStarterPopupSmoke => HasFlag("--smoke-first-recipe-starter-popup");
     public bool FirstRecipeCreatePressedSmoke => HasFlag("--smoke-first-recipe-create-pressed");
@@ -252,6 +258,7 @@ internal sealed class ShellSmokeCommandLineOptions
         || OrientedBoxPointerSmokeReportPath is not null
         || ExpandSelectedToolParametersSmoke
         || FocusSelectedToolParameterSearchSmoke
+        || PreparationPresetAssistantSmoke is not null
         || SurfaceMatchExperimentPreviewSmoke
         || SurfaceMatchExperimentFocusHoverSmoke
         || SurfaceMatchCollectionPopupSmoke
@@ -263,6 +270,8 @@ internal sealed class ShellSmokeCommandLineOptions
         || CurrentRecipeRunReadySmoke
         || CurrentRecipeRunPressedSmoke
         || SupportBundlePressedSmoke
+        || ValidationThresholdAssistantPressedSmoke
+        || ValidationThresholdAssistantDisabledSmoke
         || WorkbenchRunLogSmoke
         || WorkbenchInteractionReportPath is not null
         || SurfaceMatchCollectionPath is not null;

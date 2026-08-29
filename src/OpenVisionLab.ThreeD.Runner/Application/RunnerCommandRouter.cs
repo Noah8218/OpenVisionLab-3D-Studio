@@ -32,6 +32,8 @@ internal static class RunnerCommandRouter
         var heightThresholdBackgroundRemovalSpecificationPath = ReadOption(args, "--height-threshold-background-removal-spec");
         var heightBackgroundSubtractionSpecificationPath = ReadOption(args, "--height-background-subtraction-spec");
         var pointCloudBackgroundFilterSpecificationPath = ReadOption(args, "--point-cloud-background-filter-spec");
+        var pointCloudVoxelDownsampleSpecificationPath = ReadOption(args, "--point-cloud-voxel-downsample-spec");
+        var heightMapNormalPreparationSpecificationPath = ReadOption(args, "--height-map-normal-preparation-spec");
         var regionGrowingComponentSpecificationPath = ReadOption(args, "--region-growing-component-spec");
         var c3DMapProbePath = ReadOption(args, "--c3d-map-probe");
         var c3DMapPlyPath = ReadOption(args, "--ply");
@@ -134,7 +136,10 @@ internal static class RunnerCommandRouter
         var verifyC3DHeightThresholdBackgroundRemoval = args.Contains("--verify-c3d-height-threshold-background-removal", StringComparer.OrdinalIgnoreCase);
         var verifyC3DHeightBackgroundSubtraction = args.Contains("--verify-c3d-height-background-subtraction", StringComparer.OrdinalIgnoreCase);
         var verifyC3DPointCloudBackgroundFilter = args.Contains("--verify-c3d-point-cloud-background-filter", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DPointCloudVoxelDownsample = args.Contains("--verify-c3d-point-cloud-voxel-downsample", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DHeightMapNormalPreparation = args.Contains("--verify-c3d-height-map-normal-preparation", StringComparer.OrdinalIgnoreCase);
         var verifyC3DRegionGrowingComponent = args.Contains("--verify-c3d-region-growing-component", StringComparer.OrdinalIgnoreCase);
+        var verifyC3DRegionTransformPropagation = args.Contains("--verify-c3d-region-transform-propagation", StringComparer.OrdinalIgnoreCase);
         var verifyC3DInvalidCellMap = args.Contains("--verify-c3d-invalid-cell-map", StringComparer.OrdinalIgnoreCase);
         var verifySurfaceModelFoundation = args.Contains(
             "--verify-surface-model-foundation",
@@ -293,6 +298,32 @@ internal static class RunnerCommandRouter
 
             return C3DPointCloudBackgroundFilterRunnerExecution.Run(
                 pointCloudBackgroundFilterSpecificationPath,
+                reportPath);
+        }
+
+        if (pointCloudVoxelDownsampleSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --point-cloud-voxel-downsample-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DPointCloudVoxelDownsampleRunnerExecution.Run(
+                pointCloudVoxelDownsampleSpecificationPath,
+                reportPath);
+        }
+
+        if (heightMapNormalPreparationSpecificationPath is not null)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --height-map-normal-preparation-spec <json> --report <path>");
+                return 2;
+            }
+
+            return C3DHeightMapNormalPreparationRunnerExecution.Run(
+                heightMapNormalPreparationSpecificationPath,
                 reportPath);
         }
 
@@ -832,6 +863,28 @@ internal static class RunnerCommandRouter
             return C3DPointCloudBackgroundFilterGoldenVerification.Run(reportPath);
         }
 
+        if (verifyC3DPointCloudVoxelDownsample)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-voxel-downsample --report <path>");
+                return 2;
+            }
+
+            return C3DPointCloudVoxelDownsampleGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DHeightMapNormalPreparation)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-height-map-normal-preparation --report <path>");
+                return 2;
+            }
+
+            return C3DHeightMapNormalPreparationGoldenVerification.Run(reportPath);
+        }
+
         if (verifyC3DRegionGrowingComponent)
         {
             if (reportPath is null)
@@ -841,6 +894,17 @@ internal static class RunnerCommandRouter
             }
 
             return C3DRegionGrowingComponentGoldenVerification.Run(reportPath);
+        }
+
+        if (verifyC3DRegionTransformPropagation)
+        {
+            if (reportPath is null)
+            {
+                Console.Error.WriteLine("Usage: OpenVisionLab.ThreeD.Runner --verify-c3d-region-transform-propagation --report <path>");
+                return 2;
+            }
+
+            return C3DRegionTransformPropagationGoldenVerification.Run(reportPath);
         }
 
         if (verifyC3DInvalidCellMap)
@@ -1311,6 +1375,8 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-threshold-background-removal-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-background-subtraction-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --point-cloud-background-filter-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --point-cloud-voxel-downsample-spec <json> --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --height-map-normal-preparation-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --region-growing-component-spec <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --aligned-point-repeatability-study <json> --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-plane-flatness --report <path>");
@@ -1339,6 +1405,8 @@ internal static class RunnerCommandRouter
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-threshold-background-removal --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-background-subtraction --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-background-filter --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-point-cloud-voxel-downsample --report <path>");
+        writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-height-map-normal-preparation --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-c3d-region-growing-component --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-mesh-deviation --report <path>");
         writer.WriteLine("   or: OpenVisionLab.ThreeD.Runner --verify-nominal-actual-comparison --report <path>");

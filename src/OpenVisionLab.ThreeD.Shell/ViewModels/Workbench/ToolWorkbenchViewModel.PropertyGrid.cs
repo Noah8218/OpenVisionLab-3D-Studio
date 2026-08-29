@@ -127,6 +127,10 @@ public sealed partial class ToolWorkbenchViewModel
             case nameof(ToolWorkbenchStepPropertySession.HasPendingChanges):
                 OnPropertyChanged(nameof(HasPendingStepParameterChanges));
                 OnPropertyChanged(nameof(HasUncommittedRecipeChanges));
+                if (!stepPropertySession.HasPendingChanges)
+                {
+                    ResetPreparationPresetAssistant();
+                }
                 applySelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
                 discardSelectedStepParameterDraftCommand?.RaiseCanExecuteChanged();
                 RefreshValidationThresholdCorrectionCommands();
@@ -252,8 +256,11 @@ public sealed partial class ToolWorkbenchViewModel
         NotifyValidationThresholdDraftDiscarded(stepId);
     }
 
-    private void RefreshSelectedStepPropertyDraft(string? status = null) =>
+    private void RefreshSelectedStepPropertyDraft(string? status = null)
+    {
+        ResetPreparationPresetAssistant();
         stepPropertySession.Refresh(SelectedPipelineStep, status);
+    }
 
     private void SetParameterDraftStatus(string status) =>
         stepPropertySession.SetStatus(status);

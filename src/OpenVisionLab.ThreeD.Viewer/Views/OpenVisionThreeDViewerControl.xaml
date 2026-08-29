@@ -514,10 +514,11 @@
                             <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.Screenshot, Korean='화면 캡처', English='Screenshot'}"
                                       Command="{Binding ScreenshotCommand}" />
                             <Separator />
-                            <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 높이', English='ROI overlay height'}"
+                            <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 Y 위치 · 보기 전용', English='ROI overlay Y position · view only'}"
                                       Visibility="{Binding SelectedTeachingGridRectangleVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                                       ToolTip="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightOffsetTip, Korean='보기 전용 Y축 위치 오프셋입니다. ROI 크기, 측정값, 레시피는 바뀌지 않습니다.', English='View-only Y-position offset. ROI size, measurement, and recipe are unchanged.'}"
-                                      AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 높이 · 보기 전용', English='ROI overlay height · view only'}">
+                                      AutomationProperties.AutomationId="RoiOverlayYPositionMenu"
+                                      AutomationProperties.Name="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeight, Korean='ROI 오버레이 Y 위치 · 보기 전용', English='ROI overlay Y position · view only'}">
                                 <MenuItem Header="{localization:ViewerText Key=ThreeD.Viewer.RoiDisplayHeightDecrease, Korean='아래로', English='Lower'}"
                                           Click="DecreaseTeachingRoiDisplayHeight_Click"
                                           AutomationProperties.AutomationId="TeachingRoiDisplayHeightDecrease"

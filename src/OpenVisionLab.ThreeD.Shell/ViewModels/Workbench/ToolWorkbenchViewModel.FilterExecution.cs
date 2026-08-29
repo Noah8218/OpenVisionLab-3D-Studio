@@ -673,6 +673,7 @@ public sealed partial class ToolWorkbenchViewModel
         setFilterKernel3Command.RaiseCanExecuteChanged();
         setFilterKernel5Command.RaiseCanExecuteChanged();
         setFilterKernel7Command.RaiseCanExecuteChanged();
+        RefreshPreparationPresetCommands();
     }
 
     private void SetFilterSummary(string value) =>

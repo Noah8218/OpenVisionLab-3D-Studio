@@ -859,6 +859,47 @@ internal static class ToolRecipeValidationSetVerification
                     candidate =>
                         candidate.CandidateId
                         == completenessCoverageCandidate.CandidateId);
+            var completenessBeforeAssistantProposalSummary =
+                completenessWorkbench.ValidationSetSummary;
+            var completenessBeforeAssistantProposalDirty =
+                completenessWorkbench.IsDirty;
+            Check(
+                "assistant reaches Propose after explicit analysis without an implicit proposal",
+                completenessWorkbench.HasValidationThresholdAssistantAnalysis
+                && completenessWorkbench.ValidationThresholdAssistantStage
+                    == ValidationThresholdAssistantStage.Propose
+                && !completenessWorkbench.HasValidationThresholdAssistantProposal
+                && completenessWorkbench.ProposeValidationThresholdCandidateCommand
+                    .CanExecute(null),
+                $"stage={completenessWorkbench.ValidationThresholdAssistantStage};analysis={completenessWorkbench.HasValidationThresholdAssistantAnalysis};proposal={completenessWorkbench.HasValidationThresholdAssistantProposal}");
+            completenessWorkbench.ProposeValidationThresholdCandidateCommand
+                .Execute(null);
+            Check(
+                "Propose creates a transient draft proposal without recipe or execution mutation",
+                completenessWorkbench.HasValidationThresholdAssistantProposal
+                && completenessWorkbench.ValidationThresholdAssistantStage
+                    == ValidationThresholdAssistantStage.Propose
+                && !completenessWorkbench.IsValidationThresholdReviewActive
+                && !completenessWorkbench.HasPendingStepParameterChanges
+                && completenessWorkbench.IsDirty
+                    == completenessBeforeAssistantProposalDirty
+                && completenessWorkbench.ValidationSetSummary
+                    == completenessBeforeAssistantProposalSummary,
+                completenessWorkbench.ValidationThresholdCorrectionSummary);
+            completenessWorkbench.CancelValidationThresholdReviewCommand
+                .Execute(null);
+            Check(
+                "assistant Cancel clears a proposal and preserves the analyzed state",
+                !completenessWorkbench.HasValidationThresholdAssistantProposal
+                && completenessWorkbench.ValidationThresholdAssistantStage
+                    == ValidationThresholdAssistantStage.Propose
+                && !completenessWorkbench.IsValidationThresholdReviewActive
+                && !completenessWorkbench.HasPendingStepParameterChanges
+                && completenessWorkbench.IsDirty
+                    == completenessBeforeAssistantProposalDirty
+                && completenessWorkbench.ValidationSetSummary
+                    == completenessBeforeAssistantProposalSummary,
+                completenessWorkbench.ValidationThresholdCorrectionSummary);
             var completenessBeforeReview =
                 completenessWorkbench.ValidationSetSummary;
             completenessWorkbench.ReviewValidationThresholdCandidateCommand
@@ -1129,9 +1170,11 @@ internal static class ToolRecipeValidationSetVerification
                         parameter.Name == "MaximumThickness").Value == "4"
                 && reopenedThresholdWorkbench
                     .ValidationThresholdHeldOutSamples.Count == 1
-                && reopenedThresholdWorkbench.ValidationSetSamples.All(
-                    sample => sample.Status == "Pending"),
-                thresholdReopenMessage);
+                 && reopenedThresholdWorkbench.ValidationSetSamples.All(
+                     sample => sample.Status == "Pending")
+                 && reopenedThresholdWorkbench.ValidationThresholdAssistantStage
+                     == ValidationThresholdAssistantStage.Analyze,
+                 thresholdReopenMessage);
 
             var failedDraftDocument = document with
             {
@@ -1686,7 +1729,7 @@ internal static class ToolRecipeValidationSetVerification
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
         File.WriteAllLines(reportPath, lines);
         summary = $"Validation Set verification: {passed}/{total} passed | {Path.GetFullPath(reportPath)}";
-        return passed == total && total == 87;
+        return passed == total && total == 90;
     }
 
     private static ToolRecipeThresholdCandidate CreateMappingCandidate(

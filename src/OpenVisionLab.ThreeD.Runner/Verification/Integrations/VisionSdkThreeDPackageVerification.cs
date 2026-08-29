@@ -48,6 +48,7 @@ internal static class VisionSdkThreeDPackageVerification
             ("dual-surface-thickness-inspection-tool", VerifyDualSurfaceThicknessInspectionTool),
             ("height-deviation-inspection-tool", VerifyHeightDeviationInspectionTool),
             ("declared-mesh-normal-quality-tool", VerifyDeclaredMeshNormalQualityTool),
+            ("height-map-normal-preparation-tool", VerifyHeightMapNormalPreparationTool),
             ("landmark-correspondence-validation-tool", VerifyLandmarkCorrespondenceValidationTool),
             ("repeatability-statistics-tool", VerifyRepeatabilityStatisticsTool),
             ("labeled-evidence-statistics-tool", VerifyLabeledEvidenceStatisticsTool),
@@ -85,8 +86,8 @@ internal static class VisionSdkThreeDPackageVerification
     {
         var passed = VisionSdkHeightMapInspection.PackageAssemblyName == "OpenVisionLab.Vision3D"
             && VisionSdkHeightMapInspection.PackageId == "OpenVisionLab.Vision3D"
-            && VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260828.point-cloud-background-filter.1"
-            && VisionSdkHeightMapInspection.PackageSourceCommit == "35f1eef6626db710ac18452cd1e729530f2c0f2f";
+            && VisionSdkHeightMapInspection.PackageVersion == "3.0.1-dev.20260829.normal-preparation.1"
+            && VisionSdkHeightMapInspection.PackageSourceCommit == "6da3bcf521efb88681a17e4a7b23a091e7fcbacf";
         return (passed, $"assembly={VisionSdkHeightMapInspection.PackageAssemblyName},version={VisionSdkHeightMapInspection.PackageVersion},commit={VisionSdkHeightMapInspection.PackageSourceCommit}");
     }
 
@@ -1044,6 +1045,71 @@ internal static class VisionSdkThreeDPackageVerification
             && reversed.State == DeclaredMeshNormalQualityState.Invalid
             && reversed.ReversedCornerCount == 6;
         return (passed, $"valid={valid.State},aligned={valid.ConsistentCornerCount}/{valid.ComparableCornerCount},reversed={reversed.State}:{reversed.ReversedCornerCount}");
+    }
+
+    private static (bool Passed, string Evidence) VerifyHeightMapNormalPreparationTool()
+    {
+        var values = new double[9];
+        for (var row = 0; row < 3; row++)
+        {
+            for (var column = 0; column < 3; column++)
+            {
+                values[(row * 3) + column] = 10d + (2d * column) + (3d * row);
+            }
+        }
+
+        var expected = new ThreeDPoint(
+            -2d / Math.Sqrt(14d),
+            1d / Math.Sqrt(14d),
+            -3d / Math.Sqrt(14d));
+        var tool = new HeightMapNormalPreparationTool();
+        var valid = tool.Execute(
+            new HeightMap3D(
+                3,
+                3,
+                0d,
+                0d,
+                1d,
+                1d,
+                values,
+                "grid-index",
+                Unit,
+                FrameId,
+                SourceId),
+            new HeightMapNormalPreparationOptions
+            {
+                ExpectedNormal = expected,
+                MinimumAlignmentCosine = 0.999999
+            });
+        var reversed = tool.Execute(
+            new HeightMap3D(
+                3,
+                3,
+                0d,
+                0d,
+                1d,
+                1d,
+                values,
+                "grid-index",
+                Unit,
+                FrameId,
+                SourceId),
+            new HeightMapNormalPreparationOptions
+            {
+                ExpectedNormal = new ThreeDPoint(-expected.X, -expected.Y, -expected.Z),
+                MinimumAlignmentCosine = 0.999999
+            });
+        var passed = valid.Success
+            && valid.CalculatedNormalCount == 9
+            && valid.CentralDerivativeCount == 6
+            && valid.OneSidedDerivativeCount == 12
+            && valid.MissingDerivativeCount == 0
+            && valid.ValidationState == HeightMapNormalValidationState.Passed
+            && valid.ConsistentNormalCount == 9
+            && reversed.Success
+            && reversed.ValidationState == HeightMapNormalValidationState.Failed
+            && reversed.ReversedNormalCount == 9;
+        return (passed, $"valid={valid.Success};calculated={valid.CalculatedNormalCount};central={valid.CentralDerivativeCount};oneSided={valid.OneSidedDerivativeCount};validation={valid.ValidationState};reversed={reversed.ValidationState}:{reversed.ReversedNormalCount}");
     }
 
     private static (bool Passed, string Evidence) VerifyLandmarkCorrespondenceValidationTool()

@@ -10,6 +10,12 @@ public sealed record ThreeDIntegrationTransactionSummary(
     bool HasAcknowledgement,
     bool HasResult);
 
+public sealed record ThreeDIntegrationEvidenceArtifact(
+    string Role,
+    string ArtifactId,
+    string SourcePath,
+    string RelativePath);
+
 /// <summary>
 /// Owns explicit 3D-side file exchange. Reading never changes the workspace or
 /// invokes Preview, Publish, or Run. A completed Result is published only when
@@ -207,7 +213,8 @@ public static class ThreeDIntegrationExchange
         string exchangeRoot,
         Guid transactionId,
         IntegrationApplicationIdentity producer,
-        string existingRunRecordPath)
+        string existingRunRecordPath,
+        IReadOnlyList<ThreeDIntegrationEvidenceArtifact>? additionalEvidence = null)
     {
         ArgumentNullException.ThrowIfNull(producer);
         ArgumentException.ThrowIfNullOrWhiteSpace(existingRunRecordPath);
@@ -241,6 +248,13 @@ public static class ThreeDIntegrationExchange
         var temporaryPath = Path.Combine(
             artifactsDirectory,
             $".3d-run-record.{Guid.NewGuid():N}.tmp");
+        if (File.Exists(targetPath))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.InvalidState,
+                "The 3D Run Record artifact already exists for this transaction.");
+        }
+        var copiedEvidence = new List<(string TargetPath, string TemporaryPath)>();
         try
         {
             File.Copy(
@@ -274,7 +288,10 @@ public static class ThreeDIntegrationExchange
                         metric.Value,
                         metric.Unit))
                     .ToArray(),
-                [],
+                CopyAdditionalEvidence(
+                    transactionDirectory,
+                    additionalEvidence,
+                    copiedEvidence),
                 null);
             ThrowIfInvalid(IntegrationContractValidator.ValidateV2Sequence(
                 handoff,
@@ -290,8 +307,86 @@ public static class ThreeDIntegrationExchange
         {
             TryDeleteFile(targetPath);
             TryDeleteFile(temporaryPath);
+            foreach (var evidence in copiedEvidence)
+            {
+                TryDeleteFile(evidence.TargetPath);
+                TryDeleteFile(evidence.TemporaryPath);
+            }
             throw;
         }
+    }
+
+    private static IReadOnlyList<IntegrationArtifactReference> CopyAdditionalEvidence(
+        string transactionDirectory,
+        IReadOnlyList<ThreeDIntegrationEvidenceArtifact>? additionalEvidence,
+        List<(string TargetPath, string TemporaryPath)> copiedEvidence)
+    {
+        if (additionalEvidence is null || additionalEvidence.Count == 0)
+        {
+            return [];
+        }
+
+        var references = new List<IntegrationArtifactReference>(additionalEvidence.Count);
+        foreach (var evidence in additionalEvidence)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(evidence.Role);
+            ArgumentException.ThrowIfNullOrWhiteSpace(evidence.ArtifactId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(evidence.SourcePath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(evidence.RelativePath);
+            EnsureNoReparsePointsForExternalFile(evidence.SourcePath);
+
+            var targetPath = ResolveEvidenceTargetPath(
+                transactionDirectory,
+                evidence.RelativePath);
+            if (File.Exists(targetPath))
+            {
+                throw new IntegrationContractException(
+                    IntegrationErrorCode.InvalidState,
+                    $"The Result evidence artifact already exists: {evidence.RelativePath}");
+            }
+            var artifactsDirectory = Path.Combine(
+                transactionDirectory,
+                IntegrationTransactionLayout.ArtifactsDirectoryName);
+            var temporaryPath = Path.Combine(
+                artifactsDirectory,
+                $".{Path.GetFileName(targetPath)}.{Guid.NewGuid():N}.tmp");
+            copiedEvidence.Add((targetPath, temporaryPath));
+            File.Copy(
+                Path.GetFullPath(evidence.SourcePath),
+                temporaryPath,
+                overwrite: false);
+            File.Move(temporaryPath, targetPath);
+            references.Add(CreateArtifactReference(
+                evidence.Role,
+                evidence.ArtifactId,
+                targetPath,
+                evidence.RelativePath));
+        }
+
+        return references;
+    }
+
+    private static string ResolveEvidenceTargetPath(
+        string transactionDirectory,
+        string relativePath)
+    {
+        var transactionRoot = Path.GetFullPath(transactionDirectory);
+        var artifactsRoot = Path.GetFullPath(Path.Combine(
+            transactionRoot,
+            IntegrationTransactionLayout.ArtifactsDirectoryName));
+        var path = Path.GetFullPath(Path.Combine(
+            transactionRoot,
+            relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        var prefix = artifactsRoot.TrimEnd(Path.DirectorySeparatorChar)
+                     + Path.DirectorySeparatorChar;
+        if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.UnsafeArtifactPath,
+                "Additional Result evidence must stay inside the artifacts directory.");
+        }
+
+        return path;
     }
 
     private static void ValidateRunRecordCorrelation(

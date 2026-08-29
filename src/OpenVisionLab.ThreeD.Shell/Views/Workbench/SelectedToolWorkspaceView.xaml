@@ -1037,12 +1037,97 @@
                                                Foreground="{DynamicResource ThreeD.AccentBrush}"
                                                Text="{Binding SelectedStepAdapterStatus}" />
                                 </Grid>
-                                <propertyGrid:RecipeStepPropertyGridHost x:Name="StepPropertyGrid"
-                                                                         Height="210"
-                                                                         SelectedObject="{Binding SelectedToolWorkspace.ParameterDraft}"
-                                                                         PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
-                                <TextBlock Margin="0,5,0,0"
-                                           FontSize="9.5"
+                                 <propertyGrid:RecipeStepPropertyGridHost x:Name="StepPropertyGrid"
+                                                                          Height="210"
+                                                                          SelectedObject="{Binding SelectedToolWorkspace.ParameterDraft}"
+                                                                          PropertyValueChangedCommand="{Binding MarkSelectedStepParameterDraftDirtyCommand}" />
+                                 <Border Margin="0,7,0,0"
+                                         Padding="8"
+                                         Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                         BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                                         BorderThickness="1"
+                                         CornerRadius="3"
+                                         Visibility="{Binding IsPreparationPresetAssistantVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                         AutomationProperties.AutomationId="PreparationPresetAssistant"
+                                         AutomationProperties.Name="Preparation preset draft assistant">
+                                     <StackPanel>
+                                         <Grid>
+                                             <Grid.ColumnDefinitions>
+                                                 <ColumnDefinition Width="*" />
+                                                 <ColumnDefinition Width="Auto" />
+                                             </Grid.ColumnDefinitions>
+                                             <TextBlock FontSize="10"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.PreparationPresetAssistant, Korean='준비 프리셋 초안', English='Preparation preset draft'}" />
+                                             <TextBlock Grid.Column="1"
+                                                        Margin="8,0,0,0"
+                                                        FontSize="9"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                                        Text="{Binding PreparationPresetAssistantStageText}" />
+                                         </Grid>
+                                         <TextBlock Margin="0,4,0,0"
+                                                    FontSize="9"
+                                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                    Text="{Binding PreparationPresetAssistantSummary}"
+                                                    TextWrapping="Wrap" />
+                                         <Grid Margin="0,6,0,0">
+                                             <Grid.ColumnDefinitions>
+                                                 <ColumnDefinition Width="Auto" />
+                                                 <ColumnDefinition Width="*" />
+                                             </Grid.ColumnDefinitions>
+                                             <TextBlock VerticalAlignment="Center"
+                                                        Margin="0,0,7,0"
+                                                        FontSize="9"
+                                                        Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                        Text="{views:ThreeDText Key=ThreeD.Workspace.Preset, Korean='프리셋', English='Preset'}" />
+                                             <ComboBox Grid.Column="1"
+                                                       MinHeight="30"
+                                                       ItemsSource="{Binding PreparationPresetOptions}"
+                                                       SelectedItem="{Binding SelectedPreparationPreset, Mode=TwoWay}"
+                                                       DisplayMemberPath="DisplayName"
+                                                       IsEnabled="{Binding IsPreparationPresetAnalysisReady}"
+                                                       ToolTip="{Binding SelectedPreparationPreset.Detail}"
+                                                       AutomationProperties.AutomationId="PreparationPresetSelector"
+                                                       AutomationProperties.Name="Select a Filter preparation preset" />
+                                         </Grid>
+                                         <WrapPanel Margin="0,6,0,0">
+                                             <Button Margin="0,0,5,5"
+                                                     Content="{views:ThreeDText Key=ThreeD.Command.Analyze, Korean='분석', English='Analyze'}"
+                                                     Command="{Binding AnalyzePreparationPresetsCommand}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.AnalyzePreparationPresetsTip, Korean='현재 Filter 초안에 적용할 수 있는 준비 프리셋을 확인합니다. 실행하지 않습니다.', English='Inspect the preparation presets available for the current Filter draft without executing.'}"
+                                                     AutomationProperties.AutomationId="AnalyzePreparationPresets"
+                                                     AutomationProperties.Name="Analyze preparation presets" />
+                                             <Button Margin="0,0,5,5"
+                                                     Content="{views:ThreeDText Key=ThreeD.Command.Propose, Korean='제안', English='Propose'}"
+                                                     Command="{Binding ProposePreparationPresetCommand}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ProposePreparationPresetTip, Korean='선택한 프리셋을 초안 제안으로 준비합니다. 레시피와 실행은 변경하지 않습니다.', English='Prepare the selected preset as a draft proposal without changing the recipe or execution.'}"
+                                                     AutomationProperties.AutomationId="ProposePreparationPreset"
+                                                     AutomationProperties.Name="Propose preparation preset" />
+                                             <Button Margin="0,0,5,5"
+                                                     Content="{views:ThreeDText Key=ThreeD.Command.Review, Korean='검토', English='Review'}"
+                                                     Command="{Binding ReviewPreparationPresetCommand}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ReviewPreparationPresetTip, Korean='제안 내용을 확인합니다. 검토만으로는 초안이나 레시피를 변경하지 않습니다.', English='Review the proposal without changing the draft or recipe.'}"
+                                                     AutomationProperties.AutomationId="ReviewPreparationPreset"
+                                                     AutomationProperties.Name="Review preparation preset" />
+                                             <Button Margin="0,0,5,5"
+                                                     Content="{views:ThreeDText Key=ThreeD.Command.Cancel, Korean='취소', English='Cancel'}"
+                                                     Command="{Binding CancelPreparationPresetReviewCommand}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.CancelPreparationPresetTip, Korean='임시 프리셋 제안과 검토 상태만 취소합니다. 레시피와 실행은 변경하지 않습니다.', English='Cancel the transient preset proposal and review state without changing the recipe or execution.'}"
+                                                     AutomationProperties.AutomationId="CancelPreparationPresetReview"
+                                                     AutomationProperties.Name="Cancel preparation preset review" />
+                                             <Button Margin="0,0,0,5"
+                                                     Content="{views:ThreeDText Key=ThreeD.Command.ApplyDraft, Korean='초안 적용', English='Apply draft'}"
+                                                     Command="{Binding ApplyPreparationPresetDraftCommand}"
+                                                     ToolTip="{views:ThreeDText Key=ThreeD.Command.ApplyPreparationPresetDraftTip, Korean='검토한 프리셋을 PropertyGrid 초안에만 적용합니다. 일반 Apply 전에는 레시피가 바뀌지 않습니다.', English='Apply the reviewed preset to the PropertyGrid draft only. The recipe stays unchanged until normal Apply.'}"
+                                                     AutomationProperties.AutomationId="ApplyPreparationPresetDraft"
+                                                     AutomationProperties.Name="Apply preparation preset to draft" />
+                                         </WrapPanel>
+                                     </StackPanel>
+                                 </Border>
+                                 <TextBlock Margin="0,5,0,0"
+                                            FontSize="9.5"
                                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                            Text="{Binding SelectedToolWorkspace.ParameterStatus}"
                                            TextWrapping="Wrap" />
@@ -1627,6 +1712,11 @@
                                 <TextBlock FontSize="10"
                                            FontWeight="SemiBold"
                                            Text="{views:ThreeDText Key=ThreeD.Workspace.NumericRoi, Korean='ROI 숫자 편집 · X=열, Z=행', English='Numeric ROI · X=column, Z=row'}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           FontSize="8.5"
+                                           Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                           Text="{views:ThreeDText Key=ThreeD.Workspace.GridRectangleOverlayBoundary, Korean='GridRectangle은 X/Z 바닥면만 저장합니다. Viewer Y 위치는 보기 전용이며 저장 체적 범위를 만들거나 바꾸지 않습니다.', English='GridRectangle stores only the X/Z footprint. Viewer Y position is view-only; it does not create or change a persisted volume extent.'}"
+                                           TextWrapping="Wrap" />
                                 <Grid Margin="0,6,0,0" IsEnabled="{Binding IsTeachingGridRectangleEditorEnabled}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1827,6 +1917,11 @@
                                         <TextBlock FontSize="10"
                                                    FontWeight="SemiBold"
                                                    Text="{views:ThreeDText Key=ThreeD.Workspace.OrientedBoxRegions, Korean='3D 박스 영역', English='3D Box Regions'}" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="8.5"
+                                                   Foreground="{DynamicResource ThreeD.MutedTextBrush}"
+                                                   Text="{views:ThreeDText Key=ThreeD.Workspace.OrientedBoxPersistedVolumeBoundary, Korean='중심 XYZ와 반길이 XYZ가 저장되는 3D 체적입니다. GridRectangle의 보기 전용 Y 위치와 다릅니다.', English='Persisted 3D volume: center XYZ and half-extents XYZ. This is separate from the GridRectangle view-only Y position.'}"
+                                                   TextWrapping="Wrap" />
                                         <TextBlock Margin="0,2,0,0"
                                                    FontSize="8.5"
                                                    Foreground="{DynamicResource ThreeD.MutedTextBrush}"

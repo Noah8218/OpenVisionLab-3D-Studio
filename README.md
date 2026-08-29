@@ -18,11 +18,20 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.2.0-dev`
+Current version: `v0.3.0-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.3.0-dev` (2026-08-29)
+
+- Adds deterministic propagation of a selected connected region through a
+  published affine transform into a separate immutable result artifact.
+- Preserves exact region membership and missing-cell semantics with JSON
+  round-trip identity and fail-closed source/frame/unit guards.
+- Keeps re-grid, calibration, and physical-metrology claims outside this
+  software-only development scope.
 
 #### `v0.2.0-dev` (2026-08-28)
 

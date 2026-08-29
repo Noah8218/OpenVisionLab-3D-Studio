@@ -5,11 +5,13 @@ using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Reporting.Integration;
 using OpenVisionLab.ThreeD.Tools;
 
-if (args.Length != 4
-    || !string.Equals(args[0], "--consume-3d", StringComparison.OrdinalIgnoreCase))
+if (args.Length is not (4 or 5)
+    || !string.Equals(args[0], "--consume-3d", StringComparison.OrdinalIgnoreCase)
+    || args.Length == 5
+        && !string.Equals(args[4], "--require-projection", StringComparison.OrdinalIgnoreCase))
 {
     Console.Error.WriteLine(
-        "Usage: ThreeDIntegrationConsumerSmoke --consume-3d <exchangeRoot> <manifestPath> <evidencePath>");
+        "Usage: ThreeDIntegrationConsumerSmoke --consume-3d <exchangeRoot> <manifestPath> <evidencePath> [--require-projection]");
     return 2;
 }
 
@@ -96,6 +98,29 @@ try
             && persistedResult.Correlation.InputKind == IntegrationInspectionInputKind.HeightMap,
         "The persisted Result correlation is not ThreeD/HeightMap.");
 
+    var projectionArtifact = persistedResult.Evidence.SingleOrDefault(artifact =>
+        string.Equals(
+            artifact.Role,
+            ThreeDCoordinateProjectionContract.ResultEvidenceRole,
+            StringComparison.Ordinal));
+    ThreeDCoordinateProjectionResult? projection = null;
+    if (projectionArtifact is not null)
+    {
+        projection = ThreeDCoordinateProjectionContract.ReadResult(
+            ResolveTransactionArtifactPath(transactionDirectory, projectionArtifact));
+        Require(
+            projection.ThreeDTransactionId == manifest.TransactionId.ToString("D")
+                && projection.ThreeDRunId == persistedResult.RunId
+                && projection.TwoDToThreeD.Count > 0
+                && projection.ThreeDToTwoD.Count > 0,
+            "The coordinate projection evidence is not correlated or does not contain both directions.");
+    }
+    if (args.Length == 5 && projection is null)
+    {
+        throw new InvalidDataException(
+            "The requested coordinate projection evidence was not published.");
+    }
+
     var sourcePath = ResolveTransactionArtifactPath(transactionDirectory, sourceArtifact);
     var snapshot = C3DHeightFieldSnapshot.LoadIdentified(
         sourcePath,
@@ -146,6 +171,11 @@ try
         .AppendLine($"inspectionMaximumPeakToValley={recipe.Step.Acceptance.MaximumPeakToValley:R}")
         .AppendLine($"inspectionRoi=row:{recipe.Step.Roi.Row},column:{recipe.Step.Roi.Column},rows:{recipe.Step.Roi.RowCount},columns:{recipe.Step.Roi.ColumnCount}")
         .AppendLine($"inspectionMinimumValidSamples={recipe.Step.MinimumValidSamples}")
+        .AppendLine($"projectionEvidence={(projection is not null)}")
+        .AppendLine($"projectionEvidenceRelativePath={projectionArtifact?.RelativePath ?? "none"}")
+        .AppendLine($"projection2DTo3DPoints={projection?.TwoDToThreeD.Count ?? 0}")
+        .AppendLine($"projection3DTo2DPoints={projection?.ThreeDToTwoD.Count ?? 0}")
+        .AppendLine($"projectionId={projection?.ProjectionId ?? "none"}")
         .AppendLine($"producer={manifest.Producer.ApplicationId}/{manifest.Producer.ApplicationVersion}/{manifest.Producer.SourceCommit}")
         .AppendLine($"consumer={manifest.Consumer.ApplicationId}/{manifest.Consumer.ApplicationVersion}/{manifest.Consumer.SourceCommit}")
         .AppendLine($"runRecordRelativePath={persistedResult.RunRecord?.RelativePath ?? "none"}");

@@ -810,7 +810,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             : GetTeachingGridRectangleCursor(mode);
         var status = mode switch
         {
-            TeachingGridRectangleEditMode.Height => "Surface ROI height handle; drag vertically. Display only—measurement stays unchanged.",
+            TeachingGridRectangleEditMode.Height => "Surface ROI overlay Y-position handle; drag vertically. View only—measurement and saved footprint stay unchanged.",
             TeachingGridRectangleEditMode.Move => "Surface ROI move area; drag to move. Apply remains explicit.",
             TeachingGridRectangleEditMode.None => null,
             _ => "Surface ROI corner handle; drag to resize. Apply remains explicit."

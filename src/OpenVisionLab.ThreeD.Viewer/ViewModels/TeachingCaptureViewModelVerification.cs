@@ -81,7 +81,8 @@ public static class TeachingCaptureViewModelVerification
                 && Math.Abs(viewModel.SelectedTeachingRoiEffectiveRawHeight - 1309.75) < 0.000001
                 && viewModel.SelectedTeachingRoiDisplayHeightSummary.Contains("surface", StringComparison.Ordinal)
                 && viewModel.SelectedTeachingRoiDisplayHeightSummary.Contains("overlay", StringComparison.Ordinal)
-                && viewModel.SelectedTeachingRoiDisplayHeightSummary.Contains("ΔY", StringComparison.Ordinal),
+                && viewModel.SelectedTeachingRoiDisplayHeightSummary.Contains("ΔY", StringComparison.Ordinal)
+                && viewModel.SelectedTeachingRoiDisplayHeightSummary.Contains("view-only", StringComparison.Ordinal),
                 viewModel.SelectedTeachingRoiDisplayHeightSummary);
             viewModel.SelectedTeachingRoiDisplayHeightOffset = double.NaN;
             Check(

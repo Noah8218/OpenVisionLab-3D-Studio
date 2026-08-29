@@ -75,8 +75,8 @@ public sealed partial class MainWindowViewModel
 
     public string SelectedTeachingRoiDisplayHeightSummary =>
         double.IsFinite(selectedTeachingRoiAutomaticRawHeight)
-            ? $"surface {selectedTeachingRoiAutomaticRawHeight:F3} → overlay {SelectedTeachingRoiEffectiveRawHeight:F3} | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0}"
-            : $"surface → overlay | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0}";
+            ? $"surface {selectedTeachingRoiAutomaticRawHeight:F3} → overlay {SelectedTeachingRoiEffectiveRawHeight:F3} | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0} | view-only"
+            : $"surface → overlay | ΔY {SelectedTeachingRoiDisplayHeightOffset:+0.###;-0.###;0} | view-only";
 
     public string SelectedTeachingGridRectangleSummary
     {

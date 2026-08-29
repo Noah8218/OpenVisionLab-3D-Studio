@@ -468,6 +468,92 @@ internal static class RecipeManagerWpgVerification
                 && !workbench.PreviewSelectedStepCommand.CanExecute(null),
                 $"storedKernel={filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value}; preview={workbench.HasCurrentFilterPreview}");
 
+            workbench.DiscardSelectedStepParameterDraft();
+            Check(
+                "preparation-preset assistant starts as an explicit Analyze action",
+                workbench.AnalyzePreparationPresetsCommand.CanExecute(null)
+                && !workbench.IsPreparationPresetAnalysisReady
+                && workbench.SelectedPreparationPreset is null
+                && !workbench.HasPendingStepParameterChanges
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3",
+                $"canAnalyze={workbench.AnalyzePreparationPresetsCommand.CanExecute(null)}; analyzed={workbench.IsPreparationPresetAnalysisReady}; selected={workbench.SelectedPreparationPreset?.Id ?? "(none)"}");
+            workbench.AnalyzePreparationPresetsCommand.Execute(null);
+            Check(
+                "Analyze discovers the bounded Filter presets without changing the draft or recipe",
+                workbench.IsPreparationPresetAnalysisReady
+                && workbench.PreparationPresetOptions.Count == 3
+                && workbench.SelectedPreparationPreset?.KernelSize == 3
+                && (workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize == 3
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3"
+                && !workbench.HasPendingStepParameterChanges
+                && !workbench.HasCurrentFilterPreview,
+                $"options={workbench.PreparationPresetOptions.Count}; selected={workbench.SelectedPreparationPreset?.KernelSize}; draft={(workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize}; stored={filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value}");
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.English, save: false);
+            var englishPreparationPresetName = workbench.PreparationPresetOptions
+                .Single(option => option.KernelSize == 5)
+                .DisplayName;
+            OpenVisionLanguageService.SetLanguage(OpenVisionLanguage.Korean, save: false);
+            var koreanPreparationPresetName = workbench.PreparationPresetOptions
+                .Single(option => option.KernelSize == 5)
+                .DisplayName;
+            OpenVisionLanguageService.SetLanguage(originalLanguage, save: false);
+            Check(
+                "Preparation preset options localize while preserving their stable IDs",
+                englishPreparationPresetName == "Median 5 x 5"
+                && koreanPreparationPresetName == "중앙값 5 × 5"
+                && workbench.PreparationPresetOptions.Select(option => option.Id).SequenceEqual(
+                    ["filter-median-3", "filter-median-5", "filter-median-7"]),
+                $"english={englishPreparationPresetName}; korean={koreanPreparationPresetName}; ids={string.Join(",", workbench.PreparationPresetOptions.Select(option => option.Id))}");
+            workbench.SelectedPreparationPreset = workbench.PreparationPresetOptions.Single(option => option.KernelSize == 5);
+            workbench.ProposePreparationPresetCommand.Execute(null);
+            Check(
+                "Propose keeps the selected preset transient and non-mutating",
+                workbench.ProposedPreparationPreset?.KernelSize == 5
+                && !workbench.IsPreparationPresetReviewActive
+                && (workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize == 3
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3"
+                && !workbench.HasPendingStepParameterChanges
+                && !workbench.HasCurrentFilterPreview,
+                $"proposed={workbench.ProposedPreparationPreset?.KernelSize}; review={workbench.IsPreparationPresetReviewActive}; draft={(workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize}; stored={filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value}");
+            workbench.ReviewPreparationPresetCommand.Execute(null);
+            Check(
+                "Review is read-only and enables only the draft application boundary",
+                workbench.IsPreparationPresetReviewActive
+                && workbench.ApplyPreparationPresetDraftCommand.CanExecute(null)
+                && (workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize == 3
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3"
+                && !workbench.HasPendingStepParameterChanges
+                && !workbench.HasCurrentFilterPreview,
+                $"review={workbench.IsPreparationPresetReviewActive}; canApplyDraft={workbench.ApplyPreparationPresetDraftCommand.CanExecute(null)}");
+            workbench.CancelPreparationPresetReviewCommand.Execute(null);
+            Check(
+                "Cancel clears the transient preset review without changing recipe or draft",
+                workbench.ProposedPreparationPreset is null
+                && !workbench.IsPreparationPresetReviewActive
+                && !workbench.IsPreparationPresetDraftApplied
+                && (workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize == 3
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3"
+                && !workbench.HasPendingStepParameterChanges
+                && !workbench.HasCurrentFilterPreview,
+                $"proposed={workbench.ProposedPreparationPreset?.KernelSize}; review={workbench.IsPreparationPresetReviewActive}; draft={(workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize}");
+            workbench.SelectedPreparationPreset = workbench.PreparationPresetOptions.Single(option => option.KernelSize == 5);
+            workbench.ProposePreparationPresetCommand.Execute(null);
+            workbench.ReviewPreparationPresetCommand.Execute(null);
+            workbench.ApplyPreparationPresetDraftCommand.Execute(null);
+            Check(
+                "Apply draft changes only the typed PropertyGrid draft and leaves normal Apply explicit",
+                workbench.IsPreparationPresetDraftApplied
+                && !workbench.IsPreparationPresetReviewActive
+                && (workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize == 5
+                && filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value == "3"
+                && workbench.HasPendingStepParameterChanges
+                && workbench.ApplySelectedStepParameterDraftCommand.CanExecute(null)
+                && !workbench.HasCurrentFilterPreview,
+                $"draftApplied={workbench.IsPreparationPresetDraftApplied}; draft={(workbench.SelectedStepPropertyDraft as FilterStepProperties)?.KernelSize}; stored={filter.Parameters.Single(parameter => parameter.Name == "KernelSize").Value}; pending={workbench.HasPendingStepParameterChanges}; canNormalApply={workbench.ApplySelectedStepParameterDraftCommand.CanExecute(null)}");
+            workbench.DiscardSelectedStepParameterDraft();
+            filterDraft = workbench.SelectedStepPropertyDraft as FilterStepProperties
+                ?? throw new InvalidOperationException("Filter draft was not restored after preset cancellation.");
+
             filterDraft.KernelSize = 4;
             var invalidApplied = workbench.TryApplySelectedStepParameterDraft(out var invalidMessage);
             Check(

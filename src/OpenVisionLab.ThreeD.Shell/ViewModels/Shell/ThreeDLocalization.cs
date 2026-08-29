@@ -116,6 +116,9 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
         nameof(ValidationSetLabeledEvidence),
         nameof(ValidationSetScope), nameof(ValidationSetOwner), nameof(ValidationSetMetric),
         nameof(ValidationSetThresholdCandidates), nameof(ValidationSetThresholdReadOnly),
+        nameof(ValidationSetThresholdAssistant), nameof(ValidationSetThresholdAnalyze),
+        nameof(ValidationSetThresholdPropose), nameof(ValidationSetThresholdReviewStage),
+        nameof(ValidationSetThresholdApplyStage),
         nameof(ValidationSetThresholdReview), nameof(ValidationSetThresholdCancelReview),
         nameof(ValidationSetThresholdApplyDraft), nameof(ValidationSetThresholdRevalidateDevelopment),
         nameof(ValidationSetThresholdReplayHeldOut),
@@ -654,6 +657,11 @@ public sealed class ThreeDLocalization : INotifyPropertyChanged
     public string ValidationSetMetric => T("ThreeD.Workbench.ValidationSetMetric", "\uCE21\uC815\uAC12", "Metric");
     public string ValidationSetThresholdCandidates => T("ThreeD.Workbench.ValidationSetThresholdCandidates", "\uC784\uACC4\uAC12 \uD6C4\uBCF4\uC640 \uC624\uB958\uD45C", "Threshold candidates and error table");
     public string ValidationSetThresholdReadOnly => T("ThreeD.Workbench.ValidationSetThresholdReadOnly", "\uC120\uD0DD\uC740 \uC77D\uAE30 \uC804\uC6A9 \u00B7 \uC801\uC6A9\uC740 PropertyGrid \uCD08\uC548\uB9CC \uBCC0\uACBD", "Selection is read-only \u00B7 Apply changes the PropertyGrid draft only");
+    public string ValidationSetThresholdAssistant => T("ThreeD.Workbench.ValidationSetThresholdAssistant", "\uC791\uC5C5\uBCC4 \uC784\uACC4\uAC12 \uBCF4\uC870", "Task-specific threshold assistant");
+    public string ValidationSetThresholdAnalyze => T("ThreeD.Workbench.ValidationSetThresholdAnalyze", "\uBD84\uC11D", "Analyze");
+    public string ValidationSetThresholdPropose => T("ThreeD.Workbench.ValidationSetThresholdPropose", "\uC81C\uC548", "Propose");
+    public string ValidationSetThresholdReviewStage => T("ThreeD.Workbench.ValidationSetThresholdReviewStage", "\uAC80\uD1A0", "Review");
+    public string ValidationSetThresholdApplyStage => T("ThreeD.Workbench.ValidationSetThresholdApplyStage", "\uC801\uC6A9", "Apply");
     public string ValidationSetThresholdReview => T("ThreeD.Command.ValidationSetThresholdReview", "\uAC80\uD1A0", "Review");
     public string ValidationWorkspaceSamples => T(
         "ThreeD.Workbench.ValidationWorkspaceSamples",

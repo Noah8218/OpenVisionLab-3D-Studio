@@ -50,6 +50,9 @@ public partial class MainWindow : Window
     private readonly StudioLayoutController _studioLayout;
     private readonly ToolLabWindowManager _toolLabWindows;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
+    private Task? validationSetSmokeSelectionTask;
+    private Task? validationSetSmokeSectionTask;
+    private bool validationSetSmokeRunRequested;
 
     private FilterToolLabWindow? filterToolLabWindow => _toolLabWindows.Filter;
     private HeightDifferenceEdgeToolLabWindow? heightDifferenceEdgeToolLabWindow => _toolLabWindows.HeightDifferenceEdge;
@@ -461,6 +464,8 @@ public partial class MainWindow : Window
         var smokeSelectToolId = smoke.SmokeSelectToolId;
         var expandSelectedToolParametersSmoke =
             smoke.ExpandSelectedToolParametersSmoke;
+        var preparationPresetAssistantSmoke =
+            smoke.PreparationPresetAssistantSmoke;
         var focusSelectedToolParameterSearchSmoke =
             smoke.FocusSelectedToolParameterSearchSmoke;
         var surfaceMatchExperimentPreviewSmoke =
@@ -482,6 +487,10 @@ public partial class MainWindow : Window
         var currentRecipeRunReadySmoke = smoke.CurrentRecipeRunReadySmoke;
         var currentRecipeRunPressedSmoke = smoke.CurrentRecipeRunPressedSmoke;
         var supportBundlePressedSmoke = smoke.SupportBundlePressedSmoke;
+        var validationThresholdAssistantPressedSmoke =
+            smoke.ValidationThresholdAssistantPressedSmoke;
+        var validationThresholdAssistantDisabledSmoke =
+            smoke.ValidationThresholdAssistantDisabledSmoke;
         var workbenchInteractionReportPath = smoke.WorkbenchInteractionReportPath;
         var workbenchRunLogSmoke = smoke.WorkbenchRunLogSmoke;
         var filterPublishSmoke = smoke.FilterPublishSmoke;
@@ -1302,6 +1311,16 @@ public partial class MainWindow : Window
                     parametersExpander.IsExpanded = true;
                 }
 
+                if (!string.IsNullOrWhiteSpace(preparationPresetAssistantSmoke)
+                    && !ConfigurePreparationPresetAssistantSmoke(
+                        preparationPresetAssistantSmoke,
+                        out var preparationPresetAssistantFailure))
+                {
+                    _viewModel.SetViewerSmokeFailed(preparationPresetAssistantFailure);
+                    Application.Current.Shutdown(1);
+                    return;
+                }
+
                 if (focusSelectedToolParameterSearchSmoke)
                 {
                     await Dispatcher.InvokeAsync(
@@ -1806,7 +1825,56 @@ public partial class MainWindow : Window
                     }
                 }
 
+                if (validationSetSmokeSelectionTask is not null)
+                {
+                    await validationSetSmokeSelectionTask;
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                }
+
+                if (validationSetSmokeSectionTask is not null)
+                {
+                    await validationSetSmokeSectionTask;
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                }
+
+                if (validationThresholdAssistantPressedSmoke
+                    || validationThresholdAssistantDisabledSmoke)
+                {
+                    // Reassert the validation dock after the window has loaded.
+                    // Constructor-time navigation can be deferred by the dock
+                    // template, leaving the assistant outside the visual tree
+                    // for a direct pressed-state lookup.
+                    ToolWorkbench.IsBottomPaneExpanded = true;
+                    ToolWorkbench.ActivateValidationSet();
+                    _viewModel.Workbench.IsValidationThresholdExpanded = true;
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Loaded);
+                    await Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                    await Task.Delay(250);
+                }
+
                 await Task.Delay(100);
+                if (shellScreenshotPath is not null
+                    && preparationPresetAssistantSmoke?.Equals(
+                        "dropdown",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    && !await CapturePreparationPresetPopupForSmokeAsync(
+                        this,
+                        shellScreenshotPath + ".popup.png",
+                        screenshotQualityReportPath))
+                {
+                    _viewModel.SetViewerSmokeFailed(
+                        "Preparation preset assistant dropdown popup remained unavailable or invalid.");
+                    Application.Current.Shutdown(1);
+                    return;
+                }
                 if (shellScreenshotPath is not null
                     && !(import3DDataPressedSmoke
                         ? await CaptureButtonPressedForSmokeAsync(
@@ -1815,6 +1883,13 @@ public partial class MainWindow : Window
                             shellScreenshotPath,
                             screenshotQualityReportPath,
                             "Import3DDataPressed")
+                        : validationThresholdAssistantPressedSmoke
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "ProposeValidationThresholdButton",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "ValidationThresholdAssistantProposePressed")
                         : viewerToolbarPressedSmoke
                         ? await CaptureButtonPressedForSmokeAsync(
                             this,
@@ -1866,6 +1941,15 @@ public partial class MainWindow : Window
                             shellScreenshotPath,
                             screenshotQualityReportPath,
                             "IntegrationExchangePrimaryPressed")
+                        : preparationPresetAssistantSmoke?.Equals(
+                            "apply-pressed",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        ? await CaptureButtonPressedForSmokeAsync(
+                            this,
+                            "ApplyPreparationPresetDraft",
+                            shellScreenshotPath,
+                            screenshotQualityReportPath,
+                            "PreparationPresetAssistantApplyDraftPressed")
                         : await CaptureWindowWithRetryAsync(
                             this,
                             shellScreenshotPath,
@@ -1889,6 +1973,53 @@ public partial class MainWindow : Window
                     AppendWindowMonitorEvidence(
                         this,
                         screenshotQualityReportPath);
+                    if (validationSetSmokeSelectionTask is not null
+                        && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
+                    {
+                        var validationWorkbench = _viewModel.Workbench;
+                        var thresholdExpanders =
+                            FindVisualDescendants<System.Windows.Controls.Expander>(ToolWorkbench)
+                                .Where(item => item.Name == "ValidationThresholdExpander")
+                                .ToArray();
+                        var thresholdExpander = thresholdExpanders.FirstOrDefault();
+                        var assistantBorders =
+                            FindVisualDescendants<System.Windows.Controls.Border>(ToolWorkbench)
+                                .Where(item =>
+                                    System.Windows.Automation.AutomationProperties.GetName(item)
+                                    == validationWorkbench.Localization.ValidationSetThresholdAssistant)
+                                .ToArray();
+                        var assistantBorder = assistantBorders.FirstOrDefault();
+                        var assistantPoint = assistantBorder is null
+                            ? new System.Windows.Point(double.NaN, double.NaN)
+                            : assistantBorder.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
+                        var expanderPoint = thresholdExpander is null
+                            ? new System.Windows.Point(double.NaN, double.NaN)
+                            : thresholdExpander.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
+                        var workbenchPoint = ToolWorkbench.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
+                        var hostButtons = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
+                            .Where(item => item.Name is "AnalyzeValidationThresholdButton"
+                                or "ProposeValidationThresholdButton"
+                                or "ReviewValidationThresholdButton"
+                                or "CancelValidationThresholdReviewButton"
+                                or "ApplyValidationThresholdButton")
+                            .Select(item =>
+                            {
+                                var point = item.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
+                                return $"{item.Name}:{item.Visibility}:{item.IsEnabled}:{item.ActualWidth:F1}x{item.ActualHeight:F1}@{point.X:F1},{point.Y:F1}";
+                            });
+                        var correctionTextBlock =
+                            FindVisualDescendants<System.Windows.Controls.TextBlock>(ToolWorkbench)
+                                .FirstOrDefault(item => item.Text == validationWorkbench.ValidationThresholdCorrectionSummary);
+                        var correctionPoint = correctionTextBlock is null
+                            ? new System.Windows.Point(double.NaN, double.NaN)
+                            : correctionTextBlock.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
+                        File.AppendAllLines(
+                            Path.GetFullPath(screenshotQualityReportPath),
+                        [
+                            $"ValidationAssistant|samples={validationWorkbench.ValidationSetSamples.Count}|report={validationWorkbench.HasValidationThresholdAssistantAnalysis}|candidates={validationWorkbench.ValidationThresholdCandidates.Count}|selected={validationWorkbench.SelectedValidationThresholdCandidate?.CandidateId ?? string.Empty}|stage={validationWorkbench.ValidationThresholdAssistantStage}|proposal={validationWorkbench.HasValidationThresholdAssistantProposal}|review={validationWorkbench.IsValidationThresholdReviewActive}|applied={validationWorkbench.IsValidationThresholdCandidateApplied}",
+                            $"ValidationAssistantUi|expanders={thresholdExpanders.Length}|expanded={thresholdExpander?.IsExpanded}|visibility={thresholdExpander?.Visibility}|height={thresholdExpander?.ActualHeight:F1}|expanderPoint={expanderPoint.X:F1},{expanderPoint.Y:F1}|workbenchPoint={workbenchPoint.X:F1},{workbenchPoint.Y:F1}|assistantBorders={assistantBorders.Length}|assistantHeight={assistantBorder?.ActualHeight:F1}|assistantVisibility={assistantBorder?.Visibility}|assistantPoint={assistantPoint.X:F1},{assistantPoint.Y:F1}|buttons={string.Join(",", hostButtons)}|correctionLength={validationWorkbench.ValidationThresholdCorrectionSummary.Length}|correctionHeight={correctionTextBlock?.ActualHeight:F1}|correctionPoint={correctionPoint.X:F1},{correctionPoint.Y:F1}"
+                        ]);
+                    }
                     if (integrationExchangeSmokeState?.Equals(
                             "input-focus",
                             StringComparison.OrdinalIgnoreCase) == true
@@ -1915,6 +2046,12 @@ public partial class MainWindow : Window
                         File.AppendAllLines(
                             Path.GetFullPath(screenshotQualityReportPath),
                             ["IntegrationExchangeValidation|statusRendered=true|processStable=true|actionExecuted=false"]);
+                    }
+                    if (preparationPresetAssistantSmoke is not null)
+                    {
+                        AppendPreparationPresetAssistantSmokeEvidence(
+                            preparationPresetAssistantSmoke,
+                            screenshotQualityReportPath);
                     }
                 }
                 if (currentRecipeRunPressedSmoke)
@@ -3541,6 +3678,7 @@ public partial class MainWindow : Window
         }
         if (Environment.GetCommandLineArgs().Contains("--smoke-validation-set-run", StringComparer.OrdinalIgnoreCase))
         {
+            validationSetSmokeRunRequested = true;
             _viewModel.Workbench.RunValidationSetCommand.Execute(null);
             var thresholdMetric = GetCommandLineValue(
                 "--smoke-validation-threshold-metric");
@@ -3549,7 +3687,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(thresholdMetric)
                 || !string.IsNullOrWhiteSpace(thresholdKind))
             {
-                _ = SelectValidationThresholdCandidateForSmokeAsync(
+                validationSetSmokeSelectionTask = SelectValidationThresholdCandidateForSmokeAsync(
                     thresholdMetric,
                     thresholdKind);
             }
@@ -3569,30 +3707,55 @@ public partial class MainWindow : Window
                 out var validationSection)
             && Enum.IsDefined(typeof(ValidationWorkspaceSection), validationSection))
         {
-            _ = SelectValidationSectionForSmokeAsync(validationSection);
+            validationSetSmokeSectionTask = SelectValidationSectionForSmokeAsync(validationSection);
         }
     }
 
     private async Task SelectValidationSectionForSmokeAsync(
         ValidationWorkspaceSection section)
     {
-        while (_viewModel.Workbench.IsValidationSetRunning)
+        while (_viewModel.Workbench.IsValidationSetRunning
+               || validationSetSmokeRunRequested
+               && !_viewModel.Workbench.HasValidationThresholdAssistantAnalysis)
         {
             await Task.Delay(25);
         }
 
-        await Dispatcher.InvokeAsync(
-            () => ToolWorkbench.SetValidationWorkspaceSection(section),
-            DispatcherPriority.Loaded);
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            await Dispatcher.InvokeAsync(
+                () => ToolWorkbench.SetValidationWorkspaceSection(section),
+                DispatcherPriority.Loaded);
+            if (ToolWorkbench.ActiveValidationWorkspaceSection == section)
+            {
+                return;
+            }
+
+            await Dispatcher.InvokeAsync(
+                () => { },
+                DispatcherPriority.Render);
+            await Task.Delay(50);
+        }
     }
 
     private async Task SelectValidationThresholdCandidateForSmokeAsync(
         string? metric,
         string? kind)
     {
-        while (_viewModel.Workbench.IsValidationSetRunning)
+        while (_viewModel.Workbench.IsValidationSetRunning
+               || !_viewModel.Workbench.HasValidationThresholdAssistantAnalysis)
         {
             await Task.Delay(25);
+        }
+
+        var arguments = Environment.GetCommandLineArgs();
+        var shouldClearSelection = arguments.Contains(
+            "--smoke-validation-threshold-assistant-disabled",
+            StringComparer.OrdinalIgnoreCase);
+        if (shouldClearSelection)
+        {
+            _viewModel.Workbench.SelectedValidationThresholdCandidate = null;
+            return;
         }
 
         var candidate =
@@ -3612,7 +3775,9 @@ public partial class MainWindow : Window
         {
             _viewModel.Workbench.SelectedValidationThresholdCandidate =
                 candidate;
-            var arguments = Environment.GetCommandLineArgs();
+            var shouldPropose = arguments.Contains(
+                "--smoke-validation-threshold-propose",
+                StringComparer.OrdinalIgnoreCase);
             var shouldReview = arguments.Contains(
                 "--smoke-validation-threshold-review",
                 StringComparer.OrdinalIgnoreCase);
@@ -3627,6 +3792,15 @@ public partial class MainWindow : Window
                 StringComparer.OrdinalIgnoreCase);
             var manualValues = GetCommandLineValue(
                 "--smoke-validation-threshold-manual-values");
+            if (shouldPropose
+                && _viewModel.Workbench
+                    .ProposeValidationThresholdCandidateCommand
+                    .CanExecute(null))
+            {
+                _viewModel.Workbench
+                    .ProposeValidationThresholdCandidateCommand
+                    .Execute(null);
+            }
             if ((shouldReview || shouldApply || shouldReplay)
                 && _viewModel.Workbench
                     .ReviewValidationThresholdCandidateCommand
@@ -4055,6 +4229,204 @@ public partial class MainWindow : Window
             qualityReportPath,
             "RecipeHealthNavigationPressed");
 
+    private bool ConfigurePreparationPresetAssistantSmoke(
+        string requestedState,
+        out string failure)
+    {
+        var state = requestedState.Trim();
+        var workbench = _viewModel.Workbench;
+        if (!workbench.IsPreparationPresetAssistantVisible)
+        {
+            failure =
+                "Preparation preset assistant smoke requires a selected Filter step with a typed parameter editor.";
+            return false;
+        }
+
+        if (!state.Equals("disabled", StringComparison.OrdinalIgnoreCase)
+            && !state.Equals("analyze", StringComparison.OrdinalIgnoreCase)
+            && !state.Equals("review", StringComparison.OrdinalIgnoreCase)
+            && !state.Equals("dropdown", StringComparison.OrdinalIgnoreCase)
+            && !state.Equals("apply-pressed", StringComparison.OrdinalIgnoreCase))
+        {
+            failure =
+                $"Unknown preparation preset assistant smoke state '{requestedState}'. Use disabled, analyze, review, dropdown, or apply-pressed.";
+            return false;
+        }
+
+        if (!state.Equals("disabled", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!workbench.AnalyzePreparationPresetsCommand.CanExecute(null))
+            {
+                failure = "Preparation preset assistant Analyze was not enabled for the selected Filter draft.";
+                return false;
+            }
+
+            workbench.AnalyzePreparationPresetsCommand.Execute(null);
+            if (!state.Equals("analyze", StringComparison.OrdinalIgnoreCase))
+            {
+                var proposal = workbench.PreparationPresetOptions.Single(option => option.KernelSize == 5);
+                workbench.SelectedPreparationPreset = proposal;
+                if (state.Equals("dropdown", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Leave the selector open without crossing the proposal or
+                    // draft-apply boundary. The popup is captured separately.
+                }
+                else if (!workbench.ProposePreparationPresetCommand.CanExecute(null))
+                {
+                    failure = "Preparation preset assistant Propose was not enabled after Analyze.";
+                    return false;
+                }
+                else
+                {
+                    workbench.ProposePreparationPresetCommand.Execute(null);
+                    if (!workbench.ReviewPreparationPresetCommand.CanExecute(null))
+                    {
+                        failure = "Preparation preset assistant Review was not enabled after Propose.";
+                        return false;
+                    }
+
+                    workbench.ReviewPreparationPresetCommand.Execute(null);
+                }
+            }
+        }
+
+        ToolWorkbench.ActivateSelectedToolPane();
+        ToolWorkbench.UpdateLayout();
+        var scrollViewer = FindVisualDescendants<System.Windows.Controls.ScrollViewer>(ToolWorkbench)
+            .FirstOrDefault(candidate => candidate.Name == "SelectedToolScrollViewer");
+        scrollViewer?.ScrollToEnd();
+        if (state.Equals("dropdown", StringComparison.OrdinalIgnoreCase))
+        {
+            var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
+                .FirstOrDefault(candidate =>
+                    System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
+                    == "PreparationPresetSelector");
+            if (selector is null || !selector.IsEnabled || !selector.Focus())
+            {
+                failure = "Preparation preset selector could not receive keyboard focus for popup smoke.";
+                return false;
+            }
+
+            selector.IsDropDownOpen = true;
+        }
+        UpdateLayout();
+        failure = string.Empty;
+        return true;
+    }
+
+    private void AppendPreparationPresetAssistantSmokeEvidence(
+        string requestedState,
+        string? reportPath)
+    {
+        if (string.IsNullOrWhiteSpace(reportPath))
+        {
+            return;
+        }
+
+        var workbench = _viewModel.Workbench;
+        var assistant = FindVisualDescendants<System.Windows.Controls.Border>(ToolWorkbench)
+            .FirstOrDefault(candidate =>
+                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
+                == "PreparationPresetAssistant");
+        var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
+            .FirstOrDefault(candidate =>
+                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
+                == "PreparationPresetSelector");
+        var scrollViewer = FindVisualDescendants<System.Windows.Controls.ScrollViewer>(ToolWorkbench)
+            .FirstOrDefault(candidate => candidate.Name == "SelectedToolScrollViewer");
+        var buttons = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
+            .Where(candidate =>
+            {
+                var id = System.Windows.Automation.AutomationProperties.GetAutomationId(candidate);
+                return id is "AnalyzePreparationPresets"
+                    or "ProposePreparationPreset"
+                    or "ReviewPreparationPreset"
+                    or "CancelPreparationPresetReview"
+                    or "ApplyPreparationPresetDraft";
+            })
+            .Select(candidate =>
+            {
+                var id = System.Windows.Automation.AutomationProperties.GetAutomationId(candidate);
+                return $"{id}:{candidate.Visibility}:{candidate.IsEnabled}:{candidate.IsKeyboardFocusWithin}:{candidate.ActualWidth:F1}x{candidate.ActualHeight:F1}";
+            });
+        var filterDraft = workbench.SelectedStepPropertyDraft as FilterStepProperties;
+        var recipeKernel = workbench.SelectedPipelineStep?.Parameters
+            .SingleOrDefault(parameter => parameter.Name == "KernelSize")?.Value;
+        File.AppendAllLines(
+            Path.GetFullPath(reportPath),
+        [
+            $"PreparationPresetAssistant|requestedState={requestedState}|visible={workbench.IsPreparationPresetAssistantVisible}|analysis={workbench.IsPreparationPresetAnalysisReady}|options={workbench.PreparationPresetOptions.Count}|selected={workbench.SelectedPreparationPreset?.Id ?? string.Empty}|proposal={workbench.ProposedPreparationPreset?.Id ?? string.Empty}|review={workbench.IsPreparationPresetReviewActive}|applied={workbench.IsPreparationPresetDraftApplied}|draftKernel={filterDraft?.KernelSize}|recipeKernel={recipeKernel}|pending={workbench.HasPendingStepParameterChanges}|preview={workbench.HasCurrentFilterPreview}|publishAvailable={workbench.PublishSelectedStepCommand.CanExecute(null)}",
+            $"PreparationPresetAssistantUi|visibility={assistant?.Visibility}|height={assistant?.ActualHeight:F1}|width={assistant?.ActualWidth:F1}|selectorVisibility={selector?.Visibility}|selectorEnabled={selector?.IsEnabled}|selectorOpen={selector?.IsDropDownOpen}|selectorHeight={selector?.ActualHeight:F1}|scrollOffset={scrollViewer?.VerticalOffset:F1}|scrollableHeight={scrollViewer?.ScrollableHeight:F1}|buttons={string.Join(",", buttons)}"
+        ]);
+    }
+
+    private static async Task<bool> CapturePreparationPresetPopupForSmokeAsync(
+        Window window,
+        string screenshotPath,
+        string? qualityReportPath)
+    {
+        window.UpdateLayout();
+        var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(window)
+            .FirstOrDefault(candidate =>
+                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
+                == "PreparationPresetSelector");
+        if (selector is null || !selector.IsEnabled || !selector.IsDropDownOpen)
+        {
+            WriteTextReport(
+                qualityReportPath,
+                ["PreparationPresetPopup|failure=selector-unavailable-or-closed"]);
+            return false;
+        }
+
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+        selector.ApplyTemplate();
+        var popup = selector.Template.FindName("PART_Popup", selector)
+            as System.Windows.Controls.Primitives.Popup
+            ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
+                .FirstOrDefault();
+        if (popup?.Child is not FrameworkElement popupChild || !popup.IsOpen)
+        {
+            WriteTextReport(
+                qualityReportPath,
+                ["PreparationPresetPopup|failure=popup-closed-or-no-child"]);
+            return false;
+        }
+
+        popupChild.UpdateLayout();
+        var center = selector.PointToScreen(
+            new System.Windows.Point(
+                selector.ActualWidth / 2.0,
+                selector.ActualHeight / 2.0));
+        _ = SetCursorPos(
+            (int)Math.Round(center.X),
+            (int)Math.Round(center.Y + selector.ActualHeight * 2.5));
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
+        await Task.Delay(100);
+        var visibleItems = FindVisualDescendants<System.Windows.Controls.ComboBoxItem>(popupChild)
+            .Count(item => item.IsVisible && item.ActualHeight > 0.0);
+        var capture = WpfScreenshotCapture.Capture(popupChild);
+        var fullPath = Path.GetFullPath(screenshotPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
+        WpfScreenshotCapture.Save(capture.Bitmap, fullPath);
+        var popupAccepted = selector.IsDropDownOpen
+            && popup.IsOpen
+            && selector.Items.Count == visibleItems
+            && capture.Bitmap.PixelWidth >= 120
+            && capture.Bitmap.PixelHeight >= 60;
+        ShellSmokeArtifacts.WriteTextReport(
+            fullPath + ".quality.txt",
+        [
+            $"PreparationPresetPopupScreenshot|accepted={popupAccepted}|width={capture.Bitmap.PixelWidth}|height={capture.Bitmap.PixelHeight}",
+            $"CaptureAssessment|{capture.Quality.Summary}|small-popup=true|graphite-theme=true",
+            $"Popup|open={selector.IsDropDownOpen && popup.IsOpen}|items={selector.Items.Count}|visibleItems={visibleItems}|hoveredItem={visibleItems > 0}",
+            "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
+        ]);
+        WriteTextReport(
+            qualityReportPath,
+            [$"PreparationPresetPopup|path={fullPath}|open={selector.IsDropDownOpen && popup.IsOpen}|items={selector.Items.Count}|visibleItems={visibleItems}"]);
+        return true;
+    }
+
     private static void AppendWindowMonitorEvidence(Window window, string? reportPath)
     {
         if (string.IsNullOrWhiteSpace(reportPath))
@@ -4107,14 +4479,50 @@ public partial class MainWindow : Window
             await window.Dispatcher.InvokeAsync(
                 () => { },
                 DispatcherPriority.Input);
+            // Force template realization before resolving a named button. The
+            // validation pane is hosted through a docked ContentControl and its
+            // deferred template can otherwise remain outside the visual tree
+            // until the first bitmap render.
             window.UpdateLayout();
-            var button = FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
-                .FirstOrDefault(button =>
-                    System.Windows.Automation.AutomationProperties.GetAutomationId(button)
-                    == automationId);
+            _ = WpfScreenshotCapture.Capture(window);
+            System.Windows.Controls.Primitives.ButtonBase? button = null;
+            for (var attempt = 0; attempt < 40 && button is null; attempt++)
+            {
+                window.UpdateLayout();
+                button = FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
+                    .FirstOrDefault(candidate =>
+                        System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
+                        == automationId);
+                if (button is null)
+                {
+                    button = FindVisualDescendants<RecipePipelineReviewView>(window)
+                        .Select(review => review.FindName(automationId) as System.Windows.Controls.Primitives.ButtonBase)
+                        .FirstOrDefault(candidate => candidate is not null);
+                }
+                if (button is not null && !button.IsDescendantOf(window))
+                {
+                    button = null;
+                }
+                if (button is null)
+                {
+                    await window.Dispatcher.InvokeAsync(
+                        () => { },
+                        DispatcherPriority.Render);
+                    await Task.Delay(50);
+                }
+            }
             if (button is null)
             {
-                WriteTextReport(qualityReportPath, [$"{scope}|failure=button-not-found|automationId={automationId}"]);
+                var visibleIds = string.Join(
+                    ",",
+                    FindVisualDescendants<System.Windows.Controls.Primitives.ButtonBase>(window)
+                        .Where(candidate => candidate.Visibility == Visibility.Visible)
+                        .Select(candidate => System.Windows.Automation.AutomationProperties.GetAutomationId(candidate))
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Distinct(StringComparer.Ordinal));
+                WriteTextReport(
+                    qualityReportPath,
+                    [$"{scope}|failure=button-not-found|automationId={automationId}|visibleAutomationIds={visibleIds}"]);
                 return false;
             }
             pressedButton = button;
@@ -4128,6 +4536,7 @@ public partial class MainWindow : Window
                 WriteTextReport(qualityReportPath, [$"{scope}|failure=focus-rejected|automationId={automationId}"]);
                 return false;
             }
+            var focusedBeforePointer = button.IsKeyboardFocusWithin;
 
             var relativeCenter = button.TransformToAncestor(window).Transform(new System.Windows.Point(
                 button.ActualWidth / 2.0,
@@ -4153,6 +4562,7 @@ public partial class MainWindow : Window
             }
 
             await Task.Delay(150);
+            var hoveredBeforePointer = button.IsMouseOver;
             SendMouseEvent(leftButtonDown, 0, 0, 0, UIntPtr.Zero);
             mouseDown = true;
             await window.Dispatcher.InvokeAsync(
@@ -4205,7 +4615,7 @@ public partial class MainWindow : Window
                 File.AppendAllLines(
                     Path.GetFullPath(qualityReportPath),
                 [
-                    $"PointerDown|scope={scope}|state=held|osInjection={mouseDown}|routedEvent={routedPointerDown}|buttonBasePressedFallback={forcedPressedState}"
+                    $"PointerDown|scope={scope}|state=held|osInjection={mouseDown}|routedEvent={routedPointerDown}|buttonBasePressedFallback={forcedPressedState}|focused={focusedBeforePointer}|hovered={hoveredBeforePointer}"
                 ]);
             }
             return captured;

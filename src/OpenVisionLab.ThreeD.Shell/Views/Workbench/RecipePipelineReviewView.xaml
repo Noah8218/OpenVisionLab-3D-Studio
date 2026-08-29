@@ -203,6 +203,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -1657,7 +1659,82 @@
                                     <ColumnDefinition Width="8" />
                                     <ColumnDefinition Width="1*" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Row="1"
+                                <Border Grid.Row="0"
+                                        Grid.ColumnSpan="3"
+                                        Margin="0,0,0,5"
+                                            Padding="7,5"
+                                            Background="{DynamicResource ThreeD.InfoSurfaceBrush}"
+                                            BorderBrush="{DynamicResource ThreeD.InfoBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            AutomationProperties.Name="{Binding Localization.ValidationSetThresholdAssistant}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="9.5"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ThreeD.InfoBrush}"
+                                                           Text="{Binding Localization.ValidationSetThresholdAssistant}" />
+                                                <TextBlock Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           FontSize="9.5"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                                           Text="{Binding ValidationThresholdAssistantStageText}" />
+                                            </Grid>
+                                            <WrapPanel Grid.Row="1"
+                                                       Margin="0,4,0,2">
+                                                <Border Margin="0,0,4,0"
+                                                        Padding="5,2"
+                                                        Background="{DynamicResource ThreeD.PanelBrush}"
+                                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="2">
+                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdAnalyze}" />
+                                                </Border>
+                                                <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
+                                                <Border Margin="0,0,4,0"
+                                                        Padding="5,2"
+                                                        Background="{DynamicResource ThreeD.PanelBrush}"
+                                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="2">
+                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdPropose}" />
+                                                </Border>
+                                                <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
+                                                <Border Margin="0,0,4,0"
+                                                        Padding="5,2"
+                                                        Background="{DynamicResource ThreeD.PanelBrush}"
+                                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="2">
+                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdReviewStage}" />
+                                                </Border>
+                                                <TextBlock Margin="0,2,4,0" Foreground="{DynamicResource ThreeD.MutedTextBrush}" Text="→" />
+                                                <Border Padding="5,2"
+                                                        Background="{DynamicResource ThreeD.PanelBrush}"
+                                                        BorderBrush="{DynamicResource ThreeD.DividerBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="2">
+                                                    <TextBlock FontSize="9" Text="{Binding Localization.ValidationSetThresholdApplyStage}" />
+                                                </Border>
+                                            </WrapPanel>
+                                            <TextBlock Grid.Row="2"
+                                                       FontSize="9"
+                                                       Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                                       Text="{Binding ValidationThresholdAssistantSummary}"
+                                                       TextWrapping="Wrap" />
+                                        </Grid>
+                                </Border>
+                                <StackPanel Grid.Row="2"
                                             Grid.ColumnSpan="3">
                                     <TextBlock FontSize="9.5"
                                                FontWeight="SemiBold"
@@ -1673,14 +1750,34 @@
                                                Text="{Binding ValidationThresholdWarning}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
-                                <Grid Grid.Row="0"
+                                <Grid Grid.Row="1"
                                       Grid.ColumnSpan="3"
                                       Margin="0,0,0,5">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <WrapPanel VerticalAlignment="Center">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <WrapPanel Grid.Row="0" VerticalAlignment="Center">
+                                        <Button x:Name="AnalyzeValidationThresholdButton"
+                                                Margin="0,0,5,0"
+                                                Command="{Binding RunValidationSetCommand}"
+                                                ToolTip="{Binding Localization.ValidationSetRunAllHint}"
+                                                AutomationProperties.Name="{Binding Localization.ValidationSetThresholdAnalyze}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="ArrowSync24" />
+                                                <TextBlock Text="{Binding Localization.ValidationSetThresholdAnalyze}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="ProposeValidationThresholdButton"
+                                                Margin="0,0,5,0"
+                                                Command="{Binding ProposeValidationThresholdCandidateCommand}"
+                                                ToolTip="{Binding Localization.ValidationSetThresholdPropose}"
+                                                AutomationProperties.Name="{Binding Localization.ValidationSetThresholdPropose}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Width="15" Height="15" Margin="0,0,5,0" Symbol="DocumentAdd24" />
+                                                <TextBlock Text="{Binding Localization.ValidationSetThresholdPropose}" />
+                                            </StackPanel>
+                                        </Button>
                                         <Button x:Name="ReviewValidationThresholdButton"
                                                 Margin="0,0,5,0"
                                                 Command="{Binding ReviewValidationThresholdCandidateCommand}"
@@ -1731,9 +1828,8 @@
                                             </StackPanel>
                                         </Button>
                                     </WrapPanel>
-                                    <TextBlock Grid.Column="1"
-                                               Margin="12,0,0,0"
-                                               VerticalAlignment="Center"
+                                    <TextBlock Grid.Row="1"
+                                               Margin="0,4,0,0"
                                                FontSize="9"
                                                Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                                Text="{Binding ValidationThresholdCorrectionSummary}"

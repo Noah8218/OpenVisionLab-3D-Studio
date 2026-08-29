@@ -589,6 +589,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             _ => SelectedCorrespondenceRow is not null && IsSelectedStepCorrespondence);
 
         InitializePropertyGridEditing();
+        InitializePreparationPresetAssistant();
         InitializeFirstRecipeUx();
         InitializePlaneFlatnessTeaching();
         NewTeachingRecipeCommand = new RelayCommand(_ => BeginFirstRecipeSetup());
@@ -817,6 +818,7 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
             NotifySourceQualityWorkspaceState();
             openSelectedToolLabCommand.RaiseCanExecuteChanged();
             RefreshSelectedStepPropertyDraft();
+            RefreshPreparationPresetCommands();
             if (!deferSelectedStepStateRefresh)
             {
                 RefreshTeachingSelectionContext();
@@ -1447,6 +1449,9 @@ public sealed partial class ToolWorkbenchViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(OrderedRunStatus));
         OnPropertyChanged(nameof(OrderedRunCapabilitySummary));
         OnPropertyChanged(nameof(OrderedRunEvidenceSummary));
+        OnPropertyChanged(nameof(PreparationPresetAssistantStageText));
+        OnPropertyChanged(nameof(PreparationPresetAssistantSummary));
+        RefreshPreparationPresetOptions();
         RefreshSelectedToolWorkspaceProjection();
     }
 

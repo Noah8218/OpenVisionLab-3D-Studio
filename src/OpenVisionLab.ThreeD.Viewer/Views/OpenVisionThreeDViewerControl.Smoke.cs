@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -731,10 +732,36 @@ public sealed partial class OpenVisionThreeDViewerControl
             viewModel.ScreenshotCommand,
             viewModel.ProfileCommand
         };
+        var overlayBoundary = InspectGridRectangleOverlayMenuBoundary();
         return (
             commands.Length == expected.Length
-            && expected.All(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand))),
+            && expected.All(expectedCommand => commands.Any(command => ReferenceEquals(command, expectedCommand)))
+            && overlayBoundary.Passed,
             commands.Length);
+    }
+
+    private (bool Passed, string Header, string AutomationName) InspectGridRectangleOverlayMenuBoundary()
+    {
+        var item = ViewerViewMenuRoot.Items
+            .OfType<MenuItem>()
+            .FirstOrDefault(candidate => string.Equals(
+                AutomationProperties.GetAutomationId(candidate),
+                "RoiOverlayYPositionMenu",
+                StringComparison.Ordinal));
+        if (item is null)
+        {
+            return (false, string.Empty, string.Empty);
+        }
+
+        var header = item.Header?.ToString() ?? string.Empty;
+        var automationName = AutomationProperties.GetName(item) ?? string.Empty;
+        var headerClear = header.Contains("Y", StringComparison.Ordinal)
+            && (header.Contains("보기 전용", StringComparison.Ordinal)
+                || header.Contains("view only", StringComparison.OrdinalIgnoreCase));
+        var automationNameClear = automationName.Contains("Y", StringComparison.Ordinal)
+            && (automationName.Contains("보기 전용", StringComparison.Ordinal)
+                || automationName.Contains("view only", StringComparison.OrdinalIgnoreCase));
+        return (headerClear && automationNameClear, header, automationName);
     }
 
     private void WritePointerInputRegressionReport(
@@ -743,6 +770,7 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         var fullPath = Path.GetFullPath(path);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var overlayBoundary = InspectGridRectangleOverlayMenuBoundary();
         var lines = new[]
         {
             "PointerInputRegression",
@@ -762,6 +790,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             $"InputModes|rightDragPan={result.RightPanPassed && result.RightPanMenuSuppressed}|shortRightClick={result.ContextMenuPassed}",
             $"ContextMenuBindings|pass={result.ContextMenuBindingsPassed}|commands={result.ContextMenuCommandCount}/8",
             $"TopViewMenuBindings|pass={result.TopViewMenuBindingsPassed}|commands={result.TopViewMenuCommandCount}/8",
+            $"GridRectangleOverlayBoundary|pass={overlayBoundary.Passed}|header={CleanContractText(overlayBoundary.Header)}|automationName={CleanContractText(overlayBoundary.AutomationName)}",
             $"Failure|summary={result.Failure}"
         };
         File.WriteAllLines(fullPath, lines, new UTF8Encoding(false));

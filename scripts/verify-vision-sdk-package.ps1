@@ -9,11 +9,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($PackagePath)) {
-    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260828.point-cloud-background-filter.1.nupkg"
+    $PackagePath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260829.normal-preparation.1.nupkg"
 }
 
 if ([string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260828.point-cloud-background-filter.1.nupkg.sha256"
+    $ChecksumPath = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabVisionSdk\OpenVisionLab.Vision3D.3.0.1-dev.20260829.normal-preparation.1.nupkg.sha256"
 }
 
 function Write-VerificationReport {
@@ -84,7 +84,7 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.0.1-dev.20260828.point-cloud-background-filter.1" -or $sourceCommit -ne "35f1eef6626db710ac18452cd1e729530f2c0f2f") {
+    if ($id -ne "OpenVisionLab.Vision3D" -or $version -ne "3.0.1-dev.20260829.normal-preparation.1" -or $sourceCommit -ne "6da3bcf521efb88681a17e4a7b23a091e7fcbacf") {
         throw "OpenVisionLab Vision SDK package metadata mismatch. id=$id version=$version sourceCommit=$sourceCommit"
     }
 

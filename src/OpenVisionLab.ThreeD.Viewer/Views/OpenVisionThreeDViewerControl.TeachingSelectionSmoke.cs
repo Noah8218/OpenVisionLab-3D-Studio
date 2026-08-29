@@ -290,6 +290,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             var resizePassed = !editsExistingCandidate;
             var heightHoverPassed = !editsExistingCandidate;
             var heightDragPassed = !editsExistingCandidate;
+            var heightHoverStatus = "(not exercised)";
             if (editsExistingCandidate
                 && candidateAfterMove is not null
                 && TryGetTeachingGridRectangleScreenCorners(
@@ -342,8 +343,9 @@ public sealed partial class OpenVisionThreeDViewerControl
                 var offsetBeforeHeight = viewModel.SelectedTeachingRoiDisplayHeightOffset;
                 await EnsurePointerInputTargetAsync(hostWindow, Viewport.PointToScreen(heightHandle));
                 await Task.Delay(120);
+                heightHoverStatus = viewModel.ViewerStatus;
                 heightHoverPassed = Viewport.Cursor == Cursors.SizeNS
-                    && viewModel.ViewerStatus.Contains("height handle", StringComparison.Ordinal);
+                    && viewModel.ViewerStatus.Contains("overlay Y-position handle", StringComparison.Ordinal);
                 await SendTeachingDragAsync(
                     hostWindow,
                     heightHandle,
@@ -383,6 +385,7 @@ public sealed partial class OpenVisionThreeDViewerControl
             lines.Add($"Edit|seeded={editsExistingCandidate}|authored={initialRectangle}|pointerBaseline={dragBaselineRectangle}|move={movePassed}|resize={resizePassed}");
             lines.Add($"Hover|move={moveHoverPassed}|resize={resizeHoverPassed}|height={heightHoverPassed}|cursorModeFeedback=True");
             lines.Add($"MoveHoverDetail|mode={moveHoverMode}|cursor={moveHoverCursor}|status={moveHoverStatus}");
+            lines.Add($"HeightHoverDetail|cursor={Viewport.Cursor}|status={heightHoverStatus}");
             lines.Add($"DisplayHeight|drag={heightDragPassed}|offset={viewModel.SelectedTeachingRoiDisplayHeightOffset:F3}|automatic={viewModel.SelectedTeachingRoiAutomaticRawHeight:F3}|effective={viewModel.SelectedTeachingRoiEffectiveRawHeight:F3}");
             lines.Add("InteractionContract|footprintPlane=XZ@local-surface-median+display-offset|surfacePointRequired=False|handleRadiusPixels=18|insideDrag=move|verticalHandle=view-only");
             lines.Add(

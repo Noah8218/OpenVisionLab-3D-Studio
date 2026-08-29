@@ -36,6 +36,7 @@ public sealed partial class ToolWorkbenchViewModel
     private RelayCommand nextValidationSetIssueCommand = null!;
     private RelayCommand openValidationSetComparisonCommand = null!;
     private RelayCommand setValidationSampleRoleCommand = null!;
+    private RelayCommand proposeValidationThresholdCandidateCommand = null!;
     private RelayCommand reviewValidationThresholdCandidateCommand = null!;
     private RelayCommand cancelValidationThresholdReviewCommand = null!;
     private RelayCommand applyValidationThresholdCandidateCommand = null!;
@@ -115,6 +116,9 @@ public sealed partial class ToolWorkbenchViewModel
 
     public ICommand SetValidationSampleRoleCommand =>
         setValidationSampleRoleCommand;
+
+    public ICommand ProposeValidationThresholdCandidateCommand =>
+        proposeValidationThresholdCandidateCommand;
 
     public ICommand ReviewValidationThresholdCandidateCommand =>
         reviewValidationThresholdCandidateCommand;
@@ -280,6 +284,66 @@ public sealed partial class ToolWorkbenchViewModel
     public bool HasValidationThresholdCandidates =>
         validationThresholdCandidates.Count > 0;
 
+    public bool HasValidationThresholdAssistantAnalysis =>
+        validationThresholdReport is not null;
+
+    public bool HasValidationThresholdAssistantProposal =>
+        validationThresholdReviewProposal is not null;
+
+    public ValidationThresholdAssistantStage ValidationThresholdAssistantStage =>
+        !HasValidationThresholdAssistantAnalysis
+            || !HasValidationThresholdCandidates
+            || IsValidationSetRunning
+            ? ValidationThresholdAssistantStage.Analyze
+            : IsValidationThresholdCandidateApplied
+                ? ValidationThresholdAssistantStage.Apply
+                : IsValidationThresholdReviewActive
+                    ? ValidationThresholdAssistantStage.Review
+                    : ValidationThresholdAssistantStage.Propose;
+
+    public string ValidationThresholdAssistantStageText =>
+        ValidationThresholdAssistantStage switch
+        {
+            ValidationThresholdAssistantStage.Analyze =>
+                Localize("분석", "Analyze"),
+            ValidationThresholdAssistantStage.Propose =>
+                Localize("제안", "Propose"),
+            ValidationThresholdAssistantStage.Review =>
+                Localize("검토", "Review"),
+            ValidationThresholdAssistantStage.Apply =>
+                Localize("초안 적용", "Apply draft"),
+            _ => Localize("분석", "Analyze")
+        };
+
+    public string ValidationThresholdAssistantSummary =>
+        IsValidationSetRunning
+            ? Localize(
+                "Validation Set을 분석하는 중입니다. 완료될 때까지 적용할 수 없습니다.",
+                "Analyzing the Validation Set. Apply remains unavailable until it completes.")
+            : !HasValidationThresholdAssistantAnalysis
+                ? Localize(
+                    "분석을 실행하면 결정론적 임계값 후보가 생성됩니다.",
+                    "Run analysis to generate deterministic threshold candidates.")
+                : !HasSelectedValidationThresholdCandidate
+                    ? Localize(
+                        "후보를 선택한 뒤 제안을 만들 수 있습니다.",
+                        "Select a candidate to create a proposal.")
+                    : IsValidationThresholdCandidateApplied
+                        ? Localize(
+                            "PropertyGrid 초안에만 적용되었습니다. 일반 Apply와 실행은 별도입니다.",
+                            "Applied to the PropertyGrid draft only. Normal Apply and execution remain separate.")
+                        : IsValidationThresholdReviewActive
+                            ? Localize(
+                                "제안을 검토 중입니다. Apply 전에는 레시피와 실행 상태가 변하지 않습니다.",
+                                "Reviewing the proposal. Recipe and execution remain unchanged until Apply.")
+                            : HasValidationThresholdAssistantProposal
+                                ? Localize(
+                                    "제안이 준비되었습니다. 검토를 거친 뒤 초안에 적용하세요.",
+                                    "Proposal ready. Review it before applying to the draft.")
+                                : Localize(
+                                    "선택한 후보에서 초안 제안을 만드세요.",
+                                    "Create a draft proposal from the selected candidate.");
+
     public bool IsValidationEvidenceExpanded
     {
         get => isValidationEvidenceExpanded;
@@ -345,6 +409,9 @@ public sealed partial class ToolWorkbenchViewModel
             OnPropertyChanged();
             OnPropertyChanged(
                 nameof(HasSelectedValidationThresholdCandidate));
+            OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
+            OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
+            OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
             RefreshValidationThresholdCorrectionCommands();
         }
     }
@@ -525,6 +592,14 @@ public sealed partial class ToolWorkbenchViewModel
             parameter => SetSelectedValidationSampleRole(parameter?.ToString()),
             _ => !IsValidationSetRunning
                  && SelectedValidationSetSample is not null);
+        proposeValidationThresholdCandidateCommand = new RelayCommand(
+            _ => ProposeSelectedValidationThresholdCandidate(),
+            _ => !IsValidationSetRunning
+                 && !HasPendingStepParameterChanges
+                 && HasSelectedValidationThresholdCandidate
+                 && !HasValidationThresholdAssistantProposal
+                 && !IsValidationThresholdReviewActive
+                 && !IsValidationThresholdCandidateApplied);
         reviewValidationThresholdCandidateCommand = new RelayCommand(
             _ => ReviewSelectedValidationThresholdCandidate(),
             _ => !IsValidationSetRunning
@@ -535,7 +610,7 @@ public sealed partial class ToolWorkbenchViewModel
         cancelValidationThresholdReviewCommand = new RelayCommand(
             _ => CancelValidationThresholdReview(),
             _ => !IsValidationSetRunning
-                 && IsValidationThresholdReviewActive
+                 && HasValidationThresholdAssistantProposal
                  && !IsValidationThresholdCandidateApplied);
         applyValidationThresholdCandidateCommand = new RelayCommand(
             _ => ApplyReviewedValidationThresholdCandidate(),
@@ -911,6 +986,7 @@ public sealed partial class ToolWorkbenchViewModel
         nextValidationSetIssueCommand.RaiseCanExecuteChanged();
         openValidationSetComparisonCommand.RaiseCanExecuteChanged();
         setValidationSampleRoleCommand.RaiseCanExecuteChanged();
+        RefreshValidationThresholdCorrectionCommands();
     }
 
     private void SetValidationEvidence(
@@ -954,6 +1030,10 @@ public sealed partial class ToolWorkbenchViewModel
         OnPropertyChanged(nameof(ValidationEvidenceSummary));
         OnPropertyChanged(nameof(ValidationEvidenceWarning));
         OnPropertyChanged(nameof(HasValidationThresholdCandidates));
+        OnPropertyChanged(nameof(HasValidationThresholdAssistantAnalysis));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
         OnPropertyChanged(nameof(ValidationThresholdSummary));
         OnPropertyChanged(nameof(ValidationThresholdWarning));
     }
@@ -1003,14 +1083,41 @@ public sealed partial class ToolWorkbenchViewModel
                    : string.Empty);
     }
 
+    private void ProposeSelectedValidationThresholdCandidate()
+    {
+        if (!TryPrepareValidationThresholdProposal(out var message))
+        {
+            return;
+        }
+
+        isValidationThresholdReviewActive = false;
+        ValidationThresholdCorrectionSummary =
+            $"{message} Proposal ready. Review it before Apply.";
+        NotifyValidationThresholdCorrectionChanged();
+    }
+
     private void ReviewSelectedValidationThresholdCandidate()
+    {
+        if (!TryPrepareValidationThresholdProposal(out var message))
+        {
+            return;
+        }
+
+        isValidationThresholdReviewActive = true;
+        ValidationThresholdCorrectionSummary =
+            $"{message} Review is read-only until Apply.";
+        NotifyValidationThresholdCorrectionChanged();
+    }
+
+    private bool TryPrepareValidationThresholdProposal(out string message)
     {
         if (SelectedValidationThresholdCandidate is not { } selected
             || HasPendingStepParameterChanges)
         {
-            ValidationThresholdCorrectionSummary =
-                "Finish or discard the current PropertyGrid draft before starting threshold Review.";
-            return;
+            message =
+                "Finish or discard the current PropertyGrid draft before creating a threshold proposal.";
+            ValidationThresholdCorrectionSummary = message;
+            return false;
         }
 
         var document = CreateDocument();
@@ -1018,35 +1125,35 @@ public sealed partial class ToolWorkbenchViewModel
                 document,
                 selected.Candidate,
                 out var proposal,
-                out var message)
+                out message)
             || proposal is null)
         {
             ValidationThresholdCorrectionSummary = message;
-            return;
+            return false;
         }
 
         var step = PipelineSteps.FirstOrDefault(item =>
             string.Equals(item.Id, proposal.StepId, StringComparison.Ordinal));
         if (step is null)
         {
-            ValidationThresholdCorrectionSummary =
-                $"Mapped step '{proposal.StepId}' is not available in the current Workbench.";
-            return;
+            message = $"Mapped step '{proposal.StepId}' is not available in the current Workbench.";
+            ValidationThresholdCorrectionSummary = message;
+            return false;
         }
 
         SelectedPipelineStep = step;
         if (!ReferenceEquals(SelectedPipelineStep, step))
         {
-            ValidationThresholdCorrectionSummary =
+            message =
                 "The mapped step could not be selected. Finish the current editing session first.";
-            return;
+            ValidationThresholdCorrectionSummary = message;
+            return false;
         }
 
         validationThresholdReviewProposal = proposal;
         validationThresholdCorrectionEvidence = null;
         validationThresholdAfterDevelopmentResult = null;
         validationThresholdManualChanges = [];
-        isValidationThresholdReviewActive = true;
         isValidationThresholdCandidateApplied = false;
         isValidationThresholdManualCorrectionCommitted = false;
         isValidationThresholdDevelopmentValidated = false;
@@ -1061,14 +1168,12 @@ public sealed partial class ToolWorkbenchViewModel
         }
         validationThresholdHeldOutSamples.Clear();
         validationThresholdDevelopmentSamples.Clear();
-        ValidationThresholdCorrectionSummary =
-            $"{message} Review is read-only until Apply.";
-        NotifyValidationThresholdCorrectionChanged();
+        return true;
     }
 
     private void CancelValidationThresholdReview()
     {
-        if (!IsValidationThresholdReviewActive
+        if (!HasValidationThresholdAssistantProposal
             || IsValidationThresholdCandidateApplied)
         {
             return;
@@ -1427,6 +1532,10 @@ public sealed partial class ToolWorkbenchViewModel
     {
         OnPropertyChanged(nameof(IsValidationThresholdReviewActive));
         OnPropertyChanged(nameof(IsValidationThresholdCandidateApplied));
+        OnPropertyChanged(nameof(HasValidationThresholdAssistantProposal));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStage));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
         OnPropertyChanged(
             nameof(IsValidationThresholdManualCorrectionCommitted));
         OnPropertyChanged(nameof(IsValidationThresholdDevelopmentValidated));
@@ -1438,6 +1547,7 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshValidationThresholdCorrectionCommands()
     {
+        proposeValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
         reviewValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
         cancelValidationThresholdReviewCommand?.RaiseCanExecuteChanged();
         applyValidationThresholdCandidateCommand?.RaiseCanExecuteChanged();
@@ -1839,6 +1949,8 @@ public sealed partial class ToolWorkbenchViewModel
 
     private void RefreshValidationSetLocalization()
     {
+        OnPropertyChanged(nameof(ValidationThresholdAssistantStageText));
+        OnPropertyChanged(nameof(ValidationThresholdAssistantSummary));
         RefreshValidationSetCapability();
         for (var index = 0; index < validationSetSamples.Count; index++)
         {
@@ -2062,4 +2174,12 @@ public enum ValidationSetStatusFilter
     Pass,
     Fail,
     Error
+}
+
+public enum ValidationThresholdAssistantStage
+{
+    Analyze,
+    Propose,
+    Review,
+    Apply
 }

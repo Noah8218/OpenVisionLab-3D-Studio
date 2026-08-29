@@ -62,6 +62,8 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("OrientedBoxPointer", VerifyOrientedBoxPointer()),
             ("ExpandSelectedToolParameters", VerifyExpandSelectedToolParameters()),
             ("FocusSelectedToolParameterSearch", VerifyFocusSelectedToolParameterSearch()),
+            ("PreparationPresetAssistant", VerifyPreparationPresetAssistant()),
+            ("PreparationPresetAssistantDropdown", VerifyPreparationPresetAssistantDropdown()),
             ("SurfaceMatchExperimentPreview", VerifySurfaceMatchExperimentPreview()),
             ("SurfaceMatchExperimentFocusHover", VerifySurfaceMatchExperimentFocusHover()),
             ("SurfaceMatchCollectionPopup", VerifySurfaceMatchCollectionPopup()),
@@ -71,6 +73,8 @@ internal static class ShellSmokeCommandLineOptionsVerification
             ("ViewerToolbarPressed", VerifyViewerToolbarPressed()),
             ("CurrentRecipeRunStates", VerifyCurrentRecipeRunStates()),
             ("SupportBundlePressed", VerifySupportBundlePressed()),
+            ("ValidationThresholdAssistantPressed", VerifyValidationThresholdAssistantPressed()),
+            ("ValidationThresholdAssistantDisabled", VerifyValidationThresholdAssistantDisabled()),
             ("FirstRecipeSetupCapture", VerifyFirstRecipeSetupCapture()),
             ("StepRemovalDialog", VerifyStepRemovalDialog()),
             ("WorkbenchRunLog", VerifyWorkbenchRunLog()),
@@ -617,6 +621,60 @@ internal static class ShellSmokeCommandLineOptionsVerification
         return options.SupportBundlePressedSmoke
             && options.ShouldAttachLoadedHandler(
                 hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyValidationThresholdAssistantPressed()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-validation-threshold-assistant-pressed",
+            "--shell-smoke-screenshot",
+            "assistant-pressed.png"
+        ]);
+        return options.ValidationThresholdAssistantPressedSmoke
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyPreparationPresetAssistant()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-preparation-preset-assistant",
+            "review",
+            "--shell-smoke-screenshot",
+            "preparation-preset-review.png"
+        ]);
+        return options.PreparationPresetAssistantSmoke == "review"
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyPreparationPresetAssistantDropdown()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-preparation-preset-assistant",
+            "dropdown",
+            "--shell-smoke-screenshot",
+            "preparation-preset-dropdown.png"
+        ]);
+        return options.PreparationPresetAssistantSmoke == "dropdown"
+            && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
+    }
+
+    private static bool VerifyValidationThresholdAssistantDisabled()
+    {
+        var options = ShellSmokeCommandLineOptions.Parse(
+        [
+            "shell.exe",
+            "--smoke-validation-threshold-assistant-disabled",
+            "--shell-smoke-screenshot",
+            "assistant-disabled.png"
+        ]);
+        return options.ValidationThresholdAssistantDisabledSmoke
+               && options.ShouldAttachLoadedHandler(hasViewerSmokeScreenshot: false);
     }
 
     private static bool VerifyIntegrationExchangeState()

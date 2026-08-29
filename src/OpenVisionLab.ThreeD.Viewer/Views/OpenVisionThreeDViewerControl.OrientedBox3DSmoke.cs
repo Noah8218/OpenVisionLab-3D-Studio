@@ -28,6 +28,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         Window? hostWindow = null;
         var originalTopmost = false;
         var hoverRecovery = default(OrientedBoxHoverRecoverySmokeResult);
+        var yHandleSemanticsPassed = false;
 
         pointerInputMouseDownCount = 0;
         pointerInputMouseMoveCount = 0;
@@ -136,6 +137,16 @@ public sealed partial class OpenVisionThreeDViewerControl
                     "The OrientedBox3D Review draft disappeared during pointer editing.");
             }
 
+            var yHandleLabel = GetTeachingOrientedBoxHandleLabel(
+                TeachingOrientedBox3DEditMode.ResizeYPositive) ?? string.Empty;
+            var yHandleStatus = GetTeachingOrientedBoxStatus(
+                TeachingOrientedBox3DEditMode.ResizeYPositive,
+                completed: false);
+            yHandleSemanticsPassed =
+                yHandleLabel.Contains("half-extent", StringComparison.Ordinal)
+                && yHandleLabel.Contains("saved volume", StringComparison.Ordinal)
+                && yHandleStatus.Contains("saved volume Y half-extent", StringComparison.Ordinal);
+
             var identityPreserved = string.Equals(
                 finalSelection.Id,
                 initialSelection.Id,
@@ -176,7 +187,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 && authoredUnchanged
                 && executionUnchanged
                 && routedEventsPassed
-                && hoverRecovery.Passed;
+                && hoverRecovery.Passed
+                && yHandleSemanticsPassed;
 
             lines.Add(
                 $"Gestures|move={moveResult.Passed}|resizeX={resizeXResult.Passed}|heightY={heightResult.Passed}|resizeZ={resizeZResult.Passed}|rotateY={rotateResult.Passed}");
@@ -190,6 +202,8 @@ public sealed partial class OpenVisionThreeDViewerControl
                 $"RoutedEvents|pass={routedEventsPassed}|mouseDown={pointerInputMouseDownCount}|mouseMove={pointerInputMouseMoveCount}|mouseUp={pointerInputMouseUpCount}|actualWindowsPointer=true");
             lines.Add(
                 $"InteractionStates|normal={hoverRecovery.NormalPassed}|hover={hoverRecovery.HoverPassed}|pressedReleased={routedEventsPassed}|mouseLeaveRecovery={hoverRecovery.MouseLeaveRecoveryPassed}|cursorRecovery={hoverRecovery.CursorRecoveryPassed}|statusRecovery={hoverRecovery.StatusRecoveryPassed}");
+            lines.Add(
+                $"YHandleSemantics|pass={yHandleSemanticsPassed}|label={yHandleLabel}|status={yHandleStatus}");
             lines.Add(
                 "Projection|worldOutline=true|screenSpaceFallback=true|topSidePerspectiveActualPointer=true|fixedHandleRadiusPixels=18");
         }

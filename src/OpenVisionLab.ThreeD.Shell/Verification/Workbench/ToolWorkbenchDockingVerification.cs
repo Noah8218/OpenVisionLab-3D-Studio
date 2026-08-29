@@ -1064,8 +1064,8 @@ internal static class ToolWorkbenchDockingVerification
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
             Check(
-                "All 33 repository ComboBoxes use the shared 30-pixel minimum without undersized overrides",
-                comboBoxTags.Length == 33
+                "All 34 repository ComboBoxes use the shared 30-pixel minimum without undersized overrides",
+                comboBoxTags.Length == 34
                 && undersizedComboBoxes.Length == 0
                 && undersizedComboBoxStyleSetters.Length == 0,
                 $"count={comboBoxTags.Length}; tagUndersized={string.Join(',', undersizedComboBoxes)}; styleUndersized={string.Join(',', undersizedComboBoxStyleSetters)}");
@@ -1163,7 +1163,7 @@ internal static class ToolWorkbenchDockingVerification
                 "MainWindow.xaml.cs"));
             Check(
                 "Button audit covers all declarations, style owners, custom templates, and dynamic dialog buttons",
-                buttonBaseControls.Length == 347
+                buttonBaseControls.Length == 354
                  && buttonBaseStyles.Length == 35
                 && appButtonTemplates.Length == 11
                 && messageDialogSource.Contains("var button = new Button", StringComparison.Ordinal)

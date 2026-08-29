@@ -654,7 +654,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         TeachingOrientedBox3DEditMode mode) =>
         mode switch
         {
-            TeachingOrientedBox3DEditMode.ResizeYPositive => "Y size",
+            TeachingOrientedBox3DEditMode.ResizeYPositive => "Y half-extent · saved volume",
             TeachingOrientedBox3DEditMode.RotateY => "Rotate Y",
             _ => null
         };
@@ -807,7 +807,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         {
             TeachingOrientedBox3DEditMode.Move => "center move",
             TeachingOrientedBox3DEditMode.ResizeYNegative
-                or TeachingOrientedBox3DEditMode.ResizeYPositive => "height resize",
+                or TeachingOrientedBox3DEditMode.ResizeYPositive => "saved volume Y half-extent resize",
             TeachingOrientedBox3DEditMode.ResizeXNegative
                 or TeachingOrientedBox3DEditMode.ResizeXPositive => "X size",
             TeachingOrientedBox3DEditMode.ResizeZNegative

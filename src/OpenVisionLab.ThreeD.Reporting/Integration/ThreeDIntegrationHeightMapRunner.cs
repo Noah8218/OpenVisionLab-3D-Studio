@@ -214,6 +214,7 @@ public static class ThreeDIntegrationHeightMapRunner
         string runRecordPath = Path.Combine(
             transactionDirectory,
             $".3d-run-record-input-{Guid.NewGuid():N}.json");
+        string? projectionResultPath = null;
         var runRecord = CreateRunRecord(
             runId,
             handoff,
@@ -225,15 +226,39 @@ public static class ThreeDIntegrationHeightMapRunner
             cancellationToken.ThrowIfCancellationRequested();
             InspectionRunRecordJson.Write(runRecordPath, runRecord);
             cancellationToken.ThrowIfCancellationRequested();
+            var projectionResult = CreateProjectionResult(
+                exchangeRoot,
+                transactionDirectory,
+                handoff,
+                snapshot,
+                request.Roi,
+                evaluation,
+                runId,
+                cancellationToken);
+            if (projectionResult is not null)
+            {
+                projectionResultPath = WriteProjectionResult(
+                    transactionDirectory,
+                    projectionResult);
+            }
+
             return ThreeDIntegrationExchange.PublishCompletedResult(
                 exchangeRoot,
                 transactionId,
                 consumerBuild,
-                runRecordPath);
+                runRecordPath,
+                projectionResultPath is null
+                    ? null
+                    : [new ThreeDIntegrationEvidenceArtifact(
+                        ThreeDCoordinateProjectionContract.ResultEvidenceRole,
+                        ThreeDCoordinateProjectionContract.ResultEvidenceArtifactId,
+                        projectionResultPath,
+                        "artifacts/coordinate-projection-result.json")]);
         }
         finally
         {
             TryDeleteFile(runRecordPath);
+            TryDeleteFile(projectionResultPath);
         }
     }
 
@@ -315,6 +340,256 @@ public static class ThreeDIntegrationHeightMapRunner
                 []),
             IntegrationContext = integrationContext
         };
+    }
+
+    private static ThreeDCoordinateProjectionResult? CreateProjectionResult(
+        string exchangeRoot,
+        string transactionDirectory,
+        IntegrationHandoffV2 handoff,
+        C3DHeightFieldSnapshot snapshot,
+        VisionSdkGridRoi? roi,
+        VisionSdkInspectionEvaluation evaluation,
+        string threeDRunId,
+        CancellationToken cancellationToken)
+    {
+        var profileArtifact = handoff.Context.Artifacts.SingleOrDefault(artifact =>
+            string.Equals(
+                artifact.Role,
+                ThreeDCoordinateProjectionContract.ProfileArtifactRole,
+                StringComparison.Ordinal));
+        if (profileArtifact is null)
+        {
+            return null;
+        }
+
+        var profilePath = ResolveArtifactPath(transactionDirectory, profileArtifact);
+        VerifyArtifactIdentity(profilePath, profileArtifact);
+        var profile = ThreeDCoordinateProjectionContract.ReadProfile(profilePath);
+        if (string.IsNullOrWhiteSpace(profile.TwoDTransactionId)
+            || !Guid.TryParse(profile.TwoDTransactionId, out var twoDTransactionId)
+            || twoDTransactionId == Guid.Empty)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.CorrelationMismatch,
+                "A projection-enabled ThreeD Handoff must identify its completed TwoD transaction.");
+        }
+
+        if (!string.Equals(profile.Grid.Unit, handoff.Context.Unit, StringComparison.Ordinal)
+            || !string.Equals(profile.Grid.FrameId, handoff.Context.FrameId, StringComparison.Ordinal))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.CorrelationMismatch,
+                "The projection grid contract does not match the ThreeD Handoff unit or frame.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var twoDHandoff = ThreeDIntegrationExchange.ReadHandoff(
+            exchangeRoot,
+            twoDTransactionId);
+        if (twoDHandoff.Context.Modality != IntegrationInspectionModality.TwoD
+            || twoDHandoff.Context.InputKind != IntegrationInspectionInputKind.Image)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.CorrelationMismatch,
+                "The projection profile does not point to a TwoD/Image Handoff.");
+        }
+
+        var twoDProfileArtifact = twoDHandoff.Context.Artifacts.SingleOrDefault(artifact =>
+            string.Equals(
+                artifact.Role,
+                ThreeDCoordinateProjectionContract.ProfileArtifactRole,
+                StringComparison.Ordinal));
+        if (twoDProfileArtifact is null)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.InvalidArtifact,
+                "The paired TwoD Handoff does not contain a coordinate projection profile.");
+        }
+
+        var twoDTransactionDirectory = GetTransactionDirectory(
+            exchangeRoot,
+            twoDTransactionId);
+        var twoDProfile = ThreeDCoordinateProjectionContract.ReadProfile(
+            ResolveArtifactPath(twoDTransactionDirectory, twoDProfileArtifact));
+        if (!ThreeDCoordinateProjectionContract.ProfilesMatch(profile, twoDProfile))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.CorrelationMismatch,
+                "The paired TwoD and ThreeD projection profiles do not match.");
+        }
+
+        var twoDResult = ThreeDIntegrationExchange.ReadResult(
+            exchangeRoot,
+            twoDTransactionId);
+        if (twoDResult.Status != IntegrationResultStatus.Completed
+            || twoDResult.RunRecord is null
+            || !string.Equals(
+                twoDResult.Correlation.Modality.ToString(),
+                IntegrationInspectionModality.TwoD.ToString(),
+                StringComparison.Ordinal)
+            || !string.Equals(
+                twoDResult.Correlation.InputKind.ToString(),
+                IntegrationInspectionInputKind.Image.ToString(),
+                StringComparison.Ordinal))
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.InvalidState,
+                "The paired TwoD transaction does not contain a completed Image Result.");
+        }
+
+        var twoDRunRecord = ThreeDCoordinateProjectionContract.ReadTwoDRunRecord(
+            ResolveArtifactPath(twoDTransactionDirectory, twoDResult.RunRecord));
+        if (!string.Equals(twoDRunRecord.RunId, twoDResult.RunId, StringComparison.Ordinal)
+            || twoDRunRecord.SourceImageWidth != profile.Image.Width
+            || twoDRunRecord.SourceImageHeight != profile.Image.Height)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.CorrelationMismatch,
+                "The paired TwoD Run Record does not match the projection profile identity or dimensions.");
+        }
+
+        var twoDPoints = new List<ThreeDProjectedCoordinate>();
+        foreach (var step in twoDRunRecord.Steps)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var overlays = step.Overlays ?? [];
+            for (var overlayIndex = 0; overlayIndex < overlays.Count; overlayIndex++)
+            {
+                var overlay = overlays[overlayIndex];
+                var points = overlay.Points is { Count: > 0 }
+                    ? overlay.Points
+                    : [new TwoDIntegrationOverlayPointDocument(overlay.CenterX, overlay.CenterY)];
+                for (var pointIndex = 0; pointIndex < points.Count; pointIndex++)
+                {
+                    var imagePoint = points[pointIndex];
+                    var gridPoint = ThreeDCoordinateProjectionContract.MapImageToGrid(
+                        profile,
+                        imagePoint.X,
+                        imagePoint.Y,
+                        snapshot.Width,
+                        snapshot.Height);
+                    var sampled = SampleHeight(snapshot, gridPoint.X, gridPoint.Y);
+                    twoDPoints.Add(new(
+                        "2D->3D",
+                        $"2d-{step.Index}-{overlayIndex}-{pointIndex}",
+                        overlay.Kind,
+                        overlay.Label,
+                        imagePoint.X,
+                        imagePoint.Y,
+                        gridPoint.X,
+                        gridPoint.Y,
+                        sampled.Value,
+                        sampled.Status,
+                        step.Status));
+                }
+            }
+        }
+
+        if (twoDPoints.Count == 0)
+        {
+            throw new IntegrationContractException(
+                IntegrationErrorCode.ExecutionFailed,
+                "The paired TwoD Run Record contains no runtime overlay geometry to project.");
+        }
+
+        var threeDPoints = new List<ThreeDProjectedCoordinate>();
+        if (roi is { } inspectionRoi)
+        {
+            var lastRow = checked(inspectionRoi.Row + inspectionRoi.RowCount - 1);
+            var lastColumn = checked(inspectionRoi.Column + inspectionRoi.ColumnCount - 1);
+            var gridPoints = new[]
+            {
+                (X: (double)inspectionRoi.Column, Y: (double)inspectionRoi.Row),
+                (X: (double)lastColumn, Y: (double)inspectionRoi.Row),
+                (X: (double)lastColumn, Y: (double)lastRow),
+                (X: (double)inspectionRoi.Column, Y: (double)lastRow),
+                (X: (inspectionRoi.Column + lastColumn) / 2.0,
+                    Y: (inspectionRoi.Row + lastRow) / 2.0)
+            };
+            for (var pointIndex = 0; pointIndex < gridPoints.Length; pointIndex++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var gridPoint = gridPoints[pointIndex];
+                var imagePoint = ThreeDCoordinateProjectionContract.MapGridToImage(
+                    profile,
+                    gridPoint.X,
+                    gridPoint.Y,
+                    snapshot.Width,
+                    snapshot.Height);
+                var sampled = SampleHeight(snapshot, gridPoint.X, gridPoint.Y);
+                var imageStatus = imagePoint.X >= 0.0
+                    && imagePoint.X <= profile.Image.Width - 1
+                    && imagePoint.Y >= 0.0
+                    && imagePoint.Y <= profile.Image.Height - 1
+                    ? sampled.Status
+                    : "OutsideImage";
+                threeDPoints.Add(new(
+                    "3D->2D",
+                    $"3d-roi-{pointIndex}",
+                    "warpage-roi",
+                    "C3D inspection ROI",
+                    imagePoint.X,
+                    imagePoint.Y,
+                    gridPoint.X,
+                    gridPoint.Y,
+                    sampled.Value,
+                    imageStatus,
+                    evaluation.Result.Status.ToString()));
+            }
+        }
+
+        return new(
+            ThreeDCoordinateProjectionContract.SchemaVersion,
+            profile.ProjectionId,
+            twoDTransactionId.ToString("D"),
+            handoff.TransactionId.ToString("D"),
+            evaluation.Result.Status.ToString(),
+            twoDRunRecord.RunId,
+            threeDRunId,
+            profile.Image.Width,
+            profile.Image.Height,
+            snapshot.Width,
+            snapshot.Height,
+            twoDPoints,
+            threeDPoints,
+            DateTimeOffset.UtcNow);
+    }
+
+    private static string WriteProjectionResult(
+        string transactionDirectory,
+        ThreeDCoordinateProjectionResult result)
+    {
+        var path = Path.Combine(
+            transactionDirectory,
+            $".coordinate-projection-result-input-{Guid.NewGuid():N}.json");
+        File.WriteAllText(
+            path,
+            ThreeDCoordinateProjectionContract.SerializeResult(result));
+        return path;
+    }
+
+    private static (double? Value, string Status) SampleHeight(
+        C3DHeightFieldSnapshot snapshot,
+        double gridX,
+        double gridY)
+    {
+        if (gridX < 0.0
+            || gridX > snapshot.Width - 1
+            || gridY < 0.0
+            || gridY > snapshot.Height - 1)
+        {
+            return (null, "OutsideGrid");
+        }
+
+        var column = (int)Math.Round(gridX, MidpointRounding.AwayFromZero);
+        var row = (int)Math.Round(gridY, MidpointRounding.AwayFromZero);
+        if (column < 0 || column >= snapshot.Width || row < 0 || row >= snapshot.Height)
+        {
+            return (null, "OutsideGrid");
+        }
+
+        var value = snapshot.Values.Span[checked(row * snapshot.Width + column)];
+        return double.IsFinite(value) ? (value, "Valid") : (null, "Missing");
     }
 
     private static void EnsureThreeDHeightMapHandoff(
@@ -455,7 +730,7 @@ public static class ThreeDIntegrationHeightMapRunner
         && string.Equals(actual.SourceCommit, expected.SourceCommit, StringComparison.OrdinalIgnoreCase)
         && actual.SourceState == expected.SourceState;
 
-    private static void TryDeleteFile(string path)
+    private static void TryDeleteFile(string? path)
     {
         try
         {

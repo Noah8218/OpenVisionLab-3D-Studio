@@ -112,6 +112,66 @@ internal sealed class ToolWorkbenchStepPropertySession : INotifyPropertyChanged
     public void MarkDirty() =>
         SetState(true, "Unapplied parameter changes. Apply or discard before changing recipe sessions.");
 
+    /// <summary>
+    /// Applies a bounded Filter preparation preset to the detached typed draft.
+    /// The recipe step and all execution state remain unchanged until the normal
+    /// parameter Apply command is used by the caller.
+    /// </summary>
+    public bool TryApplyFilterKernelPresetDraft(
+        ToolWorkbenchPipelineStepItem step,
+        int kernelSize,
+        out string message)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        if (!string.Equals(step.Id, draftStepId, StringComparison.Ordinal)
+            || !string.Equals(step.ToolId, "filter", StringComparison.Ordinal)
+            || Draft is not FilterStepProperties current)
+        {
+            message =
+                "The selected step no longer matches the Filter preparation preset draft.";
+            SetStatus(message);
+            return false;
+        }
+
+        if (kernelSize is not (3 or 5 or 7))
+        {
+            message = "Filter preparation presets support kernel sizes 3, 5, and 7 only.";
+            SetStatus(message);
+            return false;
+        }
+
+        var next = new FilterStepProperties
+        {
+            Method = current.Method,
+            KernelSize = kernelSize,
+            MissingValuePolicy = current.MissingValuePolicy,
+            BoundaryPolicy = current.BoundaryPolicy,
+            UnmappedParameters = current.UnmappedParameters
+        };
+        if (!next.TryValidate(out message))
+        {
+            SetStatus(message);
+            return false;
+        }
+
+        Draft = next;
+        if (current.KernelSize == kernelSize)
+        {
+            SetState(
+                false,
+                $"Filter preparation preset {kernelSize} x {kernelSize} already matches the draft. No inspection ran.");
+        }
+        else
+        {
+            SetState(
+                true,
+                $"Filter preparation preset {kernelSize} x {kernelSize} applied to the draft only. Use normal Apply to change the recipe; Preview, Publish, and Run remain separate.");
+        }
+
+        message = Status;
+        return true;
+    }
+
     public bool TryApplyThresholdProposal(
         ToolWorkbenchPipelineStepItem step,
         ToolRecipeThresholdParameterProposal proposal,

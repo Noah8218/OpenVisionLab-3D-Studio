@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.2.0-dev` development line onward. It does not claim that a version was
+`0.3.0-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.2.0-dev
+## [Unreleased] - 0.3.0-dev
 
 ### Added
 
@@ -54,6 +54,10 @@ released; publication state is owned by the release and version policy.
   source-grid cells and missing values in a separate derived raw-height output.
 - Added a typed HeightMap integration exchange and consumer smoke path with
   explicit acknowledgement, result publication, and Run Record evidence.
+- Added bounded selected-region transform propagation from a raw C3D source,
+  exact connected-region artifact, and published affine transform into a
+  separate immutable result with deterministic membership, missing preservation,
+  JSON identity, and fail-closed metadata guards.
 
 ### Improved
 
@@ -104,5 +108,5 @@ released; publication state is owned by the release and version policy.
   fixture identity.
 - Schema `1.8` and older optional-field records remain readable under their
   documented compatibility boundaries.
-- Product version remains `0.2.0-dev`; no tag, release candidate, or public
+- Product version is `0.3.0-dev`; no tag, release candidate, or public
   release is created by these changes.
