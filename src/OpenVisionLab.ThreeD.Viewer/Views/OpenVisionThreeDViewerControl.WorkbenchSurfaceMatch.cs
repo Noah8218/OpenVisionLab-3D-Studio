@@ -1,7 +1,6 @@
 using System.Numerics;
-using System.IO;
 using OpenVisionLab.ThreeD.Core;
-using OpenVisionLab.ThreeD.Data;
+using OpenVisionLab.ThreeD.Viewer.Rendering;
 using SharpGL;
 
 namespace OpenVisionLab.ThreeD.Viewer;
@@ -32,127 +31,21 @@ public sealed partial class OpenVisionThreeDViewerControl
         SurfaceMatchFalsePositiveReviewArtifact? falsePositiveReview = null,
         SurfaceEdgeAcquisitionDirectionArtifact? acquisitionDirectionOrientation = null)
     {
-        ArgumentNullException.ThrowIfNull(model);
-        ArgumentNullException.ThrowIfNull(scene);
-        ArgumentNullException.ThrowIfNull(execution);
-        var validity =
-            SurfaceMatchExecutionArtifactValidator.Inspect(execution);
-        if (!validity.IsValid
-            || execution.Overlay is not { } overlay
-            || execution.PoseResult.Pose is not { } pose
-            || !string.Equals(
-                model.ContentSha256,
-                execution.ModelContentSha256,
-                StringComparison.Ordinal)
-            || !string.Equals(
-                scene.ContentSha256,
-                execution.SceneContentSha256,
-                StringComparison.Ordinal))
-        {
-            throw new InvalidDataException(
-                "Viewer surface-match evidence is invalid, unidentified, or linked to different inputs.");
-        }
-
-        var allReferencePoints = overlay.TransformedPoints
-            .Concat(scene.Samples.Select(sample => sample.Position))
-            .ToArray();
-        surfaceMatchDisplayFrame =
-            SurfaceMatchDisplayFrame.Create(allReferencePoints);
-        surfaceMatchOverlayPositions = overlay.TransformedPoints
-            .Select(surfaceMatchDisplayFrame.Map)
-            .ToArray();
-        surfaceMatchOverlayTriangles = overlay.Triangles.ToArray();
-        surfaceMatchScenePositions = scene.Samples
-            .OrderBy(sample => sample.Order)
-            .Select(sample =>
-                surfaceMatchDisplayFrame.Map(sample.Position))
-            .ToArray();
-        surfaceMatchCorrespondences = execution.PoseResult.Coverage.Matches
-            .Select(match =>
-            {
-                var modelSample = model.Samples.Single(sample =>
-                    sample.Order == match.ModelSampleOrder);
-                var sceneSample = scene.Samples.Single(sample =>
-                    sample.Order == match.SceneSampleOrder);
-                return (
-                    surfaceMatchDisplayFrame.Map(
-                        pose.TransformPoint(modelSample.Position)),
-                    surfaceMatchDisplayFrame.Map(sceneSample.Position));
-            })
-            .ToArray();
-        if (edgeDiagnosticOverlay is not null)
-        {
-            var edgeValidity =
-                SurfaceEdgeDiagnosticOverlayArtifactValidator.Inspect(
-                    edgeDiagnosticOverlay);
-            if (!edgeValidity.IsValid
-                || edgeScore is null
-                || edgeDiagnosticOverlay.SurfaceMatchExecutionContentSha256
-                    != execution.ContentSha256
-                || edgeDiagnosticOverlay.ModelContentSha256
-                    != model.ContentSha256
-                || edgeDiagnosticOverlay.SceneContentSha256
-                    != scene.ContentSha256
-                || edgeDiagnosticOverlay.ScoreContentSha256
-                    != edgeScore.ContentSha256)
-            {
-                throw new InvalidDataException(
-                    "Viewer edge diagnostic overlay is invalid or linked to different evidence.");
-            }
-
-            if (acquisitionDirectionOrientation is not null
-                && !SurfaceEdgeAcquisitionDirectionArtifactValidator
-                    .Inspect(acquisitionDirectionOrientation, edgeDiagnosticOverlay).IsValid)
-            {
-                throw new InvalidDataException(
-                    "Viewer acquisition-direction orientation is invalid or linked to different edge evidence.");
-            }
-
-            var orientationByOrder = acquisitionDirectionOrientation?.Items
-                .ToDictionary(item => item.ModelEdgeOrder);
-
-            surfaceEdgeModelSegments = edgeDiagnosticOverlay.ModelSegments
-                .Select(segment => new SurfaceEdgeModelRenderSegment(
-                    surfaceMatchDisplayFrame.Map(segment.FirstPosition),
-                    surfaceMatchDisplayFrame.Map(segment.SecondPosition),
-                    surfaceMatchDisplayFrame.Map(segment.Anchor),
-                    surfaceMatchDisplayFrame.MapDirectionEnd(
-                        segment.Anchor,
-                        segment.DeclaredNormal,
-                        0.62f),
-                    segment.IsMatched,
-                    orientationByOrder is not null
-                        && orientationByOrder.TryGetValue(segment.ModelEdgeOrder, out var item)
-                            ? item.Orientation
-                            : null))
-                .ToArray();
-            surfaceEdgeSceneSegments = edgeDiagnosticOverlay.SceneSegments
-                .Select(segment => new SurfaceEdgeSceneRenderSegment(
-                    surfaceMatchDisplayFrame.Map(segment.FirstPosition),
-                    surfaceMatchDisplayFrame.Map(segment.SecondPosition),
-                    segment.IsMatched))
-                .ToArray();
-            if (acquisitionDirectionOrientation is not null
-                && edgeDiagnosticOverlay.ModelSegments.FirstOrDefault() is { } firstSegment)
-            {
-                surfaceAcquisitionDirectionMarker = (
-                    surfaceMatchDisplayFrame.Map(firstSegment.Anchor),
-                    surfaceMatchDisplayFrame.MapDirectionEnd(
-                        firstSegment.Anchor,
-                        acquisitionDirectionOrientation.NormalizedSensorToSceneDirection,
-                        1.0f));
-            }
-            else
-            {
-                surfaceAcquisitionDirectionMarker = null;
-            }
-        }
-        else
-        {
-            surfaceEdgeModelSegments = null;
-            surfaceEdgeSceneSegments = null;
-            surfaceAcquisitionDirectionMarker = null;
-        }
+        var displayPreparation = SurfaceMatchDisplayPreparation.Prepare(
+            model,
+            scene,
+            execution,
+            edgeScore,
+            edgeDiagnosticOverlay,
+            acquisitionDirectionOrientation);
+        surfaceMatchDisplayFrame = displayPreparation.DisplayFrame;
+        surfaceMatchOverlayPositions = displayPreparation.OverlayPositions;
+        surfaceMatchOverlayTriangles = displayPreparation.OverlayTriangles;
+        surfaceMatchScenePositions = displayPreparation.ScenePositions;
+        surfaceMatchCorrespondences = displayPreparation.Correspondences;
+        surfaceEdgeModelSegments = displayPreparation.EdgeModelSegments;
+        surfaceEdgeSceneSegments = displayPreparation.EdgeSceneSegments;
+        surfaceAcquisitionDirectionMarker = displayPreparation.AcquisitionDirectionMarker;
         surfaceMatchRenderExecution = execution;
 
         viewModel.CubeVisible = false;
@@ -393,72 +286,4 @@ public sealed partial class OpenVisionThreeDViewerControl
         gl.Vertex(second.X, second.Y, second.Z);
     }
 
-    private readonly record struct SurfaceEdgeModelRenderSegment(
-        Vector3 First,
-        Vector3 Second,
-        Vector3 Anchor,
-        Vector3 NormalEnd,
-        bool IsMatched,
-        SurfaceEdgeAcquisitionOrientation? Orientation);
-
-    private readonly record struct SurfaceEdgeSceneRenderSegment(
-        Vector3 First,
-        Vector3 Second,
-        bool IsMatched);
-
-    private readonly record struct SurfaceMatchDisplayFrame(
-        double CenterX,
-        double CenterY,
-        double CenterZ,
-        double Scale)
-    {
-        public static SurfaceMatchDisplayFrame Create(
-            IReadOnlyList<SurfaceModelPoint3> points)
-        {
-            if (points.Count == 0)
-            {
-                throw new InvalidDataException(
-                    "Surface match display requires finite geometry.");
-            }
-
-            var minimumX = points.Min(point => point.X);
-            var maximumX = points.Max(point => point.X);
-            var minimumY = points.Min(point => point.Y);
-            var maximumY = points.Max(point => point.Y);
-            var minimumZ = points.Min(point => point.Z);
-            var maximumZ = points.Max(point => point.Z);
-            var maximumSpan = Math.Max(
-                1e-12,
-                Math.Max(
-                    maximumX - minimumX,
-                    Math.Max(
-                        maximumY - minimumY,
-                        maximumZ - minimumZ)));
-            return new SurfaceMatchDisplayFrame(
-                (minimumX + maximumX) * 0.5,
-                (minimumY + maximumY) * 0.5,
-                (minimumZ + maximumZ) * 0.5,
-                C3DHeightGrid.ViewerHorizontalSpan
-                * 0.62
-                / maximumSpan);
-        }
-
-        public Vector3 Map(SurfaceModelPoint3 point) =>
-            new(
-                (float)((point.X - CenterX) * Scale),
-                (float)((point.Y - CenterY) * Scale),
-                (float)((point.Z - CenterZ) * Scale));
-
-        public Vector3 MapDirectionEnd(
-            SurfaceModelPoint3 anchor,
-            SurfaceModelPoint3 direction,
-            float displayLength)
-        {
-            var mappedAnchor = Map(anchor);
-            return new Vector3(
-                mappedAnchor.X + (float)direction.X * displayLength,
-                mappedAnchor.Y + (float)direction.Y * displayLength,
-                mappedAnchor.Z + (float)direction.Z * displayLength);
-        }
-    }
 }

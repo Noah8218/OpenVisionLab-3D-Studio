@@ -18,11 +18,18 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.5-dev`
+Current version: `v0.4.6-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.6-dev` (2026-09-01)
+
+- Extracted Surface Match evidence validation, coordinate mapping, and edge
+  render-snapshot preparation from the Viewer control into a WPF-neutral owner.
+- Preserved the public Viewer display contract, OpenGL drawing, ViewModel
+  scene/camera state, and explicit recipe workflow semantics.
 
 #### `v0.4.5-dev` (2026-09-01)
 
