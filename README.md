@@ -18,11 +18,19 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.2-dev`
+Current version: `v0.4.3-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.3-dev` (2026-09-01)
+
+- Extracts Surface Match collection navigation, disabled-state, Published
+  focus/hover, and popup evidence Smoke policy from `MainWindow` into an
+  explicit Shell verification owner.
+- Preserves recipe, Run Record, explicit Preview/Publish/Run, automation-ID,
+  and popup report contracts; this internal refactor adds no calibration claim.
 
 #### `v0.4.2-dev` (2026-09-01)
 

@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     private readonly ToolLabWindowManager _toolLabWindows;
     private readonly ShellPreparationPresetAssistantSmoke _preparationPresetSmoke;
     private readonly ShellValidationThresholdAssistantSmoke _validationThresholdSmoke;
+    private readonly ShellSurfaceMatchInteractionSmoke _surfaceMatchInteractionSmoke;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
     private Task? validationSetSmokeSelectionTask;
     private Task? validationSetSmokeSectionTask;
@@ -92,6 +93,11 @@ public partial class MainWindow : Window
         _validationThresholdSmoke = new ShellValidationThresholdAssistantSmoke(
             _viewModel.Workbench,
             ToolWorkbench);
+        _surfaceMatchInteractionSmoke = new ShellSurfaceMatchInteractionSmoke(
+            _viewModel.Workbench,
+            ToolWorkbench,
+            SetCursorPos,
+            Dispatcher);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
             _viewer,
@@ -1373,260 +1379,24 @@ public partial class MainWindow : Window
                 var workbenchUiApplyStarted = Stopwatch.GetTimestamp();
                 UpdateLayout();
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                if (surfaceMatchCollectionNavigationFocusHoverSmoke)
+                if (surfaceMatchCollectionNavigationFocusHoverSmoke
+                    || surfaceMatchCollectionDisabledSmoke
+                    || surfaceMatchExperimentFocusHoverSmoke
+                    || surfaceMatchCollectionPopupSmoke)
                 {
-                    var collection =
-                        _viewModel.Workbench.SurfaceMatchCollection;
-                    var selectedMatchId = _viewModel.Workbench
-                        .SelectedSurfaceMatchCollectionItem?.MatchId;
-                    var previousButton =
-                        FindVisualDescendants<
-                                System.Windows.Controls.Button>(
-                                ToolWorkbench)
-                            .FirstOrDefault(button =>
-                                System.Windows.Automation
-                                    .AutomationProperties
-                                    .GetAutomationId(button)
-                                == "PreviousSurfaceMatchCollectionItem");
-                    if (collection is null
-                        || selectedMatchId is null
-                        || previousButton is null
-                        || !previousButton.IsEnabled
-                        || !previousButton.Focus())
+                    var interaction = await _surfaceMatchInteractionSmoke.RunAsync(
+                        surfaceMatchCollectionNavigationFocusHoverSmoke,
+                        surfaceMatchCollectionDisabledSmoke,
+                        surfaceMatchExperimentFocusHoverSmoke,
+                        surfaceMatchCollectionPopupSmoke,
+                        surfaceMatchCollectionPopupScreenshotPath);
+                    if (!interaction.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(
-                            "Previous Surface Match collection navigation button could not receive focus.");
+                            interaction.Failure!);
                         Application.Current.Shutdown(1);
                         return;
                     }
-
-                    var center = previousButton.PointToScreen(
-                        new System.Windows.Point(
-                            previousButton.ActualWidth / 2.0,
-                            previousButton.ActualHeight / 2.0));
-                    if (!SetCursorPos(
-                            (int)Math.Round(center.X),
-                            (int)Math.Round(center.Y)))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Previous Surface Match collection navigation button could not receive pointer hover.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Input);
-                    await Task.Delay(100);
-                    if (_viewModel.Workbench.SurfaceMatchCollection
-                            ?.ContentSha256 != collection.ContentSha256
-                        || _viewModel.Workbench
-                            .SelectedSurfaceMatchCollectionItem?.MatchId
-                            != selectedMatchId)
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Focusing or hovering Surface Match navigation changed evidence or selection state.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-                if (surfaceMatchCollectionDisabledSmoke)
-                {
-                    var collection =
-                        _viewModel.Workbench.SurfaceMatchCollection;
-                    var selectedMatchId = _viewModel.Workbench
-                        .SelectedSurfaceMatchCollectionItem?.MatchId;
-                    var selector =
-                        FindVisualDescendants<
-                                System.Windows.Controls.ComboBox>(
-                                ToolWorkbench)
-                            .FirstOrDefault(comboBox =>
-                                System.Windows.Automation
-                                    .AutomationProperties
-                                    .GetAutomationId(comboBox)
-                                == "SurfaceMatchCollectionSelector");
-                    if (collection is null
-                        || selectedMatchId is null
-                        || selector is null)
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match collection selector was unavailable for disabled-state capture.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    selector.SetCurrentValue(
-                        IsEnabledProperty,
-                        false);
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Render);
-                    if (selector.IsEnabled
-                        || _viewModel.Workbench.SurfaceMatchCollection
-                            ?.ContentSha256 != collection.ContentSha256
-                        || _viewModel.Workbench
-                            .SelectedSurfaceMatchCollectionItem?.MatchId
-                            != selectedMatchId)
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match collection disabled-state capture changed evidence or selection state.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                }
-                if (surfaceMatchExperimentFocusHoverSmoke)
-                {
-                    var publishedButton =
-                        FindVisualDescendants<System.Windows.Controls.Button>(
-                                ToolWorkbench)
-                            .FirstOrDefault(button =>
-                                System.Windows.Automation.AutomationProperties
-                                    .GetAutomationId(button)
-                                == "SurfaceMatchExperimentShowPublishedButton");
-                    if (publishedButton is null
-                        || !publishedButton.Focus())
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match Published comparison button could not receive keyboard focus.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    var center = publishedButton.PointToScreen(
-                        new System.Windows.Point(
-                            publishedButton.ActualWidth / 2.0,
-                            publishedButton.ActualHeight / 2.0));
-                    if (!SetCursorPos(
-                            (int)Math.Round(center.X),
-                            (int)Math.Round(center.Y)))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match Published comparison button could not receive pointer hover.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Input);
-                    await Task.Delay(100);
-                }
-                if (surfaceMatchCollectionPopupSmoke)
-                {
-                    var collection =
-                        _viewModel.Workbench.SurfaceMatchCollection;
-                    var selectedMatchId = _viewModel.Workbench
-                        .SelectedSurfaceMatchCollectionItem?.MatchId;
-                    var selector =
-                        FindVisualDescendants<
-                                System.Windows.Controls.ComboBox>(
-                                ToolWorkbench)
-                            .FirstOrDefault(comboBox =>
-                                System.Windows.Automation
-                                    .AutomationProperties
-                                    .GetAutomationId(comboBox)
-                                == "SurfaceMatchCollectionSelector");
-                    if (collection is null
-                        || selectedMatchId is null
-                        || selector is null
-                        || !selector.Focus())
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match collection selector could not receive keyboard focus.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    selector.IsDropDownOpen = true;
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Render);
-                    var center = selector.PointToScreen(
-                        new System.Windows.Point(
-                            selector.ActualWidth / 2.0,
-                            selector.ActualHeight / 2.0));
-                    if (!SetCursorPos(
-                            (int)Math.Round(center.X),
-                            (int)Math.Round(
-                                center.Y
-                                + selector.ActualHeight * 2.5)))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Surface Match collection popup item could not receive pointer hover.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Input);
-                    await Task.Delay(100);
-                    if (surfaceMatchCollectionPopupScreenshotPath is not null)
-                    {
-                        try
-                        {
-                            selector.ApplyTemplate();
-                            var popup = selector.Template.FindName(
-                                    "PART_Popup",
-                                    selector)
-                                as System.Windows.Controls.Primitives.Popup
-                                ?? FindVisualDescendants<
-                                        System.Windows.Controls.Primitives.Popup>(
-                                        selector)
-                                    .FirstOrDefault();
-                            if (popup?.Child is not FrameworkElement popupChild
-                                || !popup.IsOpen)
-                            {
-                                throw new InvalidOperationException(
-                                    "PART_Popup is closed or has no FrameworkElement child.");
-                            }
-
-                            popupChild.UpdateLayout();
-                            var popupCapture = WpfScreenshotCapture.Capture(
-                                popupChild);
-                            WpfScreenshotCapture.Save(
-                                popupCapture.Bitmap,
-                                surfaceMatchCollectionPopupScreenshotPath);
-                            ShellSmokeArtifacts.WriteTextReport(
-                                surfaceMatchCollectionPopupScreenshotPath
-                                + ".quality.txt",
-                            [
-                                "SurfaceMatchCollectionPopupScreenshot|"
-                                + popupCapture.Quality.Summary,
-                                "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
-                            ]);
-                        }
-                        catch (Exception exception)
-                        {
-                            ShellSmokeArtifacts.WriteTextReport(
-                                surfaceMatchCollectionPopupScreenshotPath
-                                + ".failure.txt",
-                            [
-                                "SurfaceMatchCollectionPopupScreenshot=FAIL",
-                                exception.ToString()
-                            ]);
-                            _viewModel.SetViewerSmokeFailed(
-                                "Surface Match collection popup app-only capture failed: "
-                                + exception.Message);
-                            Application.Current.Shutdown(1);
-                            return;
-                        }
-                    }
-
-                    if (!selector.IsDropDownOpen
-                        || _viewModel.Workbench.SurfaceMatchCollection
-                            ?.ContentSha256 != collection.ContentSha256
-                        || _viewModel.Workbench
-                            .SelectedSurfaceMatchCollectionItem?.MatchId
-                            != selectedMatchId)
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            "Opening the Surface Match collection selector changed evidence or selection state.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    await Task.Delay(2500);
                 }
                 var workbenchUiApplyMilliseconds = Stopwatch.GetElapsedTime(workbenchUiApplyStarted).TotalMilliseconds;
                 if (workbenchInteractionReportPath is not null)

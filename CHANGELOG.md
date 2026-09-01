@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.4.2-dev` development line onward. It does not claim that a version was
+`0.4.3-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.2-dev
+## [Unreleased] - 0.4.3-dev
 
 ### Added
 
@@ -16,6 +16,10 @@ released; publication state is owned by the release and version policy.
 
 ### Changed
 
+- Isolated Surface Match collection navigation, disabled-state, Published
+  focus/hover, popup opening, and popup evidence capture from `MainWindow` into
+  an explicit Shell verification owner without changing recipe or Run Record
+  contracts.
 - Isolated Validation Threshold Assistant Smoke dock preparation, visual lookup,
   coordinate projection, and evidence formatting from `MainWindow` into an
   explicit Shell verification owner without changing recipe or Run Record
@@ -129,5 +133,5 @@ released; publication state is owned by the release and version policy.
   fixture identity.
 - Schema `1.8` and older optional-field records remain readable under their
   documented compatibility boundaries.
-- Product version is `0.4.2-dev`; no tag, release candidate, or public
+- Product version is `0.4.3-dev`; no tag, release candidate, or public
   release is created by these changes.
