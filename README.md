@@ -18,11 +18,18 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.7-dev`
+Current version: `v0.4.8-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.8-dev` (2026-09-01)
+
+- Extracted cancellable C3D source decode and render-topology preparation from
+  the WPF Viewer control into a WPF-neutral Loading owner.
+- Preserved the public Viewer load contract, OpenGL apply boundary, recipe
+  semantics, and explicit Preview/Publish/Run workflow.
 
 #### `v0.4.7-dev` (2026-09-01)
 

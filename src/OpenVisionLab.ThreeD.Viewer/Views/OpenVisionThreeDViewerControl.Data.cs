@@ -16,6 +16,7 @@ using Microsoft.Win32;
 using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Hosting;
+using OpenVisionLab.ThreeD.Viewer.Loading;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Recipes;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
@@ -176,7 +177,7 @@ public sealed partial class OpenVisionThreeDViewerControl
         try
         {
             LastC3DSourceLoadPerformance = null;
-            var fullPath = GetExistingC3DSourcePath(path);
+            var fullPath = C3DSourceLoadPreparation.GetExistingPath(path);
             var loaded = C3DHeightGrid.Load(fullPath, viewModel.C3DMaxRenderedPoints);
             ApplyLoadedC3DSource(loaded, fullPath);
             return true;
@@ -196,41 +197,12 @@ public sealed partial class OpenVisionThreeDViewerControl
     {
         try
         {
-            var fullPath = GetExistingC3DSourcePath(path);
-            var gridProgress = progress is null
-                ? null
-                : new ForwardingProgress(value => progress.Report(value * 0.82));
-            var prepared = await Task.Run(
-                () =>
-                {
-                    var workerStart = Stopwatch.GetTimestamp();
-                    var grid = C3DHeightGrid.Load(
-                        fullPath,
-                        viewModel.C3DMaxRenderedPoints,
-                        cancellationToken,
-                        gridProgress);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    progress?.Report(84.0);
-                    var topologyStart = Stopwatch.GetTimestamp();
-                    var renderProxy = C3DHeightGridRenderProxy.Create(grid, cancellationToken);
-                    var topologyMilliseconds = Stopwatch.GetElapsedTime(topologyStart).TotalMilliseconds;
-                    cancellationToken.ThrowIfCancellationRequested();
-                    progress?.Report(96.0);
-                    var positionsStart = Stopwatch.GetTimestamp();
-                    var positions = renderProxy.Points
-                        .Select(point => point.Position)
-                        .ToArray();
-                    var positionsMilliseconds = Stopwatch.GetElapsedTime(positionsStart).TotalMilliseconds;
-                    return new PreparedC3DSource(
-                        grid,
-                        renderProxy,
-                        positions,
-                        topologyMilliseconds,
-                        positionsMilliseconds,
-                        Stopwatch.GetElapsedTime(workerStart).TotalMilliseconds);
-                },
-                cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
+            var prepared = await C3DSourceLoadPreparation.LoadAsync(
+                path,
+                viewModel.C3DMaxRenderedPoints,
+                cancellationToken,
+                progress);
+            var fullPath = prepared.FullPath;
             var applyStart = Stopwatch.GetTimestamp();
             ApplyLoadedC3DSource(
                 prepared.Grid,
@@ -262,17 +234,6 @@ public sealed partial class OpenVisionThreeDViewerControl
             RenderNow();
             return false;
         }
-    }
-
-    private static string GetExistingC3DSourcePath(string path)
-    {
-        var fullPath = Path.GetFullPath(path);
-        if (!File.Exists(fullPath))
-        {
-            throw new FileNotFoundException("C3D source was not found.", fullPath);
-        }
-
-        return fullPath;
     }
 
     private void ApplyLoadedC3DSource(
@@ -385,19 +346,6 @@ public sealed partial class OpenVisionThreeDViewerControl
                 c3dDisplayListBuildCount - displayListBuildCountBefore,
                 lastC3DDisplayListBuildReason);
         }
-    }
-
-    private sealed record PreparedC3DSource(
-        C3DHeightGrid Grid,
-        C3DHeightGridRenderProxy RenderProxy,
-        Vector3[] Positions,
-        double TopologyMilliseconds,
-        double PositionsMilliseconds,
-        double WorkerMilliseconds);
-
-    private sealed class ForwardingProgress(Action<double> callback) : IProgress<double>
-    {
-        public void Report(double value) => callback(value);
     }
 
     /// <summary>

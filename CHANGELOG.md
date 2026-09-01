@@ -4,7 +4,7 @@ This forward-looking log records notable user-visible changes from the current
 `0.4.6-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.7-dev
+## [Unreleased] - 0.4.8-dev
 
 ### Added
 
@@ -15,6 +15,11 @@ released; publication state is owned by the release and version policy.
   load a recipe, run an inspection, or publish a Result automatically.
 
 ### Changed
+
+- Isolated cancellable C3D source path validation, decode, render-topology, and
+  CPU preparation timing from the WPF Viewer control into a WPF-neutral
+  Loading owner without changing the public load, recipe, raw-value, or
+  explicit Preview/Publish/Run contracts.
 
 - Isolated teaching-capture source identity validation and C3D
   GridRectangle/GridCircle/GridPolygon point preparation from the WPF Viewer
