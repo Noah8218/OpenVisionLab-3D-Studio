@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using OpenVisionLab.ThreeD.Core;
+using OpenVisionLab.ThreeD.Viewer.Teaching;
 using OpenVisionLab.ThreeD.Viewer.Models;
 
 namespace OpenVisionLab.ThreeD.Viewer.ViewModels;
@@ -25,6 +26,14 @@ public static class TeachingCaptureViewModelVerification
 
         try
         {
+            var preparationOwnerPassed = TeachingCapturePreparationVerification.Verify(
+                out var preparationOwnerSummary);
+            lines.Add($"Owner preparation detail: {preparationOwnerSummary}");
+            Check(
+                "teaching capture source preparation owner",
+                preparationOwnerPassed,
+                preparationOwnerSummary);
+
             var viewModel = new MainWindowViewModel();
             var initialSelectionMode = viewModel.SelectedSelectionMode;
             var initialPreviewStatus = viewModel.PreviewToolResult.Status;

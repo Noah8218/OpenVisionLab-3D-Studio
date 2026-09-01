@@ -6,6 +6,7 @@ using OpenVisionLab.ThreeD.Core;
 using OpenVisionLab.ThreeD.Data;
 using OpenVisionLab.ThreeD.Viewer.Models;
 using OpenVisionLab.ThreeD.Viewer.Rendering;
+using OpenVisionLab.ThreeD.Viewer.Teaching;
 using OpenVisionLab.ThreeD.Viewer.ViewModels;
 using SharpGL;
 
@@ -39,53 +40,17 @@ public sealed partial class OpenVisionThreeDViewerControl
         out string message)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var isTransformedHeightField = string.Equals(
-            request.SourceBinding.Format,
-            "TransformedHeightField",
-            StringComparison.Ordinal);
-        if (isTransformedHeightField)
+        var preparation = TeachingCapturePreparation.Prepare(
+            request,
+            initialSelection,
+            viewModel.C3DSampleVisible,
+            c3dSample is null
+                ? null
+                : TeachingCaptureSourceSnapshot.From(c3dSample),
+            regridHeightFieldRenderOutput);
+        if (!preparation.IsValid)
         {
-            if (regridHeightFieldRenderOutput is null)
-            {
-                message = "The owned Published TransformedHeightField must be visible before teaching capture.";
-                return false;
-            }
-            var verification = ToolRecipeSelectionSourceBindingVerifier.Verify(
-                regridHeightFieldRenderOutput,
-                request.SourceBinding);
-            if (!verification.IsCurrent)
-            {
-                message = verification.Message;
-                return false;
-            }
-        }
-        else if (!viewModel.C3DSampleVisible || c3dSample is null)
-        {
-            message = "A visible C3D source is required before teaching capture.";
-            return false;
-        }
-
-        if (!isTransformedHeightField
-            && (!string.Equals(request.SourceBinding.Format, "C3D", StringComparison.OrdinalIgnoreCase)
-            || request.SourceBinding.GridWidth != c3dSample!.Width
-            || request.SourceBinding.GridHeight != c3dSample.Height))
-        {
-            message = "Teaching capture source format or grid dimensions do not match the loaded C3D source.";
-            return false;
-        }
-
-        if (!IsSha256(request.SourceBinding.ContentSha256))
-        {
-            message = "Teaching capture requires a valid C3D source SHA-256 binding.";
-            return false;
-        }
-
-        if (!isTransformedHeightField && !string.Equals(
-                request.SourceBinding.ContentSha256,
-                c3dSample!.ContentSha256,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            message = "Teaching capture source SHA-256 does not match the loaded C3D bytes.";
+            message = preparation.Message;
             return false;
         }
 
@@ -93,36 +58,12 @@ public sealed partial class OpenVisionThreeDViewerControl
         teachingCaptureDragExceeded = false;
         ClearTeachingGridRectangleEdit();
         HideTeachingCaptureDragOverlay();
-        IReadOnlyList<ToolRecipeSelectionPoint>? initialPoints = null;
-        ToolRecipeGridCircle? initialGridCircle = null;
-        ToolRecipeGridPolygon? initialGridPolygon = null;
-        if (!isTransformedHeightField
-            && initialSelection?.GridRectangle is { } initialRectangle)
-        {
-            if (!TryCreateC3DTeachingGridRectanglePoints(initialRectangle, out initialPoints, out message))
-            {
-                return false;
-            }
-        }
-        else if (!isTransformedHeightField
-                 && initialSelection?.GridCircle is { } circle)
-        {
-            if (!TryCreateC3DTeachingGridCirclePoints(circle, out initialPoints, out message))
-            {
-                return false;
-            }
-            initialGridCircle = circle;
-        }
-        else if (!isTransformedHeightField
-                 && initialSelection?.GridPolygon is { } polygon)
-        {
-            if (!TryCreateC3DTeachingGridPolygonPoints(polygon, out initialPoints, out message))
-            {
-                return false;
-            }
-            initialGridPolygon = polygon;
-        }
-        if (!viewModel.BeginTeachingCapture(request, initialPoints, initialGridCircle, initialGridPolygon, out message))
+        if (!viewModel.BeginTeachingCapture(
+                request,
+                preparation.InitialPoints,
+                preparation.InitialGridCircle,
+                preparation.InitialGridPolygon,
+                out message))
         {
             return false;
         }
@@ -402,7 +343,10 @@ public sealed partial class OpenVisionThreeDViewerControl
                 return true;
             }
 
-            var footprintSelectionPoint = CreateC3DTeachingSelectionPoint(row, column);
+            var footprintSelectionPoint = TeachingCapturePreparation.CreateGridPoint(
+                TeachingCaptureSourceSnapshot.From(c3dSample!),
+                row,
+                column);
             viewModel.TryAddTeachingCapturePoint(footprintSelectionPoint, out var footprintCaptureMessage);
             viewModel.SelectedEntity = IsTeachingGridCircleCapture
                 ? "Circular Surface ROI Candidate"
@@ -503,28 +447,19 @@ public sealed partial class OpenVisionThreeDViewerControl
         out IReadOnlyList<ToolRecipeSelectionPoint>? points,
         out string message)
     {
-        points = null;
-        if (c3dSample is null
-            || rectangle.Row < 0
-            || rectangle.Column < 0
-            || rectangle.RowCount <= 0
-            || rectangle.ColumnCount <= 0
-            || (long)rectangle.Row + rectangle.RowCount > c3dSample.Height
-            || (long)rectangle.Column + rectangle.ColumnCount > c3dSample.Width)
+        if (c3dSample is null)
         {
+            points = null;
             message = "The Surface ROI must stay inside the loaded C3D source grid.";
             return false;
         }
 
-        points =
-        [
-            CreateC3DTeachingSelectionPoint(rectangle.Row, rectangle.Column),
-            CreateC3DTeachingSelectionPoint(
-                rectangle.Row + rectangle.RowCount - 1,
-                rectangle.Column + rectangle.ColumnCount - 1)
-        ];
-        message = string.Empty;
-        return true;
+        var result = TeachingCapturePreparation.TryCreateGridRectanglePoints(
+            TeachingCaptureSourceSnapshot.From(c3dSample),
+            rectangle);
+        points = result.Points;
+        message = result.Message;
+        return result.IsValid;
     }
 
     private bool TryCreateC3DTeachingGridCirclePoints(
@@ -532,28 +467,19 @@ public sealed partial class OpenVisionThreeDViewerControl
         out IReadOnlyList<ToolRecipeSelectionPoint>? points,
         out string message)
     {
-        points = null;
-        if (c3dSample is null
-            || ToolRecipeGridCircleGeometry.Validate(
-                circle,
-                c3dSample.Width,
-                c3dSample.Height).Count > 0)
+        if (c3dSample is null)
         {
+            points = null;
             message = "The Circular ROI must stay inside the loaded C3D source grid.";
             return false;
         }
 
-        var boundaryColumn = Math.Clamp(
-            circle.CenterColumn + Math.Max(1, (int)Math.Floor(circle.Radius)),
-            0,
-            c3dSample.Width - 1);
-        points =
-        [
-            CreateC3DTeachingSelectionPoint(circle.CenterRow, circle.CenterColumn),
-            CreateC3DTeachingSelectionPoint(circle.CenterRow, boundaryColumn)
-        ];
-        message = string.Empty;
-        return true;
+        var result = TeachingCapturePreparation.TryCreateGridCirclePoints(
+            TeachingCaptureSourceSnapshot.From(c3dSample),
+            circle);
+        points = result.Points;
+        message = result.Message;
+        return result.IsValid;
     }
 
     private bool TryCreateC3DTeachingGridPolygonPoints(
@@ -561,36 +487,19 @@ public sealed partial class OpenVisionThreeDViewerControl
         out IReadOnlyList<ToolRecipeSelectionPoint>? points,
         out string message)
     {
-        points = null;
-        if (c3dSample is null
-            || ToolRecipeGridPolygonGeometry.Validate(
-                   polygon,
-                   c3dSample.Width,
-                   c3dSample.Height).Count > 0)
+        if (c3dSample is null)
         {
+            points = null;
             message = "The polygon ROI must stay finite, ordered, non-degenerate, and inside the loaded C3D source grid.";
             return false;
         }
 
-        points = polygon.Vertices
-            .Select(vertex => CreateC3DTeachingSelectionPoint(
-                Math.Clamp((int)Math.Round(vertex.Row, MidpointRounding.AwayFromZero), 0, c3dSample.Height - 1),
-                Math.Clamp((int)Math.Round(vertex.Column, MidpointRounding.AwayFromZero), 0, c3dSample.Width - 1)))
-            .ToArray();
-        message = string.Empty;
-        return true;
-    }
-
-    private ToolRecipeSelectionPoint CreateC3DTeachingSelectionPoint(int row, int column)
-    {
-        var position = new Vector3(
-            (column - (c3dSample!.Width - 1) / 2.0f) * c3dSample.HorizontalScale,
-            0,
-            (row - (c3dSample.Height - 1) / 2.0f) * c3dSample.HorizontalScale);
-        return new ToolRecipeSelectionPoint(
-            new ToolRecipeGridCellLocator("grid-cell", row, column),
-            new ToolRecipeXyz(position.X, position.Y, position.Z),
-            c3dSample.Mean);
+        var result = TeachingCapturePreparation.TryCreateGridPolygonPoints(
+            TeachingCaptureSourceSnapshot.From(c3dSample),
+            polygon);
+        points = result.Points;
+        message = result.Message;
+        return result.IsValid;
     }
 
     private bool TrySelectAppliedTeachingGridRectangle(Point screenPoint)
@@ -2076,9 +1985,6 @@ public sealed partial class OpenVisionThreeDViewerControl
 
     private void RaiseTeachingCaptureStateChanged() =>
         TeachingCaptureStateChanged?.Invoke(this, new TeachingCaptureStateChangedEventArgs(TeachingCaptureSnapshot));
-
-    private static bool IsSha256(string value) =>
-        value.Length == 64 && value.All(Uri.IsHexDigit);
 
     private enum TeachingGridRectangleEditMode
     {

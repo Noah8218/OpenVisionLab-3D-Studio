@@ -18,11 +18,18 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.6-dev`
+Current version: `v0.4.7-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.7-dev` (2026-09-01)
+
+- Extracted teaching-capture source identity validation and C3D ROI point
+  preparation from the WPF Viewer control into a WPF-neutral owner.
+- Preserved the public Viewer capture API, recipe/Selection contracts,
+  OpenGL interaction, and explicit Preview/Publish/Run workflow.
 
 #### `v0.4.6-dev` (2026-09-01)
 
