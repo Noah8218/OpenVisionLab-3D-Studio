@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private readonly EventHandler _inspectionTaskChangedHandler;
     private readonly StudioLayoutController _studioLayout;
     private readonly ToolLabWindowManager _toolLabWindows;
+    private readonly ShellPreparationPresetAssistantSmoke _preparationPresetSmoke;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
     private Task? validationSetSmokeSelectionTask;
     private Task? validationSetSmokeSectionTask;
@@ -83,6 +84,10 @@ public partial class MainWindow : Window
         _viewModel.SelectedEvidenceTabIndex = GetEvidenceTabIndex(GetCommandLineValue("--shell-evidence-tab"));
         DataContext = _viewModel;
         _toolLabWindows = new ToolLabWindowManager(this, _viewModel.Workbench, ShowMissingToolLabStep);
+        _preparationPresetSmoke = new ShellPreparationPresetAssistantSmoke(
+            _viewModel.Workbench,
+            ToolWorkbench,
+            SetCursorPos);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
             _viewer,
@@ -1323,7 +1328,7 @@ public partial class MainWindow : Window
                 }
 
                 if (!string.IsNullOrWhiteSpace(preparationPresetAssistantSmoke)
-                    && !ConfigurePreparationPresetAssistantSmoke(
+                    && !_preparationPresetSmoke.Configure(
                         preparationPresetAssistantSmoke,
                         out var preparationPresetAssistantFailure))
                 {
@@ -1876,7 +1881,7 @@ public partial class MainWindow : Window
                     && preparationPresetAssistantSmoke?.Equals(
                         "dropdown",
                         StringComparison.OrdinalIgnoreCase) == true
-                    && !await CapturePreparationPresetPopupForSmokeAsync(
+                    && !await _preparationPresetSmoke.CapturePopupAsync(
                         this,
                         shellScreenshotPath + ".popup.png",
                         screenshotQualityReportPath))
@@ -2060,7 +2065,7 @@ public partial class MainWindow : Window
                     }
                     if (preparationPresetAssistantSmoke is not null)
                     {
-                        AppendPreparationPresetAssistantSmokeEvidence(
+                        _preparationPresetSmoke.AppendEvidence(
                             preparationPresetAssistantSmoke,
                             screenshotQualityReportPath);
                     }
@@ -4240,204 +4245,6 @@ public partial class MainWindow : Window
             qualityReportPath,
             "RecipeHealthNavigationPressed");
 
-    private bool ConfigurePreparationPresetAssistantSmoke(
-        string requestedState,
-        out string failure)
-    {
-        var state = requestedState.Trim();
-        var workbench = _viewModel.Workbench;
-        if (!workbench.IsPreparationPresetAssistantVisible)
-        {
-            failure =
-                "Preparation preset assistant smoke requires a selected Filter step with a typed parameter editor.";
-            return false;
-        }
-
-        if (!state.Equals("disabled", StringComparison.OrdinalIgnoreCase)
-            && !state.Equals("analyze", StringComparison.OrdinalIgnoreCase)
-            && !state.Equals("review", StringComparison.OrdinalIgnoreCase)
-            && !state.Equals("dropdown", StringComparison.OrdinalIgnoreCase)
-            && !state.Equals("apply-pressed", StringComparison.OrdinalIgnoreCase))
-        {
-            failure =
-                $"Unknown preparation preset assistant smoke state '{requestedState}'. Use disabled, analyze, review, dropdown, or apply-pressed.";
-            return false;
-        }
-
-        if (!state.Equals("disabled", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!workbench.AnalyzePreparationPresetsCommand.CanExecute(null))
-            {
-                failure = "Preparation preset assistant Analyze was not enabled for the selected Filter draft.";
-                return false;
-            }
-
-            workbench.AnalyzePreparationPresetsCommand.Execute(null);
-            if (!state.Equals("analyze", StringComparison.OrdinalIgnoreCase))
-            {
-                var proposal = workbench.PreparationPresetOptions.Single(option => option.KernelSize == 5);
-                workbench.SelectedPreparationPreset = proposal;
-                if (state.Equals("dropdown", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Leave the selector open without crossing the proposal or
-                    // draft-apply boundary. The popup is captured separately.
-                }
-                else if (!workbench.ProposePreparationPresetCommand.CanExecute(null))
-                {
-                    failure = "Preparation preset assistant Propose was not enabled after Analyze.";
-                    return false;
-                }
-                else
-                {
-                    workbench.ProposePreparationPresetCommand.Execute(null);
-                    if (!workbench.ReviewPreparationPresetCommand.CanExecute(null))
-                    {
-                        failure = "Preparation preset assistant Review was not enabled after Propose.";
-                        return false;
-                    }
-
-                    workbench.ReviewPreparationPresetCommand.Execute(null);
-                }
-            }
-        }
-
-        ToolWorkbench.ActivateSelectedToolPane();
-        ToolWorkbench.UpdateLayout();
-        var scrollViewer = FindVisualDescendants<System.Windows.Controls.ScrollViewer>(ToolWorkbench)
-            .FirstOrDefault(candidate => candidate.Name == "SelectedToolScrollViewer");
-        scrollViewer?.ScrollToEnd();
-        if (state.Equals("dropdown", StringComparison.OrdinalIgnoreCase))
-        {
-            var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
-                .FirstOrDefault(candidate =>
-                    System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
-                    == "PreparationPresetSelector");
-            if (selector is null || !selector.IsEnabled || !selector.Focus())
-            {
-                failure = "Preparation preset selector could not receive keyboard focus for popup smoke.";
-                return false;
-            }
-
-            selector.IsDropDownOpen = true;
-        }
-        UpdateLayout();
-        failure = string.Empty;
-        return true;
-    }
-
-    private void AppendPreparationPresetAssistantSmokeEvidence(
-        string requestedState,
-        string? reportPath)
-    {
-        if (string.IsNullOrWhiteSpace(reportPath))
-        {
-            return;
-        }
-
-        var workbench = _viewModel.Workbench;
-        var assistant = FindVisualDescendants<System.Windows.Controls.Border>(ToolWorkbench)
-            .FirstOrDefault(candidate =>
-                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
-                == "PreparationPresetAssistant");
-        var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(ToolWorkbench)
-            .FirstOrDefault(candidate =>
-                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
-                == "PreparationPresetSelector");
-        var scrollViewer = FindVisualDescendants<System.Windows.Controls.ScrollViewer>(ToolWorkbench)
-            .FirstOrDefault(candidate => candidate.Name == "SelectedToolScrollViewer");
-        var buttons = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
-            .Where(candidate =>
-            {
-                var id = System.Windows.Automation.AutomationProperties.GetAutomationId(candidate);
-                return id is "AnalyzePreparationPresets"
-                    or "ProposePreparationPreset"
-                    or "ReviewPreparationPreset"
-                    or "CancelPreparationPresetReview"
-                    or "ApplyPreparationPresetDraft";
-            })
-            .Select(candidate =>
-            {
-                var id = System.Windows.Automation.AutomationProperties.GetAutomationId(candidate);
-                return $"{id}:{candidate.Visibility}:{candidate.IsEnabled}:{candidate.IsKeyboardFocusWithin}:{candidate.ActualWidth:F1}x{candidate.ActualHeight:F1}";
-            });
-        var filterDraft = workbench.SelectedStepPropertyDraft as FilterStepProperties;
-        var recipeKernel = workbench.SelectedPipelineStep?.Parameters
-            .SingleOrDefault(parameter => parameter.Name == "KernelSize")?.Value;
-        File.AppendAllLines(
-            Path.GetFullPath(reportPath),
-        [
-            $"PreparationPresetAssistant|requestedState={requestedState}|visible={workbench.IsPreparationPresetAssistantVisible}|analysis={workbench.IsPreparationPresetAnalysisReady}|options={workbench.PreparationPresetOptions.Count}|selected={workbench.SelectedPreparationPreset?.Id ?? string.Empty}|proposal={workbench.ProposedPreparationPreset?.Id ?? string.Empty}|review={workbench.IsPreparationPresetReviewActive}|applied={workbench.IsPreparationPresetDraftApplied}|draftKernel={filterDraft?.KernelSize}|recipeKernel={recipeKernel}|pending={workbench.HasPendingStepParameterChanges}|preview={workbench.HasCurrentFilterPreview}|publishAvailable={workbench.PublishSelectedStepCommand.CanExecute(null)}",
-            $"PreparationPresetAssistantUi|visibility={assistant?.Visibility}|height={assistant?.ActualHeight:F1}|width={assistant?.ActualWidth:F1}|selectorVisibility={selector?.Visibility}|selectorEnabled={selector?.IsEnabled}|selectorOpen={selector?.IsDropDownOpen}|selectorHeight={selector?.ActualHeight:F1}|scrollOffset={scrollViewer?.VerticalOffset:F1}|scrollableHeight={scrollViewer?.ScrollableHeight:F1}|buttons={string.Join(",", buttons)}"
-        ]);
-    }
-
-    private static async Task<bool> CapturePreparationPresetPopupForSmokeAsync(
-        Window window,
-        string screenshotPath,
-        string? qualityReportPath)
-    {
-        window.UpdateLayout();
-        var selector = FindVisualDescendants<System.Windows.Controls.ComboBox>(window)
-            .FirstOrDefault(candidate =>
-                System.Windows.Automation.AutomationProperties.GetAutomationId(candidate)
-                == "PreparationPresetSelector");
-        if (selector is null || !selector.IsEnabled || !selector.IsDropDownOpen)
-        {
-            WriteTextReport(
-                qualityReportPath,
-                ["PreparationPresetPopup|failure=selector-unavailable-or-closed"]);
-            return false;
-        }
-
-        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-        selector.ApplyTemplate();
-        var popup = selector.Template.FindName("PART_Popup", selector)
-            as System.Windows.Controls.Primitives.Popup
-            ?? FindVisualDescendants<System.Windows.Controls.Primitives.Popup>(selector)
-                .FirstOrDefault();
-        if (popup?.Child is not FrameworkElement popupChild || !popup.IsOpen)
-        {
-            WriteTextReport(
-                qualityReportPath,
-                ["PreparationPresetPopup|failure=popup-closed-or-no-child"]);
-            return false;
-        }
-
-        popupChild.UpdateLayout();
-        var center = selector.PointToScreen(
-            new System.Windows.Point(
-                selector.ActualWidth / 2.0,
-                selector.ActualHeight / 2.0));
-        _ = SetCursorPos(
-            (int)Math.Round(center.X),
-            (int)Math.Round(center.Y + selector.ActualHeight * 2.5));
-        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Input);
-        await Task.Delay(100);
-        var visibleItems = FindVisualDescendants<System.Windows.Controls.ComboBoxItem>(popupChild)
-            .Count(item => item.IsVisible && item.ActualHeight > 0.0);
-        var capture = WpfScreenshotCapture.Capture(popupChild);
-        var fullPath = Path.GetFullPath(screenshotPath);
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory);
-        WpfScreenshotCapture.Save(capture.Bitmap, fullPath);
-        var popupAccepted = selector.IsDropDownOpen
-            && popup.IsOpen
-            && selector.Items.Count == visibleItems
-            && capture.Bitmap.PixelWidth >= 120
-            && capture.Bitmap.PixelHeight >= 60;
-        ShellSmokeArtifacts.WriteTextReport(
-            fullPath + ".quality.txt",
-        [
-            $"PreparationPresetPopupScreenshot|accepted={popupAccepted}|width={capture.Bitmap.PixelWidth}|height={capture.Bitmap.PixelHeight}",
-            $"CaptureAssessment|{capture.Quality.Summary}|small-popup=true|graphite-theme=true",
-            $"Popup|open={selector.IsDropDownOpen && popup.IsOpen}|items={selector.Items.Count}|visibleItems={visibleItems}|hoveredItem={visibleItems > 0}",
-            "Boundary|App-owned WPF popup child only; no desktop or unrelated application pixels."
-        ]);
-        WriteTextReport(
-            qualityReportPath,
-            [$"PreparationPresetPopup|path={fullPath}|open={selector.IsDropDownOpen && popup.IsOpen}|items={selector.Items.Count}|visibleItems={visibleItems}"]);
-        return true;
-    }
-
     private static void AppendWindowMonitorEvidence(Window window, string? reportPath)
     {
         if (string.IsNullOrWhiteSpace(reportPath))
@@ -4679,23 +4486,6 @@ public partial class MainWindow : Window
             screenshotPath,
             qualityReportPath,
             "MessageDialog");
-    }
-
-    private static IEnumerable<T> FindVisualDescendants<T>(DependencyObject root)
-        where T : DependencyObject
-    {
-        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-            {
-                yield return match;
-            }
-            foreach (var descendant in FindVisualDescendants<T>(child))
-            {
-                yield return descendant;
-            }
-        }
     }
 
     private void OnWorkbenchSaveTeachingRecipeRequested(object? sender, EventArgs args) =>

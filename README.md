@@ -18,11 +18,19 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.0-dev`
+Current version: `v0.4.1-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.1-dev` (2026-09-01)
+
+- Extracts the Preparation Preset Assistant Smoke setup, popup capture, and
+  evidence projection from `MainWindow` into an explicit Shell verification
+  owner.
+- Preserves the existing recipe, Preview/Publish/Run, automation-ID, and
+  screenshot contracts; this internal refactor adds no calibration claim.
 
 #### `v0.4.0-dev` (2026-09-01)
 
