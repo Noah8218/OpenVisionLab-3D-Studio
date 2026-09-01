@@ -18,11 +18,19 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.1-dev`
+Current version: `v0.4.2-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.2-dev` (2026-09-01)
+
+- Extracts Validation Threshold Assistant Smoke dock preparation and visual
+  evidence formatting from `MainWindow` into an explicit Shell verification
+  owner.
+- Preserves recipe, Run Record, explicit Preview/Publish/Run, and automation-ID
+  contracts; this internal refactor adds no calibration claim.
 
 #### `v0.4.1-dev` (2026-09-01)
 

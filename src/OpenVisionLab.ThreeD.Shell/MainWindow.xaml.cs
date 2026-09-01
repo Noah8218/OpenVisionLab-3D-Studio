@@ -50,6 +50,7 @@ public partial class MainWindow : Window
     private readonly StudioLayoutController _studioLayout;
     private readonly ToolLabWindowManager _toolLabWindows;
     private readonly ShellPreparationPresetAssistantSmoke _preparationPresetSmoke;
+    private readonly ShellValidationThresholdAssistantSmoke _validationThresholdSmoke;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
     private Task? validationSetSmokeSelectionTask;
     private Task? validationSetSmokeSectionTask;
@@ -88,6 +89,9 @@ public partial class MainWindow : Window
             _viewModel.Workbench,
             ToolWorkbench,
             SetCursorPos);
+        _validationThresholdSmoke = new ShellValidationThresholdAssistantSmoke(
+            _viewModel.Workbench,
+            ToolWorkbench);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
             _viewer,
@@ -1860,20 +1864,7 @@ public partial class MainWindow : Window
                 if (validationThresholdAssistantPressedSmoke
                     || validationThresholdAssistantDisabledSmoke)
                 {
-                    // Reassert the validation dock after the window has loaded.
-                    // Constructor-time navigation can be deferred by the dock
-                    // template, leaving the assistant outside the visual tree
-                    // for a direct pressed-state lookup.
-                    ToolWorkbench.IsBottomPaneExpanded = true;
-                    ToolWorkbench.ActivateValidationSet();
-                    _viewModel.Workbench.IsValidationThresholdExpanded = true;
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Loaded);
-                    await Dispatcher.InvokeAsync(
-                        () => { },
-                        DispatcherPriority.Render);
-                    await Task.Delay(250);
+                    await _validationThresholdSmoke.ReassertForCaptureAsync();
                 }
 
                 await Task.Delay(100);
@@ -1992,49 +1983,9 @@ public partial class MainWindow : Window
                     if (validationSetSmokeSelectionTask is not null
                         && !string.IsNullOrWhiteSpace(screenshotQualityReportPath))
                     {
-                        var validationWorkbench = _viewModel.Workbench;
-                        var thresholdExpanders =
-                            FindVisualDescendants<System.Windows.Controls.Expander>(ToolWorkbench)
-                                .Where(item => item.Name == "ValidationThresholdExpander")
-                                .ToArray();
-                        var thresholdExpander = thresholdExpanders.FirstOrDefault();
-                        var assistantBorders =
-                            FindVisualDescendants<System.Windows.Controls.Border>(ToolWorkbench)
-                                .Where(item =>
-                                    System.Windows.Automation.AutomationProperties.GetName(item)
-                                    == validationWorkbench.Localization.ValidationSetThresholdAssistant)
-                                .ToArray();
-                        var assistantBorder = assistantBorders.FirstOrDefault();
-                        var assistantPoint = assistantBorder is null
-                            ? new System.Windows.Point(double.NaN, double.NaN)
-                            : assistantBorder.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
-                        var expanderPoint = thresholdExpander is null
-                            ? new System.Windows.Point(double.NaN, double.NaN)
-                            : thresholdExpander.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
-                        var workbenchPoint = ToolWorkbench.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
-                        var hostButtons = FindVisualDescendants<System.Windows.Controls.Button>(ToolWorkbench)
-                            .Where(item => item.Name is "AnalyzeValidationThresholdButton"
-                                or "ProposeValidationThresholdButton"
-                                or "ReviewValidationThresholdButton"
-                                or "CancelValidationThresholdReviewButton"
-                                or "ApplyValidationThresholdButton")
-                            .Select(item =>
-                            {
-                                var point = item.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
-                                return $"{item.Name}:{item.Visibility}:{item.IsEnabled}:{item.ActualWidth:F1}x{item.ActualHeight:F1}@{point.X:F1},{point.Y:F1}";
-                            });
-                        var correctionTextBlock =
-                            FindVisualDescendants<System.Windows.Controls.TextBlock>(ToolWorkbench)
-                                .FirstOrDefault(item => item.Text == validationWorkbench.ValidationThresholdCorrectionSummary);
-                        var correctionPoint = correctionTextBlock is null
-                            ? new System.Windows.Point(double.NaN, double.NaN)
-                            : correctionTextBlock.TransformToAncestor(this).Transform(new System.Windows.Point(0, 0));
-                        File.AppendAllLines(
-                            Path.GetFullPath(screenshotQualityReportPath),
-                        [
-                            $"ValidationAssistant|samples={validationWorkbench.ValidationSetSamples.Count}|report={validationWorkbench.HasValidationThresholdAssistantAnalysis}|candidates={validationWorkbench.ValidationThresholdCandidates.Count}|selected={validationWorkbench.SelectedValidationThresholdCandidate?.CandidateId ?? string.Empty}|stage={validationWorkbench.ValidationThresholdAssistantStage}|proposal={validationWorkbench.HasValidationThresholdAssistantProposal}|review={validationWorkbench.IsValidationThresholdReviewActive}|applied={validationWorkbench.IsValidationThresholdCandidateApplied}",
-                            $"ValidationAssistantUi|expanders={thresholdExpanders.Length}|expanded={thresholdExpander?.IsExpanded}|visibility={thresholdExpander?.Visibility}|height={thresholdExpander?.ActualHeight:F1}|expanderPoint={expanderPoint.X:F1},{expanderPoint.Y:F1}|workbenchPoint={workbenchPoint.X:F1},{workbenchPoint.Y:F1}|assistantBorders={assistantBorders.Length}|assistantHeight={assistantBorder?.ActualHeight:F1}|assistantVisibility={assistantBorder?.Visibility}|assistantPoint={assistantPoint.X:F1},{assistantPoint.Y:F1}|buttons={string.Join(",", hostButtons)}|correctionLength={validationWorkbench.ValidationThresholdCorrectionSummary.Length}|correctionHeight={correctionTextBlock?.ActualHeight:F1}|correctionPoint={correctionPoint.X:F1},{correctionPoint.Y:F1}"
-                        ]);
+                        _validationThresholdSmoke.AppendEvidence(
+                            this,
+                            screenshotQualityReportPath);
                     }
                     if (integrationExchangeSmokeState?.Equals(
                             "input-focus",
