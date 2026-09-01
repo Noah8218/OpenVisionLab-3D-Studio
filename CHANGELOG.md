@@ -1,10 +1,18 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.3.1-dev` development line onward. It does not claim that a version was
+`0.4.0-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.3.1-dev
+## [Unreleased] - 0.4.0-dev
+
+### Added
+
+- Added authenticated TCP transaction transfer for the 3D integration
+  workspace, including runtime build identity and explicit listener/client
+  controls.
+- Preserved the file-first lifecycle: receiving bytes does not acknowledge,
+  load a recipe, run an inspection, or publish a Result automatically.
 
 ### Changed
 

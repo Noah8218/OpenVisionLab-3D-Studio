@@ -19,11 +19,11 @@
                 <TextBlock FontSize="15"
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource ThreeD.TextBrush}"
-                           Text="{views:ThreeDText Key=ThreeD.Exchange.Title, Korean='Machine Studio 연동', English='Machine Studio exchange'}" />
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Title, Korean='2D / Machine Studio TCP 연동', English='2D / Machine Studio TCP exchange'}" />
                 <TextBlock Margin="0,2,0,0"
                            FontSize="10.5"
                            Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
-                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='Handoff를 명시적으로 새로고침하고 검토한 뒤 기존 Run Record 결과를 게시합니다.', English='Explicitly refresh and review handoffs, then publish an existing Run Record result.'}" />
+                           Text="{views:ThreeDText Key=ThreeD.Exchange.Detail, Korean='로컬 거래 저장소와 직접 TCP를 함께 사용합니다. 수신, 전송, 검토와 결과 게시는 각각 명시적으로 실행합니다.', English='Use the local transaction store with direct TCP. Listening, transfer, review, and result publication are separate explicit actions.'}" />
             </StackPanel>
         </Border>
 
@@ -34,11 +34,14 @@
                 <ColumnDefinition Width="2*" MinWidth="360" />
             </Grid.ColumnDefinitions>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+            <ScrollViewer Grid.Column="0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
                 <Border Padding="14"
                         Background="{DynamicResource ThreeD.PanelAlternateBrush}"
                         BorderBrush="{DynamicResource ThreeD.DividerBrush}"
@@ -50,7 +53,7 @@
                         <TextBlock Margin="0,4,0,10"
                                    Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
                                    TextWrapping="Wrap"
-                                   Text="{views:ThreeDText Key=ThreeD.Exchange.SetupHint, Korean='Machine Studio와 같은 공유 폴더를 저장합니다. 복원만으로는 폴더를 스캔하거나 작업을 실행하지 않습니다.', English='Save the same shared folder used by Machine Studio. Restoration alone never scans the folder or runs an action.'}" />
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.SetupHint, Korean='이 PC의 로컬 거래 폴더와 TCP 주소를 저장합니다. 설정 복원만으로는 폴더 스캔이나 네트워크 연결을 시작하지 않습니다.', English='Save this PC local transaction folder and TCP endpoints. Restoring setup alone never scans the folder or starts a network connection.'}" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -61,7 +64,9 @@
                                      Height="32"
                                      Padding="8,4"
                                      VerticalContentAlignment="Center"
+                                     IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
                                      Text="{Binding IntegrationExchange.ExchangeRoot, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.AutomationId="IntegrationExchangeRoot"
                                      AutomationProperties.Name="Machine Studio exchange folder"
                                      ToolTip="{Binding IntegrationExchange.ExchangeRoot}" />
                             <ui:Button Grid.Column="1"
@@ -82,7 +87,9 @@
                                        Appearance="Secondary"
                                        Icon="{ui:SymbolIcon ArrowReset24}"
                                        Content="{views:ThreeDText Key=ThreeD.Exchange.Reset, Korean='초기화', English='Reset'}"
-                                       Command="{Binding IntegrationExchange.ResetSetupCommand}" />
+                                       Command="{Binding IntegrationExchange.ResetSetupCommand}"
+                                       Click="OnResetSetupClicked"
+                                       AutomationProperties.AutomationId="ResetIntegrationSetup" />
                             <ui:Button x:Name="RefreshHandoffsButton"
                                        Appearance="Secondary"
                                        Icon="{ui:SymbolIcon ArrowSync24}"
@@ -90,6 +97,108 @@
                                        Command="{Binding IntegrationExchange.RefreshHandoffsCommand}"
                                        AutomationProperties.AutomationId="RefreshIntegrationHandoffs" />
                         </WrapPanel>
+                        <Expander Margin="0,12,0,0"
+                                  IsExpanded="True"
+                                  Header="{views:ThreeDText Key=ThreeD.Exchange.TcpSetup, Korean='TCP 직접 연결', English='Direct TCP connection'}">
+                            <StackPanel Margin="0,8,0,0">
+                                <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{views:ThreeDText Key=ThreeD.Exchange.TcpSetupHint, Korean='기본값: 이 3D는 127.0.0.1:45103에서 수신하고 2D 127.0.0.1:45102에 연결합니다. 공유 키는 세션 메모리 또는 환경 변수에만 보관됩니다.', English='Defaults: this 3D listener uses 127.0.0.1:45103 and connects to 2D at 127.0.0.1:45102. The shared key stays only in session memory or the environment variable.'}" />
+                                <Grid Margin="0,9,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="132" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Margin="0,6,8,0"
+                                               Text="{views:ThreeDText Key=ThreeD.Exchange.ListenAddress, Korean='수신 주소', English='Listen address'}" />
+                                    <TextBox Grid.Column="1"
+                                             MinHeight="30"
+                                             Padding="7,3"
+                                             VerticalContentAlignment="Center"
+                                             IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                             Text="{Binding IntegrationExchange.TcpListenAddress, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="IntegrationListenAddress" />
+                                    <TextBlock Grid.Row="1" Margin="0,10,8,0"
+                                               Text="{views:ThreeDText Key=ThreeD.Exchange.ListenPort, Korean='수신 포트', English='Listen port'}" />
+                                    <TextBox Grid.Row="1" Grid.Column="1"
+                                             Margin="0,6,0,0"
+                                             MinHeight="30"
+                                             Padding="7,3"
+                                             VerticalContentAlignment="Center"
+                                             IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                             Text="{Binding IntegrationExchange.TcpListenPortText, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="IntegrationListenPort" />
+                                    <TextBlock Grid.Row="2" Margin="0,10,8,0"
+                                               Text="{views:ThreeDText Key=ThreeD.Exchange.PeerHost, Korean='상대 주소', English='Peer host'}" />
+                                    <TextBox Grid.Row="2" Grid.Column="1"
+                                             Margin="0,6,0,0"
+                                             MinHeight="30"
+                                             Padding="7,3"
+                                             VerticalContentAlignment="Center"
+                                             IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                             Text="{Binding IntegrationExchange.TcpPeerHost, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="IntegrationPeerHost" />
+                                    <TextBlock Grid.Row="3" Margin="0,10,8,0"
+                                               Text="{views:ThreeDText Key=ThreeD.Exchange.PeerPort, Korean='상대 포트', English='Peer port'}" />
+                                    <TextBox Grid.Row="3" Grid.Column="1"
+                                             Margin="0,6,0,0"
+                                             MinHeight="30"
+                                             Padding="7,3"
+                                             VerticalContentAlignment="Center"
+                                             IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                             Text="{Binding IntegrationExchange.TcpPeerPortText, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.AutomationId="IntegrationPeerPort" />
+                                    <TextBlock Grid.Row="4" Margin="0,10,8,0"
+                                               Text="{views:ThreeDText Key=ThreeD.Exchange.SharedKey, Korean='세션 공유 키', English='Session shared key'}" />
+                                    <PasswordBox x:Name="IntegrationSharedKeyBox"
+                                                 Grid.Row="4"
+                                                 Grid.Column="1"
+                                                 Margin="0,6,0,0"
+                                                 MinHeight="30"
+                                                 Padding="7,3"
+                                                 VerticalContentAlignment="Center"
+                                                 IsEnabled="{Binding IntegrationExchange.CanEditTcpSetup}"
+                                                 PasswordChanged="OnSharedKeyPasswordChanged"
+                                                 AutomationProperties.AutomationId="IntegrationSharedKey" />
+                                </Grid>
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                           Text="{Binding IntegrationExchange.SharedKeyStatusText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.AutomationId="IntegrationSharedKeyStatus" />
+                                <WrapPanel Margin="0,9,0,0">
+                                    <ui:Button Margin="0,0,8,0"
+                                               Appearance="Primary"
+                                               Icon="{ui:SymbolIcon Play24}"
+                                               Content="{views:ThreeDText Key=ThreeD.Exchange.StartListener, Korean='수신 시작', English='Start listener'}"
+                                               Command="{Binding IntegrationExchange.StartTcpListenerCommand}"
+                                               AutomationProperties.AutomationId="StartIntegrationListener" />
+                                    <ui:Button Margin="0,0,8,0"
+                                               Appearance="Secondary"
+                                               Icon="{ui:SymbolIcon Dismiss24}"
+                                               Content="{views:ThreeDText Key=ThreeD.Exchange.StopListener, Korean='수신 중지', English='Stop listener'}"
+                                               Command="{Binding IntegrationExchange.StopTcpListenerCommand}"
+                                               AutomationProperties.AutomationId="StopIntegrationListener" />
+                                    <ui:Button Appearance="Secondary"
+                                               Icon="{ui:SymbolIcon ArrowSync24}"
+                                               Content="{views:ThreeDText Key=ThreeD.Exchange.PingPeer, Korean='상대 Ping', English='Ping peer'}"
+                                               Command="{Binding IntegrationExchange.PingTcpPeerCommand}"
+                                               AutomationProperties.AutomationId="PingIntegrationPeer" />
+                                </WrapPanel>
+                                <TextBlock Margin="0,7,0,0"
+                                           Foreground="{DynamicResource ThreeD.AccentBrush}"
+                                           Text="{Binding IntegrationExchange.TcpListenerStatusText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.AutomationId="IntegrationListenerStatus" />
+                            </StackPanel>
+                        </Expander>
                     </StackPanel>
                 </Border>
 
@@ -130,7 +239,8 @@
                         </ListBox>
                     </Grid>
                 </Border>
-            </Grid>
+                </Grid>
+            </ScrollViewer>
 
             <Border Grid.Column="2"
                     Padding="14"
@@ -138,14 +248,41 @@
                     BorderBrush="{DynamicResource ThreeD.DividerBrush}"
                     BorderThickness="1"
                     CornerRadius="4">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock FontSize="14" FontWeight="SemiBold"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.Review, Korean='검토 및 결과', English='Review and result'}" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource ThreeD.AccentBrush}"
                                    Text="{Binding IntegrationExchange.SelectedSummary}"
-                                   TextWrapping="Wrap" />
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="IntegrationSequenceStatus" />
+                        <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.Transfer, Korean='TCP 거래 전송', English='TCP transaction transfer'}" />
+                        <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   MaxWidth="430"
+                                   TextWrapping="Wrap"
+                                   Text="{views:ThreeDText Key=ThreeD.Exchange.TransferHint, Korean='선택 거래를 상대에게 보내거나, 상대에서 최신 ACK/Result를 다시 받습니다. 전송만으로 검토나 검사는 실행되지 않습니다.', English='Push the selected transaction to the peer or pull its latest ACK/Result. Transfer alone never reviews or runs an inspection.'}" />
+                        <WrapPanel Margin="0,9,0,0">
+                            <ui:Button Margin="0,0,8,0"
+                                       Appearance="Primary"
+                                       Icon="{ui:SymbolIcon Send24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Push, Korean='선택 거래 보내기', English='Push selected'}"
+                                       Command="{Binding IntegrationExchange.PushSelectedTransactionCommand}"
+                                       AutomationProperties.AutomationId="PushIntegrationTransaction" />
+                            <ui:Button Appearance="Secondary"
+                                       Icon="{ui:SymbolIcon ArrowSync24}"
+                                       Content="{views:ThreeDText Key=ThreeD.Exchange.Pull, Korean='ACK/Result 받기', English='Pull ACK/Result'}"
+                                       Command="{Binding IntegrationExchange.PullSelectedTransactionCommand}"
+                                       AutomationProperties.AutomationId="PullIntegrationTransaction" />
+                        </WrapPanel>
+                        <TextBlock Margin="0,7,0,0"
+                                   Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"
+                                   Text="{Binding IntegrationExchange.LastTcpTransferText}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.AutomationId="IntegrationTransferStatus" />
+                        <Separator Margin="0,16" />
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold"
                                    Text="{views:ThreeDText Key=ThreeD.Exchange.Acknowledge, Korean='1. Handoff 검토', English='1. Review handoff'}" />
                         <TextBlock Foreground="{DynamicResource ThreeD.SecondaryTextBrush}"

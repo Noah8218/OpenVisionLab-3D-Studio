@@ -18,11 +18,18 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.3.1-dev`
+Current version: `v0.4.0-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.0-dev` (2026-09-01)
+
+- Adds authenticated TCP transaction transfer for the 3D integration
+  workspace, with explicit listener, push, pull, and peer-ping actions.
+- Keeps receipt, acknowledgement, inspection, and result publication as
+  separate explicit steps; network receipt never runs an inspection.
 
 #### `v0.3.1-dev` (2026-09-01)
 

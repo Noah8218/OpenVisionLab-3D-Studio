@@ -3,8 +3,9 @@ param([string]$ReportPath)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-$package = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabIntegrationContracts\OpenVisionLab.Integration.Contracts.0.1.0.nupkg"
+$package = Join-Path $PSScriptRoot "..\third_party\OpenVisionLabIntegrationContracts\OpenVisionLab.Integration.Contracts.0.2.0-alpha.2.nupkg"
 $checksum = "$package.sha256"
 $expectedHash = ([regex]::Match(
     (Get-Content -LiteralPath $checksum -Raw),
@@ -26,6 +27,9 @@ try {
         "fixtures/v1/valid/handoff.json",
         "fixtures/v1/valid/acknowledgement.json",
         "fixtures/v1/valid/result.json",
+        "fixtures/v2/valid/handoff.json",
+        "fixtures/v2/valid/acknowledgement.json",
+        "fixtures/v2/valid/result.json",
         "lib/net8.0/OpenVisionLab.Integration.Contracts.dll")) {
         if ($entries -notcontains $required) {
             throw "Integration Contracts package is missing: $required"
@@ -42,7 +46,7 @@ try {
     $id = [string]$metadata.id
     $version = [string]$metadata.version
     $sourceCommit = [string]$repository.commit
-    if ($id -ne "OpenVisionLab.Integration.Contracts" -or $version -ne "0.1.0" -or $sourceCommit -ne "dfff80c977a423ca00f71c655e0711847f173fb5") {
+    if ($id -ne "OpenVisionLab.Integration.Contracts" -or $version -ne "0.2.0-alpha.2" -or $sourceCommit -ne "working-tree-uncommitted") {
         throw "Integration Contracts package metadata mismatch."
     }
 }
@@ -50,7 +54,7 @@ finally {
     $archive.Dispose()
 }
 
-$result = "IntegrationContractsPackage|pass=True|version=0.1.0|sourceCommit=dfff80c977a423ca00f71c655e0711847f173fb5|sha256=$actualHash|target=net8.0"
+$result = "IntegrationContractsPackage|pass=True|version=0.2.0-alpha.2|schemas=1.0,2.0|sourceState=working-tree-uncommitted|sha256=$actualHash|target=net8.0"
 if (-not [string]::IsNullOrWhiteSpace($ReportPath)) {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ReportPath) | Out-Null
     Set-Content -LiteralPath $ReportPath -Value $result -Encoding utf8

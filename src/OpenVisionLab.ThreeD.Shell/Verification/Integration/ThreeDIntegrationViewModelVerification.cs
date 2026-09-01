@@ -16,10 +16,10 @@ internal static class ThreeDIntegrationViewModelVerification
             "OpenVisionLab 3D Integration ViewModel verification",
             $"Generated: {DateTimeOffset.UtcNow:O}"
         };
-        var fixtureRoot = Path.Combine(
-            Path.GetTempPath(),
-            "OpenVisionLab-3D-Integration-UI",
-            Guid.NewGuid().ToString("N"));
+        var fixtureBase = Directory.Exists(@"D:\")
+            ? @"D:\OpenVisionLab-TestData\OpenVisionLab-3D-Studio\integration-viewmodel"
+            : Path.Combine(Path.GetTempPath(), "OpenVisionLab-3D-Integration-UI");
+        var fixtureRoot = Path.Combine(fixtureBase, Guid.NewGuid().ToString("N"));
         var passed = 0;
 
         try
@@ -30,7 +30,7 @@ internal static class ThreeDIntegrationViewModelVerification
             var runRecordPath = Path.Combine(fixtureRoot, "run-record.json");
             Directory.CreateDirectory(exchangeRoot);
             var handoff = WriteHandoff(exchangeRoot);
-            WriteRunRecord(runRecordPath);
+            WriteRunRecord(runRecordPath, handoff);
 
             var setup = CreateViewModel(settingsPath, runRecordPath);
             setup.ExchangeRoot = exchangeRoot;
@@ -122,7 +122,7 @@ internal static class ThreeDIntegrationViewModelVerification
                 new string('2', 40),
                 IntegrationSourceState.Clean));
 
-    private static IntegrationHandoff WriteHandoff(string exchangeRoot)
+    private static IntegrationHandoffV2 WriteHandoff(string exchangeRoot)
     {
         var transactionId = Guid.NewGuid();
         var transactionDirectory = Path.Combine(exchangeRoot, "transactions", transactionId.ToString("D"));
@@ -130,10 +130,27 @@ internal static class ThreeDIntegrationViewModelVerification
         Directory.CreateDirectory(artifactsDirectory);
         var projectPath = Path.Combine(artifactsDirectory, "machine-project.ovmachine");
         var sourcePath = Path.Combine(artifactsDirectory, "inspection-source.c3d");
+        var recipePath = Path.Combine(artifactsDirectory, "inspection-recipe.json");
         File.WriteAllText(projectPath, "{}");
         File.WriteAllBytes(sourcePath, [1, 2, 3, 4]);
-        var handoff = new IntegrationHandoff(
-            IntegrationContractSchema.Current,
+        File.WriteAllText(recipePath, "{}");
+        var project = Artifact(
+            IntegrationArtifactRoles.MachineProject,
+            "project-1",
+            projectPath,
+            "artifacts/machine-project.ovmachine");
+        var source = Artifact(
+            IntegrationArtifactRoles.InspectionSource,
+            "source-1",
+            sourcePath,
+            "artifacts/inspection-source.c3d");
+        var recipe = Artifact(
+            IntegrationArtifactRoles.InspectionRecipe,
+            "recipe-1",
+            recipePath,
+            "artifacts/inspection-recipe.json");
+        var handoff = new IntegrationHandoffV2(
+            IntegrationContractSchema.V2,
             IntegrationMessageKind.Handoff,
             Guid.NewGuid(),
             transactionId,
@@ -143,21 +160,24 @@ internal static class ThreeDIntegrationViewModelVerification
                 "0.1.0",
                 new string('1', 40),
                 IntegrationSourceState.Clean),
-            new MachineInspectionContext(
+            new IntegrationInspectionContextV2(
                 "project-1",
                 "1.11",
                 "sequence-1",
                 "step-1",
                 "camera-1",
-                "mm",
+                "acquisition-1",
                 "camera-1-frame",
-                [
-                    Artifact(IntegrationArtifactRoles.MachineProject, "project-1", projectPath, "artifacts/machine-project.ovmachine"),
-                    Artifact(IntegrationArtifactRoles.InspectionSource, "source-1", sourcePath, "artifacts/inspection-source.c3d")
-                ]));
+                "mm",
+                IntegrationInspectionModality.ThreeD,
+                IntegrationInspectionInputKind.HeightMap,
+                source.Sha256,
+                recipe.Sha256,
+                CreateViewModelIdentity(),
+                [project, source, recipe]));
         File.WriteAllBytes(
             Path.Combine(transactionDirectory, IntegrationTransactionLayout.HandoffFileName),
-            IntegrationContractJson.Serialize(handoff));
+            IntegrationContractJson.SerializeCanonical(handoff));
         return handoff;
     }
 
@@ -167,14 +187,16 @@ internal static class ThreeDIntegrationViewModelVerification
         return new(role, id, relativePath, stream.Length, Convert.ToHexString(SHA256.HashData(stream)));
     }
 
-    private static void WriteRunRecord(string path) => InspectionRunRecordJson.Write(
+    private static void WriteRunRecord(
+        string path,
+        IntegrationHandoffV2 handoff) => InspectionRunRecordJson.Write(
         path,
         new InspectionRunRecord(
             "1.0",
             "run-1",
             DateTimeOffset.UtcNow,
-            new InspectionRunRecipe("tool-recipe", "1.0", "recipe.json", new string('A', 64)),
-            new InspectionRunSource("source-1", "source.c3d", new string('B', 64), 4, "mm"),
+            new InspectionRunRecipe("tool-recipe", "1.0", "inspection-recipe.json", handoff.Context.RecipeSha256),
+            new InspectionRunSource("source-1", "inspection-source.c3d", handoff.Context.InputSha256, 4, "mm"),
             "Integration Verification",
             ResultStatus.Pass,
             "Completed",
@@ -182,7 +204,32 @@ internal static class ThreeDIntegrationViewModelVerification
             [],
             [],
             "matched",
-            new InspectionRunArtifacts("report.txt", null, null, path, null, null)));
+            new InspectionRunArtifacts("report.txt", null, null, path, null, null))
+        {
+            Step = new InspectionRunStep(handoff.Context.StepId, "source-1", [], []),
+            IntegrationContext = new InspectionRunIntegrationContext(
+                handoff.Context.ProjectId,
+                handoff.Context.ProjectSchema,
+                handoff.Context.SequenceId,
+                handoff.Context.StepId,
+                handoff.Context.CameraId,
+                handoff.Context.AcquisitionId,
+                handoff.Context.FrameId,
+                handoff.Context.Unit,
+                handoff.Context.Modality.ToString(),
+                handoff.Context.InputKind.ToString(),
+                handoff.Context.ConsumerBuild.ApplicationId,
+                handoff.Context.ConsumerBuild.ApplicationVersion,
+                handoff.Context.ConsumerBuild.SourceCommit,
+                handoff.Context.ConsumerBuild.SourceState.ToString())
+        });
+
+    private static IntegrationApplicationIdentity CreateViewModelIdentity() =>
+        new(
+            IntegrationApplicationIds.ThreeDStudio,
+            "0.1.0",
+            new string('2', 40),
+            IntegrationSourceState.Clean);
 
     private static string TransactionDirectory(string root, Guid transactionId) =>
         Path.Combine(root, "transactions", transactionId.ToString("D"));

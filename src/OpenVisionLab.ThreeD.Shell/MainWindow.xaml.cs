@@ -386,6 +386,17 @@ public partial class MainWindow : Window
         Loaded -= EnsureWorkbenchViewerSourceConsistency;
         _studioLayout.Dispose();
         _workbenchLifecycle.Dispose();
+        try
+        {
+            _viewModel.IntegrationExchange.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            OVLog.Write(
+                LogCategory.System,
+                LogLevel.Error,
+                $"TCP integration shutdown failed: {exception.GetBaseException().Message}");
+        }
         base.OnClosed(e);
     }
 
