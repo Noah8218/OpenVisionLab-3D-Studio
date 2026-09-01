@@ -18,11 +18,19 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.8-dev`
+Current version: `v0.4.9-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.9-dev` (2026-09-01)
+
+- Extracted Shell source-load operation lifetime into a WPF-neutral coordinator
+  shared by C3D and Viewer-only imports, including latest-operation
+  cancellation and stale Workbench-state suppression.
+- Preserved public Viewer load methods, OpenGL application boundaries, recipe
+  compatibility, and explicit Preview/Publish/Run behavior.
 
 #### `v0.4.8-dev` (2026-09-01)
 

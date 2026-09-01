@@ -51,7 +51,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
     private readonly WorkbenchViewerTeachingCoordinator _workbenchViewerTeaching;
     private readonly ShellWorkbenchLifecycleCallbacks _callbacks;
     private RecipeManagerWindow? _recipeManagerWindow;
-    private CancellationTokenSource? _c3dSourceLoadCancellation;
+    private readonly ShellSourceLoadOperationCoordinator _sourceLoadOperations = new();
 
     public ShellWorkbenchLifecycleController(
         Window owner,
@@ -102,8 +102,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
         bool showFailureDialog = true,
         bool bindToWorkbench = true)
     {
-        var cancellation = new CancellationTokenSource();
-        _c3dSourceLoadCancellation = cancellation;
+        using var operation = _sourceLoadOperations.Begin();
         LastWorkbenchSourceBindingMilliseconds = 0.0;
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         _viewModel.Workbench.BeginC3DSourceLoad(path);
@@ -111,7 +110,8 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
         try
         {
-            if (await _viewer.LoadC3DSourceAsync(path, cancellation.Token, progress)
+            if (await _viewer.LoadC3DSourceAsync(path, operation.Token, progress)
+                && operation.IsCurrent
                 && _viewer.CurrentC3DSourcePath is { } sourcePath)
             {
                 if (bindToWorkbench)
@@ -123,6 +123,11 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
                 return true;
             }
 
+            if (!operation.IsCurrent)
+            {
+                return false;
+            }
+
             _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
             if (showFailureDialog)
             {
@@ -130,22 +135,18 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             }
             return false;
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
         {
-            _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
-            return false;
-        }
-        finally
-        {
-            if (ReferenceEquals(_c3dSourceLoadCancellation, cancellation))
+            if (operation.IsCurrent)
             {
-                _c3dSourceLoadCancellation = null;
+                _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
             }
-            cancellation.Dispose();
+
+            return false;
         }
     }
 
-    public void CancelC3DSourceLoad() => _c3dSourceLoadCancellation?.Cancel();
+    public void CancelC3DSourceLoad() => _sourceLoadOperations.CancelCurrent();
 
     public void ConfigureFirstRecipeSetupForSmoke(ShellSmokeCommandLineOptions smoke)
     {
@@ -249,19 +250,24 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             throw new NotSupportedException($"Viewer-only import does not support '{extension}'.");
         }
 
-        var cancellation = new CancellationTokenSource();
-        _c3dSourceLoadCancellation = cancellation;
+        using var operation = _sourceLoadOperations.Begin();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         _viewModel.Workbench.Begin3DDataImport(path, format);
         var progress = new Progress<double>(_viewModel.Workbench.ReportC3DSourceLoadProgress);
 
         try
         {
-            if (await _viewer.LoadViewerOnlySourceAsync(path, cancellation.Token, progress))
+            if (await _viewer.LoadViewerOnlySourceAsync(path, operation.Token, progress)
+                && operation.IsCurrent)
             {
                 _viewer.ViewModel.HudDetailsVisible = false;
                 _viewModel.Workbench.CompleteViewerOnlyImport(path, format, stopwatch.ElapsedMilliseconds);
                 return true;
+            }
+
+            if (!operation.IsCurrent)
+            {
+                return false;
             }
 
             _viewModel.Workbench.FailC3DSourceLoad(path, stopwatch.ElapsedMilliseconds);
@@ -271,18 +277,14 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
             }
             return false;
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
         {
-            _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
-            return false;
-        }
-        finally
-        {
-            if (ReferenceEquals(_c3dSourceLoadCancellation, cancellation))
+            if (operation.IsCurrent)
             {
-                _c3dSourceLoadCancellation = null;
+                _viewModel.Workbench.CancelC3DSourceLoad(stopwatch.ElapsedMilliseconds);
             }
-            cancellation.Dispose();
+
+            return false;
         }
     }
 
@@ -624,9 +626,7 @@ internal sealed class ShellWorkbenchLifecycleController : IDisposable
 
     public void Dispose()
     {
-        _c3dSourceLoadCancellation?.Cancel();
-        _c3dSourceLoadCancellation?.Dispose();
-        _c3dSourceLoadCancellation = null;
+        _sourceLoadOperations.Dispose();
         _recipeManagerWindow?.Close();
         _recipeManagerWindow = null;
     }

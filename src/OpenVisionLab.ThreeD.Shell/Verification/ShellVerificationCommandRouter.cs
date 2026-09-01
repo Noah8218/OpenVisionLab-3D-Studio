@@ -14,6 +14,30 @@ internal static class ShellVerificationCommandRouter
     public static void Run(string[] args)
     {
         var e = new VerificationArguments(args);
+        const string sourceLoadOperationCoordinatorOption =
+            "--verify-source-load-operation-coordinator";
+        var sourceLoadOperationCoordinatorIndex = Array.FindIndex(
+            args,
+            argument => argument.Equals(
+                sourceLoadOperationCoordinatorOption,
+                StringComparison.OrdinalIgnoreCase));
+        if (sourceLoadOperationCoordinatorIndex >= 0)
+        {
+            if (sourceLoadOperationCoordinatorIndex + 1 >= args.Length)
+            {
+                Console.WriteLine(
+                    $"{sourceLoadOperationCoordinatorOption} requires a report path.");
+                Shutdown(2);
+                return;
+            }
+
+            var passed = ShellSourceLoadOperationCoordinatorVerification.Verify(
+                args[sourceLoadOperationCoordinatorIndex + 1],
+                out var summary);
+            Console.WriteLine(summary);
+            Shutdown(passed ? 0 : 1);
+            return;
+        }
         const string integrationViewModelOption = "--verify-integration-view-model";
         var integrationViewModelIndex = Array.FindIndex(
             args,

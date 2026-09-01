@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.4.6-dev` development line onward. It does not claim that a version was
+`0.4.9-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.8-dev
+## [Unreleased] - 0.4.9-dev
 
 ### Added
 
@@ -15,6 +15,11 @@ released; publication state is owned by the release and version policy.
   load a recipe, run an inspection, or publish a Result automatically.
 
 ### Changed
+
+- Isolated Shell C3D and Viewer-only source-load operation lifetime in a
+  WPF-neutral coordinator with latest-operation cancellation, current checks,
+  deterministic completion, and shutdown disposal; public Viewer, recipe, and
+  explicit Preview/Publish/Run contracts are unchanged.
 
 - Isolated cancellable C3D source path validation, decode, render-topology, and
   CPU preparation timing from the WPF Viewer control into a WPF-neutral
