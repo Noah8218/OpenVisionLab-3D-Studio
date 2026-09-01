@@ -18,11 +18,16 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.4-dev`
+Current version: `v0.4.5-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.5-dev` (2026-09-01)
+
+- Extracted Current Recipe Run Smoke preparation and post-capture ordered-run activation into a dedicated Shell verification owner.
+- Preserved RunCurrentRecipeButton command validation, activation evidence, 30-second/50-ms wait behavior, and explicit recipe workflow semantics.
 
 #### `v0.4.4-dev` (2026-09-01)
 

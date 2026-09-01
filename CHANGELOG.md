@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.4.4-dev` development line onward. It does not claim that a version was
+`0.4.5-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.4-dev
+## [Unreleased] - 0.4.5-dev
 
 ### Added
 
@@ -15,6 +15,11 @@ released; publication state is owned by the release and version policy.
   load a recipe, run an inspection, or publish a Result automatically.
 
 ### Changed
+
+- Isolated Current Recipe Run Smoke workspace preparation, bound-command
+  activation, ordered-result waiting, and activation evidence from
+  `MainWindow` into an explicit Shell verification owner without changing
+  recipe, Run Record, or Preview/Publish/Run contracts.
 
 - Extracted Viewer workspace presentation/layout Smoke orchestration from
   `MainWindow` into a dedicated Shell verification owner without changing
