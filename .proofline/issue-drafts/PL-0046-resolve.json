@@ -1,0 +1,91 @@
+{
+  "type": "batch",
+  "current_summary": "B-10 is complete with SDK-owned deterministic grid diagnostics, a thin Studio Data adapter, SourceQualityReport schema 1.1 and exact schema 1.0 compatibility, fail-closed malformed-source handling, persisted UI/export evidence, current Wide/Compact and failure-path EXE proof, and durable inventory/documentation closure. B-13, R0, hosted CI, unrun DPI scales, maximum-C3D qualification, physical metrology, Studio commit/push/release, and SDK push remain outside this result.",
+  "updated_at": "2026-08-23T22:54:55.4842654+09:00",
+  "operations": [
+    {
+      "type": "add_event",
+      "event": {
+        "id": "D1",
+        "kind": "decision",
+        "at": "2026-08-23T22:54:55.4842654+09:00",
+        "summary": "After the first Data-owned analyzer failed NoNewStudioNumericalOwnership, reusable topology, locator-order, duplicate, and coordinate-finiteness calculation moved to a committed public SDK GridDiagnosticsTool. Studio retains only typed adaptation, C3D implicit-format policy, product evidence composition, and Core validation.",
+        "evidence_refs": []
+      }
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E1",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\sdk-boundary; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\gates",
+        "observation": "Committed SDK source 8be38403 builds with zero warnings/errors and passes 173/173 smoke checks; its package-only consumer passes. The vendored grid-diagnostics.1 package metadata and SHA-256 964A543C...976C pass, Studio's SDK adapter/provenance verifier passes 26/26, and the structure guard passes 68/68 with zero migration debt, 35 reviewed boundaries, and NoNewStudioNumericalOwnership satisfied.",
+        "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+      },
+      "targets": [
+        "C1",
+        "C5",
+        "D1"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E2",
+        "kind": "test",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\focused-current-after-provenance",
+        "observation": "Current binaries pass Source Quality 22/22, including the four ordered diagnostic classes, contradictory-payload rejection, stable malformed reasons, schema 1.1 round trip, and the exact legacy schema 1.0 hash E2176611...82A2. The same persisted diagnostic evidence passes Surface Match export 25/25, Completeness 31/31, ordered Run 16/16, privacy bundle 15/15, and Source Quality workspace 28/28 without reanalysis.",
+        "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+      },
+      "targets": [
+        "C2",
+        "C3"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E3",
+        "kind": "runtime",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\runtime; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\focused-current-after-provenance\\error-state",
+        "observation": "Current Release Wide Korean 1920x1040 and Compact English 1280x760 EXEs exit 0 with all four diagnostic cards visible, full wrapped title-bar quality text, view-only state, and first-attempt screenshot quality. The actual WPF Error row uses semantic fail resources and wraps all 276 evidence characters. Malformed async load exits 0, retains the previous source, clears load state, and exactly matches CellCountOverflow. Windows reported two monitors; the smaller left monitor was selected and intersection passed at current 125% scaling.",
+        "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+      },
+      "targets": [
+        "C3",
+        "C4"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E4",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current",
+        "observation": "The final 15-project Release solution build passes with zero warnings/errors. Standard tests pass 2/2, Shell option parsing passes 47/47, NuGet health covers all 15 projects with vulnerable/deprecated 0/0, current package provenance has no stale 3.0.0/f34fdf C# consumer, and all focused B-10 regressions were rerun after that provenance correction.",
+        "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+      },
+      "targets": [
+        "C5"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E5",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0046-source-topology-diagnostics\\final-current\\gates\\terminal-hygiene.txt",
+        "observation": "Terminal hygiene parses all 70 Git-visible JSON files, validates all 46 Proofline issues, resolves 58 checked local document links, confirms 19 closure evidence targets, finds no stale SDK provenance or B-10 TODO/FIXME, and records git diff --check exit 0. The canonical inventory has 235 unique rows at 151 C / 16 P / 43 N / 9 E / 16 O with B-10 Complete and E-13 the sole next dependency-ready item.",
+        "observed_at": "2026-08-23T22:54:55.4842654+09:00"
+      },
+      "targets": [
+        "C5"
+      ]
+    },
+    {
+      "type": "set_state",
+      "status": "resolved",
+      "transition_summary": "Resolved after all five B-10 acceptance criteria received current reusable evidence."
+    }
+  ]
+}

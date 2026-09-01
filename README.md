@@ -18,11 +18,20 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.3.0-dev`
+Current version: `v0.3.1-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.3.1-dev` (2026-09-01)
+
+- Expands the public documentation map with deterministic 3D integration,
+  verification, and workflow evidence.
+- Adds repository operating guidance and traceability records for the current
+  development baseline.
+- Keeps the development line software-only and does not claim physical
+  calibration or production metrology.
 
 #### `v0.3.0-dev` (2026-08-29)
 

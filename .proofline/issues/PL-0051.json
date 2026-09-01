@@ -1,0 +1,160 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0051",
+    "aliases": [
+      "G-11"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Connect deterministic height-grid region detection to 3D Studio",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "next dependency-ready development priority",
+    "summary": "The owner asked to continue development while maximum-C3D performance qualification remains blocked; G-11 is dependency-ready after D-04 and C-06, and the local Vision SDK already contains the committed connected-region tools.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md",
+      "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "The bounded G-11 software slice is implemented and verified: the exact vendored SDK package provides connected-region labeling and metrics; Studio validates and maps an immutable source-bound C3D mask; Runner verification covers deterministic output and fail-closed contracts."
+  },
+  "objective": {
+    "summary": "Make deterministic connected-region labeling and source-grid metrics executable from OpenVisionLab 3D Studio over a C3D height buffer and an explicit boolean mask without duplicating SDK arithmetic or implying a persisted region artifact.",
+    "constraints": [
+      "Use the exact clean local SDK source commit that owns ConnectedRegionTool and ConnectedRegionMetricsTool; create a unique local development package before Studio consumes it.",
+      "Keep numerical labeling, area, centroid, orientation, and bounds arithmetic in the Vision SDK; Studio owns source identity, dimensions, unit/frame checks, strict adaptation, and evidence composition.",
+      "Use an explicit source-bound boolean mask as the only mask input; do not invent polygon/circle rasterization, threshold policy, region-artifact persistence, or downstream inspection consumers in this slice.",
+      "Fail closed on null, empty, mismatched, stale, or invalid source/mask contracts and preserve source immutability.",
+      "Do not change product version, create a release, publish a package externally, commit, push, or modify the 2D reference repository.",
+      "Keep generated test and package evidence under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The exact clean SDK package exposes ConnectedRegionTool and ConnectedRegionMetricsTool with deterministic row-major region/cell ordering and source-neutral results, and its package metadata/hash identifies one immutable local development package.",
+      "evidence_refs": [
+        "E1",
+        "E5"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "A Studio-owned typed adapter accepts an exact C3D source snapshot plus an exact source-bound boolean mask, validates identity/dimensions/finite geometry, delegates labeling and metrics to the SDK, and does not reproduce region arithmetic.",
+      "evidence_refs": [
+        "E2",
+        "E6"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "A deterministic Runner verification covers separated four-neighbor regions, diagonal four-versus-eight behavior, source/mask immutability, area/centroid/bounds/orientation mapping, and fail-closed malformed contracts without fabricating a result.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "The focused Studio verification, current Release build, relevant structure/ownership guard, and git diff --check pass; no UI, recipe, package publication, product version, commit, or push is claimed.",
+      "evidence_refs": [
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7"
+      ]
+    }
+  ],
+  "relations": [],
+  "context": [
+    {
+      "kind": "SDK source owner",
+      "location": "C:\\Git\\OpenVisionLab-Vision-SDK\\src\\OpenVisionLab.Vision3D\\FeatureExtraction\\GridAndStatistics\\ConnectedRegionTool.cs",
+      "summary": "The SDK owns source-neutral row-major connected-region labeling and cancellation-aware traversal."
+    },
+    {
+      "kind": "SDK metric owner",
+      "location": "C:\\Git\\OpenVisionLab-Vision-SDK\\src\\OpenVisionLab.Vision3D\\FeatureExtraction\\GridAndStatistics\\ConnectedRegionMetricsTool.cs",
+      "summary": "The SDK owns deterministic area, centroid, principal orientation, and cell-footprint bounds."
+    },
+    {
+      "kind": "Studio source owner",
+      "location": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs",
+      "summary": "Studio owns immutable C3D dimensions, source identity, frame/unit metadata, and copied values."
+    },
+    {
+      "kind": "Studio verification owner",
+      "location": "src/OpenVisionLab.ThreeD.Runner/Verification",
+      "summary": "Runner owns deterministic source-bound adapter verification and report output."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/vision-sdk-package.txt",
+      "observation": "The vendored OpenVisionLab.Vision3D package verifier passed with exact package ID OpenVisionLab.Vision3D, version 3.0.1-dev.20260826.domain-mask.1, source commit db8b8a281dd028c62fabfc49febcde9b4d345d37, SHA-256 D87570212D4C8913360CB01D20D9669720EDB6424B42C7FB790909EC8766D1CB, and netstandard2.0 target.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/connected-region.txt",
+      "observation": "The Runner G-11 verification passed 10/10 cases: deterministic separated regions, row-major IDs/cells, SDK metric mapping, repeated content identity, source/mask immutability, Four-versus-Eight diagonal behavior, and fail-closed empty, source-mismatch, non-finite-foreground, and invalid-connectivity contracts.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/release-build.txt",
+      "observation": "The current OpenVisionLab.ThreeDStudio.slnx Release build completed with zero warnings and zero errors after the SDK package and G-11 adapter changes.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "test",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/dotnet-test.txt",
+      "observation": "The Release no-build solution test run passed all 10 tests with zero failures and zero skipped tests.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/vision-sdk-runner.txt",
+      "observation": "The existing Vision SDK Runner verification passed 26/26 cases against the updated package, confirming the prior Studio SDK consumers remain compatible while the connected-region tools are consumed.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/code-structure-slnx.txt",
+      "observation": "The current solution-set structure and ownership guard passed 68/68 checks, including Core/Data/Tools/Runner dependency boundaries, Vision SDK ownership, no new Studio numerical ownership, and Runner routing ownership.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    },
+    {
+      "id": "E7",
+      "kind": "verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/g11-connected-region/git-diff-check.txt",
+      "observation": "git diff --check completed with exit code 0 and no whitespace error diagnostics for the current tracked diff.",
+      "observed_at": "2026-08-26T20:20:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-26T20:21:51+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "G-11 bounded source-bound connected-region adapter, exact SDK package consumption, deterministic Runner fixture, fail-closed contracts, Release/test/ownership verification, and evidence documentation are complete. G-12 remains a separate follow-up for user-facing output and selected overlay routing."
+    }
+  ],
+  "created_at": "2026-08-26T19:30:00+09:00",
+  "updated_at": "2026-08-26T20:21:51+09:00"
+}

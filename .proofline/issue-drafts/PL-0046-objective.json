@@ -1,0 +1,93 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0046",
+    "aliases": [
+      "B-10"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Add deterministic malformed-source diagnostics",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved the next ranked dependency-ready item. B-10 remained New after PL-0040 closed basic malformed C3D rejection because the product still lacked shared, structured, visible diagnostics for grid monotonicity, duplicate locators, non-finite coordinates, and topology.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_REPORT_20260727.md",
+      "docs/OPENVISIONLAB_3D_SOURCE_QUALITY_EDGE_FIXTURE_CLOSURE_20260823.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "The current report has no diagnostic contract, C3D topology failures are exception-only, and Source Quality, Results, and exports omit the four B-10 diagnostic classes.",
+    "next_action": "Implement one Data-owned deterministic diagnostic contract with legacy report compatibility, then project the persisted diagnostics through existing UI and export surfaces."
+  },
+  "objective": {
+    "summary": "Close B-10 with reusable, deterministic malformed-source diagnostics that are preserved in SourceQualityReport evidence and shown consistently without rerunning analysis.",
+    "constraints": [
+      "Treat C3D width, height, and row-major samples honestly: the format has implicit locators and no explicit XYZ payload, so malformed explicit-locator fixtures must exercise a real production diagnostic seam rather than fabricated C3D bytes or Runner-only logic.",
+      "Preserve legacy SourceQualityReport schema 1.0 deserialization and canonical content identities; include diagnostics in identity only for the new schema contract.",
+      "Keep Source Quality review presentation-only and preserve explicit Preview, Publish, Run, recipe, source-selection, and result contracts.",
+      "Do not implement B-13 compatible-tool gating, new numerical algorithms, a Vision SDK package change, acquisition hardware, or certified metrology claims.",
+      "Reuse the existing semantic WPF theme, MVVM ownership, Source Quality and Results surfaces, and current export writers; add no UI framework or parallel report system.",
+      "Keep product-owner Wide and Compact R0 deferred as requested and store generated local evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "One production Data-owned analyzer emits deterministic, structured diagnostics with stable code, state, count, message, and first offending locator/component evidence for grid monotonicity, duplicate locators, non-finite coordinates, and topology; C3D reports use their real implicit-grid guarantees and malformed parser failures use stable owned reasons.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "The current SourceQualityReport schema serializes, validates, round-trips, and hashes the diagnostic payload while legacy schema 1.0 reports retain exact readability and canonical identity behavior.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "Existing Source Quality, global quality status, Results/Run Record, JSON, HTML, CSV, Shell text, and Runner text consumers project the same persisted diagnostics without reanalysis, with localized actionable UI text and no recipe, source, Preview, Publish, or Run mutation.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Focused contracts prove all four diagnostic classes, deterministic ordering, exact malformed reasons, legacy/current compatibility, export parity, localization, and prior-source retention on malformed asynchronous load; fresh current-build Wide 1920x1040 and Compact 1280x760 runtime evidence shows the diagnostic surface without clipping or unreachable required text.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "Proportional Release builds and affected regressions, standard facade, structure and fixed SDK guards, repository JSON and issue validation, inventory recount, durable documentation, and diff hygiene pass on the current tree.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0045"
+    }
+  ],
+  "context": [
+    {
+      "kind": "current report owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/Data/SourceQualityReport.cs",
+      "summary": "Schema 1.0 currently owns source, grid, coverage, height, coordinates, provenance, and channels but no diagnostics."
+    },
+    {
+      "kind": "current C3D owner",
+      "location": "src/OpenVisionLab.ThreeD.Data/HeightMaps/C3DHeightFieldSnapshot.cs",
+      "summary": "The parser owns width, height, exact byte topology, implicit row-major locators, and raw sample normalization."
+    },
+    {
+      "kind": "visible consumer",
+      "location": "src/OpenVisionLab.ThreeD.Shell/Views/Workbench/SourceQualityWorkspaceView.xaml",
+      "summary": "The existing Source Quality surface is the smallest product-owned home for visible B-10 diagnostics."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "events": [],
+  "created_at": "2026-08-23T21:45:11.6944876+09:00",
+  "updated_at": "2026-08-23T21:45:11.6944876+09:00"
+}

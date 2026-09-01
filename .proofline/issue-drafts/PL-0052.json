@@ -1,0 +1,132 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0052",
+    "aliases": [
+      "G-12"
+    ],
+    "type": "task",
+    "mode": "composite",
+    "title": "Route detected-region metrics to typed Results and selected overlays",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "next dependency-ready development priority",
+    "summary": "G-11 closed the deterministic source-bound connected-region adapter and Runner contract. The next dependency-ready software slice is the user-facing typed output and selected overlay workflow, while R0, maximum-C3D qualification, physical metrology, and release remain separate prerequisites.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md",
+      "docs/OPENVISIONLAB_3D_CONNECTED_REGION_G11_CLOSURE_20260826.md",
+      "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "G-12 scope is fixed: present an already evaluated source-bound C3D connected-region output as typed Workbench evidence, expose per-region metrics and selection, and synchronize the selected region to the existing 2D Height Image and 3D Viewer overlay paths without adding mask generation or recipe persistence.",
+    "next_action": "Add the Workbench typed-output projection and selected-region state, route display requests through the existing Viewer coordinator, add the shared 2D/3D overlay, then run focused and runtime evidence gates."
+  },
+  "objective": {
+    "summary": "Connect C3DConnectedRegionOutput from the completed G-11 adapter to a user-facing Results/Displayed Outputs review and selected-region overlay workflow.",
+    "constraints": [
+      "Keep SDK labeling and metric arithmetic in the Vision SDK and keep source/mask identity validation in the existing Studio adapter.",
+      "Accept only an already evaluated, exact current-source-bound output; do not rerun detection from presentation code.",
+      "Do not add GridPolygon or GridCircle rasterization, threshold inference, mask authoring, calibration, physical area, metrology, downstream completeness consumption, or recipe persistence in this slice.",
+      "Reuse existing Workbench MVVM, Displayed Outputs, Viewer coordinator, Height Image overlay, semantic theme, and explicit Preview/Publish/Run contracts.",
+      "A selected region must be represented by stable region identity and the same row/column cells in both 2D and 3D; selection must not mutate the recipe or source.",
+      "Keep generated test, screenshot, smoke, and report evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio.",
+      "Do not change product version, create a release, commit, push, restart the PC, or modify the 2D reference repository."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "A current exact-source-bound C3DConnectedRegionOutput is exposed as a typed Workbench artifact with region count, foreground count, grid-index area, source identity, and per-region count/area/center/orientation/bounds available without re-execution.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "The Workbench exposes stable per-region selection and an explicit Show overlay route; selection and display do not edit recipe routing, persist a new recipe artifact, or pin a non-C3D region output into comparison slots.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "The selected region's exact row/column cells and neutral detected-region styling are synchronized to the existing Height Image and 3D Viewer overlay paths, with a distinct selected state and clear-on-source-change behavior.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Focused Workbench verification, current Release build, existing connected-region regression, UI smoke/runtime evidence, issue validation, and diff hygiene pass; unrun DPI/theme gates remain explicitly reported rather than claimed.",
+      "evidence_refs": []
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Typed Workbench output projection",
+      "status": "pending",
+      "summary": "Expose current source-bound connected-region output and per-region review items in the Workbench artifact/output projection.",
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "title": "Selection and Viewer display route",
+      "status": "pending",
+      "summary": "Add stable region selection and route the existing Displayed Outputs action to the current C3D source plus typed region overlay state.",
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "title": "2D/3D selected overlay parity",
+      "status": "pending",
+      "summary": "Render the same detected-region cells in Height Image and 3D Viewer with explicit selected styling and invalidation.",
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "title": "Verification and evidence",
+      "status": "pending",
+      "summary": "Run focused, build, smoke, runtime, structure, and documentation gates and record evidence without overclaiming unsupported UI coverage.",
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0051"
+    }
+  ],
+  "context": [
+    {
+      "kind": "typed output owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/Inspection/C3DConnectedRegionContracts.cs",
+      "summary": "G-11 owns immutable source-bound connected-region output and per-region metric records."
+    },
+    {
+      "kind": "adapter owner",
+      "location": "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DConnectedRegionRule.cs",
+      "summary": "G-11 owns strict source/mask validation and SDK delegation; G-12 consumes its evaluation."
+    },
+    {
+      "kind": "presentation owners",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.DisplayedOutputs.cs; src/OpenVisionLab.ThreeD.Shell/Views/Workbench/WorkbenchViewerDisplayCoordinator.cs; src/OpenVisionLab.ThreeD.Shell/Views/Workbench/HeightImageViewerView.xaml.cs; src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.TeachingSelections.cs",
+      "summary": "Existing read-first output, coordinator, 2D overlay, and 3D overlay paths are the intended G-12 integration boundary."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "events": [],
+  "created_at": "2026-08-26T21:00:00+09:00",
+  "updated_at": "2026-08-26T21:00:00+09:00"
+}

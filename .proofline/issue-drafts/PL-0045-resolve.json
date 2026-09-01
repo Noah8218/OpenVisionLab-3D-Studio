@@ -1,0 +1,80 @@
+{
+  "type": "batch",
+  "current_summary": "M-12 is closed with one shared exact 11-case OrientedBox3D contract subset inside the 32-case selection verifier, a thin Runner route and exact CI gate, repaired hover/leave recovery, and repeated current Release Wide/Compact actual-pointer evidence. No schema version, SDK algorithm, downstream inspection consumer, R0, release, or physical-metrology claim changed.",
+  "updated_at": "2026-08-23T21:24:48.8706946+09:00",
+  "operations": [
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E1",
+        "kind": "inspection",
+        "location": "src/OpenVisionLab.ThreeD.Data/Verification/ToolRecipeSelectionContractVerification.cs",
+        "observation": "The existing shared verifier remains the sole assertion owner and now requires the exact names of all 11 OrientedBox3D cases. It proves schema 1.4 and current-schema acceptance, exact rotated center/axes/half-extents save and reopen, schema 1.3 and mixed-payload rejection, and zero, finite non-unit, parallel/non-orthogonal, left-handed, non-finite, and non-positive geometry rejection through the production ToolRecipeOrientedBox3DGeometry validator. Any FAIL line, including fixture cleanup, fails the verifier.",
+        "observed_at": "2026-08-23T21:24:48.8706946+09:00"
+      },
+      "targets": [
+        "C1",
+        "C2"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E2",
+        "kind": "test",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0045-oriented-box-qualification\\final\\contracts",
+        "observation": "Current Release reports pass shared selection 32/32 with OrientedBox3DContractVerification|PASS|cases=11|passed=11|failed=0, Inspection Workspace 67/67, Shell option routing 46/46, and Tool Recipe teaching 51/51. Runner OrientedBox/help exit 0, missing report exits 2 with exact usage, and source inspection confirms verifier failure exits 5. CI requires the Runner exit plus exact independent 11/11 and 32/32 report lines and retains exact Workbench authoring/round-trip and Shell routing gates; hosted Actions was not run locally.",
+        "observed_at": "2026-08-23T21:24:48.8706946+09:00"
+      },
+      "targets": [
+        "C1",
+        "C2",
+        "C3"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E3",
+        "kind": "runtime",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0045-oriented-box-qualification\\final\\runtime",
+        "observation": "The current Release Shell apphost passed two Compact 1280x760 and two Wide 1920x1040 repetitions. Every run completed seven actual Windows pointer gestures across Perspective, Top, and Side on its first routed-hover targeting attempt, exposed eight accessible handles per projection, preserved selection identity, authored and execution state, and camera, and passed normal, hover, pressed/released, mouse-leave, cursor, and status recovery. All four application-only screenshots passed quality on attempt 1 and intersected the dynamically selected smaller left DISPLAY2. Logical and physical bounds record the current 125% scaling; 100/150/175/200 were unrun.",
+        "observed_at": "2026-08-23T21:24:48.8706946+09:00"
+      },
+      "targets": [
+        "C4"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E4",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0045-oriented-box-qualification\\final",
+        "observation": "Current-tree Release build passed all 15 projects with zero warnings and errors. Current reports pass Runner/shared 32/32 and exact OrientedBox 11/11, Workbench 67/67, Shell 46/46, teaching 51/51, standard tests 2/2, structure 68/68, NuGet health for 15 projects with vulnerable/deprecated 0/0, and the fixed OpenVisionLab.Vision3D 3.0.1-dev.20260823.crop.1 source commit and package SHA-256 guard.",
+        "observed_at": "2026-08-23T21:24:48.8706946+09:00"
+      },
+      "targets": [
+        "C5"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E5",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0045-oriented-box-qualification\\final\\pre-ledger-hygiene.txt",
+        "observation": "All 66 Git-visible repository JSON files parsed, all 11 PL-0045 durable targets existed, the documentation index link resolved, the canonical 235-row inventory recounted to 150 C / 16 P / 44 N / 9 E / 16 O with exactly one M-12 Complete row, the next dependency-ready order was B-10 then E-13, and git diff --check exited 0.",
+        "observed_at": "2026-08-23T21:24:48.8706946+09:00"
+      },
+      "targets": [
+        "C5"
+      ]
+    },
+    {
+      "type": "set_state",
+      "status": "resolved",
+      "transition_summary": "Resolved after all five acceptance criteria received current reusable evidence."
+    }
+  ]
+}

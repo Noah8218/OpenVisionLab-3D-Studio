@@ -1,0 +1,207 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0053",
+    "aliases": [
+      "G-13"
+    ],
+    "type": "task",
+    "mode": "composite",
+    "title": "Add explicit-feature Presence Check execution",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "next dependency-ready development priority",
+    "summary": "G-12 closed the typed detected-region presentation route. The next bounded priority is G-13: evaluate one explicitly authored source-bound height/coverage feature as present or missing with per-feature evidence, while R0, physical metrology, calibration, and release remain separate prerequisites.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md",
+      "docs/OPENVISIONLAB_3D_NEXT_CHAT_HANDOFF_PROMPT_20260728.md",
+      "docs/OPENVISIONLAB_3D_CONNECTED_REGION_G12_CLOSURE_20260826.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "PL-0053 / G-13 is complete for the bounded explicit-feature Presence Check slice: source-bound GridRectangle policy, fail-closed missing/invalid handling, recipe and Workbench Preview/Publish, ordered Runner/Run Record parity, export evidence, and current Wide/Compact runtime checks all pass."
+  },
+  "objective": {
+    "summary": "Provide a deterministic source-bound Presence Check for one explicitly authored GridRectangle feature, with good/present and missing fixtures, per-feature evidence, and parity across Core, Tools, recipe execution, Workbench, Runner, and Run Records.",
+    "constraints": [
+      "Keep finite-sample statistics arithmetic in the vendored Vision SDK and keep presence policy/identity validation in the Studio adapter.",
+      "Use one explicit source-bound GridRectangle feature; do not infer a mask, rasterize GridCircle/GridPolygon, or duplicate Completeness Grid generation.",
+      "Use inclusive finite-coverage and raw-height bounds; missing finite mean fails closed as Fail rather than fabricating a value.",
+      "Preserve explicit Preview/Publish/Run lifecycle and do not mutate source data, selection definitions, recipe routing, or unrelated result state.",
+      "Keep generated test, report, smoke, and screenshot evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio.",
+      "Do not modify the SDK package, change product version, create a release, commit, push, restart the PC, or modify the 2D reference repository."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "A typed Presence Check contract binds output and feature identity to the exact source entity/content hash, unit, frame, ordered GridRectangle, and policy, and records total/finite/missing counts, finite coverage, optional mean raw height, decision, reason, and deterministic content hash.",
+      "evidence_refs": [
+        "E1"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The adapter and recipe route evaluate good/present and missing features deterministically, use inclusive finite-coverage and raw-height limits, and fail closed for no finite mean, invalid policy, malformed selection, dimension mismatch, or incompatible source binding without mutating source values.",
+      "evidence_refs": [
+        "E2"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "Recipe validation, Workbench property editing, and explicit Preview/Publish/Run execution expose the Presence Check parameters and preserve the existing recipe/source/result action contracts; the produced contract is PresenceCheckResult.",
+      "evidence_refs": [
+        "E3"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Ordered graph projection, Runner verification, JSON/HTML/CSV Run Record output, and Workbench output evidence preserve the same typed feature decision, identity, statistics, and content hash without a second implementation path.",
+      "evidence_refs": [
+        "E4"
+      ]
+    },
+    {
+      "id": "C5",
+      "text": "Focused verification, current Release build/tests, diff hygiene, and applicable current-build Wide/Compact UI evidence pass; unrun themes, DPI values, external R0, maximum-C3D, calibration, and release gates are explicitly left unverified or out of scope.",
+      "evidence_refs": [
+        "E5",
+        "E6"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Typed Presence Check contract and adapter",
+      "status": "done",
+      "summary": "Define policy, feature metric, output identity/hash, and delegate finite statistics to the existing SDK tool.",
+      "criteria_refs": [
+        "C1",
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "title": "Recipe validation and execution route",
+      "status": "done",
+      "summary": "Add the presence-check tool contract, one source plus one GridRectangle validation, and immutable typed execution output.",
+      "criteria_refs": [
+        "C2",
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "title": "Workbench authoring and evidence",
+      "status": "done",
+      "summary": "Expose the three policy values in the existing property session/catalog and route the generic Workbench Preview/Publish/Run evidence surface.",
+      "criteria_refs": [
+        "C3",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "title": "Runner and Run Record parity",
+      "status": "done",
+      "summary": "Add deterministic good/missing fixtures and verify ordered graph projection plus JSON/HTML/CSV evidence parity.",
+      "criteria_refs": [
+        "C2",
+        "C4"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M5",
+      "title": "Release and runtime evidence",
+      "status": "done",
+      "summary": "Run focused and Release checks, applicable current-build Wide/Compact smoke, diff hygiene, and record explicit unverified boundaries.",
+      "criteria_refs": [
+        "C5"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0052"
+    }
+  ],
+  "context": [
+    {
+      "kind": "upstream contract",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/Inspection/C3DCompletenessGridContracts.cs",
+      "summary": "Existing Completeness Grid is a generated multi-cell reference-relative workflow and remains distinct from this one explicit-feature Presence Check."
+    },
+    {
+      "kind": "statistics API",
+      "location": "src/OpenVisionLab.ThreeD.Tools/Measurement/ToolRecipeHeightMeasurementExecution.cs",
+      "summary": "The recipe-owned execution path already calls the public HeightMapRegionStatisticsTool; G-13 can reuse it without SDK mutation."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "typed-contract",
+      "location": "docs/OPENVISIONLAB_3D_PRESENCE_CHECK_G13_CLOSURE_20260826.md",
+      "observation": "The Core contract records exact source/entity/content identity, unit, frame, GridRectangle, policy, counts, nullable mean, decision, reason, and deterministic output SHA-256. The Runner golden report records the source and good-output hashes.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "runner-verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/G-13/c3d-presence-check-release.txt",
+      "observation": "C3DPresenceCheckGoldenVerification passes 16/16. Good coverage 1 and mean 10 pass; missing coverage 0 and no finite mean fail; partial coverage, invalid policy, malformed selection, and source-binding mismatch fail closed; source mutation remains false.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "workbench-verification",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/G-13/presence-check-workbench-release.txt",
+      "observation": "PresenceCheckWorkbench passes 14/14, including catalog routing, exact GridRectangle teaching, typed PropertyGrid policy Apply without execution, save/reopen, evidence-only Preview, exact Publish reuse, missing-feature Fail, and new-recipe reset.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "export-parity",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/G-13/",
+      "observation": "Ordered projection reuses the typed Presence Check instance and the JSON, HTML, and CSV Run Record outputs preserve the same feature identity, metrics, decision, and content hash. The report includes the generated good/missing recipes and exports.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "build-test-hygiene",
+      "location": "C:/Git/OpenVisionLab-3D-Studio",
+      "observation": "Current Release solution build passes with 0 warnings and 0 errors, Release tests pass 10/10, and git diff --check reports no whitespace errors after the selection-contract regression expectation was updated for presence-check.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "runtime-ui",
+      "location": "D:/OpenVisionLab-TestData/OpenVisionLab-3D-Studio/G-13/ui/",
+      "observation": "Current Release Shell EXE smoke passes screenshot quality and monitor intersection at 1280x760 and 1920x1040. The selected Presence Check feature and evidence-only Preview are visible. Runtime DPI was 125%; other themes/scales and the full UI performance baseline remain unverified.",
+      "observed_at": "2026-08-26T23:45:00+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-26T23:45:00+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "PL-0053 / G-13 closed for the bounded explicit-feature Presence Check software contract; G-14 Fill Height per region is the next dependency-ready software slice."
+    }
+  ],
+  "created_at": "2026-08-26T23:00:00+09:00",
+  "updated_at": "2026-08-26T23:45:00+09:00"
+}

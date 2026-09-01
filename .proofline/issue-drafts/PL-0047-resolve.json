@@ -1,0 +1,76 @@
+{
+  "type": "batch",
+  "current_summary": "E-13 is complete with one Core-owned 15-tool/20-role selection compatibility matrix, strict fail-closed recipe validation, repairable incomplete-draft storage, shared Workbench kind/cardinality decisions, current CI completeness gating, and reusable local verification. E-14/E-15, a downstream OrientedBox3D consumer, visible UI changes, owner R0, commit, push, version, release, and deployment remain outside this result.",
+  "updated_at": "2026-08-24T11:35:30.0000000+09:00",
+  "operations": [
+    {
+      "type": "add_event",
+      "event": {
+        "id": "D1",
+        "kind": "decision",
+        "at": "2026-08-24T11:35:30.0000000+09:00",
+        "summary": "Semantic selection roles remain properties of the tool-step route rather than ToolRecipeSelection. Strict validation requires every role, while storage validation preserves missing-role drafts for explicit repair and still rejects incompatible routed selections.",
+        "evidence_refs": []
+      }
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E1",
+        "kind": "inspection",
+        "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeSelectionContract.cs; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\tool-recipe-selections-closure.txt",
+        "observation": "The Core declaration contains exactly 20 non-overlapping role rows across the expected 15 selection-consuming Tool IDs. Each row names role, kind, input position/range, multiplicity, and exact PointSet count where applicable; the current 40/40 verifier checks inventory uniqueness, bounds, and non-overlap.",
+        "observed_at": "2026-08-24T11:35:30.0000000+09:00"
+      },
+      "targets": [
+        "C1",
+        "D1"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E2",
+        "kind": "test",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\tool-recipe-selections-closure.txt; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\tool-recipe-selections-runner-closure.txt; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\tool-recipe-teaching-final-3.txt",
+        "observation": "Shell and Runner selection verification each pass 40/40, including allowed dual roles, undeclared and selectionless tool rejection, wrong-kind and wrong-point-count rejection, default OrientedBox3D consumer rejection, exact 11/11 geometry subset, save/reopen, and stale binding. Teaching passes 51/51 and proves missing-role legacy scaffolds open as storage-valid repairable drafts but remain execution-invalid.",
+        "observed_at": "2026-08-24T11:35:30.0000000+09:00"
+      },
+      "targets": [
+        "C2",
+        "D1"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E3",
+        "kind": "test",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\height-measurement-workbench-final-2.txt; D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix\\inspection-workspace-selection-final-2.txt; src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs; src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.CompatibleToolCatalog.cs",
+        "observation": "Workbench teaching requirements derive kind and point count from the Core matrix, compatible Height Difference Edge discovery uses the same route declaration, Height Measurement passes 56/56, and Inspection Workspace passes 67/67. No XAML, visible text, style, template, or explicit Preview/Publish/Run action was changed.",
+        "observed_at": "2026-08-24T11:35:30.0000000+09:00"
+      },
+      "targets": [
+        "C3"
+      ]
+    },
+    {
+      "type": "add_evidence",
+      "evidence": {
+        "id": "E4",
+        "kind": "verification",
+        "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\20260824-e13-selection-matrix",
+        "observation": "The final 15-project Release solution build passes with zero warnings/errors; Ordered Run passes 16/16, Validation Set 87/87, standard tests 2/2, structure 68/68, and NuGet health 15 projects with vulnerable/deprecated 0/0. CI requires the current 40/40 marker plus the retained 11/11 OrientedBox subset. Git diff --check, all Proofline issue validation, and all 20 repository-visible JSON parses pass. The closure document, master inventory 152 C / 16 P / 42 N / 9 E / 16 O, handoff, documentation index, changelog, and E-14 next priority are current.",
+        "observed_at": "2026-08-24T11:35:30.0000000+09:00"
+      },
+      "targets": [
+        "C4"
+      ]
+    },
+    {
+      "type": "set_state",
+      "status": "resolved",
+      "transition_summary": "Resolved after all four E-13 completion criteria received current reusable evidence."
+    }
+  ]
+}

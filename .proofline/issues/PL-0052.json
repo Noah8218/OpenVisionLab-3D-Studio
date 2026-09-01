@@ -1,0 +1,217 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0052",
+    "aliases": [
+      "G-12"
+    ],
+    "type": "task",
+    "mode": "composite",
+    "title": "Route detected-region metrics to typed Results and selected overlays",
+    "risk": "high"
+  },
+  "origin": {
+    "kind": "next dependency-ready development priority",
+    "summary": "G-11 closed the deterministic source-bound connected-region adapter and Runner contract. The next dependency-ready software slice is the user-facing typed output and selected overlay workflow, while R0, maximum-C3D qualification, physical metrology, and release remain separate prerequisites.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md",
+      "docs/OPENVISIONLAB_3D_CONNECTED_REGION_G11_CLOSURE_20260826.md",
+      "docs/OPENVISIONLAB_3D_VISION_SDK_TOOL_CONTRACT_AND_MIGRATION_BASELINE_20260805.md"
+    ]
+  },
+  "state": {
+    "status": "resolved",
+    "current_summary": "G-12 bounded presentation slice is complete: the already evaluated exact-source-bound C3DConnectedRegionOutput is exposed as typed Workbench evidence, per-region metrics and stable selection are available, and the same region identity and exact source-grid cells reach the existing Height Image and 3D Viewer overlays without rerunning detection or mutating the recipe/source. Focused, Release, and current Wide/Compact runtime evidence passed; unrun DPI/theme and external gates remain explicitly outside this closure."
+  },
+  "objective": {
+    "summary": "Connect C3DConnectedRegionOutput from the completed G-11 adapter to a user-facing Results/Displayed Outputs review and selected-region overlay workflow.",
+    "constraints": [
+      "Keep SDK labeling and metric arithmetic in the Vision SDK and keep source/mask identity validation in the existing Studio adapter.",
+      "Accept only an already evaluated, exact current-source-bound output; do not rerun detection from presentation code.",
+      "Do not add GridPolygon or GridCircle rasterization, threshold inference, mask authoring, calibration, physical area, metrology, downstream completeness consumption, or recipe persistence in this slice.",
+      "Reuse existing Workbench MVVM, Displayed Outputs, Viewer coordinator, Height Image overlay, semantic theme, and explicit Preview/Publish/Run contracts.",
+      "A selected region must be represented by stable region identity and the same row/column cells in both 2D and 3D; selection must not mutate the recipe or source.",
+      "Keep generated test, screenshot, smoke, and report evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio.",
+      "Do not change product version, create a release, commit, push, restart the PC, or modify the 2D reference repository."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "A current exact-source-bound C3DConnectedRegionOutput is exposed as a typed Workbench artifact with region count, foreground count, grid-index area, source identity, and per-region count/area/center/orientation/bounds available without re-execution.",
+      "evidence_refs": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "C2",
+      "text": "The Workbench exposes stable per-region selection and an explicit Show overlay route; selection and display do not edit recipe routing, persist a new recipe artifact, or pin a non-C3D region output into comparison slots.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E5"
+      ]
+    },
+    {
+      "id": "C3",
+      "text": "The selected region's exact row/column cells and neutral detected-region styling are synchronized to the existing Height Image and 3D Viewer overlay paths, with a distinct selected state and clear-on-source-change behavior.",
+      "evidence_refs": [
+        "E2",
+        "E4",
+        "E5"
+      ]
+    },
+    {
+      "id": "C4",
+      "text": "Focused Workbench verification, current Release build, existing connected-region regression, UI smoke/runtime evidence, issue validation, and diff hygiene pass; unrun DPI/theme gates remain explicitly reported rather than claimed.",
+      "evidence_refs": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M1",
+      "title": "Typed Workbench output projection",
+      "status": "done",
+      "summary": "Expose current source-bound connected-region output and per-region review items in the Workbench artifact/output projection.",
+      "criteria_refs": [
+        "C1"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M2",
+      "title": "Selection and Viewer display route",
+      "status": "done",
+      "summary": "Add stable region selection and route the existing Displayed Outputs action to the current C3D source plus typed region overlay state.",
+      "criteria_refs": [
+        "C2"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M3",
+      "title": "2D/3D selected overlay parity",
+      "status": "done",
+      "summary": "Render the same detected-region cells in Height Image and 3D Viewer with explicit selected styling and invalidation.",
+      "criteria_refs": [
+        "C3"
+      ],
+      "issue_refs": []
+    },
+    {
+      "id": "M4",
+      "title": "Verification and evidence",
+      "status": "done",
+      "summary": "Run focused, build, smoke, runtime, structure, and documentation gates and record evidence without overclaiming unsupported UI coverage.",
+      "criteria_refs": [
+        "C4"
+      ],
+      "issue_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0051"
+    }
+  ],
+  "context": [
+    {
+      "kind": "typed output owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/Inspection/C3DConnectedRegionContracts.cs",
+      "summary": "G-11 owns immutable source-bound connected-region output and per-region metric records."
+    },
+    {
+      "kind": "adapter owner",
+      "location": "src/OpenVisionLab.ThreeD.Tools/FeatureExtraction/C3DConnectedRegionRule.cs",
+      "summary": "G-11 owns strict source/mask validation and SDK delegation; G-12 consumes its evaluation."
+    },
+    {
+      "kind": "presentation owners",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.DisplayedOutputs.cs; src/OpenVisionLab.ThreeD.Shell/Views/Workbench/WorkbenchViewerDisplayCoordinator.cs; src/OpenVisionLab.ThreeD.Shell/Views/Workbench/HeightImageViewerView.xaml.cs; src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.TeachingSelections.cs",
+      "summary": "Existing read-first output, coordinator, 2D overlay, and 3D overlay paths are the intended G-12 integration boundary."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [
+    {
+      "id": "E1",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\c3d-connected-region-release.txt",
+      "observation": "Release Runner G-11 connected-region verification passes 10/10. The report covers deterministic two-region output, row-major cell order, SDK metric mapping, repeatability/identity hash, source and mask immutability, Four/Eight connectivity, and fail-closed empty-mask, source-binding, missing-height, and invalid-connectivity cases.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E2",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\connected-region-workbench-release.txt",
+      "observation": "Release Workbench verification passes 9/9. It proves typed output acceptance without rerun, Displayed Outputs visibility, per-region metrics and exact cell counts, selection-only state change, existing C3D Show overlay routing, recipe immutability, and clearing on source change/new recipe.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E3",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\shell-smoke-options-release.txt",
+      "observation": "Release Shell command-line option verification passes 49/49, including ConnectedRegionOutput dispatch alongside the existing option, lifecycle, and interaction checks.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E4",
+      "kind": "runtime",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\connected-region-output-release-1280x760.txt",
+      "observation": "Current Release EXE Compact smoke passes at 1280x760. The existing Viewer-to-Workbench lifecycle loads the local C3D, Workbench/Viewer/Height Image share output identity derived.connected-region.smoke and selected region .region.002, Height Image reports overlayChildren=4 for two foreground cells (cells plus labels), the recipe remains unchanged, and the runtime screenshot is accepted. The companion quality report records the dynamically selected leftmost monitor, intersecting window rectangle, and 125% DPI.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E5",
+      "kind": "runtime",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\connected-region-output-release-1920x1040.txt",
+      "observation": "Current Release EXE Wide smoke passes at 1920x1040 with the same typed output, stable selected region, Height Image exact-cell overlay, unchanged recipe, and accepted screenshot. The companion quality report records the dynamically selected leftmost monitor, intersecting window rectangle, and 125% DPI.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E6",
+      "kind": "test",
+      "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\G-12\\test-results",
+      "observation": "The full Release solution test command completed with 10 passed, 0 failed, and 0 skipped.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E7",
+      "kind": "build",
+      "location": "command: dotnet build OpenVisionLab.ThreeDStudio.slnx -c Release --no-restore -v:minimal",
+      "observation": "The full Release solution build completed with 0 warnings and 0 errors.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    },
+    {
+      "id": "E8",
+      "kind": "hygiene",
+      "location": "command: git diff --check",
+      "observation": "The final diff hygiene check exited 0 with no whitespace errors. Git only reported its normal LF-to-CRLF working-copy normalization warnings.",
+      "observed_at": "2026-08-26T22:39:12+09:00"
+    }
+  ],
+  "events": [
+    {
+      "id": "T1",
+      "kind": "transition",
+      "at": "2026-08-26T22:39:12+09:00",
+      "from": "doing",
+      "to": "resolved",
+      "summary": "G-12 completed with typed Workbench region evidence, stable selection, exact 2D/3D overlay parity, focused and Release verification, and current Wide/Compact EXE evidence; unsupported DPI/theme, R0, calibration, and release gates remain outside the bounded closure."
+    }
+  ],
+  "created_at": "2026-08-26T21:00:00+09:00",
+  "updated_at": "2026-08-26T22:39:12+09:00"
+}

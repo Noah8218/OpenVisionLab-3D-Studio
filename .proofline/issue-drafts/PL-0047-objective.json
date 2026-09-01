@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0047",
+    "aliases": [
+      "E-13"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Declare supported selection kinds and roles",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved E-13, the next dependency-ready item, so every selection-consuming tool needs one explicit kind/role declaration before GridCircle or GridPolygon expands the selection inventory.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_NEXT_SESSION_HANDOFF.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "Selection geometry validation exists, but supported tool, semantic role, kind, and point-count rules are distributed across Workbench and tool-specific validators.",
+    "next_action": "Add one Core-owned compatibility matrix, use it in strict recipe validation and Workbench selection requirements, and prove allowed, rejected, and repairable-draft routes."
+  },
+  "objective": {
+    "summary": "Close E-13 with one reusable per-tool selection kind/role matrix and a fail-closed validator shared by recipe and Workbench paths.",
+    "constraints": [
+      "Preserve explicit Preview, Publish, and Run; validation and compatibility checks must not execute inspection or mutate source, selection, result, or active-layer state.",
+      "Keep role ownership on the tool-step routing relationship and avoid a recipe schema change or a duplicated role field on ToolRecipeSelection.",
+      "Allow incomplete drafts to save and reopen for repair while strict execution validation rejects missing roles; reject undeclared, wrong-kind, wrong-role, and wrong-cardinality routed selections.",
+      "Reuse current Tool IDs, ToolRecipeSelectionKinds, DualRoiRouting, primary-input contracts, semantic theme, and MVVM ownership; add no dependency or UI framework.",
+      "Do not implement E-14 GridCircle, E-15 GridPolygon, region artifacts, numerical algorithms, hardware integration, or physical metrology."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "One Core-owned declaration covers every current selection-consuming tool with explicit semantic role, supported kind, input position/range, multiplicity, and PointSet cardinality without overlapping declarations.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "Strict recipe validation accepts supported routes and fails closed for undeclared tools, selectionless tools, unsupported kinds including undeclared OrientedBox3D consumers, missing roles, and wrong point counts; storage validation retains repairable missing-role drafts but rejects incompatible routed selections.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "Workbench teaching requirements and compatible selection discovery consume the same Core declaration for kind and point-count decisions without changing visible layout, theme, or explicit execution behavior.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Current Release build, selection Shell/Runner verification, teaching, measurement, Inspection Workspace, ordered Run, Validation Set, standard tests, structure, documentation, issue validation, and diff hygiene pass with reusable D-backed evidence.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0046"
+    }
+  ],
+  "context": [
+    {
+      "kind": "selection geometry owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeValidator.cs",
+      "summary": "Existing validation owns selection shape and binding integrity but previously lacked one per-tool kind/role matrix."
+    },
+    {
+      "kind": "teaching requirement consumer",
+      "location": "src/OpenVisionLab.ThreeD.Shell/ViewModels/Workbench/ToolWorkbenchViewModel.cs",
+      "summary": "Workbench previously hard-coded selection kinds and point counts in its teaching requirement switch."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "events": [],
+  "created_at": "2026-08-24T11:31:14.7051737+09:00",
+  "updated_at": "2026-08-24T11:31:14.7051737+09:00"
+}

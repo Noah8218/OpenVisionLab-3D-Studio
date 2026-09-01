@@ -1,0 +1,92 @@
+{
+  "schema_version": 2,
+  "identity": {
+    "id": "PL-0045",
+    "aliases": [
+      "M-12"
+    ],
+    "type": "task",
+    "mode": "simple",
+    "title": "Qualify OrientedBox3D contracts and pointer interactions",
+    "risk": "medium"
+  },
+  "origin": {
+    "kind": "owner-approved ranked backlog continuation",
+    "summary": "The owner approved the next ranked dependency-ready item. M-12 remained New although OrientedBox3D schema, geometry validation, numeric authoring, and actual pointer smoke already existed; the exact OrientedBox subset had no Runner-owned completeness gate and current runtime evidence was historical.",
+    "refs": [
+      "docs/OPENVISIONLAB_3D_MASTER_DEVELOPMENT_WORKFLOW_AND_BACKLOG_20260727.md",
+      "docs/OPENVISIONLAB_3D_ORIENTED_BOX_CONTRACT_AND_NUMERIC_EDITOR_20260728.md",
+      "docs/OPENVISIONLAB_3D_ORIENTED_BOX_VIEWER_HANDLES_20260728.md"
+    ]
+  },
+  "state": {
+    "status": "doing",
+    "current_summary": "Existing schema, shared geometry validation, editor, Viewer handles, and seven-gesture pointer smoke are present. The remaining work is to strengthen the shared headless edge cases, expose an exact Runner/CI subset gate, rerun current Wide/Compact pointer evidence, and record reusable closure evidence.",
+    "next_action": "Extend the existing selection-contract verifier and add the thin Runner/CI qualification route without changing product behavior."
+  },
+  "objective": {
+    "summary": "Close M-12 with one reusable OrientedBox3D qualification path covering schema round-trip, fail-closed geometry, actual pointer gestures, and Runner/CI completeness.",
+    "constraints": [
+      "Keep ToolRecipeSelectionContractVerification as the sole schema and geometry assertion owner; add no duplicate verifier framework or geometry implementation.",
+      "Reuse the existing OrientedBox editor, Viewer handles, actual Windows pointer smoke, semantic theme, and Shell smoke routing without adding UI behavior or gestures.",
+      "Preserve selection identity, authored recipe state, Preview/Publish/Run separation, camera stability, and non-execution during pointer editing.",
+      "Exclude new downstream inspection consumers, SDK algorithms, schema-version movement, R0, and platform or hardware expansion.",
+      "Store generated local evidence physically under D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio."
+    ]
+  },
+  "criteria": [
+    {
+      "id": "C1",
+      "text": "The existing shared verifier proves valid schema 1.4/current-schema acceptance, exact rotated center/axes/half-extents save and reopen, old-schema rejection, and mixed-payload rejection.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C2",
+      "text": "The same shared verifier fails closed for zero-length, finite non-unit, parallel/non-orthogonal, left-handed, non-finite geometry, and non-positive half-extents without duplicating production geometry logic.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C3",
+      "text": "A Runner command reuses the shared verifier, requires every exact OrientedBox3D case, emits a stable complete marker, and the existing hosted contract step requires that marker and full report result.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C4",
+      "text": "Fresh current-build Wide 1920x1040 and Compact 1280x760 actual Windows pointer smokes pass all seven Perspective/Top/Side gestures, accessible handles, camera stability, selection identity, no authored recipe or execution mutation, selected-monitor intersection, and contextual screenshot inspection.",
+      "evidence_refs": []
+    },
+    {
+      "id": "C5",
+      "text": "Focused and full Release builds, affected selection/teaching/Viewer/Shell regressions, standard test facade, NuGet health, structure guard, fixed Vision SDK package guard, issue validation, documentation targets, repository JSON, inventory recount, and diff hygiene pass on the current tree.",
+      "evidence_refs": []
+    }
+  ],
+  "relations": [
+    {
+      "type": "follow_up_to",
+      "target": "PL-0044"
+    }
+  ],
+  "context": [
+    {
+      "kind": "shared assertion owner",
+      "location": "src/OpenVisionLab.ThreeD.Data/Verification/ToolRecipeSelectionContractVerification.cs",
+      "summary": "Owns current schema, persistence, invalid geometry, and selection payload checks."
+    },
+    {
+      "kind": "production geometry owner",
+      "location": "src/OpenVisionLab.ThreeD.Core/Contracts/ToolRecipes/ToolRecipeOrientedBox3DGeometry.cs",
+      "summary": "Owns finite, positive, orthonormal, and right-handed validation reused by recipe, editor, and Viewer paths."
+    },
+    {
+      "kind": "actual pointer owner",
+      "location": "src/OpenVisionLab.ThreeD.Viewer/Views/OpenVisionThreeDViewerControl.OrientedBox3DSmoke.cs",
+      "summary": "Owns seven actual Windows pointer gestures across Perspective, Top, and Side projections."
+    }
+  ],
+  "artifacts": [],
+  "evidence": [],
+  "events": [],
+  "created_at": "2026-08-23T20:41:56.1917062+09:00",
+  "updated_at": "2026-08-23T20:41:56.1917062+09:00"
+}

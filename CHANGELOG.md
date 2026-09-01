@@ -1,10 +1,16 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.3.0-dev` development line onward. It does not claim that a version was
+`0.3.1-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.3.0-dev
+## [Unreleased] - 0.3.1-dev
+
+### Changed
+
+- Expanded the public documentation map with deterministic integration,
+  verification, and workflow evidence while preserving the software-only
+  product boundary.
 
 ### Added
 

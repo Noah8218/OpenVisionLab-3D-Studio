@@ -1,0 +1,15 @@
+{
+  "type": "add_evidence",
+  "current_summary": "M-12 remains resolved after terminal repository, inventory, contract, repeated runtime, documentation, issue-ledger, and diff-hygiene validation passed.",
+  "updated_at": "2026-08-23T21:26:32.5381822+09:00",
+  "evidence": {
+    "id": "E6",
+    "kind": "verification",
+    "location": "D:\\OpenVisionLab-TestData\\OpenVisionLab-3D-Studio\\artifacts\\current\\20260823-pl0045-oriented-box-qualification\\final\\final-hygiene.txt",
+    "observation": "Terminal verification passed: all 67 Git-visible JSON files parsed; the 235-row inventory was 150 C / 16 P / 44 N / 9 E / 16 O with M-12 Complete; PL-0045 was resolved with evidence on 5/5 criteria; all 45 issues validated; current contract totals and exact 11/11 marker remained present; two Compact and two Wide final runtime directories passed every first-attempt gesture, interaction state, screenshot-quality, and monitor-intersection gate; Release build, standard tests, structure, NuGet, fixed SDK, durable documentation, added-TODO search, and git diff --check all passed.",
+    "observed_at": "2026-08-23T21:26:32.5381822+09:00"
+  },
+  "targets": [
+    "C5"
+  ]
+}
