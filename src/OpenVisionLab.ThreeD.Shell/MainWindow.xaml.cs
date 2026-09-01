@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     private readonly ShellPreparationPresetAssistantSmoke _preparationPresetSmoke;
     private readonly ShellValidationThresholdAssistantSmoke _validationThresholdSmoke;
     private readonly ShellSurfaceMatchInteractionSmoke _surfaceMatchInteractionSmoke;
+    private readonly ShellViewerWorkspaceSmoke _viewerWorkspaceSmoke;
     private RoutedEventHandler _shellSmokeLoadedHandler = (_, _) => { };
     private Task? validationSetSmokeSelectionTask;
     private Task? validationSetSmokeSectionTask;
@@ -97,6 +98,9 @@ public partial class MainWindow : Window
             _viewModel.Workbench,
             ToolWorkbench,
             SetCursorPos,
+            Dispatcher);
+        _viewerWorkspaceSmoke = new ShellViewerWorkspaceSmoke(
+            ToolWorkbench,
             Dispatcher);
         _workbenchViewerTeaching = new WorkbenchViewerTeachingCoordinator(
             _viewModel.Workbench,
@@ -918,43 +922,21 @@ public partial class MainWindow : Window
                     await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
                 }
 
-                if (viewerPresentationSmoke)
+                if (viewerPresentationSmoke || viewerLayoutSmoke is not null)
                 {
-                    if (!ToolWorkbench.ConfigureViewerWorkspacePresentationForSmoke())
+                    var viewerWorkspace = await _viewerWorkspaceSmoke.RunAsync(
+                        viewerPresentationSmoke,
+                        viewerLayoutSmoke,
+                        screenshotQualityReportPath);
+                    if (!viewerWorkspace.Succeeded)
                     {
                         _viewModel.SetViewerSmokeFailed(
-                            "Viewer workspace presentation smoke could not activate two real linked Viewers.");
+                            viewerWorkspace.Failure!);
                         Application.Current.Shutdown(1);
                         return;
                     }
-
-                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                    await Task.Delay(600);
-                    if (!ToolWorkbench.VerifyViewerWorkspaceCameraLinkForSmoke(
-                            out var cameraLinkSmokeSummary))
-                    {
-                        WriteTextReport(
-                            screenshotQualityReportPath,
-                            [cameraLinkSmokeSummary]);
-                        _viewModel.SetViewerSmokeFailed(
-                            "Viewer workspace camera-link propagation smoke failed.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-                    viewerPresentationCameraLinkSmokeSummary = cameraLinkSmokeSummary;
-                }
-                else if (viewerLayoutSmoke is not null)
-                {
-                    if (!ToolWorkbench.ConfigureViewerWorkspaceLayoutForSmoke(viewerLayoutSmoke))
-                    {
-                        _viewModel.SetViewerSmokeFailed(
-                            $"Viewer workspace layout smoke could not activate '{viewerLayoutSmoke}'.");
-                        Application.Current.Shutdown(1);
-                        return;
-                    }
-
-                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                    await Task.Delay(600);
+                    viewerPresentationCameraLinkSmokeSummary =
+                        viewerWorkspace.CameraLinkSummary;
                 }
 
                 if (smoke.HeightImageDisplayRangeSmoke

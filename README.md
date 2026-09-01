@@ -18,11 +18,16 @@ overlays, and records in one application.
 
 ## Version
 
-Current version: `v0.4.3-dev`
+Current version: `v0.4.4-dev`
 
 This project is maintained using explicit version numbers.
 
 ### Recent version history
+
+#### `v0.4.4-dev` (2026-09-01)
+
+- Extracted Viewer workspace presentation/layout Smoke orchestration into a dedicated Shell verification owner.
+- Preserved Viewer workspace state, layout precedence, camera-link evidence, and explicit workflow semantics.
 
 #### `v0.4.3-dev` (2026-09-01)
 

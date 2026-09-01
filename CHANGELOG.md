@@ -1,10 +1,10 @@
 # Changelog
 
 This forward-looking log records notable user-visible changes from the current
-`0.4.3-dev` development line onward. It does not claim that a version was
+`0.4.4-dev` development line onward. It does not claim that a version was
 released; publication state is owned by the release and version policy.
 
-## [Unreleased] - 0.4.3-dev
+## [Unreleased] - 0.4.4-dev
 
 ### Added
 
@@ -15,6 +15,10 @@ released; publication state is owned by the release and version policy.
   load a recipe, run an inspection, or publish a Result automatically.
 
 ### Changed
+
+- Extracted Viewer workspace presentation/layout Smoke orchestration from
+  `MainWindow` into a dedicated Shell verification owner without changing
+  Viewer workspace or workflow contracts.
 
 - Isolated Surface Match collection navigation, disabled-state, Published
   focus/hover, popup opening, and popup evidence capture from `MainWindow` into
